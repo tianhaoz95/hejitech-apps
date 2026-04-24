@@ -153,14 +153,25 @@ export default function SidePanel() {
   const handleLogin = useCallback(async () => {
     console.log("Attempting login...")
     try {
-      // In some extension contexts, signInWithPopup might fail.
-      // We try it first as it's the smoothest UX.
       await signInWithPopup(auth, googleProvider)
     } catch (e: any) {
-      console.error("Login failed with popup, trying fallback...", e)
-      // Fallback: Open Hub login page or a dedicated extension tab
-      // For now, let's open the options page which is a full tab where popup should work.
-      chrome.tabs.create({ url: chrome.runtime.getURL("options.html") })
+      console.error("Login failed with popup, trying window fallback...", e)
+      
+      // Calculate center position
+      const width = 500
+      const height = 600
+      const left = Math.round((window.screen.width - width) / 2)
+      const top = Math.round((window.screen.height - height) / 2)
+
+      chrome.windows.create({
+        url: chrome.runtime.getURL("options.html?view=login"),
+        type: "popup",
+        width,
+        height,
+        left,
+        top,
+        focused: true
+      })
     }
   }, [])
 

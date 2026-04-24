@@ -1,9 +1,9 @@
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useMemo } from "react"
 import { usePropertyStore } from "./core/store"
 import { db, auth } from "./core/firebase"
 import { collection, query, onSnapshot, orderBy } from "firebase/firestore"
 import { onAuthStateChanged, type User as FirebaseUser, signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth"
-import { LayoutDashboard, Home, TrendingUp, ExternalLink, Trash2, PieChart, Map as MapIcon, Plus, LogOut, LogIn, Calculator } from "lucide-react"
+import { LayoutDashboard, Home, TrendingUp, ExternalLink, Trash2, PieChart, Map as MapIcon, Plus, LogOut, LogIn, Calculator, RefreshCw } from "lucide-react"
 import "./style.css"
 
 const googleProvider = new GoogleAuthProvider()
@@ -12,13 +12,24 @@ export default function OptionsPage() {
   const [user, setUser] = useState<FirebaseUser | null>(null)
   const [properties, setProperties] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [authLoading, setAuthLoading] = useState(true)
+
+  const isLoginView = useMemo(() => {
+    return new URLSearchParams(window.location.search).get("view") === "login"
+  }, [])
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (u) => {
       setUser(u)
+      setAuthLoading(false)
+      
+      // If we are in the login popup and user just logged in, close the window
+      if (u && isLoginView) {
+        window.close()
+      }
     })
     return () => unsubscribeAuth()
-  }, [])
+  }, [isLoginView])
 
   const handleLogin = useCallback(async () => {
     try {
@@ -60,19 +71,27 @@ export default function OptionsPage() {
     return () => unsubscribeData()
   }, [user])
 
-  if (!user && !loading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-10 text-center">
-          <div className="bg-blue-600 w-20 h-20 rounded-3xl flex items-center justify-center text-white mx-auto mb-8 shadow-lg shadow-blue-200 rotate-3">
+        <RefreshCw className="text-blue-600 animate-spin" size={32} />
+      </div>
+    )
+  }
+
+  if (!user || isLoginView) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-10 text-center border border-gray-100">
+          <div className="bg-blue-600 w-20 h-20 rounded-3xl flex items-center justify-center text-white mx-auto mb-8 shadow-lg shadow-blue-200 rotate-3 transform transition-transform hover:rotate-0">
             <Calculator size={40} />
           </div>
-          <h1 className="text-3xl font-black text-gray-900 mb-4">Icecap Hub</h1>
-          <p className="text-gray-500 mb-10">Sign in to manage your real estate portfolio and sync your analyses.</p>
+          <h1 className="text-3xl font-black text-gray-900 mb-4 tracking-tight">Icecap Hub</h1>
+          <p className="text-gray-500 mb-10 leading-relaxed">Sign in to manage your real estate portfolio and sync your analyses across all devices.</p>
           
           <button
             onClick={handleLogin}
-            className="w-full flex items-center justify-center gap-4 bg-white hover:bg-gray-50 text-gray-700 font-bold py-4 px-8 rounded-2xl border-2 border-gray-100 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="w-full flex items-center justify-center gap-4 bg-white hover:bg-gray-50 text-gray-700 font-bold py-4 px-8 rounded-2xl border-2 border-gray-100 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] hover:border-blue-100"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24px" height="24px">
               <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z" />
@@ -82,6 +101,10 @@ export default function OptionsPage() {
             </svg>
             Continue with Google
           </button>
+
+          <footer className="mt-12 text-[10px] text-gray-400 uppercase tracking-widest font-semibold">
+            Powered by Firebase Auth
+          </footer>
         </div>
       </div>
     )
