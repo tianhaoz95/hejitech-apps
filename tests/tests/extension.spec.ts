@@ -1,5 +1,10 @@
 import { test as base, chromium, type BrowserContext, expect } from "@playwright/test"
 import path from "path"
+import { createTestUser, setSubscription, clearEmulatorData } from "../fixtures/firebase-helpers"
+
+const TEST_EMAIL = `ext-test-${Date.now()}@icecap-test.com`
+const TEST_PASSWORD = "TestPass123!"
+let testUid = ""
 
 // Custom fixture for extension testing
 export const test = base.extend<{
@@ -27,9 +32,37 @@ export const test = base.extend<{
   },
 })
 
-test("side panel loads with calculator UI", async ({ page, extensionId }) => {
+test.beforeAll(async () => {
+  testUid = await createTestUser(TEST_EMAIL, TEST_PASSWORD)
+  await setSubscription(testUid, "active", "pro")
+})
+
+test.afterAll(async () => {
+  await clearEmulatorData()
+})
+
+async function signInExtension(page: any, extensionId: string) {
+  await page.goto(`chrome-extension://${extensionId}/sidepanel.html`)
+  await page.evaluate(async ({ email, password }) => {
+    const auth = (window as any).auth
+    const signIn = (window as any).signInWithEmailAndPassword
+    if (!auth || !signIn) throw new Error("Firebase auth or signIn function not found on window")
+    await signIn(auth, email, password)
+  }, { email: TEST_EMAIL, password: TEST_PASSWORD })
+  await expect(page.getByText(TEST_EMAIL)).toBeVisible()
+}
+
+test("shows login screen when unauthenticated", async ({ page, extensionId }) => {
   await page.setViewportSize({ width: 400, height: 800 })
   await page.goto(`chrome-extension://${extensionId}/sidepanel.html`)
+
+  await expect(page.getByText("Welcome to Icecap")).toBeVisible()
+  await expect(page.getByText("Sign in with Google")).toBeVisible()
+})
+
+test("side panel loads with calculator UI after login", async ({ page, extensionId }) => {
+  await page.setViewportSize({ width: 400, height: 800 })
+  await signInExtension(page, extensionId)
 
   await expect(page.locator("header span.text-lg.font-bold")).toContainText("Icecap")
   await expect(page.getByTestId("scrape-btn")).toBeVisible()
@@ -37,7 +70,7 @@ test("side panel loads with calculator UI", async ({ page, extensionId }) => {
 
 test("price input triggers metric recalculation", async ({ page, extensionId }) => {
   await page.setViewportSize({ width: 400, height: 800 })
-  await page.goto(`chrome-extension://${extensionId}/sidepanel.html`)
+  await signInExtension(page, extensionId)
 
   // Enter price
   const priceInput = page.locator("input[type='number']").first()
@@ -55,7 +88,7 @@ test("price input triggers metric recalculation", async ({ page, extensionId }) 
 
 test("rental/flip mode toggle works", async ({ page, extensionId }) => {
   await page.setViewportSize({ width: 400, height: 800 })
-  await page.goto(`chrome-extension://${extensionId}/sidepanel.html`)
+  await signInExtension(page, extensionId)
 
   // Should start in rental mode
   const flipBtn = page.getByRole("button", { name: "Flip" })
@@ -68,7 +101,7 @@ test("rental/flip mode toggle works", async ({ page, extensionId }) => {
 
 test("assumptions sliders update display values", async ({ page, extensionId }) => {
   await page.setViewportSize({ width: 400, height: 800 })
-  await page.goto(`chrome-extension://${extensionId}/sidepanel.html`)
+  await signInExtension(page, extensionId)
 
   // Down payment slider
   const slider = page.locator("input[type='range']").first()
@@ -78,7 +111,7 @@ test("assumptions sliders update display values", async ({ page, extensionId }) 
 
 test("BRRRR mode shows extended metrics", async ({ page, extensionId }) => {
   await page.setViewportSize({ width: 400, height: 800 })
-  await page.goto(`chrome-extension://${extensionId}/sidepanel.html`)
+  await signInExtension(page, extensionId)
 
   const brrrrBtn = page.getByRole("button", { name: "BRRRR" })
   await brrrrBtn.click()

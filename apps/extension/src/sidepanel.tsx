@@ -122,6 +122,7 @@ export default function SidePanel() {
   }, [store])
 
   const [user, setUser] = useState<FBUser | null>(null)
+  const [authLoading, setAuthLoading] = useState(true)
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [isScraping, setIsScraping] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -133,6 +134,7 @@ export default function SidePanel() {
   useEffect(() => {
     return onAuthStateChanged(auth, (u) => {
       setUser(u)
+      setAuthLoading(false)
       if (!u) setSubscription(null)
     })
   }, [])
@@ -265,6 +267,67 @@ export default function SidePanel() {
       : subscription
         ? Math.max(0, (subscription.aiQuotaLimit ?? 50) - (subscription.aiUsageCurrentMonth ?? 0))
         : 0
+
+  if (authLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-6 text-center">
+        <RefreshCw className="text-blue-600 animate-spin mb-4" size={32} />
+        <p className="text-gray-500 font-medium">Initializing Icecap...</p>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-8 text-center">
+        <div className="bg-blue-600 p-3 rounded-2xl text-white mb-6 shadow-lg shadow-blue-200">
+          <Calculator size={48} />
+        </div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome to Icecap</h1>
+        <p className="text-gray-500 mb-8">
+          Analyze real estate deals instantly. Please sign in to your account to continue.
+        </p>
+        <button
+          onClick={handleLogin}
+          className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-50 text-gray-700 font-semibold py-3 px-6 rounded-xl border border-gray-200 shadow-sm transition-all"
+        >
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google.svg" alt="Google" className="w-5 h-5" />
+          Sign in with Google
+        </button>
+        <footer className="mt-12 text-[10px] text-gray-400 uppercase tracking-widest">
+          Icecap Platform v0.1
+        </footer>
+      </div>
+    )
+  }
+
+  if (!isSubscribed && !isPastDue) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-8 text-center">
+        <div className="bg-purple-600 p-3 rounded-2xl text-white mb-6 shadow-lg shadow-purple-200">
+          <Crown size={48} />
+        </div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Subscription Required</h1>
+        <p className="text-gray-500 mb-8">
+          You need an active subscription or a free trial to use the Icecap extension.
+        </p>
+        <div className="space-y-3 w-full">
+          <button
+            onClick={() => chrome.runtime.openOptionsPage()}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl shadow-md transition-all"
+          >
+            Start Free Trial in Hub
+          </button>
+          <button
+            onClick={handleLogout}
+            className="w-full text-gray-500 hover:text-gray-700 text-sm font-medium py-2"
+          >
+            Sign out
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 text-gray-900 text-sm">

@@ -37,6 +37,17 @@ test.afterAll(async () => {
   await clearEmulatorData()
 })
 
+async function signInExtension(page: any, extensionId: string) {
+  await page.goto(`chrome-extension://${extensionId}/sidepanel.html`)
+  await page.evaluate(async ({ email, password }) => {
+    const auth = (window as any).auth
+    const signIn = (window as any).signInWithEmailAndPassword
+    if (!auth || !signIn) throw new Error("Firebase auth or signIn function not found on window")
+    await signIn(auth, email, password)
+  }, { email: TEST_EMAIL, password: TEST_PASSWORD })
+  await expect(page.getByText(TEST_EMAIL)).toBeVisible()
+}
+
 test("golden path: Hub login page is accessible", async ({ page }) => {
   await page.goto("http://localhost:5173/login")
   await expect(page.locator("h1")).toContainText("Icecap Hub")
@@ -45,13 +56,13 @@ test("golden path: Hub login page is accessible", async ({ page }) => {
 
 test("golden path: Side panel loads in extension", async ({ page, extensionId }) => {
   await page.setViewportSize({ width: 400, height: 800 })
-  await page.goto(`chrome-extension://${extensionId}/sidepanel.html`)
+  await signInExtension(page, extensionId)
   await expect(page.getByText("Analyze Active Listing")).toBeVisible()
 })
 
 test("golden path: Manual analysis + metrics display", async ({ page, extensionId }) => {
   await page.setViewportSize({ width: 400, height: 800 })
-  await page.goto(`chrome-extension://${extensionId}/sidepanel.html`)
+  await signInExtension(page, extensionId)
 
   // Fill in property data manually
   const inputs = page.locator("input[type='number']")
@@ -72,17 +83,7 @@ test("golden path: Full sync flow (Extension -> Save -> Hub)", async ({ page, ex
 
   // 1. Log in to the extension sidepanel
   await page.setViewportSize({ width: 400, height: 800 })
-  await page.goto(`chrome-extension://${extensionId}/sidepanel.html`)
-
-  await page.evaluate(async ({ email, password }) => {
-    const auth = (window as any).auth
-    const signIn = (window as any).signInWithEmailAndPassword
-    if (!auth || !signIn) throw new Error("Firebase auth or signIn function not found on window")
-    await signIn(auth, email, password)
-  }, { email: TEST_EMAIL, password: TEST_PASSWORD })
-
-  // Wait for user display
-  await expect(page.getByText(TEST_EMAIL)).toBeVisible()
+  await signInExtension(page, extensionId)
 
   // 2. Mock some property data
   await page.evaluate(({ addr }) => {
