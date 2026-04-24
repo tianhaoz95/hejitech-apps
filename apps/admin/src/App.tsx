@@ -81,8 +81,8 @@ export default function App() {
         {/* Sidebar */}
         <aside className="w-56 bg-gray-800 border-r border-gray-700 p-5 flex flex-col fixed h-full">
           <div className="flex items-center gap-2 mb-8">
-            <ShieldCheck size={20} className="text-blue-400" />
-            <span className="font-black text-white">Icecap Admin</span>
+            <img src="/logo-color.svg" alt="Icecap" className="h-7" />
+            <span className="font-black text-white text-sm">Admin</span>
           </div>
 
           <nav className="space-y-0.5 flex-1">

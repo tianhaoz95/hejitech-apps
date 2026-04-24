@@ -1,4 +1,4 @@
-import { Calculator, Chrome, BarChart2, Sparkles, Check, ArrowRight, Shield, Zap } from "lucide-react"
+import { Chrome, BarChart2, Sparkles, Check, ArrowRight, Shield, Zap } from "lucide-react"
 
 const HUB_URL = "http://localhost:5173"
 const CHROME_STORE_URL = "#"
@@ -10,9 +10,8 @@ export default function App() {
       {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 font-black text-xl">
-            <Calculator size={22} className="text-blue-600" />
-            Icecap
+          <div className="flex items-center">
+            <img src="/logo-color.svg" alt="Icecap" className="h-9" />
           </div>
           <div className="flex items-center gap-6 text-sm font-semibold text-gray-600">
             <a href="#features" className="hover:text-gray-900 transition-colors">Features</a>
@@ -252,9 +251,8 @@ export default function App() {
       {/* Footer */}
       <footer className="py-12 px-6 border-t border-gray-100">
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2 font-black text-gray-900">
-            <Calculator size={18} className="text-blue-600" />
-            Icecap
+          <div className="flex items-center">
+            <img src="/logo-color.svg" alt="Icecap" className="h-7" />
           </div>
           <div className="flex items-center gap-6 text-sm text-gray-500">
             <a href={`${HUB_URL}`} className="hover:text-gray-900 transition-colors">Hub Dashboard</a>

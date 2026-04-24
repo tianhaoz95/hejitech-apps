@@ -2,7 +2,7 @@ import { useState } from "react"
 import { NavLink, Outlet } from "react-router-dom"
 import { signOut } from "firebase/auth"
 import {
-  LayoutDashboard, Home, GitCompare, Settings, PieChart, LogOut, User, Crown, Sparkles
+  LayoutDashboard, Home, GitCompare, Settings, LogOut, User, Crown, Sparkles
 } from "lucide-react"
 import { auth } from "../core/firebase"
 import { useAuth } from "../hooks/useAuth"
@@ -23,11 +23,8 @@ export function DashboardLayout() {
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-gray-100 p-6 flex flex-col fixed h-full z-20">
-        <div className="flex items-center gap-2 mb-10">
-          <div className="bg-blue-600 p-1.5 rounded-xl text-white shadow-md shadow-blue-100">
-            <PieChart size={22} />
-          </div>
-          <span className="text-xl font-black tracking-tight">Icecap Hub</span>
+        <div className="flex items-center mb-10">
+          <img src="/logo-color.svg" alt="Icecap" className="h-9" />
         </div>
 
         <nav className="space-y-0.5 flex-1">
