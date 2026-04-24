@@ -124,27 +124,34 @@ export function calcFlipMetrics(data: PropertyData): FlipMetrics {
 
 export function calcBrrrrMetrics(data: PropertyData): BrrrrMetrics {
   const rental = calcRentalMetrics(data)
-  const { arv, rehabCost, assumptions } = data
+  const { arv, rehabCost, assumptions, price } = data
 
   // After refi: typically 75% LTV of ARV
   const refiLTV = 0.75
   const refiLoanAmount = arv * refiLTV
   const totalInvested =
-    calcDownPayment(data.price, assumptions.downPaymentPercent) +
+    calcDownPayment(price, assumptions.downPaymentPercent) +
     rehabCost +
-    data.price * (assumptions.closingCostsPercent / 100)
+    price * (assumptions.closingCostsPercent / 100)
 
-  const cashPulledOut = refiLoanAmount - calcLoanAmount(data.price, assumptions.downPaymentPercent)
+  const cashPulledOut = refiLoanAmount - calcLoanAmount(price, assumptions.downPaymentPercent)
   const cashLeftIn = Math.max(0, totalInvested - cashPulledOut)
   const afterRefiEquity = arv - refiLoanAmount
 
   const infiniteReturn = cashLeftIn <= 0
+
+  // Post-Refi Cash Flow: The mortgage changes to the new refi loan amount
+  const postRefiMortgage = calcMonthlyMortgage(refiLoanAmount, assumptions.interestRate, assumptions.loanTermYears)
+  const postRefiCashFlow = data.estimatedRent - postRefiMortgage - rental.monthlyExpenses
+  const postRefiCocReturn = infiniteReturn ? 100 : (postRefiCashFlow * 12 / cashLeftIn) * 100
 
   return {
     ...rental,
     afterRefiEquity: round2(afterRefiEquity),
     cashLeftIn: round2(cashLeftIn),
     infiniteReturn,
+    postRefiCashFlow: round2(postRefiCashFlow),
+    postRefiCocReturn: round2(postRefiCocReturn),
   }
 }
 

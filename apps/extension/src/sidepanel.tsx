@@ -150,8 +150,22 @@ export default function SidePanel() {
   const isSubscribed = subscription?.status === "active" || subscription?.status === "trialling"
   const isPastDue = subscription?.status === "past_due" || subscription?.status === "unpaid"
 
+  const checkConnection = useCallback(async () => {
+    try {
+      await fetch("http://127.0.0.1:9099/", { mode: "no-cors" })
+      return true
+    } catch (e) {
+      return false
+    }
+  }, [])
+
   const handleLogin = useCallback(async () => {
     console.log("Attempting login...")
+    const reachable = await checkConnection()
+    if (!reachable) {
+      console.error("Cannot reach Firebase Emulator at 127.0.0.1:9099")
+      // We'll still try the window fallback as it might have better error reporting
+    }
     try {
       await signInWithPopup(auth, googleProvider)
     } catch (e: any) {

@@ -13,6 +13,7 @@ export default function OptionsPage() {
   const [authLoading, setAuthLoading] = useState(true)
   const [isLoggingIn, setIsLoggingIn] = useState(false)
   const [loginError, setLoginError] = useState<string | null>(null)
+  const [isCheckingConnection, setIsCheckingConnection] = useState(false)
 
   const isLoginView = useMemo(() => {
     return new URLSearchParams(window.location.search).get("view") === "login"
@@ -34,9 +35,30 @@ export default function OptionsPage() {
     return () => unsubscribeAuth()
   }, [isLoginView])
 
+  const checkConnection = useCallback(async () => {
+    setIsCheckingConnection(true)
+    try {
+      console.log("Checking connection to emulator at http://127.0.0.1:9099...")
+      const resp = await fetch("http://127.0.0.1:9099/", { mode: "no-cors" })
+      console.log("Connection check response:", resp)
+      return true
+    } catch (e) {
+      console.error("Connection check failed:", e)
+      return false
+    } finally {
+      setIsCheckingConnection(false)
+    }
+  }, [])
+
   const handleLogin = useCallback(async () => {
     setIsLoggingIn(true)
     setLoginError(null)
+    const reachable = await checkConnection()
+    if (!reachable) {
+      setLoginError("Cannot reach Firebase Emulator at 127.0.0.1:9099. Ensure it is running and accessible.")
+      setIsLoggingIn(false)
+      return
+    }
     try {
       await signInWithPopup(auth, googleProvider)
     } catch (e: any) {
@@ -45,22 +67,45 @@ export default function OptionsPage() {
     } finally {
       setIsLoggingIn(false)
     }
-  }, [])
+  }, [checkConnection])
 
   const handleTestLogin = useCallback(async () => {
     if (!isEmulator) return
     setIsLoggingIn(true)
     setLoginError(null)
+    const reachable = await checkConnection()
+    if (!reachable) {
+      setLoginError("Cannot reach Firebase Emulator at 127.0.0.1:9099. Ensure it is running.")
+      setIsLoggingIn(false)
+      return
+    }
+
+    const email = "pro-user@icecap-test.com"
+    const password = "TestPass123!"
+
+    console.log(`Attempting test login for ${email}...`)
     try {
-      // Use a test account for the emulator
-      await signInWithEmailAndPassword(auth, "pro-user@icecap-test.com", "TestPass123!")
+      await signInWithEmailAndPassword(auth, email, password)
+      console.log("Test login successful!")
     } catch (e: any) {
-      console.error("Test login failed", e)
-      setLoginError("Test login failed. Ensure the emulator is running.")
+      if (e.code === "auth/user-not-found" || e.code === "auth/invalid-credential") {
+        console.log("User not found, attempting to create test account...")
+        try {
+          const { createUserWithEmailAndPassword } = await import("firebase/auth")
+          await createUserWithEmailAndPassword(auth, email, password)
+          console.log("Test account created and logged in!")
+        } catch (createErr: any) {
+          console.error("Failed to auto-create test account:", createErr)
+          setLoginError(`Auth failed and auto-creation failed: ${createErr.message}`)
+        }
+      } else {
+        console.error("Test login failed detailed error:", e)
+        setLoginError(`Test login failed: ${e.message || "Unknown error"}. Check console for details.`)
+      }
     } finally {
       setIsLoggingIn(false)
     }
-  }, [isEmulator])
+  }, [isEmulator, checkConnection])
 
   const handleLogout = useCallback(async () => {
     try {

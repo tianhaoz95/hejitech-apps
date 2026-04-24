@@ -1,10 +1,12 @@
+import { useState } from "react"
 import { NavLink, Outlet } from "react-router-dom"
 import { signOut } from "firebase/auth"
 import {
-  LayoutDashboard, Home, GitCompare, Settings, PieChart, LogOut, User, Bell, Crown
+  LayoutDashboard, Home, GitCompare, Settings, PieChart, LogOut, User, Crown, Sparkles
 } from "lucide-react"
 import { auth } from "../core/firebase"
 import { useAuth } from "../hooks/useAuth"
+import { CopilotSidebar } from "../components/CopilotSidebar"
 
 const navItems = [
   { to: "/", label: "Dashboard", Icon: LayoutDashboard, end: true },
@@ -15,6 +17,7 @@ const navItems = [
 
 export function DashboardLayout() {
   const { user, subscription, isSubscribed } = useAuth()
+  const [isCopilotOpen, setIsCopilotOpen] = useState(false)
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -45,6 +48,18 @@ export function DashboardLayout() {
               {label}
             </NavLink>
           ))}
+
+          <button
+            onClick={() => setIsCopilotOpen((o) => !o)}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl font-semibold text-sm transition-colors mt-2 ${
+              isCopilotOpen
+                ? "bg-purple-50 text-purple-700"
+                : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
+            }`}
+          >
+            <Sparkles size={18} />
+            AI Co-Pilot
+          </button>
         </nav>
 
         {/* Subscription badge */}
@@ -98,6 +113,8 @@ export function DashboardLayout() {
       <main className="flex-1 ml-64 min-h-screen overflow-y-auto">
         <Outlet />
       </main>
+
+      <CopilotSidebar isOpen={isCopilotOpen} onClose={() => setIsCopilotOpen(false)} />
     </div>
   )
 }

@@ -157,6 +157,14 @@ describe("calcBrrrrMetrics", () => {
     expect(m.afterRefiEquity).toBeCloseTo(82500, 0)
   })
 
+  it("calculates post-refi cash flow", () => {
+    const m = calcBrrrrMetrics(baseRentalProperty)
+    // refi loan = 247500 at 7% for 30yr ≈ 1646.61/mo
+    // rent = 2000, expenses = 960
+    // post-refi cf = 2000 - 1646.61 - 960 = -606.61
+    expect(m.postRefiCashFlow).toBeCloseTo(-606.61, 0)
+  })
+
   it("marks infinite return when all cash pulled out", () => {
     const data: PropertyData = {
       ...baseRentalProperty,
@@ -166,10 +174,14 @@ describe("calcBrrrrMetrics", () => {
       assumptions: { ...DEFAULT_ASSUMPTIONS, downPaymentPercent: 10, closingCostsPercent: 2 },
     }
     const m = calcBrrrrMetrics(data)
-    // refi pulls out more than invested → infinite return
-    if (m.infiniteReturn) {
-      expect(m.cashLeftIn).toBe(0)
-    }
+    // total invested = 10k (down) + 20k (rehab) + 2k (closing) = 30k
+    // refi loan = 75% * 200k = 150k
+    // original loan = 90k
+    // cash pulled out = 150k - 90k = 60k
+    // 60k > 30k invested → infinite return
+    expect(m.infiniteReturn).toBe(true)
+    expect(m.cashLeftIn).toBe(0)
+    expect(m.postRefiCocReturn).toBe(100)
   })
 })
 

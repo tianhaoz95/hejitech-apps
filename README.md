@@ -49,15 +49,13 @@ pnpm turbo run build
 Icecap relies on a local Firebase Emulator and a Stripe Mock server for full-cycle testing without external dependencies.
 
 ### 1. Start the Environment
-In separate terminal windows (or in the background):
+You can start everything (emulator, stripe-mock, and dev servers) with a single command:
 
 ```bash
-# Start Firebase Emulators (Firestore, Auth, Functions, Hosting)
-pnpm run emulator
-
-# Start Stripe Mock Server (Port 12111)
-pnpm run dev:stripe-mock
+pnpm run dev:all
 ```
+
+Alternatively, start them separately in different terminal windows:
 
 ### 2. Seed Test Data
 Populate the emulator with test users, subscriptions, and sample properties:

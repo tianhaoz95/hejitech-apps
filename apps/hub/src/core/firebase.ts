@@ -2,6 +2,7 @@ import { initializeApp, getApps } from "firebase/app"
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore"
 import { getAuth, connectAuthEmulator, GoogleAuthProvider, signInWithEmailAndPassword } from "firebase/auth"
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions"
+import { getAI, GoogleAIBackend } from "firebase/ai"
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY ?? "demo-key",
@@ -17,6 +18,7 @@ const db = getFirestore(app)
 const auth = getAuth(app)
 const functions = getFunctions(app)
 const googleProvider = new GoogleAuthProvider()
+const ai = getAI(app, { backend: new GoogleAIBackend() })
 
 const useEmulator = import.meta.env.VITE_USE_EMULATOR === "true" || import.meta.env.DEV
 
@@ -34,4 +36,4 @@ if (useEmulator) {
   }
 }
 
-export { db, auth, functions, googleProvider }
+export { db, auth, functions, googleProvider, ai }

@@ -42,7 +42,8 @@ Icecap is a dual-interface investment analysis platform:
 ### Key Commands
 - **Install:** `pnpm install`
 - **Full Build:** `pnpm turbo run build`
-- **Development (Parallel):** `pnpm dev` (opens all Vite apps automatically).
+- **Development (Everything):** `pnpm run dev:all` (starts emulator, stripe-mock, and app servers).
+- **Development (Apps only):** `pnpm dev` (opens all Vite apps automatically).
 - **Firebase Emulator:** `pnpm run emulator` (runs Auth, Firestore, Functions, Hosting).
 - **Seed Data:** `pnpm run emulator:seed` (populates local environment with test accounts/deals).
 - **Stripe Mock:** `pnpm run dev:stripe-mock` (required for subscription flow testing).

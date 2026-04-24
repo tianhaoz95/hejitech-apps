@@ -53,6 +53,8 @@ export interface BrrrrMetrics extends RentalMetrics {
   afterRefiEquity: number
   cashLeftIn: number
   infiniteReturn: boolean
+  postRefiCashFlow: number
+  postRefiCocReturn: number
 }
 
 export interface SavedProperty extends PropertyData {
@@ -175,6 +177,50 @@ export interface AnalyzePropertyResponse {
   redFlags: string[]
   rehabEstimate: "low" | "medium" | "high"
   recommendation: string
+}
+
+// ─── AI Co-Pilot ─────────────────────────────────────────────────────────────
+
+export type AdjustableField =
+  | "interestRate"
+  | "downPaymentPercent"
+  | "vacancyRate"
+  | "managementFeeRate"
+  | "maintenanceRate"
+  | "closingCostsPercent"
+  | "loanTermYears"
+  | "estimatedRent"
+  | "rehabCost"
+  | "arv"
+  | "price"
+  | "holdingCosts"
+
+export interface CopilotActionProposal {
+  toolName: "proposePropertyAdjustment"
+  propertyId: string
+  propertyAddress: string
+  field: AdjustableField
+  newValue: number
+  displayText: string
+  explanation: string
+}
+
+export interface CopilotMessage {
+  id: string
+  role: "user" | "assistant"
+  content: string
+  actionProposal?: CopilotActionProposal
+  actionStatus?: "pending" | "confirmed" | "cancelled"
+  timestamp: number
+}
+
+export interface CopilotChatRequest {
+  messages: Array<{ role: "user" | "assistant"; content: string }>
+}
+
+export interface CopilotChatResponse {
+  content: string
+  actionProposal?: CopilotActionProposal
 }
 
 // ─── Admin ────────────────────────────────────────────────────────────────────

@@ -16,7 +16,23 @@ async function createUser(email, password) {
     }
   )
   const data = await resp.json()
-  if (!resp.ok) throw new Error(`Failed to create user: ${JSON.stringify(data)}`)
+  if (!resp.ok) {
+    if (data.error?.message === "EMAIL_EXISTS") {
+      console.log(`ℹ️ User already exists: ${email}`)
+      // To get the localId if user exists, we can use signInWithPassword
+      const loginResp = await fetch(
+        `${AUTH_BASE}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=demo-key`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password, returnSecureToken: true }),
+        }
+      )
+      const loginData = await loginResp.json()
+      return loginData.localId
+    }
+    throw new Error(`Failed to create user: ${JSON.stringify(data)}`)
+  }
   console.log(`✅ Created user: ${email} (${data.localId})`)
   return data.localId
 }
