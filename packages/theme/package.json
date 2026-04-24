@@ -1,0 +1,10 @@
+{
+  "name": "@icecap/theme",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./tailwind": "./tailwind.config.js"
+  }
+}

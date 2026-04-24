@@ -1,0 +1,118 @@
+import { create } from "zustand"
+import { persist } from "zustand/middleware"
+import { calcRentalMetrics, calcFlipMetrics, DEFAULT_ASSUMPTIONS, type PropertyAssumptions, type RentalMetrics, type FlipMetrics, type PropertyInput } from "./math"
+
+export type AnalysisMode = "rental" | "flip" | "brrrr"
+
+interface PropertyState {
+  mode: AnalysisMode
+  price: number
+  address: string
+  url: string
+  taxes: number
+  hoa: number
+  estimatedRent: number
+  rehabCost: number
+  arv: number
+  holdingCosts: number
+  description: string
+  assumptions: PropertyAssumptions
+
+  setMode: (v: AnalysisMode) => void
+  setPrice: (v: number) => void
+  setAddress: (v: string) => void
+  setUrl: (v: string) => void
+  setTaxes: (v: number) => void
+  setHoa: (v: number) => void
+  setEstimatedRent: (v: number) => void
+  setRehabCost: (v: number) => void
+  setArv: (v: number) => void
+  setHoldingCosts: (v: number) => void
+  setDescription: (v: string) => void
+  setAssumption: <K extends keyof PropertyAssumptions>(key: K, value: PropertyAssumptions[K]) => void
+  loadFromScrape: (data: Partial<ScrapedData>) => void
+  reset: () => void
+  getPropertyInput: () => PropertyInput
+  getMetrics: () => { rental: RentalMetrics; flip: FlipMetrics }
+}
+
+export interface ScrapedData {
+  price: number
+  address: string
+  url: string
+  taxes: number
+  hoa: number
+  description: string
+}
+
+const initialState = {
+  mode: "rental" as AnalysisMode,
+  price: 0,
+  address: "",
+  url: "",
+  taxes: 0,
+  hoa: 0,
+  estimatedRent: 0,
+  rehabCost: 0,
+  arv: 0,
+  holdingCosts: 0,
+  description: "",
+  assumptions: { ...DEFAULT_ASSUMPTIONS },
+}
+
+export const usePropertyStore = create<PropertyState>()(
+  persist(
+    (set, get) => ({
+      ...initialState,
+
+      setMode: (mode) => set({ mode }),
+      setPrice: (price) => set({ price, arv: price > 0 ? price * 1.2 : 0 }),
+      setAddress: (address) => set({ address }),
+      setUrl: (url) => set({ url }),
+      setTaxes: (taxes) => set({ taxes }),
+      setHoa: (hoa) => set({ hoa }),
+      setEstimatedRent: (estimatedRent) => set({ estimatedRent }),
+      setRehabCost: (rehabCost) => set({ rehabCost }),
+      setArv: (arv) => set({ arv }),
+      setHoldingCosts: (holdingCosts) => set({ holdingCosts }),
+      setDescription: (description) => set({ description }),
+      setAssumption: (key, value) =>
+        set((s) => ({ assumptions: { ...s.assumptions, [key]: value } })),
+      loadFromScrape: (data) =>
+        set((s) => ({
+          price: data.price ?? s.price,
+          address: data.address ?? s.address,
+          url: data.url ?? s.url,
+          taxes: data.taxes ?? s.taxes,
+          hoa: data.hoa ?? s.hoa,
+          description: data.description ?? s.description,
+          arv: data.price ? data.price * 1.2 : s.arv,
+        })),
+      reset: () => set({ ...initialState }),
+      getPropertyInput: (): PropertyInput => {
+        const s = get()
+        return {
+          price: s.price,
+          taxes: s.taxes,
+          hoa: s.hoa,
+          estimatedRent: s.estimatedRent,
+          rehabCost: s.rehabCost,
+          arv: s.arv,
+          holdingCosts: s.holdingCosts,
+          assumptions: s.assumptions,
+        }
+      },
+      getMetrics: () => {
+        const input = get().getPropertyInput()
+        return {
+          rental: calcRentalMetrics(input),
+          flip: calcFlipMetrics(input),
+        }
+      },
+    }),
+    {
+      name: "icecap-property",
+      partialize: (state) => ({ assumptions: state.assumptions }),
+    }
+  )
+)

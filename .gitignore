@@ -1,9 +1,40 @@
-.DS_Store
-*.log
+# Dependencies
 node_modules/
+.pnpm-store/
+
+# Build outputs
 dist/
 build/
-.env*
 .plasmo/
+out/
+
+# Firebase
+.firebase/
+firebase/emulator-data/
+firebase/functions/lib/
+*-debug.log
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Editor
+.DS_Store
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# Playwright
 test-results/
 playwright-report/
+
+# Turbo
+.turbo/
+
+# Coverage
+coverage/
+
+# Logs
+*.log

@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "paths": {
+      "@icecap/types": [
+        "../../packages/types/src/index.ts"
+      ],
+      "@icecap/math": [
+        "../../packages/math/src/index.ts"
+      ],
+      "@icecap/ui": [
+        "../../packages/ui/src/index.ts"
+      ]
+    }
+  },
+  "include": [
+    ".plasmo/index.d.ts",
+    "./**/*.ts",
+    "./**/*.tsx"
+  ]
+}
