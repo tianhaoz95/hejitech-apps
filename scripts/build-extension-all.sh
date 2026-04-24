@@ -70,7 +70,7 @@ ok "Output directory: $DIST_DIR"
 header "Building: Chrome Web Store (chrome-mv3)"
 pnpm --filter @icecap/extension build:chrome
 pnpm --filter @icecap/extension package:chrome
-CHROME_ZIP="$EXT_DIR/build/chrome-mv3.zip"
+CHROME_ZIP="$EXT_DIR/build/chrome-mv3-prod.zip"
 if [ -f "$CHROME_ZIP" ]; then
   cp "$CHROME_ZIP" "$DIST_DIR/icecap-chrome.zip"
   ok "Chrome package → dist/extension/icecap-chrome.zip"
@@ -84,7 +84,7 @@ fi
 header "Building: Edge Add-ons Store (edge-mv3)"
 pnpm --filter @icecap/extension build:edge
 pnpm --filter @icecap/extension package:edge
-EDGE_ZIP="$EXT_DIR/build/edge-mv3.zip"
+EDGE_ZIP="$EXT_DIR/build/edge-mv3-prod.zip"
 if [ -f "$EDGE_ZIP" ]; then
   cp "$EDGE_ZIP" "$DIST_DIR/icecap-edge.zip"
   ok "Edge package → dist/extension/icecap-edge.zip"
@@ -102,7 +102,7 @@ else
   info "Note: This produces a raw extension bundle. Xcode post-processing is required before App Store submission."
   pnpm --filter @icecap/extension build:safari
   pnpm --filter @icecap/extension package:safari
-  SAFARI_ZIP="$EXT_DIR/build/safari-mv3.zip"
+  SAFARI_ZIP="$EXT_DIR/build/safari-mv3-prod.zip"
   if [ -f "$SAFARI_ZIP" ]; then
     cp "$SAFARI_ZIP" "$DIST_DIR/icecap-safari-raw.zip"
     ok "Safari raw bundle → dist/extension/icecap-safari-raw.zip (Xcode conversion still needed)"

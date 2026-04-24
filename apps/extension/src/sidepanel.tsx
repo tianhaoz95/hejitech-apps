@@ -10,6 +10,7 @@ import {
 import { collection, addDoc, serverTimestamp, doc, onSnapshot } from "firebase/firestore"
 import { httpsCallable } from "firebase/functions"
 import { auth, db, functions } from "./core/firebase"
+import { IS_DEV, HUB_URL } from "./core/constants"
 import { usePropertyStore, type AnalysisMode } from "./core/store"
 import "./style.css"
 
@@ -115,7 +116,7 @@ export default function SidePanel() {
   const metrics = store.getMetrics()
 
   useEffect(() => {
-    if (process.env.NODE_ENV === "development" || process.env.PLASMO_PUBLIC_USE_EMULATOR === "true") {
+    if (IS_DEV) {
       (window as any).store = store
       ;(window as any).signInWithEmailAndPassword = signInWithEmailAndPassword
     }
@@ -130,6 +131,10 @@ export default function SidePanel() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [aiSummary, setAiSummary] = useState("")
   const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle")
+
+  const handleOpenHub = useCallback(() => {
+    chrome.tabs.create({ url: HUB_URL })
+  }, [])
 
   useEffect(() => {
     return onAuthStateChanged(auth, (u) => {
@@ -353,7 +358,7 @@ export default function SidePanel() {
         </p>
         <div className="space-y-3 w-full">
           <button
-            onClick={() => chrome.runtime.openOptionsPage()}
+            onClick={handleOpenHub}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl shadow-md transition-all"
           >
             Start Free Trial in Hub
@@ -379,7 +384,7 @@ export default function SidePanel() {
         </div>
         <div className="flex items-center gap-0.5">
           <button
-            onClick={() => chrome.runtime.openOptionsPage()}
+            onClick={handleOpenHub}
             title="Open Hub" className="p-2 hover:bg-gray-100 rounded-lg text-gray-500"
           >
             <LayoutPanelTop size={17} />
