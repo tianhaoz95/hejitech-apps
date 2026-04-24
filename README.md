@@ -98,6 +98,17 @@ pnpm --filter @icecap/tests run test:golden
 pnpm --filter @icecap/tests run test:extension
 ```
 
+### Automated Store Screenshots
+Capture high-resolution screenshots for the Chrome Web Store listing using Playwright:
+```bash
+# 1. Build the extension
+pnpm --filter @icecap/extension build:prod
+
+# 2. Run capture script (requires emulator to be running)
+pnpm --filter @icecap/tests playwright test tests/screenshots.spec.ts --project=extension
+```
+Screenshots are saved to `reports/screenshots/`.
+
 ---
 
 ## 🔑 Environment Variables

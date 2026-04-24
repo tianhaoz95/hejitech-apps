@@ -96,17 +96,18 @@ export function calcRentalMetrics(data: PropertyData): RentalMetrics {
 
 export function calcFlipMetrics(data: PropertyData): FlipMetrics {
   const { price, rehabCost, arv, holdingCosts, assumptions } = data
-  const { downPaymentPercent, sellingCostsPercent } = assumptions
+  const { downPaymentPercent, sellingCostsPercent, closingCostsPercent } = assumptions
 
   if (price <= 0 || arv <= 0) {
     return zeroFlipMetrics()
   }
 
+  const purchaseClosingCosts = price * (closingCostsPercent / 100)
   const sellingCosts = (sellingCostsPercent / 100) * arv
-  const totalBasis = price + rehabCost + holdingCosts + sellingCosts
+  const totalBasis = price + purchaseClosingCosts + rehabCost + holdingCosts + sellingCosts
   const flipProfit = arv - totalBasis
 
-  const cashInvested = calcDownPayment(price, downPaymentPercent) + rehabCost + holdingCosts
+  const cashInvested = calcDownPayment(price, downPaymentPercent) + purchaseClosingCosts + rehabCost + holdingCosts
   const flipROI = cashInvested > 0 ? (flipProfit / cashInvested) * 100 : 0
 
   const mao = arv * 0.7 - rehabCost
@@ -124,7 +125,7 @@ export function calcFlipMetrics(data: PropertyData): FlipMetrics {
 
 export function calcBrrrrMetrics(data: PropertyData): BrrrrMetrics {
   const rental = calcRentalMetrics(data)
-  const { arv, rehabCost, assumptions, price } = data
+  const { arv, rehabCost, assumptions, price, holdingCosts } = data
 
   // After refi: typically 75% LTV of ARV
   const refiLTV = 0.75
@@ -132,6 +133,7 @@ export function calcBrrrrMetrics(data: PropertyData): BrrrrMetrics {
   const totalInvested =
     calcDownPayment(price, assumptions.downPaymentPercent) +
     rehabCost +
+    holdingCosts +
     price * (assumptions.closingCostsPercent / 100)
 
   const cashPulledOut = refiLoanAmount - calcLoanAmount(price, assumptions.downPaymentPercent)

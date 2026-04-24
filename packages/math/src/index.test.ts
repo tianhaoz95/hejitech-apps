@@ -122,11 +122,12 @@ describe("calcFlipMetrics", () => {
 
   it("calculates flip profit correctly", () => {
     const m = calcFlipMetrics(baseFlipProperty)
+    // purchaseClosingCosts = 3% * 200000 = 6000
     // sellingCosts = 6% * 300000 = 18000
-    // totalBasis = 200000 + 30000 + 5000 + 18000 = 253000
-    // profit = 300000 - 253000 = 47000
-    expect(m.flipProfit).toBeCloseTo(47000, 0)
-    expect(m.totalBasis).toBeCloseTo(253000, 0)
+    // totalBasis = 200000 + 6000 + 30000 + 5000 + 18000 = 259000
+    // profit = 300000 - 259000 = 41000
+    expect(m.flipProfit).toBeCloseTo(41000, 0)
+    expect(m.totalBasis).toBeCloseTo(259000, 0)
   })
 
   it("calculates MAO (70% rule)", () => {
@@ -137,9 +138,9 @@ describe("calcFlipMetrics", () => {
 
   it("calculates flip ROI", () => {
     const m = calcFlipMetrics(baseFlipProperty)
-    // cashInvested = 20% * 200000 + 30000 + 5000 = 40000 + 35000 = 75000
-    // ROI = 47000 / 75000 * 100 ≈ 62.67%
-    expect(m.flipROI).toBeCloseTo(62.67, 1)
+    // cashInvested = 20% * 200000 + 6000 + 30000 + 5000 = 40000 + 41000 = 81000
+    // ROI = 41000 / 81000 * 100 ≈ 50.617%
+    expect(m.flipROI).toBeCloseTo(50.62, 1)
   })
 })
 
@@ -171,14 +172,15 @@ describe("calcBrrrrMetrics", () => {
       price: 100000,
       arv: 200000,
       rehabCost: 20000,
+      holdingCosts: 5000,
       assumptions: { ...DEFAULT_ASSUMPTIONS, downPaymentPercent: 10, closingCostsPercent: 2 },
     }
     const m = calcBrrrrMetrics(data)
-    // total invested = 10k (down) + 20k (rehab) + 2k (closing) = 30k
+    // total invested = 10k (down) + 20k (rehab) + 5k (holding) + 2k (closing) = 37k
     // refi loan = 75% * 200k = 150k
     // original loan = 90k
     // cash pulled out = 150k - 90k = 60k
-    // 60k > 30k invested → infinite return
+    // 60k > 37k invested → infinite return
     expect(m.infiniteReturn).toBe(true)
     expect(m.cashLeftIn).toBe(0)
     expect(m.postRefiCocReturn).toBe(100)

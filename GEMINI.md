@@ -65,6 +65,14 @@ pnpm --filter @icecap/tests test
 ```
 *Note: E2E tests require the Firebase Emulator and Stripe Mock to be active.*
 
+### 📸 Store Screenshots
+Generate high-resolution marketing assets for the Chrome Web Store:
+```bash
+pnpm --filter @icecap/extension build:prod
+pnpm --filter @icecap/tests playwright test tests/screenshots.spec.ts --project=extension
+```
+Assets are stored in `reports/screenshots/`.
+
 ---
 
 ## 🛠️ Development Conventions

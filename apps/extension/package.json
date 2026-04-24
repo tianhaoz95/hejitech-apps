@@ -8,7 +8,15 @@
     "dev": "plasmo dev",
     "build": "plasmo build",
     "build:prod": "plasmo build --no-source-maps",
-    "package": "plasmo package"
+    "package": "plasmo package",
+    "build:chrome": "plasmo build --target=chrome-mv3 --no-source-maps",
+    "build:edge": "plasmo build --target=edge-mv3 --no-source-maps",
+    "build:safari": "plasmo build --target=safari-mv3 --no-source-maps",
+    "build:sideload": "plasmo build --target=chrome-mv3 --tag=sideload --no-source-maps",
+    "package:chrome": "plasmo package --target=chrome-mv3",
+    "package:edge": "plasmo package --target=edge-mv3",
+    "package:safari": "plasmo package --target=safari-mv3",
+    "package:sideload": "plasmo package --target=chrome-mv3 --tag=sideload"
   },
   "dependencies": {
     "@icecap/math": "workspace:*",
@@ -47,6 +55,7 @@
     ],
     "content_security_policy": {
       "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' http://localhost:9099 http://localhost:8080 http://localhost:5001 http://127.0.0.1:9099 http://127.0.0.1:8080 http://127.0.0.1:5001"
-    }
+    },
+    "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA04YTCSHdsQRiHr7hCNZ1M6EoFes2Qpl0xc2BtIKclzCeocA8wprcjbpYWgTl1AwCv6xuk4G9FMFyqrZwhzBV7URegBYVT5fb4b4zJ1HUDpCUV+c8UMiYDZPSIfWin+00k+Jq30IEiXjhNFhyv3WsUJpJJGUd4vqM1RECx00EqhQoFa00OoSLc/Lj2I5lR6cb+LoqZVfQtXuxgccid5cSRNaPah1HgTXNcsXNFZZPRVFo3GrpXPqaXXYhSSU5xESGTdT0RVqYzGMT8tYDX/mB+TL9IECj03seS0AepyDImrHUD585yn04ZzHEm73oys64XY9xacpW0UH1KuneSnoHNQIDAQAB"
   }
 }

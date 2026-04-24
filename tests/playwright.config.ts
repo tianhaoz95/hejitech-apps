@@ -21,7 +21,7 @@ export default defineConfig({
     {
       name: "extension",
       use: { ...devices["Desktop Chrome"] },
-      testMatch: ["tests/extension.spec.ts"],
+      testMatch: ["tests/extension.spec.ts", "tests/screenshots.spec.ts"],
     },
     {
       name: "golden-path",
