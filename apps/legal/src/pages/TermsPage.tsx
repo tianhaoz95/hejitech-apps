@@ -38,7 +38,7 @@ export function TermsPage() {
       </Section>
 
       <Section title="5. Disclaimers">
-        <strong>Icecap provides financial calculations as informational tools only.</strong> We are not
+        <strong>HEJI TECHNOLOGY LLC provides financial calculations as informational tools only.</strong> We are not
         licensed financial advisors. All calculations are based on user-provided inputs and heuristic
         estimates. Do not make investment decisions based solely on Icecap outputs. Always consult a
         licensed professional before investing.
@@ -54,8 +54,9 @@ export function TermsPage() {
       </Section>
 
       <Section title="7. Limitation of Liability">
-        To the maximum extent permitted by law, Icecap is not liable for any indirect, incidental, or
-        consequential damages arising from your use of the Service, including investment losses.
+        To the maximum extent permitted by law, HEJI TECHNOLOGY LLC is not liable for any indirect,
+        incidental, or consequential damages arising from your use of the Service, including investment
+        losses.
       </Section>
 
       <Section title="8. Changes">
@@ -63,7 +64,7 @@ export function TermsPage() {
       </Section>
 
       <Section title="9. Contact">
-        <a href="mailto:legal@icecap.io" className="text-blue-600">legal@icecap.io</a>
+        <a href="mailto:info@hejitechllc.com" className="text-blue-600">info@hejitechllc.com</a>
       </Section>
     </div>
   )

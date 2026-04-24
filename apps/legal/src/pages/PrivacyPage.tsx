@@ -9,9 +9,9 @@ export function PrivacyPage() {
       <p className="text-gray-400 text-sm mb-10">Effective: {EFFECTIVE_DATE}</p>
 
       <Section title="1. Introduction">
-        Icecap ("we," "us," "our") operates a Chrome extension and web dashboard (the "Service") that helps
-        real estate investors analyze property listings. This Privacy Policy explains how we collect, use, and
-        protect your information.
+        HEJI TECHNOLOGY LLC ("we," "us," "our") operates the Icecap Chrome extension and web dashboard (the
+        "Service") that helps real estate investors analyze property listings. This Privacy Policy explains
+        how we collect, use, and protect your information.
       </Section>
 
       <Section title="2. Information We Collect">
@@ -87,7 +87,7 @@ export function PrivacyPage() {
       </Section>
 
       <Section title="9. Contact">
-        Questions? Email us at <a href="mailto:privacy@icecap.io" className="text-blue-600">privacy@icecap.io</a>.
+        Questions? Email us at <a href="mailto:info@hejitechllc.com" className="text-blue-600">info@hejitechllc.com</a>.
       </Section>
     </div>
   )

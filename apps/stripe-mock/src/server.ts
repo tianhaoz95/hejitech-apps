@@ -9,7 +9,7 @@ app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
 const PORT = 12111
-const FUNCTIONS_URL = "http://localhost:5001/demo-icecap/us-central1/stripeWebhook"
+const FUNCTIONS_URL = "http://127.0.0.1:5001/demo-icecap/us-central1/stripeWebhook"
 
 // In-memory subscription store
 const subscriptions = new Map<string, MockSubscription>()
