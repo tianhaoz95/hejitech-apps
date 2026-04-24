@@ -8,8 +8,8 @@ let testUid = ""
 
 // Custom fixture
 const test = base.extend<{ context: BrowserContext; extensionId: string }>({
-  context: async (_, use) => {
-    const extensionPath = path.join(__dirname, "../../apps/extension/build/chrome-mv3-dev")
+  context: async ({}, use) => {
+    const extensionPath = path.join(__dirname, "../../apps/extension/build/chrome-mv3-prod")
     const context = await chromium.launchPersistentContext("", {
       headless: false,
       args: [
@@ -61,8 +61,62 @@ test("golden path: Manual analysis + metrics display", async ({ page, extensionI
   await inputs.nth(1).press("Tab")
 
   // Verify the result card shows meaningful metrics
-  const resultCard = page.locator(".bg-blue-600")
+  const resultCard = page.getByTestId("result-card")
   await expect(resultCard).toBeVisible()
   await expect(page.getByText("Monthly Cash Flow")).toBeVisible()
   await expect(page.getByText("Cap Rate")).toBeVisible()
+})
+
+test("golden path: Full sync flow (Extension -> Save -> Hub)", async ({ page, extensionId }) => {
+  const address = `Test Property ${Date.now()}`
+
+  // 1. Log in to the extension sidepanel
+  await page.setViewportSize({ width: 400, height: 800 })
+  await page.goto(`chrome-extension://${extensionId}/sidepanel.html`)
+
+  await page.evaluate(async ({ email, password }) => {
+    const auth = (window as any).auth
+    const signIn = (window as any).signInWithEmailAndPassword
+    if (!auth || !signIn) throw new Error("Firebase auth or signIn function not found on window")
+    await signIn(auth, email, password)
+  }, { email: TEST_EMAIL, password: TEST_PASSWORD })
+
+  // Wait for user display
+  await expect(page.getByText(TEST_EMAIL)).toBeVisible()
+
+  // 2. Mock some property data
+  await page.evaluate(({ addr }) => {
+    const store = (window as any).store
+    if (!store) throw new Error("Store not found on window")
+    store.loadFromScrape({
+      address: addr,
+      price: 500000,
+      taxes: 5000,
+      hoa: 250,
+      url: "https://www.redfin.com/example",
+      description: "A nice test property",
+    })
+  }, { addr: address })
+
+  // Verify UI updated
+  await expect(page.getByText(address)).toBeVisible()
+  
+  // 3. Click Save
+  const saveBtn = page.getByTitle("Save")
+  await saveBtn.click()
+
+  // Wait for saved state (green color or status)
+  await expect(saveBtn).toHaveClass(/text-green-600/)
+
+  // 4. Verify in Hub
+  await page.goto("http://localhost:5173/portfolio")
+  // Need to be logged in to Hub too
+  await page.evaluate(async ({ email, password }) => {
+    const auth = (window as any).auth
+    const signIn = (window as any).signInWithEmailAndPassword
+    if (!auth || !signIn) throw new Error("Firebase auth or signIn function not found on Hub window")
+    await signIn(auth, email, password)
+  }, { email: TEST_EMAIL, password: TEST_PASSWORD })
+
+  await expect(page.getByText(address)).toBeVisible()
 })

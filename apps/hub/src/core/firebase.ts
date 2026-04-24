@@ -1,6 +1,6 @@
 import { initializeApp, getApps } from "firebase/app"
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore"
-import { getAuth, connectAuthEmulator, GoogleAuthProvider } from "firebase/auth"
+import { getAuth, connectAuthEmulator, GoogleAuthProvider, signInWithEmailAndPassword } from "firebase/auth"
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions"
 
 const firebaseConfig = {
@@ -25,6 +25,10 @@ if (useEmulator) {
     connectFirestoreEmulator(db, "localhost", 8080)
     connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true })
     connectFunctionsEmulator(functions, "localhost", 5001)
+    if (typeof window !== "undefined") {
+      (window as any).auth = auth
+      ;(window as any).signInWithEmailAndPassword = signInWithEmailAndPassword
+    }
   } catch {
     // Already connected
   }

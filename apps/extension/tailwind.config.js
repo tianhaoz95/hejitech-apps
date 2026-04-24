@@ -5,9 +5,6 @@ module.exports = {
   ...baseConfig,
   content: [
     "./src/**/*.{ts,tsx}",
-    "./sidepanel.tsx",
-    "./popup.tsx",
-    "./options.tsx",
     "../../packages/ui/src/**/*.{ts,tsx}"
   ],
   theme: baseConfig.theme,

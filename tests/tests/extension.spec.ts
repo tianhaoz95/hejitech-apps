@@ -6,8 +6,8 @@ export const test = base.extend<{
   context: BrowserContext
   extensionId: string
 }>({
-  context: async (_, use) => {
-    const extensionPath = path.join(__dirname, "../../apps/extension/build/chrome-mv3-dev")
+  context: async ({}, use) => {
+    const extensionPath = path.join(__dirname, "../../apps/extension/build/chrome-mv3-prod")
     const context = await chromium.launchPersistentContext("", {
       headless: false,
       args: [
@@ -31,8 +31,8 @@ test("side panel loads with calculator UI", async ({ page, extensionId }) => {
   await page.setViewportSize({ width: 400, height: 800 })
   await page.goto(`chrome-extension://${extensionId}/sidepanel.html`)
 
-  await expect(page.locator("h1, .text-xl")).toContainText("Icecap")
-  await expect(page.getByText("Analyze Active Listing")).toBeVisible()
+  await expect(page.locator("header span.text-lg.font-bold")).toContainText("Icecap")
+  await expect(page.getByTestId("scrape-btn")).toBeVisible()
 })
 
 test("price input triggers metric recalculation", async ({ page, extensionId }) => {
@@ -50,7 +50,7 @@ test("price input triggers metric recalculation", async ({ page, extensionId }) 
   await rentInput.press("Tab")
 
   // The blue result card should show metrics
-  await expect(page.locator(".bg-blue-600")).toBeVisible()
+  await expect(page.getByTestId("result-card")).toBeVisible()
 })
 
 test("rental/flip mode toggle works", async ({ page, extensionId }) => {
@@ -58,7 +58,7 @@ test("rental/flip mode toggle works", async ({ page, extensionId }) => {
   await page.goto(`chrome-extension://${extensionId}/sidepanel.html`)
 
   // Should start in rental mode
-  const flipBtn = page.getByText("Flip")
+  const flipBtn = page.getByRole("button", { name: "Flip" })
   await flipBtn.click()
 
   // In flip mode, should show ARV field instead of rent
@@ -80,8 +80,8 @@ test("BRRRR mode shows extended metrics", async ({ page, extensionId }) => {
   await page.setViewportSize({ width: 400, height: 800 })
   await page.goto(`chrome-extension://${extensionId}/sidepanel.html`)
 
-  const brrrrBtn = page.getByText("BRRRR")
+  const brrrrBtn = page.getByRole("button", { name: "BRRRR" })
   await brrrrBtn.click()
 
-  await expect(page.getByText("BRRRR")).toBeVisible()
+  await expect(page.locator("h3").getByText("BRRRR Metrics")).toBeVisible()
 })

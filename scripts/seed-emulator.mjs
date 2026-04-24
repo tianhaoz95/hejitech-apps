@@ -157,6 +157,9 @@ async function seed() {
     const cashFlow = prop.estimatedRent - mortgage - monthlyExpenses
     const capRate = ((prop.estimatedRent - monthlyExpenses) * 12 / prop.price) * 100
 
+    const grm = prop.estimatedRent > 0 ? prop.price / (prop.estimatedRent * 12) : 0
+    const onePercentRule = prop.price > 0 ? (prop.estimatedRent / prop.price) * 100 : 0
+
     await addDocument(`users/${proUid}/properties`, {
       mode: strVal(prop.mode),
       price: intVal(prop.price),
@@ -171,8 +174,8 @@ async function seed() {
       "rentalMetrics.monthlyCashFlow": numVal(Math.round(cashFlow * 100) / 100),
       "rentalMetrics.capRate": numVal(Math.round(capRate * 100) / 100),
       "rentalMetrics.cocReturn": numVal(4.2),
-      "rentalMetrics.grm": numVal(Math.round(prop.price / (prop.estimatedRent * 12) * 100) / 100),
-      "rentalMetrics.onePercentRule": numVal(Math.round(prop.estimatedRent / prop.price * 10000) / 100),
+      "rentalMetrics.grm": numVal(Math.round(grm * 100) / 100),
+      "rentalMetrics.onePercentRule": numVal(Math.round(onePercentRule * 100) / 100),
       "rentalMetrics.totalCashToClose": numVal(downPayment + prop.rehabCost + prop.price * 0.03),
       userId: strVal(proUid),
       createdAt: intVal(now),

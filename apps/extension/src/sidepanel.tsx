@@ -5,6 +5,7 @@ import {
 } from "lucide-react"
 import {
   onAuthStateChanged, signInWithPopup, signOut, GoogleAuthProvider, type User as FBUser,
+  signInWithEmailAndPassword,
 } from "firebase/auth"
 import { collection, addDoc, serverTimestamp, doc, onSnapshot } from "firebase/firestore"
 import { httpsCallable } from "firebase/functions"
@@ -112,6 +113,13 @@ function MetricBox({ label, value, large }: { label: string; value: string; larg
 export default function SidePanel() {
   const store = usePropertyStore()
   const metrics = store.getMetrics()
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development" || process.env.PLASMO_PUBLIC_USE_EMULATOR === "true") {
+      (window as any).store = store
+      ;(window as any).signInWithEmailAndPassword = signInWithEmailAndPassword
+    }
+  }, [store])
 
   const [user, setUser] = useState<FBUser | null>(null)
   const [subscription, setSubscription] = useState<Subscription | null>(null)

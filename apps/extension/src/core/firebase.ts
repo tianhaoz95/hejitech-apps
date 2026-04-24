@@ -26,6 +26,9 @@ if (useEmulator) {
     connectFirestoreEmulator(db, "localhost", 8080)
     connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true })
     connectFunctionsEmulator(functions, "localhost", 5001)
+    if (typeof window !== "undefined") {
+      (window as any).auth = auth
+    }
   } catch {
     // Already connected (hot reload)
   }
