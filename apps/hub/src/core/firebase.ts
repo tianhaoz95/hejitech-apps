@@ -22,9 +22,9 @@ const useEmulator = import.meta.env.VITE_USE_EMULATOR === "true" || import.meta.
 
 if (useEmulator) {
   try {
-    connectFirestoreEmulator(db, "localhost", 8080)
-    connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true })
-    connectFunctionsEmulator(functions, "localhost", 5001)
+    connectFirestoreEmulator(db, "127.0.0.1", 8080)
+    connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true })
+    connectFunctionsEmulator(functions, "127.0.0.1", 5001)
     if (typeof window !== "undefined") {
       (window as any).auth = auth
       ;(window as any).signInWithEmailAndPassword = signInWithEmailAndPassword

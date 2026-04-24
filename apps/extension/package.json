@@ -34,7 +34,17 @@
     "typescript": "5.3.3"
   },
   "manifest": {
-    "host_permissions": ["https://*/*"],
-    "permissions": ["sidePanel", "tabs", "activeTab", "storage"]
+    "host_permissions": [
+      "https://*/*"
+    ],
+    "permissions": [
+      "sidePanel",
+      "tabs",
+      "activeTab",
+      "storage"
+    ],
+    "content_security_policy": {
+      "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' http://localhost:9099 http://localhost:8080 http://localhost:5001 http://127.0.0.1:9099 http://127.0.0.1:8080 http://127.0.0.1:5001"
+    }
   }
 }

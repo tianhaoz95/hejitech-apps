@@ -1,6 +1,6 @@
 import { initializeApp, getApps } from "firebase/app"
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore"
-import { getAuth, connectAuthEmulator } from "firebase/auth"
+import { getAuth, connectAuthEmulator, GoogleAuthProvider } from "firebase/auth"
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions"
 
 const firebaseConfig = {
@@ -16,6 +16,8 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0
 const db = getFirestore(app)
 const auth = getAuth(app)
 const functions = getFunctions(app)
+const googleProvider = new GoogleAuthProvider()
+googleProvider.setCustomParameters({ prompt: "select_account" })
 
 const useEmulator =
   process.env.PLASMO_PUBLIC_USE_EMULATOR === "true" ||
@@ -23,9 +25,9 @@ const useEmulator =
 
 if (useEmulator) {
   try {
-    connectFirestoreEmulator(db, "localhost", 8080)
-    connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true })
-    connectFunctionsEmulator(functions, "localhost", 5001)
+    connectFirestoreEmulator(db, "127.0.0.1", 8080)
+    connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true })
+    connectFunctionsEmulator(functions, "127.0.0.1", 5001)
     if (typeof window !== "undefined") {
       (window as any).auth = auth
     }
@@ -34,4 +36,4 @@ if (useEmulator) {
   }
 }
 
-export { db, auth, functions }
+export { db, auth, functions, googleProvider }
