@@ -1,8 +1,0 @@
-{
-  "active": true,
-  "current_iteration": 1,
-  "max_iterations": 5,
-  "completion_promise": "",
-  "original_prompt": "now the workflow deploy-on-release.yml fails on github, use gh to fetch workflow status investigate and fix it, boost version push again and monitor the workflow, make sure it is fix before calling it done",
-  "started_at": "2026-04-25T14:34:24Z"
-}
