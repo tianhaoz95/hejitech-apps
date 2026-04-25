@@ -18,5 +18,10 @@ if [ -z "$FIREBASE_TOKEN" ]; then
   echo "⚠️ FIREBASE_TOKEN is not set. Assuming other auth methods are configured."
 fi
 
-# Deploy hosting and functions to the production project
-pnpm exec firebase deploy --only hosting,functions --project production --non-interactive
+# Deploy hosting to the production project
+echo "📦 Deploying Hosting..."
+pnpm exec firebase deploy --only hosting --project production --non-interactive --debug
+
+# Deploy functions to the production project
+echo "📦 Deploying Functions..."
+pnpm exec firebase deploy --only functions --project production --non-interactive --debug
