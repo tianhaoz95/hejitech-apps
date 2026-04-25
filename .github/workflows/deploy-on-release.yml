@@ -35,12 +35,18 @@ jobs:
       - name: Verify Build Artifacts
         run: |
           pnpm turbo run build
-          echo "Checking Hosting artifacts..."
-          ls -d apps/*/dist
+          echo "Checking Hub artifacts..."
+          ls -la apps/hub/dist/index.html
+          echo "Checking Admin artifacts..."
+          ls -la apps/admin/dist/index.html
+          echo "Checking Landing artifacts..."
+          ls -la apps/landing/dist/index.html
+          echo "Checking Legal artifacts..."
+          ls -la apps/legal/dist/index.html
           echo "Checking Functions artifacts..."
-          ls -d firebase/functions/lib
+          ls -la firebase/functions/lib/index.js
           echo "Checking Extension artifacts..."
-          ls -d apps/extension/build
+          ls -la apps/extension/build/chrome-mv3-prod/manifest.json
 
       - name: Build and Deploy
         run: ./scripts/deploy-all.sh
