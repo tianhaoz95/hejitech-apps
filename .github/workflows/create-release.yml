@@ -14,9 +14,14 @@ jobs:
       contents: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
 
       - name: Get current version
         id: get_version
@@ -34,7 +39,7 @@ jobs:
 
       - name: Create Release
         if: steps.get_version.outputs.version != steps.get_prev_version.outputs.prev_version
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.get_version.outputs.version }}
           name: Release v${{ steps.get_version.outputs.version }}
