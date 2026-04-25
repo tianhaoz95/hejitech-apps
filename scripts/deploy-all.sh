@@ -24,4 +24,4 @@ npx firebase deploy --only hosting --project production --non-interactive --debu
 
 # Deploy functions to the production project
 echo "📦 Deploying Functions..."
-npx firebase deploy --only functions --project production --non-interactive --debug
+npx firebase deploy --only functions --project production --non-interactive --debug --force
