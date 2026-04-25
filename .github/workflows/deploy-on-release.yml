@@ -30,9 +30,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          # This will set GOOGLE_APPLICATION_CREDENTIALS for the next steps
+
       - name: Verify Build Artifacts
         run: |
           pnpm turbo run build
+          pnpm --filter @icecap/extension package:sideload
           echo "✨ Checking build artifacts..."
           
           echo "Checking Hub..."
@@ -50,9 +58,8 @@ jobs:
           echo "Checking Functions..."
           ls -la firebase/functions/lib/index.js || (echo "❌ Functions build failed" && exit 1)
           
-          echo "Checking Extension..."
-          # Plasmo might produce slightly different dir names in CI, be flexible
-          find apps/extension/build -name "manifest.json" | grep "prod" || (echo "❌ Extension build failed" && find apps/extension/build -maxdepth 2 && exit 1)
+          echo "Checking Extension Sideload..."
+          ls -la apps/extension/build/*.zip || (echo "❌ Extension package failed" && exit 1)
           
           echo "✅ All artifacts verified!"
 
@@ -60,6 +67,10 @@ jobs:
         run: ./scripts/deploy-all.sh
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+      - name: Upload Sideload Extension
+        run: pnpm exec node scripts/upload-sideload.mjs
+        # The 'auth' step above sets GOOGLE_APPLICATION_CREDENTIALS automatically
 
       - name: Debug on Failure
         if: failure()

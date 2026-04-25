@@ -6,7 +6,7 @@ const CHROME_STORE_URL = "#"
 const FIREFOX_URL = "#"
 const SAFARI_URL = "#"
 const EDGE_URL = "#"
-const SIDELOAD_URL = "https://github.com/tianhaoz95/icecap/releases"
+const SIDELOAD_URL = "https://storage.googleapis.com/icecap-platform.firebasestorage.app/extension/download/icecap-extension.zip"
 const LEGAL_URL = "http://localhost:5176"
 
 const BROWSERS = [
