@@ -5,11 +5,13 @@ import { getAuth, connectAuthEmulator, GoogleAuthProvider, signInWithEmailAndPas
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions"
 import { getAI, GoogleAIBackend } from "firebase/ai"
 
+const useEmulator = import.meta.env.VITE_USE_EMULATOR === "true" || import.meta.env.DEV
+
 // Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyD1D2A0h-IUcIyJynq7lh_scNZL6IrXVpc",
   authDomain: "icecap-platform.firebaseapp.com",
-  projectId: "icecap-platform",
+  projectId: useEmulator ? "demo-icecap" : "icecap-platform",
   storageBucket: "icecap-platform.firebasestorage.app",
   messagingSenderId: "117464393734",
   appId: "1:117464393734:web:a6d327244b151879163b87",
@@ -26,8 +28,6 @@ const auth = getAuth(app)
 const functions = getFunctions(app)
 const googleProvider = new GoogleAuthProvider()
 const ai = getAI(app, { backend: new GoogleAIBackend() })
-
-const useEmulator = import.meta.env.VITE_USE_EMULATOR === "true" || import.meta.env.DEV
 
 if (useEmulator) {
   try {
