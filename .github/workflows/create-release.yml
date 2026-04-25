@@ -18,10 +18,17 @@ jobs:
         with:
           fetch-depth: 2
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v5
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Get current version
         id: get_version
@@ -37,6 +44,14 @@ jobs:
           git checkout HEAD package.json
           echo "prev_version=$PREV_VERSION" >> $GITHUB_OUTPUT
 
+      - name: Build Extension Packages
+        if: steps.get_version.outputs.version != steps.get_prev_version.outputs.prev_version
+        run: |
+          # Use example env for build if real one not provided
+          # In a real production setup, these would be populated from secrets
+          cp apps/extension/.env.example apps/extension/.env
+          ./scripts/build-extension-all.sh
+
       - name: Create Release
         if: steps.get_version.outputs.version != steps.get_prev_version.outputs.prev_version
         uses: softprops/action-gh-release@v3
@@ -45,4 +60,6 @@ jobs:
           name: Release v${{ steps.get_version.outputs.version }}
           draft: false
           prerelease: false
+          files: |
+            dist/extension/*.zip
           token: ${{ secrets.GITHUB_TOKEN }}
