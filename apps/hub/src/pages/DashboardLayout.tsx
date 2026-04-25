@@ -2,7 +2,7 @@ import { useState } from "react"
 import { NavLink, Outlet } from "react-router-dom"
 import { signOut } from "firebase/auth"
 import {
-  LayoutDashboard, Home, GitCompare, Settings, LogOut, User, Crown, Sparkles
+  LayoutDashboard, Home, GitCompare, Settings, LogOut, User, Crown, Sparkles, CreditCard
 } from "lucide-react"
 import { auth } from "../core/firebase"
 import { useAuth } from "../hooks/useAuth"
@@ -13,6 +13,7 @@ const navItems = [
   { to: "/portfolio", label: "Portfolio", Icon: Home },
   { to: "/compare", label: "Compare", Icon: GitCompare },
   { to: "/settings", label: "Settings", Icon: Settings },
+  { to: "/billing", label: "Billing", Icon: CreditCard },
 ]
 
 export function DashboardLayout() {
@@ -59,29 +60,57 @@ export function DashboardLayout() {
           </button>
         </nav>
 
-        {/* Subscription badge */}
-        {subscription && (
-          <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-100">
-            <div className="flex items-center gap-2 mb-0.5">
-              <Crown size={12} className="text-yellow-500" />
-              <span className="text-xs font-bold text-gray-700 capitalize">
-                {subscription.tier?.replace("_", " ") ?? "Free"}
-              </span>
-              <span
-                className={`ml-auto text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
-                  isSubscribed ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                }`}
-              >
-                {subscription.status}
-              </span>
+        {/* Subscription status */}
+        <div className="mb-4">
+          {subscription ? (
+            <div className="p-3 rounded-xl bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-100">
+              <div className="flex items-center gap-2 mb-0.5">
+                <Crown size={12} className="text-yellow-500" />
+                <span className="text-xs font-bold text-gray-700 capitalize">
+                  {subscription.tier?.replace("_", " ") ?? "Free"}
+                </span>
+                <span
+                  className={`ml-auto text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                    isSubscribed ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                  }`}
+                >
+                  {subscription.status}
+                </span>
+              </div>
+              {subscription.tier === "pro" && (
+                <div className="mt-2">
+                  <p className="text-[10px] text-gray-400 mb-2">
+                    {subscription.aiUsageCurrentMonth}/{subscription.aiQuotaLimit} AI uses this month
+                  </p>
+                  <NavLink
+                    to="/subscribe"
+                    className="block w-full py-1.5 bg-blue-600 text-white text-[10px] font-bold rounded-lg text-center hover:bg-blue-700 transition-colors"
+                  >
+                    Upgrade to Pro Max
+                  </NavLink>
+                </div>
+              )}
+              {subscription.tier === "pro_max" && (
+                <p className="text-[10px] text-gray-400 mt-1">
+                  Unlimited AI Analysis enabled
+                </p>
+              )}
             </div>
-            {subscription.tier === "pro" && (
-              <p className="text-[10px] text-gray-400">
-                {subscription.aiUsageCurrentMonth}/{subscription.aiQuotaLimit} AI uses this month
+          ) : (
+            <NavLink
+              to="/subscribe"
+              className="flex flex-col gap-2 p-4 rounded-2xl bg-gray-900 text-white shadow-xl shadow-gray-200 group hover:scale-[1.02] transition-transform"
+            >
+              <div className="flex items-center gap-2">
+                <Crown size={16} className="text-yellow-400" />
+                <span className="text-sm font-black">Start Free Trial</span>
+              </div>
+              <p className="text-[10px] text-gray-400 leading-relaxed">
+                Unlock full Redfin/Zillow scraping and AI-powered deal analysis.
               </p>
-            )}
-          </div>
-        )}
+            </NavLink>
+          )}
+        </div>
 
         {/* User profile */}
         <div className="p-3 bg-gray-50 rounded-2xl flex items-center gap-3 border border-gray-100">

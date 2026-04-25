@@ -62,13 +62,13 @@ export function PromoCodesPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-black text-white mb-2">Promo Codes</h1>
-      <p className="text-gray-400 mb-8">Create and manage promotional codes.</p>
+      <h1 className="text-2xl font-black text-gray-900 mb-2">Promo Codes</h1>
+      <p className="text-gray-500 mb-8">Create and manage promotional codes.</p>
 
       {/* Create form */}
-      <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6 mb-8">
-        <h2 className="font-bold text-white mb-4 flex items-center gap-2">
-          <Plus size={16} className="text-blue-400" />
+      <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-8">
+        <h2 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <Plus size={16} className="text-blue-600" />
           Create New Code
         </h2>
         <form onSubmit={handleCreate} className="flex gap-3 flex-wrap">
@@ -78,12 +78,12 @@ export function PromoCodesPage() {
             onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
             placeholder="PROMO CODE"
             required
-            className="px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-xl text-white font-mono font-bold text-sm w-48 focus:outline-none focus:border-blue-500"
+            className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-gray-900 font-mono font-bold text-sm w-48 focus:outline-none focus:border-blue-500"
           />
           <select
             value={form.type}
             onChange={(e) => setForm({ ...form, type: e.target.value as PromoCode["type"] })}
-            className="px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-xl text-white text-sm focus:outline-none focus:border-blue-500"
+            className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-gray-900 text-sm focus:outline-none focus:border-blue-500"
           >
             <option value="internal_free">Internal Free ($0/mo)</option>
             <option value="stripe_linked">Stripe Linked Coupon</option>
@@ -93,7 +93,7 @@ export function PromoCodesPage() {
             value={form.usageLimit}
             onChange={(e) => setForm({ ...form, usageLimit: e.target.value })}
             placeholder="Usage limit (blank = unlimited)"
-            className="px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-xl text-white text-sm w-56 focus:outline-none focus:border-blue-500"
+            className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-gray-900 text-sm w-56 focus:outline-none focus:border-blue-500"
           />
           <button
             type="submit"
@@ -106,10 +106,10 @@ export function PromoCodesPage() {
       </div>
 
       {/* Promo codes table */}
-      <div className="bg-gray-800 rounded-2xl border border-gray-700 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-700 text-gray-400 text-xs font-bold uppercase">
+            <tr className="border-b border-gray-100 text-gray-500 text-xs font-bold uppercase">
               <th className="text-left p-4">Code</th>
               <th className="text-left p-4">Type</th>
               <th className="text-left p-4">Usage</th>
@@ -117,7 +117,7 @@ export function PromoCodesPage() {
               <th className="text-left p-4">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-700">
+          <tbody className="divide-y divide-gray-100">
             {loading ? (
               <tr><td colSpan={5} className="text-center py-10 text-gray-400">Loading…</td></tr>
             ) : promos.length === 0 ? (
@@ -129,19 +129,19 @@ export function PromoCodesPage() {
               </tr>
             ) : (
               promos.map((p) => (
-                <tr key={p.id} className="hover:bg-gray-700/50 transition-colors">
-                  <td className="p-4 font-mono font-bold text-white">{p.code}</td>
-                  <td className="p-4 text-gray-300 capitalize text-xs">{p.type.replace("_", " ")}</td>
-                  <td className="p-4 text-gray-300">
+                <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="p-4 font-mono font-bold text-gray-900">{p.code}</td>
+                  <td className="p-4 text-gray-600 capitalize text-xs">{p.type.replace("_", " ")}</td>
+                  <td className="p-4 text-gray-600">
                     {p.usageCount}/{p.usageLimit === null ? "∞" : p.usageLimit}
                   </td>
                   <td className="p-4">
                     {p.isActive ? (
-                      <span className="flex items-center gap-1 text-green-400 text-xs font-bold">
+                      <span className="flex items-center gap-1 text-green-700 text-xs font-bold">
                         <CheckCircle size={12} /> Active
                       </span>
                     ) : (
-                      <span className="flex items-center gap-1 text-gray-400 text-xs font-bold">
+                      <span className="flex items-center gap-1 text-gray-500 text-xs font-bold">
                         <XCircle size={12} /> Inactive
                       </span>
                     )}
@@ -149,7 +149,7 @@ export function PromoCodesPage() {
                   <td className="p-4">
                     <button
                       onClick={() => toggleActive(p.id, p.isActive)}
-                      className="px-3 py-1 bg-gray-700 rounded-lg text-xs font-semibold hover:bg-gray-600 transition-colors"
+                      className="px-3 py-1 bg-gray-100 rounded-lg text-xs font-semibold hover:bg-gray-200 transition-colors"
                     >
                       {p.isActive ? "Deactivate" : "Activate"}
                     </button>

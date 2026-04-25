@@ -31,29 +31,29 @@ export function ScraperHealthPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-black text-white mb-2">Scraper Health</h1>
-      <p className="text-gray-400 mb-8">User-reported scraper issues and site breakdown.</p>
+      <h1 className="text-2xl font-black text-gray-900 mb-2">Scraper Health</h1>
+      <p className="text-gray-500 mb-8">User-reported scraper issues and site breakdown.</p>
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-4 mb-8">
         {(["redfin", "zillow", "realtor"] as const).map((site) => (
-          <div key={site} className="bg-gray-800 rounded-2xl p-5 border border-gray-700">
-            <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-1 capitalize">
+          <div key={site} className="bg-white rounded-2xl p-5 border border-gray-100">
+            <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-1 capitalize">
               {site}
             </p>
-            <p className={`text-3xl font-black ${(bySite[site] || 0) > 0 ? "text-yellow-400" : "text-green-400"}`}>
+            <p className={`text-3xl font-black ${(bySite[site] || 0) > 0 ? "text-yellow-600" : "text-green-600"}`}>
               {bySite[site] ?? 0}
             </p>
-            <p className="text-xs text-gray-500 mt-0.5">reports</p>
+            <p className="text-xs text-gray-400 mt-0.5">reports</p>
           </div>
         ))}
       </div>
 
       {/* Reports table */}
-      <div className="bg-gray-800 rounded-2xl border border-gray-700 overflow-hidden">
-        <div className="p-4 border-b border-gray-700 flex items-center gap-2">
-          <AlertTriangle size={16} className="text-yellow-400" />
-          <h2 className="font-bold text-white">Recent Reports</h2>
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div className="p-4 border-b border-gray-100 flex items-center gap-2">
+          <AlertTriangle size={16} className="text-yellow-600" />
+          <h2 className="font-bold text-gray-900">Recent Reports</h2>
         </div>
         {loading ? (
           <div className="text-center py-12 text-gray-400">Loading…</div>
@@ -65,24 +65,24 @@ export function ScraperHealthPage() {
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-700 text-gray-400 text-xs font-bold uppercase">
+              <tr className="border-b border-gray-100 text-gray-500 text-xs font-bold uppercase">
                 <th className="text-left p-4">Site</th>
                 <th className="text-left p-4">Issue</th>
                 <th className="text-left p-4">URL</th>
                 <th className="text-left p-4">Date</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-700">
+            <tbody className="divide-y divide-gray-100">
               {reports.slice(0, 50).map((r) => (
-                <tr key={r.id} className="hover:bg-gray-700/50 transition-colors">
-                  <td className="p-4 capitalize font-semibold text-white">{r.site}</td>
-                  <td className="p-4 text-gray-300">{r.issue}</td>
+                <tr key={r.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="p-4 capitalize font-semibold text-gray-900">{r.site}</td>
+                  <td className="p-4 text-gray-600">{r.issue}</td>
                   <td className="p-4">
-                    <a href={r.url} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline truncate block max-w-xs">
+                    <a href={r.url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline truncate block max-w-xs">
                       {r.url}
                     </a>
                   </td>
-                  <td className="p-4 text-gray-400 text-xs">
+                  <td className="p-4 text-gray-500 text-xs">
                     {new Date(r.createdAt).toLocaleDateString()}
                   </td>
                 </tr>

@@ -45,34 +45,34 @@ export function UsersPage() {
   }
 
   const statusColor = (status: string) => {
-    if (status === "active") return "text-green-400 bg-green-500/10"
-    if (status === "trialling") return "text-blue-400 bg-blue-500/10"
-    if (status === "past_due") return "text-yellow-400 bg-yellow-500/10"
-    if (status === "cancelled") return "text-red-400 bg-red-500/10"
-    return "text-gray-400 bg-gray-500/10"
+    if (status === "active") return "text-green-700 bg-green-50"
+    if (status === "trialling") return "text-blue-700 bg-blue-50"
+    if (status === "past_due") return "text-yellow-700 bg-yellow-50"
+    if (status === "cancelled") return "text-red-700 bg-red-50"
+    return "text-gray-500 bg-gray-100"
   }
 
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-black text-white mb-1">Users</h1>
-          <p className="text-gray-400">{users.length} subscriptions found</p>
+          <h1 className="text-2xl font-black text-gray-900 mb-1">Users</h1>
+          <p className="text-gray-500">{users.length} subscriptions found</p>
         </div>
         <button
           onClick={fetchUsers}
           disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-700 text-gray-200 rounded-xl text-sm font-semibold hover:bg-gray-600 transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50"
         >
           <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
           Refresh
         </button>
       </div>
 
-      <div className="bg-gray-800 rounded-2xl border border-gray-700 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-700 text-gray-400 text-xs font-bold uppercase tracking-wide">
+            <tr className="border-b border-gray-100 text-gray-500 text-xs font-bold uppercase tracking-wide">
               <th className="text-left p-4">User ID</th>
               <th className="text-left p-4">Tier</th>
               <th className="text-left p-4">Status</th>
@@ -80,7 +80,7 @@ export function UsersPage() {
               <th className="text-left p-4">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-700">
+          <tbody className="divide-y divide-gray-100">
             {loading ? (
               <tr>
                 <td colSpan={5} className="text-center py-12 text-gray-400">Loading…</td>
@@ -91,12 +91,12 @@ export function UsersPage() {
               </tr>
             ) : (
               users.map(({ uid, sub }) => (
-                <tr key={uid} className="hover:bg-gray-700/50 transition-colors">
-                  <td className="p-4 font-mono text-xs text-gray-300">{uid.slice(0, 16)}…</td>
+                <tr key={uid} className="hover:bg-gray-50 transition-colors">
+                  <td className="p-4 font-mono text-xs text-gray-600">{uid.slice(0, 16)}…</td>
                   <td className="p-4">
                     <div className="flex items-center gap-1.5">
-                      <Crown size={14} className="text-yellow-400" />
-                      <span className="font-semibold text-white capitalize">
+                      <Crown size={14} className="text-yellow-500" />
+                      <span className="font-semibold text-gray-900 capitalize">
                         {sub?.tier?.replace("_", " ") ?? "none"}
                       </span>
                     </div>
@@ -106,7 +106,7 @@ export function UsersPage() {
                       {sub?.status ?? "none"}
                     </span>
                   </td>
-                  <td className="p-4 text-gray-300">
+                  <td className="p-4 text-gray-600">
                     {sub ? `${sub.aiUsageCurrentMonth}/${sub.aiQuotaLimit === Infinity ? "∞" : sub.aiQuotaLimit}` : "—"}
                   </td>
                   <td className="p-4">
@@ -114,14 +114,14 @@ export function UsersPage() {
                       <button
                         onClick={() => runAction(uid, "reset_usage")}
                         disabled={actionUid === uid}
-                        className="px-2.5 py-1 bg-gray-700 rounded-lg text-xs font-semibold hover:bg-gray-600 transition-colors disabled:opacity-50"
+                        className="px-2.5 py-1 bg-gray-100 rounded-lg text-xs font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50"
                       >
                         Reset Quota
                       </button>
                       <button
                         onClick={() => runAction(uid, "set_status", "active")}
                         disabled={actionUid === uid}
-                        className="px-2.5 py-1 bg-green-600/20 text-green-400 rounded-lg text-xs font-semibold hover:bg-green-600/30 transition-colors disabled:opacity-50"
+                        className="px-2.5 py-1 bg-green-50 text-green-700 rounded-lg text-xs font-semibold hover:bg-green-100 transition-colors disabled:opacity-50"
                       >
                         Activate
                       </button>

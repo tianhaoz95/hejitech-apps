@@ -6,6 +6,7 @@ import { DashboardPage } from "./pages/DashboardPage"
 import { PortfolioPage } from "./pages/PortfolioPage"
 import { ComparePage } from "./pages/ComparePage"
 import { SettingsPage } from "./pages/SettingsPage"
+import { BillingPage } from "./pages/BillingPage"
 import { SubscribePage } from "./pages/SubscribePage"
 import { SubscribeSuccessPage } from "./pages/SubscribeSuccessPage"
 import { SubscribeCancelPage } from "./pages/SubscribeCancelPage"
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="portfolio" element={<PortfolioPage />} />
         <Route path="compare" element={<ComparePage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="billing" element={<BillingPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

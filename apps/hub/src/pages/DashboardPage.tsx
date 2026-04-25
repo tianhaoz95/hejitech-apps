@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { collection, query, onSnapshot, orderBy } from "firebase/firestore"
-import { TrendingUp, Home, Plus, Download } from "lucide-react"
+import { TrendingUp, Home, Plus, Download, Crown } from "lucide-react"
 import { db } from "../core/firebase"
 import { useAuth } from "../hooks/useAuth"
 import type { SavedProperty } from "@icecap/types"
@@ -18,7 +18,7 @@ function StatCard({ label, value, color = "text-gray-900" }: { label: string; va
 }
 
 export function DashboardPage() {
-  const { user } = useAuth()
+  const { user, isSubscribed } = useAuth()
   const [properties, setProperties] = useState<SavedProperty[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -48,6 +48,26 @@ export function DashboardPage() {
 
   return (
     <div className="p-10">
+      {!isSubscribed && (
+        <div className="mb-10 p-6 bg-gradient-to-r from-blue-600 to-purple-600 rounded-[32px] text-white shadow-xl shadow-blue-100 flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
+              <Crown size={32} />
+            </div>
+            <div>
+              <h3 className="text-xl font-black">Start your 30-day Free Trial</h3>
+              <p className="opacity-80 text-sm font-medium">Unlock full Redfin/Zillow scraping, AI Deal Summaries, and unlimited property saves.</p>
+            </div>
+          </div>
+          <button
+            onClick={() => window.location.href = "/subscribe"}
+            className="px-8 py-3 bg-white text-blue-600 rounded-2xl font-black shadow-lg hover:bg-gray-50 transition-all active:scale-95"
+          >
+            Claim Free Trial
+          </button>
+        </div>
+      )}
+
       <header className="flex justify-between items-start mb-10">
         <div>
           <h2 className="text-3xl font-extrabold text-gray-900">Portfolio Health</h2>

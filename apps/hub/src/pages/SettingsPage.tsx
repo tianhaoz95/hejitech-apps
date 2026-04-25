@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import { doc, setDoc, getDoc } from "firebase/firestore"
-import { Settings, Save } from "lucide-react"
+import { Settings, Save, Crown, ExternalLink } from "lucide-react"
 import { db } from "../core/firebase"
 import { useAuth } from "../hooks/useAuth"
 import { DEFAULT_ASSUMPTIONS } from "@icecap/math"
 import type { UserSettings, PropertyAssumptions } from "@icecap/types"
 
 export function SettingsPage() {
-  const { user } = useAuth()
+  const { user, subscription, isSubscribed } = useAuth()
+  const navigate = useNavigate()
   const [assumptions, setAssumptions] = useState<PropertyAssumptions>({ ...DEFAULT_ASSUMPTIONS })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -111,6 +113,43 @@ export function SettingsPage() {
           </button>
         </div>
       </div>
+
+      <div className="max-w-xl bg-white rounded-[32px] border border-gray-100 shadow-sm p-8 mt-8">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <Crown size={20} className="text-blue-600" />
+            <h3 className="text-lg font-black text-gray-900">Subscription & Billing</h3>
+          </div>
+          <button
+            onClick={() => navigate("/billing")}
+            className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1"
+          >
+            View Details
+            <ExternalLink size={12} />
+          </button>
+        </div>
+
+        <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Current Plan</p>
+            <h4 className="text-xl font-black text-gray-900 capitalize">
+              {subscription?.tier?.replace("_", " ") ?? "Free"} Plan
+            </h4>
+            <p className="text-sm text-gray-500 mt-1 text-balance">
+              {isSubscribed 
+                ? `Your subscription is ${subscription?.status}.`
+                : "Unlock full features with a pro plan."}
+            </p>
+          </div>
+          <button
+            onClick={() => navigate("/billing")}
+            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 rounded-xl font-bold text-sm hover:bg-gray-50 transition-all shadow-sm"
+          >
+            {isSubscribed ? "Manage" : "Upgrade"}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
+

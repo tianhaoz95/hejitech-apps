@@ -154,6 +154,33 @@ export const createCheckoutSession = onCall({ cors: true }, async (request) => {
   return { sessionId: session.id, url: session.url }
 })
 
+// ─── createPortalSession ───────────────────────────────────────────────────
+export const createPortalSession = onCall({ cors: true }, async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Login required")
+
+  const { returnUrl } = request.data ?? {}
+  if (!returnUrl) {
+    throw new HttpsError("invalid-argument", "returnUrl is required")
+  }
+
+  const subSnap = await db.collection("subscriptions").doc(request.auth.uid).get()
+  if (!subSnap.exists) {
+    throw new HttpsError("not-found", "No subscription found for this user")
+  }
+
+  const customerId = subSnap.data()?.stripeCustomerId
+  if (!customerId) {
+    throw new HttpsError("not-found", "No Stripe customer found for this user")
+  }
+
+  const session = await stripe.billingPortal.sessions.create({
+    customer: customerId,
+    return_url: returnUrl,
+  })
+
+  return { url: session.url }
+})
+
 // ─── stripeWebhook ─────────────────────────────────────────────────────────
 export const stripeWebhook = onRequest({ cors: false }, async (req, res) => {
   if (req.method !== "POST") {
