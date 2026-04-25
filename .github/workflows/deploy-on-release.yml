@@ -62,3 +62,10 @@ jobs:
         run: ./scripts/deploy-all.sh
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+      - name: Debug on Failure
+        if: failure()
+        run: |
+          echo "🔍 Inspecting Firebase debug logs..."
+          [ -f firebase-debug.log ] && cat firebase-debug.log || echo "No firebase-debug.log found"
+          [ -f firebase/functions/firebase-debug.log ] && cat firebase/functions/firebase-debug.log || echo "No functions debug log found"
