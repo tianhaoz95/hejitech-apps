@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react"
 import {
-  Calculator, Search, Save, Download, LogOut, LogIn, LayoutPanelTop,
+  Search, Save, Download, LogOut, LogIn, LayoutPanelTop,
   User, Zap, AlertTriangle, Crown, RefreshCw, Home, TrendingUp, Sparkles,
 } from "lucide-react"
 import {
@@ -12,6 +12,7 @@ import { httpsCallable } from "firebase/functions"
 import { auth, db, functions } from "./core/firebase"
 import { IS_DEV, HUB_URL } from "./core/constants"
 import { usePropertyStore, type AnalysisMode } from "./core/store"
+import { Logo } from "./core/components/Logo"
 import "./style.css"
 
 const googleProvider = new GoogleAuthProvider()
@@ -320,8 +321,8 @@ export default function SidePanel() {
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-8 text-center">
-        <div className="bg-blue-600 p-3 rounded-2xl text-white mb-6 shadow-lg shadow-blue-200">
-          <Calculator size={48} />
+        <div className="mb-6">
+          <Logo size={64} elevation />
         </div>
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome to Icecap</h1>
         <p className="text-gray-500 mb-8">

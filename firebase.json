@@ -21,7 +21,7 @@
       "rewrites": [{ "source": "**", "destination": "/index.html" }]
     },
     {
-      "target": "landing",
+      "site": "icecap-home",
       "public": "apps/landing/dist",
       "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
       "rewrites": [{ "source": "**", "destination": "/index.html" }]

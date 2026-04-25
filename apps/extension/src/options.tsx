@@ -2,7 +2,8 @@ import { useEffect, useState, useCallback, useMemo } from "react"
 import { auth, googleProvider } from "./core/firebase"
 import { HUB_URL, IS_DEV } from "./core/constants"
 import { onAuthStateChanged, type User as FirebaseUser, signInWithPopup, signOut, signInWithEmailAndPassword } from "firebase/auth"
-import { ExternalLink, LogOut, Calculator, RefreshCw, AlertCircle, LayoutDashboard } from "lucide-react"
+import { ExternalLink, LogOut, RefreshCw, AlertCircle } from "lucide-react"
+import { Logo } from "./core/components/Logo"
 import "./style.css"
 
 export default function OptionsPage() {
@@ -105,8 +106,8 @@ export default function OptionsPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-10 text-center border border-gray-100">
-          <div className="bg-blue-600 w-20 h-20 rounded-3xl flex items-center justify-center text-white mx-auto mb-8 shadow-lg shadow-blue-200 rotate-3">
-            <Calculator size={40} />
+          <div className="mx-auto mb-8 rotate-3 w-20 h-20">
+            <Logo size={80} elevation />
           </div>
           <h1 className="text-3xl font-black text-gray-900 mb-4 tracking-tight">Icecap Auth</h1>
           <p className="text-gray-500 mb-10 leading-relaxed">Sign in to sync your analyses across all devices.</p>
@@ -156,8 +157,8 @@ export default function OptionsPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-10 text-center border border-gray-100">
-        <div className="bg-blue-600 w-20 h-20 rounded-3xl flex items-center justify-center text-white mx-auto mb-8 shadow-lg shadow-blue-200">
-          <LayoutDashboard size={40} />
+        <div className="mx-auto mb-8 shadow-lg shadow-blue-200 w-20 h-20">
+          <Logo size={80} elevation />
         </div>
         <h1 className="text-3xl font-black text-gray-900 mb-2 tracking-tight">Icecap Settings</h1>
         <p className="text-gray-500 mb-10 leading-relaxed">Portfolio management and deep analytics have moved to the Hub.</p>
