@@ -1,19 +1,26 @@
 import { initializeApp, getApps } from "firebase/app"
+import { getAnalytics, isSupported } from "firebase/analytics"
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore"
 import { getAuth, connectAuthEmulator, GoogleAuthProvider, signInWithEmailAndPassword } from "firebase/auth"
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions"
 import { getAI, GoogleAIBackend } from "firebase/ai"
 
+// Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY ?? "demo-key",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ?? "demo-icecap.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID ?? "demo-icecap",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ?? "demo-icecap.appspot.com",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID ?? "123456789",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID ?? "1:123456789:web:abcdef",
+  apiKey: "AIzaSyD1D2A0h-IUcIyJynq7lh_scNZL6IrXVpc",
+  authDomain: "icecap-platform.firebaseapp.com",
+  projectId: "icecap-platform",
+  storageBucket: "icecap-platform.firebasestorage.app",
+  messagingSenderId: "117464393734",
+  appId: "1:117464393734:web:a6d327244b151879163b87",
+  measurementId: "G-V1M7Z1FDT3"
 }
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
+
+// Initialize analytics if supported
+isSupported().then(yes => yes && getAnalytics(app))
+
 const db = getFirestore(app)
 const auth = getAuth(app)
 const functions = getFunctions(app)

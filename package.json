@@ -14,7 +14,7 @@
     "build": "turbo run build",
     "test": "turbo run test",
     "test:unit": "turbo run test --filter=@icecap/math",
-    "emulator": "cd firebase && firebase emulators:start --import=./emulator-data --export-on-exit=./emulator-data",
+    "emulator": "firebase emulators:start --import=firebase/emulator-data --export-on-exit=firebase/emulator-data",
     "emulator:seed": "node scripts/seed-emulator.mjs",
     "lint": "turbo run lint",
     "clean": "turbo run clean && rm -rf node_modules"
