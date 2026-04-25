@@ -148,8 +148,12 @@ export default function SidePanel() {
   useEffect(() => {
     if (!user) return
     const ref = doc(db, "subscriptions", user.uid)
+    console.log("Setting up subscription listener for:", user.uid)
     return onSnapshot(ref, (snap) => {
+      console.log("Subscription update received:", snap.exists() ? snap.data() : "No document")
       setSubscription(snap.exists() ? (snap.data() as Subscription) : null)
+    }, (err) => {
+      console.error("Subscription listener failed:", err)
     })
   }, [user])
 
@@ -363,6 +367,13 @@ export default function SidePanel() {
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl shadow-md transition-all"
           >
             Start Free Trial in Hub
+          </button>
+          <button
+            onClick={() => window.location.reload()}
+            className="w-full flex items-center justify-center gap-2 bg-white hover:bg-gray-50 text-gray-700 font-semibold py-3 px-6 rounded-xl border border-gray-200 shadow-sm transition-all"
+          >
+            <RefreshCw size={16} />
+            Refresh Status
           </button>
           <button
             onClick={handleLogout}
