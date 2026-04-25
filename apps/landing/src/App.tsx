@@ -1,10 +1,36 @@
-import { Chrome, BarChart2, Sparkles, Check, ArrowRight, Shield, Zap } from "lucide-react"
+import { useState, useRef, useEffect } from "react"
+import { Chrome, BarChart2, Sparkles, Check, ArrowRight, Shield, Zap, ChevronDown, Globe, Compass, Flame, Download } from "lucide-react"
 
 const HUB_URL = "http://localhost:5173"
 const CHROME_STORE_URL = "#"
+const FIREFOX_URL = "#"
+const SAFARI_URL = "#"
+const EDGE_URL = "#"
+const SIDELOAD_URL = "https://github.com/tianhaoz95/icecap/releases"
 const LEGAL_URL = "http://localhost:5176"
 
+const BROWSERS = [
+  { name: "Chrome", icon: Chrome, url: CHROME_STORE_URL },
+  { name: "Firefox", icon: Flame, url: FIREFOX_URL },
+  { name: "Safari", icon: Compass, url: SAFARI_URL },
+  { name: "Edge", icon: Globe, url: EDGE_URL },
+  { name: "Sideload (.zip)", icon: Download, url: SIDELOAD_URL },
+]
+
 export default function App() {
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
   return (
     <div className="min-h-screen bg-white text-gray-900">
       {/* Nav */}
@@ -43,21 +69,51 @@ export default function App() {
             Realtor.com — no spreadsheets required.
           </p>
           <div className="flex items-center justify-center gap-4 flex-wrap">
-            <a
-              href={CHROME_STORE_URL}
-              className="flex items-center gap-2 bg-blue-600 text-white px-8 py-4 rounded-2xl text-lg font-bold hover:bg-blue-700 shadow-xl shadow-blue-100 transition-all transform hover:scale-[1.02]"
-            >
-              <Chrome size={22} />
-              Add to Chrome — Free
-            </a>
+            <div className="flex items-stretch shadow-xl shadow-blue-100/50 rounded-2xl transform hover:scale-[1.01] transition-all active:scale-[0.99]" ref={dropdownRef}>
+              <a
+                href={CHROME_STORE_URL}
+                className="flex items-center gap-2 bg-blue-600 text-white px-8 py-4 text-lg font-bold hover:bg-blue-700 transition-colors border-r border-blue-500/30 rounded-l-2xl"
+              >
+                <Chrome size={22} />
+                Add to Chrome — Free
+              </a>
+              <div className="relative flex">
+                <button
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="bg-blue-600 text-white px-4 hover:bg-blue-700 transition-colors flex items-center justify-center rounded-r-2xl"
+                  aria-label="Other browsers"
+                >
+                  <ChevronDown size={20} className={`transition-transform duration-200 ${isDropdownOpen ? "rotate-180" : ""}`} />
+                </button>
+
+                {isDropdownOpen && (
+                  <div className="absolute top-full right-0 mt-3 w-56 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-[100] animate-in fade-in slide-in-from-top-2 duration-200">
+                    <p className="px-4 py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest text-left">Available Browsers</p>
+                    {BROWSERS.map((b) => (
+                      <a
+                        key={b.name}
+                        href={b.url}
+                        className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors text-left"
+                        onClick={() => setIsDropdownOpen(false)}
+                      >
+                        <b.icon size={18} className="text-gray-400" />
+                        {b.name}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            
             <a
               href={HUB_URL}
-              className="flex items-center gap-2 bg-gray-900 text-white px-8 py-4 rounded-2xl text-lg font-bold hover:bg-gray-800 transition-all"
+              className="flex items-center gap-2 bg-gray-900 text-white px-8 py-4 rounded-2xl text-lg font-bold hover:bg-gray-800 transition-all transform hover:scale-[1.01] active:scale-[0.99]"
             >
               Open Hub Dashboard
               <ArrowRight size={18} />
             </a>
           </div>
+
           <p className="mt-4 text-sm text-gray-400">30-day free trial · No credit card required on signup</p>
         </div>
       </section>
