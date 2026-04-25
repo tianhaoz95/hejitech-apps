@@ -93,6 +93,7 @@ export default function App() {
                       <a
                         key={b.name}
                         href={b.url}
+                        download={b.name.includes("Sideload") ? "icecap-extension.zip" : undefined}
                         className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors text-left"
                         onClick={() => setIsDropdownOpen(false)}
                       >
