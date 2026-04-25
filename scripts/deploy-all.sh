@@ -20,8 +20,8 @@ fi
 
 # Deploy hosting to the production project
 echo "📦 Deploying Hosting..."
-pnpm exec firebase deploy --only hosting --project production --non-interactive --debug
+npx firebase deploy --only hosting --project production --non-interactive --debug
 
 # Deploy functions to the production project
 echo "📦 Deploying Functions..."
-pnpm exec firebase deploy --only functions --project production --non-interactive --debug
+npx firebase deploy --only functions --project production --non-interactive --debug
