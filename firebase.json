@@ -27,7 +27,7 @@
       "rewrites": [{ "source": "**", "destination": "/index.html" }]
     },
     {
-      "site": "icecap-legal",
+      "site": "icecap-platform",
       "public": "apps/legal/dist",
       "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
       "rewrites": [{ "source": "**", "destination": "/index.html" }]

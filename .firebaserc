@@ -17,7 +17,7 @@
         "hub": ["icecap-hub"],
         "admin": ["icecap-admin"],
         "landing": ["icecap-home"],
-        "legal": ["icecap-legal"]
+        "legal": ["icecap-platform"]
       }
     }
   }
