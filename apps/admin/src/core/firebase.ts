@@ -4,11 +4,13 @@ import { getFirestore, connectFirestoreEmulator } from "firebase/firestore"
 import { getAuth, connectAuthEmulator, GoogleAuthProvider } from "firebase/auth"
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions"
 
+const useEmulator = import.meta.env.VITE_USE_EMULATOR === "true" || import.meta.env.DEV
+
 // Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyD1D2A0h-IUcIyJynq7lh_scNZL6IrXVpc",
   authDomain: "icecap-platform.firebaseapp.com",
-  projectId: "icecap-platform",
+  projectId: useEmulator ? "demo-icecap" : "icecap-platform",
   storageBucket: "icecap-platform.firebasestorage.app",
   messagingSenderId: "117464393734",
   appId: "1:117464393734:web:f3526e79da07d84c163b87",
@@ -25,11 +27,11 @@ const auth = getAuth(app)
 const functions = getFunctions(app)
 const googleProvider = new GoogleAuthProvider()
 
-if (import.meta.env.DEV) {
+if (useEmulator) {
   try {
-    connectFirestoreEmulator(db, "localhost", 8080)
-    connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true })
-    connectFunctionsEmulator(functions, "localhost", 5001)
+    connectFirestoreEmulator(db, "127.0.0.1", 8080)
+    connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true })
+    connectFunctionsEmulator(functions, "127.0.0.1", 5001)
   } catch {}
 }
 
