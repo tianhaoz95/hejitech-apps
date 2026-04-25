@@ -34,6 +34,10 @@ trap cleanup SIGINT SIGTERM
 
 echo "🚀 Initializing Icecap Local Environment..."
 
+# Initial cleanup to ensure ports are free
+echo "🧹 Cleaning up existing processes on emulator ports..."
+lsof -ti:4000,9099,8080,5001,5002 | xargs kill -9 2>/dev/null || true
+
 # Start Firebase Emulator
 echo "Starting Firebase Emulator..."
 pnpm run emulator > .emulator.log 2>&1 &
