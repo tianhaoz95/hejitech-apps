@@ -1,7 +1,7 @@
 {
   "name": "icecap",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Icecap — Residential Real Estate Investment Analyzer (Monorepo)",
   "scripts": {
     "dev": "turbo run dev --parallel",
