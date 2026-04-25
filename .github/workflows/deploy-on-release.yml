@@ -32,6 +32,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Check Environment
+        run: |
+          if [ -z "${{ secrets.FIREBASE_TOKEN }}" ]; then
+            echo "❌ FIREBASE_TOKEN is not set in GitHub Secrets!"
+          else
+            echo "✅ FIREBASE_TOKEN is present."
+          fi
+
       - name: Build and Deploy
         run: ./scripts/deploy-all.sh
         env:
