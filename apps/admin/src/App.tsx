@@ -11,6 +11,26 @@ import { ScraperHealthPage } from "./pages/ScraperHealthPage"
 import { PromoCodesPage } from "./pages/PromoCodesPage"
 
 function AdminGate({ children, user }: { children: React.ReactNode; user: User | null }) {
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    if (!user) {
+      setIsAdmin(null)
+      return
+    }
+
+    // In emulator mode all users are treated as admin
+    const isEmulator = import.meta.env.DEV
+    if (isEmulator) {
+      setIsAdmin(true)
+      return
+    }
+
+    user.getIdTokenResult(true).then((result) => {
+      setIsAdmin(!!result.claims.admin)
+    })
+  }, [user])
+
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -30,15 +50,22 @@ function AdminGate({ children, user }: { children: React.ReactNode; user: User |
     )
   }
 
-  // In emulator mode all users are treated as admin
-  const isEmulator = import.meta.env.DEV
-  if (!isEmulator) {
+  if (isAdmin === null) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  if (isAdmin === false) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center max-w-sm w-full">
           <AlertTriangle size={40} className="text-yellow-500 mx-auto mb-4" />
           <h1 className="text-xl font-black text-gray-900 mb-2">Access Denied</h1>
           <p className="text-gray-500 text-sm mb-6">This account does not have admin privileges.</p>
+          <p className="text-[10px] text-gray-400 font-mono break-all mb-6">UID: {user.uid}</p>
           <button
             onClick={() => signOut(auth)}
             className="w-full py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"

@@ -1,7 +1,7 @@
 {
   "name": "icecap",
   "private": true,
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "Icecap — Residential Real Estate Investment Analyzer (Monorepo)",
   "scripts": {
     "dev": "turbo run dev --parallel",
@@ -18,6 +18,7 @@
     "emulator": "firebase emulators:start --project=demo-icecap --import=firebase/emulator-data --export-on-exit=firebase/emulator-data",
     "emulator:seed": "node scripts/seed-emulator.mjs",
     "deploy:all": "./scripts/deploy-all.sh",
+    "admin:grant": "node scripts/make-admin.mjs",
     "lint": "turbo run lint",
     "clean": "turbo run clean && rm -rf node_modules"
   },
