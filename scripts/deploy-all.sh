@@ -18,6 +18,10 @@ if [ -z "$FIREBASE_TOKEN" ]; then
   echo "⚠️ FIREBASE_TOKEN is not set. Assuming other auth methods are configured."
 fi
 
+# Ensure firebase functions has a lockfile for the build
+echo "📦 Preparing Functions lockfile..."
+cp pnpm-lock.yaml firebase/functions/pnpm-lock.yaml
+
 # Deploy hosting to the production project
 echo "📦 Deploying Hosting..."
 npx firebase deploy --only hosting --project production --non-interactive --debug
@@ -25,3 +29,6 @@ npx firebase deploy --only hosting --project production --non-interactive --debu
 # Deploy functions to the production project
 echo "📦 Deploying Functions..."
 npx firebase deploy --only functions --project production --non-interactive --debug --force
+
+# Cleanup temporary lockfile
+rm firebase/functions/pnpm-lock.yaml
