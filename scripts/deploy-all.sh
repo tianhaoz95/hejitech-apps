@@ -4,8 +4,12 @@ set -e
 # Ensure we are in the project root
 cd "$(dirname "$0")/.."
 
-echo "🚀 Building all apps..."
-pnpm turbo run build
+if [ -f "apps/hub/dist/index.html" ]; then
+  echo "✨ Build artifacts found, skipping turbo build."
+else
+  echo "🚀 Building all apps..."
+  pnpm turbo run build
+fi
 
 echo "📦 Deploying to Firebase Hosting (Production)..."
 

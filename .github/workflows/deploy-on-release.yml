@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v2
         with:
           version: 9
 
@@ -32,13 +32,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Check Environment
+      - name: Verify Build Artifacts
         run: |
-          if [ -z "${{ secrets.FIREBASE_TOKEN }}" ]; then
-            echo "❌ FIREBASE_TOKEN is not set in GitHub Secrets!"
-          else
-            echo "✅ FIREBASE_TOKEN is present."
-          fi
+          pnpm turbo run build
+          ls -R apps/*/dist
 
       - name: Build and Deploy
         run: ./scripts/deploy-all.sh
