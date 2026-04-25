@@ -183,6 +183,8 @@ export const createPortalSession = onCall({ cors: true }, async (request) => {
 
 // ─── stripeWebhook ─────────────────────────────────────────────────────────
 export const stripeWebhook = onRequest({ cors: false }, async (req, res) => {
+  logger.info("Stripe Webhook received", { method: req.method, body: req.body })
+  
   if (req.method !== "POST") {
     res.status(405).send("Method Not Allowed")
     return
@@ -215,12 +217,20 @@ export const stripeWebhook = onRequest({ cors: false }, async (req, res) => {
 })
 
 async function handleStripeEvent(event: Stripe.Event): Promise<void> {
+  logger.info(`Processing Stripe event: ${event.type}`)
+  
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session
       const uid = session.metadata?.uid
       const tier = session.metadata?.tier as "pro" | "pro_max" | undefined
-      if (!uid || !tier) break
+      
+      logger.info(`Checkout completed for UID: ${uid}, Tier: ${tier}`)
+      
+      if (!uid || !tier) {
+        logger.error("Missing UID or Tier in session metadata", session.metadata)
+        break
+      }
 
       const customerId =
         typeof session.customer === "string" ? session.customer : session.customer?.id
@@ -384,4 +394,29 @@ export const manageSubscription = onCall({ cors: true }, async (request) => {
   }
 
   return { success: true }
+})
+
+// ─── debugCreateSubscription (Dev only) ───────────────────────────────────
+export const debugCreateSubscription = onCall({ cors: true }, async (request) => {
+  if (!isEmulator) {
+    throw new HttpsError("permission-denied", "This function is only available in emulator mode")
+  }
+  if (!request.auth) throw new HttpsError("unauthenticated", "Login required")
+
+  const { tier = "pro_max" } = request.data ?? {}
+  const uid = request.auth.uid
+
+  await db.collection("subscriptions").doc(uid).set({
+    uid,
+    tier,
+    status: "active",
+    stripeCustomerId: "cus_debug",
+    stripeSubscriptionId: "sub_debug",
+    aiUsageCurrentMonth: 0,
+    aiQuotaLimit: tier === "pro_max" ? AI_QUOTA_PRO_MAX : AI_QUOTA_PRO,
+    updatedAt: Date.now(),
+    is_debug: true,
+  }, { merge: true })
+
+  return { success: true, uid }
 })

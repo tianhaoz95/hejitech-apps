@@ -20,7 +20,9 @@ export function useAuth() {
   useEffect(() => {
     if (!user) return
     const ref = doc(db, "subscriptions", user.uid)
+    console.log(`[Hub] Auth UID: ${user.uid}, Project ID: ${db.app.options.projectId}`)
     return onSnapshot(ref, (snap) => {
+      console.log(`[Hub] Subscription snapshot received:`, snap.exists() ? snap.data() : "No document")
       setSubscription(snap.exists() ? (snap.data() as Subscription) : null)
     })
   }, [user])

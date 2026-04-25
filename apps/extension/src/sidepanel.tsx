@@ -125,6 +125,7 @@ export default function SidePanel() {
 
   const [user, setUser] = useState<FBUser | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
+  const [subLoading, setSubLoading] = useState(false)
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [isScraping, setIsScraping] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -146,14 +147,20 @@ export default function SidePanel() {
   }, [])
 
   useEffect(() => {
-    if (!user) return
+    if (!user) {
+      setSubLoading(false)
+      return
+    }
+    setSubLoading(true)
     const ref = doc(db, "subscriptions", user.uid)
-    console.log("Setting up subscription listener for:", user.uid)
+    console.log(`[Extension] Logged in as: ${user.email}, UID: ${user.uid}, Project ID: ${db.app.options.projectId}`)
     return onSnapshot(ref, (snap) => {
-      console.log("Subscription update received:", snap.exists() ? snap.data() : "No document")
+      console.log(`[Extension] Subscription update received:`, snap.exists() ? snap.data() : "No document")
       setSubscription(snap.exists() ? (snap.data() as Subscription) : null)
+      setSubLoading(false)
     }, (err) => {
-      console.error("Subscription listener failed:", err)
+      console.error("[Extension] Subscription listener failed:", err)
+      setSubLoading(false)
     })
   }, [user])
 
@@ -171,10 +178,20 @@ export default function SidePanel() {
 
   const handleLogin = useCallback(async () => {
     console.log("Attempting login...")
+
+    if (IS_DEV) {
+      try {
+        console.log("Local development detected: Logging in as test user...")
+        await signInWithEmailAndPassword(auth, "hi@icecap.com", "TestPass123!")
+        return
+      } catch (e) {
+        console.error("Local test login failed", e)
+      }
+    }
+
     const reachable = await checkConnection()
     if (!reachable) {
       console.error("Cannot reach Firebase Emulator at 127.0.0.1:9099")
-      // We'll still try the window fallback as it might have better error reporting
     }
     try {
       await signInWithPopup(auth, googleProvider)
@@ -197,11 +214,25 @@ export default function SidePanel() {
         focused: true
       })
     }
-  }, [])
+  }, [checkConnection])
 
   const handleLogout = useCallback(async () => {
     try { await signOut(auth) } catch (e) { console.error(e) }
   }, [])
+
+  const handleMockSubscribe = useCallback(async () => {
+    if (!user) return
+    setIsSaving(true)
+    try {
+      const fn = httpsCallable(functions, "debugCreateSubscription")
+      await fn({ tier: "pro_max" })
+      // Local snapshot will update automatically
+    } catch (e) {
+      console.error("Mock subscribe failed", e)
+    } finally {
+      setIsSaving(false)
+    }
+  }, [user])
 
   const handleScrape = useCallback(async () => {
     setIsScraping(true)
@@ -313,11 +344,13 @@ export default function SidePanel() {
         ? Math.max(0, (subscription.aiQuotaLimit ?? 50) - (subscription.aiUsageCurrentMonth ?? 0))
         : 0
 
-  if (authLoading) {
+  if (authLoading || subLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-6 text-center">
         <RefreshCw className="text-blue-600 animate-spin mb-4" size={32} />
-        <p className="text-gray-500 font-medium">Initializing Icecap...</p>
+        <p className="text-gray-500 font-medium">
+          {authLoading ? "Initializing Icecap..." : "Verifying Subscription..."}
+        </p>
       </div>
     )
   }
@@ -375,6 +408,24 @@ export default function SidePanel() {
             <RefreshCw size={16} />
             Refresh Status
           </button>
+          
+          {IS_DEV && (
+            <div className="pt-4 border-t border-dashed border-gray-200">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[10px] text-gray-400 font-mono truncate">UID: {user?.uid}</p>
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(user?.uid || "")
+                    alert("UID copied to clipboard")
+                  }}
+                  className="text-[10px] text-blue-600 font-bold hover:underline shrink-0"
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+          )}
+
           <button
             onClick={handleLogout}
             className="w-full text-gray-500 hover:text-gray-700 text-sm font-medium py-2"

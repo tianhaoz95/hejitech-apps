@@ -6,6 +6,12 @@ import { ExternalLink, LogOut, RefreshCw, AlertCircle } from "lucide-react"
 import { Logo } from "./core/components/Logo"
 import "./style.css"
 
+const TEST_ACCOUNTS = [
+  { email: "pro-user@icecap-test.com", label: "Pro (Trial)" },
+  { email: "promax-user@icecap-test.com", label: "Pro Max (Active)" },
+  { email: "pastdue-user@icecap-test.com", label: "Past Due" },
+]
+
 export default function OptionsPage() {
   const [user, setUser] = useState<FirebaseUser | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
@@ -22,6 +28,7 @@ export default function OptionsPage() {
       setAuthLoading(false)
       
       if (u && isLoginView) {
+        console.log(`[Extension Auth] Logged in as ${u.email} (${u.uid})`)
         window.close()
       }
     })
@@ -41,6 +48,18 @@ export default function OptionsPage() {
   const handleLogin = useCallback(async () => {
     setIsLoggingIn(true)
     setLoginError(null)
+
+    if (IS_DEV) {
+      try {
+        await signInWithEmailAndPassword(auth, "hi@icecap.com", "TestPass123!")
+        return
+      } catch (e: any) {
+        setLoginError(`Local test login failed: ${e.message}`)
+        setIsLoggingIn(false)
+        return
+      }
+    }
+
     const reachable = await checkConnection()
     if (!reachable) {
       setLoginError("Cannot reach Firebase Emulator at 127.0.0.1:9099. Ensure it is running.")
@@ -57,26 +76,17 @@ export default function OptionsPage() {
     }
   }, [checkConnection])
 
-  const handleTestLogin = useCallback(async () => {
+  const handleTestLogin = useCallback(async (email: string) => {
     if (!IS_DEV) return
     setIsLoggingIn(true)
     setLoginError(null)
-    const email = "pro-user@icecap-test.com"
     const password = "TestPass123!"
 
     try {
       await signInWithEmailAndPassword(auth, email, password)
     } catch (e: any) {
-      if (e.code === "auth/user-not-found" || e.code === "auth/invalid-credential") {
-        try {
-          const { createUserWithEmailAndPassword } = await import("firebase/auth")
-          await createUserWithEmailAndPassword(auth, email, password)
-        } catch (createErr: any) {
-          setLoginError(`Test account creation failed: ${createErr.message}`)
-        }
-      } else {
-        setLoginError(`Test login failed: ${e.message}`)
-      }
+      console.error("Test login failed", e)
+      setLoginError(`Test login failed. Ensure the emulator is seeded. (${e.message})`)
     } finally {
       setIsLoggingIn(false)
     }
@@ -137,17 +147,6 @@ export default function OptionsPage() {
               )}
               {isLoggingIn ? "Signing in..." : "Continue with Google"}
             </button>
-
-            {IS_DEV && (
-              <button
-                onClick={handleTestLogin}
-                disabled={isLoggingIn}
-                className="w-full flex items-center justify-center gap-2 text-blue-600 font-medium py-3 text-sm hover:underline"
-              >
-                <RefreshCw size={14} className={isLoggingIn ? "animate-spin" : ""} />
-                Local Test Account Fallback
-              </button>
-            )}
           </div>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { NavLink, Outlet } from "react-router-dom"
 import { signOut } from "firebase/auth"
 import {
@@ -19,6 +19,12 @@ const navItems = [
 export function DashboardLayout() {
   const { user, subscription, isSubscribed } = useAuth()
   const [isCopilotOpen, setIsCopilotOpen] = useState(false)
+
+  useEffect(() => {
+    if (user) {
+      console.log(`[Hub] Logged in as: ${user.email}, UID: ${user.uid}, Project ID: ${auth.app.options.projectId}`)
+    }
+  }, [user])
 
   return (
     <div className="min-h-screen bg-gray-50 flex">

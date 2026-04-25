@@ -3,13 +3,17 @@ import { getFirestore, connectFirestoreEmulator } from "firebase/firestore"
 import { getAuth, connectAuthEmulator, GoogleAuthProvider } from "firebase/auth"
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions"
 
+const useEmulator =
+  process.env.PLASMO_PUBLIC_USE_EMULATOR === "true" ||
+  process.env.NODE_ENV === "development"
+
 const firebaseConfig = {
-  apiKey: process.env.PLASMO_PUBLIC_FIREBASE_API_KEY ?? "demo-key",
+  apiKey: "AIzaSyD1D2A0h-IUcIyJynq7lh_scNZL6IrXVpc",
   authDomain: process.env.PLASMO_PUBLIC_FIREBASE_AUTH_DOMAIN ?? "demo-icecap.firebaseapp.com",
-  projectId: process.env.PLASMO_PUBLIC_FIREBASE_PROJECT_ID ?? "demo-icecap",
+  projectId: useEmulator ? "demo-icecap" : (process.env.PLASMO_PUBLIC_FIREBASE_PROJECT_ID ?? "icecap-platform"),
   storageBucket: process.env.PLASMO_PUBLIC_FIREBASE_STORAGE_BUCKET ?? "demo-icecap.appspot.com",
-  messagingSenderId: process.env.PLASMO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? "123456789",
-  appId: process.env.PLASMO_PUBLIC_FIREBASE_APP_ID ?? "1:123456789:web:abcdef",
+  messagingSenderId: process.env.PLASMO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? "117464393734",
+  appId: process.env.PLASMO_PUBLIC_FIREBASE_APP_ID ?? "1:117464393734:web:abcdef",
 }
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
@@ -18,10 +22,6 @@ const auth = getAuth(app)
 const functions = getFunctions(app)
 const googleProvider = new GoogleAuthProvider()
 googleProvider.setCustomParameters({ prompt: "select_account" })
-
-const useEmulator =
-  process.env.PLASMO_PUBLIC_USE_EMULATOR === "true" ||
-  process.env.NODE_ENV === "development"
 
 if (useEmulator) {
   console.log("Firebase using local emulators (127.0.0.1)");

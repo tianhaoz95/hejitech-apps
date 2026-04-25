@@ -8,6 +8,7 @@ set -m
 
 EMULATOR_PID=""
 STRIPE_PID=""
+EXTENSION_PID=""
 
 cleanup() {
     echo ""
@@ -16,13 +17,16 @@ cleanup() {
     if [ -n "$EMULATOR_PID" ]; then
         echo "Killing Firebase Emulator (PID: $EMULATOR_PID)..."
         kill $EMULATOR_PID 2>/dev/null
-        # Give it a second to clean up its children
-        sleep 1
     fi
     
     if [ -n "$STRIPE_PID" ]; then
         echo "Killing Stripe Mock (PID: $STRIPE_PID)..."
         kill $STRIPE_PID 2>/dev/null
+    fi
+
+    if [ -n "$EXTENSION_PID" ]; then
+        echo "Killing Extension Dev (PID: $EXTENSION_PID)..."
+        kill $EXTENSION_PID 2>/dev/null
     fi
     
     echo "✅ Cleanup complete."
@@ -35,8 +39,11 @@ trap cleanup SIGINT SIGTERM
 echo "🚀 Initializing Icecap Local Environment..."
 
 # Initial cleanup to ensure ports are free
-echo "🧹 Cleaning up existing processes on emulator ports..."
-lsof -ti:4000,9099,8080,5001,5002 | xargs kill -9 2>/dev/null || true
+echo "🧹 Cleaning up existing processes on emulator and mock ports..."
+PIDS=$(lsof -ti:4000,9099,8080,5001,5002,12111 2>/dev/null)
+if [ -n "$PIDS" ]; then
+    echo "$PIDS" | xargs kill -9 2>/dev/null || true
+fi
 
 # Start Firebase Emulator
 echo "Starting Firebase Emulator..."
@@ -62,8 +69,25 @@ while ! curl -s http://127.0.0.1:4000 > /dev/null; do
     fi
 done
 
-echo "🚀 Starting application dev servers (Turborepo)..."
-pnpm run dev
+echo "🌱 Seeding emulator data..."
+pnpm run emulator:seed
+sleep 2
+
+echo "🌍 Opening Firebase Emulator UI..."
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    open http://127.0.0.1:4000
+elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    xdg-open http://127.0.0.1:4000 2>/dev/null || echo "Please open http://127.0.0.1:4000 manually"
+fi
+
+echo "🚀 Starting application dev servers..."
+# Start extension in background (it often has FSEvents issues on some systems)
+pnpm --filter @icecap/extension dev > .extension.log 2>&1 &
+EXTENSION_PID=$!
+echo "✅ Extension backgrounded (PID: $EXTENSION_PID). Logs: .extension.log"
+
+# Start the rest of the apps (Hub, Admin, Landing, etc.)
+pnpm turbo run dev --parallel --filter=!@icecap/extension --filter=!@icecap/stripe-mock
 
 # If pnpm dev finishes naturally (rare for a watcher), cleanup
 cleanup
