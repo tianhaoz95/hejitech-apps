@@ -13,6 +13,7 @@ out/
 firebase/emulator-data/
 firebase/functions/lib/
 *-debug.log
+icecap-platform-firebase-adminsdk*.json
 
 # Environment
 .env
