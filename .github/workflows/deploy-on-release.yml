@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
           version: 9
 
@@ -35,18 +35,28 @@ jobs:
       - name: Verify Build Artifacts
         run: |
           pnpm turbo run build
-          echo "Checking Hub artifacts..."
-          ls -la apps/hub/dist/index.html
-          echo "Checking Admin artifacts..."
-          ls -la apps/admin/dist/index.html
-          echo "Checking Landing artifacts..."
-          ls -la apps/landing/dist/index.html
-          echo "Checking Legal artifacts..."
-          ls -la apps/legal/dist/index.html
-          echo "Checking Functions artifacts..."
-          ls -la firebase/functions/lib/index.js
-          echo "Checking Extension artifacts..."
-          ls -la apps/extension/build/chrome-mv3-prod/manifest.json
+          echo "✨ Checking build artifacts..."
+          
+          echo "Checking Hub..."
+          ls -la apps/hub/dist/index.html || (echo "❌ Hub build failed" && exit 1)
+          
+          echo "Checking Admin..."
+          ls -la apps/admin/dist/index.html || (echo "❌ Admin build failed" && exit 1)
+          
+          echo "Checking Landing..."
+          ls -la apps/landing/dist/index.html || (echo "❌ Landing build failed" && exit 1)
+          
+          echo "Checking Legal..."
+          ls -la apps/legal/dist/index.html || (echo "❌ Legal build failed" && exit 1)
+          
+          echo "Checking Functions..."
+          ls -la firebase/functions/lib/index.js || (echo "❌ Functions build failed" && exit 1)
+          
+          echo "Checking Extension..."
+          # Plasmo might produce slightly different dir names in CI, be flexible
+          find apps/extension/build -name "manifest.json" | grep "prod" || (echo "❌ Extension build failed" && find apps/extension/build -maxdepth 2 && exit 1)
+          
+          echo "✅ All artifacts verified!"
 
       - name: Build and Deploy
         run: ./scripts/deploy-all.sh
