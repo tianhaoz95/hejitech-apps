@@ -127,8 +127,10 @@ function scheduleScrapeTries(pinPrice: number) {
     if (i >= RETRY_DELAYS.length) return
     pendingScrape = setTimeout(() => {
       i++
-      const full = scrapeRealtor()
-      if (full.price > 0 || full.address) { sendProperty(full); return }
+      if (window.location.pathname.startsWith("/realestateandhomes-detail/")) {
+        const full = scrapeRealtor()
+        if (full.price > 0 || full.address) { sendProperty(full); return }
+      }
       next()
     }, RETRY_DELAYS[i])
   }

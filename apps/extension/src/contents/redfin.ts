@@ -167,14 +167,18 @@ function scheduleScrapeTries(pinPrice: number) {
     sendProperty({ price: pinPrice, address: "", taxes: 0, hoa: 0, description: "", url: window.location.href })
   }
 
-  // Retries: upgrade to full listing data once the page has rendered it
+  // Retries: upgrade to full listing data once the page has rendered it.
+  // Only call scrapeRedfin() when the URL is a property detail page — calling
+  // it on the map URL returns stale DOM data from the previously-viewed listing.
   let i = 0
   const next = () => {
     if (i >= RETRY_DELAYS.length) return
     pendingScrape = setTimeout(() => {
       i++
-      const full = scrapeRedfin()
-      if (full.price > 0 || full.address) { sendProperty(full); return }
+      if (/\/home\/\d+/.test(window.location.pathname)) {
+        const full = scrapeRedfin()
+        if (full.price > 0 || full.address) { sendProperty(full); return }
+      }
       const preview = scrapePreviewCard(pinPrice)
       if (preview) { sendProperty(preview); return }
       next()

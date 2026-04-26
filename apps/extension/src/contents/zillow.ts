@@ -141,8 +141,10 @@ function scheduleScrapeTries(pinPrice: number) {
     if (i >= RETRY_DELAYS.length) return
     pendingScrape = setTimeout(() => {
       i++
-      const full = scrapeZillow()
-      if (full.price > 0 || full.address) { sendProperty(full); return }
+      if (window.location.pathname.startsWith("/homedetails/")) {
+        const full = scrapeZillow()
+        if (full.price > 0 || full.address) { sendProperty(full); return }
+      }
       const preview = scrapePreviewCard(pinPrice)
       if (preview) { sendProperty(preview); return }
       next()
