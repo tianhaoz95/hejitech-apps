@@ -1,10 +1,14 @@
 import { useState } from "react"
 import { useSearchParams, useNavigate } from "react-router-dom"
 import { httpsCallable } from "firebase/functions"
-import { Crown, Check, AlertTriangle } from "lucide-react"
+import { Crown, Check, AlertTriangle, Tag } from "lucide-react"
 import { functions } from "../core/firebase"
 import { useAuth } from "../hooks/useAuth"
-import type { CreateCheckoutSessionResponse, SubscriptionTier } from "@icecap/types"
+import type { 
+  CreateCheckoutSessionResponse, 
+  SubscriptionTier, 
+  ValidatePromoCodeResponse 
+} from "@icecap/types"
 
 const PLANS = [
   {
@@ -45,8 +49,33 @@ export function SubscribePage() {
   const [promoCode, setPromoCode] = useState("")
   const [loadingTier, setLoadingTier] = useState<string | null>(null)
   const [error, setError] = useState("")
+  const [isValidatingPromo, setIsValidatingPromo] = useState(false)
+  const [appliedPromo, setAppliedPromo] = useState<ValidatePromoCodeResponse | null>(null)
 
   const reason = searchParams.get("reason")
+
+  const handleApplyPromo = async () => {
+    if (!promoCode.trim()) return
+    
+    setIsValidatingPromo(true)
+    setError("")
+    setAppliedPromo(null)
+    
+    try {
+      const fn = httpsCallable<{ code: string }, ValidatePromoCodeResponse>(functions, "validatePromoCode")
+      const result = await fn({ code: promoCode.trim() })
+      
+      if (result.data.valid) {
+        setAppliedPromo(result.data)
+      } else {
+        setError("Invalid or expired promo code.")
+      }
+    } catch (e) {
+      setError("Failed to validate promo code. Please try again.")
+    } finally {
+      setIsValidatingPromo(false)
+    }
+  }
 
   const handleSubscribe = async (tier: SubscriptionTier) => {
     if (!user) {
@@ -145,12 +174,35 @@ export function SubscribePage() {
             <input
               type="text"
               value={promoCode}
-              onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+              onChange={(e) => {
+                setPromoCode(e.target.value.toUpperCase())
+                if (error) setError("")
+                if (appliedPromo) setAppliedPromo(null)
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleApplyPromo()
+                }
+              }}
               placeholder="PROMO CODE"
-              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl font-mono font-bold tracking-wider text-sm focus:outline-none focus:border-blue-500"
+              disabled={isValidatingPromo}
+              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl font-mono font-bold tracking-wider text-sm focus:outline-none focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
             />
+            <button
+              onClick={handleApplyPromo}
+              disabled={isValidatingPromo || !promoCode.trim()}
+              className="px-6 py-2.5 bg-gray-900 text-white rounded-xl font-bold text-sm hover:bg-gray-800 transition-all disabled:opacity-50"
+            >
+              {isValidatingPromo ? "..." : "Apply"}
+            </button>
           </div>
           {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+          {appliedPromo && (
+            <div className="flex items-center gap-2 mt-2 text-green-600 font-semibold text-sm">
+              <Tag size={14} />
+              <span>{appliedPromo.discountDescription || "Promo code applied!"}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>
