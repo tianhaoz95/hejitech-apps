@@ -2,10 +2,15 @@
 
 # dev-all.sh - Start full local environment and cleanup on exit
 # Compatible with macOS and Linux
+#
+# Behavior:
+#   Apps (Hub / Admin / Landing):  Vite HMR — browser auto-refreshes on every save
+#   Extension:                     Plasmo watch — rebuilds on every save, reload manually
+#                                  in chrome://extensions after each rebuild
 
 EMULATOR_PID=""
 STRIPE_PID=""
-EXTENSION_PID=""
+MAIN_PID=""
 USE_PROD=false
 
 # Parse arguments
@@ -17,162 +22,138 @@ for arg in "$@"; do
 done
 
 cleanup() {
-    # Save exit status
-    STATUS=$?
-    
     echo ""
-    echo "🛑 Shutting down environment..."
-    
-    # Ignore further signals to avoid recursion
+    echo "Shutting down environment..."
+
+    # Remove the trap to prevent recursion
     trap - SIGINT SIGTERM EXIT
 
-    # Use SIGINT (2) for graceful shutdown of dev servers
-    if [ -n "$EMULATOR_PID" ]; then
-        echo "Killing Firebase Emulator (PID: $EMULATOR_PID)..."
-        kill -2 $EMULATOR_PID 2>/dev/null
-    fi
-    
-    if [ -n "$STRIPE_PID" ]; then
-        echo "Killing Stripe Mock (PID: $STRIPE_PID)..."
-        kill -2 $STRIPE_PID 2>/dev/null
-    fi
+    [ -n "$EMULATOR_PID" ] && kill -2 "$EMULATOR_PID" 2>/dev/null
+    [ -n "$STRIPE_PID"   ] && kill -2 "$STRIPE_PID"   2>/dev/null
+    [ -n "$MAIN_PID"     ] && kill -2 "$MAIN_PID"     2>/dev/null
 
-    if [ -n "$EXTENSION_PID" ]; then
-        echo "Killing Extension Dev (PID: $EXTENSION_PID)..."
-        kill -2 $EXTENSION_PID 2>/dev/null
-    fi
-
-    if [ -n "$MAIN_PID" ]; then
-        echo "Killing Main Dev Servers (PID: $MAIN_PID)..."
-        kill -2 $MAIN_PID 2>/dev/null
-    fi
-
-    # Remove prod env overrides
+    # Remove per-run env overrides
     for app in extension hub admin; do
         rm -f "apps/$app/.env.local"
     done
-    
-    echo "✅ Cleanup complete."
+
+    echo "Cleanup complete."
     exit 0
 }
 
-# Trap signals and script exit
 trap cleanup SIGINT SIGTERM EXIT
 
-# Enable polling for file watching (improves reliability in some environments)
+# File-watching backends (improves reliability on macOS / Linux)
 export CHOKIDAR_USEPOLLING=true
 export PARCEL_WATCHER_BACKEND=polling
+
+# ── Environment setup ─────────────────────────────────────────────────────────
+
 if [ "$USE_PROD" = true ]; then
-    echo "🚀 Initializing Icecap PRODUCTION Environment (using real Firebase)..."
+    echo "Initializing Icecap PRODUCTION environment (real Firebase)..."
     export PLASMO_PUBLIC_USE_EMULATOR=false
     export VITE_USE_EMULATOR=false
 
-    # Override USE_EMULATOR via .env.local so .env is never modified
     for app in extension hub admin; do
         printf 'PLASMO_PUBLIC_USE_EMULATOR=false\nVITE_USE_EMULATOR=false\n' > "apps/$app/.env.local"
-        echo "📦 Created apps/$app/.env.local (USE_EMULATOR=false override)"
     done
 
-    echo "🧹 Clearing Plasmo cache and build artifacts to ensure environment update..."
-    rm -rf apps/extension/.plasmo
-    rm -rf apps/extension/build
+    # Clear Plasmo cache so the new env is picked up cleanly
+    rm -rf apps/extension/.plasmo apps/extension/build
 else
-    echo "🚀 Initializing Icecap Local Environment..."
+    echo "Initializing Icecap LOCAL environment (Firebase emulator)..."
     export PLASMO_PUBLIC_USE_EMULATOR=true
     export VITE_USE_EMULATOR=true
 
-    # Create .env.local for local mode too, because Plasmo prefers it over .env
     for app in extension hub admin; do
         printf 'PLASMO_PUBLIC_USE_EMULATOR=true\nVITE_USE_EMULATOR=true\n' > "apps/$app/.env.local"
-        echo "📦 Created apps/$app/.env.local (USE_EMULATOR=true override)"
     done
 fi
 
-# Initial cleanup to ensure ports are free
-# ... (rest of the initial cleanup)
+# ── Port cleanup ──────────────────────────────────────────────────────────────
 
-echo "🧹 Cleaning up existing processes on emulator and mock ports..."
+echo "Freeing emulator and mock ports..."
 PIDS=$(lsof -ti:4000,9099,8080,5001,5002,12111 2>/dev/null)
-if [ -n "$PIDS" ]; then
-    echo "$PIDS" | xargs kill -9 2>/dev/null || true
-fi
+[ -n "$PIDS" ] && echo "$PIDS" | xargs kill -9 2>/dev/null || true
+
+# ── Background services ───────────────────────────────────────────────────────
 
 if [ "$USE_PROD" = false ]; then
-    # Start Firebase Emulator
-    echo "Starting Firebase Emulator..."
+    echo "Starting Firebase emulator..."
     pnpm run emulator > .emulator.log 2>&1 &
     EMULATOR_PID=$!
-    echo "✅ Emulator backgrounded (PID: $EMULATOR_PID). Logs: .emulator.log"
-fi
 
-# Start Stripe Mock
-echo "Starting Stripe Mock..."
-pnpm run dev:stripe-mock > .stripe-mock.log 2>&1 &
-STRIPE_PID=$!
-echo "✅ Stripe Mock backgrounded (PID: $STRIPE_PID). Logs: .stripe-mock.log"
-
-if [ "$USE_PROD" = false ]; then
-    echo "⏳ Waiting for services to initialize..."
-    # Wait for emulator to be reachable
+    echo "Waiting for emulator UI..."
     count=0
     while ! curl -s http://127.0.0.1:4000 > /dev/null; do
         sleep 2
         count=$((count + 1))
         if [ $count -gt 15 ]; then
-            echo "⚠️ Emulator UI taking a long time to start. Continuing..."
+            echo "Emulator taking longer than expected, continuing anyway..."
             break
         fi
     done
 
-    echo "🌱 Seeding emulator data..."
+    echo "Seeding emulator data..."
     pnpm run emulator:seed
     sleep 2
 
-    echo "🌍 Opening Firebase Emulator UI..."
     if [[ "$OSTYPE" == "darwin"* ]]; then
         open http://127.0.0.1:4000
-    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        xdg-open http://127.0.0.1:4000 2>/dev/null || echo "Please open http://127.0.0.1:4000 manually"
     fi
 fi
 
-echo "🚀 Starting application dev servers..."
-if [ "$USE_PROD" = true ]; then
-    echo "🏗️  Building extension for production testing (Production Backend)..."
-    (cd apps/extension && pnpm build:chrome) 2>&1 | tee .extension.log
-    
-    echo "🕒 Starting extension dev server (Production Backend, HMR enabled)..."
-    # Use default dev tag so it loads .env correctly, while .env.local overrides emulator settings
-    (cd apps/extension && pnpm dev > ../../.extension.log 2>&1) &
-    EXTENSION_PID=$!
-    echo "✅ Extension dev server backgrounded (PID: $EXTENSION_PID). Logs: .extension.log"
-    echo "⚠️  IMPORTANT: Please LOAD or RELOAD the extension from apps/extension/build/chrome-mv3-dev in chrome://extensions"
-else
-    echo "🏗️  Performing initial extension build (Local Emulator)..."
-    (cd apps/extension && pnpm plasmo build --target=chrome-mv3 --tag=dev) 2>&1 | tee .extension.log
+echo "Starting Stripe mock..."
+pnpm run dev:stripe-mock > .stripe-mock.log 2>&1 &
+STRIPE_PID=$!
 
-    # Start extension dev server in background
-    echo "🕒 Starting extension dev server (Local Emulator, HMR enabled)..."
-    (cd apps/extension && pnpm dev > ../../.extension.log 2>&1) &
-    EXTENSION_PID=$!
-    echo "✅ Extension dev server backgrounded (PID: $EXTENSION_PID). Logs: .extension.log"
-    echo "⚠️  IMPORTANT: Please LOAD the extension from apps/extension/build/chrome-mv3-dev in chrome://extensions"
+# ── Apps: background (Vite HMR → browser auto-refreshes on save) ─────────────
+
+echo "Starting Hub / Admin / Landing dev servers (HMR)..."
+pnpm turbo run dev --parallel \
+    --filter=!@icecap/extension \
+    --filter=!@icecap/stripe-mock > .turbo.log 2>&1 &
+MAIN_PID=$!
+echo "Apps running in background. Logs: .turbo.log"
+
+# ── Extension: initial build so it can be loaded immediately ─────────────────
+
+echo ""
+if [ "$USE_PROD" = true ]; then
+    echo "Building extension for production (chrome-mv3-prod)..."
+    (cd apps/extension && pnpm build:chrome) 2>&1 | tee .extension.log
+    LOAD_PATH="apps/extension/build/chrome-mv3-prod"
+else
+    echo "Building extension for local emulator (chrome-mv3-dev)..."
+    (cd apps/extension && pnpm plasmo build --target=chrome-mv3 --tag=dev) 2>&1 | tee .extension.log
+    LOAD_PATH="apps/extension/build/chrome-mv3-dev"
 fi
 
-# Start the rest of the apps (Hub, Admin, Landing, etc.)
-# We run this in the background to catch signals in the parent shell script.
-pnpm turbo run dev --parallel --filter=!@icecap/extension --filter=!@icecap/stripe-mock > .turbo.log 2>&1 &
-MAIN_PID=$!
-echo "✅ Hub/Admin/Landing backgrounded (PID: $MAIN_PID). Logs: .turbo.log"
-
 echo ""
-echo "✨ All systems active! Logs are being streamed to hidden .*.log files."
-echo "🛑 Press Ctrl+C once to shut down everything gracefully."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  Load or reload the extension from:"
+echo "  $LOAD_PATH"
+echo "  in chrome://extensions (enable Developer mode first)"
+echo ""
+echo "  Apps:      Vite HMR active — browser tabs refresh automatically"
+echo "  Extension: Plasmo watch active — rebuilds to chrome-mv3-dev, reload manually"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  Press Ctrl+C once to stop everything."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# Wait for the main dev process to keep the script alive.
-# The trap will handle the Ctrl+C signal and trigger cleanup.
-wait $MAIN_PID
+# ── Extension: watch mode in foreground ───────────────────────────────────────
+# Running in the foreground means rebuild output is always visible in this
+# terminal.  Ctrl+C interrupts pnpm dev and triggers the cleanup trap above.
+#
+# --prod:  plasmo dev --tag=prod  →  chrome-mv3-prod  (same dir as initial build)
+# local:   plasmo dev             →  chrome-mv3-dev   (same dir as initial build)
 
-# If turbo exits naturally, trigger cleanup
+if [ "$USE_PROD" = true ]; then
+    (cd apps/extension && pnpm exec plasmo dev --tag=prod) 2>&1 | tee -a .extension.log
+else
+    (cd apps/extension && pnpm dev) 2>&1 | tee -a .extension.log
+fi
+
+# Extension dev server exited on its own — clean up everything
 cleanup
