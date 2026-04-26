@@ -343,6 +343,14 @@ export default function SidePanel() {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle")
   const [showBreakdown, setShowBreakdown] = useState(false)
 
+  useEffect(() => {
+    const t = setTimeout(() => {
+      console.log("[Icecap] writing assumptions to storage", store.assumptions)
+      chrome.storage.local.set({ "icecap-assumptions": store.assumptions })
+    }, 100)
+    return () => clearTimeout(t)
+  }, [store.assumptions])
+
   const handleOpenHub = useCallback(() => {
     chrome.tabs.create({ url: HUB_URL })
   }, [])
@@ -815,6 +823,13 @@ export default function SidePanel() {
         <section className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-3">
           <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide">Assumptions</p>
           <Slider
+            label="Rent Estimate"
+            value={store.assumptions.rentRatioPercent}
+            min={0.3} max={2} step={0.05}
+            formatValue={(v) => `${v.toFixed(2)}% of price`}
+            onChange={(v) => store.setAssumption("rentRatioPercent", v)}
+          />
+          <Slider
             label="Down Payment"
             value={store.assumptions.downPaymentPercent}
             min={0} max={100} step={5}
@@ -832,6 +847,12 @@ export default function SidePanel() {
             value={store.assumptions.vacancyRate}
             min={0} max={20}
             onChange={(v) => store.setAssumption("vacancyRate", v)}
+          />
+          <Slider
+            label="Maintenance"
+            value={store.assumptions.maintenanceRate}
+            min={0} max={20}
+            onChange={(v) => store.setAssumption("maintenanceRate", v)}
           />
           <Slider
             label="Mgmt Fee"

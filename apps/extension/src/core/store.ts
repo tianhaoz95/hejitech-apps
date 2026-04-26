@@ -87,6 +87,7 @@ export const usePropertyStore = create<PropertyState>()(
           hoa: data.hoa ?? s.hoa,
           description: data.description ?? s.description,
           arv: data.price ? data.price * 1.2 : s.arv,
+          estimatedRent: data.price ? Math.round(data.price * (s.assumptions.rentRatioPercent / 100)) : s.estimatedRent,
         })),
       reset: () => set({ ...initialState }),
       getPropertyInput: (): PropertyInput => {
@@ -113,6 +114,10 @@ export const usePropertyStore = create<PropertyState>()(
     {
       name: "icecap-property",
       partialize: (state) => ({ assumptions: state.assumptions }),
+      merge: (persisted: any, current) => ({
+        ...current,
+        assumptions: { ...DEFAULT_ASSUMPTIONS, ...(persisted?.assumptions ?? {}) },
+      }),
     }
   )
 )

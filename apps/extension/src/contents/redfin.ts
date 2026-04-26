@@ -1,5 +1,5 @@
 import type { PlasmoCSConfig } from "plasmo"
-import { quickEstimate as quickCashFlowEstimate } from "../core/math"
+import { quickEstimate as quickCashFlowEstimate, DEFAULT_ASSUMPTIONS, type PropertyAssumptions } from "../core/math"
 
 export const config: PlasmoCSConfig = {
   matches: ["https://www.redfin.com/*"],
@@ -45,6 +45,8 @@ function scrapeRedfin() {
 
 // ─── Map badge injection ───────────────────────────────────────────────────
 
+let currentAssumptions: PropertyAssumptions = { ...DEFAULT_ASSUMPTIONS }
+
 const BADGE_CLASS = "icecap-badge"
 const PROCESSED_ATTR = "data-icecap-processed"
 
@@ -84,11 +86,12 @@ function injectBadges() {
     const price = parsePrice(textContent)
     if (isNaN(price) || price < 10_000) return
 
-    const cashFlow = quickCashFlowEstimate(price)
+    const cashFlow = quickCashFlowEstimate(price, currentAssumptions)
     el.setAttribute(PROCESSED_ATTR, "true")
 
     const badge = document.createElement("span")
     badge.className = BADGE_CLASS
+    badge.dataset.icecapPrice = String(price)
     badge.textContent = cashFlow >= 0 ? `+$${cashFlow}` : `-$${Math.abs(cashFlow)}`
     Object.assign(badge.style, {
       marginLeft: "6px",
@@ -216,6 +219,17 @@ history.pushState = function (...args: Parameters<typeof history.pushState>) {
 }
 window.addEventListener("popstate", onUrlChange)
 
+function refreshBadges() {
+  document.querySelectorAll<HTMLElement>(`.${BADGE_CLASS}`).forEach((badge) => {
+    const price = Number(badge.dataset.icecapPrice)
+    if (!price) return
+    const cashFlow = quickCashFlowEstimate(price, currentAssumptions)
+    badge.textContent = cashFlow >= 0 ? `+$${cashFlow}` : `-$${Math.abs(cashFlow)}`
+    badge.style.backgroundColor = cashFlow >= 0 ? "#16a34a" : "#dc2626"
+  })
+  injectBadges()
+}
+
 // ─── Message listener ─────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
@@ -223,6 +237,22 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     sendResponse(scrapeRedfin())
   }
   return true
+})
+
+// ─── Assumptions sync via storage ─────────────────────────────────────────
+
+chrome.storage.local.get("icecap-assumptions", (result) => {
+  if (result["icecap-assumptions"]) {
+    currentAssumptions = { ...DEFAULT_ASSUMPTIONS, ...result["icecap-assumptions"] }
+    refreshBadges()
+  }
+})
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== "local" || !changes["icecap-assumptions"]) return
+  console.log("[Icecap] assumptions updated, refreshing badges")
+  currentAssumptions = { ...DEFAULT_ASSUMPTIONS, ...changes["icecap-assumptions"].newValue }
+  refreshBadges()
 })
 
 // ─── Badge injection with MutationObserver ────────────────────────────────

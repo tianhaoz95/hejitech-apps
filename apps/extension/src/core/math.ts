@@ -9,6 +9,7 @@ export interface PropertyAssumptions {
   managementFeeRate: number
   closingCostsPercent: number
   sellingCostsPercent: number
+  rentRatioPercent: number
 }
 
 export const DEFAULT_ASSUMPTIONS: PropertyAssumptions = {
@@ -20,6 +21,7 @@ export const DEFAULT_ASSUMPTIONS: PropertyAssumptions = {
   managementFeeRate: 8,
   closingCostsPercent: 3,
   sellingCostsPercent: 6,
+  rentRatioPercent: 0.7,
 }
 
 export interface RentalMetrics {
@@ -128,13 +130,16 @@ export function calcFlipMetrics(data: PropertyInput): FlipMetrics {
   }
 }
 
-export function quickEstimate(price: number): number {
-  const rent = price * 0.007
-  const loan = price * 0.8
-  const mr = 0.07 / 12
-  const n = 360
-  const mort = (loan * (mr * Math.pow(1 + mr, n))) / (Math.pow(1 + mr, n) - 1)
-  return Math.round(rent - mort - rent * 0.35)
+export function quickEstimate(price: number, assumptions: PropertyAssumptions = DEFAULT_ASSUMPTIONS): number {
+  const rent = price * (assumptions.rentRatioPercent / 100)
+  const loan = price * (1 - assumptions.downPaymentPercent / 100)
+  const mr = assumptions.interestRate / 100 / 12
+  const n = assumptions.loanTermYears * 12
+  const mort = mr > 0
+    ? (loan * (mr * Math.pow(1 + mr, n))) / (Math.pow(1 + mr, n) - 1)
+    : loan / n
+  const expenseRate = (assumptions.vacancyRate + assumptions.maintenanceRate + assumptions.managementFeeRate) / 100
+  return Math.round(rent - mort - rent * expenseRate)
 }
 
 function zeroRental(): RentalMetrics {
