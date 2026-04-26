@@ -28,7 +28,9 @@ export function useAuth() {
   }, [user])
 
   const isSubscribed =
-    subscription?.status === "active" || subscription?.status === "trialling"
+    subscription?.status === "active" ||
+    subscription?.status === "trialling" ||
+    (!subscription?.status && !!subscription?.tier)
 
   const isPastDue =
     subscription?.status === "past_due" || subscription?.status === "unpaid"

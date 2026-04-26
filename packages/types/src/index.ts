@@ -82,7 +82,7 @@ export interface Subscription {
   stripeCustomerId?: string
   stripeSubscriptionId?: string
   tier: SubscriptionTier | null
-  status: SubscriptionStatus
+  status?: SubscriptionStatus
   currentPeriodEnd?: number
   aiUsageCurrentMonth: number
   aiQuotaLimit: number

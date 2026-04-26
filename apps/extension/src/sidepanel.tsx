@@ -26,7 +26,7 @@ const fmtPct = (n: number) => `${n.toFixed(1)}%`
 
 interface Subscription {
   tier: string | null
-  status: string
+  status?: string
   aiUsageCurrentMonth: number
   aiQuotaLimit: number
 }
@@ -165,7 +165,10 @@ export default function SidePanel() {
     })
   }, [user])
 
-  const isSubscribed = subscription?.status === "active" || subscription?.status === "trialling"
+  const isSubscribed =
+    subscription?.status === "active" ||
+    subscription?.status === "trialling" ||
+    (!subscription?.status && !!subscription?.tier)
   const isPastDue = subscription?.status === "past_due" || subscription?.status === "unpaid"
 
   const checkConnection = useCallback(async () => {
