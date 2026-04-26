@@ -59,6 +59,9 @@ cleanup() {
 # Trap signals and script exit
 trap cleanup SIGINT SIGTERM EXIT
 
+# Enable polling for file watching (improves reliability in some environments)
+export CHOKIDAR_USEPOLLING=true
+export PARCEL_WATCHER_BACKEND=polling
 if [ "$USE_PROD" = true ]; then
     echo "🚀 Initializing Icecap PRODUCTION Environment (using real Firebase)..."
     export PLASMO_PUBLIC_USE_EMULATOR=false
@@ -69,11 +72,7 @@ if [ "$USE_PROD" = true ]; then
         printf 'PLASMO_PUBLIC_USE_EMULATOR=false\nVITE_USE_EMULATOR=false\n' > "apps/$app/.env.local"
         echo "📦 Created apps/$app/.env.local (USE_EMULATOR=false override)"
     done
-    # Clean up any stale .env.bak files from old script versions
-    for app in extension hub admin; do
-        rm -f "apps/$app/.env.bak"
-    done
-    
+
     echo "🧹 Clearing Plasmo cache and build artifacts to ensure environment update..."
     rm -rf apps/extension/.plasmo
     rm -rf apps/extension/build
@@ -81,9 +80,17 @@ else
     echo "🚀 Initializing Icecap Local Environment..."
     export PLASMO_PUBLIC_USE_EMULATOR=true
     export VITE_USE_EMULATOR=true
+
+    # Create .env.local for local mode too, because Plasmo prefers it over .env
+    for app in extension hub admin; do
+        printf 'PLASMO_PUBLIC_USE_EMULATOR=true\nVITE_USE_EMULATOR=true\n' > "apps/$app/.env.local"
+        echo "📦 Created apps/$app/.env.local (USE_EMULATOR=true override)"
+    done
 fi
 
 # Initial cleanup to ensure ports are free
+# ... (rest of the initial cleanup)
+
 echo "🧹 Cleaning up existing processes on emulator and mock ports..."
 PIDS=$(lsof -ti:4000,9099,8080,5001,5002,12111 2>/dev/null)
 if [ -n "$PIDS" ]; then
@@ -131,19 +138,22 @@ fi
 
 echo "🚀 Starting application dev servers..."
 if [ "$USE_PROD" = true ]; then
-    echo "🏗️  Building extension for production testing..."
+    echo "🏗️  Building extension for production testing (Production Backend)..."
     (cd apps/extension && pnpm build:chrome) 2>&1 | tee .extension.log
-    BUILD_STATUS=${PIPESTATUS[0]}
-    if [ $BUILD_STATUS -ne 0 ]; then
-        echo "❌ Extension build FAILED (exit $BUILD_STATUS). See .extension.log for details."
-        exit 1
-    fi
-    echo "✅ Extension built. Folder: apps/extension/build/chrome-mv3-prod"
-    echo "⚠️  IMPORTANT: Please LOAD or RELOAD the extension from apps/extension/build/chrome-mv3-prod in chrome://extensions"
+    
+    echo "🕒 Starting extension dev server (Production Backend, HMR enabled)..."
+    # Use default dev tag so it loads .env correctly, while .env.local overrides emulator settings
+    (cd apps/extension && pnpm dev > ../../.extension.log 2>&1) &
+    EXTENSION_PID=$!
+    echo "✅ Extension dev server backgrounded (PID: $EXTENSION_PID). Logs: .extension.log"
+    echo "⚠️  IMPORTANT: Please LOAD or RELOAD the extension from apps/extension/build/chrome-mv3-dev in chrome://extensions"
 else
+    echo "🏗️  Performing initial extension build (Local Emulator)..."
+    (cd apps/extension && pnpm plasmo build --target=chrome-mv3 --tag=dev) 2>&1 | tee .extension.log
+
     # Start extension dev server in background
-    echo "🕒 Starting extension dev server (HMR enabled)..."
-    (cd apps/extension && CHOKIDAR_USEPOLLING=true pnpm dev > ../../.extension.log 2>&1) &
+    echo "🕒 Starting extension dev server (Local Emulator, HMR enabled)..."
+    (cd apps/extension && pnpm dev > ../../.extension.log 2>&1) &
     EXTENSION_PID=$!
     echo "✅ Extension dev server backgrounded (PID: $EXTENSION_PID). Logs: .extension.log"
     echo "⚠️  IMPORTANT: Please LOAD the extension from apps/extension/build/chrome-mv3-dev in chrome://extensions"

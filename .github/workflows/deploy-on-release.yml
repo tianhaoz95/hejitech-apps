@@ -38,7 +38,11 @@ jobs:
           # This will set GOOGLE_APPLICATION_CREDENTIALS for the next steps
 
       - name: Verify Build Artifacts
+        env:
+          PLASMO_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.PLASMO_PUBLIC_GOOGLE_CLIENT_ID }}
         run: |
+          echo "PLASMO_PUBLIC_USE_EMULATOR=false" > apps/extension/.env
+          echo "PLASMO_PUBLIC_GOOGLE_CLIENT_ID=$PLASMO_PUBLIC_GOOGLE_CLIENT_ID" >> apps/extension/.env
           pnpm turbo run build
           pnpm --filter @icecap/extension package:sideload
           echo "✨ Checking build artifacts..."

@@ -46,10 +46,12 @@ jobs:
 
       - name: Build Extension Packages
         if: steps.get_version.outputs.version != steps.get_prev_version.outputs.prev_version
+        env:
+          PLASMO_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.PLASMO_PUBLIC_GOOGLE_CLIENT_ID }}
         run: |
-          # Use example env for build if real one not provided
-          # In a real production setup, these would be populated from secrets
           cp apps/extension/.env.example apps/extension/.env
+          echo "PLASMO_PUBLIC_USE_EMULATOR=false" >> apps/extension/.env
+          echo "PLASMO_PUBLIC_GOOGLE_CLIENT_ID=$PLASMO_PUBLIC_GOOGLE_CLIENT_ID" >> apps/extension/.env
           ./scripts/build-extension-all.sh
 
       - name: Create Release
