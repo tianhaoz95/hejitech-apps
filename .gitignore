@@ -40,3 +40,4 @@ coverage/
 
 # Logs
 *.log
+firebase/functions/.env

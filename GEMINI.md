@@ -87,6 +87,17 @@ Assets are stored in `reports/screenshots/`.
 - **Emulator Parity:** Always use `127.0.0.1` for emulator connections to ensure IPv4 consistency.
 - **Environment Variables:** Reference `.env.example` in each app directory. Plasmo variables must be prefixed with `PLASMO_PUBLIC_`.
 
+### Stripe Secrets & Environments
+- **Local Development:** Uses `stripe-mock`. `STRIPE_SECRET_KEY` defaults to `sk_test_mock` and `STRIPE_WEBHOOK_SECRET` defaults to `whsec_mock`. No real Stripe keys are required.
+- **Testing (Stripe Test Mode):** 
+  - Use `STRIPE_SECRET_KEY_TEST` (starts with `sk_test_`).
+  - Use `STRIPE_WEBHOOK_SECRET_TEST` (starts with `whsec_`).
+  - Required for staging/CI environments and verifying real-world logic against Stripe's test servers.
+- **Production:**
+  - Use `STRIPE_SECRET_KEY` (starts with `sk_live_`).
+  - Use `STRIPE_WEBHOOK_SECRET` (starts with `whsec_`).
+  - These keys must be stored in GitHub Repository Secrets and Firebase Secrets. Never commit them to the repository.
+
 ### AI Guidelines
 - **On-Demand:** AI deal analysis must be explicitly user-triggered to preserve quotas.
 - **Propose-Confirm:** AI agents (Co-Pilot) must never modify data without explicit user confirmation.
