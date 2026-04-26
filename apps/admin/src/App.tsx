@@ -4,7 +4,7 @@ import { onAuthStateChanged, signInWithPopup, signOut, type User } from "firebas
 import {
   ShieldCheck, Users, Activity, Tag, BarChart2, LogIn, LogOut, AlertTriangle
 } from "lucide-react"
-import { auth, googleProvider, functions } from "./core/firebase"
+import { auth, googleProvider, functions, useEmulator } from "./core/firebase"
 import { SystemHealthPage } from "./pages/SystemHealthPage"
 import { UsersPage } from "./pages/UsersPage"
 import { ScraperHealthPage } from "./pages/ScraperHealthPage"
@@ -20,8 +20,7 @@ function AdminGate({ children, user }: { children: React.ReactNode; user: User |
     }
 
     // In emulator mode all users are treated as admin
-    const isEmulator = import.meta.env.DEV
-    if (isEmulator) {
+    if (useEmulator) {
       setIsAdmin(true)
       return
     }

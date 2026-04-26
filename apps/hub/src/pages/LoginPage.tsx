@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { signInWithPopup, signInWithEmailAndPassword } from "firebase/auth"
+import { signInWithPopup, signInWithCredential } from "firebase/auth"
 import { PieChart, LogIn, Beaker } from "lucide-react"
-import { auth, googleProvider } from "../core/firebase"
+import { auth, googleProvider, useEmulator } from "../core/firebase"
 import { useAuth } from "../hooks/useAuth"
 
 export function LoginPage() {
@@ -18,10 +18,20 @@ export function LoginPage() {
     if (useEmulator) {
       setLoading(true)
       try {
-        await signInWithEmailAndPassword(auth, "hi@icecap.com", "TestPass123!")
+        console.log("Emulator detected: Performing deterministic Google login...")
+        const { GoogleAuthProvider, signInWithCredential } = await import("firebase/auth")
+        const credential = GoogleAuthProvider.credential(
+          JSON.stringify({
+            sub: "google-raw-id-icecap-main-user-2026",
+            email: "hi@icecap.com",
+            email_verified: true
+          }),
+          "mock-google-token"
+        )
+        await signInWithCredential(auth, credential)
         return
       } catch (e) {
-        console.error("Test login failed", e)
+        console.error("Local mock login failed", e)
       } finally {
         setLoading(false)
       }
@@ -33,7 +43,7 @@ export function LoginPage() {
     }
   }
 
-  const useEmulator = import.meta.env.VITE_USE_EMULATOR === "true" || import.meta.env.DEV
+
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">

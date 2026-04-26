@@ -1,16 +1,10 @@
 import { useEffect, useState, useCallback, useMemo } from "react"
-import { auth, googleProvider } from "./core/firebase"
-import { HUB_URL, IS_DEV } from "./core/constants"
-import { onAuthStateChanged, type User as FirebaseUser, signInWithPopup, signOut, signInWithEmailAndPassword } from "firebase/auth"
+import { auth, useEmulator, signInWithGoogle } from "./core/firebase"
+import { HUB_URL } from "./core/constants"
+import { onAuthStateChanged, type User as FirebaseUser, signOut, GoogleAuthProvider, signInWithCredential } from "firebase/auth/web-extension"
 import { ExternalLink, LogOut, RefreshCw, AlertCircle } from "lucide-react"
 import { Logo } from "./core/components/Logo"
 import "./style.css"
-
-const TEST_ACCOUNTS = [
-  { email: "pro-user@icecap-test.com", label: "Pro (Trial)" },
-  { email: "promax-user@icecap-test.com", label: "Pro Max (Active)" },
-  { email: "pastdue-user@icecap-test.com", label: "Past Due" },
-]
 
 export default function OptionsPage() {
   const [user, setUser] = useState<FirebaseUser | null>(null)
@@ -35,58 +29,23 @@ export default function OptionsPage() {
     return () => unsubscribeAuth()
   }, [isLoginView])
 
-  const checkConnection = useCallback(async () => {
-    if (!IS_DEV) return true
-    try {
-      await fetch("http://127.0.0.1:9099/", { mode: "no-cors" })
-      return true
-    } catch (e) {
-      return false
-    }
-  }, [])
-
   const handleLogin = useCallback(async () => {
     setIsLoggingIn(true)
     setLoginError(null)
 
-    if (IS_DEV) {
-      try {
-        await signInWithEmailAndPassword(auth, "hi@icecap.com", "TestPass123!")
-        return
-      } catch (e: any) {
-        setLoginError(`Local test login failed: ${e.message}`)
-        setIsLoggingIn(false)
-        return
-      }
-    }
-
-    const reachable = await checkConnection()
-    if (!reachable) {
-      setLoginError("Cannot reach Firebase Emulator at 127.0.0.1:9099. Ensure it is running.")
-      setIsLoggingIn(false)
-      return
-    }
     try {
-      await signInWithPopup(auth, googleProvider)
+      if (useEmulator) {
+        const credential = GoogleAuthProvider.credential(
+          JSON.stringify({ sub: "google-raw-id-icecap-main-user-2026", email: "hi@icecap.com", email_verified: true }),
+          "mock-google-token"
+        )
+        await signInWithCredential(auth, credential)
+      } else {
+        await signInWithGoogle()
+      }
     } catch (e: any) {
       console.error("Login failed", e)
-      setLoginError(e.message || "Authentication failed. Please try again.")
-    } finally {
-      setIsLoggingIn(false)
-    }
-  }, [checkConnection])
-
-  const handleTestLogin = useCallback(async (email: string) => {
-    if (!IS_DEV) return
-    setIsLoggingIn(true)
-    setLoginError(null)
-    const password = "TestPass123!"
-
-    try {
-      await signInWithEmailAndPassword(auth, email, password)
-    } catch (e: any) {
-      console.error("Test login failed", e)
-      setLoginError(`Test login failed. Ensure the emulator is seeded. (${e.message})`)
+      setLoginError(e.message || "Authentication failed.")
     } finally {
       setIsLoggingIn(false)
     }
@@ -123,9 +82,11 @@ export default function OptionsPage() {
           <p className="text-gray-500 mb-10 leading-relaxed">Sign in to sync your analyses across all devices.</p>
           
           {loginError && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 text-sm text-left">
-              <AlertCircle size={18} className="shrink-0" />
-              <p>{loginError}</p>
+            <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl flex flex-col gap-2 text-red-600 text-sm text-left font-medium">
+              <div className="flex items-center gap-2">
+                <AlertCircle size={16} className="shrink-0" />
+                <span>{loginError}</span>
+              </div>
             </div>
           )}
 

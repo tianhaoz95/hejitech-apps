@@ -5,7 +5,7 @@ import { getAuth, connectAuthEmulator, GoogleAuthProvider, signInWithEmailAndPas
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions"
 import { getAI, GoogleAIBackend } from "firebase/ai"
 
-const useEmulator = import.meta.env.VITE_USE_EMULATOR === "true" || import.meta.env.DEV
+const useEmulator = import.meta.env.VITE_USE_EMULATOR === "true"
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -43,4 +43,4 @@ if (useEmulator) {
   }
 }
 
-export { db, auth, functions, googleProvider, ai }
+export { db, auth, functions, googleProvider, ai, useEmulator }

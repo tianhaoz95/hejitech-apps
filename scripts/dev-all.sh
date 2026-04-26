@@ -47,12 +47,9 @@ cleanup() {
         kill -2 $MAIN_PID 2>/dev/null
     fi
 
-    # Restore .env files if they were backed up
+    # Remove prod env overrides
     for app in extension hub admin; do
-        if [ -f "apps/$app/.env.bak" ]; then
-            echo "Restoring apps/$app/.env..."
-            mv "apps/$app/.env.bak" "apps/$app/.env"
-        fi
+        rm -f "apps/$app/.env.local"
     done
     
     echo "✅ Cleanup complete."
@@ -67,21 +64,14 @@ if [ "$USE_PROD" = true ]; then
     export PLASMO_PUBLIC_USE_EMULATOR=false
     export VITE_USE_EMULATOR=false
 
-    # Temporary bypass local .env files that might override shell exports
+    # Override USE_EMULATOR via .env.local so .env is never modified
     for app in extension hub admin; do
-        if [ -f "apps/$app/.env" ]; then
-            echo "📦 Aggressive update to apps/$app/.env for production mode..."
-            cp "apps/$app/.env" "apps/$app/.env.bak"
-            # Remove all lines containing USE_EMULATOR into a temp file
-            grep -v "USE_EMULATOR" "apps/$app/.env.bak" > "apps/$app/.env"
-        fi
-        # Ensure they are at the top to ensure they take precedence
-        echo "PLASMO_PUBLIC_USE_EMULATOR=false" > "apps/$app/.env.tmp"
-        echo "VITE_USE_EMULATOR=false" >> "apps/$app/.env.tmp"
-        if [ -f "apps/$app/.env" ]; then
-            cat "apps/$app/.env" >> "apps/$app/.env.tmp"
-        fi
-        mv "apps/$app/.env.tmp" "apps/$app/.env"
+        printf 'PLASMO_PUBLIC_USE_EMULATOR=false\nVITE_USE_EMULATOR=false\n' > "apps/$app/.env.local"
+        echo "📦 Created apps/$app/.env.local (USE_EMULATOR=false override)"
+    done
+    # Clean up any stale .env.bak files from old script versions
+    for app in extension hub admin; do
+        rm -f "apps/$app/.env.bak"
     done
     
     echo "🧹 Clearing Plasmo cache and build artifacts to ensure environment update..."
@@ -141,13 +131,23 @@ fi
 
 echo "🚀 Starting application dev servers..."
 if [ "$USE_PROD" = true ]; then
-    echo "⚠️  IMPORTANT: Please RELOAD the extension in chrome://extensions to apply PRODUCTION settings!"
+    echo "🏗️  Building extension for production testing..."
+    (cd apps/extension && pnpm build:chrome) 2>&1 | tee .extension.log
+    BUILD_STATUS=${PIPESTATUS[0]}
+    if [ $BUILD_STATUS -ne 0 ]; then
+        echo "❌ Extension build FAILED (exit $BUILD_STATUS). See .extension.log for details."
+        exit 1
+    fi
+    echo "✅ Extension built. Folder: apps/extension/build/chrome-mv3-prod"
+    echo "⚠️  IMPORTANT: Please LOAD or RELOAD the extension from apps/extension/build/chrome-mv3-prod in chrome://extensions"
+else
+    # Start extension dev server in background
+    echo "🕒 Starting extension dev server (HMR enabled)..."
+    (cd apps/extension && CHOKIDAR_USEPOLLING=true pnpm dev > ../../.extension.log 2>&1) &
+    EXTENSION_PID=$!
+    echo "✅ Extension dev server backgrounded (PID: $EXTENSION_PID). Logs: .extension.log"
+    echo "⚠️  IMPORTANT: Please LOAD the extension from apps/extension/build/chrome-mv3-dev in chrome://extensions"
 fi
-
-# Start extension in background
-(cd apps/extension && CHOKIDAR_USEPOLLING=true pnpm dev > ../../.extension.log 2>&1) &
-EXTENSION_PID=$!
-echo "✅ Extension backgrounded (PID: $EXTENSION_PID). Logs: .extension.log"
 
 # Start the rest of the apps (Hub, Admin, Landing, etc.)
 # We run this in the background to catch signals in the parent shell script.

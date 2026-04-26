@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { collection, getDocs, query, orderBy, limit } from "firebase/firestore"
 import { Activity, CheckCircle, AlertTriangle, XCircle } from "lucide-react"
-import { db } from "../core/firebase"
+import { db, useEmulator } from "../core/firebase"
 
 type HealthStatus = "healthy" | "degraded" | "down" | "unknown"
 
@@ -81,7 +81,7 @@ export function SystemHealthPage() {
         </div>
         <div className="bg-white rounded-2xl p-5 border border-gray-100">
           <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-1">Environment</p>
-          <p className="text-3xl font-black text-blue-600">{import.meta.env.DEV ? "Emulator" : "Production"}</p>
+          <p className="text-3xl font-black text-blue-600">{useEmulator ? "Emulator" : "Production"}</p>
         </div>
       </div>
 

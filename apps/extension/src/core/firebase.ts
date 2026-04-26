@@ -1,24 +1,43 @@
 import { initializeApp, getApps } from "firebase/app"
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore"
-import { getAuth, connectAuthEmulator, GoogleAuthProvider } from "firebase/auth"
+import { getAuth, initializeAuth, connectAuthEmulator, GoogleAuthProvider, indexedDBLocalPersistence, signInWithCredential } from "firebase/auth/web-extension"
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions"
 
 const useEmulator =
-  process.env.PLASMO_PUBLIC_USE_EMULATOR === "true" ||
-  process.env.NODE_ENV === "development"
+  process.env.PLASMO_PUBLIC_USE_EMULATOR === "true"
+
+console.log("[Icecap Debug] PLASMO_PUBLIC_USE_EMULATOR is:", process.env.PLASMO_PUBLIC_USE_EMULATOR)
+console.log("[Icecap Debug] useEmulator evaluated to:", useEmulator)
+
+// Helper to get env var with fallback, ignoring dummy values like '...'
+const getEnv = (val: string | undefined, fallback: string) => {
+  if (!val || val === "..." || val.includes("YOUR_")) return fallback
+  return val
+}
 
 const firebaseConfig = {
   apiKey: "AIzaSyD1D2A0h-IUcIyJynq7lh_scNZL6IrXVpc",
-  authDomain: process.env.PLASMO_PUBLIC_FIREBASE_AUTH_DOMAIN ?? "demo-icecap.firebaseapp.com",
-  projectId: useEmulator ? "demo-icecap" : (process.env.PLASMO_PUBLIC_FIREBASE_PROJECT_ID ?? "icecap-platform"),
-  storageBucket: process.env.PLASMO_PUBLIC_FIREBASE_STORAGE_BUCKET ?? "demo-icecap.appspot.com",
-  messagingSenderId: process.env.PLASMO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? "117464393734",
-  appId: process.env.PLASMO_PUBLIC_FIREBASE_APP_ID ?? "1:117464393734:web:abcdef",
+  authDomain: getEnv(process.env.PLASMO_PUBLIC_FIREBASE_AUTH_DOMAIN, useEmulator ? "demo-icecap.firebaseapp.com" : "icecap-platform.firebaseapp.com"),
+  projectId: useEmulator ? "demo-icecap" : getEnv(process.env.PLASMO_PUBLIC_FIREBASE_PROJECT_ID, "icecap-platform"),
+  storageBucket: getEnv(process.env.PLASMO_PUBLIC_FIREBASE_STORAGE_BUCKET, useEmulator ? "demo-icecap.appspot.com" : "icecap-platform.firebasestorage.app"),
+  messagingSenderId: getEnv(process.env.PLASMO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID, "117464393734"),
+  appId: getEnv(process.env.PLASMO_PUBLIC_FIREBASE_APP_ID, useEmulator ? "1:117464393734:web:abcdef" : "1:117464393734:web:a6d327244b151879163b87"),
 }
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
 const db = getFirestore(app)
-const auth = getAuth(app)
+
+// Initialize Auth with IndexedDB persistence for extension environment
+// initializeAuth is tried first; on HMR it throws "already initialized" so we fall back to getAuth
+let auth;
+try {
+  auth = initializeAuth(app, {
+    persistence: indexedDBLocalPersistence
+  })
+} catch (e) {
+  auth = getAuth(app)
+}
+
 const functions = getFunctions(app)
 const googleProvider = new GoogleAuthProvider()
 googleProvider.setCustomParameters({ prompt: "select_account" })
@@ -37,4 +56,35 @@ if (useEmulator) {
   }
 }
 
-export { db, auth, functions, googleProvider }
+export const signInWithGoogle = (): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const clientId = process.env.PLASMO_PUBLIC_GOOGLE_CLIENT_ID
+    if (!clientId) {
+      reject(new Error("PLASMO_PUBLIC_GOOGLE_CLIENT_ID is not set in .env"))
+      return
+    }
+    const redirectURL = chrome.identity.getRedirectURL()
+    const authURL = new URL("https://accounts.google.com/o/oauth2/auth")
+    authURL.searchParams.set("client_id", clientId)
+    authURL.searchParams.set("response_type", "token")
+    authURL.searchParams.set("redirect_uri", redirectURL)
+    authURL.searchParams.set("scope", "email profile openid")
+
+    chrome.identity.launchWebAuthFlow({ url: authURL.toString(), interactive: true }, async (redirectUrl) => {
+      try {
+        if (chrome.runtime.lastError || !redirectUrl) {
+          reject(new Error(chrome.runtime.lastError?.message ?? "Authentication cancelled"))
+          return
+        }
+        const params = new URLSearchParams(new URL(redirectUrl).hash.slice(1))
+        const accessToken = params.get("access_token")
+        if (!accessToken) { reject(new Error("No access token in response")); return }
+        await signInWithCredential(auth, GoogleAuthProvider.credential(null, accessToken))
+        resolve()
+      } catch (e) {
+        reject(e)
+      }
+    })
+  })
+
+export { db, auth, functions, googleProvider, useEmulator }
