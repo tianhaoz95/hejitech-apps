@@ -156,11 +156,22 @@ function scrapePreviewCard(fallbackPrice: number) {
 
 // Send price immediately on click for instant sidebar feedback, then retry
 // to upgrade with full listing data as Redfin's SPA finishes rendering.
-const RETRY_DELAYS = [300, 800, 2000]
+//
+// Delays start at 1000ms (not 300ms) because Redfin calls history.pushState
+// synchronously inside its click handler (bubble phase, after our capture-phase
+// listener). That means onUrlChange fires and calls scheduleScrapeTries(0)
+// WITHIN THE SAME TICK as the pin click, restarting the retry chain with the
+// detail-page URL already set — but React hasn't re-rendered yet. Scraping at
+// 300ms reliably returns the PREVIOUS property's stale DOM data. 1000ms gives
+// the SPA enough time to fetch and render the new listing.
+const RETRY_DELAYS = [1000, 2500, 5000]
 let pendingScrape: ReturnType<typeof setTimeout> | null = null
+let scrapeGen = 0        // incremented on every scheduleScrapeTries call
+let lastPinClickMs = 0   // timestamp of the most recent pin click
 
 function scheduleScrapeTries(pinPrice: number) {
   if (pendingScrape) clearTimeout(pendingScrape)
+  const gen = ++scrapeGen
 
   // Instant feedback: push price right away so the sidebar reacts immediately
   if (pinPrice > 0) {
@@ -174,6 +185,7 @@ function scheduleScrapeTries(pinPrice: number) {
   const next = () => {
     if (i >= RETRY_DELAYS.length) return
     pendingScrape = setTimeout(() => {
+      if (gen !== scrapeGen) return  // superseded by a newer click or navigation
       i++
       if (/\/home\/\d+/.test(window.location.pathname)) {
         const full = scrapeRedfin()
@@ -197,6 +209,7 @@ document.addEventListener("click", (e: MouseEvent) => {
     '[data-rf-test-name="home-marker"], [data-dd-action-name="map_pushpin"]'
   )
   if (!pin) return
+  lastPinClickMs = Date.now()
   const priceEl = pin.querySelector('[data-rf-test-name="pushpin-price-text"]')
   const pinPrice = priceEl ? parsePrice(textNodesOf(priceEl)) : 0
   scheduleScrapeTries(pinPrice)
@@ -212,7 +225,12 @@ function onUrlChange() {
   if (url === lastDetectedUrl) return
   lastDetectedUrl = url
   if (/\/home\/\d+/.test(window.location.pathname)) {
-    scheduleScrapeTries(0)
+    // If a pin was recently clicked, its own retry chain is already running and
+    // timed correctly. Don't restart with a competing chain — that would cancel
+    // the pin chain and re-start from t=0 with the stale DOM still in place.
+    if (Date.now() - lastPinClickMs > 5000) {
+      scheduleScrapeTries(0)
+    }
   }
 }
 

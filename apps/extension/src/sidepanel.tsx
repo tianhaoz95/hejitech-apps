@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react"
 import {
-  Search, Save, Download, LogOut, LogIn, LayoutPanelTop,
+  Search, Heart, LogOut, LogIn, LayoutPanelTop,
   User, Zap, AlertTriangle, Crown, RefreshCw, Home, TrendingUp, Sparkles, Calculator, ChevronDown,
   Bot, Send,
 } from "lucide-react"
@@ -527,30 +527,6 @@ export default function SidePanel() {
     }
   }, [user, store, isSubscribed, metrics])
 
-  const handleExport = useCallback(() => {
-    const rows = [
-      ["Address", store.address],
-      ["Price", store.price],
-      ["Mode", store.mode],
-      ...(store.mode !== "flip"
-        ? [
-            ["Monthly Cash Flow", metrics.rental.monthlyCashFlow],
-            ["Cap Rate %", metrics.rental.capRate],
-            ["CoC Return %", metrics.rental.cocReturn],
-          ]
-        : [
-            ["Flip Profit", metrics.flip.flipProfit],
-            ["Flip ROI %", metrics.flip.flipROI],
-            ["MAO", metrics.flip.mao],
-          ]),
-    ]
-    const csv = rows.map(([k, v]) => `${k},${v}`).join("\n")
-    const a = document.createElement("a")
-    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }))
-    a.download = `icecap-${(store.address || "analysis").replace(/\s+/g, "-")}.csv`
-    a.click()
-  }, [store, metrics])
-
   const handleFetchRent = useCallback(async () => {
     if (!store.price) return
     setIsFetchingRent(true)
@@ -770,22 +746,14 @@ export default function SidePanel() {
           <button
             onClick={handleSave}
             disabled={isSaving || !store.address || !user || !isSubscribed}
-            title="Save"
+            title="Like"
             className={`p-2 rounded-lg transition-colors disabled:opacity-30 ${
-              saveStatus === "saved" ? "text-green-600 bg-green-50"
+              saveStatus === "saved" ? "text-red-500 bg-red-50"
               : saveStatus === "error" ? "text-red-600 bg-red-50"
               : "text-gray-500 hover:bg-gray-100"
             }`}
           >
-            <Save size={17} />
-          </button>
-          <button
-            onClick={handleExport}
-            disabled={!store.address}
-            title="Export CSV"
-            className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 disabled:opacity-30"
-          >
-            <Download size={17} />
+            <Heart size={17} className={saveStatus === "saved" ? "fill-current" : ""} />
           </button>
         </div>
       </header>

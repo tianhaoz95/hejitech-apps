@@ -112,11 +112,14 @@ function sendProperty(data: object) {
   })
 }
 
-const RETRY_DELAYS = [300, 800, 2000]
+const RETRY_DELAYS = [1000, 2500, 5000]
 let pendingScrape: ReturnType<typeof setTimeout> | null = null
+let scrapeGen = 0
+let lastPinClickMs = 0
 
 function scheduleScrapeTries(pinPrice: number) {
   if (pendingScrape) clearTimeout(pendingScrape)
+  const gen = ++scrapeGen
 
   if (pinPrice > 0) {
     sendProperty({ price: pinPrice, address: "", taxes: 0, hoa: 0, description: "", url: window.location.href })
@@ -126,6 +129,7 @@ function scheduleScrapeTries(pinPrice: number) {
   const next = () => {
     if (i >= RETRY_DELAYS.length) return
     pendingScrape = setTimeout(() => {
+      if (gen !== scrapeGen) return
       i++
       if (window.location.pathname.startsWith("/realestateandhomes-detail/")) {
         const full = scrapeRealtor()
@@ -146,6 +150,7 @@ document.addEventListener("click", (e: MouseEvent) => {
     "[class*='marker'][class*='price'], [class*='Marker'][class*='price']"
   )
   if (!pin) return
+  lastPinClickMs = Date.now()
   const priceEl = pin.querySelector<HTMLElement>("[data-testid='card-price'], [class*='price']")
   const pinPrice = priceEl ? parsePrice(textNodesOf(priceEl)) : 0
   scheduleScrapeTries(pinPrice)
@@ -160,7 +165,9 @@ function onUrlChange() {
   if (url === lastDetectedUrl) return
   lastDetectedUrl = url
   if (window.location.pathname.startsWith("/realestateandhomes-detail/")) {
-    scheduleScrapeTries(0)
+    if (Date.now() - lastPinClickMs > 5000) {
+      scheduleScrapeTries(0)
+    }
   }
 }
 
