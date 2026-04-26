@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react"
 import {
   Search, Save, Download, LogOut, LogIn, LayoutPanelTop,
-  User, Zap, AlertTriangle, Crown, RefreshCw, Home, TrendingUp, Sparkles, Calculator,
+  User, Zap, AlertTriangle, Crown, RefreshCw, Home, TrendingUp, Sparkles, Calculator, ChevronDown,
 } from "lucide-react"
 import {
   onAuthStateChanged, signOut, GoogleAuthProvider, signInWithCredential, type User as FBUser,
@@ -109,6 +109,212 @@ function MetricBox({ label, value, large }: { label: string; value: string; larg
   )
 }
 
+function CalcRow({
+  label, formula, value, sign,
+}: {
+  label: string; formula?: string; value: string; sign?: "positive" | "negative"
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3 py-1.5 border-b border-gray-50 last:border-0">
+      <div className="flex-1 min-w-0">
+        <span className="text-xs text-gray-700">{label}</span>
+        {formula && <p className="text-[10px] text-gray-400 font-mono mt-0.5 leading-tight">{formula}</p>}
+      </div>
+      <span className={`text-xs font-semibold shrink-0 tabular-nums ${
+        sign === "positive" ? "text-green-600" : sign === "negative" ? "text-red-500" : "text-gray-900"
+      }`}>
+        {value}
+      </span>
+    </div>
+  )
+}
+
+function CalcGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="mt-3 first:mt-0">
+      <p className="text-[9px] text-gray-400 uppercase font-bold tracking-widest mb-0.5">{title}</p>
+      {children}
+    </div>
+  )
+}
+
+function RentalBreakdown({
+  price, taxes, hoa, estimatedRent, rehabCost, assumptions, metrics,
+}: {
+  price: number; taxes: number; hoa: number; estimatedRent: number; rehabCost: number;
+  assumptions: import("./core/math").PropertyAssumptions;
+  metrics: import("./core/math").RentalMetrics;
+}) {
+  const { downPaymentPercent, interestRate, loanTermYears, vacancyRate, maintenanceRate, managementFeeRate, closingCostsPercent } = assumptions
+  const down = price * (downPaymentPercent / 100)
+  const loan = price - down
+  const monthlyTaxes = taxes / 12
+  const vacancy = (vacancyRate / 100) * estimatedRent
+  const maintenance = (maintenanceRate / 100) * estimatedRent
+  const management = (managementFeeRate / 100) * estimatedRent
+  const cashFlowSign = metrics.monthlyCashFlow >= 0 ? "positive" : "negative"
+
+  return (
+    <div>
+      <CalcGroup title="Income">
+        <CalcRow label="Monthly Rent" value={`${fmt(estimatedRent)}/mo`} />
+      </CalcGroup>
+
+      <CalcGroup title="Financing">
+        <CalcRow
+          label="Down Payment"
+          formula={`${downPaymentPercent}% × ${fmt(price)}`}
+          value={fmt(down)}
+        />
+        <CalcRow
+          label="Loan Amount"
+          formula={`${fmt(price)} − ${fmt(down)}`}
+          value={fmt(loan)}
+        />
+        <CalcRow
+          label="Monthly Mortgage"
+          formula={`${fmt(loan)} at ${interestRate}% / ${loanTermYears}yr`}
+          value={`${fmt(metrics.monthlyMortgage)}/mo`}
+        />
+      </CalcGroup>
+
+      <CalcGroup title="Monthly Expenses">
+        <CalcRow
+          label="Property Taxes"
+          formula={`${fmt(taxes)}/yr ÷ 12`}
+          value={`${fmt(monthlyTaxes)}/mo`}
+        />
+        {hoa > 0 && <CalcRow label="HOA" value={`${fmt(hoa)}/mo`} />}
+        <CalcRow
+          label="Vacancy"
+          formula={`${vacancyRate}% × ${fmt(estimatedRent)}`}
+          value={`${fmt(vacancy)}/mo`}
+        />
+        <CalcRow
+          label="Maintenance"
+          formula={`${maintenanceRate}% × ${fmt(estimatedRent)}`}
+          value={`${fmt(maintenance)}/mo`}
+        />
+        <CalcRow
+          label="Management"
+          formula={`${managementFeeRate}% × ${fmt(estimatedRent)}`}
+          value={`${fmt(management)}/mo`}
+        />
+        <CalcRow label="Total Expenses" value={`${fmt(metrics.monthlyExpenses)}/mo`} />
+      </CalcGroup>
+
+      <CalcGroup title="Cash Flow">
+        <CalcRow
+          label="Monthly Cash Flow"
+          formula={`${fmt(estimatedRent)} − ${fmt(metrics.monthlyMortgage)} − ${fmt(metrics.monthlyExpenses)}`}
+          value={`${fmt(metrics.monthlyCashFlow)}/mo`}
+          sign={cashFlowSign}
+        />
+        <CalcRow
+          label="Annual Cash Flow"
+          formula={`${fmt(metrics.monthlyCashFlow)}/mo × 12`}
+          value={fmt(metrics.annualCashFlow)}
+          sign={cashFlowSign}
+        />
+      </CalcGroup>
+
+      <CalcGroup title="Returns">
+        <CalcRow
+          label="NOI"
+          formula={`(${fmt(estimatedRent)} − ${fmt(metrics.monthlyExpenses)}) × 12`}
+          value={fmt(metrics.noi)}
+        />
+        <CalcRow
+          label="Cap Rate"
+          formula={`${fmt(metrics.noi)} ÷ ${fmt(price)}`}
+          value={fmtPct(metrics.capRate)}
+        />
+        <CalcRow
+          label="Cash to Close"
+          formula={`${fmt(down)} down + ${fmt(rehabCost)} rehab + ${closingCostsPercent}% closing`}
+          value={fmt(metrics.totalCashToClose)}
+        />
+        <CalcRow
+          label="Cash-on-Cash Return"
+          formula={`${fmt(metrics.annualCashFlow)} ÷ ${fmt(metrics.totalCashToClose)}`}
+          value={fmtPct(metrics.cocReturn)}
+          sign={cashFlowSign}
+        />
+        <CalcRow
+          label="GRM"
+          formula={`${fmt(price)} ÷ (${fmt(estimatedRent)} × 12)`}
+          value={metrics.grm.toFixed(1)}
+        />
+        <CalcRow
+          label="1% Rule"
+          formula={`${fmt(estimatedRent)} ÷ ${fmt(price)}`}
+          value={fmtPct(metrics.onePercentRule)}
+        />
+      </CalcGroup>
+    </div>
+  )
+}
+
+function FlipBreakdown({
+  price, rehabCost, arv, holdingCosts, assumptions, metrics,
+}: {
+  price: number; rehabCost: number; arv: number; holdingCosts: number;
+  assumptions: import("./core/math").PropertyAssumptions;
+  metrics: import("./core/math").FlipMetrics;
+}) {
+  const { downPaymentPercent, sellingCostsPercent } = assumptions
+  const cashIn = price * (downPaymentPercent / 100) + rehabCost + holdingCosts
+  const profitSign = metrics.flipProfit >= 0 ? "positive" : "negative"
+
+  return (
+    <div>
+      <CalcGroup title="Total Basis">
+        <CalcRow label="Purchase Price" value={fmt(price)} />
+        {rehabCost > 0 && <CalcRow label="Rehab Cost" value={fmt(rehabCost)} />}
+        {holdingCosts > 0 && <CalcRow label="Holding Costs" value={fmt(holdingCosts)} />}
+        <CalcRow
+          label="Selling Costs"
+          formula={`${sellingCostsPercent}% × ${fmt(arv)}`}
+          value={fmt(metrics.sellingCosts)}
+        />
+        <CalcRow label="Total Basis" value={fmt(metrics.totalBasis)} />
+      </CalcGroup>
+
+      <CalcGroup title="Profit">
+        <CalcRow label="After-Repair Value (ARV)" value={fmt(arv)} />
+        <CalcRow
+          label="Profit"
+          formula={`${fmt(arv)} − ${fmt(metrics.totalBasis)}`}
+          value={fmt(metrics.flipProfit)}
+          sign={profitSign}
+        />
+      </CalcGroup>
+
+      <CalcGroup title="ROI">
+        <CalcRow
+          label="Cash Invested"
+          formula={`${downPaymentPercent}% × ${fmt(price)} + rehab + holding`}
+          value={fmt(cashIn)}
+        />
+        <CalcRow
+          label="Return on Investment"
+          formula={`${fmt(metrics.flipProfit)} ÷ ${fmt(cashIn)}`}
+          value={fmtPct(metrics.flipROI)}
+          sign={profitSign}
+        />
+      </CalcGroup>
+
+      <CalcGroup title="70% Rule">
+        <CalcRow
+          label="Max Allowable Offer"
+          formula={`${fmt(arv)} × 70% − ${fmt(rehabCost)}`}
+          value={fmt(metrics.mao)}
+        />
+      </CalcGroup>
+    </div>
+  )
+}
+
 // ── Main Panel ─────────────────────────────────────────────────────────────
 
 export default function SidePanel() {
@@ -135,9 +341,20 @@ export default function SidePanel() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [aiSummary, setAiSummary] = useState("")
   const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle")
+  const [showBreakdown, setShowBreakdown] = useState(false)
 
   const handleOpenHub = useCallback(() => {
     chrome.tabs.create({ url: HUB_URL })
+  }, [])
+
+  useEffect(() => {
+    const handler = (msg: { action: string; data?: any }) => {
+      if (msg.action === "propertyDetected" && msg.data) {
+        usePropertyStore.getState().loadFromScrape(msg.data)
+      }
+    }
+    chrome.runtime.onMessage.addListener(handler)
+    return () => chrome.runtime.onMessage.removeListener(handler)
   }, [])
 
   useEffect(() => {
@@ -651,6 +868,49 @@ export default function SidePanel() {
             </div>
           )}
         </div>
+
+        {/* Calculation Breakdown */}
+        {store.price > 0 && (
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+            <button
+              onClick={() => setShowBreakdown((v) => !v)}
+              className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Calculator size={13} className="text-gray-400" />
+                <span className="text-[10px] text-gray-500 uppercase font-semibold tracking-wide">How We Calculated This</span>
+              </div>
+              <ChevronDown
+                size={14}
+                className={`text-gray-400 transition-transform duration-200 ${showBreakdown ? "rotate-180" : ""}`}
+              />
+            </button>
+            {showBreakdown && (
+              <div className="px-4 pb-4 border-t border-gray-50">
+                {store.mode !== "flip" ? (
+                  <RentalBreakdown
+                    price={store.price}
+                    taxes={store.taxes}
+                    hoa={store.hoa}
+                    estimatedRent={store.estimatedRent}
+                    rehabCost={store.rehabCost}
+                    assumptions={store.assumptions}
+                    metrics={metrics.rental}
+                  />
+                ) : (
+                  <FlipBreakdown
+                    price={store.price}
+                    rehabCost={store.rehabCost}
+                    arv={store.arv}
+                    holdingCosts={store.holdingCosts}
+                    assumptions={store.assumptions}
+                    metrics={metrics.flip}
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* AI Insight */}
         {user && isSubscribed && (

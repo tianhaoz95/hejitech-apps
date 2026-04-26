@@ -93,6 +93,81 @@ function injectBadges() {
   })
 }
 
+// ─── Auto-scrape helpers ──────────────────────────────────────────────────
+
+function textNodesOf(el: Element): string {
+  return Array.from(el.childNodes)
+    .filter((n) => n.nodeType === Node.TEXT_NODE)
+    .map((n) => n.textContent?.trim())
+    .join("")
+    .trim()
+}
+
+function sendProperty(data: object) {
+  chrome.runtime.sendMessage({ action: "propertyDetected", data }, () => {
+    void chrome.runtime.lastError
+  })
+}
+
+const RETRY_DELAYS = [300, 800, 2000]
+let pendingScrape: ReturnType<typeof setTimeout> | null = null
+
+function scheduleScrapeTries(pinPrice: number) {
+  if (pendingScrape) clearTimeout(pendingScrape)
+
+  if (pinPrice > 0) {
+    sendProperty({ price: pinPrice, address: "", taxes: 0, hoa: 0, description: "", url: window.location.href })
+  }
+
+  let i = 0
+  const next = () => {
+    if (i >= RETRY_DELAYS.length) return
+    pendingScrape = setTimeout(() => {
+      i++
+      const full = scrapeRealtor()
+      if (full.price > 0 || full.address) { sendProperty(full); return }
+      next()
+    }, RETRY_DELAYS[i])
+  }
+  next()
+}
+
+// ─── Document-level pin click detection ──────────────────────────────────
+
+document.addEventListener("click", (e: MouseEvent) => {
+  const target = e.target as HTMLElement
+  const pin = target.closest<HTMLElement>(
+    "[data-testid='map-pin'], [class*='map-pin'], [class*='MapPin'], " +
+    "[class*='marker'][class*='price'], [class*='Marker'][class*='price']"
+  )
+  if (!pin) return
+  const priceEl = pin.querySelector<HTMLElement>("[data-testid='card-price'], [class*='price']")
+  const pinPrice = priceEl ? parsePrice(textNodesOf(priceEl)) : 0
+  scheduleScrapeTries(pinPrice)
+}, true)
+
+// ─── SPA navigation detection ─────────────────────────────────────────────
+
+let lastDetectedUrl = ""
+
+function onUrlChange() {
+  const url = window.location.href
+  if (url === lastDetectedUrl) return
+  lastDetectedUrl = url
+  if (window.location.pathname.startsWith("/realestateandhomes-detail/")) {
+    scheduleScrapeTries(0)
+  }
+}
+
+const _origPushState = history.pushState.bind(history)
+history.pushState = function (...args: Parameters<typeof history.pushState>) {
+  _origPushState(...args)
+  onUrlChange()
+}
+window.addEventListener("popstate", onUrlChange)
+
+// ─── Message listener ─────────────────────────────────────────────────────
+
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.action === "scrape") {
     sendResponse(scrapeRealtor())
@@ -100,6 +175,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   return true
 })
 
+// ─── Badge injection with MutationObserver ────────────────────────────────
+
 injectBadges()
+onUrlChange()
 const observer = new MutationObserver(injectBadges)
 observer.observe(document.body, { childList: true, subtree: true })

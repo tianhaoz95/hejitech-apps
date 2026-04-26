@@ -24,6 +24,11 @@ export default defineConfig({
       testMatch: ["tests/extension.spec.ts", "tests/screenshots.spec.ts"],
     },
     {
+      name: "pin-click",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: ["tests/pin-click-investigation.spec.ts"],
+    },
+    {
       name: "golden-path",
       use: { ...devices["Desktop Chrome"] },
       testMatch: ["tests/golden-path.spec.ts"],
