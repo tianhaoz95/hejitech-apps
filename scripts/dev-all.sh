@@ -45,7 +45,7 @@ trap cleanup SIGINT SIGTERM EXIT
 
 # File-watching backends (improves reliability on macOS / Linux)
 export CHOKIDAR_USEPOLLING=true
-export PARCEL_WATCHER_BACKEND=polling
+export PARCEL_WATCHER_BACKEND=brute-force
 
 # ── Environment setup ─────────────────────────────────────────────────────────
 
@@ -117,43 +117,31 @@ MAIN_PID=$!
 echo "Apps running in background. Logs: .turbo.log"
 
 # ── Extension: initial build so it can be loaded immediately ─────────────────
+# Both modes output to chrome-mv3-dev.  "prod" vs "local" is purely the
+# PLASMO_PUBLIC_USE_EMULATOR env var — not the directory name.
 
 echo ""
-if [ "$USE_PROD" = true ]; then
-    echo "Building extension for production (chrome-mv3-prod)..."
-    (cd apps/extension && pnpm build:chrome) 2>&1 | tee .extension.log
-    LOAD_PATH="apps/extension/build/chrome-mv3-prod"
-else
-    echo "Building extension for local emulator (chrome-mv3-dev)..."
-    (cd apps/extension && pnpm plasmo build --target=chrome-mv3 --tag=dev) 2>&1 | tee .extension.log
-    LOAD_PATH="apps/extension/build/chrome-mv3-dev"
-fi
+echo "Building extension (initial)..."
+(cd apps/extension && pnpm plasmo build --target=chrome-mv3 --tag=dev) 2>&1 | tee .extension.log
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  Load or reload the extension from:"
-echo "  $LOAD_PATH"
+echo "  apps/extension/build/chrome-mv3-dev"
 echo "  in chrome://extensions (enable Developer mode first)"
 echo ""
 echo "  Apps:      Vite HMR active — browser tabs refresh automatically"
-echo "  Extension: Plasmo watch active — rebuilds to chrome-mv3-dev, reload manually"
+echo "  Extension: Plasmo watch active — reload manually after each rebuild"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  Press Ctrl+C once to stop everything."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
 # ── Extension: watch mode in foreground ───────────────────────────────────────
-# Running in the foreground means rebuild output is always visible in this
-# terminal.  Ctrl+C interrupts pnpm dev and triggers the cleanup trap above.
-#
-# --prod:  plasmo dev --tag=prod  →  chrome-mv3-prod  (same dir as initial build)
-# local:   plasmo dev             →  chrome-mv3-dev   (same dir as initial build)
+# pnpm dev (Plasmo) crashes on Node 24 via @parcel/watcher FSEvents bug.
+# scripts/watch-extension.js uses chokidar polling as a reliable replacement.
 
-if [ "$USE_PROD" = true ]; then
-    (cd apps/extension && pnpm exec plasmo dev --tag=prod) 2>&1 | tee -a .extension.log
-else
-    (cd apps/extension && pnpm dev) 2>&1 | tee -a .extension.log
-fi
+node scripts/watch-extension.js 2>&1 | tee -a .extension.log
 
 # Extension dev server exited on its own — clean up everything
 cleanup
