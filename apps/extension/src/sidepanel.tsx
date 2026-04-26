@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react"
 import {
   Search, Save, Download, LogOut, LogIn, LayoutPanelTop,
-  User, Zap, AlertTriangle, Crown, RefreshCw, Home, TrendingUp, Sparkles,
+  User, Zap, AlertTriangle, Crown, RefreshCw, Home, TrendingUp, Sparkles, Calculator,
 } from "lucide-react"
 import {
   onAuthStateChanged, signOut, GoogleAuthProvider, signInWithCredential, type User as FBUser,
