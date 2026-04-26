@@ -94,6 +94,54 @@ function injectBadges() {
   })
 }
 
+// ─── Map pin badge injection (streamlined pill markers) ───────────────────
+// Zillow's map uses pill-shaped markers like:
+//   <div data-test="property-marker" ...>
+//     <div style="overflow:hidden">199K</div>
+//   </div>
+// The inner div clips overflow, so we append the badge to the outer container.
+
+function injectMapPinBadges() {
+  const pins = document.querySelectorAll<HTMLElement>(
+    `[data-test="property-marker"]:not([${PROCESSED_ATTR}])`
+  )
+  pins.forEach((pin) => {
+    const priceDiv = pin.querySelector<HTMLElement>("div")
+    if (!priceDiv) return
+    const text = priceDiv.textContent?.trim() ?? ""
+    if (!text) return
+    const price = parsePrice(text)
+    if (!price || price < 10_000) return
+
+    pin.setAttribute(PROCESSED_ATTR, "true")
+    const cashFlow = quickCashFlowEstimate(price, currentAssumptions)
+
+    const badge = document.createElement("span")
+    badge.className = BADGE_CLASS
+    badge.dataset.icecapPrice = String(price)
+    badge.textContent = cashFlow >= 0 ? `+$${cashFlow}` : `-$${Math.abs(cashFlow)}`
+    Object.assign(badge.style, {
+      marginLeft: "4px",
+      padding: "1px 4px",
+      borderRadius: "3px",
+      fontSize: "9px",
+      fontWeight: "900",
+      fontFamily: "sans-serif",
+      color: "white",
+      backgroundColor: cashFlow >= 0 ? "#16a34a" : "#dc2626",
+      display: "inline-flex",
+      alignItems: "center",
+      verticalAlign: "middle",
+      boxShadow: "0 1px 2px rgba(0,0,0,0.25)",
+      border: "1px solid white",
+      whiteSpace: "nowrap",
+    })
+    // Allow the outer container to show the badge beyond the clipped inner div
+    pin.style.overflow = "visible"
+    pin.appendChild(badge)
+  })
+}
+
 // ─── Auto-scrape helpers ──────────────────────────────────────────────────
 
 function textNodesOf(el: Element): string {
@@ -161,15 +209,19 @@ function scheduleScrapeTries(pinPrice: number) {
 
 document.addEventListener("click", (e: MouseEvent) => {
   const target = e.target as HTMLElement
-  // Zillow map pins are buttons with data-zpid, or elements with pushpin/marker class names
+  // Zillow map pins: data-zpid buttons, pushpin classes, or streamlined pill markers
   const pin = target.closest<HTMLElement>(
     "[data-zpid], button[class*='pushpin'], button[class*='Pushpin'], " +
-    "[class*='marker'][class*='price'], [class*='Marker'][class*='price']"
+    "[class*='marker'][class*='price'], [class*='Marker'][class*='price'], " +
+    "[data-test='property-marker']"
   )
   if (!pin) return
   lastPinClickMs = Date.now()
   const priceEl = pin.querySelector<HTMLElement>("[data-test='property-card-price'], [class*='Price']")
-  const pinPrice = priceEl ? parsePrice(textNodesOf(priceEl)) : 0
+  // For streamlined pill markers the price lives in the first child div
+  const mapPillDiv = pin.matches("[data-test='property-marker']") ? pin.querySelector<HTMLElement>("div") : null
+  const priceSource = priceEl ?? mapPillDiv
+  const pinPrice = priceSource ? parsePrice(textNodesOf(priceSource)) : 0
   scheduleScrapeTries(pinPrice)
 }, true)
 
@@ -204,6 +256,7 @@ function refreshBadges() {
     badge.style.backgroundColor = cashFlow >= 0 ? "#16a34a" : "#dc2626"
   })
   injectBadges()
+  injectMapPinBadges()
 }
 
 // ─── Message listener ─────────────────────────────────────────────────────
@@ -234,6 +287,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 // ─── Badge injection with MutationObserver ────────────────────────────────
 
 injectBadges()
+injectMapPinBadges()
 onUrlChange()
-const observer = new MutationObserver(injectBadges)
+const observer = new MutationObserver(() => { injectBadges(); injectMapPinBadges() })
 observer.observe(document.body, { childList: true, subtree: true })

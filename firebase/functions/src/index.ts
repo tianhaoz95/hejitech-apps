@@ -95,15 +95,30 @@ export const validatePromoCode = onCall({ cors: true }, async (request) => {
 export const createCheckoutSession = onCall({ cors: true }, async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "Login required")
 
-  const { tier, promoCode, successUrl, cancelUrl } = request.data ?? {}
-  if (!tier || !successUrl || !cancelUrl) {
-    throw new HttpsError("invalid-argument", "tier, successUrl, cancelUrl are required")
+  const { tier, promoCode, successUrl, cancelUrl, lookupKey } = request.data ?? {}
+  
+  let priceId: string
+  
+  if (lookupKey) {
+    const prices = await stripe.prices.list({
+      lookup_keys: [lookupKey],
+      expand: ["data.product"],
+    })
+    if (prices.data.length === 0) {
+      throw new HttpsError("not-found", "Price not found for lookup key")
+    }
+    priceId = prices.data[0].id
+  } else {
+    if (!tier) throw new HttpsError("invalid-argument", "tier or lookupKey is required")
+    priceId =
+      tier === "pro_max"
+        ? (process.env.STRIPE_PRICE_ID_PRO_MAX ?? "price_pro_max_mock")
+        : (process.env.STRIPE_PRICE_ID_PRO ?? "price_pro_mock")
   }
 
-  const priceId =
-    tier === "pro_max"
-      ? (process.env.STRIPE_PRICE_ID_PRO_MAX ?? "price_pro_max_mock")
-      : (process.env.STRIPE_PRICE_ID_PRO ?? "price_pro_mock")
+  if (!successUrl || !cancelUrl) {
+    throw new HttpsError("invalid-argument", "successUrl and cancelUrl are required")
+  }
 
   // Look up or create Stripe customer
   let customerId: string | undefined
@@ -114,15 +129,18 @@ export const createCheckoutSession = onCall({ cors: true }, async (request) => {
 
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     mode: "subscription",
+    billing_address_collection: "auto",
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: successUrl + "?session_id={CHECKOUT_SESSION_ID}",
-    cancel_url: cancelUrl,
+    success_url: successUrl.includes("?") 
+      ? `${successUrl}&session_id={CHECKOUT_SESSION_ID}` 
+      : `${successUrl}?success=true&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: cancelUrl.includes("?") ? `${cancelUrl}&canceled=true` : `${cancelUrl}?canceled=true`,
     subscription_data: {
       trial_period_days: tier === "pro" ? 30 : undefined,
     },
     metadata: {
       uid: request.auth.uid,
-      tier,
+      tier: tier ?? "custom",
     },
   }
 
@@ -158,17 +176,23 @@ export const createCheckoutSession = onCall({ cors: true }, async (request) => {
 export const createPortalSession = onCall({ cors: true }, async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "Login required")
 
-  const { returnUrl } = request.data ?? {}
+  const { returnUrl, sessionId } = request.data ?? {}
   if (!returnUrl) {
     throw new HttpsError("invalid-argument", "returnUrl is required")
   }
 
-  const subSnap = await db.collection("subscriptions").doc(request.auth.uid).get()
-  if (!subSnap.exists) {
-    throw new HttpsError("not-found", "No subscription found for this user")
+  let customerId: string | undefined
+
+  if (sessionId) {
+    const checkoutSession = await stripe.checkout.sessions.retrieve(sessionId)
+    customerId = typeof checkoutSession.customer === "string" ? checkoutSession.customer : checkoutSession.customer?.id
+  } else {
+    const subSnap = await db.collection("subscriptions").doc(request.auth.uid).get()
+    if (subSnap.exists) {
+      customerId = subSnap.data()?.stripeCustomerId
+    }
   }
 
-  const customerId = subSnap.data()?.stripeCustomerId
   if (!customerId) {
     throw new HttpsError("not-found", "No Stripe customer found for this user")
   }
@@ -183,7 +207,7 @@ export const createPortalSession = onCall({ cors: true }, async (request) => {
 
 // ─── stripeWebhook ─────────────────────────────────────────────────────────
 export const stripeWebhook = onRequest({ cors: false }, async (req, res) => {
-  logger.info("Stripe Webhook received", { method: req.method, body: req.body })
+  logger.info("Stripe Webhook received", { method: req.method })
   
   if (req.method !== "POST") {
     res.status(405).send("Method Not Allowed")
@@ -195,10 +219,11 @@ export const stripeWebhook = onRequest({ cors: false }, async (req, res) => {
 
   let event: Stripe.Event
   try {
+    // req.rawBody is provided by Firebase Functions
     event = stripe.webhooks.constructEvent(req.rawBody, sig as string, webhookSecret)
   } catch (e) {
     logger.error("Webhook signature verification failed", e)
-    // In emulator mode, skip signature check
+    // In emulator mode, skip signature check if secret is not set correctly
     if (isEmulator) {
       event = req.body as Stripe.Event
     } else {
@@ -227,8 +252,8 @@ async function handleStripeEvent(event: Stripe.Event): Promise<void> {
       
       logger.info(`Checkout completed for UID: ${uid}, Tier: ${tier}`)
       
-      if (!uid || !tier) {
-        logger.error("Missing UID or Tier in session metadata", session.metadata)
+      if (!uid) {
+        logger.error("Missing UID in session metadata", session.metadata)
         break
       }
 
@@ -243,7 +268,7 @@ async function handleStripeEvent(event: Stripe.Event): Promise<void> {
       // Retrieve subscription from Stripe for full details
       let trialEnd: number | null = null
       let currentPeriodEnd: number | null = null
-      let status: string = "trialling"
+      let status: string = "active"
 
       if (subId) {
         try {
@@ -253,7 +278,7 @@ async function handleStripeEvent(event: Stripe.Event): Promise<void> {
           status = sub.status
         } catch {
           // In mock mode subscription may not exist; use defaults
-          status = "trialling"
+          status = "active"
         }
       }
 
@@ -265,7 +290,7 @@ async function handleStripeEvent(event: Stripe.Event): Promise<void> {
             uid,
             stripeCustomerId: customerId,
             stripeSubscriptionId: subId,
-            tier,
+            tier: tier ?? "pro",
             status,
             currentPeriodEnd,
             aiUsageCurrentMonth: 0,
@@ -278,11 +303,15 @@ async function handleStripeEvent(event: Stripe.Event): Promise<void> {
       break
     }
 
+    case "customer.subscription.created":
     case "customer.subscription.updated":
     case "customer.subscription.deleted": {
       const sub = event.data.object as Stripe.Subscription
       const customerId =
         typeof sub.customer === "string" ? sub.customer : sub.customer.id
+      const status = sub.status
+
+      logger.info(`Subscription ${event.type}: ${sub.id}, Status: ${status}`)
 
       // Find the user by Stripe customer ID
       const snap = await db
@@ -297,12 +326,13 @@ async function handleStripeEvent(event: Stripe.Event): Promise<void> {
       }
 
       const docRef = snap.docs[0].ref
-      const tier = (sub.metadata?.tier as "pro" | "pro_max") ?? "pro"
+      const existingData = snap.docs[0].data()
+      const tier = (sub.metadata?.tier as "pro" | "pro_max") ?? existingData.tier ?? "pro"
 
       await docRef.set(
         {
           tier,
-          status: sub.status,
+          status,
           currentPeriodEnd: sub.current_period_end,
           trialEnd: sub.trial_end,
           aiQuotaLimit: tier === "pro_max" ? AI_QUOTA_PRO_MAX : AI_QUOTA_PRO,
@@ -312,6 +342,18 @@ async function handleStripeEvent(event: Stripe.Event): Promise<void> {
       )
       break
     }
+
+    case "customer.subscription.trial_will_end": {
+      const sub = event.data.object as Stripe.Subscription
+      logger.info(`Subscription trial will end soon: ${sub.id}`)
+      // Here you could send an email notification to the user
+      break
+    }
+
+    default:
+      logger.info(`Unhandled event type: ${event.type}`)
+  }
+}
 
     default:
       logger.info(`Unhandled event type: ${event.type}`)
