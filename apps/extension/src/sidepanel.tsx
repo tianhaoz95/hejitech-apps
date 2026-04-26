@@ -786,39 +786,6 @@ export default function SidePanel() {
           {isScraping ? "Scraping…" : "Analyze Active Listing"}
         </button>
 
-        {/* Property inputs */}
-        <section className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-3">
-          <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide">Property Data</p>
-          <div className="grid grid-cols-2 gap-3">
-            <NumInput label="Price" value={store.price} onChange={store.setPrice} />
-            {store.mode === "flip" ? (
-              <NumInput label="ARV" value={store.arv} onChange={store.setArv} />
-            ) : (
-              <NumInput
-                label="Rent/mo"
-                value={store.estimatedRent}
-                onChange={store.setEstimatedRent}
-                rightAction={
-                  <button
-                    onClick={handleFetchRent}
-                    disabled={isFetchingRent || !store.price}
-                    className="text-[10px] text-blue-600 flex items-center gap-0.5 disabled:opacity-30"
-                  >
-                    <Zap size={9} fill="currentColor" />
-                    {isFetchingRent ? "…" : "Fetch"}
-                  </button>
-                }
-              />
-            )}
-            <NumInput label="Taxes/yr" value={store.taxes} onChange={store.setTaxes} />
-            <NumInput label="HOA/mo" value={store.hoa} onChange={store.setHoa} />
-            <NumInput label="Rehab Cost" value={store.rehabCost} onChange={store.setRehabCost} />
-            {store.mode === "flip" && (
-              <NumInput label="Holding Costs" value={store.holdingCosts} onChange={store.setHoldingCosts} />
-            )}
-          </div>
-        </section>
-
         {/* Assumptions */}
         <section className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-3">
           <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide">Assumptions</p>
@@ -932,6 +899,39 @@ export default function SidePanel() {
             )}
           </div>
         )}
+
+        {/* Property inputs */}
+        <section className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-3">
+          <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide">Property Data</p>
+          <div className="grid grid-cols-2 gap-3">
+            <NumInput label="Price" value={store.price} onChange={store.setPrice} />
+            {store.mode === "flip" ? (
+              <NumInput label="ARV" value={store.arv} onChange={store.setArv} />
+            ) : (
+              <NumInput
+                label="Rent/mo"
+                value={store.estimatedRent}
+                onChange={store.setEstimatedRent}
+                rightAction={
+                  <button
+                    onClick={handleFetchRent}
+                    disabled={isFetchingRent || !store.price}
+                    className="text-[10px] text-blue-600 flex items-center gap-0.5 disabled:opacity-30"
+                  >
+                    <Zap size={9} fill="currentColor" />
+                    {isFetchingRent ? "…" : "Fetch"}
+                  </button>
+                }
+              />
+            )}
+            <NumInput label="Taxes/yr" value={store.taxes} onChange={store.setTaxes} />
+            <NumInput label="HOA/mo" value={store.hoa} onChange={store.setHoa} />
+            <NumInput label="Rehab Cost" value={store.rehabCost} onChange={store.setRehabCost} />
+            {store.mode === "flip" && (
+              <NumInput label="Holding Costs" value={store.holdingCosts} onChange={store.setHoldingCosts} />
+            )}
+          </div>
+        </section>
 
         {/* AI Insight */}
         {user && isSubscribed && (
