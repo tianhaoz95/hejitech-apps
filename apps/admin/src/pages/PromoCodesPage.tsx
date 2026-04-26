@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
-import { collection, getDocs, addDoc, updateDoc, doc } from "firebase/firestore"
-import { Tag, Plus, CheckCircle, XCircle } from "lucide-react"
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore"
+import { Tag, Plus, CheckCircle, XCircle, Trash2 } from "lucide-react"
 import { db } from "../core/firebase"
 import { useAuth } from "../hooks/useAuth"
 import type { PromoCode } from "@icecap/types"
@@ -19,6 +19,7 @@ export function PromoCodesPage() {
   const [promos, setPromos] = useState<PromoCode[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+  const [actionId, setActionId] = useState<string | null>(null)
   const [form, setForm] = useState({ code: "", type: "internal_free" as PromoCode["type"], usageLimit: "" })
   const user = useAdminAuth()
 
@@ -56,8 +57,24 @@ export function PromoCodesPage() {
   }
 
   const toggleActive = async (id: string, isActive: boolean) => {
-    await updateDoc(doc(db, "promo_codes", id), { isActive: !isActive })
-    await fetchPromos()
+    setActionId(id)
+    try {
+      await updateDoc(doc(db, "promo_codes", id), { isActive: !isActive })
+      await fetchPromos()
+    } finally {
+      setActionId(null)
+    }
+  }
+
+  const handleDelete = async (id: string, code: string) => {
+    if (!confirm(`Are you sure you want to delete the promo code "${code}"?`)) return
+    setActionId(id)
+    try {
+      await deleteDoc(doc(db, "promo_codes", id))
+      await fetchPromos()
+    } finally {
+      setActionId(null)
+    }
   }
 
   return (
@@ -147,12 +164,23 @@ export function PromoCodesPage() {
                     )}
                   </td>
                   <td className="p-4">
-                    <button
-                      onClick={() => toggleActive(p.id, p.isActive)}
-                      className="px-3 py-1 bg-gray-100 rounded-lg text-xs font-semibold hover:bg-gray-200 transition-colors"
-                    >
-                      {p.isActive ? "Deactivate" : "Activate"}
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => toggleActive(p.id, p.isActive)}
+                        disabled={actionId === p.id}
+                        className="px-3 py-1 bg-gray-100 rounded-lg text-xs font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50"
+                      >
+                        {p.isActive ? "Deactivate" : "Activate"}
+                      </button>
+                      <button
+                        onClick={() => handleDelete(p.id, p.code)}
+                        disabled={actionId === p.id}
+                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                        title="Delete Promo"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
