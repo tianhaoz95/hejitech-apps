@@ -1,7 +1,8 @@
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import {
   Search, Save, Download, LogOut, LogIn, LayoutPanelTop,
   User, Zap, AlertTriangle, Crown, RefreshCw, Home, TrendingUp, Sparkles, Calculator, ChevronDown,
+  Bot, Send,
 } from "lucide-react"
 import {
   onAuthStateChanged, signOut, GoogleAuthProvider, signInWithCredential, type User as FBUser,
@@ -34,11 +35,14 @@ interface Subscription {
 
 // ── Shared sub-components ──────────────────────────────────────────────────
 
-function StrategyToggle({ value, onChange }: { value: AnalysisMode; onChange: (m: AnalysisMode) => void }) {
-  const modes: { id: AnalysisMode; label: string; Icon: typeof Home }[] = [
+type ViewMode = AnalysisMode | "ai"
+
+function StrategyToggle({ value, onChange }: { value: ViewMode; onChange: (m: ViewMode) => void }) {
+  const modes: { id: ViewMode; label: string; Icon: typeof Home }[] = [
     { id: "rental", label: "Rental", Icon: Home },
     { id: "flip", label: "Flip", Icon: TrendingUp },
     { id: "brrrr", label: "BRRRR", Icon: RefreshCw },
+    { id: "ai", label: "AI", Icon: Bot },
   ]
   return (
     <div className="flex p-1 bg-gray-200 rounded-xl">
@@ -47,7 +51,11 @@ function StrategyToggle({ value, onChange }: { value: AnalysisMode; onChange: (m
           key={id}
           onClick={() => onChange(id)}
           className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-            value === id ? "bg-white shadow-sm text-blue-600" : "text-gray-500 hover:text-gray-700"
+            value === id
+              ? id === "ai"
+                ? "bg-white shadow-sm text-purple-600"
+                : "bg-white shadow-sm text-blue-600"
+              : "text-gray-500 hover:text-gray-700"
           }`}
         >
           <Icon size={13} />
@@ -342,6 +350,15 @@ export default function SidePanel() {
   const [aiSummary, setAiSummary] = useState("")
   const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle")
   const [showBreakdown, setShowBreakdown] = useState(false)
+  const [activeView, setActiveView] = useState<ViewMode>(store.mode)
+  const [chatMessages, setChatMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([])
+  const [chatInput, setChatInput] = useState("")
+  const [isChatLoading, setIsChatLoading] = useState(false)
+  const chatEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [chatMessages])
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -565,6 +582,42 @@ export default function SidePanel() {
     }
   }, [user, store, isSubscribed])
 
+  const handleViewChange = useCallback((v: ViewMode) => {
+    setActiveView(v)
+    if (v !== "ai") store.setMode(v)
+  }, [store])
+
+  const handleChatSend = useCallback(async () => {
+    const msg = chatInput.trim()
+    if (!msg || isChatLoading) return
+    setChatInput("")
+    setChatMessages((prev) => [...prev, { role: "user", content: msg }])
+    setIsChatLoading(true)
+    try {
+      const fn = httpsCallable(functions, "propertyChat")
+      const result = await fn({
+        message: msg,
+        context: {
+          price: store.price,
+          address: store.address,
+          estimatedRent: store.estimatedRent,
+          taxes: store.taxes,
+          hoa: store.hoa,
+          mode: store.mode,
+          assumptions: store.assumptions,
+          metrics: metrics.rental,
+        },
+      })
+      const data = result.data as { reply: string }
+      setChatMessages((prev) => [...prev, { role: "assistant", content: data.reply }])
+    } catch (e) {
+      console.error("Chat failed", e)
+      setChatMessages((prev) => [...prev, { role: "assistant", content: "Sorry, I couldn't process that. Please try again." }])
+    } finally {
+      setIsChatLoading(false)
+    }
+  }, [chatInput, isChatLoading, store, metrics])
+
   const aiQuotaRemaining =
     subscription?.tier === "pro_max"
       ? null
@@ -767,24 +820,108 @@ export default function SidePanel() {
           </div>
         )}
 
-        <StrategyToggle value={store.mode} onChange={store.setMode} />
+        <StrategyToggle value={activeView} onChange={handleViewChange} />
 
-        {store.address && (
+        {store.address && activeView !== "ai" && (
           <div className="p-3 bg-white rounded-xl border border-gray-100 shadow-sm">
             <p className="text-[10px] text-gray-400 uppercase font-semibold mb-0.5">Active Listing</p>
             <p className="text-xs font-medium line-clamp-2">{store.address}</p>
           </div>
         )}
 
-        <button
-          onClick={handleScrape}
-          disabled={isScraping}
-          className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl transition-colors disabled:opacity-60"
-          data-testid="scrape-btn"
-        >
-          {isScraping ? <RefreshCw size={15} className="animate-spin" /> : <Search size={15} />}
-          {isScraping ? "Scraping…" : "Analyze Active Listing"}
-        </button>
+        {activeView !== "ai" && (
+          <button
+            onClick={handleScrape}
+            disabled={isScraping}
+            className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl transition-colors disabled:opacity-60"
+            data-testid="scrape-btn"
+          >
+            {isScraping ? <RefreshCw size={15} className="animate-spin" /> : <Search size={15} />}
+            {isScraping ? "Scraping…" : "Analyze Active Listing"}
+          </button>
+        )}
+
+        {activeView === "ai" ? (
+          <div className="flex flex-col gap-2">
+            <div
+              className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 flex flex-col gap-2 overflow-y-auto"
+              style={{ height: "calc(100vh - 260px)" }}
+            >
+              {chatMessages.length === 0 && (
+                <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
+                  <div className="p-3 bg-purple-50 rounded-2xl">
+                    <Bot size={24} className="text-purple-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-600 mb-1">AI Property Assistant</p>
+                    <p className="text-[11px] text-gray-400 leading-relaxed">
+                      Ask anything about this property — cash flow, risks, rent estimates, market context, or strategy.
+                    </p>
+                  </div>
+                  {store.price > 0 && (
+                    <div className="flex flex-wrap gap-1.5 justify-center mt-1">
+                      {[
+                        "Is this a good deal?",
+                        "What's the break-even rent?",
+                        "What are the biggest risks?",
+                      ].map((q) => (
+                        <button
+                          key={q}
+                          onClick={() => { setChatInput(q) }}
+                          className="text-[10px] px-2 py-1 bg-purple-50 text-purple-600 rounded-lg border border-purple-100 hover:bg-purple-100 transition-colors"
+                        >
+                          {q}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {chatMessages.map((msg, i) => (
+                <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                  <div className={`max-w-[88%] px-3 py-2 rounded-2xl text-xs leading-relaxed ${
+                    msg.role === "user"
+                      ? "bg-blue-600 text-white rounded-br-sm"
+                      : "bg-gray-100 text-gray-800 rounded-bl-sm"
+                  }`}>
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+              {isChatLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-gray-100 px-3 py-2.5 rounded-2xl rounded-bl-sm flex gap-1 items-center">
+                    {[0, 1, 2].map((i) => (
+                      <div
+                        key={i}
+                        className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
+                        style={{ animationDelay: `${i * 0.15}s` }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div ref={chatEndRef} />
+            </div>
+            <div className="flex gap-2">
+              <input
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleChatSend() } }}
+                placeholder={store.price > 0 ? "Ask about this property…" : "Scrape a listing first, then ask…"}
+                className="flex-1 text-xs border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400 bg-white"
+              />
+              <button
+                onClick={handleChatSend}
+                disabled={!chatInput.trim() || isChatLoading}
+                className="p-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl disabled:opacity-40 transition-colors shrink-0"
+              >
+                <Send size={14} />
+              </button>
+            </div>
+          </div>
+        ) : (
+        <>
 
         {/* Assumptions */}
         <section className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-3">
@@ -968,6 +1105,8 @@ export default function SidePanel() {
               </p>
             )}
           </div>
+        )}
+        </>
         )}
       </div>
 
