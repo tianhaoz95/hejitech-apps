@@ -12,6 +12,7 @@ out/
 .firebase/
 firebase/emulator-data/
 firebase/functions/lib/
+firebase-export-*
 *-debug.log
 icecap-platform-firebase-adminsdk*.json
 
