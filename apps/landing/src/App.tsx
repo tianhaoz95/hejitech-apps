@@ -65,8 +65,8 @@ export default function App() {
             <span className="text-blue-600">at the speed of browsing.</span>
           </h1>
           <p className="text-xl text-gray-500 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Icecap is a Chrome extension that overlays live investment metrics directly on Redfin, Zillow, and
-            Realtor.com — no spreadsheets required.
+            Icecap is a Chrome extension that overlays live investment metrics directly from your favorite listing
+            source — Redfin, Zillow, Realtor.com, and more — no spreadsheets required.
           </p>
           <div className="flex items-center justify-center gap-4 flex-wrap">
             <div className="flex items-stretch shadow-xl shadow-blue-100/50 rounded-2xl transform hover:scale-[1.01] transition-all active:scale-[0.99]" ref={dropdownRef}>
