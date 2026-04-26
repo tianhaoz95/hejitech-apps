@@ -12,11 +12,15 @@ EMULATOR_PID=""
 STRIPE_PID=""
 MAIN_PID=""
 USE_PROD=false
+USE_MOCK=false
 
 # Parse arguments
 for arg in "$@"; do
     if [ "$arg" == "--prod" ]; then
         USE_PROD=true
+        shift
+    elif [ "$arg" == "--mock" ]; then
+        USE_MOCK=true
         shift
     fi
 done
@@ -31,6 +35,11 @@ cleanup() {
     [ -n "$EMULATOR_PID" ] && kill -2 "$EMULATOR_PID" 2>/dev/null
     [ -n "$STRIPE_PID"   ] && kill -2 "$STRIPE_PID"   2>/dev/null
     [ -n "$MAIN_PID"     ] && kill -2 "$MAIN_PID"     2>/dev/null
+    
+    # If using stripe-cli, ensure we kill the process group
+    if [ "$USE_PROD" = false ] && [ "$USE_MOCK" = false ] && [ -n "$STRIPE_PID" ]; then
+       pkill -P "$STRIPE_PID" 2>/dev/null || true
+    fi
 
     # Remove per-run env overrides
     for app in extension hub admin; do
@@ -64,6 +73,15 @@ else
     echo "Initializing Icecap LOCAL environment (Firebase emulator)..."
     export PLASMO_PUBLIC_USE_EMULATOR=true
     export VITE_USE_EMULATOR=true
+    
+    # Handle Stripe Mock vs CLI (Default is CLI)
+    if [ "$USE_MOCK" = true ]; then
+        export STRIPE_USE_MOCK=true
+        echo "Stripe Mock enabled (STRIPE_USE_MOCK=true) [DEPRECATED]"
+    else
+        export STRIPE_USE_MOCK=false
+        echo "Stripe CLI enabled (STRIPE_USE_MOCK=false) [DEFAULT]"
+    fi
 
     for app in extension hub admin; do
         printf 'PLASMO_PUBLIC_USE_EMULATOR=true\nVITE_USE_EMULATOR=true\n' > "apps/$app/.env.local"
@@ -101,11 +119,23 @@ if [ "$USE_PROD" = false ]; then
     if [[ "$OSTYPE" == "darwin"* ]]; then
         open http://127.0.0.1:4000
     fi
-fi
 
-echo "Starting Stripe mock..."
-pnpm run dev:stripe-mock > .stripe-mock.log 2>&1 &
-STRIPE_PID=$!
+    if [ "$USE_MOCK" = true ]; then
+        echo "Starting Stripe mock..."
+        pnpm run dev:stripe-mock > .stripe-mock.log 2>&1 &
+        STRIPE_PID=$!
+        echo "✅ Stripe mock backgrounded (PID: $STRIPE_PID). Logs: .stripe-mock.log"
+    else
+        echo "Starting Stripe CLI listener..."
+        if ! command -v stripe &> /dev/null; then
+            echo "⚠️  Stripe CLI not found. Please install it or use --mock."
+        else
+            stripe listen --forward-to localhost:5001/icecap-platform/us-central1/stripeWebhook > .stripe-cli.log 2>&1 &
+            STRIPE_PID=$!
+            echo "✅ Stripe CLI listener backgrounded (PID: $STRIPE_PID). Logs: .stripe-cli.log"
+        fi
+    fi
+fi
 
 # ── Apps: background (Vite HMR → browser auto-refreshes on save) ─────────────
 

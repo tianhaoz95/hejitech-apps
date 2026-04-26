@@ -42,11 +42,11 @@ Icecap is a dual-interface investment analysis platform:
 ### Key Commands
 - **Install:** `pnpm install`
 - **Full Build:** `pnpm turbo run build`
-- **Development (Everything):** `pnpm run dev:all` (starts emulator, stripe-mock, and app servers).
+- **Development (Everything):** `pnpm run dev:all` (starts emulator, official Stripe CLI listener, and app servers).
+- **Development (Stripe Mock):** `pnpm run dev:all --mock` (starts emulator and internal stripe-mock; deprecated).
 - **Development (Apps only):** `pnpm dev` (opens all Vite apps automatically).
 - **Firebase Emulator:** `pnpm run emulator` (runs Auth, Firestore, Functions, Hosting).
 - **Seed Data:** `pnpm run emulator:seed` (populates local environment with test accounts/deals).
-- **Stripe Mock:** `pnpm run dev:stripe-mock` (required for subscription flow testing).
 
 ---
 
@@ -63,7 +63,7 @@ Playwright suite verifying the "Golden Path" (Scrape -> Save -> Sync -> Hub):
 ```bash
 pnpm --filter @icecap/tests test
 ```
-*Note: E2E tests require the Firebase Emulator and Stripe Mock to be active.*
+*Note: E2E tests require the Firebase Emulator and either Stripe CLI (default) or Stripe Mock to be active.*
 
 ### 📸 Store Screenshots
 Generate high-resolution marketing assets for the Chrome Web Store:
@@ -88,7 +88,8 @@ Assets are stored in `reports/screenshots/`.
 - **Environment Variables:** Reference `.env.example` in each app directory. Plasmo variables must be prefixed with `PLASMO_PUBLIC_`.
 
 ### Stripe Secrets & Environments
-- **Local Development:** Uses `stripe-mock`. `STRIPE_SECRET_KEY` defaults to `sk_test_mock` and `STRIPE_WEBHOOK_SECRET` defaults to `whsec_mock`. No real Stripe keys are required.
+- **Local Development (Default):** Use `pnpm run dev:all`. Starts official Stripe CLI listener. Ensure `STRIPE_SECRET_KEY` is set in `firebase/functions/.env` to your `sk_test_...` key.
+- **Local Development (Mock):** Use `pnpm run dev:all --mock`. Uses internal `stripe-mock` (deprecated). `STRIPE_SECRET_KEY` defaults to `sk_test_mock`.
 - **Testing (Stripe Test Mode):** 
   - Use `STRIPE_SECRET_KEY_TEST` (starts with `sk_test_`).
   - Use `STRIPE_WEBHOOK_SECRET_TEST` (starts with `whsec_`).

@@ -7,12 +7,15 @@ admin.initializeApp()
 const db = admin.firestore()
 
 // ─── Stripe client ─────────────────────────────────────────────────────────
-// In emulator mode we point at stripe-mock (localhost:12111)
+// By default in emulator mode we point at stripe-mock (localhost:12111)
+// Set STRIPE_USE_MOCK=false to use the real Stripe API (e.g., with Stripe CLI)
 const isEmulator = process.env.FUNCTIONS_EMULATOR === "true"
+const useMock = process.env.STRIPE_USE_MOCK !== "false" && isEmulator
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY ?? "sk_test_mock"
+
 const stripe = new Stripe(stripeSecretKey, {
   apiVersion: "2025-02-24.acacia",
-  ...(isEmulator
+  ...(useMock
     ? {
         host: "localhost",
         port: 12111,
