@@ -967,7 +967,7 @@ export default function SidePanel() {
         </section>
 
         {/* Results */}
-        <div className="bg-blue-600 text-white p-4 rounded-2xl shadow-lg" data-testid="result-card">
+        {store.price > 0 && <div className="bg-blue-600 text-white p-4 rounded-2xl shadow-lg" data-testid="result-card">
           <h3 className="text-xs font-semibold opacity-80 uppercase mb-4">
             {store.mode === "rental" ? "Rental Metrics" : store.mode === "flip" ? "Flip Metrics" : "BRRRR Metrics"}
           </h3>
@@ -992,7 +992,7 @@ export default function SidePanel() {
               </div>
             </div>
           )}
-        </div>
+        </div>}
 
         {/* Calculation Breakdown */}
         {store.price > 0 && (
@@ -1038,7 +1038,7 @@ export default function SidePanel() {
         )}
 
         {/* Property inputs */}
-        <section className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-3">
+        {store.price > 0 && <section className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-3">
           <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide">Property Data</p>
           <div className="grid grid-cols-2 gap-3">
             <NumInput label="Price" value={store.price} onChange={store.setPrice} />
@@ -1068,10 +1068,10 @@ export default function SidePanel() {
               <NumInput label="Holding Costs" value={store.holdingCosts} onChange={store.setHoldingCosts} />
             )}
           </div>
-        </section>
+        </section>}
 
         {/* AI Insight */}
-        {user && isSubscribed && (
+        {store.price > 0 && user && isSubscribed && (
           <div className="bg-purple-50 p-4 rounded-xl border border-purple-100">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
