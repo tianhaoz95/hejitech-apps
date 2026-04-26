@@ -1,4 +1,4 @@
-import { Calculator } from "lucide-react"
+import { Logo } from "./core/components/Logo"
 import "./style.css"
 
 function IndexPopup() {
@@ -12,9 +12,9 @@ function IndexPopup() {
 
   return (
     <div className="w-64 p-4 bg-gray-50 flex flex-col items-center gap-4">
-      <div className="flex items-center gap-2 text-blue-600">
-        <Calculator size={32} />
-        <h1 className="text-xl font-bold">Icecap</h1>
+      <div className="flex flex-col items-center gap-2">
+        <Logo size={48} elevation />
+        <h1 className="text-xl font-black text-gray-900">Icecap</h1>
       </div>
       <p className="text-sm text-gray-500 text-center">
         Analyze real estate deals instantly on Redfin.

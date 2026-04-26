@@ -13,6 +13,7 @@ import { auth, db, functions, useEmulator, signInWithGoogle } from "./core/fireb
 import { IS_DEV, HUB_URL } from "./core/constants"
 import { usePropertyStore, type AnalysisMode } from "./core/store"
 import { Logo } from "./core/components/Logo"
+import logoUrl from "url:~assets/logo.svg"
 import "./style.css"
 
 const fmt = (n: number) =>
@@ -469,9 +470,8 @@ export default function SidePanel() {
     <div className="flex flex-col min-h-screen bg-gray-50 text-gray-900 text-sm">
       {/* Header */}
       <header className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100 shadow-sm">
-        <div className="flex items-center gap-1.5">
-          <Calculator className="text-blue-600" size={18} />
-          <span className="text-lg font-bold">Icecap</span>
+        <div className="flex items-center gap-2">
+          <img src={logoUrl} alt="Icecap" className="h-6 w-auto" />
         </div>
         <div className="flex items-center gap-0.5">
           <button
