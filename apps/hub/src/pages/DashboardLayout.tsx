@@ -109,7 +109,7 @@ export function DashboardLayout() {
             >
               <div className="flex items-center gap-2">
                 <Crown size={16} className="text-yellow-400" />
-                <span className="text-sm font-black">Start Free Trial</span>
+                <span className="text-sm font-black">Upgrade to Pro</span>
               </div>
               <p className="text-[10px] text-gray-400 leading-relaxed">
                 Unlock full Redfin/Zillow scraping and AI-powered deal analysis.

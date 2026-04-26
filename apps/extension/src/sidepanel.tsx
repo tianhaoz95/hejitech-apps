@@ -7,7 +7,7 @@ import {
   onAuthStateChanged, signOut, GoogleAuthProvider, signInWithCredential, type User as FBUser,
   signInWithEmailAndPassword,
 } from "firebase/auth/web-extension"
-import { collection, addDoc, serverTimestamp, doc, onSnapshot } from "firebase/firestore"
+import { collection, addDoc, serverTimestamp, doc, onSnapshot, getDoc } from "firebase/firestore"
 import { httpsCallable } from "firebase/functions"
 import { auth, db, functions, useEmulator, signInWithGoogle } from "./core/firebase"
 import { IS_DEV, HUB_URL } from "./core/constants"
@@ -127,6 +127,7 @@ export default function SidePanel() {
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [isLoggingIn, setIsLoggingIn] = useState(false)
   const [loginError, setLoginError] = useState<string | null>(null)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [isScraping, setIsScraping] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isFetchingRent, setIsFetchingRent] = useState(false)
@@ -202,6 +203,21 @@ export default function SidePanel() {
   const handleLogout = useCallback(async () => {
     try { await signOut(auth) } catch (e) { console.error(e) }
   }, [])
+
+  const handleRefreshStatus = useCallback(async () => {
+    if (!user || isRefreshing) return
+    setIsRefreshing(true)
+    try {
+      const ref = doc(db, "subscriptions", user.uid)
+      const snap = await getDoc(ref)
+      console.log(`[Extension] Refresh: subscription doc`, snap.exists() ? snap.data() : "not found")
+      setSubscription(snap.exists() ? (snap.data() as Subscription) : null)
+    } catch (e) {
+      console.error("[Extension] Refresh subscription failed:", e)
+    } finally {
+      setIsRefreshing(false)
+    }
+  }, [user, isRefreshing])
 
   const handleMockSubscribe = useCallback(async () => {
     if (!user) return
@@ -400,21 +416,22 @@ export default function SidePanel() {
         </div>
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Subscription Required</h1>
         <p className="text-gray-500 mb-8">
-          You need an active subscription or a free trial to use the Icecap extension.
+          You need an active subscription to use the Icecap extension.
         </p>
         <div className="space-y-3 w-full">
           <button
             onClick={handleOpenHub}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl shadow-md transition-all"
           >
-            Start Free Trial in Hub
+            Upgrade in Hub
           </button>
           <button
-            onClick={() => window.location.reload()}
-            className="w-full flex items-center justify-center gap-2 bg-white hover:bg-gray-50 text-gray-700 font-semibold py-3 px-6 rounded-xl border border-gray-200 shadow-sm transition-all"
+            onClick={handleRefreshStatus}
+            disabled={isRefreshing}
+            className="w-full flex items-center justify-center gap-2 bg-white hover:bg-gray-50 text-gray-700 font-semibold py-3 px-6 rounded-xl border border-gray-200 shadow-sm transition-all disabled:opacity-50"
           >
-            <RefreshCw size={16} />
-            Refresh Status
+            <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
+            {isRefreshing ? "Checking..." : "Refresh Status"}
           </button>
           
           {IS_DEV && (
@@ -518,7 +535,7 @@ export default function SidePanel() {
         {user && !isSubscribed && !isPastDue && (
           <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700">
             <Crown size={13} />
-            Start free trial to save &amp; sync analyses.
+            Upgrade to Pro to save &amp; sync analyses.
           </div>
         )}
 

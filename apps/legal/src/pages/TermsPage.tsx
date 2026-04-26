@@ -20,7 +20,7 @@ export function TermsPage() {
 
       <Section title="3. Subscriptions">
         <ul className="list-disc pl-5 space-y-2">
-          <li><strong>Pro ($19/month):</strong> Includes a 30-day free trial. Billed monthly via Stripe.</li>
+          <li><strong>Pro ($19/month):</strong> Billed monthly via Stripe.</li>
           <li><strong>Pro Max ($49/month):</strong> No trial period.</li>
           <li>Subscriptions renew automatically. Cancel any time in your Stripe billing portal.</li>
           <li>No refunds for partial billing periods.</li>

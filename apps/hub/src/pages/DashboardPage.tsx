@@ -55,7 +55,7 @@ export function DashboardPage() {
               <Crown size={32} />
             </div>
             <div>
-              <h3 className="text-xl font-black">Start your 30-day Free Trial</h3>
+              <h3 className="text-xl font-black">Unlock Icecap Pro</h3>
               <p className="opacity-80 text-sm font-medium">Unlock full Redfin/Zillow scraping, AI Deal Summaries, and unlimited property saves.</p>
             </div>
           </div>
@@ -63,7 +63,7 @@ export function DashboardPage() {
             onClick={() => window.location.href = "/subscribe"}
             className="px-8 py-3 bg-white text-blue-600 rounded-2xl font-black shadow-lg hover:bg-gray-50 transition-all active:scale-95"
           >
-            Claim Free Trial
+            Upgrade Now
           </button>
         </div>
       )}

@@ -16,7 +16,7 @@ const PLANS = [
     name: "Pro",
     price: "$19",
     period: "/month",
-    trial: "30-day free trial",
+    trial: null,
     features: [
       "Full extension on Redfin, Zillow & Realtor.com",
       "Unlimited property saves & sync",
@@ -161,7 +161,7 @@ export function SubscribePage() {
                 }`}
                 data-testid={`subscribe-${plan.id}`}
               >
-                {loadingTier === plan.id ? "Loading…" : plan.trial ? `Start Free Trial` : `Subscribe`}
+                {loadingTier === plan.id ? "Loading…" : `Subscribe`}
               </button>
             </div>
           ))}

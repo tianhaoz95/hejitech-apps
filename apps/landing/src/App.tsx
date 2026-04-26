@@ -115,7 +115,7 @@ export default function App() {
             </a>
           </div>
 
-          <p className="mt-4 text-sm text-gray-400">30-day free trial · No credit card required on signup</p>
+          <p className="mt-4 text-sm text-gray-400">Join 1,000+ real estate investors on Icecap</p>
         </div>
       </section>
 
@@ -241,8 +241,8 @@ export default function App() {
                 name: "Pro",
                 price: "$19",
                 period: "/month",
-                trial: "30-day free trial",
-                cta: "Start Free Trial",
+                trial: null,
+                cta: "Get Started Now",
                 features: [
                   "All 3 listing sites",
                   "Unlimited property saves",
