@@ -18,7 +18,13 @@ cleanup() {
     
     # Kill the processes we started
     [ -n "$EMULATOR_PID" ] && kill "$EMULATOR_PID" 2>/dev/null || true
-    [ -n "$STRIPE_PID" ] && kill "$STRIPE_PID" 2>/dev/null || true
+    [ -n "$STRIPE_MOCK_PID" ] && kill "$STRIPE_MOCK_PID" 2>/dev/null || true
+    
+    if [ -n "$STRIPE_CLI_PID" ]; then
+        # Kill stripe listen and its children
+        pkill -P "$STRIPE_CLI_PID" 2>/dev/null || true
+        kill "$STRIPE_CLI_PID" 2>/dev/null || true
+    fi
     
     # Kill any remaining port-bound processes just in case
     PIDS=$(lsof -ti:4000,9099,8080,5001,5002,12111,5173 2>/dev/null)
@@ -61,26 +67,36 @@ echo "Starting Firebase Emulator..."
 pnpm run emulator > .emulator-e2e.log 2>&1 &
 EMULATOR_PID=$!
 
-# 3. Start Stripe Mock
+# 4. Start Stripe Mock (Handles API calls and UI)
 echo "Starting Stripe Mock..."
 pnpm run dev:stripe-mock > .stripe-mock-e2e.log 2>&1 &
-STRIPE_PID=$!
+STRIPE_MOCK_PID=$!
 
-# 5. Wait for Emulator readiness
-echo "Waiting for Emulator to be ready (max 30s)..."
+# 5. Start Stripe CLI Listener (For real webhook testing)
+echo "Starting Stripe CLI Listener..."
+if command -v stripe &> /dev/null; then
+    stripe listen --forward-to localhost:5001/demo-icecap/us-central1/stripeWebhook > .stripe-cli-e2e.log 2>&1 &
+    STRIPE_CLI_PID=$!
+    echo "✅ Stripe CLI listener started."
+else
+    echo "⚠️ Stripe CLI not found, skipping CLI listener."
+fi
+
+# 6. Wait for services readiness
+echo "Waiting for services to be ready (max 30s)..."
 count=0
-# Wait for Emulator UI (4000), Auth (9099), and Firestore (8080)
-while ! curl -s http://127.0.0.1:4000 > /dev/null || ! curl -s http://127.0.0.1:9099 > /dev/null || ! curl -s http://127.0.0.1:8080 > /dev/null; do
+# Wait for Emulator UI (4000), Auth (9099), Firestore (8080), and Stripe Mock (12111)
+while ! curl -s http://127.0.0.1:4000 > /dev/null || ! curl -s http://127.0.0.1:9099 > /dev/null || ! curl -s http://127.0.0.1:8080 > /dev/null || ! curl -s http://127.0.0.1:12111/health > /dev/null; do
     sleep 2
     count=$((count + 1))
     if [ $count -gt 15 ]; then
-        echo "❌ Emulator failed to start in time. Check .emulator-e2e.log"
+        echo "❌ Services failed to start in time."
         exit 1
     fi
 done
-echo "✅ Emulator is UP (UI, Auth, Firestore ready)."
+echo "✅ Services are UP."
 
-# 5. Run Playwright Tests
+# 6. Run Playwright Tests
 echo "🏃 Running Playwright E2E tests..."
 # We use pnpm to run the tests in the tests package
 # Playwright will automatically start the Hub dev server as defined in playwright.config.ts
