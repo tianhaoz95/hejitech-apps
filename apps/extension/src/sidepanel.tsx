@@ -343,6 +343,7 @@ export default function SidePanel() {
   const [isLoggingIn, setIsLoggingIn] = useState(false)
   const [loginError, setLoginError] = useState<string | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isManual, setIsManual] = useState(false)
   const [isScraping, setIsScraping] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isFetchingRent, setIsFetchingRent] = useState(false)
@@ -376,6 +377,7 @@ export default function SidePanel() {
     const handler = (msg: { action: string; data?: any }) => {
       if (msg.action === "propertyDetected" && msg.data) {
         usePropertyStore.getState().loadFromScrape(msg.data)
+        setIsManual(false)
       }
     }
     chrome.runtime.onMessage.addListener(handler)
@@ -481,6 +483,7 @@ export default function SidePanel() {
 
   const handleScrape = useCallback(async () => {
     setIsScraping(true)
+    setIsManual(false)
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
       if (!tab?.id) return
@@ -798,15 +801,25 @@ export default function SidePanel() {
         )}
 
         {activeView !== "ai" && (
-          <button
-            onClick={handleScrape}
-            disabled={isScraping}
-            className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl transition-colors disabled:opacity-60"
-            data-testid="scrape-btn"
-          >
-            {isScraping ? <RefreshCw size={15} className="animate-spin" /> : <Search size={15} />}
-            {isScraping ? "Scraping…" : "Analyze Active Listing"}
-          </button>
+          <div className="space-y-2">
+            <button
+              onClick={handleScrape}
+              disabled={isScraping}
+              className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl transition-colors disabled:opacity-60"
+              data-testid="scrape-btn"
+            >
+              {isScraping ? <RefreshCw size={15} className="animate-spin" /> : <Search size={15} />}
+              {isScraping ? "Scraping…" : "Analyze Active Listing"}
+            </button>
+            {!store.price && !store.address && !isManual && (
+              <button
+                onClick={() => setIsManual(true)}
+                className="w-full py-2 text-[10px] text-gray-400 font-bold uppercase tracking-widest hover:text-blue-600 transition-colors"
+              >
+                — or enter manual data —
+              </button>
+            )}
+          </div>
         )}
 
         {activeView === "ai" ? (
@@ -1006,44 +1019,46 @@ export default function SidePanel() {
         )}
 
         {/* Property inputs */}
-        <section className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-3">
-          <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide">Property Data</p>
-          <div className="grid grid-cols-2 gap-3">
-            <NumInput label="Price" value={store.price} onChange={store.setPrice} />
-            {store.price > 0 && (
-              <>
-                {store.mode === "flip" ? (
-                  <NumInput label="ARV" value={store.arv} onChange={store.setArv} />
-                ) : (
-                  <NumInput
-                    label="Rent/mo"
-                    value={store.estimatedRent}
-                    onChange={store.setEstimatedRent}
-                    rightAction={
-                      <button
-                        onClick={handleFetchRent}
-                        disabled={isFetchingRent || !store.price}
-                        className="text-[10px] text-blue-600 flex items-center gap-0.5 disabled:opacity-30"
-                      >
-                        <Zap size={9} fill="currentColor" />
-                        {isFetchingRent ? "…" : "Fetch"}
-                      </button>
-                    }
-                  />
-                )}
-                <NumInput label="Taxes/yr" value={store.taxes} onChange={store.setTaxes} />
-                <NumInput label="HOA/mo" value={store.hoa} onChange={store.setHoa} />
-                <NumInput label="Rehab Cost" value={store.rehabCost} onChange={store.setRehabCost} />
-                {store.mode === "flip" && (
-                  <NumInput label="Holding Costs" value={store.holdingCosts} onChange={store.setHoldingCosts} />
-                )}
-              </>
+        {(store.price > 0 || store.address || isManual) && (
+          <section className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-3">
+            <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide">Property Data</p>
+            <div className="grid grid-cols-2 gap-3">
+              <NumInput label="Price" value={store.price} onChange={store.setPrice} />
+              {store.price > 0 && (
+                <>
+                  {store.mode === "flip" ? (
+                    <NumInput label="ARV" value={store.arv} onChange={store.setArv} />
+                  ) : (
+                    <NumInput
+                      label="Rent/mo"
+                      value={store.estimatedRent}
+                      onChange={store.setEstimatedRent}
+                      rightAction={
+                        <button
+                          onClick={handleFetchRent}
+                          disabled={isFetchingRent || !store.price}
+                          className="text-[10px] text-blue-600 flex items-center gap-0.5 disabled:opacity-30"
+                        >
+                          <Zap size={9} fill="currentColor" />
+                          {isFetchingRent ? "…" : "Fetch"}
+                        </button>
+                      }
+                    />
+                  )}
+                  <NumInput label="Taxes/yr" value={store.taxes} onChange={store.setTaxes} />
+                  <NumInput label="HOA/mo" value={store.hoa} onChange={store.setHoa} />
+                  <NumInput label="Rehab Cost" value={store.rehabCost} onChange={store.setRehabCost} />
+                  {store.mode === "flip" && (
+                    <NumInput label="Holding Costs" value={store.holdingCosts} onChange={store.setHoldingCosts} />
+                  )}
+                </>
+              )}
+            </div>
+            {store.price === 0 && (
+              <p className="text-[10px] text-gray-400 italic">Enter a price or scrape a listing to begin.</p>
             )}
-          </div>
-          {store.price === 0 && (
-            <p className="text-[10px] text-gray-400 italic">Enter a price or scrape a listing to begin.</p>
-          )}
-        </section>
+          </section>
+        )}
 
         {/* AI Insight */}
         {store.price > 0 && user && isSubscribed && (
