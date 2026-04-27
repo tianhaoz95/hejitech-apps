@@ -165,8 +165,50 @@ export const createCheckoutSession = onCall({ cors: true }, async (request) => {
     }
   }
 
-  const session = await stripe.checkout.sessions.create(sessionParams)
-  return { sessionId: session.id, url: session.url }
+  const isMockPrice = priceId.includes("mock")
+  
+  if (isEmulator && isMockPrice) {
+    logger.info(`Emulator mode with mock price detected. Bypassing Stripe Checkout.`)
+    
+    // Simulate successful checkout by updating DB directly
+    const tierName = tier ?? (priceId.includes("pro_max") ? "pro_max" : "pro")
+    await db.collection("subscriptions").doc(request.auth.uid).set({
+      uid: request.auth.uid,
+      tier: tierName,
+      status: "active",
+      stripeCustomerId: customerId ?? "cus_mock_local",
+      stripeSubscriptionId: "sub_mock_local",
+      currentPeriodEnd: Math.floor(Date.now() / 1000) + 30 * 24 * 3600,
+      aiUsageCurrentMonth: 0,
+      aiQuotaLimit: tierName === "pro_max" ? AI_QUOTA_PRO_MAX : AI_QUOTA_PRO,
+      updatedAt: Date.now(),
+      is_mock: true,
+    }, { merge: true })
+
+    return { sessionId: "sess_mock", url: successUrl }
+  }
+
+  try {
+    const session = await stripe.checkout.sessions.create(sessionParams)
+    return { sessionId: session.id, url: session.url }
+  } catch (e: any) {
+    // If the customer doesn't exist (common when switching from mock to real Stripe)
+    if (e.code === "resource_missing" && e.param === "customer" && customerId) {
+      logger.warn(`Stripe customer ${customerId} not found, retrying without customer ID`)
+      
+      // Clear the invalid customer ID from our DB
+      await db.collection("subscriptions").doc(request.auth.uid).set({
+        stripeCustomerId: admin.firestore.FieldValue.delete()
+      }, { merge: true }).catch(() => {});
+
+      const { customer, ...paramsWithoutCustomer } = sessionParams
+      paramsWithoutCustomer.customer_email = request.auth.token.email ?? undefined
+      
+      const session = await stripe.checkout.sessions.create(paramsWithoutCustomer)
+      return { sessionId: session.id, url: session.url }
+    }
+    throw e
+  }
 })
 
 // ─── createPortalSession ───────────────────────────────────────────────────
@@ -180,10 +222,24 @@ export const createPortalSession = onCall({ cors: true }, async (request) => {
 
   let customerId: string | undefined
 
+  if (sessionId === "sess_mock" && isEmulator) {
+    return { url: returnUrl }
+  }
+
   if (sessionId) {
-    const checkoutSession = await stripe.checkout.sessions.retrieve(sessionId)
-    customerId = typeof checkoutSession.customer === "string" ? checkoutSession.customer : checkoutSession.customer?.id
-  } else {
+    try {
+      const checkoutSession = await stripe.checkout.sessions.retrieve(sessionId)
+      customerId = typeof checkoutSession.customer === "string" ? checkoutSession.customer : checkoutSession.customer?.id
+    } catch (e) {
+      if (isEmulator) {
+        logger.warn("Failed to retrieve mock session, falling back to Firestore lookup")
+      } else {
+        throw e
+      }
+    }
+  }
+  
+  if (!customerId) {
     const subSnap = await db.collection("subscriptions").doc(request.auth.uid).get()
     if (subSnap.exists) {
       customerId = subSnap.data()?.stripeCustomerId
@@ -192,6 +248,11 @@ export const createPortalSession = onCall({ cors: true }, async (request) => {
 
   if (!customerId) {
     throw new HttpsError("not-found", "No Stripe customer found for this user")
+  }
+
+  if (isEmulator && customerId.includes("mock")) {
+    logger.info("Emulator mode with mock customer detected. Bypassing billing portal.")
+    return { url: returnUrl }
   }
 
   const session = await stripe.billingPortal.sessions.create({
