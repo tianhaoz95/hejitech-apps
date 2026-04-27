@@ -20,8 +20,10 @@ const firebaseConfig = {
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
 
-// Initialize analytics if supported
-isSupported().then(yes => yes && getAnalytics(app))
+// Initialize analytics if supported (skip in emulator)
+if (!useEmulator) {
+  isSupported().then(yes => yes && getAnalytics(app))
+}
 
 const db = getFirestore(app)
 const auth = getAuth(app)
@@ -33,6 +35,12 @@ if (useEmulator) {
   self.FIREBASE_AI_FORCE_BUILTIN = true
   // @ts-ignore
   self.FIREBASE_AI_USE_BUILTIN = true
+  if (typeof window !== "undefined") {
+    // @ts-ignore
+    window.FIREBASE_AI_FORCE_BUILTIN = true
+    // @ts-ignore
+    window.FIREBASE_AI_USE_BUILTIN = true
+  }
   console.log("[Icecap] AI: Local model flags enabled (FORCE + USE BUILTIN)")
 }
 

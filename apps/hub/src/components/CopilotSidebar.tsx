@@ -160,24 +160,35 @@ export function CopilotSidebar({ isOpen, onClose }: Props) {
       setIsLoading(true)
 
       try {
+        console.log("[Icecap Hub] Initializing AI model with ONLY_ON_DEVICE mode...")
         const model = getGenerativeModel(ai, {
+          model: "gemini-2.0-flash",
           // @ts-ignore
           mode: "only_on_device",
+          inCloudParams: {
+            model: "gemini-2.0-flash",
+          }
         } as any)
+
+        console.log("[Icecap Hub] AI Model instance successfully created:", model)
 
         // Build history from all prior messages
         const history = messages.map((m) => ({
           role: m.role === "user" ? ("user" as const) : ("model" as const),
-          parts: [{ text: m.content || m.actionProposal?.displayText || "" }],
+          parts: [{ text: m.content || "" }],
         }))
 
         const chat = model.startChat({
           history,
-          systemInstruction: buildSystemPrompt(properties),
-          tools: AI_TOOLS as any,
           generationConfig: { maxOutputTokens: 800 },
         })
-        const result = await chat.sendMessage(text.trim())
+
+        const portfolioContext = buildSystemPrompt(properties)
+        const fullPrompt = `${portfolioContext}\n\nUSER QUESTION: ${text.trim()}`
+        
+        console.log("[Icecap Hub] Sending context-rich prompt to local model...")
+        const result = await chat.sendMessage(fullPrompt)
+        console.log("[Icecap Hub] AI Response received:", result)
         const response = result.response
 
         let content = ""

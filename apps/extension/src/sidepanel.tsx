@@ -551,8 +551,12 @@ export default function SidePanel() {
     setIsAnalyzing(true)
     try {
       const model = getGenerativeModel(ai, {
+        model: "gemini-2.0-flash",
         // @ts-ignore
         mode: "only_on_device",
+        inCloudParams: {
+          model: "gemini-2.0-flash",
+        }
       } as any)
 
       const prompt = `
@@ -615,8 +619,12 @@ export default function SidePanel() {
     setIsChatLoading(true)
     try {
       const model = getGenerativeModel(ai, {
+        model: "gemini-2.0-flash",
         // @ts-ignore
         mode: "only_on_device",
+        inCloudParams: {
+          model: "gemini-2.0-flash",
+        }
       } as any)
 
       const prompt = `
@@ -648,7 +656,7 @@ export default function SidePanel() {
       }))
 
       const chat = model.startChat({ history })
-      const result = await chat.sendMessage(msg)
+      const result = await chat.sendMessage(prompt)
       const reply = result.response.text()
 
       setChatMessages((prev) => [...prev, { role: "assistant", content: reply }])
