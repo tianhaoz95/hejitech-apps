@@ -16,6 +16,7 @@
     "build": "turbo run build",
     "test": "turbo run test",
     "test:unit": "turbo run test --filter=@icecap/math",
+    "test:e2e": "./scripts/run-e2e.sh",
     "emulator": "firebase emulators:start --project=demo-icecap --import=firebase/emulator-data --export-on-exit=firebase/emulator-data",
     "emulator:seed": "node scripts/seed-emulator.mjs",
     "deploy:all": "./scripts/deploy-all.sh",

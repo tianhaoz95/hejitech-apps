@@ -42,6 +42,7 @@ Icecap is a dual-interface investment analysis platform:
 ### Key Commands
 - **Install:** `pnpm install`
 - **Full Build:** `pnpm turbo run build`
+- **E2E Tests:** `pnpm run test:e2e` (runs all integration tests in a clean environment).
 - **Development (Everything):** `pnpm run dev:all` (starts emulator, official Stripe CLI listener, and app servers).
 - **Development (Stripe Mock):** `pnpm run dev:all --mock` (starts emulator and internal stripe-mock; deprecated).
 - **Development (Apps only):** `pnpm dev` (opens all Vite apps automatically).

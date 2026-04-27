@@ -2,6 +2,8 @@ import { test as base, chromium, type BrowserContext, expect } from "@playwright
 import path from "path"
 import { createTestUser, setSubscription, clearEmulatorData } from "../fixtures/firebase-helpers"
 
+import fs from "fs"
+
 const TEST_EMAIL = `golden-${Date.now()}@icecap-test.com`
 const TEST_PASSWORD = "GoldenPath123!"
 let testUid = ""
@@ -9,7 +11,15 @@ let testUid = ""
 // Custom fixture
 const test = base.extend<{ context: BrowserContext; extensionId: string }>({
   context: async ({}, use) => {
-    const extensionPath = path.join(__dirname, "../../apps/extension/build/chrome-mv3-prod")
+    const extensionPath = path.resolve(__dirname, "../../apps/extension/build/chrome-mv3-prod")
+    
+    if (!fs.existsSync(extensionPath)) {
+      throw new Error(`Extension path not found: ${extensionPath}. Did you run 'pnpm build:prod' in apps/extension?`)
+    }
+    if (!fs.existsSync(path.join(extensionPath, "manifest.json"))) {
+      throw new Error(`Manifest not found in: ${extensionPath}`)
+    }
+
     const context = await chromium.launchPersistentContext("", {
       headless: false,
       args: [
@@ -39,12 +49,23 @@ test.afterAll(async () => {
 
 async function signInExtension(page: any, extensionId: string) {
   await page.goto(`chrome-extension://${extensionId}/sidepanel.html`)
-  await page.evaluate(async ({ email, password }) => {
-    const auth = (window as any).auth
-    const signIn = (window as any).signInWithEmailAndPassword
-    if (!auth || !signIn) throw new Error("Firebase auth or signIn function not found on window")
-    await signIn(auth, email, password)
-  }, { email: TEST_EMAIL, password: TEST_PASSWORD })
+  
+  // Wait for loader to disappear
+  await page.locator("text=Initializing Icecap").waitFor({ state: "hidden", timeout: 15000 })
+
+  // If we are not logged in, we should see the sign in button
+  const loginBtn = page.getByText("Sign in with Google")
+  if (await loginBtn.isVisible()) {
+    await page.evaluate(async ({ email, password }) => {
+      const auth = (window as any).auth
+      const signIn = (window as any).signInWithEmailAndPassword
+      if (!auth || !signIn) throw new Error("Firebase auth or signIn function not found on window")
+      await signIn(auth, email, password)
+    }, { email: TEST_EMAIL, password: TEST_PASSWORD })
+  }
+
+  // Wait for subscription check to finish
+  await page.locator("text=Verifying Subscription").waitFor({ state: "hidden", timeout: 15000 })
   await expect(page.getByText(TEST_EMAIL)).toBeVisible()
 }
 
@@ -106,8 +127,8 @@ test("golden path: Full sync flow (Extension -> Save -> Hub)", async ({ page, ex
   const saveBtn = page.getByTitle("Save")
   await saveBtn.click()
 
-  // Wait for saved state (green color or status)
-  await expect(saveBtn).toHaveClass(/text-green-600/)
+  // Wait for saved state (red color for heart)
+  await expect(saveBtn).toHaveClass(/text-red-500/)
 
   // 4. Verify in Hub
   await page.goto("http://localhost:5173/portfolio")

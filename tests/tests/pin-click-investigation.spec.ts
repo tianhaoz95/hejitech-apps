@@ -14,13 +14,23 @@
 import { test as base, chromium, type BrowserContext, expect } from "@playwright/test"
 import path from "path"
 
+import fs from "fs"
+
 // ---------------------------------------------------------------------------
 // Fixture
 // ---------------------------------------------------------------------------
 
 const test = base.extend<{ context: BrowserContext; extensionId: string }>({
   context: async ({}, use) => {
-    const extensionPath = path.join(__dirname, "../../apps/extension/build/chrome-mv3-prod")
+    const extensionPath = path.resolve(__dirname, "../../apps/extension/build/chrome-mv3-prod")
+    
+    if (!fs.existsSync(extensionPath)) {
+      throw new Error(`Extension path not found: ${extensionPath}. Did you run 'pnpm build:prod' in apps/extension?`)
+    }
+    if (!fs.existsSync(path.join(extensionPath, "manifest.json"))) {
+      throw new Error(`Manifest not found in: ${extensionPath}`)
+    }
+
     const context = await chromium.launchPersistentContext("", {
       headless: false,
       args: [

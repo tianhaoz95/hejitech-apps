@@ -29,6 +29,11 @@ export default defineConfig({
       testMatch: ["tests/pin-click-investigation.spec.ts"],
     },
     {
+      name: "subscription-flow",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: ["tests/subscription-flow.spec.ts"],
+    },
+    {
       name: "golden-path",
       use: { ...devices["Desktop Chrome"] },
       testMatch: ["tests/golden-path.spec.ts"],

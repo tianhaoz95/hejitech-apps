@@ -18,7 +18,15 @@ export const test = base.extend<{
   extensionId: string
 }>({
   context: async ({}, use) => {
-    const extensionPath = path.join(__dirname, "../../apps/extension/build/chrome-mv3-prod")
+    const extensionPath = path.resolve(__dirname, "../../apps/extension/build/chrome-mv3-prod")
+    
+    if (!fs.existsSync(extensionPath)) {
+      throw new Error(`Extension path not found: ${extensionPath}. Did you run 'pnpm build:prod' in apps/extension?`)
+    }
+    if (!fs.existsSync(path.join(extensionPath, "manifest.json"))) {
+      throw new Error(`Manifest not found in: ${extensionPath}`)
+    }
+
     const context = await chromium.launchPersistentContext("", {
       headless: false,
       args: [
@@ -70,7 +78,7 @@ test("Screenshot 2: Rental Analysis", async ({ page, extensionId }) => {
   await page.setViewportSize({ width: 400, height: 800 })
   await signInExtension(page, extensionId)
   
-  // Fill inputs
+  // Fill inputs (Price first to show the others)
   const inputs = page.locator("input[type='number']")
   await inputs.first().fill("450000")
   await inputs.nth(1).fill("3200")
@@ -84,11 +92,14 @@ test("Screenshot 3: Flip Analysis", async ({ page, extensionId }) => {
   await page.setViewportSize({ width: 400, height: 800 })
   await signInExtension(page, extensionId)
   
+  // Price first
+  await page.locator("input[type='number']").first().fill("450000")
+  
   await page.getByRole("button", { name: "Flip" }).click()
   
   const inputs = page.locator("input[type='number']")
-  await inputs.first().fill("450000")
-  await page.getByPlaceholder("0").nth(1).fill("650000") // ARV placeholder is 0
+  // Now fill ARV (nth(1) is ARV in flip mode)
+  await page.getByPlaceholder("0").nth(1).fill("650000") 
   await page.keyboard.press("Tab")
   
   await expect(page.getByText("70% Rule MAO")).toBeVisible()

@@ -16,7 +16,7 @@ const PLANS = [
     name: "Pro",
     price: "$19",
     period: "/month",
-    trial: null,
+    trial: "30-day free trial",
     features: [
       "Full extension on Redfin, Zillow & Realtor.com",
       "Unlimited property saves & sync",

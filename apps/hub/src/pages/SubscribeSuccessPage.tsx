@@ -51,6 +51,7 @@ export function SubscribeSuccessPage() {
           <button
             onClick={() => navigate("/")}
             className="w-full py-4 bg-gray-900 text-white font-bold rounded-2xl hover:bg-gray-800 transition-all flex items-center justify-center gap-2 shadow-lg shadow-gray-200"
+            data-testid="go-to-dashboard"
           >
             Go to Dashboard
             <ArrowRight size={18} />

@@ -358,11 +358,6 @@ async function handleStripeEvent(event: Stripe.Event): Promise<void> {
   }
 }
 
-    default:
-      logger.info(`Unhandled event type: ${event.type}`)
-  }
-}
-
 // ─── analyzeProperty (AI stub for emulator phase) ─────────────────────────
 export const analyzeProperty = onCall({ cors: true }, async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "Login required")
