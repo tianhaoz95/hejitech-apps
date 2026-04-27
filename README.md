@@ -62,7 +62,21 @@ Populate the emulator with test users, subscriptions, and sample properties:
 pnpm run emulator:seed
 ```
 
-### 3. Run Applications
+### 3. Local AI Development (Gemini Nano)
+To test AI features locally without cloud costs, Icecap uses **Firebase AI Logic** with Chrome's built-in **Gemini Nano** model.
+
+**Setup Instructions:**
+1.  **Enable Gemini Nano:**
+    *   Open `chrome://flags/` in your browser.
+    *   Search for `#optimization-guide-on-device-model` and set it to **Enabled BypassPerfRequirement**.
+    *   Search for `#prompt-api-for-gemini-nano` and set it to **Enabled**.
+    *   Relaunch Chrome.
+2.  **Verify Setup:**
+    *   Open DevTools (F12) and type `await window.ai.canCreateTextSession()` in the console. It should return `"readily"`.
+3.  **Local Inference:**
+    *   When running with the emulator, the `firebase/ai` SDK (used in the Hub and soon in the Extension) will automatically detect Gemini Nano and perform inference locally on your device.
+
+### 4. Run Applications
 ```bash
 # Run all applications in development mode
 pnpm dev
