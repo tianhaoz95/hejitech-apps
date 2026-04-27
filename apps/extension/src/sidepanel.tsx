@@ -8,9 +8,10 @@ import {
   onAuthStateChanged, signOut, GoogleAuthProvider, signInWithCredential, type User as FBUser,
   signInWithEmailAndPassword,
 } from "firebase/auth/web-extension"
-import { collection, addDoc, serverTimestamp, doc, onSnapshot, getDoc } from "firebase/firestore"
+import { collection, addDoc, serverTimestamp, doc, onSnapshot, getDoc, updateDoc } from "firebase/firestore"
 import { httpsCallable } from "firebase/functions"
-import { auth, db, functions, useEmulator, signInWithGoogle } from "./core/firebase"
+import { getGenerativeModel } from "firebase/ai"
+import { auth, db, functions, useEmulator, signInWithGoogle, ai } from "./core/firebase"
 import { IS_DEV, HUB_URL } from "./core/constants"
 import { usePropertyStore, type AnalysisMode } from "./core/store"
 import { Logo } from "./core/components/Logo"
@@ -549,17 +550,57 @@ export default function SidePanel() {
     if (!user || !store.description || !isSubscribed) return
     setIsAnalyzing(true)
     try {
-      const fn = httpsCallable(functions, "analyzeProperty")
-      const result = await fn({ propertyData: store.getPropertyInput(), listingDescription: store.description })
-      const data = result.data as { summary: string; redFlags: string[]; recommendation: string }
-      setAiSummary(`${data.summary}\n\n🚩 Red Flags:\n${data.redFlags.map((f) => `• ${f}`).join("\n")}\n\n💡 ${data.recommendation}`)
+      const model = getGenerativeModel(ai, {
+        // @ts-ignore
+        mode: "only_on_device",
+      } as any)
+
+      const prompt = `
+        Analyze this real estate listing description for an investor.
+        
+        PROPERTY DATA:
+        Address: ${store.address}
+        Price: $${store.price}
+        Estimated Rent: $${store.estimatedRent}
+        
+        DESCRIPTION:
+        ${store.description}
+        
+        Provide:
+        1. A one-paragraph investment summary.
+        2. A list of 3 specific red flags (if any).
+        3. A final recommendation.
+        
+        Format as:
+        SUMMARY: [text]
+        RED FLAGS:
+        - [flag 1]
+        - [flag 2]
+        - [flag 3]
+        RECOMMENDATION: [text]
+      `
+
+      const result = await model.generateContent(prompt)
+      const text = result.response.text()
+      
+      // Basic parsing to match the existing UI expectations if possible, 
+      // or just show the whole thing.
+      setAiSummary(text)
+
+      // Increment quota counter
+      if (user && isSubscribed) {
+        updateDoc(doc(db, "subscriptions", user.uid), {
+          aiUsageCurrentMonth: (subscription?.aiUsageCurrentMonth ?? 0) + 1,
+          updatedAt: Date.now(),
+        }).catch(console.error)
+      }
     } catch (e) {
       console.error("AI failed", e)
       setAiSummary("AI analysis unavailable. Please try again.")
     } finally {
       setIsAnalyzing(false)
     }
-  }, [user, store, isSubscribed])
+  }, [user, store, isSubscribed, subscription])
 
   const handleViewChange = useCallback((v: ViewMode) => {
     setActiveView(v)
@@ -573,29 +614,59 @@ export default function SidePanel() {
     setChatMessages((prev) => [...prev, { role: "user", content: msg }])
     setIsChatLoading(true)
     try {
-      const fn = httpsCallable(functions, "propertyChat")
-      const result = await fn({
-        message: msg,
-        context: {
-          price: store.price,
-          address: store.address,
-          estimatedRent: store.estimatedRent,
-          taxes: store.taxes,
-          hoa: store.hoa,
-          mode: store.mode,
-          assumptions: store.assumptions,
-          metrics: metrics.rental,
-        },
-      })
-      const data = result.data as { reply: string }
-      setChatMessages((prev) => [...prev, { role: "assistant", content: data.reply }])
+      const model = getGenerativeModel(ai, {
+        // @ts-ignore
+        mode: "only_on_device",
+      } as any)
+
+      const prompt = `
+        You are an AI real estate assistant. Help the user analyze this property.
+        
+        PROPERTY CONTEXT:
+        Address: ${store.address || "Unknown"}
+        Purchase Price: $${store.price}
+        Estimated Rent: $${store.estimatedRent}/mo
+        Taxes: $${store.taxes}/yr
+        HOA: $${store.hoa}/mo
+        Strategy: ${store.mode}
+        
+        FINANCIAL METRICS:
+        Monthly Cash Flow: $${metrics.rental.monthlyCashFlow}
+        Cap Rate: ${metrics.rental.capRate}%
+        Cash-on-Cash Return: ${metrics.rental.cocReturn}%
+        
+        USER QUESTION:
+        ${msg}
+        
+        Provide a concise, professional answer based on the data provided.
+      `
+
+      // Build history for context (last 5 messages)
+      const history = chatMessages.slice(-5).map((m) => ({
+        role: m.role === "user" ? ("user" as const) : ("model" as const),
+        parts: [{ text: m.content }],
+      }))
+
+      const chat = model.startChat({ history })
+      const result = await chat.sendMessage(msg)
+      const reply = result.response.text()
+
+      setChatMessages((prev) => [...prev, { role: "assistant", content: reply }])
+
+      // Increment quota counter optimistically in Firestore
+      if (user && isSubscribed) {
+        updateDoc(doc(db, "subscriptions", user.uid), {
+          aiUsageCurrentMonth: (subscription?.aiUsageCurrentMonth ?? 0) + 1,
+          updatedAt: Date.now(),
+        }).catch(console.error)
+      }
     } catch (e) {
       console.error("Chat failed", e)
       setChatMessages((prev) => [...prev, { role: "assistant", content: "Sorry, I couldn't process that. Please try again." }])
     } finally {
       setIsChatLoading(false)
     }
-  }, [chatInput, isChatLoading, store, metrics])
+  }, [chatInput, isChatLoading, store, metrics, chatMessages, user, isSubscribed, subscription])
 
   const aiQuotaRemaining =
     subscription?.tier === "pro_max"

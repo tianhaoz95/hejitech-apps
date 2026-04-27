@@ -161,11 +161,9 @@ export function CopilotSidebar({ isOpen, onClose }: Props) {
 
       try {
         const model = getGenerativeModel(ai, {
-          model: "gemini-2.0-flash",
-          systemInstruction: buildSystemPrompt(properties),
-          tools: AI_TOOLS as any,
-          generationConfig: { maxOutputTokens: 800 },
-        })
+          // @ts-ignore
+          mode: "only_on_device",
+        } as any)
 
         // Build history from all prior messages
         const history = messages.map((m) => ({
@@ -173,7 +171,12 @@ export function CopilotSidebar({ isOpen, onClose }: Props) {
           parts: [{ text: m.content || m.actionProposal?.displayText || "" }],
         }))
 
-        const chat = model.startChat({ history })
+        const chat = model.startChat({
+          history,
+          systemInstruction: buildSystemPrompt(properties),
+          tools: AI_TOOLS as any,
+          generationConfig: { maxOutputTokens: 800 },
+        })
         const result = await chat.sendMessage(text.trim())
         const response = result.response
 

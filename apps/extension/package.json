@@ -22,7 +22,7 @@
     "@icecap/math": "workspace:*",
     "@icecap/types": "workspace:*",
     "@icecap/ui": "workspace:*",
-    "firebase": "^11.2.0",
+    "firebase": "^12.12.1",
     "lucide-react": "^0.468.0",
     "plasmo": "0.90.5",
     "react": "18.2.0",

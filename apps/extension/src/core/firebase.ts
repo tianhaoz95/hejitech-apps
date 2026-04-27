@@ -2,6 +2,7 @@ import { initializeApp, getApps } from "firebase/app"
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore"
 import { getAuth, initializeAuth, connectAuthEmulator, GoogleAuthProvider, indexedDBLocalPersistence, signInWithCredential } from "firebase/auth/web-extension"
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions"
+import { getAI, GoogleAIBackend } from "firebase/ai"
 
 const useEmulator =
   process.env.PLASMO_PUBLIC_USE_EMULATOR === "true"
@@ -39,6 +40,18 @@ try {
 }
 
 const functions = getFunctions(app)
+
+if (useEmulator) {
+  // @ts-ignore - Force use of local Gemini Nano in emulator mode
+  self.FIREBASE_AI_FORCE_BUILTIN = true
+  // @ts-ignore
+  self.FIREBASE_AI_USE_BUILTIN = true
+  console.log("[Icecap] AI: Local model flags enabled (FORCE + USE BUILTIN)")
+}
+
+const ai = getAI(app, {
+  backend: new GoogleAIBackend()
+})
 const googleProvider = new GoogleAuthProvider()
 googleProvider.setCustomParameters({ prompt: "select_account" })
 
@@ -87,4 +100,4 @@ export const signInWithGoogle = (): Promise<void> =>
     })
   })
 
-export { db, auth, functions, googleProvider, useEmulator }
+export { db, auth, functions, ai, googleProvider, useEmulator }

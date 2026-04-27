@@ -27,7 +27,18 @@ const db = getFirestore(app)
 const auth = getAuth(app)
 const functions = getFunctions(app)
 const googleProvider = new GoogleAuthProvider()
-const ai = getAI(app, { backend: new GoogleAIBackend() })
+
+if (useEmulator) {
+  // @ts-ignore - Force use of local Gemini Nano in emulator mode
+  self.FIREBASE_AI_FORCE_BUILTIN = true
+  // @ts-ignore
+  self.FIREBASE_AI_USE_BUILTIN = true
+  console.log("[Icecap] AI: Local model flags enabled (FORCE + USE BUILTIN)")
+}
+
+const ai = getAI(app, {
+  backend: new GoogleAIBackend()
+})
 
 if (useEmulator) {
   try {
