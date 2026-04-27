@@ -9,7 +9,7 @@ set -e
 # Setup environment for local testing
 export PLASMO_PUBLIC_USE_EMULATOR=true
 export VITE_USE_EMULATOR=true
-export STRIPE_USE_MOCK=true
+export STRIPE_USE_MOCK=false
 
 # Cleanup function to ensure no processes are left hanging
 cleanup() {
@@ -18,7 +18,6 @@ cleanup() {
     
     # Kill the processes we started
     [ -n "$EMULATOR_PID" ] && kill "$EMULATOR_PID" 2>/dev/null || true
-    [ -n "$STRIPE_MOCK_PID" ] && kill "$STRIPE_MOCK_PID" 2>/dev/null || true
     
     if [ -n "$STRIPE_CLI_PID" ]; then
         # Kill stripe listen and its children
@@ -27,7 +26,7 @@ cleanup() {
     fi
     
     # Kill any remaining port-bound processes just in case
-    PIDS=$(lsof -ti:4000,9099,8080,5001,5002,12111,5173 2>/dev/null)
+    PIDS=$(lsof -ti:4000,9099,8080,5001,5002,5173 2>/dev/null)
     [ -n "$PIDS" ] && echo "$PIDS" | xargs kill -9 2>/dev/null || true
     
     echo "✅ Done."
@@ -41,7 +40,7 @@ echo "🚀 Starting E2E Test Environment..."
 # 1. Free up ports
 echo "Checking ports..."
 # Use || true to prevent set -e from exiting if no processes found
-PIDS=$(lsof -ti:4000,9099,8080,5001,5002,12111,5173 2>/dev/null || true)
+PIDS=$(lsof -ti:4000,9099,8080,5001,5002,5173 2>/dev/null || true)
 if [ -n "$PIDS" ]; then
     echo "Freeing busy ports..."
     echo "$PIDS" | xargs kill -9 2>/dev/null || true
@@ -67,26 +66,22 @@ echo "Starting Firebase Emulator..."
 pnpm run emulator > .emulator-e2e.log 2>&1 &
 EMULATOR_PID=$!
 
-# 4. Start Stripe Mock (Handles API calls and UI)
-echo "Starting Stripe Mock..."
-pnpm run dev:stripe-mock > .stripe-mock-e2e.log 2>&1 &
-STRIPE_MOCK_PID=$!
-
-# 5. Start Stripe CLI Listener (For real webhook testing)
+# 4. Start Stripe CLI Listener (For real webhook testing)
 echo "Starting Stripe CLI Listener..."
 if command -v stripe &> /dev/null; then
     stripe listen --forward-to localhost:5001/demo-icecap/us-central1/stripeWebhook > .stripe-cli-e2e.log 2>&1 &
     STRIPE_CLI_PID=$!
     echo "✅ Stripe CLI listener started."
 else
-    echo "⚠️ Stripe CLI not found, skipping CLI listener."
+    echo "❌ Stripe CLI not found. Please install it."
+    exit 1
 fi
 
-# 6. Wait for services readiness
+# 5. Wait for services readiness
 echo "Waiting for services to be ready (max 30s)..."
 count=0
-# Wait for Emulator UI (4000), Auth (9099), Firestore (8080), and Stripe Mock (12111)
-while ! curl -s http://127.0.0.1:4000 > /dev/null || ! curl -s http://127.0.0.1:9099 > /dev/null || ! curl -s http://127.0.0.1:8080 > /dev/null || ! curl -s http://127.0.0.1:12111/health > /dev/null; do
+# Wait for Emulator UI (4000), Auth (9099), and Firestore (8080)
+while ! curl -s http://127.0.0.1:4000 > /dev/null || ! curl -s http://127.0.0.1:9099 > /dev/null || ! curl -s http://127.0.0.1:8080 > /dev/null; do
     sleep 2
     count=$((count + 1))
     if [ $count -gt 15 ]; then

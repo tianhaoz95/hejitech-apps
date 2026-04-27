@@ -12,7 +12,6 @@ This project is a Turborepo-powered monorepo:
 - **admin**: Internal portal for user management, system health, and scraper monitoring.
 - **landing**: Marketing site for user acquisition.
 - **legal**: Static site hosting Privacy Policy and Terms of Service.
-- **stripe-mock**: Local developer utility to simulate Stripe Checkout and Webhooks.
 
 ### Packages (`packages/`)
 - **math**: The "Napkin Math" engine — shared financial logic (Cap Rate, CoC, etc.).
@@ -32,6 +31,7 @@ This project is a Turborepo-powered monorepo:
 - Node.js >= 18
 - pnpm >= 9
 - Firebase CLI (`npm install -g firebase-tools`)
+- Stripe CLI (Optional, for local webhook testing)
 
 ### Installation & Build
 ```bash
@@ -46,16 +46,14 @@ pnpm turbo run build
 
 ## 🛠️ Local Development & Testing
 
-Icecap relies on a local Firebase Emulator and a Stripe Mock server for full-cycle testing without external dependencies.
+Icecap relies on the local Firebase Emulator and Stripe CLI for full-cycle testing.
 
 ### 1. Start the Environment
-You can start everything (emulator, stripe-mock, and dev servers) with a single command:
+You can start the emulator, Stripe CLI listener, and all dev servers with a single command:
 
 ```bash
 pnpm run dev:all
 ```
-
-Alternatively, start them separately in different terminal windows:
 
 ### 2. Seed Test Data
 Populate the emulator with test users, subscriptions, and sample properties:
@@ -88,14 +86,10 @@ pnpm turbo run test --filter=@icecap/math
 ```
 
 ### End-to-End (E2E) Tests
-Comprehensive browser automation (Extension -> Sync -> Hub). **Requires the Emulator and Stripe Mock to be running.**
+Comprehensive browser automation (Extension -> Sync -> Hub). **Requires the Emulator to be running.**
 ```bash
-# Run all E2E tests
-pnpm --filter @icecap/tests test
-
-# Run a specific test suite
-pnpm --filter @icecap/tests run test:golden
-pnpm --filter @icecap/tests run test:extension
+# Run all E2E tests (automatically manages environment)
+pnpm run test:e2e
 ```
 
 ### Automated Store Screenshots

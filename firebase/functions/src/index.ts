@@ -7,21 +7,15 @@ admin.initializeApp()
 const db = admin.firestore()
 
 // ─── Stripe client ─────────────────────────────────────────────────────────
-// By default in emulator mode we point at stripe-mock (localhost:12111)
-// Set STRIPE_USE_MOCK=false to use the real Stripe API (e.g., with Stripe CLI)
 const isEmulator = process.env.FUNCTIONS_EMULATOR === "true"
-const useMock = process.env.STRIPE_USE_MOCK !== "false" && isEmulator
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY ?? "sk_test_mock"
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY
 
-const stripe = new Stripe(stripeSecretKey, {
+if (!stripeSecretKey && !isEmulator) {
+  logger.error("STRIPE_SECRET_KEY is missing!")
+}
+
+const stripe = new Stripe(stripeSecretKey ?? "sk_test_mock", {
   apiVersion: "2025-02-24.acacia",
-  ...(useMock
-    ? {
-        host: "localhost",
-        port: 12111,
-        protocol: "http",
-      }
-    : {}),
 })
 
 const AI_QUOTA_PRO = 50
@@ -261,26 +255,27 @@ async function handleStripeEvent(event: Stripe.Event): Promise<void> {
       }
 
       const customerId =
-        typeof session.customer === "string" ? session.customer : session.customer?.id
+        (typeof session.customer === "string" ? session.customer : session.customer?.id) ?? 
+        (uid ? `cus_${uid}` : "cus_missing")
 
       const subId =
-        typeof session.subscription === "string"
+        (typeof session.subscription === "string"
           ? session.subscription
-          : session.subscription?.id
+          : session.subscription?.id) ?? null
 
       // Retrieve subscription from Stripe for full details
       let trialEnd: number | null = null
-      let currentPeriodEnd: number | null = null
+      let currentPeriodEnd: number | null = Math.floor(Date.now() / 1000) + 30 * 24 * 3600
       let status: string = "active"
 
       if (subId) {
         try {
           const sub = await stripe.subscriptions.retrieve(subId)
-          trialEnd = sub.trial_end
-          currentPeriodEnd = sub.current_period_end
-          status = sub.status
+          trialEnd = sub.trial_end ?? null
+          currentPeriodEnd = sub.current_period_end ?? currentPeriodEnd
+          status = sub.status ?? "active"
         } catch {
-          // In mock mode subscription may not exist; use defaults
+          // Fallback for mock/emulator mode
           status = "active"
         }
       }
@@ -292,7 +287,7 @@ async function handleStripeEvent(event: Stripe.Event): Promise<void> {
           {
             uid,
             stripeCustomerId: customerId,
-            stripeSubscriptionId: subId,
+            stripeSubscriptionId: subId ?? "sub_missing",
             tier: tier ?? "pro",
             status,
             currentPeriodEnd,
@@ -310,11 +305,18 @@ async function handleStripeEvent(event: Stripe.Event): Promise<void> {
     case "customer.subscription.updated":
     case "customer.subscription.deleted": {
       const sub = event.data.object as Stripe.Subscription
+      const uidFromMetadata = sub.metadata?.uid
       const customerId =
-        typeof sub.customer === "string" ? sub.customer : sub.customer.id
+        (typeof sub.customer === "string" ? sub.customer : sub.customer?.id) ?? 
+        (uidFromMetadata ? `cus_${uidFromMetadata}` : "cus_missing")
       const status = sub.status
 
       logger.info(`Subscription ${event.type}: ${sub.id}, Status: ${status}`)
+
+      if (customerId === "cus_missing") {
+        logger.error("Missing customer ID in subscription event")
+        break
+      }
 
       // Find the user by Stripe customer ID
       const snap = await db
@@ -336,8 +338,8 @@ async function handleStripeEvent(event: Stripe.Event): Promise<void> {
         {
           tier,
           status,
-          currentPeriodEnd: sub.current_period_end,
-          trialEnd: sub.trial_end,
+          currentPeriodEnd: sub.current_period_end ?? Math.floor(Date.now() / 1000) + 30 * 24 * 3600,
+          trialEnd: sub.trial_end ?? null,
           aiQuotaLimit: tier === "pro_max" ? AI_QUOTA_PRO_MAX : AI_QUOTA_PRO,
           updatedAt: Date.now(),
         },

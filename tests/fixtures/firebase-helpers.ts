@@ -76,6 +76,25 @@ export async function addProperty(uid: string, property: Record<string, unknown>
   return data.name.split("/").pop() ?? ""
 }
 
+// Get subscription document via emulator REST API
+export async function getSubscription(uid: string): Promise<any> {
+  const url = `${FIRESTORE_BASE}/subscriptions/${uid}`
+  const resp = await fetch(url)
+  if (!resp.ok) {
+    if (resp.status === 404) return null
+    throw new Error(`Failed to get subscription: ${await resp.text()}`)
+  }
+  const data = await resp.json()
+  // Simplify the weird Firestore REST format
+  const fields = data.fields || {}
+  const result: any = {}
+  for (const [key, value] of Object.entries(fields)) {
+    const valObj = value as any
+    result[key] = valObj.stringValue || valObj.integerValue || valObj.booleanValue || valObj.mapValue || valObj.arrayValue
+  }
+  return result
+}
+
 // Clear all user data
 export async function clearEmulatorData(): Promise<void> {
   await fetch("http://localhost:8080/emulator/v1/projects/demo-icecap/databases/(default)/documents", {
@@ -88,16 +107,29 @@ export async function clearEmulatorData(): Promise<void> {
 
 // Sign in via Firebase Auth emulator on a Playwright page
 export async function signInOnPage(page: Page, email: string, password: string): Promise<void> {
-  // Inject auth state by calling Firebase signInWithEmailAndPassword via page eval
   await page.evaluate(
     async ({ email, password }) => {
-      const { getAuth, signInWithEmailAndPassword } = await import(
-        "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js"
-      )
-      // The app should already be initialized on the page
-      const auth = getAuth()
-      await signInWithEmailAndPassword(auth, email, password)
+      const { getApp, getApps, initializeApp } = await import("https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js")
+      const { getAuth, signInWithEmailAndPassword } = await import("https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js")
+      
+      let app;
+      if (getApps().length === 0) {
+        // Fallback initialization if app not found (shouldn't happen in Hub)
+        app = initializeApp({
+          apiKey: "demo-key",
+          authDomain: "demo-icecap.firebaseapp.com",
+          projectId: "demo-icecap",
+          storageBucket: "demo-icecap.firebasestorage.app",
+          messagingSenderId: "123456789",
+          appId: "1:123456789:web:123456789"
+        });
+      } else {
+        app = getApp();
+      }
+      
+      const auth = getAuth(app);
+      await signInWithEmailAndPassword(auth, email, password);
     },
     { email, password }
-  )
+  );
 }

@@ -23,7 +23,6 @@ Icecap is a dual-interface investment analysis platform:
 - `admin/`: Internal portal for scraper health, support ops, and system monitoring.
 - `landing/`: Marketing and user acquisition site.
 - `legal/`: Compliance documents (Privacy Policy, TOS).
-- `stripe-mock/`: Developer utility for local Stripe webhook simulation.
 
 ### Shared Packages (`packages/`)
 - `math/`: Core financial logic (Cap Rate, 1% Rule, GRM, etc.). Single source of truth for metrics.
@@ -44,7 +43,6 @@ Icecap is a dual-interface investment analysis platform:
 - **Full Build:** `pnpm turbo run build`
 - **E2E Tests:** `pnpm run test:e2e` (runs all integration tests in a clean environment).
 - **Development (Everything):** `pnpm run dev:all` (starts emulator, official Stripe CLI listener, and app servers).
-- **Development (Stripe Mock):** `pnpm run dev:all --mock` (starts emulator and internal stripe-mock; deprecated).
 - **Development (Apps only):** `pnpm dev` (opens all Vite apps automatically).
 - **Firebase Emulator:** `pnpm run emulator` (runs Auth, Firestore, Functions, Hosting).
 - **Seed Data:** `pnpm run emulator:seed` (populates local environment with test accounts/deals).
@@ -90,7 +88,6 @@ Assets are stored in `reports/screenshots/`.
 
 ### Stripe Secrets & Environments
 - **Local Development (Default):** Use `pnpm run dev:all`. Starts official Stripe CLI listener. Ensure `STRIPE_SECRET_KEY` is set in `firebase/functions/.env` to your `sk_test_...` key.
-- **Local Development (Mock):** Use `pnpm run dev:all --mock`. Uses internal `stripe-mock` (deprecated). `STRIPE_SECRET_KEY` defaults to `sk_test_mock`.
 - **Testing (Stripe Test Mode):** 
   - Use `STRIPE_SECRET_KEY_TEST` (starts with `sk_test_`).
   - Use `STRIPE_WEBHOOK_SECRET_TEST` (starts with `whsec_`).

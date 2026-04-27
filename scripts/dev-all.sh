@@ -12,15 +12,11 @@ EMULATOR_PID=""
 STRIPE_PID=""
 MAIN_PID=""
 USE_PROD=false
-USE_MOCK=false
 
 # Parse arguments
 for arg in "$@"; do
     if [ "$arg" == "--prod" ]; then
         USE_PROD=true
-        shift
-    elif [ "$arg" == "--mock" ]; then
-        USE_MOCK=true
         shift
     fi
 done
@@ -36,8 +32,8 @@ cleanup() {
     [ -n "$STRIPE_PID"   ] && kill -2 "$STRIPE_PID"   2>/dev/null
     [ -n "$MAIN_PID"     ] && kill -2 "$MAIN_PID"     2>/dev/null
     
-    # If using stripe-cli, ensure we kill the process group
-    if [ "$USE_PROD" = false ] && [ "$USE_MOCK" = false ] && [ -n "$STRIPE_PID" ]; then
+    # Ensure we kill the process group for stripe listen
+    if [ "$USE_PROD" = false ] && [ -n "$STRIPE_PID" ]; then
        pkill -P "$STRIPE_PID" 2>/dev/null || true
     fi
 
@@ -73,15 +69,7 @@ else
     echo "Initializing Icecap LOCAL environment (Firebase emulator)..."
     export PLASMO_PUBLIC_USE_EMULATOR=true
     export VITE_USE_EMULATOR=true
-    
-    # Handle Stripe Mock vs CLI (Default is CLI)
-    if [ "$USE_MOCK" = true ]; then
-        export STRIPE_USE_MOCK=true
-        echo "Stripe Mock enabled (STRIPE_USE_MOCK=true) [DEPRECATED]"
-    else
-        export STRIPE_USE_MOCK=false
-        echo "Stripe CLI enabled (STRIPE_USE_MOCK=false) [DEFAULT]"
-    fi
+    export STRIPE_USE_MOCK=false
 
     for app in extension hub admin; do
         printf 'PLASMO_PUBLIC_USE_EMULATOR=true\nVITE_USE_EMULATOR=true\n' > "apps/$app/.env.local"
@@ -90,8 +78,8 @@ fi
 
 # ── Port cleanup ──────────────────────────────────────────────────────────────
 
-echo "Freeing emulator and mock ports..."
-PIDS=$(lsof -ti:4000,9099,8080,5001,5002,12111 2>/dev/null)
+echo "Freeing emulator ports..."
+PIDS=$(lsof -ti:4000,9099,8080,5001,5002 2>/dev/null)
 [ -n "$PIDS" ] && echo "$PIDS" | xargs kill -9 2>/dev/null || true
 
 # ── Background services ───────────────────────────────────────────────────────
@@ -120,20 +108,13 @@ if [ "$USE_PROD" = false ]; then
         open http://127.0.0.1:4000
     fi
 
-    if [ "$USE_MOCK" = true ]; then
-        echo "Starting Stripe mock..."
-        pnpm run dev:stripe-mock > .stripe-mock.log 2>&1 &
-        STRIPE_PID=$!
-        echo "✅ Stripe mock backgrounded (PID: $STRIPE_PID). Logs: .stripe-mock.log"
+    echo "Starting Stripe CLI listener..."
+    if ! command -v stripe &> /dev/null; then
+        echo "⚠️  Stripe CLI not found. Please install it."
     else
-        echo "Starting Stripe CLI listener..."
-        if ! command -v stripe &> /dev/null; then
-            echo "⚠️  Stripe CLI not found. Please install it or use --mock."
-        else
-            stripe listen --forward-to localhost:5001/icecap-platform/us-central1/stripeWebhook > .stripe-cli.log 2>&1 &
-            STRIPE_PID=$!
-            echo "✅ Stripe CLI listener backgrounded (PID: $STRIPE_PID). Logs: .stripe-cli.log"
-        fi
+        stripe listen --forward-to localhost:5001/demo-icecap/us-central1/stripeWebhook > .stripe-cli.log 2>&1 &
+        STRIPE_PID=$!
+        echo "✅ Stripe CLI listener backgrounded (PID: $STRIPE_PID). Logs: .stripe-cli.log"
     fi
 fi
 
@@ -141,8 +122,7 @@ fi
 
 echo "Starting Hub / Admin / Landing dev servers (HMR)..."
 pnpm turbo run dev --parallel \
-    --filter=!@icecap/extension \
-    --filter=!@icecap/stripe-mock > .turbo.log 2>&1 &
+    --filter=!@icecap/extension > .turbo.log 2>&1 &
 MAIN_PID=$!
 echo "Apps running in background. Logs: .turbo.log"
 
