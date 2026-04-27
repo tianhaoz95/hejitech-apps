@@ -68,12 +68,21 @@ To test AI features locally without cloud costs, Icecap uses **Firebase AI Logic
 **Setup Instructions:**
 1.  **Enable Gemini Nano:**
     *   Open `chrome://flags/` in your browser.
-    *   Search for `#optimization-guide-on-device-model` and set it to **Enabled BypassPerfRequirement**.
+    *   Search for `#optimization-guide-on-device-model` and set it to **Enabled BypassPerfRequirement** (Critical).
     *   Search for `#prompt-api-for-gemini-nano` and set it to **Enabled**.
     *   Relaunch Chrome.
 2.  **Verify Setup:**
-    *   Open DevTools (F12) and type `await window.ai.canCreateTextSession()` in the console. It should return `"readily"`.
-3.  **Local Inference:**
+    *   Open DevTools (F12) and type:
+      ```javascript
+      await LanguageModel.availability()
+      ```
+    *   It should return `"available"`.
+    *   *Note:* In Chrome v131+, the API is available via the global `LanguageModel` (or `ai.languageModel`) object.
+3.  **Troubleshooting `ReferenceError` / `undefined`:**
+    *   **Check Components:** Go to `chrome://components`. Find **Optimization Guide On Device Model**. If version is `0.0.0.0`, click **Check for update** and wait for the ~1.5GB download.
+    *   **Disk Space:** You must have at least **22GB of free space**. Chrome will silently disable the API if space is low.
+    *   **Internal State:** Check `chrome://on-device-internals`. The Foundational Model should be `Ready`.
+4.  **Local Inference:**
     *   When running with the emulator, the `firebase/ai` SDK (used in the Hub and soon in the Extension) will automatically detect Gemini Nano and perform inference locally on your device.
 
 ### 4. Run Applications
