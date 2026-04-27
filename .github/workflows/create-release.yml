@@ -54,6 +54,39 @@ jobs:
           echo "PLASMO_PUBLIC_GOOGLE_CLIENT_ID=$PLASMO_PUBLIC_GOOGLE_CLIENT_ID" >> apps/extension/.env
           ./scripts/build-extension-all.sh
 
+      - name: Capture Extension Screenshots
+        if: steps.get_version.outputs.version != steps.get_prev_version.outputs.prev_version
+        run: |
+          # 1. Setup Java for Emulator
+          sudo apt-get update && sudo apt-get install -y default-jr
+
+          # 2. Build production chrome extension for screenshots
+          pnpm --filter @icecap/extension build:chrome
+
+          # 3. Install Playwright browsers
+          pnpm --filter @icecap/tests exec playwright install --with-deps chromium
+
+          # 4. Prepare env for screenshots (Emulator mode)
+          printf 'PLASMO_PUBLIC_USE_EMULATOR=true\nVITE_USE_EMULATOR=true\n' > apps/extension/.env.local
+          printf 'VITE_USE_EMULATOR=true\n' > apps/hub/.env.local
+
+          # 5. Start Firebase Emulator
+          pnpm run emulator > .emulator.log 2>&1 &
+          EMULATOR_PID=$!
+
+          # 6. Wait for Emulator
+          timeout 60s bash -c 'until curl -s http://127.0.0.1:4000 > /dev/null; do sleep 2; done'
+
+          # 7. Run Screenshot Tests
+          pnpm --filter @icecap/tests playwright test tests/screenshots.spec.ts --project=extension
+
+          # 8. Cleanup
+          kill $EMULATOR_PID || true
+
+          # 9. Zip screenshots
+          mkdir -p dist/screenshots
+          cd reports/screenshots && zip -r ../../dist/screenshots/icecap-extension-screenshots.zip .
+
       - name: Create Release
         if: steps.get_version.outputs.version != steps.get_prev_version.outputs.prev_version
         uses: softprops/action-gh-release@v3
@@ -64,4 +97,5 @@ jobs:
           prerelease: false
           files: |
             dist/extension/*.zip
+            dist/screenshots/*.zip
           token: ${{ secrets.GITHUB_TOKEN }}

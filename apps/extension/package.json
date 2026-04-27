@@ -3,7 +3,7 @@
   "displayName": "Icecap — Real Estate Investment Analyzer",
   "version": "0.1.1",
   "private": true,
-  "description": "Analyze real estate deals directly on Redfin, Zillow, and Realtor.com",
+  "description": "Analyze real estate deals on your favorite sites",
   "scripts": {
     "dev": "plasmo dev",
     "build": "plasmo build",

@@ -9,7 +9,7 @@ This report outlines all the information and assets required to publish the **Ic
 | Field | Value / Draft |
 | :--- | :--- |
 | **Title** | Icecap — Real Estate Investment Analyzer |
-| **Short Description** | Analyze real estate deals directly on Redfin, Zillow, and Realtor.com. |
+| **Short Description** | Analyze real estate deals on your favorite sites. |
 | **Long Description** | **Icecap** is the ultimate tool for real estate investors to perform "Napkin Math" in seconds. Stop switching between tabs and spreadsheets—analyze rental properties, flips, and BRRRR deals directly where you browse listings.<br><br>**Key Features:**<br>• **Instant Analysis:** Automatically scrapes price, taxes, and HOA from Redfin, Zillow, and Realtor.com.<br>• **Rental Metrics:** Calculate Cap Rate, Cash on Cash (CoC) Return, 1% Rule, and Monthly Cash Flow.<br>• **Flip & BRRRR Tools:** Calculate Profit, ROI, MAO (Maximum Allowable Offer), and After-Repair Equity.<br>• **Custom Assumptions:** Set your own default loan interest rates, down payments, and closing costs.<br>• **Sync with Hub:** Save your deals to the Icecap Hub dashboard for deep comparison and portfolio management.<br><br>**Stop over-analyzing and start buying. Download Icecap today.** |
 | **Category** | Productivity (or Finance) |
 | **Language** | English (United States) |
