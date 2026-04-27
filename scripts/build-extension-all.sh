@@ -35,6 +35,24 @@ warn()   { echo "  ⚠️   $1"; }
 fail()   { echo "  ❌  $1"; }
 info()   { echo "  ℹ️   $1"; }
 
+# Strip the 'key' field from manifest.json inside a zip.
+# The Chrome/Edge Web Stores forbid the key field; it's only needed for sideload.
+strip_manifest_key() {
+  local zip_path="$1"
+  local tmp_dir
+  tmp_dir=$(mktemp -d)
+  unzip -q "$zip_path" -d "$tmp_dir"
+  node -e "
+    const fs = require('fs');
+    const m = JSON.parse(fs.readFileSync('${tmp_dir}/manifest.json', 'utf8'));
+    delete m.key;
+    fs.writeFileSync('${tmp_dir}/manifest.json', JSON.stringify(m, null, 2));
+  "
+  rm "$zip_path"
+  (cd "$tmp_dir" && zip -qr "$zip_path" .)
+  rm -rf "$tmp_dir"
+}
+
 # ── Pre-flight checks ─────────────────────────────────────────────────────────
 
 header "Pre-flight checks"
@@ -73,6 +91,7 @@ pnpm --filter @icecap/extension package:chrome
 CHROME_ZIP="$EXT_DIR/build/chrome-mv3-prod.zip"
 if [ -f "$CHROME_ZIP" ]; then
   cp "$CHROME_ZIP" "$DIST_DIR/icecap-chrome.zip"
+  strip_manifest_key "$DIST_DIR/icecap-chrome.zip"
   ok "Chrome package → dist/extension/icecap-chrome.zip"
 else
   fail "Chrome zip not found at $CHROME_ZIP"
@@ -87,6 +106,7 @@ pnpm --filter @icecap/extension package:edge
 EDGE_ZIP="$EXT_DIR/build/edge-mv3-prod.zip"
 if [ -f "$EDGE_ZIP" ]; then
   cp "$EDGE_ZIP" "$DIST_DIR/icecap-edge.zip"
+  strip_manifest_key "$DIST_DIR/icecap-edge.zip"
   ok "Edge package → dist/extension/icecap-edge.zip"
 else
   fail "Edge zip not found at $EDGE_ZIP"
