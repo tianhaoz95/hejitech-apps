@@ -50,6 +50,7 @@ Google has strict requirements for asset dimensions.
 | **Screenshot 1** | 1280x800 | ⚠️ Need to capture (Rental Analysis) |
 | **Screenshot 2** | 1280x800 | ⚠️ Need to capture (Flip/BRRRR Analysis) |
 | **Screenshot 3** | 1280x800 | ⚠️ Need to capture (Sync to Hub) |
+| **Screenshot 4** | 1280x800 | ✅ Captured (AI Chat) |
 | **Promo Tile (Small)**| 440x280 | ⚠️ Mandatory for "Featured" |
 | **Promo Tile (Large)**| 920x680 | ⚠️ Optional but recommended |
 | Marquee Tile | 1400x560 | ⚠️ Optional |
@@ -82,6 +83,7 @@ pnpm --filter @icecap/tests playwright test tests/screenshots.spec.ts --project=
 * `extension_login.png`: The welcome/auth screen.
 * `extension_rental_analysis.png`: The calculator in Rental mode with active metrics.
 * `extension_flip_analysis.png`: The calculator in Flip mode with MAO results.
+* `extension_ai_chat.png`: The AI Property Assistant chat interface.
 
 ---
 
