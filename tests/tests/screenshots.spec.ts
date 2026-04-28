@@ -105,3 +105,26 @@ test("Screenshot 3: Flip Analysis", async ({ page, extensionId }) => {
   await expect(page.getByText("70% Rule MAO")).toBeVisible()
   await page.screenshot({ path: `${SCREENSHOT_DIR}/extension_flip_analysis.png` })
 })
+
+test("Screenshot 4: AI Chat", async ({ page, extensionId }) => {
+  await page.setViewportSize({ width: 400, height: 800 })
+  await signInExtension(page, extensionId)
+  
+  // Set a price so questions are enabled
+  await page.locator("input[type='number']").first().fill("450000")
+  
+  // Switch to AI tab
+  await page.getByRole("button", { name: "AI" }).click()
+  
+  // Wait for the empty state or click a suggestion
+  await expect(page.getByText("AI Property Assistant")).toBeVisible()
+  
+  // Click a suggestion to show some interaction
+  await page.getByRole("button", { name: "Is this a good deal?" }).click()
+  
+  // We don't necessarily need to wait for a real reply if the local model is slow/unavailable in CI,
+  // but showing the user question is already good.
+  await expect(page.getByText("Is this a good deal?")).toBeVisible()
+  
+  await page.screenshot({ path: `${SCREENSHOT_DIR}/extension_ai_chat.png` })
+})
