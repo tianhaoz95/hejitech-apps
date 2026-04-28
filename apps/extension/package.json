@@ -43,7 +43,9 @@
   },
   "manifest": {
     "host_permissions": [
-      "https://*/*",
+      "https://www.redfin.com/*",
+      "https://www.zillow.com/*",
+      "https://www.realtor.com/*",
       "http://localhost/*",
       "http://127.0.0.1/*"
     ],

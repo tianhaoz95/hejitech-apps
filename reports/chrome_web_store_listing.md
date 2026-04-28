@@ -30,7 +30,7 @@ Google requires explicit justification for all permissions. Icecap uses a minima
 *   **`tabs`**: Required to open the Icecap Hub dashboard in a new browser tab and to detect navigation on supported real estate websites to ensure the sidebar stays in sync with the active listing.
 *   **`storage`**: Used to persist user-defined investment assumptions (default interest rates, down payments, closing costs) locally on the device for a personalized experience.
 *   **`identity`**: Enables secure, one-click sign-in via Google OAuth. This is essential for identifying the user and syncing their saved deals to the Icecap Hub backend.
-*   **`host_permissions` (`https://*/*`)**: Required to identify and extract data from supported real estate platforms (Redfin, Zillow, Realtor.com). This permission is also used to inject "Quick Estimate" badges onto search result map markers. *Note: We narrow this scope to specific real estate domains in the final manifest to ensure the principle of least privilege.*
+*   **`host_permissions`**: Icecap explicitly requests access only to the major real estate platforms it supports (Redfin, Zillow, Realtor.com), along with local development environments. This permission is used to identify property listings and inject "Quick Estimate" badges onto search result map markers. By limiting this scope, we ensure the highest level of security and privacy for our users.
 
 ### Remote Code Usage
 
