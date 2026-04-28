@@ -7,45 +7,43 @@ configuration required to make it work.
 
 ## Extension Identity
 
-The extension has a fixed ID derived from the `key` field in `apps/extension/package.json`:
+There are two primary IDs to be aware of:
 
-```
-cljkjphaofjfagcekpbnkonpepdcciba
-```
+1.  **Sideload/Development ID:** `cljkjphaofjfagcekpbnkonpepdcciba`
+    *   Derived from the `key` field in `apps/extension/package.json`.
+    *   Used for local development and manual installations.
+2.  **Web Store Production ID:** `gbjiibgccfkpodffchmnokflclbnbfpl`
+    *   Assigned by the Chrome Web Store for the official listing.
 
-This ID is deterministic for any sideloaded or published build using that same key. If the
-extension is published to the Chrome Web Store and a different key is used, the Web Store will
-assign a different ID — update the entries below accordingly.
+Both must be configured in the consoles for authentication to work across all environments.
 
 ---
 
 ## Required One-Time Setup
 
-### 1. Google Cloud Console — Register the OAuth Redirect URI
+### 1. Google Cloud Console — Register the OAuth Redirect URIs
 
 The `chrome.identity.launchWebAuthFlow` call redirects to a `chromiumapp.org` URL that Chrome
-intercepts locally. Google's OAuth server must allow this redirect URI before it will proceed.
+intercepts locally. Google's OAuth server must allow these redirect URIs.
 
 1. Go to [Google Cloud Console → APIs & Services → Credentials](https://console.cloud.google.com/apis/credentials)
-2. Click the OAuth 2.0 Client ID:
-   `117464393734-p5bahcbmebco1lol4uttii5bl691b2jg.apps.googleusercontent.com`
-3. Under **Authorized redirect URIs**, add exactly (trailing slash required):
+2. Click the OAuth 2.0 Client ID used for production.
+3. Under **Authorized redirect URIs**, add both (trailing slash required):
    ```
    https://cljkjphaofjfagcekpbnkonpepdcciba.chromiumapp.org/
+   https://gbjiibgccfkpodffchmnokflclbnbfpl.chromiumapp.org/
    ```
 4. Click **Save**
 
-> If you see **Error 400: redirect_uri_mismatch** in the sign-in popup, this step hasn't been
-> done yet.
-
-### 2. Firebase Console — Add Authorized Domain
+### 2. Firebase Console — Add Authorized Domains
 
 Firebase validates the redirect domain server-side before issuing auth tokens.
 
 1. Go to [Firebase Console → Authentication → Settings → Authorized domains](https://console.firebase.google.com/project/icecap-platform/authentication/settings)
-2. Click **Add domain** and enter (no protocol, no trailing slash):
+2. Click **Add domain** for both:
    ```
    cljkjphaofjfagcekpbnkonpepdcciba.chromiumapp.org
+   gbjiibgccfkpodffchmnokflclbnbfpl.chromiumapp.org
    ```
 3. Click **Add**
 
