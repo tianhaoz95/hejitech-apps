@@ -137,29 +137,6 @@ Each application has a `.env.example` file. Copy these to `.env` and fill in the
 - `apps/hub/.env.example`
 - `apps/admin/.env.example`
 
-## 🛒 Chrome Web Store Listing
-
-This information is used for the official extension listing.
-
-**Title:** `Icecap — Real Estate Investment Analyzer`  
-**Short Description:** `Analyze real estate deals on your favorite sites.`
-
-**Long Description:**
-> **Icecap** is the ultimate real estate investment co-pilot for serious investors. Stop wasting time switching between listing sites, manual spreadsheets, and complex calculators. Icecap brings the power of professional financial analysis directly to your browser, allowing you to perform "Napkin Math" in seconds on your favorite listing sites.
->
-> **Why install Icecap?**
-> Finding the right deal is a numbers game. To win, you need to analyze properties faster and more accurately than the competition. Icecap eliminates the friction of manual data entry by automatically extracting key property data—including price, taxes, and HOA fees—and instantly calculating the metrics that matter most to your bottom line.
->
-> **Key Features:**
-> - **Instant On-Site Analysis:** Scrape and analyze properties in one click directly on Redfin, Zillow, and Realtor.com.
-> - **Professional Rental Metrics:** Instantly see your Cap Rate, Cash on Cash (CoC) Return, 1% Rule compliance, and Monthly Cash Flow.
-> - **Advanced Flip & BRRRR Tools:** Evaluate rehab projects with automated calculations for Profit, ROI, and the 70% Rule (MAO).
-> - **AI-Powered Deal Summaries:** Get an instant second opinion. Our AI analyzes listing descriptions to highlight potential red flags and investment opportunities.
-> - **Customizable Assumptions:** Tailor the math to your strategy by setting default interest rates, down payments, and closing costs.
-> - **Seamless Hub Integration:** Save your top picks to the Icecap Hub for deep comparison, portfolio tracking, and permanent storage.
->
-> **Stop over-analyzing and start buying with confidence. Download Icecap today and turn your browser into a high-speed deal machine.**
-
 ---
 
 ## 📜 License
