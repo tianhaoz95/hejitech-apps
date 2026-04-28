@@ -22,10 +22,22 @@ This report outlines all the information and assets required to publish the **Ic
 Google requires explicit justification for all permissions and a description of data collection.
 
 ### Permissions Justification
-*   **`activeTab`**: Used to read property details (price, address) from the current listing page only when the user explicitly clicks "Analyze."
-*   **`sidePanel`**: Used to display the analysis interface alongside the listing for a seamless user experience.
-*   **`storage`**: Used to persist user-defined default loan assumptions and settings locally on the device.
-*   **`host_permissions` (`https://*/*`)**: Required to inject "Quick Estimate" badges on search result map markers across supported platforms. *Note: For the final listing, it is recommended to narrow this to `*://*.redfin.com/*`, `*://*.zillow.com/*`, and `*://*.realtor.com/*` to speed up approval.*
+
+Google requires explicit justification for all permissions. Icecap uses a minimal set of permissions to provide its core functionality:
+
+*   **`sidePanel`**: Used to display the financial calculator and AI analysis interface side-by-side with property listings. This allows users to see the analysis without losing context of the listing.
+*   **`activeTab`**: Used to securely extract property details (price, address, taxes, HOA) from the current listing page only when the user explicitly triggers an analysis.
+*   **`tabs`**: Required to open the Icecap Hub dashboard in a new browser tab and to detect navigation on supported real estate websites to ensure the sidebar stays in sync with the active listing.
+*   **`storage`**: Used to persist user-defined investment assumptions (default interest rates, down payments, closing costs) locally on the device for a personalized experience.
+*   **`identity`**: Enables secure, one-click sign-in via Google OAuth. This is essential for identifying the user and syncing their saved deals to the Icecap Hub backend.
+*   **`host_permissions` (`https://*/*`)**: Required to identify and extract data from supported real estate platforms (Redfin, Zillow, Realtor.com). This permission is also used to inject "Quick Estimate" badges onto search result map markers. *Note: We narrow this scope to specific real estate domains in the final manifest to ensure the principle of least privilege.*
+
+### Remote Code Usage
+
+**Question:** Are you using remote code?  
+**Answer:** **No.**
+
+**Justification:** All logic, dependencies, and assets are bundled locally within the extension package at build time. Icecap does not use `eval()`, `new Function()`, or any remotely hosted scripts. All communication with our backend (Firebase) is performed using standard, audited SDKs via HTTPS, ensuring full compliance with Manifest V3 security policies.
 
 ### Data Collection
 *   **Personally Identifiable Information (PII):** Name and Email (via Google Sign-In) to sync deals to your account.
