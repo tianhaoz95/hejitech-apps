@@ -39,11 +39,19 @@ Google requires explicit justification for all permissions. Icecap uses a minima
 
 **Justification:** All logic, dependencies, and assets are bundled locally within the extension package at build time. Icecap does not use `eval()`, `new Function()`, or any remotely hosted scripts. All communication with our backend (Firebase) is performed using standard, audited SDKs via HTTPS, ensuring full compliance with Manifest V3 security policies.
 
-### Data Collection
-*   **Personally Identifiable Information (PII):** Name and Email (via Google Sign-In) to sync deals to your account.
-*   **Financial Data:** Property analysis calculations you save to your dashboard.
-*   **Location Data:** Property addresses extracted from listing pages for the purpose of financial analysis.
-*   **Authentication:** Firebase Auth is used for secure login.
+### Data Usage Disclosures
+
+By publishing this item, we certify that these disclosures reflect the most up-to-date content of our privacy policy. Below are the data types collected and their justifications:
+
+*   **Personally identifiable information:** **Yes.** We collect your Name and Email address via Google Sign-In. This is used solely to identify your account and synchronize your saved property analyses across the Icecap Hub and Extension.
+*   **Health information:** **No.**
+*   **Financial and payment information:** **Yes.** We collect the property financial metrics you calculate (e.g., Cap Rate, Cash-on-Cash Return) and your subscription status. We do **not** collect or store credit card numbers; all payments are handled securely via Stripe.
+*   **Authentication information:** **Yes.** We use authentication tokens (via Firebase/Google OAuth) to provide secure access to your saved data.
+*   **Personal communications:** **No.**
+*   **Location:** **Yes.** We extract the property address from listing pages you analyze to provide localized financial context. We do **not** collect your device's GPS coordinates or IP-based location for tracking.
+*   **Web history:** **No.** We do not track the list of pages you visit. We only interact with the specific real estate listing page you are actively viewing when you trigger an analysis.
+*   **User activity:** **No.** We do not perform network monitoring, click-stream tracking, or keystroke logging.
+*   **Website content:** **Yes.** We extract property-specific text (descriptions, price, and features) from real estate listing sites to perform financial calculations and generate AI summaries.
 
 ### Privacy Policy
 *   **URL:** `https://icecap.io/privacy` (Ensure this is live before submission).
