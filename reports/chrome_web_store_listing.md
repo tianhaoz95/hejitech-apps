@@ -43,15 +43,15 @@ Google requires explicit justification for all permissions. Icecap uses a minima
 
 By publishing this item, we certify that these disclosures reflect the most up-to-date content of our privacy policy. Below are the data types collected and their justifications:
 
-*   **Personally identifiable information:** **Yes.** We collect your Name and Email address via Google Sign-In. This is used solely to identify your account and synchronize your saved property analyses across the Icecap Hub and Extension.
+*   **Personally identifiable information:** **Yes.** We collect your Email address via Google Sign-In to identify your account and synchronize your saved property analyses across the Icecap platform.
 *   **Health information:** **No.**
-*   **Financial and payment information:** **Yes.** We collect the property financial metrics you calculate (e.g., Cap Rate, Cash-on-Cash Return) and your subscription status. We do **not** collect or store credit card numbers; all payments are handled securely via Stripe.
-*   **Authentication information:** **Yes.** We use authentication tokens (via Firebase/Google OAuth) to provide secure access to your saved data.
-*   **Personal communications:** **No.**
-*   **Location:** **Yes.** We extract the property address from listing pages you analyze to provide localized financial context. We do **not** collect your device's GPS coordinates or IP-based location for tracking.
-*   **Web history:** **No.** We do not track the list of pages you visit. We only interact with the specific real estate listing page you are actively viewing when you trigger an analysis.
-*   **User activity:** **No.** We do not perform network monitoring, click-stream tracking, or keystroke logging.
-*   **Website content:** **Yes.** We extract property-specific text (descriptions, price, and features) from real estate listing sites to perform financial calculations and generate AI summaries.
+*   **Financial and payment information:** **No.** We do not collect transactions, credit card numbers, credit ratings, or personal financial statements. While we calculate investment metrics (like ROI), these are property-level projections, not user financial data.
+*   **Authentication information:** **Yes.** We use authentication tokens (via Firebase) to provide secure access to your saved data.
+*   **Personal communications:** **No.** Chat history with the AI Property Assistant is ephemeral and stored only in local state within the extension session.
+*   **Location:** **No.** We do not collect the user's physical location, GPS coordinates, or IP-based region.
+*   **Web history:** **No.**
+*   **User activity:** **No.**
+*   **Website content:** **Yes.** We extract property-specific details (descriptions, price, features) from real estate listing sites to perform financial calculations and generate AI summaries.
 
 ### Privacy Policy
 *   **URL:** `https://icecap.io/privacy` (Ensure this is live before submission).
