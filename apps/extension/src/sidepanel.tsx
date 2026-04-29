@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react"
 import {
   Search, Heart, LogOut, LogIn, LayoutPanelTop,
   User, Zap, AlertTriangle, Crown, RefreshCw, Home, TrendingUp, Sparkles, Calculator, ChevronDown,
-  Bot, Send,
+  Bot, Send, Bug,
 } from "lucide-react"
 import {
   onAuthStateChanged, signOut, GoogleAuthProvider, signInWithCredential, type User as FBUser,
@@ -486,6 +486,23 @@ export default function SidePanel() {
     chrome.tabs.create({ url: HUB_URL })
   }, [])
 
+  const handleCopyDebugInfo = useCallback(() => {
+    const debugInfo = {
+      input: store.getPropertyInput(),
+      metrics,
+      state: {
+        price: store.price,
+        address: store.address,
+        url: store.url,
+        taxes: store.taxes,
+        hoa: store.hoa,
+        description: store.description,
+      }
+    }
+    navigator.clipboard.writeText(JSON.stringify(debugInfo, null, 2))
+    alert("Debug info copied to clipboard!")
+  }, [store, metrics])
+
   useEffect(() => {
     const handler = (msg: { action: string; data?: any }) => {
       if (msg.action === "propertyDetected" && msg.data) {
@@ -854,6 +871,17 @@ export default function SidePanel() {
               Create an account on the web →
             </a>
           </div>
+
+          {IS_DEV && (
+            <div className="pt-4 border-t border-dashed border-gray-100">
+              <button 
+                onClick={handleCopyDebugInfo}
+                className="text-[10px] text-amber-600 font-bold hover:underline"
+              >
+                Copy Debug Info (Store)
+              </button>
+            </div>
+          )}
         </div>
         <footer className="mt-12 text-[10px] text-gray-400 uppercase tracking-widest">
           Icecap Platform v0.1
@@ -889,7 +917,7 @@ export default function SidePanel() {
           </button>
           
           {IS_DEV && (
-            <div className="pt-4 border-t border-dashed border-gray-200">
+            <div className="pt-4 border-t border-dashed border-gray-200 space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-[10px] text-gray-400 font-mono truncate">UID: {user?.uid}</p>
                 <button 
@@ -902,6 +930,12 @@ export default function SidePanel() {
                   Copy
                 </button>
               </div>
+              <button 
+                onClick={handleCopyDebugInfo}
+                className="w-full text-[10px] text-amber-600 font-bold hover:underline text-left"
+              >
+                Copy Debug Info (Store)
+              </button>
             </div>
           )}
 
@@ -924,6 +958,15 @@ export default function SidePanel() {
           <img src={logoUrl} alt="Icecap" className="h-6 w-auto" />
         </div>
         <div className="flex items-center gap-0.5">
+          {IS_DEV && (
+            <button
+              onClick={handleCopyDebugInfo}
+              title="Copy Debug Info"
+              className="p-2 hover:bg-gray-100 rounded-lg text-amber-600"
+            >
+              <Bug size={17} />
+            </button>
+          )}
           <button
             onClick={handleOpenHub}
             title="Open Hub" className="p-2 hover:bg-gray-100 rounded-lg text-gray-500"
