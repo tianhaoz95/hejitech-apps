@@ -1,6 +1,6 @@
 // ─── Analysis ────────────────────────────────────────────────────────────────
 
-export type AnalysisMode = "rental" | "flip" | "brrrr"
+export type AnalysisMode = "rental" | "str" | "both" | "flip" | "brrrr"
 
 export interface PropertyAssumptions {
   downPaymentPercent: number
@@ -11,6 +11,16 @@ export interface PropertyAssumptions {
   managementFeeRate: number
   closingCostsPercent: number
   sellingCostsPercent: number
+}
+
+export interface StrAssumptions {
+  adr: number
+  occupancyRate: number // 0-100
+  platformFeeRate: number // 3-15%
+  cleaningFeeIncome: number // Per booking
+  cleaningFeeExpense: number // Per booking
+  avgStayLength: number // Days (needed for cleaning fee calc)
+  monthlyUtilities: number
 }
 
 export interface PropertyData {
@@ -26,6 +36,7 @@ export interface PropertyData {
   holdingCosts: number
   description?: string
   assumptions: PropertyAssumptions
+  strAssumptions?: StrAssumptions
 }
 
 export interface RentalMetrics {
@@ -39,6 +50,14 @@ export interface RentalMetrics {
   onePercentRule: number
   totalCashToClose: number
   noi: number
+}
+
+export interface StrMetrics extends RentalMetrics {
+  adr: number
+  revPar: number
+  occupancyRate: number
+  annualPlatformFees: number
+  annualCleaningFees: number // (Income - Expense) * Bookings
 }
 
 export interface FlipMetrics {
@@ -61,6 +80,7 @@ export interface SavedProperty extends PropertyData {
   id: string
   userId: string
   rentalMetrics?: RentalMetrics
+  strMetrics?: StrMetrics
   flipMetrics?: FlipMetrics
   createdAt: number
   updatedAt: number

@@ -3,6 +3,7 @@ import { useAuth } from "./hooks/useAuth"
 import { LoginPage } from "./pages/LoginPage"
 import { DashboardLayout } from "./pages/DashboardLayout"
 import { DashboardPage } from "./pages/DashboardPage"
+import { PropertyDetailsPage } from "./pages/PropertyDetailsPage"
 import { PortfolioPage } from "./pages/PortfolioPage"
 import { ComparePage } from "./pages/ComparePage"
 import { SettingsPage } from "./pages/SettingsPage"
@@ -45,6 +46,7 @@ export default function App() {
       >
         <Route index element={<DashboardPage />} />
         <Route path="portfolio" element={<PortfolioPage />} />
+        <Route path="property/:id" element={<PropertyDetailsPage />} />
         <Route path="compare" element={<ComparePage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="billing" element={<BillingPage />} />

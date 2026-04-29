@@ -14,6 +14,7 @@ import { getGenerativeModel } from "firebase/ai"
 import { auth, db, functions, useEmulator, signInWithGoogle, ai } from "./core/firebase"
 import { IS_DEV, HUB_URL } from "./core/constants"
 import { usePropertyStore, type AnalysisMode } from "./core/store"
+import { compareRentalStrategies } from "./core/math"
 import { Logo } from "./core/components/Logo"
 import logoUrl from "url:~assets/logo.svg"
 import "./style.css"
@@ -40,9 +41,10 @@ type ViewMode = AnalysisMode | "ai"
 
 function StrategyToggle({ value, onChange }: { value: ViewMode; onChange: (m: ViewMode) => void }) {
   const modes: { id: ViewMode; label: string; Icon: typeof Home }[] = [
-    { id: "rental", label: "Rental", Icon: Home },
+    { id: "rental", label: "LTR", Icon: Home },
+    { id: "str", label: "STR", Icon: Zap },
+    { id: "both", label: "Both", Icon: LayoutPanelTop },
     { id: "flip", label: "Flip", Icon: TrendingUp },
-    { id: "brrrr", label: "BRRRR", Icon: RefreshCw },
     { id: "ai", label: "AI", Icon: Bot },
   ]
   return (
@@ -143,6 +145,116 @@ function CalcGroup({ title, children }: { title: string; children: React.ReactNo
     <div className="mt-3 first:mt-0">
       <p className="text-[9px] text-gray-400 uppercase font-bold tracking-widest mb-0.5">{title}</p>
       {children}
+    </div>
+  )
+}
+
+function StrBreakdown({
+  price, taxes, hoa, rehabCost, assumptions, strAssumptions, metrics,
+}: {
+  price: number; taxes: number; hoa: number; rehabCost: number;
+  assumptions: import("./core/math").PropertyAssumptions;
+  strAssumptions: import("./core/math").StrAssumptions;
+  metrics: import("./core/math").StrMetrics;
+}) {
+  const { downPaymentPercent, interestRate, loanTermYears, maintenanceRate, managementFeeRate, closingCostsPercent } = assumptions
+  const { adr, occupancyRate, platformFeeRate, cleaningFeeIncome, cleaningFeeExpense, avgStayLength, monthlyUtilities } = strAssumptions
+
+  const down = price * (downPaymentPercent / 100)
+  const monthlyGross = (adr * 365 * (occupancyRate / 100)) / 12
+  const monthlyMaint = (maintenanceRate / 100) * monthlyGross
+  const monthlyMgmt = (managementFeeRate / 100) * monthlyGross
+  const monthlyPlat = (platformFeeRate / 100) * monthlyGross
+
+  const cashFlowSign = metrics.monthlyCashFlow >= 0 ? "positive" : "negative"
+
+  return (
+    <div>
+      <CalcGroup title="Gross Income">
+        <CalcRow label="ADR" value={fmt(adr)} />
+        <CalcRow label="Occupancy" value={fmtPct(occupancyRate)} />
+        <CalcRow
+          label="Monthly Gross Revenue"
+          formula={`${fmt(adr)} × 365 × ${occupancyRate}% ÷ 12`}
+          value={`${fmt(monthlyGross)}/mo`}
+        />
+        <CalcRow label="RevPAR" value={fmt(metrics.revPar)} />
+      </CalcGroup>
+
+      <CalcGroup title="Monthly Expenses">
+        <CalcRow label="Taxes & HOA" value={`${fmt(taxes / 12 + hoa)}/mo`} />
+        <CalcRow label="Utilities" value={`${fmt(monthlyUtilities)}/mo`} />
+        <CalcRow
+          label="Maintenance"
+          formula={`${maintenanceRate}% of Revenue`}
+          value={`${fmt(monthlyMaint)}/mo`}
+        />
+        <CalcRow
+          label="Management"
+          formula={`${managementFeeRate}% of Revenue`}
+          value={`${fmt(monthlyMgmt)}/mo`}
+        />
+        <CalcRow
+          label="Platform Fees"
+          formula={`${platformFeeRate}% of Revenue`}
+          value={`${fmt(monthlyPlat)}/mo`}
+        />
+        <CalcRow label="Total Expenses" value={`${fmt(metrics.monthlyExpenses)}/mo`} />
+      </CalcGroup>
+
+      <CalcGroup title="Cash Flow">
+        <CalcRow label="Monthly Cash Flow" value={`${fmt(metrics.monthlyCashFlow)}/mo`} sign={cashFlowSign} />
+        <CalcRow label="Annual Cash Flow" value={fmt(metrics.annualCashFlow)} sign={cashFlowSign} />
+      </CalcGroup>
+
+      <CalcGroup title="Returns">
+        <CalcRow label="Cap Rate" value={fmtPct(metrics.capRate)} />
+        <CalcRow label="CoC Return" value={fmtPct(metrics.cocReturn)} sign={cashFlowSign} />
+      </CalcGroup>
+    </div>
+  )
+}
+
+function StrategyComparisonCard({
+  ltr, str, comparison
+}: {
+  ltr: import("./core/math").RentalMetrics;
+  str: import("./core/math").StrMetrics;
+  comparison: import("./core/math").StrategyComparison;
+}) {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-4">
+      <div className="bg-gray-50 px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Strategy Comparison</span>
+        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+          comparison.bestStrategy === "str" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"
+        }`}>
+          {comparison.bestStrategy === "str" ? "STR Wins" : "LTR Wins"}
+        </span>
+      </div>
+      <div className="p-4 grid grid-cols-2 gap-4">
+        <div className={`p-3 rounded-xl border-2 ${comparison.bestStrategy === "ltr" ? "border-blue-500 bg-blue-50/30" : "border-gray-50"}`}>
+          <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">LTR Strategy</p>
+          <p className="text-lg font-bold text-gray-900">{fmt(ltr.monthlyCashFlow)}/mo</p>
+          <p className="text-[10px] text-gray-500">{fmtPct(ltr.cocReturn)} CoC</p>
+        </div>
+        <div className={`p-3 rounded-xl border-2 ${comparison.bestStrategy === "str" ? "border-purple-500 bg-purple-50/30" : "border-gray-50"}`}>
+          <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">STR Strategy</p>
+          <p className="text-lg font-bold text-gray-900">{fmt(str.monthlyCashFlow)}/mo</p>
+          <p className="text-[10px] text-gray-500">{fmtPct(str.cocReturn)} CoC</p>
+        </div>
+      </div>
+      <div className="px-4 pb-4">
+        <div className="p-3 bg-gray-50 rounded-xl">
+          <div className="flex items-center gap-2 mb-1">
+            <Zap size={12} className="text-amber-500" />
+            <span className="text-[10px] font-bold text-gray-600 uppercase">Breakeven Analysis</span>
+          </div>
+          <p className="text-xs text-gray-600">
+            STR becomes more profitable than LTR at <span className="font-bold text-gray-900">{comparison.breakevenOccupancy}%</span> occupancy.
+          </p>
+        </div>
+      </div>
     </div>
   )
 }
@@ -516,9 +628,11 @@ export default function SidePanel() {
         holdingCosts: input.holdingCosts,
         userId: user.uid,
         rentalMetrics: metrics.rental,
+        strMetrics: metrics.str,
         flipMetrics: metrics.flip,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
+        strAssumptions: input.strAssumptions,
       })
       setSaveStatus("saved")
       setTimeout(() => setSaveStatus("idle"), 2000)
@@ -985,14 +1099,10 @@ export default function SidePanel() {
 
         {/* Assumptions */}
         <section className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-3">
-          <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide">Assumptions</p>
-          <Slider
-            label="Rent Estimate"
-            value={store.assumptions.rentRatioPercent}
-            min={0.3} max={2} step={0.05}
-            formatValue={(v) => `${v.toFixed(2)}% of price`}
-            onChange={(v) => store.setAssumption("rentRatioPercent", v)}
-          />
+          <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide">
+            {activeView === "str" ? "STR Assumptions" : "General Assumptions"}
+          </p>
+          
           <Slider
             label="Down Payment"
             value={store.assumptions.downPaymentPercent}
@@ -1006,39 +1116,112 @@ export default function SidePanel() {
             formatValue={(v) => `${v.toFixed(2)}%`}
             onChange={(v) => store.setAssumption("interestRate", v)}
           />
-          <Slider
-            label="Vacancy Rate"
-            value={store.assumptions.vacancyRate}
-            min={0} max={20}
-            onChange={(v) => store.setAssumption("vacancyRate", v)}
-          />
-          <Slider
-            label="Maintenance"
-            value={store.assumptions.maintenanceRate}
-            min={0} max={20}
-            onChange={(v) => store.setAssumption("maintenanceRate", v)}
-          />
-          <Slider
-            label="Mgmt Fee"
-            value={store.assumptions.managementFeeRate}
-            min={0} max={20}
-            onChange={(v) => store.setAssumption("managementFeeRate", v)}
-          />
+
+          {activeView === "str" ? (
+            <>
+              <Slider
+                label="ADR"
+                value={store.strAssumptions.adr}
+                min={50} max={1000} step={10}
+                formatValue={(v) => fmt(v)}
+                onChange={(v) => store.setStrAssumption("adr", v)}
+              />
+              <Slider
+                label="Occupancy Rate"
+                value={store.strAssumptions.occupancyRate}
+                min={0} max={100}
+                onChange={(v) => store.setStrAssumption("occupancyRate", v)}
+              />
+              <Slider
+                label="Mgmt Fee"
+                value={store.assumptions.managementFeeRate}
+                min={0} max={30}
+                onChange={(v) => store.setAssumption("managementFeeRate", v)}
+              />
+              <Slider
+                label="Platform Fee"
+                value={store.strAssumptions.platformFeeRate}
+                min={0} max={20}
+                onChange={(v) => store.setStrAssumption("platformFeeRate", v)}
+              />
+            </>
+          ) : (
+            <>
+              <Slider
+                label="Rent Estimate"
+                value={store.assumptions.rentRatioPercent}
+                min={0.3} max={2} step={0.05}
+                formatValue={(v) => `${v.toFixed(2)}% of price`}
+                onChange={(v) => store.setAssumption("rentRatioPercent", v)}
+              />
+              <Slider
+                label="Vacancy Rate"
+                value={store.assumptions.vacancyRate}
+                min={0} max={20}
+                onChange={(v) => store.setAssumption("vacancyRate", v)}
+              />
+              <Slider
+                label="Maintenance"
+                value={store.assumptions.maintenanceRate}
+                min={0} max={20}
+                onChange={(v) => store.setAssumption("maintenanceRate", v)}
+              />
+              <Slider
+                label="Mgmt Fee"
+                value={store.assumptions.managementFeeRate}
+                min={0} max={20}
+                onChange={(v) => store.setAssumption("managementFeeRate", v)}
+              />
+            </>
+          )}
         </section>
 
+        {/* Comparison View */}
+        {activeView === "both" && store.price > 0 && (
+          <StrategyComparisonCard 
+            ltr={metrics.rental} 
+            str={metrics.str} 
+            comparison={compareRentalStrategies(store.getPropertyInput())} 
+          />
+        )}
+
         {/* Results */}
-        {store.price > 0 && <div className="bg-blue-600 text-white p-4 rounded-2xl shadow-lg" data-testid="result-card">
+        {store.price > 0 && activeView !== "both" && <div className={`p-4 rounded-2xl shadow-lg text-white ${
+          activeView === "str" ? "bg-purple-600" : "bg-blue-600"
+        }`} data-testid="result-card">
           <h3 className="text-xs font-semibold opacity-80 uppercase mb-4">
-            {store.mode === "rental" ? "Rental Metrics" : store.mode === "flip" ? "Flip Metrics" : "BRRRR Metrics"}
+            {activeView === "rental" ? "LTR Metrics" : activeView === "str" ? "STR Metrics" : activeView === "flip" ? "Flip Metrics" : "BRRRR Metrics"}
           </h3>
-          {store.mode !== "flip" ? (
+          {activeView === "rental" || activeView === "brrrr" || activeView === "str" ? (
             <div className="grid grid-cols-2 gap-y-4 gap-x-4">
-              <MetricBox label="Monthly Cash Flow" value={fmt(metrics.rental.monthlyCashFlow)} large />
-              <MetricBox label="CoC Return" value={fmtPct(metrics.rental.cocReturn)} large />
-              <MetricBox label="Cap Rate" value={fmtPct(metrics.rental.capRate)} />
-              <MetricBox label="1% Rule" value={fmtPct(metrics.rental.onePercentRule)} />
-              <MetricBox label="GRM" value={metrics.rental.grm.toFixed(1)} />
-              <MetricBox label="Cash to Close" value={fmt(metrics.rental.totalCashToClose)} />
+              <MetricBox 
+                label="Monthly Cash Flow" 
+                value={activeView === "str" ? fmt(metrics.str.monthlyCashFlow) : fmt(metrics.rental.monthlyCashFlow)} 
+                large 
+              />
+              <MetricBox 
+                label="CoC Return" 
+                value={activeView === "str" ? fmtPct(metrics.str.cocReturn) : fmtPct(metrics.rental.cocReturn)} 
+                large 
+              />
+              <MetricBox 
+                label="Cap Rate" 
+                value={activeView === "str" ? fmtPct(metrics.str.capRate) : fmtPct(metrics.rental.capRate)} 
+              />
+              {activeView === "str" ? (
+                <MetricBox label="RevPAR" value={fmt(metrics.str.revPar)} />
+              ) : (
+                <MetricBox label="1% Rule" value={fmtPct(metrics.rental.onePercentRule)} />
+              )}
+              {activeView === "str" ? (
+                <MetricBox label="Occupancy" value={fmtPct(metrics.str.occupancyRate)} />
+              ) : (
+                <MetricBox label="GRM" value={metrics.rental.grm.toFixed(1)} />
+              )}
+              <MetricBox 
+                label="Cash to Close" 
+                value={activeView === "str" ? fmt(metrics.str.totalCashToClose) : fmt(metrics.rental.totalCashToClose)} 
+              />
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-y-4 gap-x-4">
@@ -1055,7 +1238,7 @@ export default function SidePanel() {
         </div>}
 
         {/* Calculation Breakdown */}
-        {store.price > 0 && (
+        {store.price > 0 && activeView !== "both" && (
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
             <button
               onClick={() => setShowBreakdown((v) => !v)}
@@ -1072,7 +1255,7 @@ export default function SidePanel() {
             </button>
             {showBreakdown && (
               <div className="px-4 pb-4 border-t border-gray-50">
-                {store.mode !== "flip" ? (
+                {activeView === "rental" || activeView === "brrrr" ? (
                   <RentalBreakdown
                     price={store.price}
                     taxes={store.taxes}
@@ -1081,6 +1264,16 @@ export default function SidePanel() {
                     rehabCost={store.rehabCost}
                     assumptions={store.assumptions}
                     metrics={metrics.rental}
+                  />
+                ) : activeView === "str" ? (
+                  <StrBreakdown
+                    price={store.price}
+                    taxes={store.taxes}
+                    hoa={store.hoa}
+                    rehabCost={store.rehabCost}
+                    assumptions={store.assumptions}
+                    strAssumptions={store.strAssumptions}
+                    metrics={metrics.str}
                   />
                 ) : (
                   <FlipBreakdown

@@ -143,3 +143,40 @@ test("BRRRR mode shows extended metrics", async ({ page, extensionId }) => {
 
   await expect(page.locator("h3").getByText("BRRRR Metrics")).toBeVisible()
 })
+
+test("STR mode shows STR specific assumptions and metrics", async ({ page, extensionId }) => {
+  await page.setViewportSize({ width: 400, height: 800 })
+  await signInExtension(page, extensionId)
+
+  // Enter price to show metrics/inputs
+  await page.locator("input[type='number']").first().fill("400000")
+
+  // Toggle to STR
+  const strBtn = page.getByRole("button", { name: "STR" })
+  await strBtn.click()
+
+  // Should show STR specific assumptions
+  await expect(page.getByText("STR Assumptions")).toBeVisible()
+  await expect(page.getByText("ADR")).toBeVisible()
+  await expect(page.getByText("Occupancy Rate")).toBeVisible()
+
+  // Should show STR Metrics
+  await expect(page.locator("h3").getByText("STR Metrics")).toBeVisible()
+  await expect(page.getByText("RevPAR")).toBeVisible()
+})
+
+test("Both mode shows comparison card", async ({ page, extensionId }) => {
+  await page.setViewportSize({ width: 400, height: 800 })
+  await signInExtension(page, extensionId)
+
+  // Enter price to show metrics/inputs
+  await page.locator("input[type='number']").first().fill("400000")
+
+  // Toggle to Both
+  const bothBtn = page.getByRole("button", { name: "Both" })
+  await bothBtn.click()
+
+  // Should show Strategy Comparison card
+  await expect(page.getByText("Strategy Comparison")).toBeVisible()
+  await expect(page.getByText("Breakeven Analysis")).toBeVisible()
+})
