@@ -204,14 +204,19 @@ export function compareRentalStrategies(data: PropertyData): StrategyComparison 
   // Variable rate as % of gross revenue
   const variableRate = (assumptions.managementFeeRate + strAssumptions.platformFeeRate + assumptions.maintenanceRate) / 100
 
-  // Cleaning net is assumed constant for this calculation (simplification)
-  const annualBookings = (365 * (strAssumptions.occupancyRate / 100)) / strAssumptions.avgStayLength
-  const monthlyCleaningNet = ((strAssumptions.cleaningFeeIncome - strAssumptions.cleaningFeeExpense) * annualBookings) / 12
+  // Cleaning contribution per dollar of nightly revenue
+  // CleaningNet = (CleaningIncome - CleaningExpense) * (Nights / AvgStayLength)
+  // Nights = Revenue / ADR
+  // CleaningNet = Revenue * (CleaningIncome - CleaningExpense) / (ADR * AvgStayLength)
+  const cleaningContributionRate = (strAssumptions.cleaningFeeIncome - strAssumptions.cleaningFeeExpense) / (strAssumptions.adr * strAssumptions.avgStayLength)
 
   // Target Revenue to match LTR Cashflow
-  // TargetMonthlyRevenue * (1 - VariableRate) - FixedExpenses + CleaningNet = LTR_Cashflow
-  const targetMonthlyRevenue = (ltr.monthlyCashFlow + monthlyFixedStrExpenses - monthlyCleaningNet) / (1 - variableRate)
-  const breakevenOccupancy = (targetMonthlyRevenue / (strAssumptions.adr * 30.416)) * 100
+  // TargetMonthlyRevenue * (1 - VariableRate + CleaningContributionRate) - FixedExpenses = LTR_Cashflow
+  const marginalRate = 1 - variableRate + cleaningContributionRate
+  const targetMonthlyRevenue = marginalRate > 0
+    ? (ltr.monthlyCashFlow + monthlyFixedStrExpenses) / marginalRate
+    : Infinity
+  const breakevenOccupancy = (targetMonthlyRevenue / (strAssumptions.adr * (365 / 12))) * 100
 
   return {
     bestStrategy,
@@ -273,7 +278,7 @@ export function calcBrrrrMetrics(data: PropertyData): BrrrrMetrics {
   // Post-Refi Cash Flow: The mortgage changes to the new refi loan amount
   const postRefiMortgage = calcMonthlyMortgage(refiLoanAmount, assumptions.interestRate, assumptions.loanTermYears)
   const postRefiCashFlow = data.estimatedRent - postRefiMortgage - rental.monthlyExpenses
-  const postRefiCocReturn = infiniteReturn ? 100 : (postRefiCashFlow * 12 / cashLeftIn) * 100
+  const postRefiCocReturn = infiniteReturn ? Infinity : (postRefiCashFlow * 12 / cashLeftIn) * 100
 
   return {
     ...rental,
@@ -326,7 +331,8 @@ export function validatePropertyData(data: Partial<PropertyData>): string[] {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function round2(n: number): number {
-  if (!isFinite(n) || isNaN(n)) return 0
+  if (isNaN(n)) return 0
+  if (!isFinite(n)) return n // Return Infinity as is
   return Math.round(n * 100) / 100
 }
 
