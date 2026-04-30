@@ -268,7 +268,7 @@ describe("calcBrrrrMetrics", () => {
     // 60k > 37k invested → infinite return
     expect(m.infiniteReturn).toBe(true)
     expect(m.cashLeftIn).toBe(0)
-    expect(m.postRefiCocReturn).toBe(100)
+    expect(m.postRefiCocReturn).toBe(Infinity)
   })
 })
 
@@ -310,5 +310,101 @@ describe("validatePropertyData", () => {
       assumptions: { ...DEFAULT_ASSUMPTIONS, interestRate: 50 },
     })
     expect(errors).toContain("Interest rate must be between 0% and 30%")
+  })
+})
+
+describe("Calculation Edge Cases", () => {
+  const baseData: PropertyData = {
+    mode: "rental",
+    price: 100000,
+    address: "Test",
+    url: "Test",
+    taxes: 1200,
+    hoa: 0,
+    estimatedRent: 1000,
+    rehabCost: 0,
+    arv: 100000,
+    holdingCosts: 0,
+    assumptions: {
+      ...DEFAULT_ASSUMPTIONS,
+      downPaymentPercent: 20,
+      interestRate: 6,
+      loanTermYears: 30,
+      vacancyRate: 0,
+      maintenanceRate: 0,
+      managementFeeRate: 0,
+      closingCostsPercent: 0,
+    },
+  }
+
+  it("calculates breakeven occupancy correctly when cleaning profit exists", () => {
+    const data: PropertyData = {
+      ...baseData,
+      strAssumptions: {
+        adr: 100,
+        occupancyRate: 50,
+        platformFeeRate: 0,
+        cleaningFeeIncome: 200,
+        cleaningFeeExpense: 100,
+        avgStayLength: 1,
+        monthlyUtilities: 0,
+      },
+    }
+    const ltr = calcRentalMetrics(data)
+    const result = compareRentalStrategies(data)
+    const strAtBreakeven = calcStrMetrics({
+      ...data,
+      strAssumptions: { ...data.strAssumptions!, occupancyRate: result.breakevenOccupancy },
+    })
+    expect(strAtBreakeven.monthlyCashFlow).toBeCloseTo(ltr.monthlyCashFlow, 0)
+  })
+
+  it("returns Infinity for breakeven occupancy when marginal rate is zero or negative", () => {
+    const data: PropertyData = {
+      ...baseData,
+      strAssumptions: {
+        adr: 100,
+        occupancyRate: 50,
+        platformFeeRate: 0,
+        cleaningFeeIncome: 100,
+        cleaningFeeExpense: 200, // $100 loss per booking
+        avgStayLength: 1,
+        monthlyUtilities: 0,
+      },
+    }
+    const result = compareRentalStrategies(data)
+    expect(result.breakevenOccupancy).toBe(Infinity)
+  })
+
+  it("handles infinite return and doesn't round it to 0", () => {
+    const data: PropertyData = {
+      ...baseData,
+      price: 100000,
+      arv: 200000,
+      rehabCost: 20000,
+      assumptions: {
+        ...baseData.assumptions,
+        downPaymentPercent: 20,
+        closingCostsPercent: 0,
+      },
+    }
+    const brrrr = calcBrrrrMetrics(data)
+    expect(brrrr.infiniteReturn).toBe(true)
+    expect(brrrr.postRefiCocReturn).toBe(Infinity)
+  })
+
+  it("calculates NOI correctly (EGI - OpEx)", () => {
+    const data: PropertyData = {
+      ...baseData,
+      estimatedRent: 2000,
+      assumptions: {
+        ...baseData.assumptions,
+        vacancyRate: 5,
+        maintenanceRate: 5,
+        managementFeeRate: 10,
+      },
+    }
+    const metrics = calcRentalMetrics(data)
+    expect(metrics.noi).toBe(18000)
   })
 })
