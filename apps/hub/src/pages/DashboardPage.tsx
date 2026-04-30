@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { Link } from "react-router-dom"
 import { collection, query, onSnapshot, orderBy } from "firebase/firestore"
 import { TrendingUp, Home, Plus, Download, Crown } from "lucide-react"
 import { db } from "../core/firebase"
@@ -134,10 +135,10 @@ function DealRow({ property: p }: { property: SavedProperty }) {
 
   return (
     <div
-      className="bg-white p-5 rounded-[24px] border border-gray-50 shadow-sm flex items-center justify-between hover:shadow-lg hover:border-blue-100 transition-all"
+      className="bg-white p-5 rounded-[24px] border border-gray-50 shadow-sm flex items-center justify-between hover:shadow-lg hover:border-blue-100 transition-all group"
       data-testid="deal-card"
     >
-      <div className="flex items-center gap-4">
+      <Link to={`/property/${p.id}`} className="flex items-center gap-4 flex-1">
         <div
           className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-md ${
             p.mode === "rental" ? "bg-blue-600 shadow-blue-100" : "bg-orange-500 shadow-orange-100"
@@ -146,7 +147,7 @@ function DealRow({ property: p }: { property: SavedProperty }) {
           {p.mode === "rental" ? <Home size={24} /> : <TrendingUp size={24} />}
         </div>
         <div>
-          <p className="font-black text-gray-900">{p.address || "Unknown Address"}</p>
+          <p className="font-black text-gray-900 group-hover:text-blue-600 transition-colors">{p.address || "Unknown Address"}</p>
           <div className="flex items-center gap-3 text-sm mt-0.5">
             <span className="text-gray-400">
               Price: <b className="text-gray-700">{fmt(p.price)}</b>
@@ -156,8 +157,8 @@ function DealRow({ property: p }: { property: SavedProperty }) {
             </span>
           </div>
         </div>
-      </div>
-      <div className="flex items-center gap-8">
+      </Link>
+      <Link to={`/property/${p.id}`} className="flex items-center gap-8">
         <div className="text-right">
           <p className="text-[10px] text-gray-300 uppercase font-black tracking-widest mb-0.5">Cash Flow</p>
           <p className={`text-lg font-black ${cashFlow >= 0 ? "text-green-500" : "text-red-400"}`}>
@@ -168,7 +169,7 @@ function DealRow({ property: p }: { property: SavedProperty }) {
           <p className="text-[10px] text-gray-300 uppercase font-black tracking-widest mb-0.5">Cap Rate</p>
           <p className="text-lg font-black text-blue-600">{(p.rentalMetrics?.capRate ?? 0).toFixed(1)}%</p>
         </div>
-      </div>
+      </Link>
     </div>
   )
 }

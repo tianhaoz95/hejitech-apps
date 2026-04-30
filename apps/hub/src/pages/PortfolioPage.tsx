@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { Link } from "react-router-dom"
 import { collection, query, onSnapshot, orderBy, deleteDoc, doc } from "firebase/firestore"
 import { Home, TrendingUp, ExternalLink, Trash2, Crown } from "lucide-react"
 import { db } from "../core/firebase"
@@ -85,7 +86,7 @@ export function PortfolioPage() {
                 className="bg-white p-6 rounded-[32px] border border-gray-50 shadow-sm flex items-center justify-between hover:shadow-lg hover:border-blue-100 transition-all group"
                 data-testid="property-card"
               >
-                <div className="flex items-center gap-6">
+                <Link to={`/property/${p.id}`} className="flex items-center gap-6 flex-1">
                   <div
                     className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg ${
                       p.mode === "rental" ? "bg-blue-600 shadow-blue-100" : "bg-orange-500 shadow-orange-100"
@@ -106,21 +107,23 @@ export function PortfolioPage() {
                       </span>
                     </div>
                   </div>
-                </div>
+                </Link>
 
                 <div className="flex items-center gap-10">
-                  <div className="text-right">
-                    <p className="text-[10px] text-gray-300 uppercase font-black tracking-widest mb-1">Cash Flow</p>
-                    <p className={`text-xl font-black ${cashFlow >= 0 ? "text-green-500" : "text-red-400"}`}>
-                      {fmt(cashFlow)}<span className="text-xs font-bold opacity-50 ml-1">/mo</span>
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] text-gray-300 uppercase font-black tracking-widest mb-1">CoC Return</p>
-                    <p className="text-xl font-black text-blue-600">
-                      {(p.rentalMetrics?.cocReturn ?? 0).toFixed(1)}%
-                    </p>
-                  </div>
+                  <Link to={`/property/${p.id}`} className="flex items-center gap-10">
+                    <div className="text-right">
+                      <p className="text-[10px] text-gray-300 uppercase font-black tracking-widest mb-1">Cash Flow</p>
+                      <p className={`text-xl font-black ${cashFlow >= 0 ? "text-green-500" : "text-red-400"}`}>
+                        {fmt(cashFlow)}<span className="text-xs font-bold opacity-50 ml-1">/mo</span>
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-gray-300 uppercase font-black tracking-widest mb-1">CoC Return</p>
+                      <p className="text-xl font-black text-blue-600">
+                        {(p.rentalMetrics?.cocReturn ?? 0).toFixed(1)}%
+                      </p>
+                    </div>
+                  </Link>
                   <div className="flex items-center gap-3 border-l border-gray-100 pl-8">
                     {p.url && (
                       <a

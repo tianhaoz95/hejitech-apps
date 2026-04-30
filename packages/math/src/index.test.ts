@@ -4,6 +4,8 @@ import {
   calcFlipMetrics,
   calcBrrrrMetrics,
   calcMonthlyMortgage,
+  calcStrMetrics,
+  compareRentalStrategies,
   quickCashFlowEstimate,
   validatePropertyData,
   DEFAULT_ASSUMPTIONS,
@@ -22,6 +24,19 @@ const baseRentalProperty: PropertyData = {
   arv: 330000,
   holdingCosts: 0,
   assumptions: { ...DEFAULT_ASSUMPTIONS },
+}
+
+const baseStrProperty: PropertyData = {
+  ...baseRentalProperty,
+  strAssumptions: {
+    adr: 250,
+    occupancyRate: 65,
+    platformFeeRate: 10,
+    cleaningFeeIncome: 150,
+    cleaningFeeExpense: 150,
+    avgStayLength: 3,
+    monthlyUtilities: 300,
+  },
 }
 
 const baseFlipProperty: PropertyData = {
@@ -109,6 +124,76 @@ describe("calcRentalMetrics", () => {
   it("computes CoC return", () => {
     const m = calcRentalMetrics(baseRentalProperty)
     expect(m.cocReturn).toBeCloseTo((m.annualCashFlow / 79000) * 100, 1)
+  })
+})
+
+describe("calcStrMetrics", () => {
+  it("returns zero metrics for missing strAssumptions", () => {
+    const data: PropertyData = { ...baseStrProperty, strAssumptions: undefined }
+    const m = calcStrMetrics(data)
+    expect(m.monthlyCashFlow).toBe(0)
+    expect(m.adr).toBe(0)
+  })
+
+  it("calculates gross revenue correctly", () => {
+    const m = calcStrMetrics(baseStrProperty)
+    // adr: 250, occupancy: 65%
+    // annual gross: 250 * 365 * 0.65 = 59312.5
+    // monthly gross: 59312.5 / 12 = 4942.71
+    expect(m.noi + m.monthlyExpenses * 12).toBeCloseTo(59312.5, 0)
+  })
+
+  it("calculates RevPAR correctly", () => {
+    const m = calcStrMetrics(baseStrProperty)
+    // 250 * 0.65 = 162.5
+    expect(m.revPar).toBe(162.5)
+  })
+
+  it("calculates platform fees correctly", () => {
+    const m = calcStrMetrics(baseStrProperty)
+    // monthly gross: 4942.71
+    // platform fee: 10% * 4942.71 = 494.27
+    // annual platform fees: 494.27 * 12 = 5931.25
+    expect(m.annualPlatformFees).toBeCloseTo(5931.25, 0)
+  })
+
+  it("calculates cleaning fees correctly", () => {
+    const m = calcStrMetrics(baseStrProperty)
+    // annual bookings: (365 * 0.65) / 3 = 79.083
+    // annual cleaning expense: 79.083 * 150 = 11862.5
+    expect(m.annualCleaningFees).toBeCloseTo(11862.5, 0)
+  })
+
+  it("calculates monthly cash flow correctly", () => {
+    const m = calcStrMetrics(baseStrProperty)
+    // monthly gross: 4942.71
+    // monthly taxes: 500
+    // monthly hoa: 100
+    // monthly maintenance: 5% * 4942.71 = 247.14
+    // monthly management: 8% * 4942.71 = 395.42
+    // monthly platform: 10% * 4942.71 = 494.27
+    // monthly utilities: 300
+    // monthly cleaning net: 0 (income = expense)
+    // total expenses: 500 + 100 + 247.14 + 395.42 + 494.27 + 300 = 2036.83
+    // monthly mortgage: 1596.73
+    // cash flow: 4942.71 - 2036.83 - 1596.73 = 1309.15
+    expect(m.monthlyCashFlow).toBeCloseTo(1309.15, 0)
+  })
+})
+
+describe("compareRentalStrategies", () => {
+  it("determines the better strategy", () => {
+    const result = compareRentalStrategies(baseStrProperty)
+    // LTR Cash Flow from previous test: ~2000 - 1597 - 960 = -557
+    // STR Cash Flow: 1309.15
+    expect(result.bestStrategy).toBe("str")
+    expect(result.monthlyDifference).toBeGreaterThan(0)
+  })
+
+  it("calculates breakeven occupancy", () => {
+    const result = compareRentalStrategies(baseStrProperty)
+    expect(result.breakevenOccupancy).toBeGreaterThan(0)
+    expect(result.breakevenOccupancy).toBeLessThan(100)
   })
 })
 

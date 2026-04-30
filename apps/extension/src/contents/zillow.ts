@@ -1,5 +1,5 @@
 import type { PlasmoCSConfig } from "plasmo"
-import { quickEstimate as quickCashFlowEstimate, DEFAULT_ASSUMPTIONS, type PropertyAssumptions } from "../core/math"
+import { quickEstimateBest, DEFAULT_ASSUMPTIONS, DEFAULT_STR_ASSUMPTIONS, type PropertyAssumptions, type StrAssumptions } from "../core/math"
 
 export const config: PlasmoCSConfig = {
   matches: ["https://www.zillow.com/*"],
@@ -42,6 +42,8 @@ function scrapeZillow() {
 }
 
 let currentAssumptions: PropertyAssumptions = { ...DEFAULT_ASSUMPTIONS }
+let currentStrAssumptions: StrAssumptions = { ...DEFAULT_STR_ASSUMPTIONS }
+let currentMapPinMetric: "ltr" | "str" | "best" = "ltr"
 
 const BADGE_CLASS = "icecap-badge"
 const PROCESSED_ATTR = "data-icecap-processed"
@@ -68,7 +70,7 @@ function injectBadges() {
     const price = parsePrice(text)
     if (!price || price < 10_000) return
 
-    const cashFlow = quickCashFlowEstimate(price, currentAssumptions)
+    const cashFlow = quickEstimateBest(price, currentAssumptions, currentStrAssumptions, currentMapPinMetric)
     el.setAttribute(PROCESSED_ATTR, "true")
 
     const badge = document.createElement("span")
@@ -114,7 +116,7 @@ function injectMapPinBadges() {
     if (!price || price < 10_000) return
 
     pin.setAttribute(PROCESSED_ATTR, "true")
-    const cashFlow = quickCashFlowEstimate(price, currentAssumptions)
+    const cashFlow = quickEstimateBest(price, currentAssumptions, currentStrAssumptions, currentMapPinMetric)
 
     const badge = document.createElement("span")
     badge.className = BADGE_CLASS
@@ -251,7 +253,7 @@ function refreshBadges() {
   document.querySelectorAll<HTMLElement>(`.${BADGE_CLASS}`).forEach((badge) => {
     const price = Number(badge.dataset.icecapPrice)
     if (!price) return
-    const cashFlow = quickCashFlowEstimate(price, currentAssumptions)
+    const cashFlow = quickEstimateBest(price, currentAssumptions, currentStrAssumptions, currentMapPinMetric)
     badge.textContent = cashFlow >= 0 ? `+$${cashFlow}` : `-$${Math.abs(cashFlow)}`
     badge.style.backgroundColor = cashFlow >= 0 ? "#16a34a" : "#dc2626"
   })
@@ -270,18 +272,39 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
 // ─── Assumptions sync via storage ─────────────────────────────────────────
 
-chrome.storage.local.get("icecap-assumptions", (result) => {
+chrome.storage.local.get(["icecap-assumptions", "icecap-str-assumptions", "icecap-map-pin-metric"], (result) => {
   if (result["icecap-assumptions"]) {
     currentAssumptions = { ...DEFAULT_ASSUMPTIONS, ...result["icecap-assumptions"] }
-    refreshBadges()
   }
+  if (result["icecap-str-assumptions"]) {
+    currentStrAssumptions = { ...DEFAULT_STR_ASSUMPTIONS, ...result["icecap-str-assumptions"] }
+  }
+  if (result["icecap-map-pin-metric"]) {
+    currentMapPinMetric = result["icecap-map-pin-metric"]
+  }
+  refreshBadges()
 })
 
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area !== "local" || !changes["icecap-assumptions"]) return
-  console.log("[Icecap] assumptions updated, refreshing badges")
-  currentAssumptions = { ...DEFAULT_ASSUMPTIONS, ...changes["icecap-assumptions"].newValue }
-  refreshBadges()
+  if (area !== "local") return
+  let changed = false
+  if (changes["icecap-assumptions"]) {
+    currentAssumptions = { ...DEFAULT_ASSUMPTIONS, ...changes["icecap-assumptions"].newValue }
+    changed = true
+  }
+  if (changes["icecap-str-assumptions"]) {
+    currentStrAssumptions = { ...DEFAULT_STR_ASSUMPTIONS, ...changes["icecap-str-assumptions"].newValue }
+    changed = true
+  }
+  if (changes["icecap-map-pin-metric"]) {
+    currentMapPinMetric = changes["icecap-map-pin-metric"].newValue
+    changed = true
+  }
+  
+  if (changed) {
+    console.log("[Icecap] config updated, refreshing badges")
+    refreshBadges()
+  }
 })
 
 // ─── Badge injection with MutationObserver ────────────────────────────────

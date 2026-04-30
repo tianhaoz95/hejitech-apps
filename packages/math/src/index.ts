@@ -1,7 +1,9 @@
 import type {
   PropertyData,
   PropertyAssumptions,
+  StrAssumptions,
   RentalMetrics,
+  StrMetrics,
   FlipMetrics,
   BrrrrMetrics,
 } from "@icecap/types"
@@ -15,6 +17,16 @@ export const DEFAULT_ASSUMPTIONS: PropertyAssumptions = {
   managementFeeRate: 8,
   closingCostsPercent: 3,
   sellingCostsPercent: 6,
+}
+
+export const DEFAULT_STR_ASSUMPTIONS: StrAssumptions = {
+  adr: 200,
+  occupancyRate: 60,
+  platformFeeRate: 10,
+  cleaningFeeIncome: 150,
+  cleaningFeeExpense: 150,
+  avgStayLength: 3,
+  monthlyUtilities: 300,
 }
 
 // ─── Core Primitives ──────────────────────────────────────────────────────────
@@ -89,6 +101,122 @@ export function calcRentalMetrics(data: PropertyData): RentalMetrics {
     onePercentRule: round2(onePercentRule),
     totalCashToClose: round2(totalCashToClose),
     noi: round2(noi),
+  }
+}
+
+// ─── STR Metrics ──────────────────────────────────────────────────────────────
+
+export function calcStrMetrics(data: PropertyData): StrMetrics {
+  const { price, taxes, hoa, rehabCost, assumptions, strAssumptions } = data
+  const { downPaymentPercent, interestRate, loanTermYears, maintenanceRate, managementFeeRate, closingCostsPercent } =
+    assumptions
+
+  if (price <= 0 || !strAssumptions) {
+    return zeroStrMetrics()
+  }
+
+  const { adr, occupancyRate, platformFeeRate, cleaningFeeIncome, cleaningFeeExpense, avgStayLength, monthlyUtilities } =
+    strAssumptions
+
+  const downPayment = calcDownPayment(price, downPaymentPercent)
+  const loanAmount = calcLoanAmount(price, downPaymentPercent)
+  const monthlyMortgage = calcMonthlyMortgage(loanAmount, interestRate, loanTermYears)
+
+  // Gross Income
+  const annualGrossRevenue = adr * 365 * (occupancyRate / 100)
+  const monthlyGrossRevenue = annualGrossRevenue / 12
+  const revPar = adr * (occupancyRate / 100)
+
+  // Expenses
+  const monthlyTaxes = taxes / 12
+  const monthlyMaintenance = (maintenanceRate / 100) * monthlyGrossRevenue
+  const monthlyManagement = (managementFeeRate / 100) * monthlyGrossRevenue
+  const monthlyPlatformFees = (platformFeeRate / 100) * monthlyGrossRevenue
+
+  const annualBookings = (365 * (occupancyRate / 100)) / avgStayLength
+  const annualCleaningIncome = cleaningFeeIncome * annualBookings
+  const annualCleaningExpense = cleaningFeeExpense * annualBookings
+  const monthlyCleaningNet = (annualCleaningIncome - annualCleaningExpense) / 12
+
+  const monthlyExpenses =
+    monthlyTaxes +
+    hoa +
+    monthlyMaintenance +
+    monthlyManagement +
+    monthlyPlatformFees +
+    monthlyUtilities -
+    monthlyCleaningNet
+
+  const monthlyCashFlow = monthlyGrossRevenue - monthlyMortgage - monthlyExpenses
+  const annualCashFlow = monthlyCashFlow * 12
+  const noi = (monthlyGrossRevenue - monthlyExpenses) * 12
+
+  const capRate = price > 0 ? (noi / price) * 100 : 0
+  const totalCashToClose = downPayment + (rehabCost ?? 0) + price * (closingCostsPercent / 100)
+  const cocReturn = totalCashToClose > 0 ? (annualCashFlow / totalCashToClose) * 100 : 0
+  const grm = monthlyGrossRevenue > 0 ? price / (monthlyGrossRevenue * 12) : 0
+  const onePercentRule = price > 0 ? (monthlyGrossRevenue / price) * 100 : 0
+
+  return {
+    monthlyMortgage: round2(monthlyMortgage),
+    monthlyExpenses: round2(monthlyExpenses),
+    monthlyCashFlow: round2(monthlyCashFlow),
+    annualCashFlow: round2(annualCashFlow),
+    capRate: round2(capRate),
+    cocReturn: round2(cocReturn),
+    grm: round2(grm),
+    onePercentRule: round2(onePercentRule),
+    totalCashToClose: round2(totalCashToClose),
+    noi: round2(noi),
+    adr: round2(adr),
+    revPar: round2(revPar),
+    occupancyRate: round2(occupancyRate),
+    annualPlatformFees: round2(monthlyPlatformFees * 12),
+    annualCleaningFees: round2(annualCleaningExpense),
+  }
+}
+
+export interface StrategyComparison {
+  bestStrategy: "ltr" | "str"
+  breakevenOccupancy: number
+  monthlyDifference: number
+}
+
+export function compareRentalStrategies(data: PropertyData): StrategyComparison {
+  const ltr = calcRentalMetrics(data)
+  const str = calcStrMetrics(data)
+
+  const monthlyDifference = str.monthlyCashFlow - ltr.monthlyCashFlow
+  const bestStrategy = str.monthlyCashFlow > ltr.monthlyCashFlow ? "str" : "ltr"
+
+  const { assumptions, strAssumptions, taxes, hoa } = data
+  if (!strAssumptions) {
+    return { bestStrategy: "ltr", breakevenOccupancy: 0, monthlyDifference: 0 }
+  }
+
+  // Monthly fixed STR costs
+  const monthlyFixedStrExpenses =
+    taxes / 12 +
+    hoa +
+    strAssumptions.monthlyUtilities +
+    calcMonthlyMortgage(calcLoanAmount(data.price, assumptions.downPaymentPercent), assumptions.interestRate, assumptions.loanTermYears)
+
+  // Variable rate as % of gross revenue
+  const variableRate = (assumptions.managementFeeRate + strAssumptions.platformFeeRate + assumptions.maintenanceRate) / 100
+
+  // Cleaning net is assumed constant for this calculation (simplification)
+  const annualBookings = (365 * (strAssumptions.occupancyRate / 100)) / strAssumptions.avgStayLength
+  const monthlyCleaningNet = ((strAssumptions.cleaningFeeIncome - strAssumptions.cleaningFeeExpense) * annualBookings) / 12
+
+  // Target Revenue to match LTR Cashflow
+  // TargetMonthlyRevenue * (1 - VariableRate) - FixedExpenses + CleaningNet = LTR_Cashflow
+  const targetMonthlyRevenue = (ltr.monthlyCashFlow + monthlyFixedStrExpenses - monthlyCleaningNet) / (1 - variableRate)
+  const breakevenOccupancy = (targetMonthlyRevenue / (strAssumptions.adr * 30.416)) * 100
+
+  return {
+    bestStrategy,
+    breakevenOccupancy: round2(breakevenOccupancy),
+    monthlyDifference: round2(monthlyDifference),
   }
 }
 
@@ -217,6 +345,17 @@ function zeroRentalMetrics(): RentalMetrics {
   }
 }
 
+function zeroStrMetrics(): StrMetrics {
+  return {
+    ...zeroRentalMetrics(),
+    adr: 0,
+    revPar: 0,
+    occupancyRate: 0,
+    annualPlatformFees: 0,
+    annualCleaningFees: 0,
+  }
+}
+
 function zeroFlipMetrics(): FlipMetrics {
   return {
     totalBasis: 0,
@@ -227,4 +366,12 @@ function zeroFlipMetrics(): FlipMetrics {
   }
 }
 
-export type { PropertyData, PropertyAssumptions, RentalMetrics, FlipMetrics, BrrrrMetrics }
+export type {
+  PropertyData,
+  PropertyAssumptions,
+  StrAssumptions,
+  RentalMetrics,
+  StrMetrics,
+  FlipMetrics,
+  BrrrrMetrics,
+}
