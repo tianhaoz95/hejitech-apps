@@ -276,6 +276,40 @@ export function quickEstimate(price: number, assumptions: PropertyAssumptions = 
   return Math.round(rent - mort - rent * expenseRate)
 }
 
+export function quickEstimateStr(price: number, assumptions: PropertyAssumptions, strAssumptions: StrAssumptions): number {
+  const { adr, occupancyRate, platformFeeRate, monthlyUtilities, avgStayLength, cleaningFeeIncome, cleaningFeeExpense } = strAssumptions
+  const annualGrossRevenue = adr * 365 * (occupancyRate / 100)
+  const monthlyGrossRevenue = annualGrossRevenue / 12
+  
+  const loan = price * (1 - assumptions.downPaymentPercent / 100)
+  const mr = assumptions.interestRate / 100 / 12
+  const n = assumptions.loanTermYears * 12
+  const mort = mr > 0
+    ? (loan * (mr * Math.pow(1 + mr, n))) / (Math.pow(1 + mr, n) - 1)
+    : loan / n
+
+  const variableRate = (assumptions.managementFeeRate + platformFeeRate + assumptions.maintenanceRate) / 100
+  const annualBookings = (365 * (occupancyRate / 100)) / avgStayLength
+  const monthlyCleaningNet = ((cleaningFeeIncome - cleaningFeeExpense) * annualBookings) / 12
+  
+  const monthlyExpenses = (monthlyGrossRevenue * variableRate) + monthlyUtilities - monthlyCleaningNet
+  return Math.round(monthlyGrossRevenue - mort - monthlyExpenses)
+}
+
+export function quickEstimateBest(
+  price: number, 
+  assumptions: PropertyAssumptions, 
+  strAssumptions: StrAssumptions,
+  metric: "ltr" | "str" | "best"
+): number {
+  if (metric === "ltr") return quickEstimate(price, assumptions)
+  if (metric === "str") return quickEstimateStr(price, assumptions, strAssumptions)
+  
+  const ltr = quickEstimate(price, assumptions)
+  const str = quickEstimateStr(price, assumptions, strAssumptions)
+  return Math.max(ltr, str)
+}
+
 function zeroRental(): RentalMetrics {
   return { monthlyMortgage: 0, monthlyExpenses: 0, monthlyCashFlow: 0, annualCashFlow: 0, capRate: 0, cocReturn: 0, grm: 0, onePercentRule: 0, totalCashToClose: 0, noi: 0 }
 }

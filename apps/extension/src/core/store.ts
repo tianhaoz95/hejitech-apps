@@ -15,9 +15,11 @@ import {
 } from "./math"
 
 export type AnalysisMode = "rental" | "str" | "both" | "flip" | "brrrr"
+export type MapPinMetric = "ltr" | "str" | "best"
 
 interface PropertyState {
   mode: AnalysisMode
+  mapPinMetric: MapPinMetric
   price: number
   address: string
   url: string
@@ -32,6 +34,7 @@ interface PropertyState {
   strAssumptions: StrAssumptions
 
   setMode: (v: AnalysisMode) => void
+  setMapPinMetric: (v: MapPinMetric) => void
   setPrice: (v: number) => void
   setAddress: (v: string) => void
   setUrl: (v: string) => void
@@ -61,6 +64,7 @@ export interface ScrapedData {
 
 const initialState = {
   mode: "rental" as AnalysisMode,
+  mapPinMetric: "ltr" as MapPinMetric,
   price: 0,
   address: "",
   url: "",
@@ -81,6 +85,7 @@ export const usePropertyStore = create<PropertyState>()(
       ...initialState,
 
       setMode: (mode) => set({ mode }),
+      setMapPinMetric: (mapPinMetric) => set({ mapPinMetric }),
       setPrice: (price) => set({ price, arv: price > 0 ? price * 1.2 : 0 }),
       setAddress: (address) => set({ address }),
       setUrl: (url) => set({ url }),
@@ -132,11 +137,16 @@ export const usePropertyStore = create<PropertyState>()(
     }),
     {
       name: "icecap-property",
-      partialize: (state) => ({ assumptions: state.assumptions, strAssumptions: state.strAssumptions }),
+      partialize: (state) => ({
+        assumptions: state.assumptions,
+        strAssumptions: state.strAssumptions,
+        mapPinMetric: state.mapPinMetric,
+      }),
       merge: (persisted: any, current) => ({
         ...current,
         assumptions: { ...DEFAULT_ASSUMPTIONS, ...(persisted?.assumptions ?? {}) },
         strAssumptions: { ...DEFAULT_STR_ASSUMPTIONS, ...(persisted?.strAssumptions ?? {}) },
+        mapPinMetric: persisted?.mapPinMetric ?? "ltr",
       }),
     }
   )

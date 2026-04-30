@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react"
 import {
   Search, Heart, LogOut, LogIn, LayoutPanelTop,
   User, Zap, AlertTriangle, Crown, RefreshCw, Home, TrendingUp, Sparkles, Calculator, ChevronDown,
-  Bot, Send, Bug,
+  Bot, Send, Bug, MapPin,
 } from "lucide-react"
 import {
   onAuthStateChanged, signOut, GoogleAuthProvider, signInWithCredential, type User as FBUser,
@@ -476,11 +476,19 @@ export default function SidePanel() {
 
   useEffect(() => {
     const t = setTimeout(() => {
-      console.log("[Icecap] writing assumptions to storage", store.assumptions)
-      chrome.storage.local.set({ "icecap-assumptions": store.assumptions })
+      console.log("[Icecap] writing config to storage", {
+        assumptions: store.assumptions,
+        strAssumptions: store.strAssumptions,
+        mapPinMetric: store.mapPinMetric,
+      })
+      chrome.storage.local.set({
+        "icecap-assumptions": store.assumptions,
+        "icecap-str-assumptions": store.strAssumptions,
+        "icecap-map-pin-metric": store.mapPinMetric,
+      })
     }, 100)
     return () => clearTimeout(t)
-  }, [store.assumptions])
+  }, [store.assumptions, store.strAssumptions, store.mapPinMetric])
 
   const handleOpenHub = useCallback(() => {
     chrome.tabs.create({ url: HUB_URL })
@@ -998,6 +1006,25 @@ export default function SidePanel() {
       </header>
 
       <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+        {/* Global Config */}
+        <div className="p-3 bg-blue-600 rounded-xl shadow-md text-white">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <MapPin size={14} className="opacity-80" />
+              <label className="text-[10px] uppercase font-black tracking-wider">Map Pin Display</label>
+            </div>
+            <select
+              value={store.mapPinMetric}
+              onChange={(e) => store.setMapPinMetric(e.target.value as any)}
+              className="bg-white/10 border border-white/20 rounded-lg px-2 py-1 text-[11px] font-bold outline-none focus:bg-white/20 transition-all cursor-pointer text-white"
+            >
+              <option value="ltr" className="text-gray-900">LTR Cash Flow</option>
+              <option value="str" className="text-gray-900">STR Cash Flow</option>
+              <option value="best" className="text-gray-900">Best Strategy</option>
+            </select>
+          </div>
+        </div>
+
         {/* User info */}
         {user && (
           <div className="flex items-center gap-2 px-2 py-1.5 bg-gray-100 rounded-lg text-xs text-gray-600">
@@ -1188,7 +1215,7 @@ export default function SidePanel() {
                 onChange={(v) => store.setStrAssumption("platformFeeRate", v)}
               />
             </>
-          ) : (
+          ) : (activeView === "rental" || activeView === "brrrr") ? (
             <>
               <Slider
                 label="Rent Estimate"
@@ -1216,7 +1243,7 @@ export default function SidePanel() {
                 onChange={(v) => store.setAssumption("managementFeeRate", v)}
               />
             </>
-          )}
+          ) : null}
         </section>
 
         {/* Comparison View */}
