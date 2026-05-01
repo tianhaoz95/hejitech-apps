@@ -135,23 +135,52 @@ function sendProperty(data: object) {
 
 // When Redfin shows a listing preview panel/popup after a pin click,
 // try to pull price + address from it.
+//
+// Redfin keeps stale cards for neighboring properties in the DOM alongside the
+// active one. querySelector returns the first match, which may be the wrong
+// property. Instead, evaluate all matching cards and pick the one whose price
+// is closest to the pin price. If even the best match deviates by more than 50%,
+// the card almost certainly belongs to a different listing — use the pin price.
 function scrapePreviewCard(fallbackPrice: number) {
-  const card = document.querySelector(
+  const cards = Array.from(document.querySelectorAll<Element>(
     '[data-rf-test-id="MapHomeCard"], .MapHomeCard, ' +
     '[data-rf-test-id="home-card"], .HomeCard--active, .HomeCard--hovered, ' +
     '.bp-HomeCardContainer, [class*="MapHomeCard"]'
-  )
-  if (!card) return null
+  ))
+  if (!cards.length) return null
 
-  const addrEl = card.querySelector(
+  let bestCard: Element | null = null
+  let bestPrice = 0
+  let bestDelta = Infinity
+
+  for (const card of cards) {
+    const priceEl = card.querySelector(
+      '.bp-Homecard__Price--value, [data-rf-test-id="home-card-price"], ' +
+      '[data-rf-test-name="price"], .priceInfo'
+    )
+    const price = priceEl ? parsePrice(textNodesOf(priceEl)) : 0
+    if (!price) continue
+    const delta = fallbackPrice > 0 ? Math.abs(price - fallbackPrice) : 0
+    if (bestCard === null || delta < bestDelta) {
+      bestCard = card
+      bestPrice = price
+      bestDelta = delta
+    }
+  }
+
+  if (!bestCard) return null
+
+  const addrEl = bestCard.querySelector(
     '.homeAddressV2, [data-rf-test-name="property-address"], .street-address, .address'
   )
-  const priceEl = card.querySelector(
-    '.bp-Homecard__Price--value, [data-rf-test-id="home-card-price"], ' +
-    '[data-rf-test-name="price"], .priceInfo'
-  )
-  const price = priceEl ? parsePrice(textNodesOf(priceEl)) || fallbackPrice : fallbackPrice
   const address = addrEl?.textContent?.trim() ?? ""
+
+  // If the closest card's price is wildly off from the pin price, trust the pin.
+  const price =
+    fallbackPrice > 0 && bestDelta / fallbackPrice > 0.5
+      ? fallbackPrice
+      : bestPrice || fallbackPrice
+
   if (!price && !address) return null
   return { price, address, taxes: 0, hoa: 0, description: "", url: window.location.href }
 }
