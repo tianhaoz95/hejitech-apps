@@ -689,14 +689,7 @@ export default function SidePanel() {
     if (!user || !store.description || !isSubscribed) return
     setIsAnalyzing(true)
     try {
-      const model = getGenerativeModel(ai, {
-        model: "gemini-2.0-flash",
-        // @ts-ignore
-        mode: "only_on_device",
-        inCloudParams: {
-          model: "gemini-2.0-flash",
-        }
-      } as any)
+      const model = getGenerativeModel(ai, { model: "gemini-3.1-flash-lite" })
 
       const prompt = `
         Analyze this real estate listing description for an investor.
@@ -757,14 +750,7 @@ export default function SidePanel() {
     setChatMessages((prev) => [...prev, { role: "user", content: msg }])
     setIsChatLoading(true)
     try {
-      const model = getGenerativeModel(ai, {
-        model: "gemini-2.0-flash",
-        // @ts-ignore
-        mode: "only_on_device",
-        inCloudParams: {
-          model: "gemini-2.0-flash",
-        }
-      } as any)
+      const model = getGenerativeModel(ai, { model: "gemini-3.1-flash-lite" })
 
       const prompt = `
         You are an AI real estate assistant. Help the user analyze this property.
