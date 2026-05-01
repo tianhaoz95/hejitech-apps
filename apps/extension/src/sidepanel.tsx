@@ -1376,14 +1376,19 @@ export default function SidePanel() {
                       value={store.estimatedRent}
                       onChange={store.setEstimatedRent}
                       rightAction={
-                        <button
-                          onClick={handleFetchRent}
-                          disabled={isFetchingRent || !store.price}
-                          className="text-[10px] text-blue-600 flex items-center gap-0.5 disabled:opacity-30"
-                        >
-                          <Zap size={9} fill="currentColor" />
-                          {isFetchingRent ? "…" : "Fetch"}
-                        </button>
+                        <div className="relative group">
+                          <button
+                            onClick={handleFetchRent}
+                            disabled={isFetchingRent || !store.price}
+                            className="text-[10px] text-blue-600 flex items-center gap-0.5 disabled:opacity-30"
+                          >
+                            <Zap size={9} fill="currentColor" />
+                            {isFetchingRent ? "…" : "Fetch"}
+                          </button>
+                          <div className="absolute bottom-full right-0 mb-1.5 w-44 bg-gray-800 text-white text-[10px] rounded px-2 py-1.5 leading-snug pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50">
+                            AI-estimates the monthly rent for this property based on its price and address.
+                          </div>
+                        </div>
                       }
                     />
                   )}
