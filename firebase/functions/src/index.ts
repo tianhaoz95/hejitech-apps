@@ -263,6 +263,31 @@ export const createPortalSession = onCall({ cors: true }, async (request) => {
   return { url: session.url }
 })
 
+// ─── listStripeCoupons (Admin only) ────────────────────────────────────────
+export const listStripeCoupons = onCall({ cors: true }, async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Login required")
+  if (!request.auth.token.admin) throw new HttpsError("permission-denied", "Admin only")
+
+  try {
+    const coupons = await stripe.coupons.list({
+      limit: 100,
+    })
+    return {
+      coupons: coupons.data.map((c) => ({
+        id: c.id,
+        name: c.name ?? c.id,
+        percent_off: c.percent_off,
+        amount_off: c.amount_off,
+        currency: c.currency,
+        duration: c.duration,
+      })),
+    }
+  } catch (e: any) {
+    logger.error("Failed to list Stripe coupons", e)
+    throw new HttpsError("internal", "Failed to retrieve coupons from Stripe")
+  }
+})
+
 // ─── stripeWebhook ─────────────────────────────────────────────────────────
 export const stripeWebhook = onRequest({ cors: false }, async (req, res) => {
   logger.info("Stripe Webhook received", { method: req.method })

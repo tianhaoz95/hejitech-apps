@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react"
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore"
-import { Tag, Plus, CheckCircle, XCircle, Trash2, Wand2 } from "lucide-react"
-import { db } from "../core/firebase"
+import { httpsCallable } from "firebase/functions"
+import { Tag, Plus, CheckCircle, XCircle, Trash2, Wand2, Info, Loader2 } from "lucide-react"
+import { db, functions } from "../core/firebase"
 import { useAuth } from "../hooks/useAuth"
 import type { PromoCode } from "@icecap/types"
 
@@ -17,16 +18,36 @@ function useAdminAuth() {
 
 export function PromoCodesPage() {
   const [promos, setPromos] = useState<PromoCode[]>([])
+  const [stripeCoupons, setStripeCoupons] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingCoupons, setLoadingCoupons] = useState(false)
   const [creating, setCreating] = useState(false)
   const [actionId, setActionId] = useState<string | null>(null)
-  const [form, setForm] = useState({ code: "", type: "internal_free" as PromoCode["type"], usageLimit: "" })
+  const [form, setForm] = useState({ 
+    code: "", 
+    type: "internal_free" as PromoCode["type"], 
+    usageLimit: "",
+    stripeCouponId: ""
+  })
   const user = useAdminAuth()
 
   const generateRandomCode = () => {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" // No O, 0, I, 1 to avoid confusion
     const result = Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join("")
     setForm({ ...form, code: result })
+  }
+
+  const fetchCoupons = async () => {
+    setLoadingCoupons(true)
+    try {
+      const listCoupons = httpsCallable(functions, "listStripeCoupons")
+      const result = await listCoupons()
+      setStripeCoupons((result.data as any).coupons || [])
+    } catch (e) {
+      console.error("Error fetching Stripe coupons:", e)
+    } finally {
+      setLoadingCoupons(false)
+    }
   }
 
   const fetchPromos = async () => {
@@ -39,23 +60,31 @@ export function PromoCodesPage() {
     }
   }
 
-  useEffect(() => { fetchPromos() }, [])
+  useEffect(() => { 
+    fetchPromos()
+    fetchCoupons()
+  }, [])
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.code.trim() || !user) return
+    if (form.type === "stripe_linked" && !form.stripeCouponId) {
+      alert("Please select a Stripe coupon for this promo type.")
+      return
+    }
     setCreating(true)
     try {
       await addDoc(collection(db, "promo_codes"), {
         code: form.code.trim().toUpperCase(),
         type: form.type,
+        stripeCouponId: form.type === "stripe_linked" ? form.stripeCouponId : null,
         usageLimit: form.usageLimit ? parseInt(form.usageLimit) : null,
         usageCount: 0,
         isActive: true,
         createdBy: user.uid,
         createdAt: Date.now(),
       })
-      setForm({ code: "", type: "internal_free", usageLimit: "" })
+      setForm({ code: "", type: "internal_free", usageLimit: "", stripeCouponId: "" })
       await fetchPromos()
     } finally {
       setCreating(false)
@@ -121,6 +150,34 @@ export function PromoCodesPage() {
             <option value="internal_free">Internal Free ($0/mo)</option>
             <option value="stripe_linked">Stripe Linked Coupon</option>
           </select>
+
+          {form.type === "stripe_linked" && (
+            <div className="flex items-center gap-2">
+              <select
+                value={form.stripeCouponId}
+                onChange={(e) => setForm({ ...form, stripeCouponId: e.target.value })}
+                required
+                className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-gray-900 text-sm focus:outline-none focus:border-blue-500 min-w-48"
+              >
+                <option value="">Select Stripe Coupon...</option>
+                {stripeCoupons.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({c.percent_off ? `${c.percent_off}% off` : `$${c.amount_off / 100} off`})
+                  </option>
+                ))}
+              </select>
+              <button 
+                type="button"
+                onClick={fetchCoupons}
+                disabled={loadingCoupons}
+                className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                title="Refresh Coupons"
+              >
+                <Loader2 size={16} className={loadingCoupons ? "animate-spin" : ""} />
+              </button>
+            </div>
+          )}
+
           <input
             type="number"
             value={form.usageLimit}
@@ -164,7 +221,16 @@ export function PromoCodesPage() {
               promos.map((p) => (
                 <tr key={p.id} className="hover:bg-gray-50 transition-colors">
                   <td className="p-4 font-mono font-bold text-gray-900">{p.code}</td>
-                  <td className="p-4 text-gray-600 capitalize text-xs">{p.type.replace("_", " ")}</td>
+                  <td className="p-4">
+                    <div className="flex flex-col">
+                      <span className="text-gray-900 capitalize text-xs font-semibold">{p.type.replace("_", " ")}</span>
+                      {p.stripeCouponId && (
+                        <span className="text-gray-400 text-[10px] font-mono leading-tight">
+                          Stripe: {p.stripeCouponId}
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td className="p-4 text-gray-600">
                     {p.usageCount}/{p.usageLimit === null ? "∞" : p.usageLimit}
                   </td>
