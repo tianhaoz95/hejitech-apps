@@ -10,7 +10,7 @@ import {
 } from "firebase/auth/web-extension"
 import { collection, addDoc, serverTimestamp, doc, onSnapshot, getDoc, updateDoc } from "firebase/firestore"
 import { httpsCallable } from "firebase/functions"
-import { getGenerativeModel } from "firebase/ai"
+import { getGenerativeModel, InferenceMode } from "firebase/ai"
 import { getString } from "firebase/remote-config"
 import ReactMarkdown from "react-markdown"
 import { auth, db, functions, useEmulator, signInWithGoogle, ai, remoteConfig } from "./core/firebase"
@@ -692,22 +692,35 @@ export default function SidePanel() {
     if (!user || !store.description || !isSubscribed) return
     setIsAnalyzing(true)
     try {
-      const modelId = getString(remoteConfig, "gemini_model_id")
-      const model = getGenerativeModel(ai, { model: modelId })
+      let text: string;
 
-      const templateText = useEmulator
-        ? LOCAL_TEMPLATES.dealSummary
-        : getString(remoteConfig, PROMPT_RC_KEYS.dealSummary) || LOCAL_TEMPLATES.dealSummary
+      if (useEmulator) {
+        const model = getGenerativeModel(ai, { mode: InferenceMode.PREFER_ON_DEVICE })
+        const prompt = resolveTemplate(LOCAL_TEMPLATES.dealSummary, {
+          address: store.address,
+          price: String(store.price),
+          estimatedRent: String(store.estimatedRent),
+          description: store.description,
+        })
+        const result = await model.generateContent(prompt)
+        text = result.response.text()
+      } else {
+        const modelId = remoteConfig ? getString(remoteConfig, "gemini_model_id") : "gemini-3.1-flash-lite-preview"
+        const model = getGenerativeModel(ai, { model: modelId })
 
-      const prompt = resolveTemplate(templateText, {
-        address: store.address,
-        price: String(store.price),
-        estimatedRent: String(store.estimatedRent),
-        description: store.description,
-      })
+        const templateText = getString(remoteConfig, PROMPT_RC_KEYS.dealSummary) || LOCAL_TEMPLATES.dealSummary
 
-      const result = await model.generateContent(prompt)
-      const text = result.response.text()
+        const prompt = resolveTemplate(templateText, {
+          address: store.address,
+          price: String(store.price),
+          estimatedRent: String(store.estimatedRent),
+          description: store.description,
+        })
+
+        const result = await model.generateContent(prompt)
+        text = result.response.text()
+      }
+
       setAiSummary(text)
 
       // Increment quota counter
@@ -737,35 +750,59 @@ export default function SidePanel() {
     setChatMessages((prev) => [...prev, { role: "user", content: msg }])
     setIsChatLoading(true)
     try {
-      const modelId = getString(remoteConfig, "gemini_model_id")
-      const model = getGenerativeModel(ai, { model: modelId })
+      let reply: string;
 
-      const historyText = chatMessages.length > 0
-        ? "\nPREVIOUS CONVERSATION:\n" + chatMessages.slice(-6)
-            .map(m => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
-            .join("\n") + "\n"
-        : ""
+      if (useEmulator) {
+        const model = getGenerativeModel(ai, { mode: InferenceMode.PREFER_ON_DEVICE })
+        const historyText = chatMessages.length > 0
+          ? "\nPREVIOUS CONVERSATION:\n" + chatMessages.slice(-6)
+              .map(m => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
+              .join("\n") + "\n"
+          : ""
+        const prompt = resolveTemplate(LOCAL_TEMPLATES.chatAssistant, {
+          address: store.address || "Unknown",
+          price: String(store.price),
+          estimatedRent: String(store.estimatedRent),
+          taxes: String(store.taxes),
+          hoa: String(store.hoa),
+          strategy: store.mode,
+          monthlyCashFlow: String(metrics.rental.monthlyCashFlow),
+          capRate: String(metrics.rental.capRate),
+          cocReturn: String(metrics.rental.cocReturn),
+          history: historyText,
+          question: msg,
+        })
+        const result = await model.generateContent(prompt)
+        reply = result.response.text()
+      } else {
+        const modelId = remoteConfig ? getString(remoteConfig, "gemini_model_id") : "gemini-3.1-flash-lite-preview"
+        const model = getGenerativeModel(ai, { model: modelId })
 
-      const templateText = useEmulator
-        ? LOCAL_TEMPLATES.chatAssistant
-        : getString(remoteConfig, PROMPT_RC_KEYS.chatAssistant) || LOCAL_TEMPLATES.chatAssistant
+        const historyText = chatMessages.length > 0
+          ? "\nPREVIOUS CONVERSATION:\n" + chatMessages.slice(-6)
+              .map(m => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
+              .join("\n") + "\n"
+          : ""
 
-      const prompt = resolveTemplate(templateText, {
-        address: store.address || "Unknown",
-        price: String(store.price),
-        estimatedRent: String(store.estimatedRent),
-        taxes: String(store.taxes),
-        hoa: String(store.hoa),
-        strategy: store.mode,
-        monthlyCashFlow: String(metrics.rental.monthlyCashFlow),
-        capRate: String(metrics.rental.capRate),
-        cocReturn: String(metrics.rental.cocReturn),
-        history: historyText,
-        question: msg,
-      })
+        const templateText = getString(remoteConfig, PROMPT_RC_KEYS.chatAssistant) || LOCAL_TEMPLATES.chatAssistant
 
-      const result = await model.generateContent(prompt)
-      const reply = result.response.text()
+        const prompt = resolveTemplate(templateText, {
+          address: store.address || "Unknown",
+          price: String(store.price),
+          estimatedRent: String(store.estimatedRent),
+          taxes: String(store.taxes),
+          hoa: String(store.hoa),
+          strategy: store.mode,
+          monthlyCashFlow: String(metrics.rental.monthlyCashFlow),
+          capRate: String(metrics.rental.capRate),
+          cocReturn: String(metrics.rental.cocReturn),
+          history: historyText,
+          question: msg,
+        })
+
+        const result = await model.generateContent(prompt)
+        reply = result.response.text()
+      }
 
       setChatMessages((prev) => [...prev, { role: "assistant", content: reply }])
 
