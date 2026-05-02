@@ -12,6 +12,7 @@ import { collection, addDoc, serverTimestamp, doc, onSnapshot, getDoc, updateDoc
 import { httpsCallable } from "firebase/functions"
 import { getGenerativeModel } from "firebase/ai"
 import { getString } from "firebase/remote-config"
+import ReactMarkdown from "react-markdown"
 import { auth, db, functions, useEmulator, signInWithGoogle, ai, remoteConfig } from "./core/firebase"
 import { LOCAL_TEMPLATES, PROMPT_RC_KEYS, resolveTemplate } from "./core/aiTemplates"
 import { IS_DEV, HUB_URL } from "./core/constants"
@@ -1096,7 +1097,13 @@ export default function SidePanel() {
                       ? "bg-blue-600 text-white rounded-br-sm"
                       : "bg-gray-100 text-gray-800 rounded-bl-sm"
                   }`}>
-                    {msg.content}
+                    {msg.role === "user" ? (
+                      msg.content
+                    ) : (
+                      <div className="markdown-content">
+                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -1403,7 +1410,9 @@ export default function SidePanel() {
                 ))}
               </div>
             ) : aiSummary ? (
-              <div className="text-xs text-purple-800 whitespace-pre-line bg-white/50 p-2 rounded-lg">{aiSummary}</div>
+              <div className="text-xs text-purple-800 bg-white/50 p-2 rounded-lg markdown-content">
+                <ReactMarkdown>{aiSummary}</ReactMarkdown>
+              </div>
             ) : (
               <p className="text-xs text-purple-400 italic">
                 {store.description ? "Click Analyze for AI red flag detection." : "Scrape a listing first to enable AI analysis."}

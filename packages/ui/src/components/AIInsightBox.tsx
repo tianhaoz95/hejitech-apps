@@ -1,5 +1,6 @@
 import React from "react"
 import { Sparkles } from "lucide-react"
+import ReactMarkdown from "react-markdown"
 
 interface AIInsightBoxProps {
   summary?: string
@@ -37,8 +38,21 @@ export function AIInsightBox({ summary, loading, quotaRemaining, onAnalyze, disa
           <div className="h-3 bg-purple-200 rounded animate-pulse w-3/5" />
         </div>
       ) : summary ? (
-        <div className="text-xs text-purple-800 whitespace-pre-line bg-white/50 p-2 rounded-lg">
-          {summary}
+        <div className="text-xs text-purple-800 bg-white/50 p-2 rounded-lg">
+          <ReactMarkdown
+            components={{
+              p: ({ ...props }) => <p className="mb-2 last:mb-0" {...props} />,
+              ul: ({ ...props }) => <ul className="mb-2 list-disc pl-4" {...props} />,
+              ol: ({ ...props }) => <ol className="mb-2 list-decimal pl-4" {...props} />,
+              li: ({ ...props }) => <li className="mb-1" {...props} />,
+              strong: ({ ...props }) => <strong className="font-bold" {...props} />,
+              h1: ({ ...props }) => <h1 className="font-black uppercase text-[10px] mt-3 mb-1 tracking-wider" {...props} />,
+              h2: ({ ...props }) => <h2 className="font-black uppercase text-[10px] mt-3 mb-1 tracking-wider" {...props} />,
+              h3: ({ ...props }) => <h3 className="font-black uppercase text-[10px] mt-3 mb-1 tracking-wider" {...props} />,
+            }}
+          >
+            {summary}
+          </ReactMarkdown>
         </div>
       ) : (
         <p className="text-xs text-purple-400 italic">
