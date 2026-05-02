@@ -76,15 +76,13 @@ else
     done
 fi
 
-# ── Port cleanup ──────────────────────────────────────────────────────────────
-
-echo "Freeing emulator ports..."
-PIDS=$(lsof -ti:4000,9099,8080,5001,5002 2>/dev/null)
-[ -n "$PIDS" ] && echo "$PIDS" | xargs kill -9 2>/dev/null || true
-
 # ── Background services ───────────────────────────────────────────────────────
 
 if [ "$USE_PROD" = false ]; then
+    echo "Freeing emulator ports..."
+    PIDS=$(lsof -ti:4000,9099,8080,5001,5002 2>/dev/null)
+    [ -n "$PIDS" ] && echo "$PIDS" | xargs kill -9 2>/dev/null || true
+
     echo "Starting Firebase emulator..."
     pnpm run emulator > .emulator.log 2>&1 &
     EMULATOR_PID=$!
@@ -127,19 +125,29 @@ MAIN_PID=$!
 echo "Apps running in background. Logs: .turbo.log"
 
 # ── Extension: initial build so it can be loaded immediately ─────────────────
-# Both modes output to chrome-mv3-dev.  "prod" vs "local" is purely the
-# PLASMO_PUBLIC_USE_EMULATOR env var — not the directory name.
+
+if [ "$USE_PROD" = true ]; then
+    EXT_TAG="prod"
+else
+    EXT_TAG="dev"
+fi
+export EXT_TAG
 
 echo ""
-echo "Building extension (initial)..."
-(cd apps/extension && pnpm plasmo build --target=chrome-mv3 --tag=dev) 2>&1 | tee .extension.log
+echo "Building extension (initial, tag=$EXT_TAG)..."
+(cd apps/extension && pnpm plasmo build --target=chrome-mv3 --tag="$EXT_TAG") 2>&1 | tee .extension.log
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  Load or reload the extension from:"
-echo "  apps/extension/build/chrome-mv3-dev"
+echo "  apps/extension/build/chrome-mv3-$EXT_TAG"
 echo "  in chrome://extensions (enable Developer mode first)"
 echo ""
+if [ "$USE_PROD" = true ]; then
+echo "  Mode:      PRODUCTION (real Firebase — no emulator)"
+else
+echo "  Mode:      LOCAL (Firebase emulator)"
+fi
 echo "  Apps:      Vite HMR active — browser tabs refresh automatically"
 echo "  Extension: Plasmo watch active — reload manually after each rebuild"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

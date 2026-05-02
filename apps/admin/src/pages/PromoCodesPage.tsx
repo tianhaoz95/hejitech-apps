@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore"
-import { Tag, Plus, CheckCircle, XCircle, Trash2 } from "lucide-react"
+import { Tag, Plus, CheckCircle, XCircle, Trash2, Wand2 } from "lucide-react"
 import { db } from "../core/firebase"
 import { useAuth } from "../hooks/useAuth"
 import type { PromoCode } from "@icecap/types"
@@ -22,6 +22,12 @@ export function PromoCodesPage() {
   const [actionId, setActionId] = useState<string | null>(null)
   const [form, setForm] = useState({ code: "", type: "internal_free" as PromoCode["type"], usageLimit: "" })
   const user = useAdminAuth()
+
+  const generateRandomCode = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" // No O, 0, I, 1 to avoid confusion
+    const result = Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join("")
+    setForm({ ...form, code: result })
+  }
 
   const fetchPromos = async () => {
     setLoading(true)
@@ -88,15 +94,25 @@ export function PromoCodesPage() {
           <Plus size={16} className="text-blue-600" />
           Create New Code
         </h2>
-        <form onSubmit={handleCreate} className="flex gap-3 flex-wrap">
-          <input
-            type="text"
-            value={form.code}
-            onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
-            placeholder="PROMO CODE"
-            required
-            className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-gray-900 font-mono font-bold text-sm w-48 focus:outline-none focus:border-blue-500"
-          />
+        <form onSubmit={handleCreate} className="flex gap-3 flex-wrap items-center">
+          <div className="relative group">
+            <input
+              type="text"
+              value={form.code}
+              onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
+              placeholder="PROMO CODE"
+              required
+              className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-gray-900 font-mono font-bold text-sm w-56 pr-12 focus:outline-none focus:border-blue-500 transition-all"
+            />
+            <button
+              type="button"
+              onClick={generateRandomCode}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+              title="Generate random code"
+            >
+              <Wand2 size={16} />
+            </button>
+          </div>
           <select
             value={form.type}
             onChange={(e) => setForm({ ...form, type: e.target.value as PromoCode["type"] })}

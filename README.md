@@ -62,7 +62,29 @@ Populate the emulator with test users, subscriptions, and sample properties:
 pnpm run emulator:seed
 ```
 
-### 3. Local AI Development (Gemini Nano)
+### 3. Update AI Prompt Templates
+
+AI prompts for the extension live in `firebase/prompts/*.prompt` (Dotprompt format). To update a prompt without shipping a new extension version:
+
+1. Edit the relevant `.prompt` file in `firebase/prompts/`.
+2. Run the upload script — it syncs the prompt body into Remote Config and deploys:
+   ```bash
+   node scripts/upload-prompts.mjs
+   ```
+   All installed extensions will pick up the new prompt on their next Remote Config refresh (within minutes).
+
+**Other flags:**
+```bash
+node scripts/upload-prompts.mjs --dry-run    # preview changes without writing
+node scripts/upload-prompts.mjs --no-deploy  # update remoteconfig.json locally only
+node scripts/upload-prompts.mjs -P <proj>    # target a specific Firebase project
+```
+
+**Local / emulator:** the extension reads directly from `apps/extension/src/core/aiTemplates.ts` (no Firebase call). After editing a `.prompt` file, manually mirror the body text there to keep dev and prod in sync.
+
+---
+
+### 4. Local AI Development (Gemini Nano)
 To test AI features locally without cloud costs, Icecap uses **Firebase AI Logic** with Chrome's built-in **Gemini Nano** model.
 
 **Setup Instructions:**

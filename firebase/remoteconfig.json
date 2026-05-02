@@ -1,0 +1,25 @@
+{
+  "parameters": {
+    "gemini_model_id": {
+      "defaultValue": {
+        "value": "gemini-3.1-flash-lite"
+      },
+      "description": "The model ID for the Gemini AI assistant (e.g., gemini-1.5-flash, gemini-3.1-flash-lite).",
+      "valueType": "STRING"
+    },
+    "prompt_chat_assistant": {
+      "defaultValue": {
+        "value": "You are an AI real estate assistant. Help the user analyze this property.\n\nPROPERTY CONTEXT:\nAddress: {{address}}\nPurchase Price: ${{price}}\nEstimated Rent: ${{estimatedRent}}/mo\nTaxes: ${{taxes}}/yr\nHOA: ${{hoa}}/mo\nStrategy: {{strategy}}\n\nFINANCIAL METRICS:\nMonthly Cash Flow: ${{monthlyCashFlow}}\nCap Rate: {{capRate}}%\nCash-on-Cash Return: {{cocReturn}}%\n{{history}}\nUSER QUESTION:\n{{question}}\n\nProvide a concise, professional answer based on the data provided."
+      },
+      "description": "Conversational real estate investment assistant with full property context and financial metrics",
+      "valueType": "STRING"
+    },
+    "prompt_deal_summary": {
+      "defaultValue": {
+        "value": "Analyze this real estate listing description for an investor.\n\nPROPERTY DATA:\nAddress: {{address}}\nPrice: ${{price}}\nEstimated Rent: ${{estimatedRent}}\n\nDESCRIPTION:\n{{description}}\n\nProvide:\n1. A one-paragraph investment summary.\n2. A list of 3 specific red flags (if any).\n3. A final recommendation.\n\nFormat as:\nSUMMARY: [text]\nRED FLAGS:\n- [flag 1]\n- [flag 2]\n- [flag 3]\nRECOMMENDATION: [text]"
+      },
+      "description": "Analyzes a property listing and returns a structured investment summary, red flags, and recommendation",
+      "valueType": "STRING"
+    }
+  }
+}

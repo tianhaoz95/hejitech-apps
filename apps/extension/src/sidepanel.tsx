@@ -11,7 +11,9 @@ import {
 import { collection, addDoc, serverTimestamp, doc, onSnapshot, getDoc, updateDoc } from "firebase/firestore"
 import { httpsCallable } from "firebase/functions"
 import { getGenerativeModel } from "firebase/ai"
-import { auth, db, functions, useEmulator, signInWithGoogle, ai } from "./core/firebase"
+import { getString } from "firebase/remote-config"
+import { auth, db, functions, useEmulator, signInWithGoogle, ai, remoteConfig } from "./core/firebase"
+import { LOCAL_TEMPLATES, PROMPT_RC_KEYS, resolveTemplate } from "./core/aiTemplates"
 import { IS_DEV, HUB_URL } from "./core/constants"
 import { usePropertyStore, type AnalysisMode } from "./core/store"
 import { compareRentalStrategies } from "./core/math"
@@ -689,38 +691,22 @@ export default function SidePanel() {
     if (!user || !store.description || !isSubscribed) return
     setIsAnalyzing(true)
     try {
-      const model = getGenerativeModel(ai, { model: "gemini-3.1-flash-lite" })
+      const modelId = getString(remoteConfig, "gemini_model_id")
+      const model = getGenerativeModel(ai, { model: modelId })
 
-      const prompt = `
-        Analyze this real estate listing description for an investor.
-        
-        PROPERTY DATA:
-        Address: ${store.address}
-        Price: $${store.price}
-        Estimated Rent: $${store.estimatedRent}
-        
-        DESCRIPTION:
-        ${store.description}
-        
-        Provide:
-        1. A one-paragraph investment summary.
-        2. A list of 3 specific red flags (if any).
-        3. A final recommendation.
-        
-        Format as:
-        SUMMARY: [text]
-        RED FLAGS:
-        - [flag 1]
-        - [flag 2]
-        - [flag 3]
-        RECOMMENDATION: [text]
-      `
+      const templateText = useEmulator
+        ? LOCAL_TEMPLATES.dealSummary
+        : getString(remoteConfig, PROMPT_RC_KEYS.dealSummary) || LOCAL_TEMPLATES.dealSummary
+
+      const prompt = resolveTemplate(templateText, {
+        address: store.address,
+        price: String(store.price),
+        estimatedRent: String(store.estimatedRent),
+        description: store.description,
+      })
 
       const result = await model.generateContent(prompt)
       const text = result.response.text()
-      
-      // Basic parsing to match the existing UI expectations if possible, 
-      // or just show the whole thing.
       setAiSummary(text)
 
       // Increment quota counter
@@ -750,38 +736,34 @@ export default function SidePanel() {
     setChatMessages((prev) => [...prev, { role: "user", content: msg }])
     setIsChatLoading(true)
     try {
-      const model = getGenerativeModel(ai, { model: "gemini-3.1-flash-lite" })
+      const modelId = getString(remoteConfig, "gemini_model_id")
+      const model = getGenerativeModel(ai, { model: modelId })
 
-      const prompt = `
-        You are an AI real estate assistant. Help the user analyze this property.
-        
-        PROPERTY CONTEXT:
-        Address: ${store.address || "Unknown"}
-        Purchase Price: $${store.price}
-        Estimated Rent: $${store.estimatedRent}/mo
-        Taxes: $${store.taxes}/yr
-        HOA: $${store.hoa}/mo
-        Strategy: ${store.mode}
-        
-        FINANCIAL METRICS:
-        Monthly Cash Flow: $${metrics.rental.monthlyCashFlow}
-        Cap Rate: ${metrics.rental.capRate}%
-        Cash-on-Cash Return: ${metrics.rental.cocReturn}%
-        
-        USER QUESTION:
-        ${msg}
-        
-        Provide a concise, professional answer based on the data provided.
-      `
+      const historyText = chatMessages.length > 0
+        ? "\nPREVIOUS CONVERSATION:\n" + chatMessages.slice(-6)
+            .map(m => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
+            .join("\n") + "\n"
+        : ""
 
-      // Build history for context (last 5 messages)
-      const history = chatMessages.slice(-5).map((m) => ({
-        role: m.role === "user" ? ("user" as const) : ("model" as const),
-        parts: [{ text: m.content }],
-      }))
+      const templateText = useEmulator
+        ? LOCAL_TEMPLATES.chatAssistant
+        : getString(remoteConfig, PROMPT_RC_KEYS.chatAssistant) || LOCAL_TEMPLATES.chatAssistant
 
-      const chat = model.startChat({ history })
-      const result = await chat.sendMessage(prompt)
+      const prompt = resolveTemplate(templateText, {
+        address: store.address || "Unknown",
+        price: String(store.price),
+        estimatedRent: String(store.estimatedRent),
+        taxes: String(store.taxes),
+        hoa: String(store.hoa),
+        strategy: store.mode,
+        monthlyCashFlow: String(metrics.rental.monthlyCashFlow),
+        capRate: String(metrics.rental.capRate),
+        cocReturn: String(metrics.rental.cocReturn),
+        history: historyText,
+        question: msg,
+      })
+
+      const result = await model.generateContent(prompt)
       const reply = result.response.text()
 
       setChatMessages((prev) => [...prev, { role: "assistant", content: reply }])

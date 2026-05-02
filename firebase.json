@@ -1,4 +1,7 @@
 {
+  "remoteconfig": {
+    "template": "firebase/remoteconfig.json"
+  },
   "firestore": {
     "rules": "firebase/firestore.rules",
     "indexes": "firebase/firestore.indexes.json"
@@ -49,6 +52,7 @@
     "firestore": { "port": 8080 },
     "functions": { "port": 5001 },
     "hosting": { "port": 5002 },
+    "remoteconfig": { "port": 9000 },
     "ui": { "enabled": true, "port": 4000 },
     "singleProjectMode": true
   }

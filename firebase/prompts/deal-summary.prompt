@@ -1,0 +1,35 @@
+---
+id: icecap-deal-summary-v1
+description: Analyzes a property listing and returns a structured investment summary, red flags, and recommendation
+model: gemini-2.0-flash-lite
+config:
+  temperature: 0.5
+input:
+  schema:
+    address: string
+    price: string
+    estimatedRent: string
+    description: string
+---
+Analyze this real estate listing description for an investor.
+
+PROPERTY DATA:
+Address: {{address}}
+Price: ${{price}}
+Estimated Rent: ${{estimatedRent}}
+
+DESCRIPTION:
+{{description}}
+
+Provide:
+1. A one-paragraph investment summary.
+2. A list of 3 specific red flags (if any).
+3. A final recommendation.
+
+Format as:
+SUMMARY: [text]
+RED FLAGS:
+- [flag 1]
+- [flag 2]
+- [flag 3]
+RECOMMENDATION: [text]

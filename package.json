@@ -8,6 +8,7 @@
     "dev": "turbo run dev --parallel",
     "dev:apps": "turbo run dev --parallel",
     "dev:all": "./scripts/dev-all.sh",
+    "dev:prod": "./scripts/dev-all.sh --prod",
     "dev:hub": "turbo run dev --filter=@icecap/hub",
     "dev:extension": "turbo run dev --filter=@icecap/extension",
     "dev:admin": "turbo run dev --filter=@icecap/admin",

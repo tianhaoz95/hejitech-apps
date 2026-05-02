@@ -9,6 +9,7 @@ const path = require("path")
 
 const EXT_DIR = path.join(__dirname, "..", "apps", "extension")
 const LOG_FILE = path.join(__dirname, "..", ".extension.log")
+const EXT_TAG = process.env.EXT_TAG || "dev"
 
 let building = false
 let pendingRebuild = false
@@ -22,7 +23,7 @@ function build() {
   console.log("\n[watch-extension] Change detected — rebuilding...")
   const proc = spawn(
     "pnpm",
-    ["plasmo", "build", "--target=chrome-mv3", "--tag=dev"],
+    ["plasmo", "build", "--target=chrome-mv3", `--tag=${EXT_TAG}`],
     { cwd: EXT_DIR, stdio: "inherit", shell: false }
   )
   proc.on("close", (code) => {

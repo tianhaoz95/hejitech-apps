@@ -3,6 +3,7 @@ import { getFirestore, connectFirestoreEmulator } from "firebase/firestore"
 import { getAuth, initializeAuth, connectAuthEmulator, GoogleAuthProvider, indexedDBLocalPersistence, signInWithCredential } from "firebase/auth/web-extension"
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions"
 import { getAI, GoogleAIBackend, VertexAIBackend } from "firebase/ai"
+import { getRemoteConfig, fetchAndActivate } from "firebase/remote-config"
 
 const useEmulator =
   process.env.PLASMO_PUBLIC_USE_EMULATOR === "true"
@@ -41,11 +42,30 @@ try {
 
 const functions = getFunctions(app)
 
+// Initialize Remote Config
+const remoteConfig = getRemoteConfig(app)
+remoteConfig.defaultConfig = {
+  gemini_model_id: useEmulator ? "gemini-nano" : "gemini-3.1-flash-lite"
+}
+
+if (useEmulator) {
+  remoteConfig.settings.minimumFetchIntervalMillis = 10000 // 10s for dev
+}
+
 // Emulator: GoogleAIBackend (direct Gemini API, no Vertex billing).
 // Production: VertexAIBackend (Firebase AI Logic — server-side auth, no key exposure).
 const ai = getAI(app, {
   backend: useEmulator ? new GoogleAIBackend() : new VertexAIBackend()
 })
+
+if (useEmulator) {
+  // @ts-ignore - Force use of local Gemini Nano in emulator mode
+  self.FIREBASE_AI_FORCE_BUILTIN = true
+  // @ts-ignore
+  self.FIREBASE_AI_USE_BUILTIN = true
+  console.log("[Icecap] AI: Local model flags enabled (FORCE + USE BUILTIN)")
+}
+
 const googleProvider = new GoogleAuthProvider()
 googleProvider.setCustomParameters({ prompt: "select_account" })
 
@@ -55,6 +75,7 @@ if (useEmulator) {
     connectFirestoreEmulator(db, "127.0.0.1", 8080)
     connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true })
     connectFunctionsEmulator(functions, "127.0.0.1", 5001)
+    // connectRemoteConfigEmulator removed: not exported from firebase/remote-config v12
     if (typeof window !== "undefined") {
       (window as any).auth = auth
     }
@@ -62,6 +83,10 @@ if (useEmulator) {
     // Already connected (hot reload)
   }
 }
+
+fetchAndActivate(remoteConfig).catch((err) => {
+  console.warn("[Icecap] Remote Config fetch failed:", err)
+})
 
 export const signInWithGoogle = (): Promise<void> =>
   new Promise((resolve, reject) => {
@@ -94,4 +119,5 @@ export const signInWithGoogle = (): Promise<void> =>
     })
   })
 
-export { db, auth, functions, ai, googleProvider, useEmulator }
+export { db, auth, functions, ai, googleProvider, useEmulator, remoteConfig }
+

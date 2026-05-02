@@ -3,7 +3,7 @@ import { getAnalytics, isSupported } from "firebase/analytics"
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore"
 import { getAuth, connectAuthEmulator, GoogleAuthProvider, signInWithEmailAndPassword } from "firebase/auth"
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions"
-import { getAI, GoogleAIBackend } from "firebase/ai"
+import { getAI, GoogleAIBackend, VertexAIBackend } from "firebase/ai"
 
 const useEmulator = import.meta.env.VITE_USE_EMULATOR === "true"
 
@@ -45,7 +45,7 @@ if (useEmulator) {
 }
 
 const ai = getAI(app, {
-  backend: new GoogleAIBackend()
+  backend: useEmulator ? new GoogleAIBackend() : new VertexAIBackend()
 })
 
 if (useEmulator) {

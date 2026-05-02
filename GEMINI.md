@@ -97,6 +97,13 @@ Assets are stored in `reports/screenshots/`.
   - Use `STRIPE_WEBHOOK_SECRET` (starts with `whsec_`).
   - These keys must be stored in GitHub Repository Secrets and Firebase Secrets. Never commit them to the repository.
 
+### AI Prompt Templates
+- **Source of truth:** `firebase/prompts/*.prompt` — Dotprompt files (YAML frontmatter + `{{variable}}` body).
+- **Upload:** `node scripts/upload-prompts.mjs` — parses `.prompt` files, writes body text into `firebase/remoteconfig.json` as STRING parameters, and deploys via Firebase CLI. Supports `--dry-run`, `--no-deploy`, `-P <project>`.
+- **Runtime (prod):** extension reads prompt text from Remote Config (`getString(remoteConfig, key)`) so prompts update without an extension release.
+- **Runtime (dev/emulator):** extension reads from `apps/extension/src/core/aiTemplates.ts` `LOCAL_TEMPLATES` — mirror `.prompt` body changes there manually.
+- **Remote Config keys:** `prompt_deal_summary`, `prompt_chat_assistant` (derived from filename: `deal-summary.prompt` → `prompt_deal_summary`).
+
 ### AI Guidelines
 - **On-Demand:** AI deal analysis must be explicitly user-triggered to preserve quotas.
 - **Propose-Confirm:** AI agents (Co-Pilot) must never modify data without explicit user confirmation.

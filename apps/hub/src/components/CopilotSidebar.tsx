@@ -3,7 +3,7 @@ import { X, Sparkles, Send, CheckCircle, XCircle, Loader2 } from "lucide-react"
 import { getGenerativeModel } from "firebase/ai"
 import { collection, query, orderBy, onSnapshot, doc, updateDoc } from "firebase/firestore"
 import { calcRentalMetrics, calcFlipMetrics } from "@icecap/math"
-import { ai, db } from "../core/firebase"
+import { ai, db, useEmulator } from "../core/firebase"
 import { useAuth } from "../hooks/useAuth"
 import type { SavedProperty, CopilotMessage, CopilotActionProposal, AdjustableField, PropertyData } from "@icecap/types"
 
@@ -160,15 +160,10 @@ export function CopilotSidebar({ isOpen, onClose }: Props) {
       setIsLoading(true)
 
       try {
-        console.log("[Icecap Hub] Initializing AI model with ONLY_ON_DEVICE mode...")
-        const model = getGenerativeModel(ai, {
-          model: "gemini-2.0-flash",
-          // @ts-ignore
-          mode: "only_on_device",
-          inCloudParams: {
-            model: "gemini-2.0-flash",
-          }
-        } as any)
+        const modelParams = useEmulator
+          ? { model: "gemini-2.0-flash", mode: "only_on_device", inCloudParams: { model: "gemini-2.0-flash" } } as any
+          : { model: "gemini-2.0-flash" }
+        const model = getGenerativeModel(ai, modelParams)
 
         console.log("[Icecap Hub] AI Model instance successfully created:", model)
 
