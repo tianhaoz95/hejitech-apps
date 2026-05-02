@@ -28,7 +28,9 @@ function scrapeZillow() {
   const taxItem = factItems.find((el) => el.textContent?.toLowerCase().includes("tax"))
   const hoaItem = factItems.find((el) => el.textContent?.toLowerCase().includes("hoa"))
 
-  const priceText = priceEl?.textContent ?? ""
+  const priceText = priceEl
+    ? Array.from(priceEl.childNodes).filter(n => n.nodeType === Node.TEXT_NODE).map(n => n.textContent?.trim()).join("").trim()
+    : ""
   const price = parseFloat(priceText.replace(/[^0-9.]/g, "")) || 0
 
   return {
