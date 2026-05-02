@@ -2,9 +2,9 @@
   "parameters": {
     "gemini_model_id": {
       "defaultValue": {
-        "value": "gemini-3.1-flash-lite"
+        "value": "gemini-3.1-flash-lite-preview"
       },
-      "description": "The model ID for the Gemini AI assistant (e.g., gemini-1.5-flash, gemini-3.1-flash-lite).",
+      "description": "The model ID for the Gemini AI assistant (e.g., gemini-1.5-flash, gemini-3.1-flash-lite-preview).",
       "valueType": "STRING"
     },
     "prompt_chat_assistant": {

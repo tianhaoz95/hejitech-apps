@@ -21,6 +21,7 @@ export function PromoCodesPage() {
   const [stripeCoupons, setStripeCoupons] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingCoupons, setLoadingCoupons] = useState(false)
+  const [couponError, setCouponError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [actionId, setActionId] = useState<string | null>(null)
   const [form, setForm] = useState({ 
@@ -39,12 +40,15 @@ export function PromoCodesPage() {
 
   const fetchCoupons = async () => {
     setLoadingCoupons(true)
+    setCouponError(null)
     try {
       const listCoupons = httpsCallable(functions, "listStripeCoupons")
       const result = await listCoupons()
-      setStripeCoupons((result.data as any).coupons || [])
-    } catch (e) {
+      const coupons = (result.data as any).coupons || []
+      setStripeCoupons(coupons)
+    } catch (e: any) {
       console.error("Error fetching Stripe coupons:", e)
+      setCouponError(e.message || "Failed to fetch coupons")
     } finally {
       setLoadingCoupons(false)
     }
@@ -152,29 +156,36 @@ export function PromoCodesPage() {
           </select>
 
           {form.type === "stripe_linked" && (
-            <div className="flex items-center gap-2">
-              <select
-                value={form.stripeCouponId}
-                onChange={(e) => setForm({ ...form, stripeCouponId: e.target.value })}
-                required
-                className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-gray-900 text-sm focus:outline-none focus:border-blue-500 min-w-48"
-              >
-                <option value="">Select Stripe Coupon...</option>
-                {stripeCoupons.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.percent_off ? `${c.percent_off}% off` : `$${c.amount_off / 100} off`})
-                  </option>
-                ))}
-              </select>
-              <button 
-                type="button"
-                onClick={fetchCoupons}
-                disabled={loadingCoupons}
-                className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
-                title="Refresh Coupons"
-              >
-                <Loader2 size={16} className={loadingCoupons ? "animate-spin" : ""} />
-              </button>
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <select
+                  value={form.stripeCouponId}
+                  onChange={(e) => setForm({ ...form, stripeCouponId: e.target.value })}
+                  required
+                  className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-gray-900 text-sm focus:outline-none focus:border-blue-500 min-w-48"
+                >
+                  <option value="">Select Stripe Coupon...</option>
+                  {stripeCoupons.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({c.percent_off ? `${c.percent_off}% off` : c.amount_off ? `$${c.amount_off / 100} off` : c.id})
+                    </option>
+                  ))}
+                </select>
+                <button 
+                  type="button"
+                  onClick={fetchCoupons}
+                  disabled={loadingCoupons}
+                  className="p-2 text-gray-400 hover:text-blue-600 transition-colors disabled:opacity-30"
+                  title="Refresh Coupons"
+                >
+                  <Loader2 size={16} className={loadingCoupons ? "animate-spin" : ""} />
+                </button>
+              </div>
+              {couponError && (
+                <p className="text-[10px] text-red-500 font-bold flex items-center gap-1">
+                  <XCircle size={10} /> {couponError}
+                </p>
+              )}
             </div>
           )}
 

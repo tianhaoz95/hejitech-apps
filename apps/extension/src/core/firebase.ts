@@ -2,8 +2,8 @@ import { initializeApp, getApps } from "firebase/app"
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore"
 import { getAuth, initializeAuth, connectAuthEmulator, GoogleAuthProvider, indexedDBLocalPersistence, signInWithCredential } from "firebase/auth/web-extension"
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions"
-import { getAI, GoogleAIBackend, VertexAIBackend } from "firebase/ai"
-import { getRemoteConfig, fetchAndActivate } from "firebase/remote-config"
+import { getAI, GoogleAIBackend } from "firebase/ai"
+import { getRemoteConfig, fetchAndActivate, getString } from "firebase/remote-config"
 
 const useEmulator =
   process.env.PLASMO_PUBLIC_USE_EMULATOR === "true"
@@ -30,7 +30,6 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0
 const db = getFirestore(app)
 
 // Initialize Auth with IndexedDB persistence for extension environment
-// initializeAuth is tried first; on HMR it throws "already initialized" so we fall back to getAuth
 let auth;
 try {
   auth = initializeAuth(app, {
@@ -45,17 +44,16 @@ const functions = getFunctions(app)
 // Initialize Remote Config
 const remoteConfig = getRemoteConfig(app)
 remoteConfig.defaultConfig = {
-  gemini_model_id: useEmulator ? "gemini-nano" : "gemini-3.1-flash-lite"
+  gemini_model_id: useEmulator ? "gemini-nano" : "gemini-3.1-flash-lite-preview"
 }
 
-if (useEmulator) {
-  remoteConfig.settings.minimumFetchIntervalMillis = 10000 // 10s for dev
-}
+// Set fetch interval: 10s for emulator, 1 minute for production (to speed up dev testing)
+remoteConfig.settings.minimumFetchIntervalMillis = useEmulator ? 10000 : 60000
 
-// Emulator: GoogleAIBackend (direct Gemini API, no Vertex billing).
-// Production: VertexAIBackend (Firebase AI Logic — server-side auth, no key exposure).
+// Both local and production use GoogleAIBackend (Gemini Developer API).
+// Local still prioritizes the built-in model (Gemini Nano) via flags below.
 const ai = getAI(app, {
-  backend: useEmulator ? new GoogleAIBackend() : new VertexAIBackend()
+  backend: new GoogleAIBackend()
 })
 
 if (useEmulator) {
@@ -75,16 +73,15 @@ if (useEmulator) {
     connectFirestoreEmulator(db, "127.0.0.1", 8080)
     connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true })
     connectFunctionsEmulator(functions, "127.0.0.1", 5001)
-    // connectRemoteConfigEmulator removed: not exported from firebase/remote-config v12
-    if (typeof window !== "undefined") {
-      (window as any).auth = auth
-    }
   } catch {
     // Already connected (hot reload)
   }
 }
 
-fetchAndActivate(remoteConfig).catch((err) => {
+fetchAndActivate(remoteConfig).then((newConfig) => {
+  console.log(`[Icecap] Remote Config: ${newConfig ? "Fetched from server" : "Using cached values"}`)
+  console.log("[Icecap] Active Model ID:", getString(remoteConfig, "gemini_model_id"))
+}).catch((err) => {
   console.warn("[Icecap] Remote Config fetch failed:", err)
 })
 
@@ -120,4 +117,3 @@ export const signInWithGoogle = (): Promise<void> =>
   })
 
 export { db, auth, functions, ai, googleProvider, useEmulator, remoteConfig }
-

@@ -284,7 +284,8 @@ export const listStripeCoupons = onCall({ cors: true }, async (request) => {
     }
   } catch (e: any) {
     logger.error("Failed to list Stripe coupons", e)
-    throw new HttpsError("internal", "Failed to retrieve coupons from Stripe")
+    const message = e.message || "Failed to retrieve coupons from Stripe"
+    throw new HttpsError("internal", message)
   }
 })
 
