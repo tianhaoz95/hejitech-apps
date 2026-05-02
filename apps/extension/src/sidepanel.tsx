@@ -1090,6 +1090,21 @@ export default function SidePanel() {
                   )}
                 </div>
               )}
+              {chatMessages.length > 0 && (
+                <div className="flex justify-center mb-2">
+                  <button
+                    onClick={() => {
+                      if (confirm("Reset chat and start fresh?")) {
+                        setChatMessages([])
+                      }
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1 bg-gray-50 text-[10px] text-gray-400 font-bold uppercase tracking-wider rounded-full border border-gray-100 hover:bg-gray-100 hover:text-gray-600 transition-all"
+                  >
+                    <RefreshCw size={10} />
+                    Reset Conversation
+                  </button>
+                </div>
+              )}
               {chatMessages.map((msg, i) => (
                 <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[88%] px-3 py-2 rounded-2xl text-xs leading-relaxed ${
