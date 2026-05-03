@@ -40,9 +40,17 @@ jobs:
       - name: Verify Build Artifacts
         env:
           PLASMO_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.PLASMO_PUBLIC_GOOGLE_CLIENT_ID }}
+          PLASMO_PUBLIC_CHROME_AI_TRIAL_TOKEN: ${{ secrets.CHROME_EXTENSION_AI_TRIAL_TOKEN }}
+          VITE_CHROME_AI_TRIAL_TOKEN: ${{ secrets.HUB_AI_TRIAL_TOKEN }}
         run: |
+          # Setup extension env
           echo "PLASMO_PUBLIC_USE_EMULATOR=false" > apps/extension/.env
           echo "PLASMO_PUBLIC_GOOGLE_CLIENT_ID=$PLASMO_PUBLIC_GOOGLE_CLIENT_ID" >> apps/extension/.env
+          echo "PLASMO_PUBLIC_CHROME_AI_TRIAL_TOKEN=$PLASMO_PUBLIC_CHROME_AI_TRIAL_TOKEN" >> apps/extension/.env
+          
+          # Setup hub env
+          echo "VITE_CHROME_AI_TRIAL_TOKEN=$VITE_CHROME_AI_TRIAL_TOKEN" > apps/hub/.env
+          
           pnpm turbo run build
           pnpm --filter @icecap/extension package:sideload
           echo "✨ Checking build artifacts..."

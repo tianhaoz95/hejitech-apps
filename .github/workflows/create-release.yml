@@ -54,10 +54,12 @@ jobs:
         if: steps.get_version.outputs.version != steps.get_prev_version.outputs.prev_version
         env:
           PLASMO_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.PLASMO_PUBLIC_GOOGLE_CLIENT_ID }}
+          PLASMO_PUBLIC_CHROME_AI_TRIAL_TOKEN: ${{ secrets.CHROME_EXTENSION_AI_TRIAL_TOKEN }}
         run: |
           cp apps/extension/.env.example apps/extension/.env
           echo "PLASMO_PUBLIC_USE_EMULATOR=false" >> apps/extension/.env
           echo "PLASMO_PUBLIC_GOOGLE_CLIENT_ID=$PLASMO_PUBLIC_GOOGLE_CLIENT_ID" >> apps/extension/.env
+          echo "PLASMO_PUBLIC_CHROME_AI_TRIAL_TOKEN=$PLASMO_PUBLIC_CHROME_AI_TRIAL_TOKEN" >> apps/extension/.env
           ./scripts/build-extension-all.sh
 
       - name: Capture Extension Screenshots
