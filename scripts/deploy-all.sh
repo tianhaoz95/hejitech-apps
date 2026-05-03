@@ -18,6 +18,9 @@ if [ -z "$FIREBASE_TOKEN" ]; then
   echo "⚠️ FIREBASE_TOKEN is not set. Assuming other auth methods are configured."
 fi
 
+# Check firebase version
+echo "🔥 Firebase Tools Version: $(npx firebase --version)"
+
 # Deploy hosting to the production project
 echo "📦 Deploying Hosting..."
 npx firebase deploy --only hosting --project production --non-interactive --debug
