@@ -1,5 +1,13 @@
 import { useState, useEffect } from "react";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  serverTimestamp,
+  doc,
+  getDoc,
+  setDoc,
+  increment,
+} from "firebase/firestore";
 import { db } from "./core/firebase";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -15,9 +23,90 @@ import {
   ChevronDown,
   BookmarkPlus,
   Lock,
+  ChevronRight,
 } from "lucide-react";
 
-// ─── Background ─────────────────────────────────────────────────────────────
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+// Seed offset so the counter starts from a credible baseline
+const SEED_COUNT = 1247;
+
+const AVATARS = [
+  { initial: "J", bg: "bg-blue-600" },
+  { initial: "S", bg: "bg-violet-600" },
+  { initial: "M", bg: "bg-indigo-500" },
+  { initial: "A", bg: "bg-cyan-600" },
+  { initial: "R", bg: "bg-blue-500" },
+];
+
+const FAQS = [
+  {
+    q: "Is it free to join the waitlist?",
+    a: "Completely free — no credit card, no commitment. Early access members will also receive a discounted rate when Icecap launches.",
+  },
+  {
+    q: "Which listing sites does Icecap work on?",
+    a: "Zillow, Redfin, and Realtor.com at launch. We'll expand to more platforms based on feedback from our early users.",
+  },
+  {
+    q: "When will Icecap be available?",
+    a: "We're targeting a limited private beta soon. Waitlist members get priority access in the order they signed up — the earlier you join, the sooner your spot opens.",
+  },
+  {
+    q: "What happens after I sign up?",
+    a: "You'll receive one email when your spot is ready. No newsletters, no drip campaigns — just the launch notice when we're ready for you.",
+  },
+  {
+    q: "Is my investment data private?",
+    a: "Yes. Every deal you save is private to your account. We never sell, share, or analyze your personal data. Your investment strategy stays yours.",
+  },
+];
+
+// ─── Waitlist counter hook ────────────────────────────────────────────────────
+
+function useWaitlistCount() {
+  const [extra, setExtra] = useState(0);
+
+  useEffect(() => {
+    getDoc(doc(db, "public_stats", "waitlist"))
+      .then((snap) => {
+        if (snap.exists()) {
+          const data = snap.data() as { signupCount?: number };
+          setExtra(data.signupCount ?? 0);
+        }
+      })
+      .catch(() => {}); // display seed number on any error
+  }, []);
+
+  return SEED_COUNT + extra;
+}
+
+// ─── Waitlist counter display ─────────────────────────────────────────────────
+
+function WaitlistCounter({ count }: { count: number }) {
+  return (
+    <div className="flex items-center gap-3 pt-5 mt-5 border-t border-white/[0.07]">
+      <div className="flex -space-x-2 shrink-0">
+        {AVATARS.map(({ initial, bg }) => (
+          <div
+            key={initial}
+            className={`w-7 h-7 rounded-full border-2 border-[#050b1a] flex items-center justify-center text-[10px] font-bold text-white ${bg}`}
+          >
+            {initial}
+          </div>
+        ))}
+      </div>
+      <p className="text-gray-400 text-sm">
+        <span className="text-white font-semibold">
+          {count.toLocaleString()}
+        </span>{" "}
+        investors already on the waitlist
+      </p>
+    </div>
+  );
+}
+
+// ─── Background ──────────────────────────────────────────────────────────────
 
 function HeroBackground() {
   return (
@@ -30,7 +119,7 @@ function HeroBackground() {
   );
 }
 
-// ─── Product mockup (hero) ───────────────────────────────────────────────────
+// ─── Product mockup (hero) ────────────────────────────────────────────────────
 
 function ProductMockup() {
   return (
@@ -54,8 +143,13 @@ function ProductMockup() {
           { label: "Cash-on-Cash", value: "8.2%", color: "text-blue-400" },
           { label: "1% Rule", value: "✓ Pass", color: "text-green-400" },
         ].map((m) => (
-          <div key={m.label} className="flex flex-col items-center p-2 rounded-xl bg-white/[0.04] border border-white/[0.07]">
-            <span className="text-gray-500 text-[9px] mb-1 text-center leading-tight">{m.label}</span>
+          <div
+            key={m.label}
+            className="flex flex-col items-center p-2 rounded-xl bg-white/[0.04] border border-white/[0.07]"
+          >
+            <span className="text-gray-500 text-[9px] mb-1 text-center leading-tight">
+              {m.label}
+            </span>
             <span className={`text-xs font-bold ${m.color}`}>{m.value}</span>
           </div>
         ))}
@@ -63,10 +157,13 @@ function ProductMockup() {
       <div className="p-3 rounded-xl bg-purple-500/[0.08] border border-purple-500/20 mb-3">
         <div className="flex items-center gap-1.5 mb-1.5">
           <Sparkles className="w-3 h-3 text-purple-400" />
-          <span className="text-purple-300 text-[9px] font-semibold uppercase tracking-widest">AI Verdict</span>
+          <span className="text-purple-300 text-[9px] font-semibold uppercase tracking-widest">
+            AI Verdict
+          </span>
         </div>
         <p className="text-gray-300 text-[11px] leading-relaxed">
-          "Strong fundamentals with below-market rent upside. Cap rate of 6.8% exceeds local average by 1.2%."
+          "Strong fundamentals with below-market rent upside. Cap rate of 6.8% exceeds local
+          average by 1.2%."
         </p>
       </div>
       <div className="flex items-center justify-between">
@@ -80,7 +177,7 @@ function ProductMockup() {
   );
 }
 
-// ─── Browser chrome wrapper ──────────────────────────────────────────────────
+// ─── Browser chrome wrapper ───────────────────────────────────────────────────
 
 function BrowserChrome({ url, children }: { url: string; children: React.ReactNode }) {
   return (
@@ -101,7 +198,7 @@ function BrowserChrome({ url, children }: { url: string; children: React.ReactNo
   );
 }
 
-// ─── Extension demo ──────────────────────────────────────────────────────────
+// ─── Extension demo ───────────────────────────────────────────────────────────
 
 const EXT_METRICS = [
   { label: "Cap Rate", value: "6.8%", color: "text-green-400", showAt: 2 },
@@ -113,14 +210,14 @@ const EXT_METRICS = [
 
 const EXT_PHASE_DELAYS = [1000, 1400, 450, 450, 450, 450, 450, 3600];
 
-function ExtensionPanel({ phase }: { phase: number }) {
+function ExtensionPanel({ phase, className = "" }: { phase: number; className?: string }) {
   const scanning = phase === 1;
   const analyzing = phase >= 2 && phase < 7;
   const done = phase >= 7;
 
   return (
-    <div className="w-52 shrink-0 flex flex-col bg-[#0a1120] border-l border-white/[0.06] p-3.5 text-white">
-      {/* Panel header */}
+    <div className={`flex flex-col bg-[#0a1120] p-3.5 text-white ${className}`}>
+      {/* Header */}
       <div className="flex items-center justify-between mb-3 pb-3 border-b border-white/[0.07]">
         <div className="flex items-center gap-1.5">
           <div className="w-5 h-5 rounded-md bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
@@ -166,10 +263,12 @@ function ExtensionPanel({ phase }: { phase: number }) {
       >
         <div className="flex items-center gap-1 mb-1.5">
           <Sparkles className="w-2.5 h-2.5 text-purple-400" />
-          <span className="text-purple-300 text-[8px] font-semibold uppercase tracking-widest">AI Verdict</span>
+          <span className="text-purple-300 text-[8px] font-semibold uppercase tracking-widest">
+            AI Verdict
+          </span>
         </div>
         <p className="text-gray-300 text-[10px] leading-relaxed">
-          "Strong fundamentals. Cap rate exceeds local average by 1.2%. Recommend investing."
+          "Strong fundamentals. Cap rate exceeds local average by 1.2%. Recommend investigating."
         </p>
       </div>
 
@@ -197,19 +296,16 @@ function ExtensionDemo() {
 
   return (
     <BrowserChrome url="www.redfin.com/TX/Austin/1247-Maple-St-78701/home/12345678">
-      <div className="flex min-h-[380px]">
-        {/* Listing page */}
-        <div className="flex-1 p-5 overflow-hidden">
-          {/* Image placeholder */}
-          <div className="relative w-full h-32 rounded-xl bg-gradient-to-br from-slate-700/60 to-slate-800/60 border border-white/[0.06] overflow-hidden mb-4 flex items-center justify-center">
-            <Building2 className="w-14 h-14 text-white/[0.07]" />
+      <div className="flex flex-col md:flex-row">
+        {/* Listing — stacked on mobile, side-by-side on md+ */}
+        <div className="flex-1 p-4 md:p-5 overflow-hidden">
+          <div className="relative w-full h-28 md:h-32 rounded-xl bg-gradient-to-br from-slate-700/60 to-slate-800/60 border border-white/[0.06] overflow-hidden mb-4 flex items-center justify-center">
+            <Building2 className="w-12 h-12 md:w-14 md:h-14 text-white/[0.07]" />
             <div className="absolute bottom-0 inset-x-0 px-3 py-2 bg-gradient-to-t from-black/50">
               <span className="text-white/60 text-[10px]">1247 Maple Street · Austin, TX</span>
             </div>
           </div>
-
-          {/* Price & details */}
-          <p className="text-white font-bold text-xl mb-0.5">$485,000</p>
+          <p className="text-white font-bold text-lg md:text-xl mb-0.5">$485,000</p>
           <p className="text-gray-400 text-xs mb-3">1247 Maple Street, Austin TX 78701</p>
           <div className="flex items-center gap-3 text-gray-500 text-xs mb-4">
             <span>3 bed</span>
@@ -218,23 +314,30 @@ function ExtensionDemo() {
             <span className="text-gray-700">·</span>
             <span>1,450 sq ft</span>
           </div>
-
-          {/* Listing snippets */}
-          <div className="space-y-1.5">
-            {["Well-maintained duplex in the heart of South Austin.", "Estimated monthly rental income: $3,200/mo.", "New HVAC installed 2023. Strong rental demand."].map((line) => (
-              <p key={line} className="text-gray-600 text-[11px] leading-relaxed">{line}</p>
+          <div className="hidden md:block space-y-1.5">
+            {[
+              "Well-maintained duplex in the heart of South Austin.",
+              "Estimated monthly rental income: $3,200/mo.",
+              "New HVAC installed 2023. Strong rental demand.",
+            ].map((line) => (
+              <p key={line} className="text-gray-600 text-[11px] leading-relaxed">
+                {line}
+              </p>
             ))}
           </div>
         </div>
 
         {/* Icecap panel */}
-        <ExtensionPanel phase={phase} />
+        <ExtensionPanel
+          phase={phase}
+          className="md:w-52 md:shrink-0 border-t md:border-t-0 md:border-l border-white/[0.06]"
+        />
       </div>
     </BrowserChrome>
   );
 }
 
-// ─── Hub demo ────────────────────────────────────────────────────────────────
+// ─── Hub demo ─────────────────────────────────────────────────────────────────
 
 const HUB_NAV = [
   { icon: Building2, label: "Portfolio", active: true },
@@ -253,9 +356,9 @@ const HUB_DEALS = [
 function HubDemo() {
   return (
     <BrowserChrome url="app.icecap.io/portfolio">
-      <div className="flex min-h-[380px]">
-        {/* Sidebar */}
-        <div className="w-44 shrink-0 bg-[#080d1a] border-r border-white/[0.06] flex flex-col py-4">
+      <div className="flex">
+        {/* Sidebar — hidden on mobile */}
+        <div className="hidden md:flex w-44 shrink-0 bg-[#080d1a] border-r border-white/[0.06] flex-col py-4">
           <div className="flex items-center gap-2 px-4 mb-6">
             <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
               <Building2 className="w-3.5 h-3.5 text-white" />
@@ -279,10 +382,10 @@ function HubDemo() {
           </nav>
         </div>
 
-        {/* Main */}
-        <div className="flex-1 p-5 overflow-hidden">
+        {/* Main content */}
+        <div className="flex-1 p-4 md:p-5 overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center justify-between mb-4 md:mb-5">
             <div>
               <h3 className="text-white font-bold text-sm">Portfolio Overview</h3>
               <p className="text-gray-500 text-[11px]">4 deals tracked</p>
@@ -294,42 +397,44 @@ function HubDemo() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-3 mb-5">
+          <div className="grid grid-cols-3 gap-2 md:gap-3 mb-4 md:mb-5">
             {[
               { label: "Pipeline Value", value: "$2.4M" },
               { label: "Avg Cap Rate", value: "7.1%" },
               { label: "Deals Analyzed", value: "8" },
             ].map((s) => (
-              <div key={s.label} className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.07]">
-                <p className="text-white font-bold text-base">{s.value}</p>
-                <p className="text-gray-500 text-[10px]">{s.label}</p>
+              <div key={s.label} className="p-2.5 md:p-3 rounded-xl bg-white/[0.03] border border-white/[0.07]">
+                <p className="text-white font-bold text-sm md:text-base">{s.value}</p>
+                <p className="text-gray-500 text-[9px] md:text-[10px]">{s.label}</p>
               </div>
             ))}
           </div>
 
-          {/* Deals table */}
+          {/* Deals */}
           <div className="space-y-1.5">
-            <div className="flex items-center px-2 mb-2">
-              <span className="text-gray-600 text-[10px] font-semibold uppercase tracking-wider">Recent Deals</span>
-            </div>
+            <span className="text-gray-600 text-[10px] font-semibold uppercase tracking-wider px-1">
+              Recent Deals
+            </span>
             {HUB_DEALS.map((deal) => (
               <div
                 key={deal.address}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] transition-colors group"
+                className="flex items-center gap-2 md:gap-3 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] transition-colors group"
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-[11px] font-semibold truncate">{deal.address}</p>
                   <p className="text-gray-500 text-[10px]">{deal.city}</p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
                   <span className="text-green-400 text-[10px] font-mono">{deal.cap}</span>
                   <span className="text-gray-700 text-[10px]">/</span>
                   <span className="text-blue-400 text-[10px] font-mono">{deal.coc}</span>
                 </div>
-                <span className={`hidden sm:inline-flex px-2 py-0.5 rounded-full border text-[9px] font-semibold ${deal.vBg} ${deal.vColor}`}>
+                <span
+                  className={`hidden sm:inline-flex px-2 py-0.5 rounded-full border text-[9px] font-semibold ${deal.vBg} ${deal.vColor}`}
+                >
                   {deal.verdict}
                 </span>
-                <ArrowRight className="w-3 h-3 text-gray-700 group-hover:text-gray-400 transition-colors" />
+                <ArrowRight className="w-3 h-3 text-gray-700 group-hover:text-gray-400 transition-colors shrink-0" />
               </div>
             ))}
           </div>
@@ -339,7 +444,7 @@ function HubDemo() {
   );
 }
 
-// ─── Demo section ────────────────────────────────────────────────────────────
+// ─── Demo section ─────────────────────────────────────────────────────────────
 
 type DemoTab = "extension" | "hub";
 
@@ -349,7 +454,6 @@ function DemoSection() {
   return (
     <section className="relative z-10 py-28 border-t border-white/[0.06]">
       <div className="max-w-5xl mx-auto px-6">
-        {/* Header */}
         <div className="text-center mb-12">
           <div className="inline-block px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold mb-5">
             See it in action
@@ -382,7 +486,8 @@ function DemoSection() {
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
-                {label}
+                <span className="hidden sm:inline">{label}</span>
+                <span className="sm:hidden">{key === "extension" ? "Extension" : "Hub"}</span>
               </button>
             ))}
           </div>
@@ -396,7 +501,6 @@ function DemoSection() {
           </div>
         </div>
 
-        {/* Caption */}
         <p className="text-center text-gray-600 text-xs mt-5">
           {activeTab === "extension"
             ? "The extension panel appears automatically on any listing page — no clicking needed."
@@ -407,7 +511,59 @@ function DemoSection() {
   );
 }
 
-// ─── Feature card ────────────────────────────────────────────────────────────
+// ─── FAQ section ──────────────────────────────────────────────────────────────
+
+function FAQSection() {
+  const [openIndex, setOpenIndex] = useState<number | null>(0);
+
+  return (
+    <section className="relative z-10 py-28 border-t border-white/[0.06]">
+      <div className="max-w-2xl mx-auto px-6">
+        <div className="text-center mb-12">
+          <div className="inline-block px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold mb-5">
+            FAQ
+          </div>
+          <h2 className="text-4xl xl:text-5xl font-black tracking-tight mb-4">
+            Good questions.
+          </h2>
+          <p className="text-gray-400 max-w-sm mx-auto">
+            Everything you need to know before joining.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          {FAQS.map((faq, i) => (
+            <div
+              key={faq.q}
+              className="rounded-2xl border border-white/[0.08] bg-white/[0.02] overflow-hidden"
+            >
+              <button
+                onClick={() => setOpenIndex(openIndex === i ? null : i)}
+                className="w-full flex items-center justify-between px-5 py-4 text-left gap-4 hover:bg-white/[0.03] transition-colors"
+              >
+                <span className="text-white font-semibold text-sm">{faq.q}</span>
+                <ChevronRight
+                  className={`w-4 h-4 text-gray-500 shrink-0 transition-transform duration-200 ${
+                    openIndex === i ? "rotate-90" : ""
+                  }`}
+                />
+              </button>
+              <div
+                className={`overflow-hidden transition-all duration-300 ${
+                  openIndex === i ? "max-h-48" : "max-h-0"
+                }`}
+              >
+                <p className="px-5 pb-5 text-gray-400 text-sm leading-relaxed">{faq.a}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Feature card ─────────────────────────────────────────────────────────────
 
 interface FeatureCardProps {
   icon: LucideIcon;
@@ -416,17 +572,20 @@ interface FeatureCardProps {
   description: string;
 }
 
-const COLOR_MAP: Record<"blue" | "purple" | "cyan", { bg: string; border: string; text: string }> = {
-  blue: { bg: "bg-blue-500/10", border: "border-blue-500/20", text: "text-blue-400" },
-  purple: { bg: "bg-purple-500/10", border: "border-purple-500/20", text: "text-purple-400" },
-  cyan: { bg: "bg-cyan-500/10", border: "border-cyan-500/20", text: "text-cyan-400" },
-};
+const COLOR_MAP: Record<"blue" | "purple" | "cyan", { bg: string; border: string; text: string }> =
+  {
+    blue: { bg: "bg-blue-500/10", border: "border-blue-500/20", text: "text-blue-400" },
+    purple: { bg: "bg-purple-500/10", border: "border-purple-500/20", text: "text-purple-400" },
+    cyan: { bg: "bg-cyan-500/10", border: "border-cyan-500/20", text: "text-cyan-400" },
+  };
 
 function FeatureCard({ icon: Icon, color, title, description }: FeatureCardProps) {
   const c = COLOR_MAP[color];
   return (
     <div className="feature-card group">
-      <div className={`w-11 h-11 rounded-xl ${c.bg} border ${c.border} flex items-center justify-center mb-5`}>
+      <div
+        className={`w-11 h-11 rounded-xl ${c.bg} border ${c.border} flex items-center justify-center mb-5`}
+      >
         <Icon className={`w-5 h-5 ${c.text}`} />
       </div>
       <h3 className="text-white font-bold text-base mb-2">{title}</h3>
@@ -435,7 +594,7 @@ function FeatureCard({ icon: Icon, color, title, description }: FeatureCardProps
   );
 }
 
-// ─── Step card ───────────────────────────────────────────────────────────────
+// ─── Step card ────────────────────────────────────────────────────────────────
 
 interface StepCardProps {
   step: string;
@@ -465,7 +624,7 @@ function StepCard({ step, icon: Icon, title, description, isLast }: StepCardProp
   );
 }
 
-// ─── Sign-up form ────────────────────────────────────────────────────────────
+// ─── Sign-up form ─────────────────────────────────────────────────────────────
 
 interface SignupFormProps {
   email: string;
@@ -473,6 +632,7 @@ interface SignupFormProps {
   submitting: boolean;
   submitted: boolean;
   error: string | null;
+  count: number;
   onEmailChange: (v: string) => void;
   onNameChange: (v: string) => void;
   onSubmit: (e: React.FormEvent) => void;
@@ -485,6 +645,7 @@ function SignupForm({
   submitting,
   submitted,
   error,
+  count,
   onEmailChange,
   onNameChange,
   onSubmit,
@@ -500,7 +661,8 @@ function SignupForm({
           <div>
             <p className="text-white font-semibold text-sm">You're on the list!</p>
             <p className="text-gray-400 text-sm mt-0.5">
-              We'll reach out to <span className="text-gray-300">{email}</span> when Icecap launches.
+              We'll reach out to <span className="text-gray-300">{email}</span> when Icecap
+              launches.
             </p>
           </div>
         </div>
@@ -559,16 +721,33 @@ function SignupForm({
       </div>
       {!compact && (
         <div className="flex items-center gap-5 text-gray-600 text-xs">
-          <span className="flex items-center gap-1.5"><Check className="w-3 h-3 text-green-500/70" />Free to join</span>
-          <span className="flex items-center gap-1.5"><Check className="w-3 h-3 text-green-500/70" />No spam</span>
-          <span className="flex items-center gap-1.5"><Check className="w-3 h-3 text-green-500/70" />Cancel anytime</span>
+          <span className="flex items-center gap-1.5">
+            <Check className="w-3 h-3 text-green-500/70" />
+            Free to join
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Check className="w-3 h-3 text-green-500/70" />
+            No spam
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Check className="w-3 h-3 text-green-500/70" />
+            Cancel anytime
+          </span>
         </div>
+      )}
+      {!compact && <WaitlistCounter count={count} />}
+      {compact && (
+        <p className="text-center text-gray-500 text-xs">
+          Join{" "}
+          <span className="text-gray-300 font-semibold">{count.toLocaleString()}</span> investors
+          already waiting
+        </p>
       )}
     </form>
   );
 }
 
-// ─── App ─────────────────────────────────────────────────────────────────────
+// ─── App ──────────────────────────────────────────────────────────────────────
 
 export default function App() {
   const [email, setEmail] = useState("");
@@ -576,6 +755,7 @@ export default function App() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const count = useWaitlistCount();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -593,6 +773,10 @@ export default function App() {
         createdAt: serverTimestamp(),
         source: "waitlist-page",
       });
+      // Increment public counter — best-effort, non-blocking
+      setDoc(doc(db, "public_stats", "waitlist"), { signupCount: increment(1) }, { merge: true }).catch(
+        () => {}
+      );
       setSubmitted(true);
     } catch (err) {
       console.error("[waitlist] Firestore write failed:", err);
@@ -602,7 +786,17 @@ export default function App() {
     }
   };
 
-  const formProps = { email, name, submitting, submitted, error, onEmailChange: setEmail, onNameChange: setName, onSubmit: handleSubmit };
+  const formProps = {
+    email,
+    name,
+    submitting,
+    submitted,
+    error,
+    count,
+    onEmailChange: setEmail,
+    onNameChange: setName,
+    onSubmit: handleSubmit,
+  };
 
   return (
     <div className="min-h-screen bg-[#050b1a] text-white">
@@ -614,7 +808,10 @@ export default function App() {
           </div>
           <span className="text-white font-black text-lg tracking-tight">icecap</span>
         </div>
-        <a href="#waitlist" className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition-colors shadow-lg shadow-blue-500/20">
+        <a
+          href="#waitlist"
+          className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition-colors shadow-lg shadow-blue-500/20"
+        >
           Join Waitlist
           <ArrowRight className="w-3.5 h-3.5" />
         </a>
@@ -630,7 +827,10 @@ export default function App() {
               Limited Early Access — Join the Waitlist
             </div>
             <h1 className="text-5xl xl:text-[3.75rem] font-black leading-[1.07] tracking-tight mb-6">
-              Stop Guessing<br />on Deals.<br />
+              Stop Guessing
+              <br />
+              on Deals.
+              <br />
               <span className="gradient-text">Start Knowing.</span>
             </h1>
             <p className="text-gray-400 text-lg leading-relaxed mb-10 max-w-lg">
@@ -678,13 +878,32 @@ export default function App() {
             <div className="inline-block px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold mb-5">
               What you'll unlock
             </div>
-            <h2 className="text-4xl xl:text-5xl font-black tracking-tight mb-4">Every edge in one extension.</h2>
-            <p className="text-gray-400 max-w-md mx-auto">Built for investors who need real data, not real estate theater.</p>
+            <h2 className="text-4xl xl:text-5xl font-black tracking-tight mb-4">
+              Every edge in one extension.
+            </h2>
+            <p className="text-gray-400 max-w-md mx-auto">
+              Built for investors who need real data, not real estate theater.
+            </p>
           </div>
           <div className="grid md:grid-cols-3 gap-5">
-            <FeatureCard icon={Zap} color="blue" title="Instant Napkin Math" description="Cap Rate, Cash-on-Cash, 1% Rule, and GRM — calculated live as you scroll through listings. No copy-pasting to a spreadsheet." />
-            <FeatureCard icon={Brain} color="purple" title="AI Deal Intelligence" description="Gemini AI reads every listing and gives you a plain-English verdict. Is this deal worth your time, or should you keep scrolling?" />
-            <FeatureCard icon={BarChart3} color="cyan" title="Portfolio Dashboard" description="Track every deal you've analyzed. Compare properties side-by-side and spot patterns across your entire pipeline." />
+            <FeatureCard
+              icon={Zap}
+              color="blue"
+              title="Instant Napkin Math"
+              description="Cap Rate, Cash-on-Cash, 1% Rule, and GRM — calculated live as you scroll through listings. No copy-pasting to a spreadsheet."
+            />
+            <FeatureCard
+              icon={Brain}
+              color="purple"
+              title="AI Deal Intelligence"
+              description="Gemini AI reads every listing and gives you a plain-English verdict. Is this deal worth your time, or should you keep scrolling?"
+            />
+            <FeatureCard
+              icon={BarChart3}
+              color="cyan"
+              title="Portfolio Dashboard"
+              description="Track every deal you've analyzed. Compare properties side-by-side and spot patterns across your entire pipeline."
+            />
           </div>
         </div>
       </section>
@@ -699,16 +918,41 @@ export default function App() {
             <div className="inline-block px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold mb-5">
               How it works
             </div>
-            <h2 className="text-4xl xl:text-5xl font-black tracking-tight mb-4">Dead simple. Brutally effective.</h2>
-            <p className="text-gray-400 max-w-sm mx-auto">No setup. No learning curve. Just install and start investing smarter.</p>
+            <h2 className="text-4xl xl:text-5xl font-black tracking-tight mb-4">
+              Dead simple. Brutally effective.
+            </h2>
+            <p className="text-gray-400 max-w-sm mx-auto">
+              No setup. No learning curve. Just install and start investing smarter.
+            </p>
           </div>
           <div className="grid md:grid-cols-3 gap-10 md:gap-6">
-            <StepCard step="01" icon={Chrome} title="Install & Browse" description="Add Icecap to Chrome and start browsing Zillow, Redfin, or Realtor.com like you normally would." isLast={false} />
-            <StepCard step="02" icon={Zap} title="Auto-Analysis" description="Open any listing. Icecap scrapes the data and runs all the numbers automatically — no clicking needed." isLast={false} />
-            <StepCard step="03" icon={TrendingUp} title="Decide with Data" description="Get metrics, an AI verdict, and a clear picture. Save deals to your portfolio with one tap." isLast={true} />
+            <StepCard
+              step="01"
+              icon={Chrome}
+              title="Install & Browse"
+              description="Add Icecap to Chrome and start browsing Zillow, Redfin, or Realtor.com like you normally would."
+              isLast={false}
+            />
+            <StepCard
+              step="02"
+              icon={Zap}
+              title="Auto-Analysis"
+              description="Open any listing. Icecap scrapes the data and runs all the numbers automatically — no clicking needed."
+              isLast={false}
+            />
+            <StepCard
+              step="03"
+              icon={TrendingUp}
+              title="Decide with Data"
+              description="Get metrics, an AI verdict, and a clear picture. Save deals to your portfolio with one tap."
+              isLast={true}
+            />
           </div>
         </div>
       </section>
+
+      {/* ── FAQ ── */}
+      <FAQSection />
 
       {/* ── Bottom CTA ── */}
       <section className="relative z-10 py-28 border-t border-white/[0.06]">
@@ -718,9 +962,12 @@ export default function App() {
             <div className="inline-block px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold mb-6">
               Limited spots · Be first
             </div>
-            <h2 className="text-4xl xl:text-5xl font-black tracking-tight mb-4">Be first in line.</h2>
+            <h2 className="text-4xl xl:text-5xl font-black tracking-tight mb-4">
+              Be first in line.
+            </h2>
             <p className="text-gray-400 mb-10 max-w-sm mx-auto">
-              We're opening Icecap to a small group of investors early. Get priority access and help shape the product.
+              We're opening Icecap to a small group of investors early. Get priority access and
+              help shape the product.
             </p>
             <SignupForm {...formProps} compact />
           </div>
@@ -737,8 +984,12 @@ export default function App() {
             <span className="text-gray-500 text-sm">© 2025 Icecap. All rights reserved.</span>
           </div>
           <div className="flex items-center gap-6 text-gray-600 text-sm">
-            <a href="/privacy" className="hover:text-gray-400 transition-colors">Privacy</a>
-            <a href="/terms" className="hover:text-gray-400 transition-colors">Terms</a>
+            <a href="/privacy" className="hover:text-gray-400 transition-colors">
+              Privacy
+            </a>
+            <a href="/terms" className="hover:text-gray-400 transition-colors">
+              Terms
+            </a>
           </div>
         </div>
       </footer>
