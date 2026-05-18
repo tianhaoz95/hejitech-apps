@@ -983,7 +983,7 @@ export default function App() {
       </nav>
 
       {/* ── Hero ── */}
-      <section className="relative min-h-screen flex items-center pt-16">
+      <section id="waitlist" className="relative min-h-screen flex items-center pt-16">
         <HeroBackground />
         <div className="relative z-10 max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-16 xl:gap-24 items-center py-24">
           <div className="fade-up">
@@ -1003,7 +1003,7 @@ export default function App() {
               analysis — Cap Rate, Cash-on-Cash, ROI, and an AI verdict — in under 10 seconds.
               Right in your browser.
             </p>
-            <div id="waitlist">
+            <div>
               <SignupForm {...formProps} />
             </div>
           </div>
