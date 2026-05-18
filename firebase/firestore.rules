@@ -64,5 +64,15 @@ service cloud.firestore {
     match /system_health/{docId} {
       allow read, write: if isAdmin();
     }
+
+    // ─── Waitlist ──────────────────────────────────────────────────────────
+    // Anyone can submit their email — no auth required.
+    // Only admins can read or modify entries.
+    match /waitlist/{entryId} {
+      allow create: if request.resource.data.email is string
+        && request.resource.data.email.size() > 5
+        && request.resource.data.email.size() < 256;
+      allow read, update, delete: if isAdmin();
+    }
   }
 }
