@@ -40,4 +40,4 @@ jobs:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
       - name: Deploy to Firebase
-        run: pnpm exec firebase deploy --only hosting:icecap-preview-list --project production --non-interactive
+        run: pnpm exec firebase deploy --only hosting:icecap-preview-list,firestore:rules --project production --non-interactive
