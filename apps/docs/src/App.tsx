@@ -8,8 +8,9 @@ import {
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { oneLight, oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { auth, googleProvider, useEmulator } from "./core/firebase"
+import { ThemeProvider, useTheme } from "./core/ThemeContext"
 // @ts-ignore - virtual module
 import { docs } from 'virtual:docs'
 
@@ -34,11 +35,11 @@ function AdminGate({ children, user }: { children: React.ReactNode; user: User |
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center max-w-sm w-full">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-4">
+        <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 text-center max-w-sm w-full">
           <ShieldCheck size={40} className="text-blue-600 mx-auto mb-4" />
-          <h1 className="text-xl font-black text-gray-900 mb-2">Icecap Docs</h1>
-          <p className="text-gray-500 text-sm mb-6">Sign in with an admin account to access documentation.</p>
+          <h1 className="text-xl font-black text-gray-900 dark:text-white mb-2">Icecap Docs</h1>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">Sign in with an admin account to access documentation.</p>
           <button
             onClick={() => signInWithPopup(auth, googleProvider).catch(console.error)}
             className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
@@ -53,7 +54,7 @@ function AdminGate({ children, user }: { children: React.ReactNode; user: User |
 
   if (isAdmin === null) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
       </div>
     )
@@ -61,14 +62,14 @@ function AdminGate({ children, user }: { children: React.ReactNode; user: User |
 
   if (isAdmin === false) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center max-w-sm w-full">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-4">
+        <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 text-center max-w-sm w-full">
           <AlertTriangle size={40} className="text-yellow-500 mx-auto mb-4" />
-          <h1 className="text-xl font-black text-gray-900 mb-2">Access Denied</h1>
-          <p className="text-gray-500 text-sm mb-6">This account does not have admin privileges. Documentation is restricted to internal team members.</p>
+          <h1 className="text-xl font-black text-gray-900 dark:text-white mb-2">Access Denied</h1>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">This account does not have admin privileges. Documentation is restricted to internal team members.</p>
           <button
             onClick={() => signOut(auth)}
-            className="w-full py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
+            className="w-full py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
           >
             Sign Out
           </button>
@@ -81,6 +82,7 @@ function AdminGate({ children, user }: { children: React.ReactNode; user: User |
 }
 
 function DocContent() {
+  const { theme } = useTheme()
   const location = useLocation()
   const docId = location.pathname === '/' ? 'readme' : location.pathname.slice(1)
   const doc = docs.find((d: any) => d.id === docId)
@@ -88,9 +90,9 @@ function DocContent() {
   if (!doc) {
     return (
       <div className="py-12 text-center">
-        <AlertTriangle size={48} className="text-gray-300 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold text-gray-900">Document Not Found</h2>
-        <p className="text-gray-500 mt-2">The requested documentation page does not exist.</p>
+        <AlertTriangle size={48} className="text-gray-300 dark:text-gray-700 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Document Not Found</h2>
+        <p className="text-gray-500 dark:text-gray-400 mt-2">The requested documentation page does not exist.</p>
       </div>
     )
   }
@@ -100,7 +102,7 @@ function DocContent() {
       <div className="mb-8 flex items-center gap-2 text-sm font-medium text-gray-400 uppercase tracking-widest">
         <span>{doc.category}</span>
         <ChevronRight size={14} />
-        <span className="text-blue-600">{doc.title}</span>
+        <span className="text-blue-600 dark:text-blue-400">{doc.title}</span>
       </div>
       <article className="prose">
         <ReactMarkdown 
@@ -109,10 +111,10 @@ function DocContent() {
             code({ node, inline, className, children, ...props }: any) {
               const match = /language-(\w+)/.exec(className || '')
               return !inline && match ? (
-                <div className="my-6 rounded-xl overflow-hidden border border-gray-100 shadow-sm">
+                <div className="my-6 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm">
                   <SyntaxHighlighter
                     {...props}
-                    style={oneLight}
+                    style={theme === 'dark' ? oneDark : oneLight}
                     language={match[1]}
                     PreTag="div"
                     customStyle={{
@@ -120,7 +122,7 @@ function DocContent() {
                       padding: '1.5rem',
                       fontSize: '0.875rem',
                       lineHeight: '1.5',
-                      background: '#f9fafb',
+                      background: theme === 'dark' ? '#0f172a' : '#f9fafb',
                     }}
                   >
                     {String(children).replace(/\n$/, '')}
@@ -137,9 +139,9 @@ function DocContent() {
           {doc.content}
         </ReactMarkdown>
       </article>
-      <div className="mt-12 pt-8 border-t border-gray-100 flex items-center justify-between text-sm text-gray-400 font-mono">
+      <div className="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between text-sm text-gray-400 font-mono">
         <span>Path: {doc.path}</span>
-        <a href={`https://github.com/tianhaoz95/icecap/blob/main/${doc.path}`} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 hover:text-gray-900 transition-colors">
+        <a href={`https://github.com/tianhaoz95/icecap/blob/main/${doc.path}`} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 hover:text-gray-900 dark:hover:text-white transition-colors">
           <Github size={14} />
           View on GitHub
         </a>
@@ -149,12 +151,13 @@ function DocContent() {
 }
 
 function Layout({ user }: { user: User }) {
+  const { theme, toggleTheme } = useTheme()
   const [isSidebarOpen, setSidebarOpen] = useState(false)
   
   const categories = Array.from(new Set(docs.map((d: any) => d.category))) as string[]
 
   return (
-    <div className="min-h-screen bg-white flex">
+    <div className="min-h-screen bg-white dark:bg-gray-950 flex">
       {/* Mobile Sidebar Toggle */}
       <button 
         onClick={() => setSidebarOpen(!isSidebarOpen)}
@@ -165,24 +168,34 @@ function Layout({ user }: { user: User }) {
 
       {/* Sidebar */}
       <aside className={`
-        fixed inset-y-0 left-0 z-40 w-72 bg-gray-50 border-r border-gray-100 transform transition-transform duration-300 lg:translate-x-0 lg:static
+        fixed inset-y-0 left-0 z-40 w-72 bg-gray-50 dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 transform transition-transform duration-300 lg:translate-x-0 lg:static
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="h-full flex flex-col p-6">
-          <div className="flex items-center gap-3 mb-10 px-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
-              <BookOpen size={18} />
+          <div className="flex items-center justify-between mb-10 px-2">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
+                <BookOpen size={18} />
+              </div>
+              <div>
+                <h1 className="font-black text-gray-900 dark:text-white leading-none">Icecap</h1>
+                <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-tighter">Documentation</span>
+              </div>
             </div>
-            <div>
-              <h1 className="font-black text-gray-900 leading-none">Icecap</h1>
-              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-tighter">Documentation</span>
-            </div>
+            
+            <button 
+              onClick={toggleTheme}
+              className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+            >
+              {theme === 'light' ? <ShieldCheck size={20} /> : <ShieldCheck size={20} className="fill-current" />}
+            </button>
           </div>
 
           <nav className="flex-1 overflow-y-auto space-y-8">
             {categories.map(category => (
               <div key={category}>
-                <h2 className="px-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">
+                <h2 className="px-2 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4">
                   {category}
                 </h2>
                 <div className="space-y-1">
@@ -194,8 +207,8 @@ function Layout({ user }: { user: User }) {
                       className={({ isActive }) => `
                         flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all
                         ${isActive 
-                          ? 'bg-white text-blue-600 shadow-sm border border-gray-100' 
-                          : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'}
+                          ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm border border-gray-100 dark:border-gray-700' 
+                          : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'}
                       `}
                     >
                       {category === 'Design' ? <ClipboardList size={16} /> : <FileText size={16} />}
@@ -207,19 +220,19 @@ function Layout({ user }: { user: User }) {
             ))}
           </nav>
 
-          <div className="mt-auto pt-6 border-t border-gray-200">
+          <div className="mt-auto pt-6 border-t border-gray-200 dark:border-gray-800">
             <div className="flex items-center gap-3 px-2 mb-4">
-              <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden">
+              <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-800 overflow-hidden">
                 <img src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName}`} alt={user.displayName || ''} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-gray-900 truncate">{user.displayName}</p>
-                <p className="text-[10px] text-gray-500 truncate">{user.email}</p>
+                <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{user.displayName}</p>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
               </div>
             </div>
             <button
               onClick={() => signOut(auth)}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-100 transition-colors"
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >
               <LogOut size={14} />
               Sign Out
@@ -229,7 +242,7 @@ function Layout({ user }: { user: User }) {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 min-w-0 h-screen overflow-y-auto bg-white">
+      <main className="flex-1 min-w-0 h-screen overflow-y-auto bg-white dark:bg-gray-950">
         <DocContent />
       </main>
     </div>
@@ -245,17 +258,19 @@ export default function App() {
 
   if (user === undefined) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <HashRouter>
-      <AdminGate user={user || null}>
-        {user && <Layout user={user} />}
-      </AdminGate>
-    </HashRouter>
+    <ThemeProvider>
+      <HashRouter>
+        <AdminGate user={user || null}>
+          {user && <Layout user={user} />}
+        </AdminGate>
+      </HashRouter>
+    </ThemeProvider>
   )
 }
