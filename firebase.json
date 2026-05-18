@@ -44,6 +44,12 @@
       "rewrites": [{ "source": "**", "destination": "/index.html" }]
     },
     {
+      "site": "icecap-docs",
+      "public": "apps/docs/dist",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "rewrites": [{ "source": "**", "destination": "/index.html" }]
+    },
+    {
       "site": "icecap-preview-list",
       "public": "apps/waitlist/dist",
       "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
