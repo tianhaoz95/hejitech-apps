@@ -7,6 +7,8 @@ import {
 } from "lucide-react"
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { auth, googleProvider, useEmulator } from "./core/firebase"
 // @ts-ignore - virtual module
 import { docs } from 'virtual:docs'
@@ -101,7 +103,37 @@ function DocContent() {
         <span className="text-blue-600">{doc.title}</span>
       </div>
       <article className="prose">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+        <ReactMarkdown 
+          remarkPlugins={[remarkGfm]}
+          components={{
+            code({ node, inline, className, children, ...props }: any) {
+              const match = /language-(\w+)/.exec(className || '')
+              return !inline && match ? (
+                <div className="my-6 rounded-xl overflow-hidden border border-gray-100 shadow-sm">
+                  <SyntaxHighlighter
+                    {...props}
+                    style={oneLight}
+                    language={match[1]}
+                    PreTag="div"
+                    customStyle={{
+                      margin: 0,
+                      padding: '1.5rem',
+                      fontSize: '0.875rem',
+                      lineHeight: '1.5',
+                      background: '#f9fafb',
+                    }}
+                  >
+                    {String(children).replace(/\n$/, '')}
+                  </SyntaxHighlighter>
+                </div>
+              ) : (
+                <code className={className} {...props}>
+                  {children}
+                </code>
+              )
+            }
+          }}
+        >
           {doc.content}
         </ReactMarkdown>
       </article>
