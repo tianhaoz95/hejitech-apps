@@ -107,7 +107,7 @@ function DocContent() {
       </article>
       <div className="mt-12 pt-8 border-t border-gray-100 flex items-center justify-between text-sm text-gray-400 font-mono">
         <span>Path: {doc.path}</span>
-        <a href={`https://github.com/tianhaozhou/icecap/blob/main/${doc.path}`} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 hover:text-gray-900 transition-colors">
+        <a href={`https://github.com/tianhaoz95/icecap/blob/main/${doc.path}`} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 hover:text-gray-900 transition-colors">
           <Github size={14} />
           View on GitHub
         </a>
