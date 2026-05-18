@@ -24,6 +24,7 @@ import {
   BookmarkPlus,
   Lock,
   ChevronRight,
+  AlertTriangle,
 } from "lucide-react";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -441,6 +442,170 @@ function HubDemo() {
         </div>
       </div>
     </BrowserChrome>
+  );
+}
+
+// ─── AI spotlight section ────────────────────────────────────────────────────
+
+const AI_INSIGHTS = [
+  {
+    icon: BarChart3,
+    color: "text-blue-400",
+    bg: "bg-blue-500/10 border-blue-500/20",
+    label: "Market Context",
+    text: "6.8% cap rate is 1.2 pts above Austin's metro average of 5.6% — a pricing edge you'd only catch by researching comparable sales yourself.",
+  },
+  {
+    icon: TrendingUp,
+    color: "text-green-400",
+    bg: "bg-green-500/10 border-green-500/20",
+    label: "Opportunity",
+    text: "Rents in this ZIP have trended +7% YoY. This deal's cash flow likely strengthens over time without any forced appreciation play.",
+  },
+  {
+    icon: AlertTriangle,
+    color: "text-yellow-400",
+    bg: "bg-yellow-500/10 border-yellow-500/20",
+    label: "Risk Flagged",
+    text: "Single-tenant duplex: one vacancy halves gross income. Prioritise occupancy history and tenant quality in due diligence.",
+  },
+];
+
+function AISpotlightSection() {
+  return (
+    <section className="relative z-10 py-28 border-t border-white/[0.06] overflow-hidden">
+      {/* Purple ambient glow */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-purple-700/8 blur-3xl rounded-full" />
+      </div>
+
+      <div className="relative max-w-6xl mx-auto px-6">
+        {/* Header */}
+        <div className="text-center mb-16">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-semibold mb-5">
+            <Sparkles className="w-3 h-3" />
+            AI-Powered Analysis
+          </div>
+          <h2 className="text-4xl xl:text-5xl font-black tracking-tight mb-4">
+            Not just numbers.
+            <br />
+            <span className="gradient-text-purple">Real answers.</span>
+          </h2>
+          <p className="text-gray-400 max-w-md mx-auto">
+            Every other tool gives you a cap rate and leaves you guessing. Icecap tells you what it
+            means, what the risks are, and whether to pursue — in plain English.
+          </p>
+        </div>
+
+        {/* Before / After layout */}
+        <div className="grid md:grid-cols-[2fr_3fr] gap-4 md:gap-3 items-stretch">
+
+          {/* Left: raw numbers ("before") */}
+          <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-6 flex flex-col">
+            <div className="flex items-center gap-2 mb-6 pb-4 border-b border-white/[0.07]">
+              <div className="w-1.5 h-1.5 rounded-full bg-gray-700" />
+              <span className="text-gray-600 text-xs font-semibold uppercase tracking-wider">
+                Typical calculator output
+              </span>
+            </div>
+            <div className="space-y-3.5 font-mono flex-1">
+              {[
+                ["Cap Rate", "6.8%"],
+                ["Cash-on-Cash", "8.2%"],
+                ["1% Rule", "Pass"],
+                ["Price", "$485,000"],
+                ["GRM", "12.4"],
+              ].map(([label, value]) => (
+                <div key={label} className="flex items-center justify-between">
+                  <span className="text-gray-600 text-sm">{label}</span>
+                  <span className="text-gray-400 text-sm">{value}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-8 pt-5 border-t border-white/[0.06]">
+              <p className="text-gray-600 text-sm leading-relaxed italic">
+                "6.8%… is that good for Austin? Should I make an offer? How does this compare to
+                other deals I've looked at?"
+              </p>
+            </div>
+          </div>
+
+          {/* Right: Icecap AI analysis ("after") */}
+          <div className="rounded-2xl border border-purple-500/30 bg-purple-500/[0.03] p-6 flex flex-col relative overflow-hidden">
+            {/* Corner glow */}
+            <div className="absolute -top-10 -right-10 w-52 h-52 bg-purple-600/15 blur-3xl rounded-full pointer-events-none" />
+
+            {/* Card header */}
+            <div className="relative flex items-center justify-between mb-5 pb-4 border-b border-purple-500/20">
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-md bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
+                  <Building2 className="w-3 h-3 text-white" />
+                </div>
+                <span className="text-white text-xs font-bold">icecap</span>
+                <span className="text-gray-600 text-[10px] ml-1">· 1247 Maple St</span>
+              </div>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500/15 border border-green-500/25 text-green-400 text-[10px] font-semibold">
+                ✓ Strong Buy
+              </span>
+            </div>
+
+            {/* Metrics row */}
+            <div className="relative flex flex-wrap gap-x-6 gap-y-2 mb-5 pb-5 border-b border-purple-500/[0.15] font-mono text-xs">
+              {[
+                { label: "Cap Rate", value: "6.8%", color: "text-green-400" },
+                { label: "Cash-on-Cash", value: "8.2%", color: "text-blue-400" },
+                { label: "1% Rule", value: "✓ Pass", color: "text-green-400" },
+                { label: "Monthly CF", value: "+$312", color: "text-green-400" },
+              ].map((m) => (
+                <div key={m.label} className="flex flex-col">
+                  <span className="text-gray-500 text-[9px] mb-0.5">{m.label}</span>
+                  <span className={`font-bold ${m.color}`}>{m.value}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* AI insights */}
+            <div className="relative space-y-2.5 mb-5">
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles className="w-3 h-3 text-purple-400" />
+                <span className="text-purple-300 text-[10px] font-semibold uppercase tracking-widest">
+                  Gemini AI Analysis
+                </span>
+                <span className="ml-auto text-gray-600 text-[9px]">Powered by Google Gemini</span>
+              </div>
+              {AI_INSIGHTS.map(({ icon: Icon, color, bg, label, text }) => (
+                <div key={label} className={`flex gap-3 p-3 rounded-xl border ${bg}`}>
+                  <Icon className={`w-3.5 h-3.5 ${color} shrink-0 mt-0.5`} />
+                  <div>
+                    <p className={`text-[10px] font-bold mb-0.5 ${color}`}>{label}</p>
+                    <p className="text-gray-300 text-[11px] leading-relaxed">{text}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Verdict */}
+            <div className="relative mt-auto p-4 rounded-xl bg-purple-500/10 border border-purple-500/20">
+              <p className="text-gray-200 text-sm leading-relaxed italic">
+                "Strong fundamentals with real upside. The cap rate edge and rent growth trajectory
+                make this a compelling entry. Single-tenant risk is manageable with standard
+                screening.{" "}
+                <span className="text-white font-semibold not-italic">
+                  Proceed to due diligence.
+                </span>
+                "
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom note */}
+        <p className="text-center text-gray-600 text-xs mt-8">
+          Analysis like this used to take hours of research. Icecap delivers it in seconds, on
+          every listing you open.
+        </p>
+      </div>
+    </section>
   );
 }
 
@@ -907,6 +1072,9 @@ export default function App() {
           </div>
         </div>
       </section>
+
+      {/* ── AI Spotlight ── */}
+      <AISpotlightSection />
 
       {/* ── Demo ── */}
       <DemoSection />

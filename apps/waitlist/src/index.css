@@ -49,6 +49,15 @@
     animation: shimmer 4s linear infinite;
   }
 
+  .gradient-text-purple {
+    background: linear-gradient(135deg, #a78bfa 0%, #c084fc 50%, #a78bfa 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer 4s linear infinite;
+  }
+
   .stat-item {
     @apply text-center px-6;
   }
