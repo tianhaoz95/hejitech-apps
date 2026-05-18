@@ -41,3 +41,5 @@ jobs:
 
       - name: Deploy to Firebase
         run: pnpm exec firebase deploy --only hosting:icecap-preview-list,firestore:rules --project production --non-interactive
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
