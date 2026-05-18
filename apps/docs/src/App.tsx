@@ -129,7 +129,7 @@ function DocContent() {
                   </SyntaxHighlighter>
                 </div>
               ) : (
-                <code className={className} {...props}>
+                <code className={className ? `${className} inline-code` : 'inline-code'} {...props}>
                   {children}
                 </code>
               )
