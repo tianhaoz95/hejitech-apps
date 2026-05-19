@@ -1,5 +1,8 @@
 import { useNavigate } from 'react-router-dom'
-import { ExternalLink, ArrowRight } from 'lucide-react'
+import { signOut } from 'firebase/auth'
+import type { User } from 'firebase/auth'
+import { ExternalLink, ArrowRight, LogOut } from 'lucide-react'
+import { auth } from '../core/firebase'
 
 const LISTING_NAV_COLORS = {
   redfin: '#cc1818',
@@ -177,7 +180,7 @@ const ASSETS = [
 
 const categories = ['Mockup', 'Ad Asset']
 
-export function Gallery() {
+export function Gallery({ user }: { user: User }) {
   const navigate = useNavigate()
 
   return (
@@ -190,6 +193,16 @@ export function Gallery() {
           <div>
             <h1 className="text-sm font-black text-gray-900 leading-none">Promo Studio</h1>
             <p className="text-xs text-gray-400 mt-0.5">Marketing mockups &amp; ad assets</p>
+          </div>
+          <div className="ml-auto">
+            <button
+              onClick={() => signOut(auth)}
+              className="flex items-center gap-1.5 text-gray-400 text-xs font-semibold px-3 py-1.5 rounded-full hover:bg-gray-100 transition-colors"
+              title={user.email || ''}
+            >
+              <LogOut size={12} />
+              Sign Out
+            </button>
           </div>
         </div>
       </div>

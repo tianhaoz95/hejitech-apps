@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { HashRouter, Routes, Route } from 'react-router-dom'
 import { onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth'
-import { LogIn, LogOut, AlertTriangle } from 'lucide-react'
+import { LogIn, AlertTriangle } from 'lucide-react'
 import { auth, googleProvider } from './core/firebase'
 import { Gallery } from './pages/Gallery'
 import { RedfinMockup } from './mockups/RedfinMockup'
@@ -69,20 +69,8 @@ function AdminGate({ children, user }: { children: React.ReactNode; user: User |
 function AppShell({ user }: { user: User }) {
   return (
     <div className="relative">
-      {/* Sign out button — unobtrusive, visible on gallery, hidden on fullscreen mockups */}
-      <div className="fixed top-3 right-4 z-50">
-        <button
-          onClick={() => signOut(auth)}
-          className="flex items-center gap-1.5 bg-white/80 backdrop-blur border border-gray-200 text-gray-600 text-xs font-semibold px-3 py-1.5 rounded-full hover:bg-white shadow-sm transition-colors"
-          title={user.email || ''}
-        >
-          <LogOut size={12} />
-          Sign Out
-        </button>
-      </div>
-
       <Routes>
-        <Route path="/" element={<Gallery />} />
+        <Route path="/" element={<Gallery user={user} />} />
         <Route path="/mockup/redfin" element={<RedfinMockup />} />
         <Route path="/mockup/zillow" element={<ZillowMockup />} />
         <Route path="/mockup/realtor" element={<RealtorMockup />} />
