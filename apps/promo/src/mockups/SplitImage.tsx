@@ -163,10 +163,10 @@ export function SplitImage() {
 
       {/* ── AFTER panel ── */}
       <div className="absolute inset-0 flex flex-col" style={{ clipPath: afterClip }}>
-        <div className="flex-shrink-0 h-11 bg-gray-900 border-b border-gray-800 flex items-center px-5 gap-3">
-          <span className="w-2 h-2 rounded-full bg-green-400" />
-          <span className="text-xs font-black text-green-400 uppercase tracking-widest">After</span>
+        <div className="flex-shrink-0 h-11 bg-gray-900 border-b border-gray-800 flex items-center justify-end px-5 gap-3">
           <span className="text-xs text-gray-600 font-medium">Icecap — instant analysis</span>
+          <span className="text-xs font-black text-green-400 uppercase tracking-widest">After</span>
+          <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />
         </div>
 
         <div className="flex-1 flex overflow-hidden">
@@ -176,13 +176,13 @@ export function SplitImage() {
               <img src="/listing-redfin.png" alt="Redfin listing" className="w-full block" />
             </div>
 
-            {/* Bottom overlay — After callout */}
-            <div className="absolute bottom-0 inset-x-0 px-7 pb-8 pt-28 bg-gradient-to-t from-blue-950 via-blue-950/80 to-transparent pointer-events-none">
+            {/* Bottom overlay — After callout (right-aligned so it's visible past the divider) */}
+            <div className="absolute bottom-0 inset-x-0 px-7 pb-8 pt-28 bg-gradient-to-t from-blue-950 via-blue-950/80 to-transparent pointer-events-none text-right">
               <p className="text-[11px] font-black text-blue-400 uppercase tracking-widest mb-2">After Icecap</p>
               <p className="text-4xl font-black text-white leading-tight">Instant<br/>analysis</p>
-              <p className="text-sm text-blue-300/60 mt-3 font-medium flex items-center gap-1.5">
-                <Snowflake size={13} className="text-blue-400 flex-shrink-0" />
+              <p className="text-sm text-blue-300/60 mt-3 font-medium flex items-center justify-end gap-1.5">
                 30 seconds · always accurate
+                <Snowflake size={13} className="text-blue-400 flex-shrink-0" />
               </p>
             </div>
           </div>
