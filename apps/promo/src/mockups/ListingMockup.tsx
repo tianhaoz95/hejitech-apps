@@ -180,7 +180,7 @@ export function ListingMockup({ theme }: Props) {
 
         {/* Icecap Panel — slides in as overlay from the right */}
         <div
-          className={`absolute top-0 right-0 bottom-0 w-80 transform transition-transform duration-500 ease-out z-10 ${
+          className={`absolute top-0 right-0 bottom-0 w-80 flex flex-col transform transition-transform duration-500 ease-out z-10 ${
             triggered ? 'translate-x-0' : 'translate-x-full'
           }`}
         >

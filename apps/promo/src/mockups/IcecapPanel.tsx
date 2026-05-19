@@ -7,7 +7,7 @@ interface Props {
 
 export function IcecapPanel({ triggered }: Props) {
   return (
-    <div className="w-80 h-full flex-shrink-0 flex flex-col bg-white shadow-2xl">
+    <div className="w-80 flex-1 flex flex-col bg-white shadow-2xl">
       {/* Header */}
       <div className="flex-shrink-0 px-5 py-4" style={{ background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%)' }}>
         <div className="flex items-center gap-2 mb-1">
@@ -101,6 +101,9 @@ export function IcecapPanel({ triggered }: Props) {
           <Send size={11} className="text-gray-300 flex-shrink-0" />
         </div>
       </div>
+
+      {/* Fill remaining space so bg-white extends to screen bottom */}
+      <div className="flex-1" />
     </div>
   )
 }
