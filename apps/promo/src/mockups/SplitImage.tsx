@@ -1,5 +1,5 @@
-import { Snowflake } from 'lucide-react'
-import { PROPERTY, METRICS } from './data'
+import { Snowflake, Sparkles, Bot } from 'lucide-react'
+import { PROPERTY, METRICS, AI_BULLETS } from './data'
 
 const SPREADSHEET_ROWS = [
   { row: '1', cells: ['Field', 'Value', 'Notes'], header: true },
@@ -159,10 +159,39 @@ export function SplitImage() {
               ))}
             </div>
 
-            <div className="px-2.5 pb-3">
-              <button className="w-full py-2.5 text-white text-xs font-bold rounded-xl" style={{ background: 'linear-gradient(135deg, #1d4ed8, #2563eb)' }}>
+            {/* AI Verdict */}
+            <div className="mx-2.5 mb-2.5 rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50 overflow-hidden">
+              <div className="flex items-center justify-between px-2.5 pt-2.5 pb-1.5">
+                <div className="flex items-center gap-1">
+                  <Sparkles size={10} className="text-blue-500" />
+                  <span className="text-[10px] font-bold text-blue-700">AI Verdict</span>
+                </div>
+                <span className="text-[9px] font-black text-emerald-700 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-full">
+                  BUY &amp; HOLD ✓
+                </span>
+              </div>
+              <div className="px-2.5 pb-2.5 space-y-1">
+                {AI_BULLETS.map((bullet, i) => (
+                  <div key={i} className="flex items-start gap-1">
+                    <span className="text-blue-400 flex-shrink-0 text-[9px] mt-0.5">›</span>
+                    <p className="text-[9px] text-blue-800 font-medium leading-snug">{bullet}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="px-2.5 pb-2">
+              <button className="w-full py-2 text-white text-xs font-bold rounded-xl" style={{ background: 'linear-gradient(135deg, #1d4ed8, #2563eb)' }}>
                 Save Deal →
               </button>
+            </div>
+
+            {/* Ask AI hint */}
+            <div className="px-2.5 pb-3">
+              <div className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl bg-gray-50 border border-gray-100">
+                <Bot size={9} className="text-blue-300 flex-shrink-0" />
+                <span className="text-[9px] text-gray-300 flex-1">Ask AI Co-Pilot...</span>
+              </div>
             </div>
           </div>
         </div>

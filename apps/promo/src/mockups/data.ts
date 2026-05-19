@@ -34,3 +34,16 @@ export const AI_SUMMARY =
   'With a cap rate of 6.8% and cash-on-cash return of 9.2%, it outperforms the Austin ' +
   'market average by approximately 1.4 points. The 1% rule shortfall is typical for this ' +
   'submarket and is offset by strong appreciation trends. Recommended for buy-and-hold strategy.'
+
+export const AI_BULLETS = [
+  'Outperforms Austin avg cap rate by 1.4 pts',
+  'Rent estimate backed by 12 nearby comparables',
+  '78704 up 8.3% YoY — strong appreciation zone',
+]
+
+export const AI_CHAT: { role: 'user' | 'ai'; text: string }[] = [
+  { role: 'user', text: "What's my monthly cash flow with 25% down?" },
+  { role: 'ai',   text: "With 25% down ($121,250) at 7.2% over 30yr, mortgage ≈ $2,189/mo. After vacancy & expenses your estimated cash flow is +$183/mo." },
+  { role: 'user', text: "How does this compare to my other deals?" },
+  { role: 'ai',   text: "Ranks #2 in your portfolio by cap rate — just behind 445 River Rd (8.4%) but ahead of all three others." },
+]
