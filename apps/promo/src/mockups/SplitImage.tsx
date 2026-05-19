@@ -323,12 +323,6 @@ export function SplitImage() {
               </div>
             </div>
 
-            <div className="px-3 mt-2.5 flex-shrink-0">
-              <button className="w-full py-2.5 text-white text-sm font-bold rounded-xl" style={{ background: 'linear-gradient(135deg, #1d4ed8, #2563eb)' }}>
-                Save Deal →
-              </button>
-            </div>
-
             {/* AI Co-Pilot chat conversation */}
             {chatVisible && (
               <div className="px-3 pt-1 pb-2 flex-shrink-0 space-y-2">
@@ -377,6 +371,13 @@ export function SplitImage() {
                   {chatVisible ? 'Ask a follow-up...' : 'Ask AI Co-Pilot...'}
                 </span>
               </div>
+            </div>
+
+            {/* Save Deal — bottom CTA after all analysis + conversation */}
+            <div className="px-3 pt-1 pb-3 flex-shrink-0">
+              <button className="w-full py-2.5 text-white text-sm font-bold rounded-xl" style={{ background: 'linear-gradient(135deg, #1d4ed8, #2563eb)' }}>
+                Save Deal →
+              </button>
             </div>
 
             {/* Fill remaining space so bg-white extends to screen bottom */}
