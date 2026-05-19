@@ -34,6 +34,7 @@ export function SplitImage() {
   const [size, setSize] = useState({ w: 0, h: 0 })
   const containerRef = useRef<HTMLDivElement>(null)
   const animRef = useRef<number | null>(null)
+  const demoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Track container dimensions for SVG line coordinates
   useEffect(() => {
@@ -63,27 +64,46 @@ export function SplitImage() {
     }
   }, [isDragging])
 
-  // Animate split to reveal the other side
+  // 3-phase product showcase: sweep to Before → hold → dramatic reveal of After → settle center
   const animate = useCallback(() => {
     if (animating) return
     if (animRef.current) cancelAnimationFrame(animRef.current)
+    if (demoTimeoutRef.current) clearTimeout(demoTimeoutRef.current)
     setAnimating(true)
-    const from = splitPct
-    const to = from > 50 ? 28 : 62
-    const duration = 900
-    const t0 = performance.now()
-    const tick = (now: number) => {
-      const t = Math.min((now - t0) / duration, 1)
-      const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
-      setSplitPct(from + (to - from) * ease)
-      if (t < 1) {
-        animRef.current = requestAnimationFrame(tick)
-      } else {
-        setSplitPct(to)
-        setAnimating(false)
+
+    const easeInOutCubic = (t: number) =>
+      t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+
+    const animateTo = (from: number, to: number, duration: number, onDone: () => void) => {
+      const t0 = performance.now()
+      const tick = (now: number) => {
+        const t = Math.min((now - t0) / duration, 1)
+        setSplitPct(from + (to - from) * easeInOutCubic(t))
+        if (t < 1) {
+          animRef.current = requestAnimationFrame(tick)
+        } else {
+          setSplitPct(to)
+          onDone()
+        }
       }
+      animRef.current = requestAnimationFrame(tick)
     }
-    animRef.current = requestAnimationFrame(tick)
+
+    const start = splitPct
+    // Phase 1: sweep to Before (right) so viewer sees the painful spreadsheet
+    animateTo(start, 88, 650, () => {
+      // Hold on Before
+      demoTimeoutRef.current = setTimeout(() => {
+        // Phase 2: dramatic sweep left to reveal Icecap
+        animateTo(88, 18, 1100, () => {
+          // Hold on After so viewer reads the Icecap panel
+          demoTimeoutRef.current = setTimeout(() => {
+            // Phase 3: settle back to balanced split
+            animateTo(18, 52, 700, () => setAnimating(false))
+          }, 950)
+        })
+      }, 750)
+    })
   }, [animating, splitPct])
 
   useEffect(() => {
@@ -94,7 +114,10 @@ export function SplitImage() {
     return () => window.removeEventListener('keydown', onKey)
   }, [animate])
 
-  useEffect(() => () => { if (animRef.current) cancelAnimationFrame(animRef.current) }, [])
+  useEffect(() => () => {
+    if (animRef.current) cancelAnimationFrame(animRef.current)
+    if (demoTimeoutRef.current) clearTimeout(demoTimeoutRef.current)
+  }, [])
 
   const A = ANGLE_PX / 2
   const beforeClip = `polygon(0 0, calc(${splitPct}% + ${A}px) 0, calc(${splitPct}% - ${A}px) 100%, 0 100%)`
