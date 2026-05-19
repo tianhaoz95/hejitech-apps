@@ -1,18 +1,23 @@
-import { Snowflake, Sparkles, Bot } from 'lucide-react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { Snowflake, Sparkles, Bot, Play } from 'lucide-react'
 import { PROPERTY, METRICS, AI_BULLETS } from './data'
 
+// Horizontal pixel shift between top and bottom of the angled divider
+const ANGLE_PX = 48
+
 const SPREADSHEET_ROWS = [
-  { row: '1', cells: ['Field', 'Value', 'Notes'], header: true },
-  { row: '2', cells: ['Purchase Price', '$485,000', 'From Redfin'], formula: false },
-  { row: '3', cells: ['Down Payment (20%)', '=B2*0.2', ''], formula: true },
-  { row: '4', cells: ['Monthly Rent', '$2,950', 'Estimate ❓'], formula: false },
-  { row: '5', cells: ['Vacancy Rate', '5%', 'Assumed ❓'], formula: false },
-  { row: '6', cells: ['Operating Expenses', '35%', 'Rule of thumb ❓'], formula: false },
-  { row: '7', cells: ['Annual NOI', '=B4*(1–B5)*(1–B6)*12', ''], formula: true },
-  { row: '8', cells: ['Cap Rate', '=B7/B2', ''], formula: true },
-  { row: '9', cells: ['Cash-on-Cash', '???', 'Need mortgage calc'], formula: false, warning: true },
+  { row: '1',  cells: ['Field', 'Value', 'Notes'], header: true },
+  { row: '2',  cells: ['Purchase Price', '$485,000', 'From Redfin'] },
+  { row: '3',  cells: ['Down Payment (20%)', '=B2*0.2', ''], formula: true },
+  { row: '4',  cells: ['Monthly Rent', '$2,950', 'Estimate ❓'] },
+  { row: '5',  cells: ['Vacancy Rate', '5%', 'Assumed ❓'] },
+  { row: '6',  cells: ['Operating Expenses', '35%', 'Rule of thumb ❓'] },
+  { row: '7',  cells: ['Annual NOI', '=B4*(1–B5)*(1–B6)*12', ''], formula: true },
+  { row: '8',  cells: ['Cap Rate', '=B7/B2', ''], formula: true },
+  { row: '9',  cells: ['Cash-on-Cash', '???', 'Need mortgage calc'], warning: true },
   { row: '10', cells: ['GRM', '=B2/(B4*12)', ''], formula: true },
-  { row: '', cells: ['', '', ''], header: false },
+  { row: '',   cells: ['', '', ''] },
   { row: '12', cells: ['⚠️ Still need to verify:', '', ''], warning: true },
   { row: '13', cells: ['  › Confirm rent estimate', '', ''], sub: true },
   { row: '14', cells: ['  › Add mortgage details', '', ''], sub: true },
@@ -20,21 +25,94 @@ const SPREADSHEET_ROWS = [
 ]
 
 export function SplitImage() {
-  return (
-    <div className="h-screen flex overflow-hidden bg-gray-950 select-none">
+  const [searchParams] = useSearchParams()
+  const screenshotMode = searchParams.get('screenshot') === '1'
 
-      {/* ── BEFORE ── */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Label bar */}
+  const [splitPct, setSplitPct] = useState(screenshotMode ? 48 : 64)
+  const [isDragging, setIsDragging] = useState(false)
+  const [animating, setAnimating] = useState(false)
+  const [lineAngle, setLineAngle] = useState(2.5)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const animRef = useRef<number | null>(null)
+
+  // Keep line angle in sync with container height
+  useEffect(() => {
+    const update = () => {
+      if (!containerRef.current) return
+      const h = containerRef.current.offsetHeight
+      setLineAngle(Math.atan2(ANGLE_PX, h) * (180 / Math.PI))
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
+
+  // Drag to move split
+  useEffect(() => {
+    if (!isDragging) return
+    const onMove = (e: MouseEvent) => {
+      if (!containerRef.current) return
+      const rect = containerRef.current.getBoundingClientRect()
+      setSplitPct(Math.max(15, Math.min(85, ((e.clientX - rect.left) / rect.width) * 100)))
+    }
+    const onUp = () => setIsDragging(false)
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+  }, [isDragging])
+
+  // Animate split to reveal the other side
+  const animate = useCallback(() => {
+    if (animating) return
+    if (animRef.current) cancelAnimationFrame(animRef.current)
+    setAnimating(true)
+    const from = splitPct
+    const to = from > 50 ? 28 : 66
+    const duration = 900
+    const t0 = performance.now()
+    const tick = (now: number) => {
+      const t = Math.min((now - t0) / duration, 1)
+      const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+      setSplitPct(from + (to - from) * ease)
+      if (t < 1) {
+        animRef.current = requestAnimationFrame(tick)
+      } else {
+        setSplitPct(to)
+        setAnimating(false)
+      }
+    }
+    animRef.current = requestAnimationFrame(tick)
+  }, [animating, splitPct])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === 'Space') { e.preventDefault(); animate() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [animate])
+
+  useEffect(() => () => { if (animRef.current) cancelAnimationFrame(animRef.current) }, [])
+
+  const A = ANGLE_PX / 2
+  const beforeClip = `polygon(0 0, calc(${splitPct}% + ${A}px) 0, calc(${splitPct}% - ${A}px) 100%, 0 100%)`
+  const afterClip  = `polygon(calc(${splitPct}% + ${A}px) 0, 100% 0, 100% 100%, calc(${splitPct}% - ${A}px) 100%)`
+
+  return (
+    <div ref={containerRef} className="h-screen relative overflow-hidden bg-gray-950 select-none">
+
+      {/* ── BEFORE panel ── */}
+      <div className="absolute inset-0 flex flex-col" style={{ clipPath: beforeClip }}>
         <div className="flex-shrink-0 h-11 bg-gray-900 border-b border-gray-800 flex items-center px-5 gap-3">
           <span className="w-2 h-2 rounded-full bg-red-400" />
           <span className="text-xs font-black text-red-400 uppercase tracking-widest">Before</span>
           <span className="text-xs text-gray-600 font-medium">Manual spreadsheet analysis</span>
         </div>
 
-        {/* Sheets UI */}
         <div className="flex-1 bg-white flex flex-col overflow-hidden">
-          {/* Sheets top bar */}
           <div className="flex-shrink-0 h-8 bg-gray-50 border-b border-gray-200 flex items-center px-3 gap-4">
             <div className="flex items-center gap-1.5">
               <div className="w-4 h-4 rounded bg-green-500 flex items-center justify-center">
@@ -43,14 +121,12 @@ export function SplitImage() {
               <span className="text-xs font-semibold text-gray-600 truncate">Deal Analysis — Maplewood Dr</span>
             </div>
           </div>
-          {/* Column headers */}
           <div className="flex-shrink-0 flex bg-gray-50 border-b border-gray-200 text-xs text-gray-400 font-medium">
             <div className="w-8 border-r border-gray-200 flex-shrink-0" />
             {['A', 'B', 'C'].map(c => (
               <div key={c} className="flex-1 border-r border-gray-200 text-center py-1.5">{c}</div>
             ))}
           </div>
-          {/* Rows */}
           <div className="flex-1 overflow-y-auto">
             {SPREADSHEET_ROWS.map((r, idx) => (
               <div key={idx} className={`flex border-b text-xs ${(r as any).header ? 'bg-gray-50 font-bold text-gray-500 border-gray-200' : 'border-gray-100'} ${(r as any).warning ? 'bg-orange-50' : ''}`}>
@@ -68,7 +144,6 @@ export function SplitImage() {
               </div>
             ))}
           </div>
-          {/* Sheets tab bar */}
           <div className="flex-shrink-0 h-7 bg-gray-50 border-t border-gray-200 flex items-center px-2">
             <div className="bg-white border border-gray-200 text-[10px] font-semibold text-gray-600 px-3 py-0.5 rounded-sm shadow-sm">Sheet1</div>
             <span className="text-gray-300 text-lg ml-2">+</span>
@@ -76,42 +151,28 @@ export function SplitImage() {
         </div>
       </div>
 
-      {/* ── DIVIDER ── */}
-      <div className="w-px bg-gray-800 flex-shrink-0 relative">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-          <div className="w-8 h-8 rounded-full bg-gray-700 border border-gray-600 flex items-center justify-center shadow-xl">
-            <span className="text-gray-300 text-[9px] font-black">VS</span>
-          </div>
-        </div>
-      </div>
-
-      {/* ── AFTER ── */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Label bar */}
+      {/* ── AFTER panel ── */}
+      <div className="absolute inset-0 flex flex-col" style={{ clipPath: afterClip }}>
         <div className="flex-shrink-0 h-11 bg-gray-900 border-b border-gray-800 flex items-center px-5 gap-3">
           <span className="w-2 h-2 rounded-full bg-green-400" />
           <span className="text-xs font-black text-green-400 uppercase tracking-widest">After</span>
           <span className="text-xs text-gray-600 font-medium">Icecap — instant analysis</span>
         </div>
 
-        {/* Listing + Icecap panel */}
         <div className="flex-1 flex overflow-hidden">
-          {/* Listing content */}
+          {/* Mini listing */}
           <div className="flex-1 bg-white overflow-y-auto">
-            {/* Redfin nav */}
             <div className="h-10 flex items-center px-4 gap-4 flex-shrink-0" style={{ backgroundColor: '#cc1818' }}>
-              <Home size={14} className="text-white" />
+              <HomeIcon size={14} className="text-white" />
               <span className="text-white text-sm font-black">redfin</span>
               <div className="flex gap-3">
                 {['Buy', 'Rent', 'Sell'].map(t => <span key={t} className="text-white/60 text-xs">{t}</span>)}
               </div>
             </div>
-            {/* Photo */}
             <div className="relative">
               <img src={PROPERTY.photo} alt="Property" className="w-full object-cover" style={{ height: 160 }} />
               <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
             </div>
-            {/* Details */}
             <div className="p-4">
               <p className="text-2xl font-black text-gray-900">{PROPERTY.price}</p>
               <p className="text-sm font-semibold text-gray-700 mt-0.5">{PROPERTY.address}</p>
@@ -128,9 +189,8 @@ export function SplitImage() {
             </div>
           </div>
 
-          {/* Icecap panel — always triggered in split view */}
+          {/* Icecap panel */}
           <div className="w-60 flex-shrink-0 border-l border-gray-100 flex flex-col bg-white shadow-xl">
-            {/* Header */}
             <div className="flex-shrink-0 px-4 py-3.5" style={{ background: 'linear-gradient(135deg, #1d4ed8, #2563eb)' }}>
               <div className="flex items-center gap-1.5 mb-0.5">
                 <Snowflake size={13} className="text-blue-200" />
@@ -139,14 +199,12 @@ export function SplitImage() {
               <p className="text-blue-300 text-[10px] font-medium">Investment Analysis</p>
             </div>
 
-            {/* Property summary */}
             <div className="mx-2.5 mt-2.5 p-2.5 rounded-xl bg-blue-50 border border-blue-100">
               <p className="text-[10px] font-bold text-gray-900 truncate">2847 Maplewood Drive</p>
               <p className="text-[10px] text-gray-500 mt-0.5">Austin, TX · $485,000</p>
             </div>
 
-            {/* Metrics */}
-            <div className="flex-1 px-2.5 pt-2 pb-2 space-y-1.5 overflow-auto">
+            <div className="flex-shrink-0 px-2.5 pt-2 space-y-1.5">
               {METRICS.map(m => (
                 <div key={m.label} className="flex items-center justify-between px-3 py-2.5 rounded-xl border border-gray-100 bg-white shadow-sm">
                   <span className="text-[10px] text-gray-500 font-medium">{m.label}</span>
@@ -160,7 +218,7 @@ export function SplitImage() {
             </div>
 
             {/* AI Verdict */}
-            <div className="mx-2.5 mb-2.5 rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50 overflow-hidden">
+            <div className="mx-2.5 mt-2.5 rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50 overflow-hidden">
               <div className="flex items-center justify-between px-2.5 pt-2.5 pb-1.5">
                 <div className="flex items-center gap-1">
                   <Sparkles size={10} className="text-blue-500" />
@@ -180,13 +238,12 @@ export function SplitImage() {
               </div>
             </div>
 
-            <div className="px-2.5 pb-2">
+            <div className="px-2.5 mt-2.5 pb-2">
               <button className="w-full py-2 text-white text-xs font-bold rounded-xl" style={{ background: 'linear-gradient(135deg, #1d4ed8, #2563eb)' }}>
                 Save Deal →
               </button>
             </div>
 
-            {/* Ask AI hint */}
             <div className="px-2.5 pb-3">
               <div className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl bg-gray-50 border border-gray-100">
                 <Bot size={9} className="text-blue-300 flex-shrink-0" />
@@ -196,11 +253,47 @@ export function SplitImage() {
           </div>
         </div>
       </div>
+
+      {/* ── Angled divider line ── */}
+      <div
+        className="absolute top-0 bottom-0 pointer-events-none z-10"
+        style={{
+          left: `${splitPct}%`,
+          width: '2px',
+          background: 'linear-gradient(to bottom, rgba(255,255,255,0.05), rgba(255,255,255,0.95) 20%, rgba(255,255,255,0.95) 80%, rgba(255,255,255,0.05))',
+          boxShadow: '0 0 18px 6px rgba(255,255,255,0.55)',
+          transform: `translateX(-50%) rotate(-${lineAngle}deg)`,
+          transformOrigin: 'center center',
+        }}
+      />
+
+      {/* ── Drag handle ── */}
+      <div
+        className={`absolute z-20 ${isDragging ? 'cursor-grabbing' : 'cursor-ew-resize'}`}
+        style={{ left: `${splitPct}%`, top: '50%', transform: 'translate(-50%, -50%)' }}
+        onMouseDown={e => { e.preventDefault(); setIsDragging(true) }}
+      >
+        <div className="w-11 h-11 rounded-full bg-gray-900 border-2 border-white shadow-2xl flex items-center justify-center ring-4 ring-white/20 hover:ring-white/40 transition-all">
+          <span className="text-white text-[9px] font-black tracking-tight">VS</span>
+        </div>
+      </div>
+
+      {/* ── Play button ── */}
+      {!screenshotMode && (
+        <button
+          onClick={animate}
+          disabled={animating}
+          className="fixed bottom-5 left-5 bg-gray-900/80 hover:bg-gray-900 disabled:opacity-60 text-white text-xs font-bold px-4 py-2.5 rounded-full backdrop-blur-sm shadow-lg transition-colors z-50 flex items-center gap-2"
+        >
+          <Play size={10} className="fill-white flex-shrink-0" />
+          {animating ? 'Animating…' : splitPct > 50 ? 'Reveal Icecap →' : '← Reveal Before'}
+        </button>
+      )}
     </div>
   )
 }
 
-function Home({ size, className }: { size: number; className?: string }) {
+function HomeIcon({ size, className }: { size: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}>
       <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
