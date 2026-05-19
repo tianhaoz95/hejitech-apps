@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { HashRouter, Routes, Route } from 'react-router-dom'
 import { onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth'
-import { ShieldCheck, LogIn, LogOut, AlertTriangle } from 'lucide-react'
+import { LogIn, LogOut, AlertTriangle } from 'lucide-react'
 import { auth, googleProvider } from './core/firebase'
 import { Gallery } from './pages/Gallery'
 import { RedfinMockup } from './mockups/RedfinMockup'
@@ -22,9 +22,9 @@ function AdminGate({ children, user }: { children: React.ReactNode; user: User |
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center max-w-sm w-full">
-          <ShieldCheck size={40} className="text-blue-600 mx-auto mb-4" />
-          <h1 className="text-xl font-black text-gray-900 mb-2">Icecap Promo Studio</h1>
-          <p className="text-gray-500 text-sm mb-6">Sign in with an admin account to access promo assets.</p>
+          <img src="/logo-color.svg" alt="Icecap" className="h-10 mx-auto mb-5" />
+          <h1 className="text-xl font-black text-gray-900 mb-1">Promo Studio</h1>
+          <p className="text-gray-400 text-sm mb-6">Sign in with an admin account to access promo assets.</p>
           <button
             onClick={() => signInWithPopup(auth, googleProvider).catch(console.error)}
             className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"

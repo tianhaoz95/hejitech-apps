@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { Snowflake, Sparkles, ArrowLeft, BarChart2, FolderOpen, SlidersHorizontal } from 'lucide-react'
 import { HUB_DEALS, METRICS, AI_SUMMARY } from './data'
 
 export function HubMockup() {
@@ -24,130 +25,175 @@ export function HubMockup() {
     }, 18)
   }
 
+  const reset = () => {
+    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null }
+    setView('list')
+    setAnalysisStarted(false)
+    setDisplayedText('')
+  }
+
   useEffect(() => () => { if (intervalRef.current) clearInterval(intervalRef.current) }, [])
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-gray-50 select-none">
       {/* Nav */}
-      <nav className="flex-shrink-0 h-14 bg-white border-b border-gray-100 flex items-center px-6 gap-8">
+      <nav className="flex-shrink-0 h-14 bg-white border-b border-gray-100 flex items-center px-6 gap-6 shadow-sm">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center">
-            <div className="w-3.5 h-3.5 bg-white rounded-sm" />
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #1d4ed8, #2563eb)' }}>
+            <Snowflake size={16} className="text-white" />
           </div>
-          <span className="font-black text-gray-900 tracking-tight">Icecap</span>
-          <span className="text-[10px] font-bold text-blue-600 uppercase tracking-tighter ml-0.5">Hub</span>
+          <span className="font-black text-gray-900 tracking-tight">icecap</span>
+          <span className="text-[10px] font-bold text-blue-500 uppercase tracking-tighter bg-blue-50 px-1.5 py-0.5 rounded-full">Hub</span>
         </div>
-        <div className="flex items-center gap-1">
-          {['Portfolio', 'Compare', 'Reports'].map(tab => (
-            <button key={tab} className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${tab === 'Portfolio' ? 'bg-blue-50 text-blue-600' : 'text-gray-500 hover:text-gray-900'}`}>
-              {tab}
+        <nav className="flex items-center gap-1">
+          {[
+            { label: 'Portfolio', icon: FolderOpen },
+            { label: 'Compare', icon: BarChart2 },
+            { label: 'Settings', icon: SlidersHorizontal },
+          ].map(({ label, icon: Icon }) => (
+            <button key={label} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors ${label === 'Portfolio' ? 'bg-gray-100 text-gray-900' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-50'}`}>
+              <Icon size={14} />
+              {label}
             </button>
           ))}
-        </div>
+        </nav>
         <div className="ml-auto flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600" />
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 ring-2 ring-white shadow-sm" />
         </div>
       </nav>
 
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar */}
-        <aside className="w-56 flex-shrink-0 bg-white border-r border-gray-100 p-4 flex flex-col gap-1">
-          {['All Deals', 'Favorites', 'Analyzed', 'Archived'].map((item, i) => (
-            <button key={item} className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${i === 0 ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:bg-gray-50'}`}>
-              {item}
-              {i === 0 && <span className="float-right text-xs bg-blue-100 text-blue-600 font-bold px-1.5 py-0.5 rounded-full">{HUB_DEALS.length}</span>}
+        <aside className="w-52 flex-shrink-0 bg-white border-r border-gray-100 flex flex-col py-4 px-3">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 mb-2">Deals</p>
+          {[
+            { label: 'All Deals', count: HUB_DEALS.length, active: true },
+            { label: 'Favorites', count: 2, active: false },
+            { label: 'Analyzed', count: 3, active: false },
+            { label: 'Archived', count: 0, active: false },
+          ].map(item => (
+            <button key={item.label} className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm font-medium transition-colors ${item.active ? 'bg-gray-100 text-gray-900' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-50'}`}>
+              {item.label}
+              {item.count > 0 && (
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${item.active ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>
+                  {item.count}
+                </span>
+              )}
             </button>
           ))}
         </aside>
 
-        {/* Main */}
-        <main className="flex-1 overflow-y-auto p-6">
+        {/* Main content */}
+        <main className="flex-1 overflow-y-auto">
           {view === 'list' ? (
-            <div>
+            <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h1 className="text-xl font-black text-gray-900">My Portfolio</h1>
-                <span className="text-sm text-gray-400">{HUB_DEALS.length} saved deals</span>
+                <div>
+                  <h1 className="text-xl font-black text-gray-900">My Portfolio</h1>
+                  <p className="text-sm text-gray-400 mt-0.5">{HUB_DEALS.length} saved deals</p>
+                </div>
+                <button className="text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl transition-colors">
+                  + Add Deal
+                </button>
               </div>
+
               <div className="space-y-3">
                 {HUB_DEALS.map(deal => (
-                  <div
+                  <button
                     key={deal.id}
                     onClick={() => setView('detail')}
-                    className={`bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-4 cursor-pointer hover:border-blue-200 hover:shadow-md transition-all ${deal.id === 1 ? 'ring-2 ring-blue-100 border-blue-200' : ''}`}
+                    className={`w-full bg-white rounded-2xl border p-4 flex items-center gap-4 text-left hover:shadow-md transition-all duration-200 ${deal.id === 1 ? 'border-blue-200 ring-1 ring-blue-100' : 'border-gray-100 hover:border-gray-200'}`}
                   >
-                    <img src={deal.photo} alt="" className="w-20 h-14 rounded-xl object-cover flex-shrink-0 bg-gray-100" />
+                    <img src={deal.photo} alt="" className="w-16 h-12 rounded-xl object-cover flex-shrink-0 bg-gray-100" />
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-gray-900 truncate">{deal.address}</p>
-                      <p className="text-sm text-gray-400">{deal.city} · {deal.price}</p>
+                      <p className="font-bold text-gray-900 truncate text-sm">{deal.address}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{deal.city} · {deal.price}</p>
                     </div>
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                      <div className="text-center">
-                        <p className="text-xs text-gray-400 font-medium">Cap Rate</p>
+                    <div className="flex items-center gap-4 flex-shrink-0">
+                      <div className="text-right">
+                        <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">Cap Rate</p>
                         <p className="text-sm font-black text-green-600">{deal.capRate}</p>
                       </div>
-                      <div className="text-center">
-                        <p className="text-xs text-gray-400 font-medium">CoC</p>
+                      <div className="text-right">
+                        <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">CoC</p>
                         <p className="text-sm font-black text-green-600">{deal.coc}</p>
                       </div>
-                      <span className="text-xs text-gray-300">{deal.saved}</span>
+                      <span className="text-xs text-gray-300 w-16 text-right">{deal.saved}</span>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
           ) : (
-            <div>
-              <button onClick={() => { setView('list'); setAnalysisStarted(false); setDisplayedText(''); intervalRef.current = null }} className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-900 mb-6 transition-colors">
-                ← Back to Portfolio
+            <div className="p-6">
+              <button onClick={reset} className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-900 mb-6 transition-colors">
+                <ArrowLeft size={14} />
+                Back to Portfolio
               </button>
-              <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-4">
-                <div className="flex items-start justify-between mb-4">
+
+              {/* Property header */}
+              <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-4 shadow-sm">
+                <div className="flex items-start justify-between mb-5">
                   <div>
                     <h2 className="text-xl font-black text-gray-900">2847 Maplewood Drive</h2>
-                    <p className="text-gray-400">Austin, TX 78704 · $485,000</p>
+                    <p className="text-gray-400 text-sm mt-0.5">Austin, TX 78704 · $485,000</p>
                   </div>
-                  <span className="bg-green-100 text-green-700 text-xs font-bold px-3 py-1.5 rounded-full">Strong Buy</span>
+                  <span className="bg-green-50 text-green-700 border border-green-100 text-xs font-bold px-3 py-1.5 rounded-full flex-shrink-0">
+                    Strong Buy
+                  </span>
                 </div>
-                <div className="grid grid-cols-5 gap-3">
+
+                <div className="grid grid-cols-5 gap-2">
                   {METRICS.map(m => (
                     <div key={m.label} className="bg-gray-50 rounded-xl p-3 text-center">
-                      <p className="text-xs text-gray-400 font-medium mb-1">{m.label}</p>
-                      <p className="text-base font-black text-gray-900">{m.value}</p>
+                      <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide mb-1.5">{m.label}</p>
+                      <p className="text-base font-black text-gray-900 tabular-nums">{m.value}</p>
                       {m.badge && (
-                        <span className={`text-xs font-bold ${m.status === 'good' ? 'text-green-600' : 'text-yellow-600'}`}>{m.badge}</span>
+                        <span className={`text-xs font-bold mt-0.5 inline-block ${m.status === 'good' ? 'text-green-500' : 'text-amber-500'}`}>
+                          {m.status === 'good' ? '✓ Good' : '~ Okay'}
+                        </span>
                       )}
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* AI Analysis */}
-              <div className="bg-white rounded-2xl border border-gray-100 p-6">
+              {/* AI analysis card */}
+              <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 bg-blue-600 rounded-lg flex items-center justify-center">
-                      <div className="w-3 h-3 bg-white rounded-sm" />
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600">
+                      <Sparkles size={14} className="text-white" />
                     </div>
-                    <h3 className="font-bold text-gray-900">AI Deal Analysis</h3>
+                    <div>
+                      <h3 className="font-bold text-gray-900 text-sm">AI Deal Analysis</h3>
+                      <p className="text-[10px] text-gray-400">Powered by Icecap AI</p>
+                    </div>
                   </div>
                   {!analysisStarted && (
                     <button
                       onClick={startTypewriter}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-colors"
+                      className="flex items-center gap-1.5 px-4 py-2 text-white text-sm font-bold rounded-xl transition-colors"
+                      style={{ background: 'linear-gradient(135deg, #1d4ed8, #2563eb)' }}
                     >
-                      Analyze Deal →
+                      <Sparkles size={14} />
+                      Analyze Deal
                     </button>
                   )}
                 </div>
+
                 {analysisStarted ? (
-                  <div className="text-sm text-gray-700 leading-relaxed min-h-[5rem]">
+                  <div className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-xl p-4 min-h-[6rem] font-medium">
                     {displayedText}
                     {displayedText.length < AI_SUMMARY.length && (
-                      <span className="inline-block w-0.5 h-4 bg-blue-600 ml-0.5 animate-pulse align-middle" />
+                      <span className="inline-block w-0.5 h-4 bg-blue-500 ml-0.5 animate-pulse align-middle" />
                     )}
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-400">Click "Analyze Deal" to generate an AI-powered investment summary for this property.</p>
+                  <div className="bg-gray-50 rounded-xl p-4 text-center">
+                    <Sparkles size={24} className="text-gray-200 mx-auto mb-2" />
+                    <p className="text-sm text-gray-400">Click Analyze Deal to generate an AI-powered investment summary.</p>
+                  </div>
                 )}
               </div>
             </div>
