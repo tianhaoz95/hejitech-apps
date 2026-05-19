@@ -115,7 +115,7 @@ export function SplitImage() {
           <span className="text-xs text-gray-600 font-medium">Manual spreadsheet analysis</span>
         </div>
 
-        <div className="flex-1 bg-white flex flex-col overflow-hidden">
+        <div className="flex-1 bg-white flex flex-col overflow-hidden relative">
           <div className="flex-shrink-0 h-8 bg-gray-50 border-b border-gray-200 flex items-center px-3 gap-4">
             <div className="flex items-center gap-1.5">
               <div className="w-4 h-4 rounded bg-green-500 flex items-center justify-center">
@@ -151,6 +151,13 @@ export function SplitImage() {
             <div className="bg-white border border-gray-200 text-[10px] font-semibold text-gray-600 px-3 py-0.5 rounded-sm shadow-sm">Sheet1</div>
             <span className="text-gray-300 text-lg ml-2">+</span>
           </div>
+
+          {/* Bottom overlay — Before callout */}
+          <div className="absolute bottom-0 inset-x-0 px-7 pb-8 pt-28 bg-gradient-to-t from-gray-950 via-gray-950/80 to-transparent pointer-events-none">
+            <p className="text-[11px] font-black text-red-400 uppercase tracking-widest mb-2">Before Icecap</p>
+            <p className="text-4xl font-black text-white leading-tight">Hours of<br/>guesswork</p>
+            <p className="text-sm text-white/40 mt-3 font-medium">per deal · error-prone · exhausting</p>
+          </div>
         </div>
       </div>
 
@@ -164,8 +171,18 @@ export function SplitImage() {
 
         <div className="flex-1 flex overflow-hidden">
           {/* Real Redfin screenshot */}
-          <div className="flex-1 bg-white overflow-y-auto">
+          <div className="flex-1 bg-white overflow-y-auto relative">
             <img src="/listing-redfin.png" alt="Redfin listing" className="w-full block" />
+
+            {/* Bottom overlay — After callout */}
+            <div className="absolute bottom-0 inset-x-0 px-7 pb-8 pt-28 bg-gradient-to-t from-blue-950 via-blue-950/80 to-transparent pointer-events-none">
+              <p className="text-[11px] font-black text-blue-400 uppercase tracking-widest mb-2">After Icecap</p>
+              <p className="text-4xl font-black text-white leading-tight">Instant<br/>analysis</p>
+              <p className="text-sm text-blue-300/60 mt-3 font-medium flex items-center gap-1.5">
+                <Snowflake size={13} className="text-blue-400 flex-shrink-0" />
+                30 seconds · always accurate
+              </p>
+            </div>
           </div>
 
           {/* Icecap panel — wider to emphasize the product */}
