@@ -1,23 +1,23 @@
 /**
- * Captures real listing page screenshots for use as backgrounds in the promo mockups.
+ * Semi-automated listing screenshot capture for promo mockups.
  *
  * Usage:
  *   pnpm --filter @icecap/tests run capture:promo
+ *
+ * The browser opens visibly for each site. When the listing page is fully
+ * loaded (scroll past any CAPTCHA or bot-check manually if needed), press
+ * Enter in this terminal to capture the screenshot and move to the next site.
  *
  * Output:
  *   apps/promo/public/listing-redfin.png
  *   apps/promo/public/listing-zillow.png
  *   apps/promo/public/listing-realtor.png
- *
- * Before running:
- *   1. Replace the placeholder URLs in LISTINGS below with real listing URLs.
- *      Pick listings with strong metrics — cap rate 6%+, clean photos, no price reductions.
- *   2. Run from the repo root.
  */
 
 import { test } from "@playwright/test"
 import path from "path"
 import fs from "fs"
+import readline from "readline"
 
 // ─── Configure your listings here ────────────────────────────────────────────
 const LISTINGS = {
@@ -33,43 +33,18 @@ test.beforeAll(() => {
   fs.mkdirSync(OUT_DIR, { recursive: true })
 })
 
-// Selectors for cookie/consent banners and popups across all three sites
-const DISMISS_SELECTORS = [
-  // Generic consent buttons
-  'button:has-text("Accept All")',
-  'button:has-text("Accept Cookies")',
-  'button:has-text("Accept")',
-  'button:has-text("Agree")',
-  'button:has-text("Got it")',
-  'button:has-text("I Accept")',
-  // Redfin
-  '[data-rf-test-id="cookie-consent-accept"]',
-  'button[aria-label="Close"]',
-  // Zillow
-  '[data-testid="close-button"]',
-  '[aria-label="Close"]',
-  // Realtor.com
-  '[data-testid="cookie-policy-dialog-accept"]',
-  '.onetrust-accept-btn-handler',
-]
-
-// Elements to hide before screenshotting — sticky headers, chat widgets, banners
+// Elements to hide before screenshotting — sticky navs, banners, chat widgets.
+// We overlay our own branded nav on top in the mockup, so hiding the real one
+// gives a cleaner result.
 const HIDE_SELECTORS = [
-  // Sticky navs (we add our own)
-  'header',
-  'nav',
-  '[data-rf-test-id="top-nav"]',                  // Redfin top nav
+  'header', 'nav',
+  '[data-rf-test-id="top-nav"]',
+  '[data-rf-test-id="SignInModal"]',
   '.site-header',
-  // Chat / support widgets
   '#intercom-container',
   '.intercom-lightweight-app',
   '[id^="hubspot"]',
-  // Sign-in / save prompts
-  '[data-rf-test-id="SignInModal"]',
-  '.Modal__content',
-  // Zillow auth wall
   '[data-testid="auth-modal"]',
-  // Floating overlays
   '.FullscreenModal',
   '[class*="BannerWrapper"]',
   '[class*="StickyFooter"]',
@@ -77,40 +52,31 @@ const HIDE_SELECTORS = [
   '[class*="Toast"]',
 ]
 
-async function captureListing(page: any, url: string, outputPath: string) {
+function waitForEnter(prompt: string): Promise<void> {
+  return new Promise(resolve => {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+    rl.question(prompt, () => { rl.close(); resolve() })
+  })
+}
+
+async function captureListing(page: any, site: string, url: string, outputPath: string) {
+  console.log(`\n──────────────────────────────────────────`)
+  console.log(`  Opening ${site}...`)
+  console.log(`──────────────────────────────────────────`)
+
   await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 })
 
-  // Give JS time to mount consent banners
-  await page.waitForTimeout(2000)
+  console.log(`  Browser is open. If you see a CAPTCHA or bot-check, solve it now.`)
+  console.log(`  Scroll to the top of the listing so the hero photo is visible.`)
+  await waitForEnter(`  Press Enter when the page looks good to capture → `)
 
-  // Dismiss any popups / consent dialogs
-  for (const sel of DISMISS_SELECTORS) {
-    try {
-      const btn = page.locator(sel).first()
-      if (await btn.isVisible({ timeout: 500 })) {
-        await btn.click()
-        await page.waitForTimeout(400)
-      }
-    } catch {
-      // selector not found — continue
-    }
-  }
-
-  // Press Escape to close any remaining modal
-  await page.keyboard.press("Escape")
-  await page.waitForTimeout(500)
-
-  // Wait for images to load
-  await page.waitForLoadState("networkidle", { timeout: 10_000 }).catch(() => {})
-
-  // Hide noisy elements via JS
+  // Hide noisy fixed/sticky elements
   await page.evaluate((selectors: string[]) => {
     selectors.forEach(sel => {
       document.querySelectorAll(sel).forEach(el => {
         (el as HTMLElement).style.setProperty("display", "none", "important")
       })
     })
-    // Also remove position:fixed elements (sticky headers, chat bubbles)
     document.querySelectorAll("*").forEach(el => {
       const style = window.getComputedStyle(el)
       if (style.position === "fixed" || style.position === "sticky") {
@@ -119,30 +85,22 @@ async function captureListing(page: any, url: string, outputPath: string) {
     })
   }, HIDE_SELECTORS)
 
-  // Scroll slightly to trigger lazy-load images
-  await page.evaluate(() => window.scrollBy(0, 200))
-  await page.waitForTimeout(800)
+  // Scroll back to top after hiding elements
   await page.evaluate(() => window.scrollTo(0, 0))
-  await page.waitForTimeout(400)
+  await page.waitForTimeout(300)
 
-  // Screenshot the full viewport (1440x900 @ 2x device scale = 2880x1800px)
-  await page.screenshot({
-    path: outputPath,
-    fullPage: false,
-    type: "png",
-  })
-
-  console.log(`✓ Saved: ${outputPath}`)
+  await page.screenshot({ path: outputPath, fullPage: false, type: "png" })
+  console.log(`  ✓ Saved: ${outputPath}`)
 }
 
 test("capture Redfin listing", async ({ page }) => {
-  await captureListing(page, LISTINGS.redfin, path.join(OUT_DIR, "listing-redfin.png"))
+  await captureListing(page, "Redfin", LISTINGS.redfin, path.join(OUT_DIR, "listing-redfin.png"))
 })
 
 test("capture Zillow listing", async ({ page }) => {
-  await captureListing(page, LISTINGS.zillow, path.join(OUT_DIR, "listing-zillow.png"))
+  await captureListing(page, "Zillow", LISTINGS.zillow, path.join(OUT_DIR, "listing-zillow.png"))
 })
 
 test("capture Realtor.com listing", async ({ page }) => {
-  await captureListing(page, LISTINGS.realtor, path.join(OUT_DIR, "listing-realtor.png"))
+  await captureListing(page, "Realtor.com", LISTINGS.realtor, path.join(OUT_DIR, "listing-realtor.png"))
 })
