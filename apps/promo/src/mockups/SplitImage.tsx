@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { Snowflake, Sparkles, Bot, Play } from 'lucide-react'
 import { METRICS, AI_BULLETS } from './data'
 
-// Horizontal pixel shift between top and bottom of the angled divider
+// Horizontal px shift between top and bottom of the angled divider
 const ANGLE_PX = 48
 
 const SPREADSHEET_ROWS = [
@@ -28,19 +28,18 @@ export function SplitImage() {
   const [searchParams] = useSearchParams()
   const screenshotMode = searchParams.get('screenshot') === '1'
 
-  const [splitPct, setSplitPct] = useState(screenshotMode ? 48 : 64)
+  const [splitPct, setSplitPct] = useState(screenshotMode ? 45 : 62)
   const [isDragging, setIsDragging] = useState(false)
   const [animating, setAnimating] = useState(false)
-  const [lineAngle, setLineAngle] = useState(2.5)
+  const [size, setSize] = useState({ w: 0, h: 0 })
   const containerRef = useRef<HTMLDivElement>(null)
   const animRef = useRef<number | null>(null)
 
-  // Keep line angle in sync with container height
+  // Track container dimensions for SVG line coordinates
   useEffect(() => {
     const update = () => {
       if (!containerRef.current) return
-      const h = containerRef.current.offsetHeight
-      setLineAngle(Math.atan2(ANGLE_PX, h) * (180 / Math.PI))
+      setSize({ w: containerRef.current.offsetWidth, h: containerRef.current.offsetHeight })
     }
     update()
     window.addEventListener('resize', update)
@@ -70,7 +69,7 @@ export function SplitImage() {
     if (animRef.current) cancelAnimationFrame(animRef.current)
     setAnimating(true)
     const from = splitPct
-    const to = from > 50 ? 28 : 66
+    const to = from > 50 ? 28 : 62
     const duration = 900
     const t0 = performance.now()
     const tick = (now: number) => {
@@ -100,6 +99,10 @@ export function SplitImage() {
   const A = ANGLE_PX / 2
   const beforeClip = `polygon(0 0, calc(${splitPct}% + ${A}px) 0, calc(${splitPct}% - ${A}px) 100%, 0 100%)`
   const afterClip  = `polygon(calc(${splitPct}% + ${A}px) 0, 100% 0, 100% 100%, calc(${splitPct}% - ${A}px) 100%)`
+
+  // Pixel coordinates for the SVG divider — identical to the clip-path boundary
+  const lineX1 = size.w * (splitPct / 100) + A
+  const lineX2 = size.w * (splitPct / 100) - A
 
   return (
     <div ref={containerRef} className="h-screen relative overflow-hidden bg-gray-950 select-none">
@@ -165,83 +168,101 @@ export function SplitImage() {
             <img src="/listing-redfin.png" alt="Redfin listing" className="w-full block" />
           </div>
 
-          {/* Icecap panel */}
-          <div className="w-60 flex-shrink-0 border-l border-gray-100 flex flex-col bg-white shadow-xl">
-            <div className="flex-shrink-0 px-4 py-3.5" style={{ background: 'linear-gradient(135deg, #1d4ed8, #2563eb)' }}>
+          {/* Icecap panel — wider to emphasize the product */}
+          <div className="w-80 flex-shrink-0 border-l border-gray-100 flex flex-col bg-white shadow-xl self-stretch">
+            <div className="flex-shrink-0 px-5 py-4" style={{ background: 'linear-gradient(135deg, #1d4ed8, #2563eb)' }}>
               <div className="flex items-center gap-1.5 mb-0.5">
-                <Snowflake size={13} className="text-blue-200" />
-                <span className="text-white font-black text-xs tracking-tight">icecap</span>
+                <Snowflake size={15} className="text-blue-200" />
+                <span className="text-white font-black text-sm tracking-tight">icecap</span>
               </div>
-              <p className="text-blue-300 text-[10px] font-medium">Investment Analysis</p>
+              <p className="text-blue-300 text-xs font-medium">Investment Analysis</p>
             </div>
 
-            <div className="mx-2.5 mt-2.5 p-2.5 rounded-xl bg-blue-50 border border-blue-100">
-              <p className="text-[10px] font-bold text-gray-900 truncate">2847 Maplewood Drive</p>
-              <p className="text-[10px] text-gray-500 mt-0.5">Austin, TX · $485,000</p>
+            <div className="mx-3 mt-3 p-3 rounded-xl bg-blue-50 border border-blue-100 flex-shrink-0">
+              <p className="text-xs font-bold text-gray-900 truncate">2847 Maplewood Drive</p>
+              <p className="text-xs text-gray-500 mt-0.5">Austin, TX · $485,000</p>
             </div>
 
-            <div className="flex-shrink-0 px-2.5 pt-2 space-y-1.5">
+            <div className="flex-shrink-0 px-3 pt-2.5 space-y-1.5">
               {METRICS.map(m => (
-                <div key={m.label} className="flex items-center justify-between px-3 py-2.5 rounded-xl border border-gray-100 bg-white shadow-sm">
-                  <span className="text-[10px] text-gray-500 font-medium">{m.label}</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-black text-gray-900 tabular-nums">{m.value}</span>
-                    {m.status === 'good' && <span className="w-4 h-4 rounded-full bg-green-100 text-green-600 text-[9px] font-black flex items-center justify-center">✓</span>}
-                    {m.status === 'warn' && <span className="w-4 h-4 rounded-full bg-amber-100 text-amber-600 text-[9px] font-black flex items-center justify-center">~</span>}
+                <div key={m.label} className="flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-gray-100 bg-white shadow-sm">
+                  <span className="text-xs text-gray-500 font-medium">{m.label}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-black text-gray-900 tabular-nums">{m.value}</span>
+                    {m.status === 'good' && <span className="w-5 h-5 rounded-full bg-green-100 text-green-600 text-[10px] font-black flex items-center justify-center">✓</span>}
+                    {m.status === 'warn' && <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-600 text-[10px] font-black flex items-center justify-center">~</span>}
                   </div>
                 </div>
               ))}
             </div>
 
             {/* AI Verdict */}
-            <div className="mx-2.5 mt-2.5 rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50 overflow-hidden">
-              <div className="flex items-center justify-between px-2.5 pt-2.5 pb-1.5">
-                <div className="flex items-center gap-1">
-                  <Sparkles size={10} className="text-blue-500" />
-                  <span className="text-[10px] font-bold text-blue-700">AI Verdict</span>
+            <div className="mx-3 mt-2.5 rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50 flex-shrink-0">
+              <div className="flex items-center justify-between px-3 pt-3 pb-2">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles size={12} className="text-blue-500" />
+                  <span className="text-xs font-bold text-blue-700">AI Verdict</span>
                 </div>
-                <span className="text-[9px] font-black text-emerald-700 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-full">
+                <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">
                   BUY &amp; HOLD ✓
                 </span>
               </div>
-              <div className="px-2.5 pb-2.5 space-y-1">
+              <div className="px-3 pb-3 space-y-1.5">
                 {AI_BULLETS.map((bullet, i) => (
-                  <div key={i} className="flex items-start gap-1">
-                    <span className="text-blue-400 flex-shrink-0 text-[9px] mt-0.5">›</span>
-                    <p className="text-[9px] text-blue-800 font-medium leading-snug">{bullet}</p>
+                  <div key={i} className="flex items-start gap-1.5">
+                    <span className="text-blue-400 flex-shrink-0 text-[10px] mt-0.5">›</span>
+                    <p className="text-[11px] text-blue-800 font-medium leading-snug">{bullet}</p>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="px-2.5 mt-2.5 pb-2">
-              <button className="w-full py-2 text-white text-xs font-bold rounded-xl" style={{ background: 'linear-gradient(135deg, #1d4ed8, #2563eb)' }}>
+            <div className="px-3 mt-2.5 flex-shrink-0">
+              <button className="w-full py-2.5 text-white text-sm font-bold rounded-xl" style={{ background: 'linear-gradient(135deg, #1d4ed8, #2563eb)' }}>
                 Save Deal →
               </button>
             </div>
 
-            <div className="px-2.5 pb-3">
-              <div className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl bg-gray-50 border border-gray-100">
-                <Bot size={9} className="text-blue-300 flex-shrink-0" />
-                <span className="text-[9px] text-gray-300 flex-1">Ask AI Co-Pilot...</span>
+            <div className="px-3 pt-2 pb-3 flex-shrink-0">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 border border-gray-100">
+                <Bot size={11} className="text-blue-300 flex-shrink-0" />
+                <span className="text-xs text-gray-300 flex-1">Ask AI Co-Pilot...</span>
               </div>
             </div>
+
+            {/* Fill remaining space so bg-white extends to screen bottom */}
+            <div className="flex-1 bg-white" />
           </div>
         </div>
       </div>
 
-      {/* ── Angled divider line ── */}
-      <div
-        className="absolute top-0 bottom-0 pointer-events-none z-10"
-        style={{
-          left: `${splitPct}%`,
-          width: '2px',
-          background: 'linear-gradient(to bottom, rgba(255,255,255,0.05), rgba(255,255,255,0.95) 20%, rgba(255,255,255,0.95) 80%, rgba(255,255,255,0.05))',
-          boxShadow: '0 0 18px 6px rgba(255,255,255,0.55)',
-          transform: `translateX(-50%) rotate(-${lineAngle}deg)`,
-          transformOrigin: 'center center',
-        }}
-      />
+      {/* ── SVG divider — pixel-perfect match to clip-path boundary ── */}
+      {size.w > 0 && (
+        <svg
+          className="absolute inset-0 pointer-events-none z-10"
+          width={size.w}
+          height={size.h}
+          style={{ overflow: 'visible' }}
+        >
+          <defs>
+            <filter id="lineGlow" x="-50%" width="200%" y="-10%" height="120%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+          <line
+            x1={lineX1} y1={0}
+            x2={lineX2} y2={size.h}
+            stroke="white"
+            strokeWidth="2"
+            filter="url(#lineGlow)"
+          />
+        </svg>
+      )}
 
       {/* ── Drag handle ── */}
       <div
@@ -266,14 +287,5 @@ export function SplitImage() {
         </button>
       )}
     </div>
-  )
-}
-
-function HomeIcon({ size, className }: { size: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-      <polyline points="9 22 9 12 15 12 15 22" />
-    </svg>
   )
 }
