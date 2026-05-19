@@ -22,7 +22,8 @@ The 5s ad has no logo — branding is handled by the click-through to the waitli
 
 | Category | Tool | Cost |
 |---|---|---|
-| Screen recording | OpenScreen | Free |
+| Mockup pages | HTML/CSS/JS (hand-coded) | Free |
+| Mockup recording | OpenScreen | Free |
 | B-roll (local) | HunyuanVideo 1.5 + Wan2.1 via ComfyUI | Free (DGX Spark) |
 | B-roll (online, optional) | Runway Gen-4 | ~$20–30 in credits |
 | Music | Pixabay Music | Free |
@@ -38,13 +39,14 @@ The 5s ad has no logo — branding is handled by the click-through to the waitli
 | Phase | Task | Manual Labor | Time Estimate |
 |---|---|---|---|
 | 1 | Storyboard already done (this doc) | None | Done |
-| 2 | Screen recordings with OpenScreen | **Yes — you do this** | Half day |
-| 3 | B-roll generation on DGX Spark | Prompt setup only, runs unattended | 1–2 days |
-| 4 | Music selection from Pixabay | Curation only (~15 min) | 15–30 min |
-| 5 | Edit master cut in DaVinci Resolve | **Yes — you do this** | 2–3 days |
-| 6 | Export cuts (5s ad, 30s social 9:16) | Mechanical once edit is done | Half day |
+| 2 | Build static HTML mockup pages | **Yes — you do this** | 1 day |
+| 3 | Record mockups with OpenScreen | Light — mockups are scripted | 1–2 hours |
+| 4 | B-roll generation on DGX Spark | Prompt setup only, runs unattended | 1–2 days |
+| 5 | Music selection from Pixabay | Curation only (~15 min) | 15–30 min |
+| 6 | Edit master cut in DaVinci Resolve | **Yes — you do this** | 2–3 days |
+| 7 | Export cuts (5s ad, 30s social 9:16) | Mechanical once edit is done | Half day |
 
-**Only two phases require real manual effort: screen recording and the DaVinci Resolve edit.** Everything else is either automated or low-effort curation.
+**Only two phases require real manual effort: building the mockups and the DaVinci Resolve edit.** Recording becomes trivial once mockups are built — no retakes, no real extension needed, no risk of third-party site layout changes.
 
 ---
 
@@ -217,171 +219,151 @@ Real estate math, at the speed of browsing.
 
 ---
 
-## Screen Recording Guide
+## Static HTML Mockup Guide
 
-This is the only phase that requires sustained manual effort. Follow each step exactly — the quality of these recordings determines the quality of the entire video.
+Instead of recording the real product (which is at the mercy of third-party layouts, real data quality, and extension loading reliability), build self-contained HTML pages that look identical to the real thing but are fully controlled. Record those instead.
 
-### Before You Start (Do Once)
-
-1. **Create a clean Chrome profile**
-   - Open Chrome → top-right avatar → Add → name it "Icecap Demo"
-   - Sign into the Icecap extension on this profile only
-   - Hide the bookmarks bar: View → Always Show Bookmarks Bar → off
-   - Remove all other extensions from this profile
-   - Set zoom to 100% (Cmd+0)
-   - Use a light system theme — no dark mode
-
-2. **Set your display resolution**
-   - Set to 1440p (2560×1440) or 1080p if that's your native res
-   - Do not record at 4K — too much detail makes the UI hard to read on smaller screens
-
-3. **Open OpenScreen**
-   - Set to record a window (not full screen)
-   - Enable cursor highlight
-   - Enable click visualization
-   - Set output to MP4
-
-4. **Pre-pick your listings**
-   Find and bookmark 3 real listings before you start recording:
-   - One on Redfin with a cap rate likely above 5% (single-family or small multi)
-   - One on Zillow, different property type
-   - One on Realtor.com
-   
-   Pick listings with round, clean numbers. Avoid listings where the overlay would show all-red or broken metrics — you want green checkmarks on screen.
-
-5. **Pre-seed the Hub**
-   Make sure the Icecap Hub already has 4–6 saved deals before recording Scene 6. The portfolio view should look full and active, not empty.
+**Advantages:**
+- Hardcode ideal metrics — all green checkmarks, clean numbers
+- No extension, no Firestore, no network calls needed
+- Animations are scripted — the overlay "reveals" on cue every time
+- Zero retakes — it works the same way every recording
 
 ---
 
-### SR-1 — The Spreadsheet Pain (Scene 2) — ~20s
+### File Structure
 
-This is the "before" moment. Make it feel slow and tedious.
+Create a `mockup/` folder at the repo root (do not ship this in any app build):
 
-**Steps:**
-1. Open a new browser tab and navigate to a Redfin listing (the same one you'll use in SR-3)
-2. Start recording
-3. Open a new tab → go to Google Sheets → open a blank sheet
-4. Click cell A1, type "Purchase Price" slowly
-5. Tab to B1, switch back to the Redfin tab, find the price, switch back, type it in
-6. Click A2, type "Monthly Rent Estimate" slowly
-7. Switch to the Redfin tab again, look around as if searching for rent data, switch back
-8. Type a rough number in B2
-9. Open a new tab, type "cap rate formula real estate" in the search bar — stop there, don't press enter
-10. Stop recording
-
-**What to capture:** The tab-switching, the manual typing, the searching. Don't rush. Every moment of friction is content.
+```
+mockup/
+  redfin.html       — fake Redfin listing with Icecap overlay
+  zillow.html       — fake Zillow listing with Icecap overlay
+  realtor.html      — fake Realtor.com listing with Icecap overlay
+  hub.html          — fake Hub dashboard with saved deals + AI summary
+  shared.css        — shared Icecap overlay styles across all listing pages
+```
 
 ---
 
-### SR-2 — Extension Install (Scene 3) — ~15s
+### Hardcoded Data to Use
 
-**Steps:**
-1. On the clean Chrome profile, make sure the Icecap extension is already installed but temporarily disabled (Chrome → Extensions → toggle off)
-2. Start recording
-3. Open a new tab → navigate to the Chrome Web Store (search "Icecap" or go direct)
-4. Click "Add to Chrome" — pause 1 second — click "Add extension" on the dialog
-5. Wait for the success toast to appear
-6. Slowly move your cursor to the toolbar — the Icecap icon should be there
-7. Click the icon once to open the sidepanel briefly, then stop recording
+Pick one fictional property and use it consistently across all listing mockups.
 
-**What to capture:** The install button click, the dialog, the icon appearing. Keep the cursor movement slow and deliberate.
+```
+Address:    2847 Maplewood Drive, Austin, TX 78704
+Price:      $485,000
+Beds/Baths: 3 bed / 2 bath
+Sq Ft:      1,620 sqft
+Est. Rent:  $2,950/mo
 
----
+Icecap Metrics:
+  Cap Rate:    6.8%   ✓  (green)
+  CoC Return:  9.2%   ✓  (green)
+  1% Rule:     0.61   ~  (yellow — realistic, not all-green)
+  GRM:         13.7
+  Monthly NOI: $1,872
+```
 
-### SR-3 — Redfin Demo (Scene 4) — ~30s
-
-This is the hero moment of the whole video. Take multiple takes.
-
-**Steps:**
-1. Open the Redfin listing you pre-picked. Make sure the page is fully loaded before recording.
-2. Start recording with the listing already visible — don't show navigation to it
-3. Wait 1 full second (static hold)
-4. Slowly scroll down the listing just slightly — enough to show you're on a real page
-5. Click the Icecap extension icon in the toolbar
-6. Wait for the overlay/sidepanel to fully load — do not cut this short, let every metric appear
-7. Once all metrics are visible, hold still for 3 seconds
-8. Use OpenScreen's zoom: click to zoom into the cap rate metric specifically, hold 2s, zoom back out
-9. Stop recording
-
-**What to capture:** The overlay appearing and populating. The zoom-in on the cap rate number is the single most important shot in the video.
-
-**Take at least 3 takes.** Use the one where the overlay loads cleanest and the metrics look best.
+Using the same property across all three listing sites reinforces the "works everywhere" message without looking made-up.
 
 ---
 
-### SR-4 — Zillow Demo (Scene 5) — ~15s
+### mockup/redfin.html
 
-**Steps:**
-1. Open the Zillow listing you pre-picked. Page fully loaded before recording.
-2. Start recording — listing already visible
-3. Wait 1 second
-4. Click the Icecap icon
-5. Let overlay load, hold for 2s once complete
-6. Stop recording
+Build a simplified Redfin listing page. You do not need to replicate the full Redfin UI — just enough that it reads as "a property listing" to a viewer watching a 30s video.
 
-Shorter and faster than SR-3 — this is a supporting shot to show cross-site support, not the hero.
+**Must include:**
+- Redfin logo (top left, use a simple text wordmark or SVG)
+- A hero photo of the property (use a royalty-free house photo from Unsplash)
+- Address, price, bed/bath/sqft stats in the standard listing card layout
+- Redfin's characteristic red color (`#d9232d`) in the nav
+- The Icecap sidepanel on the right side, **hidden by default**
 
----
+**Icecap sidepanel behavior:**
+- Hidden on page load (`display: none` or `opacity: 0`)
+- Triggered by pressing `Space` or clicking a visible "Open Icecap" button (you'll cut the button out in editing)
+- On trigger: panel slides in from the right, then each metric row fades in sequentially with a 300ms delay between rows
+- Use CSS transitions, no JS libraries needed
 
-### SR-5 — Realtor.com Demo (Scene 5 continued) — ~10s
+**Metric row animation order:**
+1. Panel slides in (200ms)
+2. "Cap Rate 6.8% ✓" fades in (300ms delay)
+3. "CoC Return 9.2% ✓" fades in (600ms delay)
+4. "1% Rule 0.61 ~" fades in (900ms delay)
+5. "GRM 13.7" fades in (1200ms delay)
+6. "Monthly NOI $1,872" fades in (1500ms delay)
 
-Same as SR-4 but even faster. Just enough to show the overlay appears on Realtor.com too.
-
-**Steps:**
-1. Open the Realtor.com listing. Already loaded before recording.
-2. Start recording
-3. Click the Icecap icon immediately
-4. Let overlay load, hold 2s
-5. Stop recording
-
----
-
-### SR-6 — Hub Portfolio View (Scene 6) — ~20s
-
-**Steps:**
-1. Open the Icecap Hub in a full browser tab. Make sure 4–6 deals are already saved.
-2. Start recording — Hub already open on the deals/portfolio list
-3. Slowly scroll down the list so all saved deals are visible
-4. Move cursor to one of the deals and hover (don't click) — let the hover state show
-5. Click into one deal to show its detail view — pause 2s
-6. Hit back to return to the list
-7. Stop recording
-
-**What to capture:** A full, active portfolio. The viewer needs to see this isn't an empty demo — it's a real tool people are using.
+**Icecap panel style:** Match the real extension — white panel, Icecap blue (`#2563eb`) header, metric rows with label on left and value + badge on right. Green badge for ✓, yellow for ~.
 
 ---
 
-### SR-7 — AI Deal Summary (Scene 6 continued) — ~15s
+### mockup/zillow.html and mockup/realtor.html
 
-Record this as a separate clip from SR-6.
+Same structure as `redfin.html` but reskinned for each platform:
 
-**Steps:**
-1. Open one of the saved deals in the Hub
-2. Start recording — deal detail view already open
-3. Find the "AI Summary" or "Analyze Deal" button — pause 1 second before clicking
-4. Click it
-5. Let the AI summary generate in real time — do not cut while it's generating
-6. Once complete, hold for 2s so the viewer can see the output
-7. Stop recording
+**Zillow:** Blue nav (`#006aff`), Zillow logo, slightly different listing card layout. Same property, same Icecap panel.
 
-**What to capture:** The generation happening live. This is the most impressive moment in the Hub section — the real-time generation is the point.
+**Realtor.com:** Red nav (`#d9232d`, different shade from Redfin), Realtor.com logo. Same property, same panel.
+
+You only need the nav color, logo, and rough card layout to differ. The Icecap panel is identical on all three — that's the point.
 
 ---
 
-### Shot Summary
+### mockup/hub.html
 
-| ID | Scene | Target Duration | Takes |
-|---|---|---|---|
-| SR-1 | Spreadsheet pain | 20s | 1–2 |
-| SR-2 | Extension install | 15s | 1–2 |
-| SR-3 | Redfin overlay | 30s | 3+ (pick best) |
-| SR-4 | Zillow overlay | 15s | 1–2 |
-| SR-5 | Realtor.com overlay | 10s | 1–2 |
-| SR-6 | Hub portfolio | 20s | 1–2 |
-| SR-7 | AI summary generation | 15s | 1–2 |
+A fake version of the Icecap Hub dashboard. Two views needed:
 
-**Total recording session: ~2–3 hours including setup and retakes.**
+**View 1 — Deals List (for SR-6):**
+- Nav with Icecap logo, "Portfolio", "Compare", "Settings" tabs
+- A list/grid of 5–6 saved deal cards, each showing:
+  - Property address (use realistic fake addresses)
+  - Thumbnail photo
+  - Key metric badges (Cap Rate, CoC)
+  - A "Saved" timestamp
+- One card highlighted/hovered
+
+**View 2 — Deal Detail + AI Summary (for SR-7):**
+- Shows the Maplewood Drive property in full detail
+- Full metrics panel
+- An "Analyze with AI" button
+- Below the button: an empty text area that fills with a typewriter animation when the button is clicked
+
+**AI summary typewriter content** (hardcode this, animate character-by-character at ~30ms/char):
+```
+This property at 2847 Maplewood Drive presents a compelling 
+investment case. With a cap rate of 6.8% and cash-on-cash 
+return of 9.2%, it outperforms the Austin market average by 
+approximately 1.4 points. The 1% rule shortfall is typical 
+for this submarket and is offset by strong appreciation 
+trends. Recommended for buy-and-hold strategy.
+```
+
+Trigger: clicking "Analyze with AI" starts the typewriter. Build this with vanilla JS `setInterval`.
+
+---
+
+### Recording the Mockups with OpenScreen
+
+Once all mockup pages are built, recording is fast and mechanical — one take per shot.
+
+**OpenScreen setup:**
+- Record window (not full screen)
+- Enable cursor highlight + click visualization
+- Output: MP4, 1440p
+
+**Shot list:**
+
+| ID | File | Trigger | Duration | Notes |
+|---|---|---|---|---|
+| SR-1 | Real Google Sheets | Type manually | 20s | Still use real Sheets for the pain scene — the messiness is the point |
+| SR-2 | mockup/redfin.html | Press Space | 30s | Hero shot — let each metric row animate in fully |
+| SR-3 | mockup/zillow.html | Press Space | 15s | Supporting shot |
+| SR-4 | mockup/realtor.html | Press Space | 10s | Even shorter |
+| SR-5 | mockup/hub.html (View 1) | Scroll + hover | 20s | Pan across deal cards |
+| SR-6 | mockup/hub.html (View 2) | Click "Analyze with AI" | 15s | Let typewriter run to completion |
+
+**For SR-2 (hero shot):** Use OpenScreen's zoom to punch into the Cap Rate row as it fades in. This is the single most important moment in the video — frame it so the metric fills ~60% of the zoomed frame.
 
 ---
 
