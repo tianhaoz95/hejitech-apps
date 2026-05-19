@@ -21,9 +21,9 @@ import fs from "fs"
 
 // ─── Configure your listings here ────────────────────────────────────────────
 const LISTINGS = {
-  redfin: "https://www.redfin.com/TX/Austin/REPLACE-WITH-REAL-LISTING-PATH",
-  zillow: "https://www.zillow.com/homedetails/REPLACE-WITH-REAL-LISTING-PATH",
-  realtor: "https://www.realtor.com/realestateandhomes-detail/REPLACE-WITH-REAL-LISTING-PATH",
+  redfin: "https://www.redfin.com/CA/San-Jose/1287-Hazlett-Ct-95131/home/1166081",
+  zillow: "https://www.zillow.com/homedetails/2015-Autumntree-Ct-San-Jose-CA-95131/19562816_zpid/",
+  realtor: "https://www.realtor.com/realestateandhomes-detail/1022-Banyan-Ct_San-Jose_CA_95131_M22771-41153?from=srp_next",
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
