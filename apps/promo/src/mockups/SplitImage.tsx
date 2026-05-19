@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Snowflake, Sparkles, Bot, Play } from 'lucide-react'
+import { Snowflake, Sparkles, Bot, Play, ChevronLeft, ChevronRight } from 'lucide-react'
 import { METRICS, AI_BULLETS } from './data'
 
 // Horizontal px shift between top and bottom of the angled divider
@@ -245,22 +245,22 @@ export function SplitImage() {
           style={{ overflow: 'visible' }}
         >
           <defs>
-            <filter id="lineGlow" x="-50%" width="200%" y="-10%" height="120%">
-              <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur" />
+            <filter id="lineGlow" x="-300%" width="700%" y="-5%" height="110%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
               <feMerge>
+                <feMergeNode in="blur" />
                 <feMergeNode in="blur" />
                 <feMergeNode in="blur" />
                 <feMergeNode in="SourceGraphic" />
               </feMerge>
             </filter>
           </defs>
-          <line
-            x1={lineX1} y1={0}
-            x2={lineX2} y2={size.h}
-            stroke="white"
-            strokeWidth="2"
-            filter="url(#lineGlow)"
-          />
+          {/* Outer halo */}
+          <line x1={lineX1} y1={0} x2={lineX2} y2={size.h} stroke="rgba(255,255,255,0.12)" strokeWidth="40" />
+          {/* Mid glow */}
+          <line x1={lineX1} y1={0} x2={lineX2} y2={size.h} stroke="rgba(255,255,255,0.35)" strokeWidth="12" />
+          {/* Crisp white core */}
+          <line x1={lineX1} y1={0} x2={lineX2} y2={size.h} stroke="white" strokeWidth="3" filter="url(#lineGlow)" />
         </svg>
       )}
 
@@ -270,8 +270,12 @@ export function SplitImage() {
         style={{ left: `${splitPct}%`, top: '50%', transform: 'translate(-50%, -50%)' }}
         onMouseDown={e => { e.preventDefault(); setIsDragging(true) }}
       >
-        <div className="w-11 h-11 rounded-full bg-gray-900 border-2 border-white shadow-2xl flex items-center justify-center ring-4 ring-white/20 hover:ring-white/40 transition-all">
-          <span className="text-white text-[9px] font-black tracking-tight">VS</span>
+        <div
+          className="w-16 h-16 rounded-full bg-white flex items-center justify-center hover:scale-105 transition-all duration-150"
+          style={{ boxShadow: '0 0 0 5px rgba(255,255,255,0.25), 0 0 0 10px rgba(255,255,255,0.1), 0 8px 40px rgba(0,0,0,0.5)' }}
+        >
+          <ChevronLeft size={18} strokeWidth={2.5} className="text-gray-800 -mr-0.5" />
+          <ChevronRight size={18} strokeWidth={2.5} className="text-gray-800 -ml-0.5" />
         </div>
       </div>
 
