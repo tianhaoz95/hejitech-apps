@@ -8,7 +8,8 @@
     "test:hub": "playwright test tests/hub.spec.ts",
     "test:subscription": "playwright test tests/subscription.spec.ts",
     "test:extension": "playwright test tests/extension.spec.ts",
-    "test:golden": "playwright test tests/golden-path.spec.ts"
+    "test:golden": "playwright test tests/golden-path.spec.ts",
+    "capture:promo": "playwright test --config=playwright-promo.config.ts --headed"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.1",
