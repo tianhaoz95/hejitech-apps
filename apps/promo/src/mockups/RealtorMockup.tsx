@@ -8,7 +8,7 @@ export function RealtorMockup() {
         name: 'Realtor.com',
         navBg: '#d0021b',
         logo: 'realtor.com',
-        // Populated after running: pnpm --filter @icecap/tests run capture:promo
+        // Drop manually: screenshot the listing page, save as apps/promo/public/listing-realtor.png
         screenshotSrc: '/listing-realtor.png',
       }}
     />

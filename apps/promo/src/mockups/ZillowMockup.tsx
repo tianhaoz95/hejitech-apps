@@ -8,7 +8,7 @@ export function ZillowMockup() {
         name: 'Zillow',
         navBg: '#1277e1',
         logo: 'zillow',
-        // Populated after running: pnpm --filter @icecap/tests run capture:promo
+        // Drop manually: screenshot the listing page, save as apps/promo/public/listing-zillow.png
         screenshotSrc: '/listing-zillow.png',
       }}
     />

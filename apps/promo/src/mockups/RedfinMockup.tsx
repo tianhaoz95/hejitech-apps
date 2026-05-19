@@ -8,7 +8,7 @@ export function RedfinMockup() {
         name: 'Redfin',
         navBg: '#cc1818',
         logo: 'redfin',
-        // Populated after running: pnpm --filter @icecap/tests run capture:promo
+        // Drop manually: screenshot the listing page, save as apps/promo/public/listing-redfin.png
         screenshotSrc: '/listing-redfin.png',
       }}
     />
