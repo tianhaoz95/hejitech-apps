@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Snowflake, Sparkles, Bot, ChevronLeft, ChevronRight } from 'lucide-react'
-import { METRICS, AI_BULLETS } from './data'
+import { METRICS, AI_BULLETS, AI_CHAT } from './data'
 
 // Horizontal px shift between top and bottom of the angled divider
 const ANGLE_PX = 48
@@ -32,9 +32,18 @@ export function SplitImage() {
   const [isDragging, setIsDragging] = useState(false)
   const [animating, setAnimating] = useState(false)
   const [size, setSize] = useState({ w: 0, h: 0 })
+  // Panel animation state — default to fully revealed (static view)
+  const [metricsVisible, setMetricsVisible] = useState(METRICS.length)
+  const [verdictVisible, setVerdictVisible] = useState(true)
+  const [chatVisible, setChatVisible] = useState(false)
+  const [chatQ, setChatQ] = useState('')
+  const [chatA, setChatA] = useState('')
+  const [chatIsTyping, setChatIsTyping] = useState(false)
+
   const containerRef = useRef<HTMLDivElement>(null)
   const animRef = useRef<number | null>(null)
-  const demoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const allTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
+  const typeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Track container dimensions for SVG line coordinates
   useEffect(() => {
@@ -64,43 +73,92 @@ export function SplitImage() {
     }
   }, [isDragging])
 
-  // 3-phase product showcase: sweep to Before → hold → dramatic reveal of After → settle center
+  // Full product showcase: divider sweep + staggered panel reveal + AI chat typewriter
   const animate = useCallback(() => {
     if (animating) return
+
+    // Cancel any in-flight animations
     if (animRef.current) cancelAnimationFrame(animRef.current)
-    if (demoTimeoutRef.current) clearTimeout(demoTimeoutRef.current)
+    if (typeTimerRef.current) clearTimeout(typeTimerRef.current)
+    allTimersRef.current.forEach(clearTimeout)
+    allTimersRef.current = []
+
     setAnimating(true)
 
-    const easeInOutCubic = (t: number) =>
+    // Reset panel to blank state
+    setMetricsVisible(0)
+    setVerdictVisible(false)
+    setChatVisible(false)
+    setChatQ('')
+    setChatA('')
+    setChatIsTyping(false)
+
+    const ease = (t: number) =>
       t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+
+    const schedule = (fn: () => void, delay: number) => {
+      const id = setTimeout(fn, delay)
+      allTimersRef.current.push(id)
+    }
 
     const animateTo = (from: number, to: number, duration: number, onDone: () => void) => {
       const t0 = performance.now()
       const tick = (now: number) => {
         const t = Math.min((now - t0) / duration, 1)
-        setSplitPct(from + (to - from) * easeInOutCubic(t))
-        if (t < 1) {
-          animRef.current = requestAnimationFrame(tick)
-        } else {
-          setSplitPct(to)
-          onDone()
-        }
+        setSplitPct(from + (to - from) * ease(t))
+        if (t < 1) { animRef.current = requestAnimationFrame(tick) }
+        else { setSplitPct(to); onDone() }
       }
       animRef.current = requestAnimationFrame(tick)
     }
 
+    // Typewriter — recursive setTimeout so it can be cancelled mid-flight
+    const typeText = (text: string, setter: (s: string) => void, perChar: number, onDone: () => void) => {
+      let i = 0
+      const next = () => {
+        i++
+        setter(text.slice(0, i))
+        if (i < text.length) { typeTimerRef.current = setTimeout(next, perChar) }
+        else { onDone() }
+      }
+      typeTimerRef.current = setTimeout(next, perChar)
+    }
+
     const start = splitPct
-    // Phase 1: sweep to Before (right) so viewer sees the painful spreadsheet
+
+    // ── Divider phases ──
+    // Phase 1: sweep right to show Before spreadsheet
     animateTo(start, 88, 650, () => {
-      // Hold on Before
-      demoTimeoutRef.current = setTimeout(() => {
+      schedule(() => {
         // Phase 2: dramatic sweep left to reveal Icecap
         animateTo(88, 18, 1100, () => {
-          // Hold on After so viewer reads the Icecap panel
-          demoTimeoutRef.current = setTimeout(() => {
-            // Phase 3: settle back to balanced split
+          // ── Panel reveal sequence (runs concurrently with the hold) ──
+
+          // Metrics pop in one by one
+          METRICS.forEach((_, i) => {
+            schedule(() => setMetricsVisible(i + 1), i * 270)
+          })
+
+          // AI verdict fades in after all metrics
+          schedule(() => setVerdictVisible(true), METRICS.length * 270 + 250)
+
+          // Chat: question types in, then dots, then answer
+          const chatDelay = METRICS.length * 270 + 900
+          schedule(() => {
+            setChatVisible(true)
+            typeText(AI_CHAT[0].text, setChatQ, 30, () => {
+              setChatIsTyping(true)
+              schedule(() => {
+                setChatIsTyping(false)
+                typeText(AI_CHAT[1].text, setChatA, 22, () => {/* done */})
+              }, 1100)
+            })
+          }, chatDelay)
+
+          // Phase 3: settle divider to balanced split after hold
+          schedule(() => {
             animateTo(18, 52, 700, () => setAnimating(false))
-          }, 950)
+          }, 3200)
         })
       }, 750)
     })
@@ -116,7 +174,8 @@ export function SplitImage() {
 
   useEffect(() => () => {
     if (animRef.current) cancelAnimationFrame(animRef.current)
-    if (demoTimeoutRef.current) clearTimeout(demoTimeoutRef.current)
+    if (typeTimerRef.current) clearTimeout(typeTimerRef.current)
+    allTimersRef.current.forEach(clearTimeout)
   }, [])
 
   const A = ANGLE_PX / 2
@@ -226,8 +285,13 @@ export function SplitImage() {
             </div>
 
             <div className="flex-shrink-0 px-3 pt-2.5 space-y-1.5">
-              {METRICS.map(m => (
-                <div key={m.label} className="flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-gray-100 bg-white shadow-sm">
+              {METRICS.map((m, i) => (
+                <div
+                  key={m.label}
+                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-gray-100 bg-white shadow-sm transition-all duration-300 ${
+                    i < metricsVisible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-2 scale-95'
+                  }`}
+                >
                   <span className="text-xs text-gray-500 font-medium">{m.label}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-black text-gray-900 tabular-nums">{m.value}</span>
@@ -239,7 +303,7 @@ export function SplitImage() {
             </div>
 
             {/* AI Verdict */}
-            <div className="mx-3 mt-2.5 rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50 flex-shrink-0">
+            <div className={`mx-3 mt-2.5 rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50 flex-shrink-0 transition-all duration-500 ${verdictVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
               <div className="flex items-center justify-between px-3 pt-3 pb-2">
                 <div className="flex items-center gap-1.5">
                   <Sparkles size={12} className="text-blue-500" />
@@ -265,10 +329,53 @@ export function SplitImage() {
               </button>
             </div>
 
-            <div className="px-3 pt-2 pb-3 flex-shrink-0">
+            {/* AI Co-Pilot chat conversation */}
+            {chatVisible && (
+              <div className="px-3 pt-1 pb-2 flex-shrink-0 space-y-2">
+                {/* User message */}
+                {chatQ && (
+                  <div className="flex justify-end">
+                    <div className="bg-blue-600 text-white text-[11px] font-medium px-2.5 py-1.5 rounded-xl rounded-tr-sm max-w-[90%] leading-snug">
+                      {chatQ}
+                      {chatQ.length < AI_CHAT[0].text.length && (
+                        <span className="inline-block w-px h-3 bg-white/80 ml-0.5 align-middle animate-pulse" />
+                      )}
+                    </div>
+                  </div>
+                )}
+                {/* Typing dots */}
+                {chatIsTyping && (
+                  <div className="flex items-center gap-1.5 pl-1">
+                    <Snowflake size={10} className="text-blue-400 flex-shrink-0" />
+                    <div className="flex gap-1 py-0.5">
+                      {[0, 1, 2].map(i => (
+                        <span key={i} className="w-1.5 h-1.5 bg-blue-300 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* AI answer */}
+                {chatA && (
+                  <div className="flex items-start gap-1.5">
+                    <Snowflake size={10} className="text-blue-400 mt-1 flex-shrink-0" />
+                    <div className="bg-blue-50 border border-blue-100 text-[11px] text-blue-900 font-medium px-2.5 py-1.5 rounded-xl rounded-tl-sm flex-1 leading-snug">
+                      {chatA}
+                      {chatA.length < AI_CHAT[1].text.length && (
+                        <span className="inline-block w-px h-3 bg-blue-500 ml-0.5 align-middle animate-pulse" />
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Co-Pilot input bar */}
+            <div className="px-3 pt-1 pb-3 flex-shrink-0">
               <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 border border-gray-100">
                 <Bot size={11} className="text-blue-300 flex-shrink-0" />
-                <span className="text-xs text-gray-300 flex-1">Ask AI Co-Pilot...</span>
+                <span className="text-xs text-gray-300 flex-1">
+                  {chatVisible ? 'Ask a follow-up...' : 'Ask AI Co-Pilot...'}
+                </span>
               </div>
             </div>
 
