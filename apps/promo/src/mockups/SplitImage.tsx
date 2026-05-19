@@ -170,9 +170,11 @@ export function SplitImage() {
         </div>
 
         <div className="flex-1 flex overflow-hidden">
-          {/* Real Redfin screenshot */}
-          <div className="flex-1 bg-white overflow-y-auto relative">
-            <img src="/listing-redfin.png" alt="Redfin listing" className="w-full block" />
+          {/* Real Redfin screenshot — wrapper is relative so overlay anchors to visible area */}
+          <div className="flex-1 relative overflow-hidden">
+            <div className="absolute inset-0 overflow-y-auto">
+              <img src="/listing-redfin.png" alt="Redfin listing" className="w-full block" />
+            </div>
 
             {/* Bottom overlay — After callout */}
             <div className="absolute bottom-0 inset-x-0 px-7 pb-8 pt-28 bg-gradient-to-t from-blue-950 via-blue-950/80 to-transparent pointer-events-none">
