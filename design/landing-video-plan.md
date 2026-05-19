@@ -11,11 +11,10 @@ A silent-first product video for the Icecap waitlist landing page and YouTube/so
 | Format | Duration | Aspect Ratio | Use Case |
 |---|---|---|---|
 | Hero (master) | 75s | 16:9 | Landing page, waitlist site |
-| YouTube pre-roll | 60s | 16:9 | Skippable ad (hook in first 5s) |
-| YouTube bumper | 6s | 16:9 | Non-skippable bumper |
-| Social cut | 30s | 9:16 | Instagram Reels, TikTok |
+| Ad cut | 5s | 16:9 | YouTube, Instagram, TikTok ads |
+| Social cut | 30s | 9:16 | Instagram Reels, TikTok organic |
 
-All cuts are derived from the master. Produce master first.
+The 5s ad has no logo — branding is handled by the click-through to the waitlist site. The master and social cut are derived from the same edit. Produce master first, then cut down.
 
 ---
 
@@ -43,7 +42,7 @@ All cuts are derived from the master. Produce master first.
 | 3 | B-roll generation (local + optional Runway) | 1–2 days |
 | 4 | Music selection from Pixabay | 1–2 hours |
 | 5 | Edit master cut in DaVinci Resolve (text overlays, timing) | 2–3 days |
-| 6 | Export cuts (6s bumper, 30s, 9:16 social) | 1 day |
+| 6 | Export cuts (5s ad, 30s social 9:16) | 1 day |
 
 ---
 
@@ -183,28 +182,16 @@ AI-powered deal summaries — on demand.
 
 ---
 
-#### Scene 7 — CTA (1:05–1:15)
-**Visual:** Clean white or deep blue background. Icecap logo centered. No product footage — just the brand.
+#### Scene 7 — Close (1:05–1:15)
+**Visual:** Final product shot — Icecap overlay on a listing, metrics visible, clean and confident. No logo, no CTA — the click-through to the waitlist site handles that.
 
 **Text overlay (center, large, bold):**
 ```
-Icecap
-```
-*Logo fades in.*
-
-**Text overlay (center, medium, appears below logo):**
-```
 Real estate math, at the speed of browsing.
 ```
-*Fades in at 1:07.*
+*Fades in at 1:07, holds to end.*
 
-**Text overlay (center, button-style box):**
-```
-Add to Chrome — Free  →
-```
-*Appears at 1:10, slight pulse animation.*
-
-**Music:** Resolves cleanly on the final beat as CTA appears.
+**Music:** Resolves cleanly on the final beat.
 
 ---
 
@@ -225,7 +212,6 @@ Add to Chrome — Free  →
 | 0:57 | Save deals. Compare them side by side. |
 | 1:01 | AI-powered deal summaries — on demand. |
 | 1:07 | Real estate math, at the speed of browsing. |
-| 1:10 | Add to Chrome — Free → |
 
 ---
 
@@ -261,7 +247,7 @@ Run locally on DGX Spark with HunyuanVideo 1.5 (via ComfyUI). Generate 5–10s c
 | BR-2 | Scene 1 alt | `Wide establishing shot of a tree-lined residential street in autumn, soft sunlight, gentle camera drift, cinematic depth of field` |
 | BR-3 | Scene 3 | `Close-up of hands typing on a laptop keyboard in a bright modern home office, clean desk, shallow depth of field, natural light` |
 | BR-4 | Scene 3 alt | `Young professional at a minimal white desk looking at a laptop screen, focused expression, warm ambient light, cinematic` |
-| BR-5 | Scene 7 | `Clean abstract background with subtle blue gradient, soft bokeh light particles drifting slowly, minimal, premium tech aesthetic` |
+| BR-5 | Scene 7 / 5s ad | `Clean abstract background with subtle blue gradient, soft bokeh light particles drifting slowly, minimal, premium tech aesthetic` |
 | BR-6 | Transition | `Smooth slow push into a modern craftsman house front door, green lawn, sunny day, real estate photography style` |
 
 **ComfyUI setup on DGX Spark:**
@@ -314,7 +300,7 @@ Download 3–4 candidates, cut them to 75s in DaVinci Resolve, and test against 
 - Hook (0–20s): slower cuts, let B-roll breathe
 - Demo (20–55s): quicker cuts synced to metric reveals
 - Hub (55–65s): medium pace, let AI generation play out in real time
-- CTA (65–75s): static hold, let the logo land
+- Close (65–75s): static hold on product shot, tagline lands
 
 ---
 
@@ -323,20 +309,22 @@ Download 3–4 candidates, cut them to 75s in DaVinci Resolve, and test against 
 | Deliverable | Resolution | Format | Notes |
 |---|---|---|---|
 | Master | 1920×1080 | H.264 MP4 | Landing page |
-| YouTube pre-roll | 1920×1080 | H.264 MP4 | Same as master, trimmed to 60s |
-| YouTube bumper | 1920×1080 | H.264 MP4 | 6s — Scene 1 hook + logo |
+| Ad cut | 1920×1080 | H.264 MP4 | 5s — problem + demo, no logo |
 | Social (9:16) | 1080×1920 | H.264 MP4 | Reframed in CapCut from master |
 
 ---
 
 ## Cut Derivation
 
-**6s bumper:** Scenes 1 + 7 only. First overlay line + logo + CTA. No product footage.
+**5s ad cut:** Standalone — not derived from the master. Two shots only:
+- 0:00–0:02: Text overlay "Is this listing a good deal?" over B-roll
+- 0:02–0:05: Pre-zoomed Icecap overlay on a Redfin listing, one metric appearing (Cap Rate)
+- No logo, no CTA — click-through handles it
 
-**30s YouTube pre-roll:** Compress as follows:
+**30s social cut (9:16):** Compress the master as follows:
 - Scene 1 (hook): 0:00–0:05
 - Scene 4 (demo, Redfin only): 0:05–0:18
 - Scene 6 (Hub, abbreviated): 0:18–0:25
-- Scene 7 (CTA): 0:25–0:30
+- Scene 7 (close): 0:25–0:30
 
-**9:16 social cut:** Use the 30s cut, reframe in CapCut for vertical. Adjust text position so overlays don't overlap the safe zone (keep text in center 70% of frame height).
+Reframe in CapCut for vertical. Keep text in center 70% of frame height to avoid safe zone overlap.
