@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Snowflake, Sparkles, Bot, Play } from 'lucide-react'
-import { PROPERTY, METRICS, AI_BULLETS } from './data'
+import { METRICS, AI_BULLETS } from './data'
 
 // Horizontal pixel shift between top and bottom of the angled divider
 const ANGLE_PX = 48
@@ -160,33 +160,9 @@ export function SplitImage() {
         </div>
 
         <div className="flex-1 flex overflow-hidden">
-          {/* Mini listing */}
+          {/* Real Redfin screenshot */}
           <div className="flex-1 bg-white overflow-y-auto">
-            <div className="h-10 flex items-center px-4 gap-4 flex-shrink-0" style={{ backgroundColor: '#cc1818' }}>
-              <HomeIcon size={14} className="text-white" />
-              <span className="text-white text-sm font-black">redfin</span>
-              <div className="flex gap-3">
-                {['Buy', 'Rent', 'Sell'].map(t => <span key={t} className="text-white/60 text-xs">{t}</span>)}
-              </div>
-            </div>
-            <div className="relative">
-              <img src={PROPERTY.photo} alt="Property" className="w-full object-cover" style={{ height: 160 }} />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-            </div>
-            <div className="p-4">
-              <p className="text-2xl font-black text-gray-900">{PROPERTY.price}</p>
-              <p className="text-sm font-semibold text-gray-700 mt-0.5">{PROPERTY.address}</p>
-              <p className="text-xs text-gray-400">{PROPERTY.city}</p>
-              <div className="flex gap-3 mt-3 py-3 border-y border-gray-100 text-xs">
-                <span className="font-bold text-gray-900">{PROPERTY.beds} bed</span>
-                <span className="font-bold text-gray-900">{PROPERTY.baths} bath</span>
-                <span className="font-bold text-gray-900">{PROPERTY.sqft} sqft</span>
-              </div>
-              <div className="mt-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
-                <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">Est. Monthly Rent</p>
-                <p className="text-base font-black text-gray-900 mt-0.5">{PROPERTY.rent}</p>
-              </div>
-            </div>
+            <img src="/listing-redfin.png" alt="Redfin listing" className="w-full block" />
           </div>
 
           {/* Icecap panel */}
