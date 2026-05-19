@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Snowflake, Sparkles, Bot, Play, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Snowflake, Sparkles, Bot, ChevronLeft, ChevronRight } from 'lucide-react'
 import { METRICS, AI_BULLETS } from './data'
 
 // Horizontal px shift between top and bottom of the angled divider
@@ -88,7 +88,7 @@ export function SplitImage() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.code === 'Space') { e.preventDefault(); animate() }
+      if (e.code === 'KeyA') { e.preventDefault(); animate() }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -298,17 +298,6 @@ export function SplitImage() {
         </div>
       </div>
 
-      {/* ── Play button ── */}
-      {!screenshotMode && (
-        <button
-          onClick={animate}
-          disabled={animating}
-          className="fixed bottom-5 left-5 bg-gray-900/80 hover:bg-gray-900 disabled:opacity-60 text-white text-xs font-bold px-4 py-2.5 rounded-full backdrop-blur-sm shadow-lg transition-colors z-50 flex items-center gap-2"
-        >
-          <Play size={10} className="fill-white flex-shrink-0" />
-          {animating ? 'Animating…' : splitPct > 50 ? 'Reveal Icecap →' : '← Reveal Before'}
-        </button>
-      )}
     </div>
   )
 }
