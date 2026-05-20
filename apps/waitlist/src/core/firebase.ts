@@ -1,18 +1,20 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 
+const useEmulator = import.meta.env.VITE_USE_EMULATOR === "true";
+
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY ?? "demo",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ?? "demo.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID ?? "demo-icecap",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ?? "demo.appspot.com",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID ?? "000000000000",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID ?? "1:000000000000:web:000000",
+  apiKey: "AIzaSyD1D2A0h-IUcIyJynq7lh_scNZL6IrXVpc",
+  authDomain: "icecap-platform.firebaseapp.com",
+  projectId: useEmulator ? "demo-icecap" : "icecap-platform",
+  storageBucket: "icecap-platform.firebasestorage.app",
+  messagingSenderId: "117464393734",
+  appId: "1:117464393734:web:a6d327244b151879163b87",
 };
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
-if (import.meta.env.VITE_USE_EMULATOR === "true") {
+if (useEmulator) {
   connectFirestoreEmulator(db, "127.0.0.1", 8080);
 }
