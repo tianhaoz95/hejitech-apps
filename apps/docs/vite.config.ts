@@ -3,6 +3,13 @@ import react from '@vitejs/plugin-react'
 import fs from 'fs'
 import path from 'path'
 
+// Extract the first # heading from markdown, falling back to a prettified filename
+function extractTitle(content: string, filename: string): string {
+  const match = content.match(/^#\s+(.+)$/m)
+  if (match) return match[1].trim()
+  return filename.replace('.md', '').replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
 // Custom plugin to scan for markdown files and provide them as a virtual module
 function markdownDocsPlugin() {
   const virtualModuleId = 'virtual:docs'
@@ -23,11 +30,12 @@ function markdownDocsPlugin() {
         // 1. README.md
         const readmePath = path.join(rootDir, 'README.md')
         if (fs.existsSync(readmePath)) {
+          const content = fs.readFileSync(readmePath, 'utf-8')
           docs.push({
             id: 'readme',
-            title: 'Getting Started',
+            title: extractTitle(content, 'README.md'),
             category: 'Root',
-            content: fs.readFileSync(readmePath, 'utf-8'),
+            content,
             path: 'README.md'
           })
         }
@@ -37,11 +45,12 @@ function markdownDocsPlugin() {
         if (fs.existsSync(designDir)) {
           fs.readdirSync(designDir).forEach(file => {
             if (file.endsWith('.md')) {
+              const content = fs.readFileSync(path.join(designDir, file), 'utf-8')
               docs.push({
                 id: `design-${file.replace('.md', '')}`,
-                title: file.replace('.md', '').split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+                title: extractTitle(content, file),
                 category: 'Design',
-                content: fs.readFileSync(path.join(designDir, file), 'utf-8'),
+                content,
                 path: `design/${file}`
               })
             }
@@ -53,11 +62,12 @@ function markdownDocsPlugin() {
         if (fs.existsSync(reportsDir)) {
           fs.readdirSync(reportsDir).forEach(file => {
             if (file.endsWith('.md')) {
+              const content = fs.readFileSync(path.join(reportsDir, file), 'utf-8')
               docs.push({
                 id: `reports-${file.replace('.md', '')}`,
-                title: file.replace('.md', '').split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+                title: extractTitle(content, file),
                 category: 'Reports',
-                content: fs.readFileSync(path.join(reportsDir, file), 'utf-8'),
+                content,
                 path: `reports/${file}`
               })
             }
