@@ -128,39 +128,39 @@ export function SplitImage() {
 
     // ── Divider phases ──
     // Phase 1: sweep right to show Before spreadsheet
-    animateTo(start, 88, 650, () => {
+    animateTo(start, 88, 520, () => {
       schedule(() => {
         // Phase 2: dramatic sweep left to reveal Icecap
-        animateTo(88, 18, 1100, () => {
+        animateTo(88, 18, 880, () => {
           // ── Panel reveal sequence (runs concurrently with the hold) ──
 
           // Metrics pop in one by one
           METRICS.forEach((_, i) => {
-            schedule(() => setMetricsVisible(i + 1), i * 270)
+            schedule(() => setMetricsVisible(i + 1), i * 216)
           })
 
           // AI verdict fades in after all metrics
-          schedule(() => setVerdictVisible(true), METRICS.length * 270 + 250)
+          schedule(() => setVerdictVisible(true), METRICS.length * 216 + 200)
 
           // Chat: question types in, then dots, then answer
-          const chatDelay = METRICS.length * 270 + 900
+          const chatDelay = METRICS.length * 216 + 720
           schedule(() => {
             setChatVisible(true)
-            typeText(AI_CHAT[0].text, setChatQ, 30, () => {
+            typeText(AI_CHAT[0].text, setChatQ, 24, () => {
               setChatIsTyping(true)
               schedule(() => {
                 setChatIsTyping(false)
-                typeText(AI_CHAT[1].text, setChatA, 22, () => {/* done */})
-              }, 1100)
+                typeText(AI_CHAT[1].text, setChatA, 18, () => {/* done */})
+              }, 880)
             })
           }, chatDelay)
 
           // Phase 3: settle divider to balanced split after hold
           schedule(() => {
-            animateTo(18, 52, 700, () => setAnimating(false))
-          }, 3200)
+            animateTo(18, 52, 560, () => setAnimating(false))
+          }, 2560)
         })
-      }, 750)
+      }, 600)
     })
   }, [animating, splitPct])
 
@@ -288,7 +288,7 @@ export function SplitImage() {
               {METRICS.map((m, i) => (
                 <div
                   key={m.label}
-                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-gray-100 bg-white shadow-sm transition-all duration-300 ${
+                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-gray-100 bg-white shadow-sm transition-all duration-[240ms] ${
                     i < metricsVisible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-2 scale-95'
                   }`}
                 >
@@ -303,7 +303,7 @@ export function SplitImage() {
             </div>
 
             {/* AI Verdict */}
-            <div className={`mx-3 mt-2.5 rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50 flex-shrink-0 transition-all duration-500 ${verdictVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+            <div className={`mx-3 mt-2.5 rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50 flex-shrink-0 transition-all duration-[400ms] ${verdictVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
               <div className="flex items-center justify-between px-3 pt-3 pb-2">
                 <div className="flex items-center gap-1.5">
                   <Sparkles size={12} className="text-blue-500" />

@@ -2,13 +2,14 @@ import { useState, useEffect } from "react"
 import { Routes, Route, NavLink, Navigate } from "react-router-dom"
 import { onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth"
 import {
-  ShieldCheck, Users, Activity, Tag, BarChart2, LogIn, LogOut, AlertTriangle
+  ShieldCheck, Users, Activity, Tag, BarChart2, LogIn, LogOut, AlertTriangle, ListOrdered
 } from "lucide-react"
 import { auth, googleProvider, functions, useEmulator } from "./core/firebase"
 import { SystemHealthPage } from "./pages/SystemHealthPage"
 import { UsersPage } from "./pages/UsersPage"
 import { ScraperHealthPage } from "./pages/ScraperHealthPage"
 import { PromoCodesPage } from "./pages/PromoCodesPage"
+import { WaitlistPage } from "./pages/WaitlistPage"
 
 function AdminGate({ children, user }: { children: React.ReactNode; user: User | null }) {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
@@ -82,6 +83,7 @@ function AdminGate({ children, user }: { children: React.ReactNode; user: User |
 const navItems = [
   { to: "/", label: "System Health", Icon: Activity, end: true },
   { to: "/users", label: "Users", Icon: Users },
+  { to: "/waitlist", label: "Waitlist", Icon: ListOrdered },
   { to: "/scraper", label: "Scraper Health", Icon: BarChart2 },
   { to: "/promos", label: "Promo Codes", Icon: Tag },
 ]
@@ -144,6 +146,7 @@ export default function App() {
           <Routes>
             <Route index element={<SystemHealthPage />} />
             <Route path="/users" element={<UsersPage />} />
+            <Route path="/waitlist" element={<WaitlistPage />} />
             <Route path="/scraper" element={<ScraperHealthPage />} />
             <Route path="/promos" element={<PromoCodesPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />

@@ -19,8 +19,8 @@ export function IcecapPanel({ triggered }: Props) {
 
       {/* Property card */}
       <div
-        className={`flex-shrink-0 mx-3 mt-3 p-3 rounded-xl bg-blue-50 border border-blue-100 transition-all duration-300 ${triggered ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1'}`}
-        style={{ transitionDelay: triggered ? '100ms' : '0ms' }}
+        className={`flex-shrink-0 mx-3 mt-3 p-3 rounded-xl bg-blue-50 border border-blue-100 transition-all duration-[240ms] ${triggered ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1'}`}
+        style={{ transitionDelay: triggered ? '80ms' : '0ms' }}
       >
         <p className="text-xs font-bold text-gray-900 truncate">2847 Maplewood Drive</p>
         <p className="text-xs text-gray-500 mt-0.5">Austin, TX 78704 · $485,000</p>
@@ -31,12 +31,12 @@ export function IcecapPanel({ triggered }: Props) {
         {METRICS.map((m, i) => (
           <div
             key={m.label}
-            className={`flex items-center justify-between px-3 py-2 rounded-xl border transition-all duration-500 ${
+            className={`flex items-center justify-between px-3 py-2 rounded-xl border transition-all duration-[400ms] ${
               triggered
                 ? 'opacity-100 translate-y-0 border-gray-100 bg-white shadow-sm'
                 : 'opacity-0 translate-y-2 border-transparent bg-transparent'
             }`}
-            style={{ transitionDelay: triggered ? `${i * 100 + 250}ms` : '0ms' }}
+            style={{ transitionDelay: triggered ? `${i * 80 + 200}ms` : '0ms' }}
           >
             <span className="text-xs text-gray-500 font-medium">{m.label}</span>
             <div className="flex items-center gap-2">
@@ -54,8 +54,8 @@ export function IcecapPanel({ triggered }: Props) {
 
       {/* AI Verdict */}
       <div
-        className={`mx-3 mt-2.5 rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50 overflow-hidden transition-all duration-400 ${triggered ? 'opacity-100' : 'opacity-0'}`}
-        style={{ transitionDelay: triggered ? '800ms' : '0ms' }}
+        className={`mx-3 mt-2.5 rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50 overflow-hidden transition-all duration-[320ms] ${triggered ? 'opacity-100' : 'opacity-0'}`}
+        style={{ transitionDelay: triggered ? '640ms' : '0ms' }}
       >
         <div className="flex items-center justify-between px-3 pt-3 pb-2">
           <div className="flex items-center gap-1.5">
@@ -70,8 +70,8 @@ export function IcecapPanel({ triggered }: Props) {
           {AI_BULLETS.map((bullet, i) => (
             <div
               key={i}
-              className={`flex items-start gap-1.5 transition-all duration-300 ${triggered ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-1'}`}
-              style={{ transitionDelay: triggered ? `${i * 100 + 950}ms` : '0ms' }}
+              className={`flex items-start gap-1.5 transition-all duration-[240ms] ${triggered ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-1'}`}
+              style={{ transitionDelay: triggered ? `${i * 80 + 760}ms` : '0ms' }}
             >
               <span className="text-blue-400 flex-shrink-0 text-[10px] mt-0.5">›</span>
               <p className="text-[11px] text-blue-800 font-medium leading-snug">{bullet}</p>
@@ -82,8 +82,8 @@ export function IcecapPanel({ triggered }: Props) {
 
       {/* Save button */}
       <div
-        className={`px-3 pt-2.5 flex-shrink-0 transition-all duration-300 ${triggered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'}`}
-        style={{ transitionDelay: triggered ? '1280ms' : '0ms' }}
+        className={`px-3 pt-2.5 flex-shrink-0 transition-all duration-[240ms] ${triggered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'}`}
+        style={{ transitionDelay: triggered ? '1024ms' : '0ms' }}
       >
         <button className="w-full py-2.5 font-bold text-sm text-white rounded-xl" style={{ background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%)' }}>
           Save Deal →
@@ -92,8 +92,8 @@ export function IcecapPanel({ triggered }: Props) {
 
       {/* Ask AI Co-Pilot */}
       <div
-        className={`px-3 pb-3 pt-2 flex-shrink-0 transition-all duration-300 ${triggered ? 'opacity-100' : 'opacity-0'}`}
-        style={{ transitionDelay: triggered ? '1420ms' : '0ms' }}
+        className={`px-3 pb-3 pt-2 flex-shrink-0 transition-all duration-[240ms] ${triggered ? 'opacity-100' : 'opacity-0'}`}
+        style={{ transitionDelay: triggered ? '1136ms' : '0ms' }}
       >
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 border border-gray-100 cursor-text">
           <Sparkles size={11} className="text-blue-300 flex-shrink-0" />
