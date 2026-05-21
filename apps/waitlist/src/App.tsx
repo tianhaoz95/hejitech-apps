@@ -129,20 +129,20 @@ function HeroBackground() {
 function ProductMockup() {
   return (
     <div className="mockup-card h-full">
-      <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-200/80 dark:border-white/10">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-sm shadow-blue-500/30">
-            <Building2 className="w-3.5 h-3.5 text-white" />
+      <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200/80 dark:border-white/10">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-sm shadow-blue-500/30">
+            <Building2 className="w-5 h-5 text-white" />
           </div>
-          <span className="text-slate-800 dark:text-white text-xs font-bold tracking-tight">Icecap</span>
+          <span className="text-slate-800 dark:text-white text-base font-bold tracking-tight">Icecap</span>
         </div>
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 dark:bg-green-500/15 border border-green-200 dark:border-green-500/25 text-green-600 dark:text-green-400 text-[10px] font-semibold">
-          <span className="w-1.5 h-1.5 rounded-full bg-green-500 dark:bg-green-400" />
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-50 dark:bg-green-500/15 border border-green-200 dark:border-green-500/25 text-green-600 dark:text-green-400 text-xs font-semibold">
+          <span className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400" />
           Strong Buy
         </span>
       </div>
-      <p className="text-slate-500 dark:text-gray-500 text-[10px] mb-3">1247 Maple St · 3BR/2BA · $485,000</p>
-      <div className="grid grid-cols-3 gap-2 mb-4">
+      <p className="text-slate-500 dark:text-gray-500 text-sm mb-5">1247 Maple St · 3BR/2BA · $485,000</p>
+      <div className="grid grid-cols-3 gap-3 mb-6">
         {[
           { label: "Cap Rate", value: "6.8%", color: "text-green-600 dark:text-green-400" },
           { label: "Cash-on-Cash", value: "8.2%", color: "text-blue-600 dark:text-blue-400" },
@@ -150,32 +150,32 @@ function ProductMockup() {
         ].map((m) => (
           <div
             key={m.label}
-            className="flex flex-col items-center p-2 rounded-xl bg-slate-50/50 dark:bg-white/[0.04] border border-slate-100 dark:border-white/[0.07]"
+            className="flex flex-col items-center p-3 rounded-xl bg-slate-50/50 dark:bg-white/[0.04] border border-slate-100 dark:border-white/[0.07]"
           >
-            <span className="text-slate-400 dark:text-gray-500 text-[9px] mb-1 text-center leading-tight">
+            <span className="text-slate-400 dark:text-gray-500 text-xs mb-1.5 text-center leading-tight">
               {m.label}
             </span>
-            <span className={`text-xs font-bold ${m.color}`}>{m.value}</span>
+            <span className={`text-base font-bold ${m.color}`}>{m.value}</span>
           </div>
         ))}
       </div>
-      <div className="p-3 rounded-xl bg-purple-50 dark:bg-purple-500/[0.08] border border-purple-100 dark:border-purple-500/20 mb-3 flex-1">
-        <div className="flex items-center gap-1.5 mb-1.5">
-          <Sparkles className="w-3 h-3 text-purple-500 dark:text-purple-400" />
-          <span className="text-purple-600 dark:text-purple-300 text-[9px] font-semibold uppercase tracking-widest">
+      <div className="p-4 rounded-xl bg-purple-50 dark:bg-purple-500/[0.08] border border-purple-100 dark:border-purple-500/20 mb-6 flex-1">
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles className="w-4 h-4 text-purple-500 dark:text-purple-400" />
+          <span className="text-purple-600 dark:text-purple-300 text-xs font-semibold uppercase tracking-widest">
             AI Verdict
           </span>
         </div>
-        <p className="text-slate-700 dark:text-gray-300 text-[11px] leading-relaxed">
+        <p className="text-slate-700 dark:text-gray-300 text-sm leading-relaxed">
           "Strong fundamentals with below-market rent upside. Cap rate of 6.8% exceeds local
           average by 1.2."
         </p>
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-slate-400 dark:text-gray-600 text-[9px]">Analyzed in 3.2s</span>
-        <div className="flex items-center gap-1">
-          <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-green-600/70 dark:text-green-500/70 text-[9px]">Live</span>
+        <span className="text-slate-400 dark:text-gray-600 text-xs">Analyzed in 3.2s</span>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          <span className="text-green-600/70 dark:text-green-500/70 text-xs">Live</span>
         </div>
       </div>
     </div>
