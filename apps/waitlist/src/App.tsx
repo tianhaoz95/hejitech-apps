@@ -988,6 +988,7 @@ export default function App() {
         () => {}
       );
       setSubmitted(true);
+      window.history.pushState(null, '', '/joined');
     } catch (err) {
       console.error("[waitlist] Firestore write failed:", err);
       setError("Something went wrong. Please try again.");
