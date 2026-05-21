@@ -128,7 +128,7 @@ function HeroBackground() {
 
 function ProductMockup() {
   return (
-    <div className="mockup-card">
+    <div className="mockup-card h-full">
       <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-200/80 dark:border-white/10">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-sm shadow-blue-500/30">
@@ -159,7 +159,7 @@ function ProductMockup() {
           </div>
         ))}
       </div>
-      <div className="p-3 rounded-xl bg-purple-50 dark:bg-purple-500/[0.08] border border-purple-100 dark:border-purple-500/20 mb-3">
+      <div className="p-3 rounded-xl bg-purple-50 dark:bg-purple-500/[0.08] border border-purple-100 dark:border-purple-500/20 mb-3 flex-1">
         <div className="flex items-center gap-1.5 mb-1.5">
           <Sparkles className="w-3 h-3 text-purple-500 dark:text-purple-400" />
           <span className="text-purple-600 dark:text-purple-300 text-[9px] font-semibold uppercase tracking-widest">
@@ -1040,7 +1040,7 @@ export default function App() {
       {/* ── Hero ── */}
       <section id="waitlist" className="relative min-h-screen flex items-center pt-16">
         <HeroBackground />
-        <div className="relative z-10 max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-16 xl:gap-24 items-center py-24">
+        <div className="relative z-10 max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-16 xl:gap-24 items-stretch py-24">
           <div className="fade-up">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-55 dark:bg-blue-500/10 border border-blue-105 dark:border-blue-500/20 text-blue-650 dark:text-blue-400 text-xs font-semibold mb-8">
               <span className="w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-blue-400 animate-pulse" />
@@ -1062,8 +1062,8 @@ export default function App() {
               <SignupForm {...formProps} />
             </div>
           </div>
-          <div className="hidden lg:flex justify-center items-center fade-up-delay">
-            <div className="relative">
+          <div className="hidden lg:flex justify-center items-stretch fade-up-delay">
+            <div className="relative h-full flex flex-col">
               <div className="absolute inset-0 bg-blue-600/20 blur-3xl rounded-full scale-75 translate-y-8" />
               <ProductMockup />
             </div>

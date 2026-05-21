@@ -153,6 +153,8 @@
   box-shadow: 0 32px 64px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(255, 255, 255, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.8);
   animation: float-slow 7s ease-in-out infinite;
   transition: background 0.5s ease, border 0.5s ease, box-shadow 0.5s ease;
+  display: flex;
+  flex-direction: column;
 }
 
 .dark .mockup-card {
