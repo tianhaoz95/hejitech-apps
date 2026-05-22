@@ -30,6 +30,8 @@ import {
 } from "lucide-react";
 
 
+declare function gtag_report_conversion(url?: string): boolean;
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 // Seed offset so the counter starts from a credible baseline
@@ -987,6 +989,7 @@ export default function App() {
       setDoc(doc(db, "public_stats", "waitlist"), { signupCount: increment(1) }, { merge: true }).catch(
         () => {}
       );
+      gtag_report_conversion();
       setSubmitted(true);
       window.history.pushState(null, '', '/joined');
     } catch (err) {

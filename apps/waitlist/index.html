@@ -9,6 +9,21 @@
       gtag('js', new Date());
       gtag('config', 'AW-18177481784');
     </script>
+    <!-- Event snippet for Submit lead form conversion -->
+    <script>
+    function gtag_report_conversion(url) {
+      var callback = function () {
+        if (typeof(url) != 'undefined') {
+          window.location = url;
+        }
+      };
+      gtag('event', 'conversion', {
+          'send_to': 'AW-18177481784/SDlaCM7T1bEcELi42dtD',
+          'event_callback': callback
+      });
+      return false;
+    }
+    </script>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
