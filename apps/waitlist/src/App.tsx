@@ -699,7 +699,7 @@ function FAQSection() {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   return (
-    <section className="relative z-10 py-28 border-t border-slate-200/80 dark:border-white/[0.06]">
+    <section id="faq" className="relative z-10 py-28 border-t border-slate-200/80 dark:border-white/[0.06]">
       <div className="max-w-2xl mx-auto px-6">
         <div className="text-center mb-12">
           <div className="inline-block px-3.5 py-1.5 rounded-full bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 text-blue-650 dark:text-blue-400 text-xs font-semibold mb-5">
@@ -1031,6 +1031,12 @@ export default function App() {
           >
             {theme === 'dark' ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
           </button>
+          <a
+            href="#faq"
+            className="hidden sm:flex items-center text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white text-sm font-medium transition-colors"
+          >
+            FAQ
+          </a>
           <a
             href="#waitlist"
             className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition-colors shadow-lg shadow-blue-500/20"
