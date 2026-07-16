@@ -37,19 +37,37 @@ class AgentClient(
 ) {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
-    suspend fun parseEntry(rawText: String, knownProperties: List<String>): ParseOutcome {
+    /**
+     * [onStage] is a best-effort progress signal for the caller to render
+     * (see ParsingStage) — tied to which branch is actually being taken,
+     * not a synthetic timer, so it stays honest about a slow on-device→
+     * cloud fallback instead of just reading as hung.
+     */
+    suspend fun parseEntry(
+        rawText: String,
+        knownProperties: List<String>,
+        onStage: (ParsingStage) -> Unit = {},
+    ): ParseOutcome {
         val prompt = buildEntryPrompt(rawText, knownProperties)
         return when (inferencePreference()) {
-            InferencePreference.CLOUD_ONLY ->
+            InferencePreference.CLOUD_ONLY -> {
+                onStage(ParsingStage.STRUCTURING)
                 cloudParseEntry(rawText, knownProperties)
+            }
 
-            InferencePreference.ON_DEVICE_ONLY ->
+            InferencePreference.ON_DEVICE_ONLY -> {
+                onStage(ParsingStage.TRYING_ON_DEVICE)
                 onDeviceParseEntry(prompt)
                     ?: ParseOutcome.Failure("On-device model unavailable — no cloud fallback (On-device only is selected in Settings).")
+            }
 
-            InferencePreference.PREFER_ON_DEVICE ->
-                onDeviceParseEntry(prompt)
-                    ?: cloudParseEntry(rawText, knownProperties)
+            InferencePreference.PREFER_ON_DEVICE -> {
+                onStage(ParsingStage.TRYING_ON_DEVICE)
+                onDeviceParseEntry(prompt) ?: run {
+                    onStage(ParsingStage.FALLING_BACK_TO_CLOUD)
+                    cloudParseEntry(rawText, knownProperties)
+                }
+            }
         }
     }
 

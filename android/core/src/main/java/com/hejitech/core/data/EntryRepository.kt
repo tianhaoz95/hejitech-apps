@@ -16,6 +16,14 @@ interface EntryRepository {
     /** Writes a new entry (typically status = pending_review) and returns its assigned id. */
     suspend fun createEntry(entry: Entry): String
 
+    /**
+     * Looks up a single entry by id — used when resuming a pending_review
+     * entry into Confirm, to preserve its original loggedAt (the
+     * contemporaneity anchor) and photoUrls across the update rather than
+     * clobbering them with updateEntry's full-document overwrite.
+     */
+    suspend fun getEntry(entryId: String): Entry?
+
     /** Applies edits and/or flips status to confirmed. */
     suspend fun updateEntry(entryId: String, entry: Entry)
 

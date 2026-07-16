@@ -1,5 +1,9 @@
 package com.hejitech.contempo.ui.navigation
 
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.isImeVisible
@@ -58,7 +62,7 @@ private const val SETTINGS_ROUTE = "settings"
 object ConfirmRoute {
     const val PATTERN = "confirm?property={property}&task={task}&durationMinutes={durationMinutes}" +
         "&category={category}&isVague={isVague}&isBackfilled={isBackfilled}&daysLate={daysLate}" +
-        "&source={source}&captureSource={captureSource}&photoUri={photoUri}"
+        "&source={source}&captureSource={captureSource}&photoUri={photoUri}&entryId={entryId}"
 
     fun build(
         property: String,
@@ -71,13 +75,16 @@ object ConfirmRoute {
         source: String = "",
         captureSource: String = "",
         photoUri: String? = null,
+        /** Non-blank when resuming a pending_review entry (see DashboardScreen's pending badge). */
+        entryId: String = "",
     ) = "confirm?property=$property&task=$task&durationMinutes=$durationMinutes" +
         "&category=$category&isVague=$isVague&isBackfilled=$isBackfilled&daysLate=$daysLate" +
         "&source=$source&captureSource=$captureSource" +
         // photoUri is a content:// URI (colons, slashes) — the only field
         // here that can't survive being pasted raw into a query string, so
         // it's the only one that gets encoded/decoded.
-        "&photoUri=${photoUri?.let { java.net.URLEncoder.encode(it, "UTF-8") } ?: ""}"
+        "&photoUri=${photoUri?.let { java.net.URLEncoder.encode(it, "UTF-8") } ?: ""}" +
+        "&entryId=$entryId"
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -155,7 +162,14 @@ fun ContempoNavHost() {
                     navArgument("source") { type = NavType.StringType; defaultValue = "" },
                     navArgument("captureSource") { type = NavType.StringType; defaultValue = "" },
                     navArgument("photoUri") { type = NavType.StringType; defaultValue = "" },
-                )
+                    navArgument("entryId") { type = NavType.StringType; defaultValue = "" },
+                ),
+                // A subtle slide-up + fade "settling into the structured
+                // record UI" — the visual bridge from Capture's finalized-
+                // text/parsing-progress sequence into this screen.
+                enterTransition = { slideInVertically(initialOffsetY = { it / 6 }) + fadeIn() },
+                exitTransition = { fadeOut() },
+                popExitTransition = { slideOutVertically(targetOffsetY = { it / 6 }) + fadeOut() },
             ) { backStackEntry ->
                 val encodedPhotoUri = backStackEntry.arguments?.getString("photoUri").orEmpty()
                 ConfirmScreen(
@@ -167,6 +181,7 @@ fun ContempoNavHost() {
                     captureSource = backStackEntry.arguments?.getString("captureSource").orEmpty(),
                     photoUri = encodedPhotoUri.takeIf { it.isNotEmpty() }
                         ?.let { java.net.URLDecoder.decode(it, "UTF-8") },
+                    entryId = backStackEntry.arguments?.getString("entryId").orEmpty(),
                     onConfirmed = {
                         navController.navigate(TopLevelDestination.Dashboard.route) {
                             popUpTo(TopLevelDestination.Capture.route)
@@ -174,7 +189,31 @@ fun ContempoNavHost() {
                     },
                 )
             }
-            composable(TopLevelDestination.Dashboard.route) { DashboardScreen() }
+            composable(TopLevelDestination.Dashboard.route) {
+                DashboardScreen(
+                    onCompleteEntry = { entry ->
+                        navController.navigate(
+                            ConfirmRoute.build(
+                                property = entry.propertyName,
+                                task = entry.task,
+                                durationMinutes = entry.durationMinutes,
+                                category = entry.category,
+                                isVague = false,
+                                isBackfilled = false,
+                                daysLate = 0,
+                                captureSource = entry.sourceEnum.name,
+                                entryId = entry.id,
+                                // Deliberately not threading photoUri here —
+                                // it's only meaningful as a fresh local
+                                // content:// URI to upload, and an existing
+                                // pending entry's photoUrls (if any) are
+                                // already remote and preserved by
+                                // ConfirmViewModel's resume path.
+                            )
+                        )
+                    },
+                )
+            }
             composable(TopLevelDestination.Chat.route) { ChatScreen() }
             composable(TopLevelDestination.Export.route) { ExportScreen() }
             composable(SETTINGS_ROUTE) {

@@ -28,6 +28,12 @@
     <string name="capture_camera_permission_needed">Camera access is needed for photo capture — tap the camera again to grant it.</string>
     <string name="capture_voice_button_label">Tap to speak</string>
     <string name="capture_type_instead">Type instead</string>
+    <string name="capture_finalized_heading">Here\'s what we heard</string>
+    <string name="capture_stage_reading">Reading your words…</string>
+    <string name="capture_stage_trying_on_device">Structuring on-device…</string>
+    <string name="capture_stage_falling_back_to_cloud">Double-checking with the cloud…</string>
+    <string name="capture_stage_structuring">Structuring your entry…</string>
+    <string name="capture_parsing_reassurance">Still working — almost there…</string>
 
     <string name="confirm_eyebrow">Review before it\'s evidence</string>
     <string name="confirm_title">Confirm entry</string>
@@ -42,11 +48,19 @@
     <string name="confirm_source_on_device">Parsed on-device — no cloud call made.</string>
     <string name="confirm_source_cloud">Parsed via cloud.</string>
     <string name="confirm_photo_description">Photo evidence for this entry</string>
+    <string name="confirm_add_new_property_chip">Add new</string>
+    <string name="confirm_new_property_label">Property name</string>
+    <string name="confirm_add_property_button">Add</string>
+    <string name="confirm_cancel_button">Cancel</string>
+    <string name="confirm_required_field_format">%1$s · required</string>
+    <string name="confirm_complete_later_button">Complete later</string>
 
     <string name="dashboard_eyebrow">Your paper trail</string>
     <string name="dashboard_title">Your progress</string>
     <string name="dashboard_hours_progress">%1$d / %2$d hrs toward the %3$s test</string>
     <string name="dashboard_no_entries">No entries yet. Capture your first one to get started.</string>
+    <string name="dashboard_pending_callout">%1$d entries need completing</string>
+    <string name="dashboard_pending_badge">Pending</string>
 
     <string name="chat_eyebrow">Ask your logbook</string>
     <string name="chat_empty_hint">Ask anything — "will cleaning the pool count toward my 100 hours?", "how many hours do I still need?"</string>

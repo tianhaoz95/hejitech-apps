@@ -8,9 +8,11 @@ import com.hejitech.contempo.agent.CaptureResult
 import com.hejitech.contempo.agent.EntryDraft
 import com.hejitech.contempo.agent.ParseOutcome
 import com.hejitech.contempo.agent.ParseSource
+import com.hejitech.contempo.agent.ParsingStage
 import com.hejitech.contempo.agent.aiAvailability
 import com.hejitech.contempo.data.ServiceLocator
 import com.hejitech.core.model.CaptureSource
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -31,7 +33,14 @@ data class CaptureUiState(
     // evidence if the user falls back to typing/voice or manual entry —
     // see parseAndProceed's captureSource override and manualEntry().
     val pendingPhotoUri: String? = null,
+    // Transient "here's what we heard" beat shown right after a voice
+    // capture finishes transcribing/cleanup, before parsing starts.
+    val finalizedTranscript: String? = null,
+    val parsingStage: ParsingStage = ParsingStage.IDLE,
 )
+
+/** How long the finalized-transcript card holds before parsing starts. */
+private const val FINALIZED_TRANSCRIPT_HOLD_MS = 700L
 
 class CaptureViewModel : ViewModel() {
     private val agentClient = ServiceLocator.agentClient
@@ -90,7 +99,13 @@ class CaptureViewModel : ViewModel() {
 
             _uiState.value = _uiState.value.copy(inputText = rawTranscript)
             val cleaned = runCatching { agentClient.cleanupTranscript(rawTranscript) }.getOrDefault(rawTranscript)
-            _uiState.value = _uiState.value.copy(inputText = cleaned, isTranscribing = false)
+            _uiState.value = _uiState.value.copy(inputText = cleaned, isTranscribing = false, finalizedTranscript = cleaned)
+
+            // Hold the "here's what we heard" beat briefly before moving on
+            // — guarantees it's perceivable even on a fast device, not just
+            // whatever's left over after cleanup happens to finish.
+            delay(FINALIZED_TRANSCRIPT_HOLD_MS)
+            _uiState.value = _uiState.value.copy(finalizedTranscript = null)
 
             parseAndProceed(cleaned, CaptureSource.VOICE, onDraftReady)
         }
@@ -156,7 +171,7 @@ class CaptureViewModel : ViewModel() {
     }
 
     private suspend fun parseAndProceed(text: String, captureSource: CaptureSource, onDraftReady: (CaptureResult) -> Unit) {
-        _uiState.value = _uiState.value.copy(isParsing = true, errorMessage = null)
+        _uiState.value = _uiState.value.copy(isParsing = true, errorMessage = null, parsingStage = ParsingStage.READING)
 
         // Best-effort — an empty list is a fine fallback, the model just
         // won't have existing property names to match against.
@@ -164,7 +179,10 @@ class CaptureViewModel : ViewModel() {
             entryRepository.observeProperties().first().map { it.name }
         }.getOrDefault(emptyList())
 
-        when (val outcome = agentClient.parseEntry(text, knownProperties)) {
+        val outcome = agentClient.parseEntry(text, knownProperties) { stage ->
+            _uiState.value = _uiState.value.copy(parsingStage = stage)
+        }
+        when (outcome) {
             is ParseOutcome.Success -> {
                 val draft = outcome.result.draft
                 val source = if (outcome.result.source == ParseSource.ON_DEVICE) "on_device" else "cloud"
@@ -182,6 +200,7 @@ class CaptureViewModel : ViewModel() {
                 _uiState.value = _uiState.value.copy(
                     isParsing = false,
                     errorMessage = outcome.message,
+                    parsingStage = ParsingStage.IDLE,
                 )
             }
         }

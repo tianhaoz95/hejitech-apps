@@ -70,6 +70,11 @@ class FirestoreEntryRepository(
         return ref.id
     }
 
+    override suspend fun getEntry(entryId: String): Entry? {
+        val doc = entriesCollection().document(entryId).get().await()
+        return doc.toObject(Entry::class.java)?.copy(id = doc.id)
+    }
+
     override suspend fun updateEntry(entryId: String, entry: Entry) {
         entriesCollection().document(entryId).set(entry).await()
     }

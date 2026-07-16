@@ -1,31 +1,42 @@
 package com.hejitech.contempo.ui.confirm
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
@@ -55,9 +66,11 @@ fun ConfirmScreen(
     captureSource: String = "",
     /** Local content:// URI for a just-taken photo, if this entry came from photo capture. */
     photoUri: String? = null,
+    /** Non-blank when resuming a pending_review entry from the Dashboard's pending badge. */
+    entryId: String = "",
     onConfirmed: () -> Unit,
     viewModel: ConfirmViewModel = viewModel(
-        factory = ConfirmViewModel.Factory(property, task, durationMinutes, category, captureSource, photoUri)
+        factory = ConfirmViewModel.Factory(property, task, durationMinutes, category, captureSource, photoUri, entryId)
     ),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -108,10 +121,56 @@ fun ConfirmScreen(
         }
         Spacer(Modifier.height(20.dp))
 
+        if (uiState.isAddingNewProperty) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = uiState.newPropertyName,
+                    onValueChange = viewModel::onNewPropertyNameChanged,
+                    label = { Text(stringResource(R.string.confirm_new_property_label)) },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                )
+                TextButton(onClick = viewModel::onConfirmNewProperty) {
+                    Text(stringResource(R.string.confirm_add_property_button))
+                }
+                TextButton(onClick = viewModel::onCancelAddNewProperty) {
+                    Text(stringResource(R.string.confirm_cancel_button))
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+        } else if (uiState.properties.isNotEmpty()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                uiState.properties.forEach { savedProperty ->
+                    FilterChip(
+                        selected = savedProperty.name == uiState.property,
+                        onClick = { viewModel.onPropertySelected(savedProperty) },
+                        label = { Text(savedProperty.name) },
+                    )
+                }
+                FilterChip(
+                    selected = false,
+                    onClick = viewModel::onAddNewPropertyClicked,
+                    label = { Text(stringResource(R.string.confirm_add_new_property_chip)) },
+                    leadingIcon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+        } else {
+            TextButton(onClick = viewModel::onAddNewPropertyClicked) {
+                Icon(Icons.Filled.Add, contentDescription = null)
+                Spacer(Modifier.width(4.dp))
+                Text(stringResource(R.string.confirm_add_new_property_chip))
+            }
+            Spacer(Modifier.height(4.dp))
+        }
+
         OutlinedTextField(
             value = uiState.property,
             onValueChange = viewModel::onPropertyChanged,
-            label = { Text(stringResource(R.string.confirm_property_label)) },
+            label = { RequiredFieldLabel(stringResource(R.string.confirm_property_label), missing = uiState.property.isBlank()) },
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(12.dp))
@@ -119,7 +178,7 @@ fun ConfirmScreen(
         OutlinedTextField(
             value = uiState.task,
             onValueChange = viewModel::onTaskChanged,
-            label = { Text(stringResource(R.string.confirm_task_label)) },
+            label = { RequiredFieldLabel(stringResource(R.string.confirm_task_label), missing = uiState.task.isBlank()) },
             modifier = Modifier.fillMaxWidth(),
             minLines = 2,
         )
@@ -128,7 +187,12 @@ fun ConfirmScreen(
         OutlinedTextField(
             value = uiState.durationMinutes,
             onValueChange = viewModel::onDurationChanged,
-            label = { Text(stringResource(R.string.confirm_duration_label)) },
+            label = {
+                RequiredFieldLabel(
+                    stringResource(R.string.confirm_duration_label),
+                    missing = (uiState.durationMinutes.toIntOrNull() ?: 0) <= 0,
+                )
+            },
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(12.dp))
@@ -165,16 +229,32 @@ fun ConfirmScreen(
 
         Spacer(Modifier.height(24.dp))
 
-        Button(
-            onClick = { viewModel.confirm(onConfirmed) },
-            enabled = !uiState.isSaving,
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.small,
-        ) {
-            if (uiState.isSaving) {
-                CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp), strokeWidth = 2.dp)
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (uiState.isIncomplete) {
+                OutlinedButton(
+                    onClick = { viewModel.saveForLater(onConfirmed) },
+                    enabled = !uiState.isSaving && !uiState.isSavingForLater,
+                    modifier = Modifier.weight(1f),
+                    shape = MaterialTheme.shapes.small,
+                ) {
+                    if (uiState.isSavingForLater) {
+                        CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp), strokeWidth = 2.dp)
+                    }
+                    Text(stringResource(R.string.confirm_complete_later_button))
+                }
             }
-            Text(stringResource(R.string.confirm_button))
+
+            Button(
+                onClick = { viewModel.confirm(onConfirmed) },
+                enabled = !uiState.isSaving && !uiState.isSavingForLater,
+                modifier = Modifier.weight(1f),
+                shape = MaterialTheme.shapes.small,
+            ) {
+                if (uiState.isSaving) {
+                    CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp), strokeWidth = 2.dp)
+                }
+                Text(stringResource(R.string.confirm_button))
+            }
         }
 
         uiState.errorMessage?.let { error ->
@@ -182,4 +262,12 @@ fun ConfirmScreen(
             Text(error, color = MaterialTheme.colorScheme.error)
         }
     }
+}
+
+@Composable
+private fun RequiredFieldLabel(text: String, missing: Boolean) {
+    Text(
+        text = if (missing) stringResource(R.string.confirm_required_field_format, text) else text,
+        color = if (missing) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
