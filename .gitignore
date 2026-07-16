@@ -1,0 +1,42 @@
+# macOS
+.DS_Store
+
+# Editors/IDEs
+.idea/
+*.iml
+
+# Android / Gradle build outputs
+android/**/build/
+android/.gradle/
+android/local.properties
+android/captures/
+android/**/.externalNativeBuild/
+android/**/.cxx/
+*.apk
+*.aab
+
+# Real Firebase config — never commit, see *.example files
+android/app/google-services.json
+android/wear/google-services.json
+
+# Vendored/downloaded build scratch dir (nested git clone + prebuilt archives,
+# reproducible from upstream — not the app's runtime assets, which live
+# committed under android/app/src/main/{assets,jniLibs})
+android/whisper-vendor/
+
+# Node
+node_modules/
+backend/functions/lib/
+*.log
+
+# Env/secrets
+.env
+.env.*
+
+# Firebase emulator/tooling artifacts
+backend/firestore-debug.log
+backend/ui-debug.log
+backend/.firebase/
+
+# Claude Code local lock files
+.claude/scheduled_tasks.lock

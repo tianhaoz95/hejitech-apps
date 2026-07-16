@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PRD Status Check v0 — AI-Native STR Material Participation Tracker</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="dot"></span> STR Tracker Reports</div>
+    <nav>
+      <a href="index.html">All reports</a>
+    </nav>
+  </header>
+
+  <div class="report-shell">
+    <aside class="toc-col">
+      <div class="toc-title">On this page</div>
+      <ul id="toc-list"></ul>
+    </aside>
+
+    <main class="report-main">
+      <div class="report-header">
+        <div class="eyebrow">Status Check &middot; v0 &middot; Draft</div>
+        <h1>PRD Status Check</h1>
+        <p class="subtitle">
+          Section-by-section against <a href="prd-v0.html">PRD v0</a>: what's actually
+          implemented in the codebase today, what's deliberately deferred per
+          <a href="mvp-scope-v0.html">MVP Scope v0</a>, and what's genuinely missing.
+        </p>
+        <div class="doc-meta">
+          <span><strong>Status:</strong> Draft</span>
+          <span><strong>Version:</strong> v0</span>
+          <span><strong>Date:</strong> July 15, 2026</span>
+          <span><strong>Owner:</strong> Jackson Zhou</span>
+          <span><strong>Depends on:</strong> PRD v0, MVP Scope v0</span>
+        </div>
+      </div>
+
+      <article class="report-content">
+
+        <h2>1. Method</h2>
+        <p>
+          This report reads directly against the codebase (<code>android/</code>,
+          <code>backend/</code>) as of this date, not against either the MVP Scope
+          report's own claims or the Implementation Walkthrough's narrative — those
+          are good context but can drift from what's actually in the repo. Every
+          "Implemented" verdict below traces to a specific file. Status is one of:
+        </p>
+        <ul>
+          <li><strong>Implemented</strong> — built and present in the running app/backend, at least to MVP-heuristic depth (not necessarily the PRD's full version).</li>
+          <li><strong>Partial</strong> — a real subset exists, or the data model/backend is ready but the client doesn't use it yet, or vice versa.</li>
+          <li><strong>Not started</strong> — no code for it exists anywhere in the repo.</li>
+          <li><strong>Deferred (by design)</strong> — MVP Scope v0 explicitly cut this from MVP; its absence is a decision, not a gap.</li>
+        </ul>
+        <div class="callout">
+          <span class="callout-label">Headline</span>
+          The core loop from MVP Scope Section 7 — capture &rarr; parse &rarr; confirm
+          &rarr; track &rarr; export — is real and runs end-to-end on Android against a
+          real Firebase project (<code>contempo-platform</code>), with real Google
+          Sign-In. Almost everything <em>missing</em> against the full PRD is exactly
+          what MVP Scope said to cut (PMS integration, geofencing, bank signals,
+          household logging, wearables, SMS). The gaps worth attention are the small
+          number of things MVP Scope itself called in-scope that aren't built yet
+          (Section 3 below) — photo capture and the print/PDF export, specifically.
+        </div>
+
+        <h2>2. Platform &amp; Target Users (PRD &sect;4, &sect;6.6)</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>PRD item</th><th>Status</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td>Android app</td><td>Implemented</td><td>Kotlin/Compose, multi-module (<code>app</code>/<code>core</code>/<code>wear</code>), builds and runs against a real Firebase project.</td></tr>
+              <tr><td>iOS app</td><td>Not started</td><td><code>ios/</code> is a README stub only. Deferred (by design) — MVP Scope &sect;6: Android first, iOS sequenced after the pilot validates.</td></tr>
+              <tr><td>Wear OS / Apple Watch capture</td><td>Not started</td><td><code>android/wear/</code> compiles and installs but is a bare placeholder (manifest + one <code>MainActivity</code> stub, no capture UI). Deferred (by design) — MVP Scope &sect;5.1.</td></tr>
+              <tr><td>Web app ("back office": export, settings)</td><td>Not started</td><td><code>web/</code> is a README stub only. Deferred (by design) — MVP Scope &sect;4.4 calls for a minimal web app, but it hasn't been started.</td></tr>
+              <tr><td>Android quick-settings tile / iOS lock-screen trigger</td><td>Not started</td><td>Deferred (by design) — MVP Scope &sect;5.1.</td></tr>
+              <tr><td>Primary user: solo/2&ndash;3-property self-managed host</td><td>Implemented</td><td>The whole app is built around this single-owner persona — Firestore data model and rules are explicitly single-owner (&sect;5 below).</td></tr>
+              <tr><td>Portfolio operator / multi-participant persona</td><td>Not started</td><td>Deferred (by design) — see &sect;4 (Household &amp; Team) below.</td></tr>
+              <tr><td>REPS (750-hour) persona</td><td>Not started</td><td>Dashboard hardcodes the 100-hour STR test (<code>MaterialParticipationTest.kt</code>); no test selection exists yet. Deferred (by design) per MVP Scope's "onboarding-interview feature ... is fast-follow" note in that file.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>3. Capture Layer (PRD &sect;6.1)</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>PRD item</th><th>Status</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td>Natural-language text entry, parsed</td><td>Implemented</td><td><code>CaptureScreen.kt</code> + <code>AgentClient.parseEntry()</code>, hybrid on-device/cloud (&sect;6 below).</td></tr>
+              <tr><td>Voice memo capture</td><td>Implemented</td><td>Android's built-in <code>RecognizerIntent</code> speech-to-text feeds the same text field as typed input — no separate downstream path.</td></tr>
+              <tr><td>Manual entry form</td><td>Implemented</td><td><code>ConfirmScreen.kt</code> doubles as both the AI-draft review screen and the from-scratch manual form (same fields either way) — a deliberate PRD &sect;5 "AI and manual carry equal weight" implementation choice, not a missing separate screen.</td></tr>
+              <tr><td>Photo-first logging / photo attachment as evidence</td><td>Partial</td><td>Backend is ready — <code>storage.rules</code> defines <code>users/{uid}/entries/{entryId}/{fileName}</code> access, and <code>Entry.photoUrls</code> exists in the data model. <strong>No client code captures, uploads, or displays a photo anywhere</strong> — no camera intent, no picker, no UI. This is called out as in-scope for MVP (Scope &sect;4.1); it's a real gap, not a deferral.</td></tr>
+              <tr><td>Passive signal drafts (geofence, calendar, PMS)</td><td>Not started</td><td>Deferred (by design) — MVP Scope &sect;3, &sect;5.2: the single most expensive PRD investment, explicitly cut as a parity play rather than a test of the friction hypothesis.</td></tr>
+              <tr><td>Bank/Plaid transaction signals</td><td>Not started</td><td>Deferred (by design) — MVP Scope &sect;5.2.</td></tr>
+              <tr><td>Offline-first capture with local buffering</td><td>Partial</td><td>Firestore's client SDK ships with offline persistence by default, which the app doesn't disable — so writes/reads do survive a dropped connection. But this is a platform default the app happens to inherit, not a feature anyone built or tested (Implementation Walkthrough never exercises it); no explicit UI for "queued, not yet synced" state.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>4. AI Copilot &amp; Audit Defense (PRD &sect;6.2)</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>PRD item</th><th>Status</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td>Agent-native entry extraction (property/task/duration/category)</td><td>Implemented</td><td><code>parseEntryFlow</code> (cloud, Genkit + Gemini Flash, real enforced <code>EntryDraftSchema</code>) and an on-device Gemini Nano path via Firebase AI Logic hybrid inference, selected by a user-facing <code>InferencePreference</code> setting.</td></tr>
+              <tr><td>Single clarifying question when needed</td><td>Implemented</td><td><code>EntryDraftSchema.needsClarification</code> + <code>clarifyingQuestion</code>, handled inline on the Capture screen rather than a separate flow.</td></tr>
+              <tr><td>Contemporaneity scoring (backfill risk)</td><td>Partial</td><td><code>flagRiskFlow</code> is a deterministic days-since-activity threshold (14 days), exactly the "simple heuristic" MVP Scope &sect;8 calls for — not the PRD's fuller scoring model. Correctly scoped as MVP-heuristic, not missing.</td></tr>
+              <tr><td>Vague-entry detection</td><td>Partial</td><td>Same file — a length/regex heuristic (&lt;12 characters or a few canned phrases like "worked on the house"), not an LLM judgment call. Same "correctly MVP-scoped" note as above.</td></tr>
+              <tr><td>Unrealistic-duration flagging</td><td>Implemented</td><td><code>flagRiskFlow</code> also flags any single entry over 8 hours — this wasn't explicitly called out in MVP Scope's heuristic list but is built.</td></tr>
+              <tr><td>Interactive legal-grounding chat ("would this count?")</td><td>Partial</td><td>The Ask tab (<code>ChatScreen.kt</code> + <code>askAgentFlow</code>) is real and answers from the host's own logged hours plus a general IRS Pub 925/&sect;1.469-5T-grounded system prompt, with explicit "not tax/legal advice" framing. But it's a live LLM prompt with no retrieval step at all — not even the "curated FAQ" MVP Scope &sect;8 called for, let alone the PRD's case-law RAG. No case outcomes, no curated content file exists anywhere in the repo.</td></tr>
+              <tr><td>Test-fit recommendation (which test the host is on track for)</td><td>Not started</td><td>Only the 100-hour STR test is hardcoded; no recommendation logic exists. Deferred (by design), per the note in &sect;2 above.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>5. Household &amp; Team (PRD &sect;6.3)</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>PRD item</th><th>Status</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td>Multi-participant logging</td><td>Not started</td><td>Deferred (by design) — MVP Scope &sect;5.1. <code>firestore.rules</code> is explicitly single-owner (<code>request.auth.uid == uid</code>); adding this later is a data-model change, not just a UI one.</td></tr>
+              <tr><td>Real-time household constraint checking</td><td>Not started</td><td>Deferred (by design) — MVP Scope &sect;5.2, depends on multi-participant logging shipping first.</td></tr>
+              <tr><td>Per-property and per-person breakdowns</td><td>Partial</td><td>Per-property exists structurally (<code>properties</code> subcollection, <code>propertyName</code> on every entry) but the Dashboard doesn't actually break progress down by property yet — it's one flat list and one aggregate hours total. Per-person isn't applicable without multi-participant logging.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>6. Manual &amp; Trust Layer (PRD &sect;6.4)</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>PRD item</th><th>Status</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td>Full manual entry form, always one tap away</td><td>Implemented</td><td>"Enter manually instead" on the Capture screen, one tap to the same field set used for AI-draft review.</td></tr>
+              <tr><td>Every field editable after the fact</td><td>Partial</td><td>Every field is editable <em>before</em> confirm (on the Confirm screen). There's no edit affordance <em>after</em> an entry is confirmed and sitting on the Dashboard — no tap-to-edit on <code>EntryRow</code>, no <code>updateEntry</code> call site anywhere in the UI, even though <code>EntryRepository.updateEntry()</code> exists on the interface.</td></tr>
+              <tr><td>Quick-add templates for repeat tasks</td><td>Not started</td><td>Deferred (by design) — MVP Scope &sect;5.1: "premature to guess templates before any usage data exists."</td></tr>
+              <tr><td>Correction feedback loop</td><td>Implemented</td><td><code>users/{uid}/corrections/{id}</code>, written by <code>ConfirmViewModel.confirm()</code> whenever a confirmed field differs from what the AI originally drafted — built and wired exactly as MVP Scope &sect;8 specifies ("cheap to capture now, impossible to backfill later"), even though nothing consumes it for personalization yet (also correctly out of MVP scope).</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>7. Reporting &amp; Export (PRD &sect;6.5)</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>PRD item</th><th>Status</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td>Pacing dashboard (progress vs. threshold)</td><td>Implemented</td><td><code>DashboardScreen.kt</code> — confirmed hours vs. the 100-hour threshold, as a progress bar. No projected-finish-date calculation yet, which MVP Scope &sect;4.3 does call for ("projected finish date at current pace") — that specific piece is missing.</td></tr>
+              <tr><td>CSV export</td><td>Implemented</td><td><code>ExportScreen.kt</code> / <code>ExportViewModel.kt</code> — generated on-device, handed to the Android share sheet.</td></tr>
+              <tr><td>Minimal print/PDF view</td><td>Not started</td><td>Called for explicitly in MVP Scope &sect;4.3 ("not the full narrative CPA package ... just something a host can hand over today") — only CSV exists; no print/PDF path at all. A real MVP-scope gap.</td></tr>
+              <tr><td>Polished CPA-ready package (narrative + attachments + readiness score)</td><td>Not started</td><td>Deferred (by design) — MVP Scope &sect;5.1.</td></tr>
+              <tr><td>Export by property/category/date range</td><td>Not started</td><td>CSV export is all-entries only, no filtering. Not explicitly called out in MVP Scope's cut list, so this reads as an oversight rather than a deliberate deferral, though a minor one.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>8. AI-Native Architecture Principles (PRD &sect;8)</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>PRD principle</th><th>Status</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td>Agent with tools, not one-shot extraction</td><td>Partial</td><td>Deliberately not tool-calling at all yet — a documented, reasoned tradeoff (Gemini can't mix tool-calling with forced JSON schema output on one request), not an oversight. <code>log_entry</code> exists as a schema-shaped output, not a callable tool; <code>flag_risk</code> is a separate deterministic flow, not agent-invoked; <code>split_time</code>, <code>query_case_law</code>, <code>check_household_constraint</code> don't exist. Correctly scoped per MVP Scope &sect;8.</td></tr>
+              <tr><td>Multimodal input in a single reasoning pass</td><td>Not started</td><td>Voice is transcribed to text before parsing (two steps, not one multimodal pass); photo isn't captured at all yet (&sect;3 above), so there's nothing multimodal to reason over regardless.</td></tr>
+              <tr><td>RAG over IRS regulations / Tax Court outcomes</td><td>Not started</td><td>See &sect;4 above — the Ask tab is a grounded system prompt, not retrieval over any document store.</td></tr>
+              <tr><td>Server-side agent logic (no app-store review cycle to ship behavior changes)</td><td>Implemented</td><td>Both <code>parseEntryFlow</code> and <code>askAgentFlow</code> are Genkit Cloud Functions — prompt/logic changes deploy independently of the Android app.</td></tr>
+              <tr><td>Correction-as-training-signal pipeline from day one</td><td>Implemented</td><td>See &sect;6 above.</td></tr>
+              <tr><td>Reliability over cleverness (structured output, validation, human-confirm)</td><td>Implemented</td><td>Enforced Zod schemas on the cloud path, a mandatory Confirm step before anything is final on every path.</td></tr>
+              <tr><td>Built agent-callable from day one (AppFunctions/App Intents-ready)</td><td>Not started</td><td>Not wired to any platform-level agent routing API — reasonable, since PRD &sect;7 lists this as explicitly out of scope for v0 (Android AppFunctions was in private preview as of the PRD's writing).</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>9. Data Model &amp; Security (backing PRD &sect;6 broadly)</h2>
+        <p>
+          Not a PRD section on its own, but worth stating plainly since everything
+          above depends on it: Firestore (<code>contempo-platform</code>, standard
+          edition, <code>us-central1</code>), real Google Sign-In (Credential Manager
+          + Google Identity Services, with an emulator-only fake-identity path for
+          local dev), and <code>firestore.rules</code>/<code>storage.rules</code> both
+          enforcing <code>request.auth.uid == uid</code>. A security-rules audit run
+          alongside this report found no cross-user access risk, but flagged the
+          rules have no field-level type or size validation on any document —
+          worth tightening before real users are writing to it, independent of PRD
+          feature coverage.
+        </p>
+
+        <h2>10. Go-to-Market &amp; Success Metrics (PRD &sect;9, &sect;10)</h2>
+        <p>
+          Entirely non-technical sections — trust moat, distribution, pricing,
+          retention framing, success metrics. Nothing here is "implementable" in the
+          codebase sense; they're unaffected by this status check. Worth flagging
+          only that MVP Scope &sect;10's exit criteria ("still logging weekly by
+          week 8," correction rate, etc.) require the app to actually be in a
+          pilot host's hands generating real usage data — the loop is now real
+          enough to run that clock (Implementation Walkthrough &sect;10), but no
+          usage data exists yet to evaluate against those criteria.
+        </p>
+
+        <h2>11. Summary</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>PRD &sect;6 area</th><th>Rough coverage</th></tr></thead>
+            <tbody>
+              <tr><td>6.1 Capture layer</td><td>Core (text/voice/manual) done; photo is the one real MVP-scope gap</td></tr>
+              <tr><td>6.2 AI copilot &amp; audit defense</td><td>Parsing + heuristic flags done; legal-grounding chat exists but ungrounded (no RAG, no curated FAQ)</td></tr>
+              <tr><td>6.3 Household &amp; team</td><td>Not started — correctly deferred</td></tr>
+              <tr><td>6.4 Manual &amp; trust layer</td><td>Mostly done; post-confirm editing is a real gap</td></tr>
+              <tr><td>6.5 Reporting &amp; export</td><td>CSV done; print/PDF is a real MVP-scope gap; pacing dashboard missing its projection</td></tr>
+              <tr><td>6.6 Platform &amp; portability</td><td>Android only — correctly deferred for iOS/Wear/web/quick-settings</td></tr>
+              <tr><td>6.7 Live progress &amp; quick capture</td><td>Not started — correctly deferred (MVP Scope &sect;5.1)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout warn">
+          <span class="callout-label">If prioritizing what to build next</span>
+          Three items above are genuine MVP-scope gaps rather than deliberate
+          deferrals — photo capture (&sect;3), the print/PDF export view (&sect;7),
+          and post-confirm entry editing (&sect;6). All three were explicitly called
+          for by MVP Scope v0 itself, not just the fuller PRD, and none require new
+          infrastructure decisions (storage rules and the repository method already
+          exist for two of the three) — they're the cheapest remaining distance
+          between "what MVP Scope actually asked for" and what's running today.
+        </div>
+
+      </article>
+
+      <a class="back-to-top" href="#top">&uarr; Back to top</a>
+    </main>
+  </div>
+
+  <script src="assets/toc.js"></script>
+</body>
+</html>

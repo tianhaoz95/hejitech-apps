@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Thin XML bridge theme — actual theming happens in ui/theme/Theme.kt via
+         Compose Material3. This just sets the pre-Compose window background
+         so there's no white/black flash before the first frame. -->
+    <style name="Theme.Contempo" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/contempo_paper</item>
+        <item name="android:statusBarColor">@color/contempo_paper</item>
+    </style>
+</resources>

@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MVP Implementation Walkthrough v0 — Contempo</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="dot"></span> STR Tracker Reports</div>
+    <nav>
+      <a href="index.html">All reports</a>
+    </nav>
+  </header>
+
+  <div class="report-shell">
+    <aside class="toc-col">
+      <div class="toc-title">On this page</div>
+      <ul id="toc-list"></ul>
+    </aside>
+
+    <main class="report-main">
+      <div class="report-header">
+        <div class="eyebrow">Implementation Walkthrough &middot; v0 &middot; Draft</div>
+        <h1>MVP Implementation Walkthrough</h1>
+        <p class="subtitle">
+          What got built against the MVP scope report, how the pieces fit together,
+          what's still unverified, and exactly how to run it.
+        </p>
+        <div class="doc-meta">
+          <span><strong>Status:</strong> Draft, unreviewed</span>
+          <span><strong>Version:</strong> v0</span>
+          <span><strong>Date:</strong> July 15, 2026</span>
+          <span><strong>Owner:</strong> Jackson Zhou</span>
+          <span><strong>Depends on:</strong> MVP Scope v0</span>
+        </div>
+      </div>
+
+      <article class="report-content">
+
+        <h2>1. What's Here</h2>
+        <p>
+          A working scaffold of the MVP core loop from the scope report's Section 7
+          (capture &rarr; parse &rarr; confirm &rarr; track &rarr; export), built as a
+          native Android app (Kotlin + Jetpack Compose) against a Firebase/Genkit
+          backend, structured as a monorepo that also has room reserved for iOS,
+          Wear OS, and web without needing to be restructured later.
+        </p>
+        <div class="callout">
+          <span class="callout-label">Update: compiled and run end-to-end, not just written</span>
+          This was first written blind (no Android SDK available), then actually
+          built and tested once an SDK was found on this machine — real compile
+          errors were found and fixed (Section 6.1), and the full loop was run on a
+          real emulator: captured an entry, confirmed it, watched it write to a
+          live Firestore emulator, and saw it appear on the Dashboard. Section 6 has
+          the honest before/after; Section 7's run instructions are now based on
+          what actually worked, not what was expected to.
+        </div>
+
+        <h2>2. Repository Layout</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Path</th><th>What it is</th></tr></thead>
+            <tbody>
+              <tr><td><code>android/app/</code></td><td>The phone app — MVP screens, live here</td></tr>
+              <tr><td><code>android/core/</code></td><td>Shared data models + Firestore repository, used by <code>app</code> now and <code>wear</code> once Wear capture starts</td></tr>
+              <tr><td><code>android/wear/</code></td><td>Minimal placeholder Wear OS module — compiles and installs, shows "coming soon." Real Wear capture is fast-follow (MVP scope Section 5.1)</td></tr>
+              <tr><td><code>backend/</code></td><td>Firebase project root — Firestore/Storage rules, emulator config, and the Genkit Cloud Functions</td></tr>
+              <tr><td><code>backend/functions/</code></td><td>Genkit flows: <code>parseEntry</code> (cloud fallback for parsing) and <code>flagRisk</code> (contemporaneity/vagueness heuristics)</td></tr>
+              <tr><td><code>ios/</code>, <code>web/</code></td><td>Reserved, empty except a README explaining why — see MVP scope Section 6 and PRD Section 4.4</td></tr>
+              <tr><td><code>branding/</code>, <code>reports/</code>, <code>scripts/</code></td><td>Unchanged — the landing page mockup and planning docs from before this build</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>3. The Core Loop, As Built</h2>
+        <p>Matches MVP scope report Section 7 exactly, one screen per step:</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Step</th><th>Screen / file</th><th>What happens</th></tr></thead>
+            <tbody>
+              <tr><td>Capture</td><td><code>ui/capture/CaptureScreen.kt</code></td><td>Type, or tap the mic for Android's built-in speech-to-text (<code>RecognizerIntent</code>) — transcription lands in the same text field, nothing STT-specific downstream</td></tr>
+              <tr><td>Parse</td><td><code>agent/AgentClient.kt</code></td><td>Hybrid on-device/cloud — see Section 4</td></tr>
+              <tr><td>Confirm</td><td><code>ui/confirm/ConfirmScreen.kt</code></td><td>Same screen serves both "review the AI draft" and "manual entry from scratch" — see the callout below</td></tr>
+              <tr><td>Track</td><td><code>ui/dashboard/DashboardScreen.kt</code></td><td>Confirmed hours vs. a hardcoded 100-hour STR threshold, plus the entry list with risk flags shown inline</td></tr>
+              <tr><td>Export</td><td><code>ui/export/ExportScreen.kt</code></td><td>CSV generated on-device, shared via Android's share sheet</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout">
+          <span class="callout-label">Design choice worth knowing about</span>
+          Confirm and manual entry aren't two screens — <code>ConfirmScreen</code> is
+          the full editable field set either way. Tapping "Enter manually instead"
+          on the Capture screen just navigates straight there with empty fields.
+          This is the PRD's "manual and AI-drafted entries carry the same weight"
+          principle showing up as one less screen to build and keep in sync, not
+          just a policy statement.
+        </div>
+
+        <h2>4. Hybrid On-Device / Cloud Parsing</h2>
+        <p>
+          <code>AgentClient.parseEntry()</code> tries on-device Gemini Nano first
+          (Firebase AI Logic hybrid inference, <code>PREFER_ON_DEVICE</code>), and
+          falls back to the cloud <code>parseEntry</code> Genkit flow whenever the
+          on-device attempt throws, isn't available, or its response doesn't parse
+          as valid JSON.
+        </p>
+        <p>
+          Neither path uses tool-calling. That's deliberate, not a missing feature:
+          Firebase's own docs confirm function calling isn't available for on-device
+          inference at all, and a single Gemini call can't offer tools <em>and</em>
+          force schema-shaped JSON output on the same request (the MVP scope
+          report's Section 8 gotcha). Instead, <code>EntryDraftSchema</code> is a
+          single self-describing shape — <code>needsClarification</code> plus either
+          a complete draft or a clarifying question — so one structured-output call
+          handles both the happy path and the "I need one more detail" path. Cloud
+          gets a real enforced schema (Genkit's <code>output: { schema }</code>);
+          on-device gets a carefully worded prompt asking for the same shape as
+          plain text, best-effort parsed.
+        </p>
+        <div class="callout warn">
+          <span class="callout-label">Real constraints on the on-device path, not hypothetical</span>
+          Per Firebase's hybrid-inference docs: foreground-only (won't run if the
+          app is backgrounded), English and Korean only, and a roughly 4,000-token
+          cap on the whole request. None of these block the MVP loop — capture is a
+          foreground, English-language interaction by default — but they're the
+          reason on-device can't quietly absorb background/passive parsing later
+          without falling back to cloud anyway.
+        </div>
+        <p>
+          <strong>Update (Section 9):</strong> the original version of this class
+          always requested <code>PREFER_ON_DEVICE</code> and silently fell back to
+          cloud on any failure — which meant there was no way to actually confirm
+          on-device inference was doing anything rather than quietly billing cloud
+          on every call. Settings now exposes a user-controlled
+          <code>InferencePreference</code> (On-device only / Prefer on-device /
+          Cloud only) that <code>AgentClient</code> reads on every call; "On-device
+          only" deliberately does <em>not</em> fall back — see Section 9.3 for the
+          real device test that proves this.
+        </p>
+
+        <h2>5. Data Model &amp; Security</h2>
+        <p>
+          Firestore, nested under a single owner (no household/team sharing yet —
+          fast-follow per the MVP scope report):
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Path</th><th>Contents</th></tr></thead>
+            <tbody>
+              <tr><td><code>users/{uid}/properties/{id}</code></td><td>Property names</td></tr>
+              <tr><td><code>users/{uid}/entries/{id}</code></td><td>Log entries — status, source, category, risk flags, timestamps</td></tr>
+              <tr><td><code>users/{uid}/corrections/{id}</code></td><td>The correction-feedback pipeline: AI value vs. final confirmed value, per field, written whenever they differ at confirm time</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <code>firestore.rules</code> and <code>storage.rules</code> both just check
+          <code>request.auth.uid == uid</code> — this was smoke-tested by actually
+          starting the emulator suite against these exact rules files (Section 6.3),
+          not just checked for valid syntax.
+        </p>
+        <p>
+          <strong>Update (Section 9):</strong> anonymous auth has been replaced with
+          real Google Sign-In. <code>MainActivity</code>'s <code>AuthGate</code> now
+          renders a <code>SignInScreen</code> (instead of an indefinite spinner) until
+          <code>auth.currentUser</code> is real, so nothing hits Firestore before a
+          real signed-in uid exists. <code>uid</code>-scoped rules didn't need to
+          change — swapping the auth method just changes which uid ends up in that
+          slot.
+        </p>
+
+        <h2>6. What Was Actually Verified, and What Wasn't</h2>
+        <p class="muted">
+          This section originally described a build that had only been reasoned
+          about, not run. An Android SDK turned up on this machine
+          (<code>~/Library/Android/sdk</code>) after this report was first drafted,
+          so everything below is now from an actual build, not just static
+          inspection.
+        </p>
+
+        <h3>6.1 Real bugs found by actually compiling, and fixed</h3>
+        <p>Eight, across three build attempts, before the first clean build:</p>
+        <ul>
+          <li><strong>Root <code>build.gradle.kts</code> never declared the <code>com.android.library</code> plugin</strong> even though <code>core/build.gradle.kts</code> applied it — caused a "plugin already on the classpath with an unknown version" failure before a single Kotlin file even compiled.</li>
+          <li><strong><code>core</code> module used <code>FirebaseAuth</code> without depending on it</strong> — only <code>firebase-firestore</code> was declared; <code>FirestoreEntryRepository</code> needed <code>firebase-auth</code> too.</li>
+          <li><strong>A same-named class/function collision</strong> — <code>MainActivity.kt</code> had a <code>@Composable fun ContempoApp()</code> in the same package as the <code>ContempoApp</code> <code>Application</code> subclass. Kotlin genuinely can't disambiguate a zero-arg composable call from a zero-arg constructor call with the same name — real "overload resolution ambiguity" compile error. Renamed the composable to <code>ContempoRoot</code>.</li>
+          <li><strong>Wrong package paths for Firebase AI Logic's hybrid-inference types</strong> — the previous draft of this report flagged <code>GenerativeBackend</code>/<code>InferenceMode</code>/<code>OnDeviceConfig</code> as "inferred, not confirmed." They were wrong. Resolved by decompiling the actual downloaded <code>firebase-ai-17.13.0.aar</code> with <code>javap</code> rather than guessing again: <code>InferenceMode</code> and <code>OnDeviceConfig</code> live directly under <code>com.google.firebase.ai</code>; <code>GenerativeBackend</code> and <code>PublicPreviewAPI</code> are under <code>com.google.firebase.ai.type</code>.</li>
+          <li><strong><code>HttpsCallableResult.data</code> isn't accessible as a Kotlin property</strong> on this SDK version despite a public Java getter — Kotlin's metadata marks it private for property-access purposes. Fixed by calling <code>.getData()</code> explicitly as a method.</li>
+          <li><strong><code>ExposedDropdownMenu</code> isn't a top-level composable</strong> in Compose Material3 1.3.1 (the version this BOM resolved to) — it's a member of <code>ExposedDropdownMenuBoxScope</code>, called with an implicit receiver. The import itself was invalid and had to be removed, not fixed.</li>
+          <li><strong>A missing <code>padding</code> import</strong> and <strong>a leftover unbalanced brace</strong> from an earlier hand-edit, both simple mechanical mistakes.</li>
+          <li><strong>No network security config for cleartext traffic to the Firebase emulators.</strong> This one didn't show up as a compile error — the app built and launched fine, but anonymous sign-in against the local Auth emulator silently never completed (stuck on <code>AuthGate</code>'s loading spinner indefinitely). Android blocks cleartext HTTP by default for apps targeting API 28+; Firebase's <code>useEmulator()</code> calls use plain HTTP to <code>10.0.2.2</code>. Fixed with a debug-build-only network security config (<code>app/src/debug/res/xml/network_security_config.xml</code> + a matching debug-only manifest override) so release builds stay locked down.</li>
+        </ul>
+
+        <h3>6.2 The actual end-to-end test that was run</h3>
+        <p>
+          Not a simulation — an installed AVD (Pixel 7 profile, API 36.1/"Baklava,"
+          Google Play system image, arm64 for Apple Silicon host acceleration)
+          running the real <code>app-debug.apk</code> against a real
+          <code>firebase emulators:start --project demo-contempo</code> instance:
+        </p>
+        <ol>
+          <li>App launched cold — no crash, <code>FirebaseInitProvider</code> initialized successfully, themed UI rendered correctly (confirmed via screenshot, including the pine-green <code>AuthGate</code> spinner in the correct brand color).</li>
+          <li>Anonymous sign-in completed against the Auth emulator once the network security config fix landed — <code>AuthGate</code> correctly revealed the Capture screen.</li>
+          <li>Navigated Capture &rarr; "Enter manually instead" &rarr; Confirm screen — all fields (Property, What you did, Duration, Category dropdown with all 6 <code>EntryCategory</code> values) rendered and accepted input correctly.</li>
+          <li>Filled in a real entry ("Maple St" / "Cleaned pool and restocked towels" / 35 min / maintenance) and tapped Confirm.</li>
+          <li><strong>The write reached Firestore and succeeded</strong> — the emulator's own debug log briefly showed a real, since-fixed problem (<code>google-services.json</code>'s placeholder project ID didn't match the emulator's demo project, so the very first attempt failed with <code>Invalid app id</code>; corrected the local test file's project ID to <code>demo-contempo</code> to match).</li>
+          <li>App auto-navigated to the Dashboard, which displayed the just-saved entry — property, task, duration, and formatted timestamp all correct — with the hours-toward-threshold bar showing progress.</li>
+        </ol>
+        <div class="callout warn">
+          <span class="callout-label">One thing this test does NOT cover</span>
+          The on-device/cloud AI parsing path (<code>AgentClient.parseEntry</code>)
+          wasn't exercised — that requires a real Gemini API key and a deployed (or
+          locally-served) <code>parseEntry</code> Genkit function, neither of which
+          exist yet. The test above used the manual-entry path deliberately, since
+          it's the one piece of the loop that doesn't depend on external
+          credentials. Testing the AI path is the natural next verification step
+          once a <code>GOOGLE_GENAI_API_KEY</code> exists.
+        </div>
+
+        <h3>6.3 Still not verified</h3>
+        <ul>
+          <li>The AI parsing path itself (see callout above) — on-device Gemini Nano and the cloud <code>parseEntry</code> Genkit flow have never actually run.</li>
+          <li>The Genkit backend has never been built (<code>tsc</code>) or deployed — only its config/rules were exercised, not the TypeScript itself.</li>
+          <li>The Wear OS placeholder module compiles (confirmed) but has never been installed on a Wear emulator or device.</li>
+          <li>Photo capture, CSV export/share, and voice-to-text (<code>RecognizerIntent</code>) are implemented but untested — none were exercised in this pass.</li>
+          <li>Gradle/AGP/Kotlin/Compose BOM versions in <code>libs.versions.toml</code> are whatever resolved successfully during this test (AGP 8.7.2 explicitly warned it was "tested up to compileSdk 35," not the 36 used here) — it built clean despite the warning, but a newer AGP is worth picking up when convenient rather than treating this pairing as final.</li>
+        </ul>
+
+        <h2>7. How to Run It</h2>
+
+        <h3>7.1 Backend + emulator</h3>
+        <ol>
+          <li>
+            <code>cd backend/functions && npm install</code>
+          </li>
+          <li>
+            <code>cd .. && firebase emulators:start --project demo-contempo</code><br />
+            <span class="muted">Runs fully offline against a demo project — no real Firebase project needed yet. Emulator UI at <code>http://localhost:4000</code>.</span>
+          </li>
+          <li>
+            Optional, only if you want to poke at <code>parseEntry</code> directly without the app: export
+            <code>GOOGLE_GENAI_API_KEY</code> and run <code>npx genkit start -- npm --prefix functions run build:watch</code>
+            for the Genkit dev UI.
+          </li>
+        </ol>
+
+        <h3>7.2 Android app</h3>
+        <p class="muted">The steps below are what actually worked in this build, not the original guess.</p>
+        <ol>
+          <li>
+            <strong>JDK 17, not whatever's newest.</strong> This machine also had JDK
+            26 on PATH by default, which is too new for this Gradle/AGP pairing.
+            Point <code>JAVA_HOME</code> at a JDK 17 install before building —
+            Android Studio bundles its own compatible JDK automatically if you use
+            its UI instead of a terminal.
+          </li>
+          <li>
+            If opening in Android Studio: let it generate the Gradle wrapper on
+            first sync. From a terminal instead, with no <code>gradlew</code>
+            committed yet: download any Gradle 8.x distribution once, then run its
+            <code>bin/gradle wrapper --gradle-version 8.11.1</code> from inside
+            <code>android/</code> to generate <code>gradlew</code> — this is a
+            one-time bootstrap.
+          </li>
+          <li>
+            <code>local.properties</code> needs <code>sdk.dir=/path/to/Android/sdk</code>
+            (see <code>local.properties.example</code>) — Android Studio writes this
+            automatically; from a terminal, write it by hand.
+          </li>
+          <li>
+            <strong><code>google-services.json</code>'s project ID must match whatever
+            Firebase project (real or demo) you're actually pointing at</strong> — this
+            surfaced as a real failure in testing: a placeholder project ID compiles
+            fine but every Firestore write silently fails with <code>Invalid app id</code>
+            until it matches. For local emulator testing before the real project exists,
+            set <code>project_id</code>/<code>storage_bucket</code> to <code>demo-contempo</code>
+            (matching the <code>--project demo-contempo</code> flag in Section 7.1) rather
+            than leaving the literal placeholder text in place.
+          </li>
+          <li>Run on an emulator or a device with Google Play services. Debug builds point at <code>10.0.2.2</code> for the Firebase emulators — that's the special alias the Android <em>emulator</em> uses to reach your host machine; replace it with your machine's LAN IP in <code>ContempoApp.kt</code> if you're running on a physical device instead. The debug-only network security config (Section 6.1) already permits cleartext to that host — nothing extra to configure there.</li>
+        </ol>
+
+        <div class="callout risk">
+          <span class="callout-label">If you want a GUI step-by-step instead</span>
+          Everything above assumes a terminal for the actual click-through — ask
+          directly for a walkthrough of any specific step (e.g. "walk me through
+          creating the Firebase Android app and downloading google-services.json")
+          and it'll be spelled out with exact menu paths rather than assumed here.
+        </div>
+
+        <h3>7.3 What "working" looks like</h3>
+        <p class="muted">This is no longer a prediction — it's what was actually observed, screenshot by screenshot, in Section 6.2.</p>
+        <ol>
+          <li>App launches to a brief spinner (anonymous sign-in), then the Capture screen.</li>
+          <li>Type or speak an entry, e.g. "cleaned the pool and restocked towels, about 35 minutes" — or tap "Enter manually instead" to go straight to the same field set with nothing pre-filled.</li>
+          <li>Typed path: it parses (on-device first, cloud fallback), lands on Confirm with fields pre-filled. Manual path: same Confirm screen, empty. Both were confirmed to render correctly, including the category dropdown's full set of options.</li>
+          <li>Confirm (editing anything first, if you want) — it writes to Firestore and bounces to the Dashboard. <strong>Confirmed working</strong> against a live Firestore emulator.</li>
+          <li>Dashboard shows the entry and updated hours-toward-threshold. <strong>Confirmed</strong> — property, task, duration, and timestamp all displayed correctly for the saved entry.</li>
+          <li>Export screen generates a CSV and hands it to the Android share sheet. Implemented, not yet exercised in a live test.</li>
+        </ol>
+
+        <h2>9. Round 2: Google Sign-In, Settings, Verified On-Device Testing, Agent Chat</h2>
+        <p class="muted">
+          After using the round-1 build, four gaps were flagged directly: no real
+          login, no way to control the app's behavior, no way to actually confirm
+          on-device inference was being used rather than silently falling back to
+          cloud, and no way to ask the agent a free-form question. This section
+          covers what changed and — same standard as Section 6 — what was actually
+          run, not just written.
+        </p>
+
+        <h3>9.1 What changed</h3>
+        <ul>
+          <li><strong>Google Sign-In replaces anonymous auth.</strong> New <code>auth/AuthManager.kt</code> branches on <code>BuildConfig.USE_FIREBASE_EMULATOR</code>: the real path uses Credential Manager + Google Identity Services (<code>GetGoogleIdOption</code>, needs a <code>GOOGLE_WEB_CLIENT_ID</code> in <code>local.properties</code> once a real Firebase project exists); the emulator path skips Google entirely and hands the Auth emulator a small fixed fake-identity JSON as the "ID token" — see the callout below for why that's not a hack.</li>
+          <li><strong>Settings screen</strong> (<code>ui/settings/</code>), reached via a gear icon in a shared top bar rather than a 5th bottom-nav tab. Two sections: Account (signed-in name/email, sign out) and AI model (the inference-preference toggle below).</li>
+          <li><strong><code>InferencePreference</code> enum</strong> (<code>agent/InferencePreference.kt</code>) — On-device only / Prefer on-device / Cloud only — persisted via a plain-<code>SharedPreferences</code>-backed <code>AiSettingsStore</code>, read fresh by <code>AgentClient</code> on every call rather than baked in at construction time.</li>
+          <li><strong>Chat</strong> (<code>ui/chat/</code>), a 4th bottom-nav tab ("Ask"). New <code>askAgentFlow</code> Genkit flow (<code>backend/functions/src/flows/askAgent.ts</code>) answers free-form questions grounded in the host's own logged hours, with an explicit "not tax/legal advice" framing baked into the prompt. History is in-memory only for this round (no Firestore persistence) — a deliberate scope cut, not an oversight.</li>
+          <li><code>ParseSource</code> (on-device vs. cloud) is now threaded through to the Confirm screen as a small caption, so a parse's origin is visible instead of invisible.</li>
+        </ul>
+
+        <div class="callout">
+          <span class="callout-label">The emulator sign-in trick, explained</span>
+          The Firebase Auth emulator doesn't verify federated (Google/etc.) ID
+          tokens against the real provider — it decodes whatever string is passed
+          as the token and, if it parses as JSON, takes <code>sub</code>/<code>email</code>/<code>name</code>
+          as the resulting user's claims. So <code>AuthManager</code>'s emulator path
+          builds that JSON locally and calls <code>signInWithCredential(GoogleAuthProvider.getCredential(json, null))</code>
+          directly — no Google Identity Services call, no real Firebase project, no
+          SHA-1 fingerprint, no OAuth Web Client ID needed to exercise the whole
+          sign-in &rarr; Firestore-scoped-by-uid &rarr; sign-out loop right now. The
+          real Credential Manager path is fully implemented alongside it, just not
+          exercisable until a real Firebase project exists.
+        </div>
+
+        <h3>9.2 Real bugs found by actually compiling and running this round</h3>
+        <ul>
+          <li><strong>Nested block comment broke the whole file.</strong> A doc comment containing the literal text <code>flows/*.ts</code> — Kotlin, unlike Java, nests block comments, so the <code>/*</code> inside that path fragment silently opened a second comment; the outer comment's closing <code>*/</code> then closed the wrong one, leaving the rest of the file "inside" an unclosed comment. Fixed by rewording the comment, not by any special escaping (there isn't one).</li>
+          <li><strong><code>InferenceMode.ONLY_ON_DEVICE</code>/<code>PREFER_ON_DEVICE</code> needed <code>@OptIn(PublicPreviewAPI::class)</code> at every call site</strong>, not just where the <code>GenerativeModel</code> is constructed — referencing the enum constants themselves is also gated by the experimental-API annotation.</li>
+          <li><strong>Chat's input field hid behind the keyboard.</strong> Found live, on-device: <code>ChatScreen</code>'s root <code>Column</code> had no <code>imePadding()</code>, so on this edge-to-edge activity the bottom-anchored input row could end up rendered underneath the software keyboard instead of above it. One-line fix (<code>Modifier.imePadding()</code>), but only findable by actually opening the keyboard on a real screen — this is exactly the kind of bug static review or a compile check can't catch.</li>
+        </ul>
+
+        <h3>9.3 The actual tests that were run</h3>
+        <p>Same AVD (Pixel 7, API 36.1) and Firebase emulator suite as Section 6.2, with <code>adb reverse</code> forwarding all four emulator ports (see <code>scripts/run-android-with-emulators.sh</code>, written for a physical device but the same port-forwarding applies to an AVD):</p>
+        <ol>
+          <li><strong>Sign-in / sign-out loop:</strong> cleared app data to force a clean <code>SignInScreen</code>, tapped "Sign in with Google," and confirmed via logcat (<code>FirebaseAuth: Notifying auth state listeners about user (...)</code>) that the fake-credential path produced a real signed-in user. Settings correctly displayed the fake identity's name/email ("Pilot Host" / "pilot@example.test") — proving the emulator's JSON-decoding behavior works exactly as documented.</li>
+          <li><strong>"On-device only" fails loud, not silent:</strong> selected "On-device only" in Settings, submitted a manual capture. The on-device model isn't actually available on this AVD, and — as designed — the app showed "On-device model unavailable — no cloud fallback" instead of quietly calling cloud. Confirmed via the Functions emulator log that <code>parseEntry</code> was never invoked: this is the direct fix for "I can't tell if on-device is actually being used."</li>
+          <li><strong>"Cloud only" actually reaches the cloud function:</strong> switched to "Cloud only," submitted the same capture — this time the app displayed a real error surfaced from Google's own GenAI client library ("Please set a valid API key…"), proving the <code>parseEntry</code> callable really was invoked over the network this time (it fails only because no <code>GOOGLE_GENAI_API_KEY</code> is configured in this environment — the same pre-existing, already-flagged gap from Section 6.3, not something new).</li>
+          <li><strong>Chat round-trip:</strong> sent a real question ("Will cleaning count toward my 100 hours") from the Ask tab — the user bubble rendered correctly, <code>ChatViewModel</code> called <code>AgentClient.askQuestion</code>, which (Cloud only still selected) called the new <code>askAgent</code> callable and got the same expected missing-API-key error back, rendered as the chat's error state. Full plumbing confirmed working end to end; only the actual LLM answer is blocked on a real API key.</li>
+        </ol>
+        <div class="callout warn">
+          <span class="callout-label">Still not verified</span>
+          Everything that needs a real <code>GOOGLE_GENAI_API_KEY</code> — actual
+          on-device Gemini Nano inference (this AVD doesn't have the model
+          available at all) and actual LLM answers from either
+          <code>parseEntry</code> or the new <code>askAgent</code>. The backend
+          TypeScript does now build clean (<code>npm run build</code> in
+          <code>backend/functions</code>, verified this round — round 1 had never
+          actually run <code>tsc</code>, only the config/rules files were exercised).
+        </div>
+
+        <h2>10. Immediate Next Steps</h2>
+        <ul>
+          <li>Get a real <code>GOOGLE_GENAI_API_KEY</code> and test actual LLM answers on all three paths — on-device parsing, cloud parsing, and chat — now that the plumbing for all three is confirmed working</li>
+          <li>Create the real Firebase project, enable the Google sign-in provider, add a SHA-1 fingerprint, and set <code>GOOGLE_WEB_CLIENT_ID</code> in <code>local.properties</code> to exercise the real (non-emulator) Credential Manager sign-in path — the emulator fake-credential path stands in until then</li>
+          <li>Drop in the real <code>google-services.json</code>, swapping out the <code>demo-contempo</code> placeholder used for all testing so far</li>
+          <li>Exercise photo capture, CSV export/share, and voice-to-text — implemented but not yet clicked through</li>
+          <li>Decide whether chat history should eventually persist to Firestore (deliberately skipped this round) once real usage shows whether losing history on app restart is actually a problem</li>
+          <li>The core loop's exit-criteria clock (MVP scope report Section 10) can now legitimately start — "still logging weekly by week 8" presumes a loop that actually runs, which this now demonstrably is</li>
+        </ul>
+
+      </article>
+
+      <a class="back-to-top" href="#top">&uarr; Back to top</a>
+    </main>
+  </div>
+
+  <script src="assets/toc.js"></script>
+</body>
+</html>

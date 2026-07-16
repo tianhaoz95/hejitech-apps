@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MVP Scope v0 — AI-Native STR Material Participation Tracker</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="dot"></span> STR Tracker Reports</div>
+    <nav>
+      <a href="index.html">All reports</a>
+    </nav>
+  </header>
+
+  <div class="report-shell">
+    <aside class="toc-col">
+      <div class="toc-title">On this page</div>
+      <ul id="toc-list"></ul>
+    </aside>
+
+    <main class="report-main">
+      <div class="report-header">
+        <div class="eyebrow">Scope Document &middot; v0 &middot; Draft</div>
+        <h1>MVP Scope</h1>
+        <p class="subtitle">
+          The narrowest build that tests the actual unknown — whether frictionless
+          capture changes logging behavior — without chasing feature parity with
+          better-funded competitors before that's proven.
+        </p>
+        <div class="doc-meta">
+          <span><strong>Status:</strong> Draft</span>
+          <span><strong>Version:</strong> v0</span>
+          <span><strong>Date:</strong> July 14, 2026</span>
+          <span><strong>Owner:</strong> Jackson Zhou</span>
+          <span><strong>Depends on:</strong> PRD v0</span>
+        </div>
+      </div>
+
+      <article class="report-content">
+
+        <h2>1. Purpose of This Document</h2>
+        <p>
+          PRD v0 describes the full product — passive signal fusion, a legal-grounding
+          copilot, household constraint checking, wearable capture, a concierge
+          audit-defense tier. Almost none of that should ship on day one. This document
+          cuts that scope down to an MVP: the smallest build that tests the product's
+          actual hypothesis and gets real hosts logging real hours, without spending
+          months on infrastructure the hypothesis might not even need.
+        </p>
+
+        <h2>2. The MVP Hypothesis</h2>
+        <div class="callout">
+          <span class="callout-label">What we're actually testing</span>
+          Hosts fail material participation not because the strategy doesn't work, but
+          because logging doesn't survive a busy year. The bet is that removing
+          capture friction — no form, no app-open requirement, talk or text it — measurably
+          changes whether a host is still logging in November. Everything else in the
+          PRD is either in service of that bet (trust, so hosts believe the record
+          holds up) or a moat layered on <em>after</em> the bet is confirmed (passive
+          signal fusion, integrations, household features).
+        </div>
+        <p>
+          If frictionless capture doesn't change logging behavior, no amount of
+          passive-signal sophistication or legal-copilot depth saves the product. So
+          the MVP should isolate and test that one mechanism as cheaply as possible,
+          not build the full moat first.
+        </p>
+
+        <h2>3. Scoping Principle</h2>
+        <p>
+          Cut toward the untested part of the hypothesis; defer anything whose main
+          job is closing a competitive gap rather than testing the mechanism above.
+          Concretely: <strong>PMS/Airbnb/VRBO integration is explicitly out of MVP</strong>
+          — it's the deepest engineering investment in the whole feature set, and
+          it's a parity play against STR Loophole, not a test of the friction
+          hypothesis. The same logic cuts geofence, bank/Plaid signals, and smart-lock
+          access — all real differentiators eventually, all deferred until the core
+          loop is validated.
+        </p>
+
+        <h2>4. In Scope for MVP</h2>
+
+        <h3>4.1 Capture</h3>
+        <ul>
+          <li>Manual entry form — full fields, always available, the baseline</li>
+          <li>Natural-language text entry, parsed into structured fields (property, task, duration, category) with one clarifying question when needed</li>
+          <li>Voice memo capture, transcribed and parsed the same way as text</li>
+          <li>Photo attachment as evidence on any entry</li>
+        </ul>
+
+        <h3>4.2 Trust &amp; review</h3>
+        <ul>
+          <li>Every AI-drafted entry lands pending, requiring one-tap confirm or edit before it's final</li>
+          <li>Every field on every entry editable after the fact, regardless of capture method</li>
+          <li>Basic contemporaneity flag: entries logged more than N days after their activity date are marked, visibly, on the entry itself</li>
+          <li>Basic vague-entry flag: very short or generic descriptions prompt for one more detail before they're accepted</li>
+        </ul>
+
+        <h3>4.3 Output</h3>
+        <ul>
+          <li>Simple pacing dashboard: hours logged vs. the selected test's threshold, with a projected finish date at current pace</li>
+          <li>CSV export</li>
+          <li>A minimal print/PDF view of the entry list — not the full narrative CPA package from the PRD, just something a host can hand over today</li>
+        </ul>
+
+        <h3>4.4 Platform</h3>
+        <ul>
+          <li>Android app (Section 6) — text, voice, manual, and photo capture all live here at MVP; the SMS gateway is deferred (Section 5.1)</li>
+          <li>A minimal web app: export and account settings only, not a capture surface</li>
+        </ul>
+
+        <h2>5. Deferred, With Reasoning</h2>
+
+        <h3>5.1 Fast-follow (targeted for the first 2–3 releases after MVP)</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Feature</th><th>Why it's fast-follow, not MVP</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>iOS app</td><td>Same core loop as Android, mostly a build-cost question rather than a hypothesis question — sequence after the Android loop is validated with the pilot user (Section 6)</td></tr>
+              <tr><td>SMS-to-log gateway (Twilio)</td><td>Provider is decided (Twilio), but standing up a dedicated number and the associated account/compliance logistics is real overhead the pilot user wants to defer — not a technical difficulty, a bandwidth one. Text/voice capture inside the app already covers the "no form" mechanism at MVP; SMS specifically adds the "no app at all" case, which matters most once there are non-primary participants (cleaners, co-hosts) to onboard frictionlessly</td></tr>
+              <tr><td>Calendar sync (Google/Apple)</td><td>Cheap relative to PMS integration, meaningfully reduces friction further, but not required to test the core mechanism</td></tr>
+              <tr><td>Live Activity (iOS) / Live Update (Android 16+)</td><td>A strong retention/delight feature once people are already logging — doesn't help prove whether they'll log in the first place</td></tr>
+              <tr><td>Wear OS / Apple Watch capture</td><td>Same reasoning as Live Activity — polish on a validated loop, not a test of the loop itself</td></tr>
+              <tr><td>Android quick-settings tile / iOS quick-capture affordances</td><td>Meaningful friction reduction, but secondary to proving voice/text capture works at all</td></tr>
+              <tr><td>Curated legal-grounding FAQ (static content + LLM phrasing, not full dynamic RAG)</td><td>Cheap trust signal, high leverage relative to effort — but the full case-law RAG system in the PRD is unnecessary until usage justifies the infrastructure</td></tr>
+              <tr><td>Household / multi-participant logging</td><td>Real need for portfolio operators, but the MVP persona (solo or 2–3 property host) doesn't require it</td></tr>
+              <tr><td>Quick-add templates for repeat tasks</td><td>Nice friction reducer once real usage patterns are known — premature to guess templates before any usage data exists</td></tr>
+              <tr><td>Polished CPA-ready package (narrative + attachments + readiness score UI)</td><td>The minimal CSV/print export tests whether people need this at all before investing in the polished version</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>5.2 Deferred further out (v2+)</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Feature</th><th>Why it waits</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Geofence-triggered passive capture</td><td>Real differentiator, but background-location permission UX and battery/reliability tuning is a meaningful project on its own</td></tr>
+              <tr><td>PMS / Airbnb / VRBO / Booking.com integration</td><td>The single most expensive integration in the PRD, and it's a parity play against STR Loophole rather than a wedge — see Section 3</td></tr>
+              <tr><td>Bank / Plaid transaction signals</td><td>Privacy-sensitive, not core to the friction hypothesis, and needs its own trust framing before it should ship</td></tr>
+              <tr><td>Smart-lock access logs</td><td>Niche signal, meaningful engineering for a relatively small slice of hosts</td></tr>
+              <tr><td>Household constraint checking (real-time "your co-host's hours risk exceeding yours")</td><td>Depends on multi-participant logging shipping first</td></tr>
+              <tr><td>Concierge audit-defense tier</td><td>A monetization and trust play that makes the most sense once there's a paying base to sell it to</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout warn">
+          <span class="callout-label">Note on the landing page mockup</span>
+          <code>branding/landing_v0</code> depicts the full north-star vision — watch capture,
+          lock-screen Live Activity, the three-surface capture story — because that's
+          useful for conveying the product's feel and for beta recruiting. It is not
+          the MVP feature list. Watch and lock-screen capture in particular are
+          fast-follow (Section 5.1), not present at MVP launch — worth being explicit
+          about internally so the mockup doesn't get mistaken for the build plan.
+        </div>
+
+        <h2>6. Platform Sequencing</h2>
+        <div class="callout">
+          <span class="callout-label">Decided</span>
+          <strong>Android first, iOS fast-follow.</strong> The demographic assumption
+          in the earlier draft of this section (STR hosts skew iOS) is exactly the
+          kind of thing this section said should override the default — and it just
+          did. The first actual pilot user is Android, which settles the question
+          more reliably than a demographic guess: build for the person who's really
+          going to use it before the person who might.
+        </div>
+        <p>
+          This also means the Android/Wear OS feasibility research from earlier in
+          this project (Quick Settings tile as the hands-free trigger, Wear OS
+          Tiles/Widgets, Android 16's Live Updates via <code>Notification.ProgressStyle</code>)
+          stops being a parity check and becomes the actual MVP platform spec — worth
+          re-reading with that lens before build starts.
+        </p>
+        <ul>
+          <li><strong>Android ships first, native</strong> (Kotlin/Compose, not cross-platform) — chosen specifically because it integrates more directly with Wear OS and native platform libraries than a cross-platform framework would, which matters given Wear OS capture is an explicit fast-follow target (Section 5.1), not a someday-maybe.</li>
+          <li><strong>iOS fast-follow</strong>, sequenced right after the core loop is validated with the pilot user rather than run in parallel from day one — same reasoning as before, just the other direction: shared backend keeps the second platform cheap once the first proves the loop works.</li>
+          <li>The SMS gateway is no longer a day-one channel — it's deferred (Section 5.1). At MVP, the Android app itself (text/voice/manual/photo) is the only capture surface.</li>
+        </ul>
+
+        <h2>7. Core MVP User Flow</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Step</th><th>What happens</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>1. Capture</strong></td><td>Text, speak, or manually fill the form. No passive signals yet — every entry starts from a deliberate action.</td></tr>
+              <tr><td><strong>2. Parse</strong></td><td>The agent extracts property, task, duration, and category, asking one clarifying question only if it can't infer confidently.</td></tr>
+              <tr><td><strong>3. Confirm</strong></td><td>The draft sits pending until a one-tap confirm or edit. Nothing is final without this step, on any entry.</td></tr>
+              <tr><td><strong>4. Track &amp; export</strong></td><td>The pacing dashboard shows progress toward the chosen threshold; CSV or print export hands the record to a CPA on request.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>8. Architecture Notes for MVP</h2>
+        <div class="callout">
+          <span class="callout-label">Decided</span>
+          <strong>Backend: Firebase</strong> — Firestore for entry storage (its built-in
+          offline persistence directly serves the PRD's "works without signal, syncs
+          when back in range" requirement), Firebase Auth, Storage for photo
+          evidence, and FCM for push nudges. The agent/LLM layer is built on
+          <strong>Genkit</strong> (Firebase's open-source server-side AI framework),
+          which covers the MVP tool-calling (<code>log_entry</code>,
+          <code>flag_risk</code>), the confirm/edit step as a human-in-the-loop
+          pattern, and gives a natural home for the legal-copilot RAG when that
+          moves beyond curated FAQ. Chosen over standing up bespoke infrastructure
+          before the core loop is validated — consistent with the scoping principle
+          in Section 3.
+        </div>
+        <div class="callout">
+          <span class="callout-label">Decided</span>
+          <strong>Model: latest Gemini Flash via Firebase AI Logic</strong>, with
+          on-device Gemini Nano used through Firebase AI Logic's hybrid-inference
+          API during MVP to save cost — <code>PREFER_ON_DEVICE</code> mode, falling
+          back to cloud automatically. This is an experimental Google feature as of
+          mid-2026, so build against its real constraints rather than assume
+          parity with cloud: on-device inference only runs while the app is in the
+          foreground, only supports English and Korean (cloud fallback is the only
+          option for any other locale), and caps at 4,000 tokens for the entire
+          on-device request. None of these block the MVP loop — capture is a
+          foreground, English-language interaction by default — but they do mean
+          on-device can't quietly cover background/passive parsing later without
+          falling back to cloud anyway.
+        </div>
+        <div class="callout">
+          <span class="callout-label">Decided</span>
+          <strong>Local dev: Firebase Emulator Suite</strong>, not a live Firebase
+          project — the pilot user is creating the real project in parallel, so the
+          app, Genkit functions, and Firestore rules are all built and tested
+          against <code>firebase emulators:start</code> first, and pointed at the
+          real project only once it exists. This also means Firestore security
+          rules should be written and tested from day one rather than deferred,
+          since the emulator suite tests them for free as part of local dev.
+        </div>
+        <ul>
+          <li><strong>Agent tools at MVP:</strong> only <code>log_entry</code> and <code>flag_risk</code> (basic heuristic version) from the PRD's full tool set. <code>split_time</code>, <code>query_case_law</code> (as live RAG), and <code>check_household_constraint</code> wait for fast-follow.</li>
+          <li><strong>Build the correction-feedback pipeline now, even unused.</strong> Log every edit a user makes to an AI draft as structured data from day one, even before any personalization logic consumes it — this is cheap to capture now and impossible to backfill later. The PRD's data-flywheel advantage (Section 8) depends on not losing this window. Firestore's native BigQuery export is a convenient fit for this — capture it as an append-only collection now, worry about querying it for personalization later.</li>
+          <li><strong>Legal copilot ships as curated FAQ, not live RAG.</strong> A well-written static knowledge base (grounded in IRS Pub 925 and §1.469-5T, per the PRD) phrased through an LLM is materially cheaper than a dynamic case-law retrieval system, and tests whether hosts actually use this feature before that infrastructure is built.</li>
+          <li><strong>Contemporaneity and vague-entry flags are simple heuristics at MVP</strong> (days-since-activity threshold; description length/specificity check), not the fuller scoring model implied by the PRD's readiness dashboard.</li>
+          <li><strong>Build gotcha to design around, not discover mid-build:</strong> a single Gemini API call can't both offer tools and force <code>responseMimeType: application/json</code> — they conflict on the same request. Doesn't block the loop, since function-call arguments are already structured/schema-conforming data on their own (that's what <code>log_entry</code>'s arguments are); reserve <code>responseSchema</code> for turns where no tool is being offered, don't reach for it on tool-calling turns.</li>
+        </ul>
+
+        <h2>9. Phased Rollout Sketch</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Phase</th><th>Contains</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Phase 0 — Build</strong></td><td>Core loop (Section 4) on Android, against Firebase Emulator Suite</td></tr>
+              <tr><td><strong>Phase 1 — Private beta</strong></td><td>Small closed group recruited via BiggerPockets/creator outreach (per PRD Section 9.2); second platform; curated FAQ copilot; photo capture if not already in Phase 0</td></tr>
+              <tr><td><strong>Phase 2 — Public launch prep</strong></td><td>Calendar sync; Live Activity/Live Update; Wear OS/Watch; polished CPA export package</td></tr>
+              <tr><td><strong>Phase 3 — Post-launch depth</strong></td><td>Passive signal expansion (geofence, PMS, Plaid); household/team logging and constraint checks; concierge audit-defense tier</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>10. Exit Criteria — What Graduates MVP to Full Build-Out</h2>
+        <p>Narrowed from the PRD's full success-metrics list (Section 10) to what's actually measurable in an 8–12 week beta:</p>
+        <ul>
+          <li>Beta hosts are still logging weekly by week 8 — the actual hypothesis test</li>
+          <li>Median time from activity to log entry stays low (contemporaneity is working, not just theoretically available)</li>
+          <li>Correction rate on AI-parsed entries is low enough to indicate the parsing is genuinely saving effort, not just relocating it to constant editing</li>
+          <li>At least a handful of beta hosts reach or are clearly on pace for their chosen hour threshold</li>
+        </ul>
+        <p class="muted">If these hold, the passive-capture and integration investment in Sections 5.2 and the PRD's full vision are justified. If they don't, that's a cheaper failure to learn from than after building PMS integrations first.</p>
+
+        <h2>11. Risks Specific to This Scope</h2>
+        <div class="callout risk">
+          <span class="callout-label">Competitive exposure</span>
+          Cutting PMS integration means MVP launches without a capability STR Loophole
+          already has. This is an accepted trade — the MVP isn't trying to win on
+          integration depth, it's trying to prove the friction hypothesis cheaply —
+          but it means the MVP is not yet competitively differentiated on that axis,
+          only on capture friction and trust framing. Worth revisiting the timeline
+          for Section 5.2 if STR Loophole ships a legal copilot or contemporaneity
+          scoring before this product reaches Phase 3.
+        </div>
+        <div class="callout risk">
+          <span class="callout-label">Single-platform gap</span>
+          iOS is excluded for the beta window by design (Section 6) — acceptable
+          because the primary goal of that window is validating the loop with the
+          actual first pilot user, not maximizing reach. Worth a deliberate checkpoint
+          before Phase 2 (Section 9) on whether wider beta recruiting needs iOS sooner
+          than "right after the core loop is validated."
+        </div>
+
+        <h2>12. Open Decisions Before Build Starts</h2>
+        <p class="muted">Platform, backend, model, and local-dev setup are now all decided (Sections 6 and 8). What's left:</p>
+        <ul>
+          <li>Whether the curated legal FAQ content is written in-house or reviewed by the CPA/tax-attorney advisor named in the PRD's trust-moat strategy (Section 9.1) before launch</li>
+          <li>Exact timing for standing up the SMS/Twilio gateway (Section 5.1) — deferred out of MVP for logistics reasons, not technical ones, so this is a "when the pilot user has bandwidth" question rather than an architecture question</li>
+        </ul>
+
+      </article>
+
+      <a class="back-to-top" href="#top">&uarr; Back to top</a>
+    </main>
+  </div>
+
+  <script src="assets/toc.js"></script>
+</body>
+</html>

@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PRD v0 — AI-Native STR Material Participation Tracker</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="dot"></span> STR Tracker Reports</div>
+    <nav>
+      <a href="index.html">All reports</a>
+    </nav>
+  </header>
+
+  <div class="report-shell">
+    <aside class="toc-col">
+      <div class="toc-title">On this page</div>
+      <ul id="toc-list"></ul>
+    </aside>
+
+    <main class="report-main">
+      <div class="report-header">
+        <div class="eyebrow">Product Requirements Document &middot; v0 &middot; Draft</div>
+        <h1>AI-Native STR Material Participation Tracker</h1>
+        <p class="subtitle">
+          A hands-free, audit-defensible hour and evidence log for short-term rental
+          owners pursuing material participation tax status — built agent-first,
+          not form-first.
+        </p>
+        <div class="doc-meta">
+          <span><strong>Status:</strong> Draft</span>
+          <span><strong>Version:</strong> v0</span>
+          <span><strong>Date:</strong> July 14, 2026</span>
+          <span><strong>Owner:</strong> Jackson Zhou</span>
+          <span><strong>Scope:</strong> Strategy &amp; requirements, pre-MVP</span>
+        </div>
+      </div>
+
+      <article class="report-content">
+
+        <h2>1. Problem Statement</h2>
+        <p>
+          Short-term rental owners can reclassify rental losses as non-passive income —
+          unlocking deductions that offset W-2 or business income — by satisfying an
+          IRS material participation test (commonly the 100-hour or 500-hour test for
+          STRs, or the 750-hour test for Real Estate Professional Status). The tax
+          savings from qualifying are often five to six figures in year one.
+        </p>
+        <p>
+          The strategy is well understood; the failure mode is not the tax concept, it's
+          the paperwork. The IRS requires <strong>contemporaneous</strong> records —
+          logged as the work happens, not reconstructed at tax time — and courts have
+          consistently ruled against taxpayers who estimated hours after the fact. Most
+          owners fail to qualify not because they didn't do the work, but because they
+          can't prove it in a form that survives an audit.
+        </p>
+        <div class="callout">
+          <span class="callout-label">Core insight</span>
+          The product being sold isn't a stopwatch. It's audit defensibility. Every
+          design decision should be judged against: does this make the record more
+          contemporaneous, more complete, and more defensible?
+        </div>
+
+        <h2>2. Market Context</h2>
+        <p>
+          Four direct competitors are live today: REPSLog, HourProof, STR Loophole
+          (strhours.com), and Field Ledger. All four predate the current generation of
+          agentic AI tooling — their "AI" features are bolt-on autofill or rule-based
+          text parsing layered onto a conventional form-and-timer app, not an
+          agent-first architecture.
+        </p>
+
+        <h3>2.1 Competitive snapshot</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Capture</th>
+                <th>Auto-capture / integrations</th>
+                <th>Scope</th>
+                <th>Pricing</th>
+                <th>Notable gap</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>REPSLog</strong></td>
+                <td>Timer, manual, speech-to-text</td>
+                <td>Calendar sync</td>
+                <td>Hours only</td>
+                <td>$150&ndash;200/yr</td>
+                <td>No passive capture, no legal grounding</td>
+              </tr>
+              <tr>
+                <td><strong>HourProof</strong></td>
+                <td>Timer, manual, voice, AI text-parse</td>
+                <td>Calendar + Airbnb import</td>
+                <td>Hours + evidence attachments</td>
+                <td>$50&ndash;150/yr</td>
+                <td>"Audit-readiness score" exists but shallow; no wearable/offline</td>
+              </tr>
+              <tr>
+                <td><strong>STR Loophole</strong></td>
+                <td>Voice, quick-tap tiles, manual</td>
+                <td>PMS sync (Hospitable, Minoan, Airbnb, VRBO, Booking.com), iCal, AirDNA</td>
+                <td>Hours only, per-property</td>
+                <td>Free tier / freemium</td>
+                <td>Deepest integrations in market, but no bank/location/lock fusion, no in-app legal copilot, no wearable</td>
+              </tr>
+              <tr>
+                <td><strong>Field Ledger</strong></td>
+                <td>Free-form prose &rarr; rule-based parser, guided forms</td>
+                <td>None found</td>
+                <td>Hours + trip/mileage + expenses</td>
+                <td>$19&ndash;79/mo</td>
+                <td>Broadest documentation scope, but parser is rule-based, not LLM-grade; no passive capture at all</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>2.2 Key takeaways</h3>
+        <ul>
+          <li><strong>STR Loophole is the competitor to watch</strong> — free tier, a tax-savings-calculator lead magnet, and a multi-product suite (REPS Time, Kids Payroll) signal a funded operator with an active growth motion.</li>
+          <li><strong>Passive capture from booking platforms is no longer a gap</strong> — STR Loophole already syncs PMS and calendar data. Differentiation now requires going a layer deeper: location, bank transactions, smart-lock access, and photo evidence, fused together.</li>
+          <li><strong>NL parsing exists but is weak</strong> — Field Ledger's parser is explicitly rule-based. LLM-grade extraction with clarifying questions and personalization is still an execution gap, not a concept gap.</li>
+          <li><strong>Documentation scope is expanding beyond hours</strong> — Field Ledger's trip/mileage and expense logging is a good signal: a complete audit package beats a pure hour log.</li>
+          <li><strong>Still wide open across all four:</strong> real-time contemporaneity/backfill-risk scoring, an interactive legal-grounding copilot, proactive household constraint-checking, and any wearable/SMS/offline-first capture.</li>
+        </ul>
+
+        <h2>3. Product Vision &amp; Positioning</h2>
+        <p>
+          <strong>Positioning statement:</strong> the only material participation tracker
+          that fuses passive signals beyond bookings — location, bank activity, smart
+          locks, photos — into an AI-parsed, contemporaneity-scored audit defense
+          package, captured hands-free anywhere, backed by a legal-grounding copilot
+          that competitors only reference in marketing copy.
+        </p>
+        <p>
+          The brand promise is retention, not features: <em>the app that's still being
+          used in November</em>, because logging requires near-zero effort, not because
+          it has the longest feature list.
+        </p>
+
+        <h2>4. Target Users</h2>
+        <ul>
+          <li><strong>Primary: Self-managed STR owner</strong> (1&ndash;3 properties), W-2 income, pursuing the 100-hour or 500-hour material participation test to offset active income with rental losses.</li>
+          <li><strong>Secondary: Multi-property STR portfolio operator</strong>, working with co-hosts, cleaners, and property managers, needs per-property and per-person tracking plus the "no one else's time exceeds yours" constraint managed automatically.</li>
+          <li><strong>Secondary: Real estate professional pursuing REPS</strong> (750-hour test, 50%+ of working time in real estate), typically a longer-term-rental-heavy or mixed portfolio.</li>
+          <li><strong>Influencer stakeholder, not a direct user: CPAs &amp; cost segregation firms</strong> who recommend a tool to clients and receive the year-end export. Their trust is a distribution channel (see Section 9).</li>
+        </ul>
+
+        <h2>5. Design Principles</h2>
+        <div class="callout">
+          <span class="callout-label">1. AI is the primary surface, manual is a first-class backup, not an afterthought</span>
+          Every AI-drafted entry and every manually-typed entry produces the identical
+          structured record. AI drafts land in a pending state for one-tap confirm or
+          edit — that review step is the manual backup, not a separate mode. A full
+          manual "Add Entry" form is always one tap away, never buried behind chat.
+        </div>
+        <div class="callout">
+          <span class="callout-label">2. Capture must work without a screen</span>
+          A meaningful share of material participation work happens hands-dirty, away
+          from any device. The primary capture surfaces are zero-touch (geofence,
+          calendar, PMS signals), one-touch (watch complication, quick-settings tile,
+          SMS to a dedicated number, a photo), and only then a full app screen for
+          detailed review — reserved for later, comfortable moments, not the work
+          moment itself.
+        </div>
+        <div class="callout">
+          <span class="callout-label">3. Trust and rigor apply equally regardless of input path</span>
+          Contemporaneity timestamping (created_at vs. activity_date) applies to every
+          entry, AI or manual. The product's core deliverable is a record that survives
+          an audit, so no capture path gets to be less rigorous for the sake of speed.
+        </div>
+
+        <h2>6. Feature Scope (v0)</h2>
+
+        <h3>6.1 Capture layer</h3>
+        <ul>
+          <li>Natural-language logging via text, voice memo, or forwarded SMS/iMessage — no app open required</li>
+          <li>Photo-first logging: a timestamped, geotagged photo alone can become a drafted entry</li>
+          <li>Passive signal drafts: geofence presence, calendar events, PMS/booking data (turnovers, guest messaging windows) generate pending entries automatically</li>
+          <li>Bank/Plaid transaction signals (e.g., a hardware store charge) suggest a task and prompt for hours</li>
+          <li>Offline-first capture with local buffering and background sync (rural properties, poor connectivity)</li>
+        </ul>
+
+        <h3>6.2 AI copilot &amp; audit defense</h3>
+        <ul>
+          <li>Agent-native entry extraction: property, task, duration, participant, and category parsed from natural language, with a single clarifying question only when needed</li>
+          <li>Contemporaneity scoring per entry (flags entries created long after the activity date as backfill risk)</li>
+          <li>Vague-entry detection ("worked on house" prompts for specificity)</li>
+          <li>Unrealistic-duration flagging (e.g., 18 logged hours in one day)</li>
+          <li>Interactive legal-grounding chat: "would this count?" answered against the actual material participation tests and known case outcomes</li>
+          <li>Test-fit recommendation: suggests which of the material participation tests the user is actually on track for, and flags when a chosen test is fragile</li>
+        </ul>
+
+        <h3>6.3 Household &amp; team</h3>
+        <ul>
+          <li>Multi-participant logging (spouse, cleaner, contractor, co-host, property manager) via shared link or SMS, no app install required for non-primary participants</li>
+          <li>Real-time constraint checking for the 100-hour test: warns proactively if another participant's logged time risks exceeding the primary user's</li>
+          <li>Per-property and per-person breakdowns</li>
+        </ul>
+
+        <h3>6.4 Manual &amp; trust layer</h3>
+        <ul>
+          <li>Full manual entry form, always one tap from anywhere in the app</li>
+          <li>Every field on every entry editable after the fact, regardless of capture method</li>
+          <li>Quick-add templates for repeat tasks (e.g., "weekly turnover clean") as one-tap shortcuts</li>
+          <li>Correction feedback loop: edits to AI drafts personalize future parsing for that user's vocabulary and property names</li>
+        </ul>
+
+        <h3>6.5 Reporting &amp; export</h3>
+        <ul>
+          <li>Year-end CPA-ready package: narrative summary, timeline, attachments, and a confidence/readiness score with specific flagged gaps</li>
+          <li>Export by property, category, or date range</li>
+          <li>Pacing dashboard: progress toward the selected test's hour threshold, with a projection given current logging rate</li>
+        </ul>
+
+        <h3>6.6 Platform &amp; portability</h3>
+        <ul>
+          <li>iOS and Android apps, feature parity between the two</li>
+          <li>Wear OS and Apple Watch companions for one-touch voice capture, no phone required in hand</li>
+          <li>Android quick-settings tile and iOS lock-screen/Action Button equivalents as the primary hands-free trigger</li>
+          <li>Web app scoped to "back office" functions — CPA export, bulk review, settings — not day-to-day capture</li>
+        </ul>
+
+        <h3>6.7 Live progress &amp; quick capture</h3>
+        <p>
+          Two glanceable surfaces, one on each platform, keep year-to-date progress
+          visible without opening the app, and turn the same surface into a one-tap
+          entry point back into capture.
+        </p>
+        <ul>
+          <li><strong>iOS — Live Activity (ActivityKit):</strong> shown in the Dynamic Island and on the Lock Screen while a capture session is active, displaying the running session timer alongside year-to-date progress toward the selected test threshold (e.g., "62/100 hrs"). Tapping it deep-links straight into quick capture or stop-and-confirm.</li>
+          <li><strong>Android — Live Update (Android 16+, <code>Notification.ProgressStyle</code>):</strong> the direct equivalent, surfaced as a status bar chip, in the notification shade, on the lock screen, and on the Always-On Display on supported devices — same running-timer-plus-year-progress content as iOS.</li>
+          <li><strong>Always-on fallback:</strong> Live Activities/Live Updates are scoped to active, bounded sessions by design, not indefinite background display. A persistent Home Screen/Lock Screen widget (WidgetKit on iOS, App Widget on Android) carries the same year-to-date progress at all other times, so it's visible whether or not a session is currently running.</li>
+          <li>The Live Activity/Live Update, the widget, and the quick-settings tile/Action Button (Section 6.6) all route to the same one-touch capture entry point — one consistent "tap here to log" affordance across every glanceable surface, reinforcing the no-unlock, no-home-screen capture principle.</li>
+        </ul>
+
+        <h2>7. Out of Scope for v0</h2>
+        <ul>
+          <li>Native Assistant/Gemini voice routing via platform agent APIs (Android AppFunctions is in private preview as of mid-2026; revisit once generally available)</li>
+          <li>Full bookkeeping/accounting functionality — this is a documentation system, not a ledger replacement</li>
+          <li>CPA/firm-side portal or white-label offering (candidate for the partnership phase, see Section 9)</li>
+          <li>Non-STR/REPS material participation use cases outside real estate</li>
+        </ul>
+
+        <h2>8. AI-Native Architecture Principles</h2>
+        <p>
+          Competitors built a form first and added an AI autofill button second. This
+          product should be architected the opposite way: the agent is the primary
+          interface, and structured tools are what it calls.
+        </p>
+        <ul>
+          <li><strong>Agent with tools, not one-shot extraction</strong> — <code>log_entry</code>, <code>split_time</code>, <code>flag_risk</code>, <code>query_case_law</code>, and <code>check_household_constraint</code> are callable functions the same agent uses across every surface (chat, voice, SMS), rather than separate one-off features.</li>
+          <li><strong>Multimodal input in a single reasoning pass</strong> — voice, photo, and text handled together rather than as separate pipelines.</li>
+          <li><strong>RAG over IRS regulations and Tax Court outcomes</strong> powers the legal-grounding copilot; this is now cheap infrastructure, not a research investment.</li>
+          <li><strong>Server-side agent logic</strong> so behavior changes ship instantly, without an app-store review cycle — a real iteration-speed advantage over competitors' in-app parsing logic.</li>
+          <li><strong>Correction-as-training-signal pipeline built in from day one</strong> — every user edit to an AI draft is captured as structured feedback that improves that user's future parsing, not just logged and discarded.</li>
+          <li><strong>Reliability over cleverness on the legally-consequential path</strong> — structured outputs, validation, and a human-confirm step matter more here than open-ended agentic flexibility.</li>
+          <li><strong>Built agent-callable from day one</strong> — positioned to plug into platform-level agent routing (Android AppFunctions, Apple App Intents) as those mature, rather than retrofitting a legacy form-based app later.</li>
+        </ul>
+        <div class="callout warn">
+          <span class="callout-label">Caveat</span>
+          Being AI-native is an execution multiplier, not a standalone moat — a funded
+          competitor (STR Loophole in particular) can bolt on better AI too. The durable
+          moat is the combination of the correction-driven data flywheel, integration
+          depth, and CPA/firm distribution trust described in Section 9; AI-native
+          architecture is what makes building those faster and cheaper.
+        </div>
+
+        <h2>9. Go-to-Market Strategy</h2>
+
+        <h3>9.1 Trust moat</h3>
+        <ul>
+          <li>A real CPA or real-estate tax attorney as advisor, named publicly</li>
+          <li>Content grounded in actual Tax Court outcomes and IRS guidance, doubling as SEO and as the source material for the in-app legal copilot</li>
+          <li>A premium "audit defense" tier: CPA-ready package generation plus concierge support if a user is actually audited — reframes the product from time tracker to audit insurance, supporting pricing above the market's freemium floor</li>
+        </ul>
+
+        <h3>9.2 Distribution</h3>
+        <ul>
+          <li>CPA / cost-segregation firm referral or partner program — B2B2C is the primary growth lever in this niche, more than app-store discovery</li>
+          <li>Direct outreach to the small set of STR tax-strategy creators who already drive this audience's education (YouTube/Instagram/TikTok)</li>
+          <li>SEO content competing directly for "material participation," "STR loophole hours," and "REPS tracking" queries currently owned by STR Loophole and Field Ledger</li>
+          <li>Presence in BiggerPockets and STR-specific community forums/Discords/Facebook groups</li>
+        </ul>
+
+        <h3>9.3 Retention focus</h3>
+        <p>
+          Churn — not signups — is the real risk: users start motivated in January and
+          stop logging by spring, leaving unusable data by tax time. Passive capture
+          attacks this structurally; marketing and product nudges should concentrate on
+          two windows: <strong>January</strong> (New Year tax-planning mindset) and
+          <strong>Q4</strong> (year-end deadline pressure), rather than flat spend
+          year-round.
+        </p>
+
+        <h3>9.4 Pricing</h3>
+        <p>
+          Validate against Field Ledger's $19&ndash;79/mo range rather than assume
+          unlimited headroom — the market has already tested premium pricing here.
+          A lean, AI-native cost structure supports either undercutting the freemium
+          floor or reinvesting margin into the CPA distribution motion instead of
+          requiring a raise to fund it.
+        </p>
+
+        <h2>10. Success Metrics (draft, to refine at MVP scoping)</h2>
+        <ul>
+          <li>% of users still logging weekly in month 9+ of their first tax year (the core retention/churn metric)</li>
+          <li>Median time from activity to log entry (contemporaneity — lower is better)</li>
+          <li>% of entries created via zero-touch/one-touch paths vs. full manual form</li>
+          <li>% of users reaching their chosen test's hour threshold by year end</li>
+          <li>CPA/firm-referred signups as a share of total signups</li>
+        </ul>
+
+        <h2>11. Risks &amp; Open Questions</h2>
+        <div class="callout risk">
+          <span class="callout-label">Competitive risk</span>
+          STR Loophole appears funded, multi-product, and already has the deepest
+          integrations in market. If they add passive signal fusion or a legal copilot
+          before this product ships, the wedge narrows. Speed to MVP on the
+          differentiated pieces (contemporaneity scoring, legal copilot, wearable
+          capture) matters.
+        </div>
+        <div class="callout risk">
+          <span class="callout-label">Privacy sensitivity</span>
+          Location, bank transaction, and smart-lock signals are high-sensitivity data
+          categories. Passive capture needs clear opt-in, on-device triage where
+          possible, and a privacy posture that itself becomes a trust signal rather
+          than a liability.
+        </div>
+        <ul>
+          <li>Open: build vs. partner for PMS integrations (Hospitable, Airbnb, VRBO, Booking.com) — how fast can parity with STR Loophole's integration depth be reached?</li>
+          <li>Open: is a CPA/firm partner program viable pre-launch, or does it require a proven product first?</li>
+          <li>Open: exact MVP platform sequencing — iOS + Android simultaneously, or one first with Wear OS/Watch as fast-follow?</li>
+          <li>Open: pricing model — flat subscription vs. tiered by property count vs. value-based pricing anchored to estimated tax savings.</li>
+        </ul>
+
+        <hr class="section-break" />
+
+        <h2>12. Appendix: Full Competitor Detail</h2>
+
+        <h3>REPSLog</h3>
+        <ul>
+          <li>Manual entry, live timer, speech-to-text, AI autofill on entry fields, calendar sync</li>
+          <li>Multi-user participant tracking (spouse, cleaners, contractors)</li>
+          <li>Starter $149.99/yr (3 properties, 4 categories, 1 attachment); Premium $199.99/yr (unlimited properties/categories, 5 attachments, speech-to-text, AI autofill, calendar sync, multi-user)</li>
+          <li>14-day free trial on both tiers; claims 3,000+ users, 4.9 app-store rating</li>
+        </ul>
+
+        <h3>HourProof</h3>
+        <ul>
+          <li>Timer, manual entry, AI-assisted text description parsing, voice input, calendar/Airbnb booking imports</li>
+          <li>Photo/receipt/document/email attachments per activity; "audit-readiness scoring"</li>
+          <li>Reports grouped by property, category, or date range; CPA-ready packages</li>
+          <li>Pro $9.99/mo or $49.99/yr (core tracking/reporting); Premium $14.99/mo or $149.99/yr (adds AI-assisted logging, calendar sync, advanced evidence workflows)</li>
+        </ul>
+
+        <h3>STR Loophole (strhours.com)</h3>
+        <ul>
+          <li>Voice logging, one-handed quick-tap activity tiles, manual entry, timestamped entries with edit history</li>
+          <li>PMS sync: Hospitable, Minoan, Airbnb, VRBO, Booking.com; calendar sync via iCal and AirDNA</li>
+          <li>Per-property tracking, spouse/cleaner/PM/co-host hour tracking, 7-day average stay rule check</li>
+          <li>CPA-ready one-tap PDF export with voice transcripts, edit history, and source calendar links</li>
+          <li>Interactive tax-savings calculator as a lead-gen tool; free tier, no credit card required</li>
+          <li>Sibling products from the same company: REPS Time (750-hour REPS tracking), Kids Payroll — suggests a broader real-estate tax-optimization suite strategy</li>
+        </ul>
+
+        <h3>Field Ledger (getfieldledger.com)</h3>
+        <ul>
+          <li>Free-form prose entry parsed by a rule-based parser into structured records, plus guided forms for trips and expenses, with a review step before entries finalize</li>
+          <li>Trip/mileage logging (origin, destination, distance, date, business purpose) and expense/transaction logging (vendor, amount, category, payment method), CSV export</li>
+          <li>Team collaboration: admin/manager roles, email invites, property-level access permissions</li>
+          <li>Owner $19/mo or $190/yr (1 property, 2 users); Operator $39/mo or $390/yr (5 properties, 5 users); Portfolio $79/mo or $790/yr (unlimited)</li>
+          <li>Unusual 714-day free trial, no credit card; explicitly positions as "a documentation system, not a bookkeeping tool"; US residents only</li>
+        </ul>
+
+      </article>
+
+      <a class="back-to-top" href="#top">&uarr; Back to top</a>
+    </main>
+  </div>
+
+  <script src="assets/toc.js"></script>
+</body>
+</html>

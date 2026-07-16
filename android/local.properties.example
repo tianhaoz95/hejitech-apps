@@ -1,0 +1,12 @@
+# Copy this to local.properties (gitignored) and point it at your SDK.
+# Android Studio will usually write this file for you on first sync — you
+# likely don't need to do this by hand.
+sdk.dir=/Users/YOUR_USERNAME/Library/Android/sdk
+
+# Only needed for the REAL Google Sign-In path (see auth/AuthManager.kt) —
+# the emulator-mode sign-in path doesn't use this at all. Once you have a
+# real Firebase project with the Google sign-in provider enabled, this is the
+# "Web client" OAuth client ID shown in Firebase console -> Authentication ->
+# Sign-in method -> Google -> Web SDK configuration (also present in the real
+# google-services.json as an oauth_client entry with client_type: 3).
+GOOGLE_WEB_CLIENT_ID=

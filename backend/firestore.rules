@@ -1,0 +1,34 @@
+rules_version = '2';
+
+// MVP data model is deliberately nested under a single owner (no household/
+// team sharing yet — that's fast-follow per reports/mvp-scope-v0.html
+// Section 5.1), so rules are just "you can only touch your own subtree."
+// Revisit this file the day multi-participant logging ships; it will need
+// per-property ACLs at that point, not a per-user root.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
+
+      match /properties/{propertyId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      match /entries/{entryId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      // Append-only in spirit: the app should never update or delete a
+      // correction record once written (it's training signal, not app
+      // state) but that's enforced client-side for MVP, not here yet.
+      match /corrections/{correctionId} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+  }
+}

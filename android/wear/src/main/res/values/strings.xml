@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Contempo</string>
+    <string name="wear_coming_soon">Wear capture is coming soon.\nUse the phone app for now.</string>
+</resources>

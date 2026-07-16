@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Contempo</string>
+
+    <string name="signin_eyebrow">Material participation, logged as it happens</string>
+    <string name="signin_subtitle">Sign in to start logging your hours.</string>
+    <string name="signin_google_button">Sign in with Google</string>
+
+    <string name="nav_capture">Capture</string>
+    <string name="nav_dashboard">Dashboard</string>
+    <string name="nav_chat">Ask</string>
+    <string name="nav_export">Export</string>
+    <string name="nav_settings">Settings</string>
+    <string name="nav_back">Back</string>
+
+    <string name="capture_eyebrow">Say it once</string>
+    <string name="capture_hint">Say or type what you did…</string>
+    <string name="capture_voice_start">Start voice capture</string>
+    <string name="capture_voice_stop">Stop and transcribe</string>
+    <string name="capture_listening">Listening</string>
+    <string name="capture_transcribing">Transcribing…</string>
+    <string name="capture_mic_permission_needed">Microphone access is needed for voice capture — tap the mic again to grant it.</string>
+    <string name="capture_send_button">Send</string>
+    <string name="capture_manual_button">Enter manually instead</string>
+    <string name="capture_parsing">Parsing…</string>
+    <string name="capture_photo_button">Take a photo</string>
+    <string name="capture_drafting_from_photo">Looking at your photo…</string>
+    <string name="capture_camera_permission_needed">Camera access is needed for photo capture — tap the camera again to grant it.</string>
+    <string name="capture_voice_button_label">Tap to speak</string>
+    <string name="capture_type_instead">Type instead</string>
+
+    <string name="confirm_eyebrow">Review before it\'s evidence</string>
+    <string name="confirm_title">Confirm entry</string>
+    <string name="confirm_property_label">Property</string>
+    <string name="confirm_task_label">What you did</string>
+    <string name="confirm_duration_label">Duration (minutes)</string>
+    <string name="confirm_category_label">Category</string>
+    <string name="confirm_button">Confirm</string>
+    <string name="confirm_edit_hint">Edit any field — it carries the same weight either way.</string>
+    <string name="confirm_risk_vague">This description is a little thin — consider adding one more detail.</string>
+    <string name="confirm_risk_backfilled">Logged %1$d days after the activity — still fine, just noting it.</string>
+    <string name="confirm_source_on_device">Parsed on-device — no cloud call made.</string>
+    <string name="confirm_source_cloud">Parsed via cloud.</string>
+    <string name="confirm_photo_description">Photo evidence for this entry</string>
+
+    <string name="dashboard_eyebrow">Your paper trail</string>
+    <string name="dashboard_title">Your progress</string>
+    <string name="dashboard_hours_progress">%1$d / %2$d hrs toward the %3$s test</string>
+    <string name="dashboard_no_entries">No entries yet. Capture your first one to get started.</string>
+
+    <string name="chat_eyebrow">Ask your logbook</string>
+    <string name="chat_empty_hint">Ask anything — "will cleaning the pool count toward my 100 hours?", "how many hours do I still need?"</string>
+    <string name="chat_input_hint">Ask a question…</string>
+    <string name="chat_attach_photo_button">Attach a photo</string>
+    <string name="chat_remove_photo_button">Remove photo</string>
+    <string name="chat_pending_photo_description">Photo to send with your question</string>
+    <string name="chat_message_photo_description">Photo attached to this message</string>
+    <string name="chat_camera_permission_needed">Camera access is needed to attach a photo — tap the camera again to grant it.</string>
+
+    <string name="export_eyebrow">Ready for your CPA</string>
+    <string name="export_title">Export</string>
+    <string name="export_csv_button">Export CSV</string>
+    <string name="export_share_button">Share</string>
+
+    <string name="settings_account_section">Account</string>
+    <string name="settings_no_name">Signed in</string>
+    <string name="settings_sign_out">Sign out</string>
+    <string name="settings_ai_section">AI model</string>
+    <string name="settings_ai_section_hint">Controls whether entries and questions are parsed on-device (free, no network) or in the cloud.</string>
+    <string name="settings_ai_on_device_only">On-device only</string>
+    <string name="settings_ai_prefer_on_device">Prefer on-device (recommended)</string>
+    <string name="settings_ai_cloud_only">Cloud only</string>
+
+    <string name="on_device_status_checking">Checking on-device model…</string>
+    <string name="on_device_status_unavailable">Not supported on this device — cloud will be used instead.</string>
+    <string name="on_device_status_ready">On-device model ready.</string>
+    <string name="on_device_status_downloading">Downloading on-device model…</string>
+    <string name="on_device_status_downloading_percent">Downloading on-device model… %1$d%%</string>
+    <string name="on_device_status_downloading_with_eta">Downloading on-device model… %1$d%% · about %2$s left</string>
+    <string name="on_device_status_failed">Couldn\'t prepare the on-device model: %1$s</string>
+    <string name="on_device_status_retry">Retry</string>
+
+    <string name="ai_blocked_checking">Checking the on-device model — try again in a moment.</string>
+    <string name="ai_blocked_downloading">On-device model is downloading — see Settings for progress.</string>
+    <string name="ai_blocked_unavailable">On-device model isn\'t supported on this device. Switch to Cloud in Settings.</string>
+    <string name="ai_blocked_failed">On-device model isn\'t ready (%1$s). Retry from Settings.</string>
+</resources>

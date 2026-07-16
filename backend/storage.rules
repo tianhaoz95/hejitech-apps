@@ -1,0 +1,11 @@
+rules_version = '2';
+
+// Photo evidence attachments, one folder per user. Same "single owner"
+// simplification as firestore.rules — see the note there.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /users/{uid}/entries/{entryId}/{fileName} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}
