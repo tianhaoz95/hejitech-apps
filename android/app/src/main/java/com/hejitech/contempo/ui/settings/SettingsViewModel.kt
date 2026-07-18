@@ -30,9 +30,11 @@ class SettingsViewModel : ViewModel() {
     private val aiSettingsStore = ServiceLocator.aiSettingsStore
     private val authManager = ServiceLocator.authManager
     private val onDeviceLlm = ServiceLocator.onDeviceLlm
+    private val captureLanguageSelectorVisibilityStore = ServiceLocator.captureLanguageSelectorVisibilityStore
 
     val inferencePreference: StateFlow<InferencePreference> = aiSettingsStore.preference
     val onDeviceModelStatus: StateFlow<OnDeviceModelUiStatus> = onDeviceLlm.status
+    val showLanguageSelector: StateFlow<Boolean> = captureLanguageSelectorVisibilityStore.visible
 
     private val _deleteAccountState = MutableStateFlow(DeleteAccountUiState())
     val deleteAccountState: StateFlow<DeleteAccountUiState> = _deleteAccountState.asStateFlow()
@@ -44,6 +46,10 @@ class SettingsViewModel : ViewModel() {
 
     fun setInferencePreference(preference: InferencePreference) {
         aiSettingsStore.setPreference(preference)
+    }
+
+    fun setShowLanguageSelector(value: Boolean) {
+        captureLanguageSelectorVisibilityStore.setVisible(value)
     }
 
     fun retryOnDeviceModelCheck() {

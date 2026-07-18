@@ -66,6 +66,8 @@ object ServiceLocator {
         private set
     lateinit var captureLanguageStore: CaptureLanguageStore
         private set
+    lateinit var captureLanguageSelectorVisibilityStore: CaptureLanguageSelectorVisibilityStore
+        private set
 
     // Process-lifetime scope for cross-screen background work (currently
     // just OnDeviceLlm's status/download tracking) — same lifetime as the
@@ -83,6 +85,7 @@ object ServiceLocator {
         pendingCaptureStore = PendingCaptureStore(context)
         quickCaptureStatsStore = QuickCaptureStatsStore(context)
         captureLanguageStore = CaptureLanguageStore(context)
+        captureLanguageSelectorVisibilityStore = CaptureLanguageSelectorVisibilityStore(context)
         aiSettingsStore = AiSettingsStore(context)
         // LiteRtLlm (Gemma 4 E2B via LiteRT-LM) is the active OnDeviceLlm —
         // see OnDeviceLlm's kdoc for why this replaced Gemini Nano/AICore

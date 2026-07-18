@@ -109,6 +109,11 @@ data class CaptureUiState(
     // so switching this before the *next* capture never changes how an
     // already-recorded one gets transcribed.
     val captureLanguage: CaptureLanguage = CaptureLanguage.AUTO,
+    // Persisted (see CaptureLanguageSelectorVisibilityStore) — whether the
+    // Capture tab shows the language chips at all. Hidden by default, in
+    // which case captureLanguage above just sits at its own default
+    // (English) unused by the UI.
+    val showLanguageSelector: Boolean = false,
 )
 
 /** Best-effort only — never worth delaying a capture over. */
@@ -125,6 +130,7 @@ class CaptureViewModel : ViewModel() {
     private val mileageTripCoordinator = ServiceLocator.mileageTripCoordinator
     private val quickCaptureSettingsStore = ServiceLocator.quickCaptureSettingsStore
     private val captureLanguageStore = ServiceLocator.captureLanguageStore
+    private val captureLanguageSelectorVisibilityStore = ServiceLocator.captureLanguageSelectorVisibilityStore
 
     // Set by parseAndProceed's holdForManualConfirm branch (voice path only)
     // once parsing succeeds, and released by confirmTranscript on the user's
@@ -133,18 +139,27 @@ class CaptureViewModel : ViewModel() {
 
     val recordingAmplitude = audioRecorder.amplitude
 
+    // combine() tops out at 5 flows directly — captureLanguageStore.selected
+    // and captureLanguageSelectorVisibilityStore.visible are folded into one
+    // Pair flow below so the outer combine can stay at 5 arguments.
+    private val languageState = combine(
+        captureLanguageStore.selected,
+        captureLanguageSelectorVisibilityStore.visible,
+    ) { language, showSelector -> language to showSelector }
+
     private val _uiState = MutableStateFlow(CaptureUiState())
     val uiState: StateFlow<CaptureUiState> = combine(
         _uiState,
         aiSettingsStore.preference,
         onDeviceLlm.status,
         quickCaptureSettingsStore.enabled,
-        captureLanguageStore.selected,
-    ) { state, preference, modelStatus, quickCaptureEnabled, captureLanguage ->
+        languageState,
+    ) { state, preference, modelStatus, quickCaptureEnabled, (captureLanguage, showLanguageSelector) ->
         state.copy(
             aiAvailability = aiAvailability(preference, modelStatus),
             quickCaptureEnabled = quickCaptureEnabled,
             captureLanguage = captureLanguage,
+            showLanguageSelector = showLanguageSelector,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CaptureUiState())
 

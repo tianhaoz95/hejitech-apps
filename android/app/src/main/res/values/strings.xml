@@ -196,6 +196,10 @@
     <string name="settings_ai_prefer_on_device">Prefer on-device (recommended)</string>
     <string name="settings_ai_cloud_only">Cloud only</string>
 
+    <string name="settings_capture_section">Capture</string>
+    <string name="settings_show_language_selector_label">Show language selector</string>
+    <string name="settings_show_language_selector_hint">Adds a language switcher to the Capture tab. Off by default — capture uses English.</string>
+
     <string name="settings_wear_section">Wear OS capture</string>
     <string name="settings_wear_explain_button">How this works</string>
     <string name="settings_wear_section_hint">When you speak an entry on the watch, it uploads straight to the cloud in the background — no need for the watch and phone to be near each other or on the same Wi-Fi. This phone then transcribes and parses whatever\'s pending automatically, both when you open it and periodically in the background. Some phones (especially OnePlus/Oppo, Xiaomi, Vivo, Huawei) restrict background apps by default, which can delay that background processing — if entries from your watch seem to be taking a while to show up, allow background activity for Contempo below, and also check your phone\'s Battery/Phone Manager app for a separate "Auto-launch" or "Startup manager" toggle — some phones gate background delivery behind that too, and it isn\'t reachable from here.</string>

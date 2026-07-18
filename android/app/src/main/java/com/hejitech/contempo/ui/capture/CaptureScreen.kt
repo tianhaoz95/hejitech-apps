@@ -335,20 +335,27 @@ fun CaptureScreen(
                 // (see CaptureLanguageStore) but is read fresh at the moment
                 // each recording stops, not live at background-processing
                 // time — see CaptureUiState.captureLanguage's kdoc.
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        stringResource(R.string.capture_language_label),
-                        style = MaterialTheme.typography.labelLarge,
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    CaptureLanguageSelector(
-                        selected = uiState.captureLanguage,
-                        enabled = !busy,
-                        onSelect = viewModel::setCaptureLanguage,
-                    )
-                }
+                //
+                // Hidden by default (see CaptureLanguageSelectorVisibilityStore,
+                // toggled from Settings) — most hosts speak one language and
+                // never need this, so it stays off screen until opted into,
+                // falling back to captureLanguage's own default (English).
+                if (uiState.showLanguageSelector) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            stringResource(R.string.capture_language_label),
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        CaptureLanguageSelector(
+                            selected = uiState.captureLanguage,
+                            enabled = !busy,
+                            onSelect = viewModel::setCaptureLanguage,
+                        )
+                    }
 
-                Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(20.dp))
+                }
 
                 // Split by purpose rather than one dense row: Quick Capture
                 // is a persistent setting (its own compact, settings-style

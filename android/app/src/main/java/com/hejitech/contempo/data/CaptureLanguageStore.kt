@@ -33,7 +33,11 @@ class CaptureLanguageStore(context: Context) {
             .getOrDefault(DEFAULT)
 
     private companion object {
-        val DEFAULT = CaptureLanguage.AUTO
+        // The selector row itself defaults to hidden (see
+        // CaptureLanguageSelectorVisibilityStore) — English is the safer
+        // silent default for hosts who never open it, vs. AUTO's per-
+        // recording language-detection overhead/uncertainty.
+        val DEFAULT = CaptureLanguage.ENGLISH
         const val KEY = "selected_language"
     }
 }

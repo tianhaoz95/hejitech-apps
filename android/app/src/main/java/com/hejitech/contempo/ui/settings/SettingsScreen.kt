@@ -27,6 +27,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -35,6 +36,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -58,6 +60,7 @@ fun SettingsScreen(
     val account = viewModel.currentAccount()
     val preference by viewModel.inferencePreference.collectAsState()
     val onDeviceStatus by viewModel.onDeviceModelStatus.collectAsState()
+    val showLanguageSelector by viewModel.showLanguageSelector.collectAsState()
     val exportState by exportViewModel.uiState.collectAsState()
     val deleteAccountState by viewModel.deleteAccountState.collectAsState()
     val context = LocalContext.current
@@ -140,6 +143,26 @@ fun SettingsScreen(
                 Spacer(Modifier.height(16.dp))
                 OnDeviceModelStatusPanel(status = onDeviceStatus, onRetry = viewModel::retryOnDeviceModelCheck)
             }
+
+            Spacer(Modifier.height(32.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(24.dp))
+
+            Text(stringResource(R.string.settings_capture_section), style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.settings_show_language_selector_label),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f),
+                )
+                Switch(checked = showLanguageSelector, onCheckedChange = viewModel::setShowLanguageSelector)
+            }
+            Text(
+                stringResource(R.string.settings_show_language_selector_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
 
             Spacer(Modifier.height(32.dp))
             HorizontalDivider()
