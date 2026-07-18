@@ -88,46 +88,23 @@ jobs:
         with:
           node-version: 20
 
-      # backend/firebase.json's hosting.predeploy hook only runs `npm run
-      # build` (not install) — see that file's comment for why the public
-      # dir has to be a copy of web/dist inside backend/ rather than
-      # ../web/dist directly.
+      # Deploys BOTH Hosting sites together (--only hosting, not scoped to a
+      # single site) — Firebase CLI runs every hosting entry's predeploy hook
+      # whenever any hosting deploy runs, regardless of which specific site
+      # --only narrows to (confirmed live: --only hosting:contempo-feedback
+      # alone still ran the contempo site's `npm run build` hook and failed
+      # because this job hadn't installed web/'s dependencies). So there's no
+      # way to deploy one site without paying for both hooks anyway — might
+      # as well actually deploy both. feedback/'s predeploy hook is just a
+      # copy, no install needed for it.
       - name: Install web dependencies
         working-directory: web
         run: npm ci
 
-      - name: Deploy Hosting (contempo site)
+      - name: Deploy Hosting (contempo + contempo-feedback)
         working-directory: backend
         run: |
           npx -y firebase-tools@latest deploy \
-            --only hosting:contempo \
-            --project contempo-platform \
-            --non-interactive
-
-  deploy-feedback:
-    runs-on: ubuntu-latest
-    environment: production
-    steps:
-      - uses: actions/checkout@v4
-
-      - id: auth
-        uses: google-github-actions/auth@v2
-        with:
-          project_id: contempo-platform
-          workload_identity_provider: projects/646737053318/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider
-          service_account: firebase-ci@contempo-platform.iam.gserviceaccount.com
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      # No install/build step needed — feedback/ is a zero-dependency static
-      # site (see feedback/README.md); firebase.json's predeploy hook just
-      # copies it into backend/feedback-dist.
-      - name: Deploy Hosting (contempo-feedback site)
-        working-directory: backend
-        run: |
-          npx -y firebase-tools@latest deploy \
-            --only hosting:contempo-feedback \
+            --only hosting \
             --project contempo-platform \
             --non-interactive
