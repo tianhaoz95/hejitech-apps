@@ -76,7 +76,7 @@ export const PRIVACY_POLICY: LegalDocument = {
       heading: "Data retention and deletion",
       paragraphs: [
         "Entries and properties persist until you delete them yourself in the app.",
-        "You can permanently delete your account and all associated data at any time from Settings, on Android or on this website — this immediately and irreversibly deletes your Firestore records, Storage photos/audio, and your sign-in account itself. If you'd rather not use the self-service option, you can also email us at jacksonzhou666@gmail.com to request deletion.",
+        "You can permanently delete your account and all associated data at any time from Settings, on Android or on this website — this immediately and irreversibly deletes your Firestore records, Storage photos/audio, and your sign-in account itself. If you'd rather not use the self-service option, you can also contact us at https://contempo-feedback.web.app to request deletion.",
       ],
     },
     {
@@ -103,7 +103,7 @@ export const PRIVACY_POLICY: LegalDocument = {
     },
     {
       heading: "Contact us",
-      paragraphs: ["Questions about this policy or your data: jacksonzhou666@gmail.com."],
+      paragraphs: ["Questions about this policy or your data: https://contempo-feedback.web.app."],
     },
   ],
 };
@@ -195,7 +195,7 @@ export const TERMS_OF_SERVICE: LegalDocument = {
     },
     {
       heading: "Contact us",
-      paragraphs: ["Questions about these terms: jacksonzhou666@gmail.com."],
+      paragraphs: ["Questions about these terms: https://contempo-feedback.web.app."],
     },
   ],
 };

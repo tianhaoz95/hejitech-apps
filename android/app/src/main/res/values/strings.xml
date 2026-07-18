@@ -52,6 +52,7 @@
     <string name="capture_send_button">Send</string>
     <string name="capture_manual_button">Enter manually instead</string>
     <string name="capture_parsing">Parsing…</string>
+    <string name="capture_start_new_work_button">Start new work</string>
     <string name="capture_photo_button">Take a photo</string>
     <string name="capture_drafting_from_photo">Looking at your photo…</string>
     <string name="capture_camera_permission_needed">Camera access is needed for photo capture — tap the camera again to grant it.</string>
@@ -61,7 +62,7 @@
     <string name="capture_start_trip_button">Start trip (GPS)</string>
     <string name="capture_stop_trip_button">Stop trip (GPS)</string>
     <string name="capture_location_permission_needed">Location access is needed to track a trip — tap again to grant it.</string>
-    <string name="capture_other_button">Other (photo, odometer, mileage trip)</string>
+    <string name="capture_other_button">Other (start work, photo, odometer, mileage trip)</string>
     <string name="capture_other_button_trip_open">Trip in progress — tap for options</string>
     <string name="capture_voice_button_label">Tap to speak</string>
     <string name="capture_type_instead">Type instead</string>

@@ -532,6 +532,29 @@ class CaptureViewModel : ViewModel() {
     }
 
     /**
+     * Manual "Start new work" from the "Other" menu — the tap-triggered
+     * equivalent of a "starting to work on X" voice utterance (see
+     * [handleTimerStart] above), for a host who'd rather tap than talk to
+     * open the clock. Same as a start-trip button tap: property/task are
+     * left blank (filled in later via the "tap to complete" banner ->
+     * Confirm, see [completeOpenTimer]), and TimerEntryCoordinator.handleStart
+     * already auto-closes whatever timer was previously open, so this is
+     * safe to call unconditionally even if one happens to already be running.
+     */
+    fun startNewWork() {
+        viewModelScope.launch {
+            timerEntryCoordinator.handleStart(
+                property = null,
+                task = null,
+                category = null,
+                source = CaptureSource.MANUAL,
+                startedAt = Timestamp.now(),
+            )
+            _uiState.value = CaptureUiState(timerMessage = "Started tracking — clock is running")
+        }
+    }
+
+    /**
      * Tap-to-complete for the "work in progress" indicator (see
      * [openTimerEntry]) — the manual-tap equivalent of saying "stop,"
      * recording the completion time/location the exact same way a voice

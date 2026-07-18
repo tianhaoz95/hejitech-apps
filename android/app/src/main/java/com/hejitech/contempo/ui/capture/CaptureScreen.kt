@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -411,6 +412,12 @@ fun CaptureScreen(
                             )
                         }
                         DropdownMenu(expanded = otherMenuExpanded, onDismissRequest = { otherMenuExpanded = false }) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.capture_start_new_work_button)) },
+                                leadingIcon = { Icon(Icons.Filled.Timer, contentDescription = null) },
+                                enabled = !busy,
+                                onClick = { otherMenuExpanded = false; viewModel.startNewWork() },
+                            )
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.capture_photo_button)) },
                                 leadingIcon = { Icon(Icons.Filled.PhotoCamera, contentDescription = null) },
