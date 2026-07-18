@@ -20,13 +20,22 @@ planning/branding artifacts:
   `wear`). See "`android/` architecture" below.
 - `backend/` — the Firebase project root (Firestore, Auth, Storage, Genkit Cloud
   Functions). See "`backend/` architecture" below.
-- `ios/`, `web/` — reserved, not started (see each dir's README). iOS is
-  fast-follow after the Android core loop validates with the pilot user; web is
-  scoped to a CPA-export/back-office app, never day-to-day capture, so neither is
-  MVP.
+- `ios/` — reserved, not started (see its README). Fast-follow after the
+  Android core loop validates with the pilot user.
+- `web/` — initial scaffold only (Vite/React/TypeScript, see `web/README.md`),
+  not MVP. Scoped to three things — subscription/billing, an analysis
+  dashboard, and CPA export/back-office — but never day-to-day capture.
+  **Subscriptions are web-only by design**: neither the Android nor iOS app
+  will ever contain a purchase flow or pricing mention, specifically to avoid
+  Apple/Google's in-app-purchase platform fee — the apps only read entitlement
+  status (synced from Stripe into Firestore, via Stripe's official Firebase
+  Extension) and gate premium features accordingly. Stripe itself isn't wired
+  up yet (`web/src/billing/subscription.ts` has a `TODO(stripe)`); Auth
+  (Google Sign-In) and Firestore are wired against the real `contempo-platform`
+  project, same as `android/`.
 
 The **real Firebase project is `contempo-platform`** (project number
-`646737053318`), backing `android/`, `backend/`, and eventually `ios/`/`web/` —
+`646737053318`), backing `android/`, `backend/`, `web/`, and eventually `ios/` —
 all under the **Hejitech** business entity (`com.hejitech.<app>` package/bundle
 IDs — e.g. `com.hejitech.contempo` for the Android phone app, `com.hejitech.wear`
 for Wear OS — not `com.contempo.*`). It has Firestore (standard edition,
@@ -222,10 +231,16 @@ The Firebase project root — `firebase` CLI commands (prefixed
   `users/{uid}/corrections/{correctionId}` (the correction-feedback pipeline,
   captured from day one even though unused yet — see MVP scope report Section
   8). `firestore.rules` is ownership-only (`request.auth.uid == uid`, keyed off
-  the path segment, not client-supplied data) — solid against cross-user
-  access, but has **no field-level type/size validation** on any document yet
-  (worth tightening given the product's whole premise is trustworthy audit
-  records — flagged, not yet fixed).
+  the path segment, not client-supplied data) for read access, **plus
+  field-level type/size/range validation on every write** (entry field types
+  and enums, string/array/lat-lng bounds, etc. — mirrored by hand from
+  `core/model/Entry.kt` and `Property.kt`, tested against the emulator via
+  `@firebase/rules-unit-testing` before each rules deploy). `corrections` is
+  additionally append-only at the rules layer (`allow update, delete: if
+  false`), not just by client convention. Rules deploy automatically from
+  `main` via `.github/workflows/firebase-deploy.yml`, authenticating through
+  Workload Identity Federation (no service-account key stored anywhere) —
+  see that workflow file for the underlying GCP IAM/WIF setup.
 - **Auth**: Google Sign-In is enabled via the `auth.providers.googleSignIn`
   block in `firebase.json`, deployed with `firebase deploy --only auth` (this
   is what auto-provisions the web/Android OAuth clients — the Firebase Console

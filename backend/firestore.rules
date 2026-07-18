@@ -2,9 +2,18 @@ rules_version = '2';
 
 // MVP data model is deliberately nested under a single owner (no household/
 // team sharing yet — that's fast-follow per reports/mvp-scope-v0.html
-// Section 5.1), so rules are just "you can only touch your own subtree."
-// Revisit this file the day multi-participant logging ships; it will need
-// per-property ACLs at that point, not a per-user root.
+// Section 5.1), so ownership rules are just "you can only touch your own
+// subtree." Revisit this file the day multi-participant logging ships; it
+// will need per-property ACLs at that point, not a per-user root.
+//
+// Field-level validation below mirrors the Kotlin models by hand (no shared
+// schema codegen at MVP scale — see android/core/.../model/Entry.kt and
+// Property.kt, and backend/functions/src/schemas.ts for the AI-parsing
+// subset). Known fields are type/range/size-checked; unknown extra fields
+// are intentionally not rejected, so a client shipped slightly ahead of a
+// rules deploy doesn't get locked out — this is a data-integrity net for a
+// product whose whole premise is a trustworthy audit record, not a strict
+// schema lock.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -12,22 +21,102 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == uid;
     }
 
+    // True whether `d[key]` is absent, explicitly null, or matches `type` —
+    // the shape every nullable Kotlin field (Double?, Timestamp?) takes once
+    // Firestore stores it (the SDK writes an explicit null, it doesn't drop
+    // the key).
+    function optionalType(d, key, type) {
+      return !(key in d) || d[key] == null ||
+        (type == 'number' && d[key] is number) ||
+        (type == 'timestamp' && d[key] is timestamp) ||
+        (type == 'string' && d[key] is string);
+    }
+
+    function isLatLng(d, latKey, lngKey) {
+      return optionalType(d, latKey, 'number') && optionalType(d, lngKey, 'number') &&
+        (!(latKey in d) || d[latKey] == null || (d[latKey] >= -90 && d[latKey] <= 90)) &&
+        (!(lngKey in d) || d[lngKey] == null || (d[lngKey] >= -180 && d[lngKey] <= 180));
+    }
+
+    function isValidProperty(d) {
+      return d.name is string && d.name.size() > 0 && d.name.size() <= 200 &&
+        d.createdAt is timestamp;
+    }
+
+    function isValidEntry(d) {
+      return d.propertyId is string && d.propertyId.size() <= 200 &&
+        d.propertyName is string && d.propertyName.size() <= 200 &&
+        d.task is string && d.task.size() <= 5000 &&
+        d.durationMinutes is int && d.durationMinutes >= 0 && d.durationMinutes <= 1440 &&
+        d.category in ['maintenance', 'turnover', 'guest_communication', 'supply_run', 'admin', 'other'] &&
+        d.status in ['pending_review', 'confirmed'] &&
+        d.source in ['manual', 'voice', 'text', 'photo'] &&
+        d.activityDate is timestamp &&
+        d.loggedAt is timestamp &&
+        optionalType(d, 'confirmedAt', 'timestamp') &&
+        d.isVague is bool &&
+        d.isBackfilled is bool &&
+        d.daysLate is int && d.daysLate >= 0 && d.daysLate <= 3650 &&
+        d.riskReasons is list && d.riskReasons.size() <= 20 &&
+        d.photoUrls is list && d.photoUrls.size() <= 30 &&
+        d.inProgress is bool &&
+        d.isTrip is bool &&
+        d.mileageCaptureMethod is string && d.mileageCaptureMethod.size() <= 20 &&
+        d.miles is number && d.miles >= 0 && d.miles <= 100000 &&
+        optionalType(d, 'odometerStart', 'number') &&
+        optionalType(d, 'odometerEnd', 'number') &&
+        isLatLng(d, 'tripStartLat', 'tripStartLng') &&
+        isLatLng(d, 'tripEndLat', 'tripEndLng') &&
+        isLatLng(d, 'captureLat', 'captureLng') &&
+        isLatLng(d, 'stopLat', 'stopLng') &&
+        d.audioUrl is string && d.audioUrl.size() <= 2000 &&
+        optionalType(d, 'stoppedAt', 'timestamp');
+    }
+
+    function isValidCorrection(d) {
+      return d.entryId is string && d.entryId.size() > 0 && d.entryId.size() <= 200 &&
+        d.fieldName is string && d.fieldName.size() > 0 && d.fieldName.size() <= 100 &&
+        d.aiValue is string && d.aiValue.size() <= 5000 &&
+        d.finalValue is string && d.finalValue.size() <= 5000 &&
+        d.recordedAt is timestamp;
+    }
+
+    function isValidAudioCapture(d) {
+      return d.storagePath is string && d.storagePath.size() > 0 && d.storagePath.size() <= 500 &&
+        d.capturedAt is timestamp &&
+        isLatLng(d, 'lat', 'lng');
+    }
+
     match /users/{uid} {
       allow read, write: if isOwner(uid);
 
       match /properties/{propertyId} {
-        allow read, write: if isOwner(uid);
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && isValidProperty(request.resource.data);
+        allow delete: if isOwner(uid);
       }
 
       match /entries/{entryId} {
-        allow read, write: if isOwner(uid);
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && isValidEntry(request.resource.data);
+        allow delete: if isOwner(uid);
       }
 
-      // Append-only in spirit: the app should never update or delete a
-      // correction record once written (it's training signal, not app
-      // state) but that's enforced client-side for MVP, not here yet.
+      // Append-only: a correction is training signal, not app state, and
+      // should never be edited or deleted once written — now enforced here,
+      // not just by client convention.
       match /corrections/{correctionId} {
-        allow read, write: if isOwner(uid);
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid) && isValidCorrection(request.resource.data);
+        allow update, delete: if false;
+      }
+
+      // Queue of audio recorded on a device that can't transcribe/parse it
+      // itself (the watch) — see core/data/AudioCaptureQueue.kt.
+      match /audioCaptures/{captureId} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && isValidAudioCapture(request.resource.data);
+        allow delete: if isOwner(uid);
       }
     }
   }

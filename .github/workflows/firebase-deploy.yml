@@ -1,0 +1,54 @@
+name: Deploy Firebase rules & config
+
+# Deploys Firestore/Storage security rules, Firestore indexes, and Auth config
+# to the real contempo-platform project whenever those files change on main.
+# Authenticates via Workload Identity Federation (see backend/README.md) —
+# no service-account key is stored anywhere; GitHub's own OIDC token is
+# exchanged for short-lived Google credentials at run time, scoped to a
+# least-privilege service account that can only touch rules/indexes/auth
+# config, never Firestore data itself.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/firestore.rules"
+      - "backend/firestore.indexes.json"
+      - "backend/storage.rules"
+      - "backend/firebase.json"
+      - "backend/.firebaserc"
+      - ".github/workflows/firebase-deploy.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  id-token: write # required for Workload Identity Federation
+
+concurrency:
+  group: firebase-deploy
+  cancel-in-progress: false # never cancel a deploy mid-flight
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: contempo-platform
+          workload_identity_provider: projects/646737053318/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider
+          service_account: firebase-ci@contempo-platform.iam.gserviceaccount.com
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Deploy Firestore rules, indexes, Storage rules, and Auth config
+        working-directory: backend
+        run: |
+          npx -y firebase-tools@latest deploy \
+            --only "firestore:rules,firestore:indexes,storage,auth" \
+            --project contempo-platform \
+            --non-interactive
