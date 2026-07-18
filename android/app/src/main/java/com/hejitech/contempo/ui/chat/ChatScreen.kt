@@ -23,17 +23,23 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -96,8 +102,26 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
     // (confirmed via decompiling the real Material3 AAR — it's
     // systemBarsForVisualComponents, not safeDrawing), so this screen-level
     // modifier is the one thing actually reserving keyboard space here.
+    var showClearHistoryDialog by remember { mutableStateOf(false) }
+
     Column(modifier = Modifier.fillMaxSize().imePadding().padding(16.dp)) {
-        Eyebrow(stringResource(R.string.chat_eyebrow), modifier = Modifier.padding(bottom = 12.dp, start = 8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Eyebrow(stringResource(R.string.chat_eyebrow), modifier = Modifier.padding(start = 8.dp))
+            if (uiState.messages.isNotEmpty()) {
+                IconButton(onClick = { showClearHistoryDialog = true }) {
+                    Icon(
+                        Icons.Filled.DeleteOutline,
+                        contentDescription = stringResource(R.string.chat_clear_history_button),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(4.dp))
         if (uiState.messages.isEmpty()) {
             Box(modifier = Modifier.weight(1f).fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
                 Text(
@@ -177,21 +201,41 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
         }
 
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = cameraCapture::launch, enabled = !uiState.isRecording && !uiState.isTranscribing) {
-                Icon(
-                    Icons.Filled.PhotoCamera,
-                    contentDescription = stringResource(R.string.chat_attach_photo_button),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            IconButton(onClick = ::onMicTap, enabled = !uiState.isTranscribing) {
-                Icon(
-                    Icons.Filled.Mic,
-                    contentDescription = stringResource(
-                        if (uiState.isRecording) R.string.capture_voice_stop else R.string.capture_voice_start
-                    ),
-                    tint = if (uiState.isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            if (uiState.isRecording) {
+                // Recording is already underway — skip the menu and show the
+                // stop affordance directly, same as before this collapsed
+                // into a "+" (a menu tap-through would just add friction to
+                // ending a recording that's already running).
+                IconButton(onClick = ::onMicTap, enabled = !uiState.isTranscribing) {
+                    Icon(
+                        Icons.Filled.Mic,
+                        contentDescription = stringResource(R.string.capture_voice_stop),
+                        tint = MaterialTheme.colorScheme.error,
+                    )
+                }
+            } else {
+                var attachMenuExpanded by remember { mutableStateOf(false) }
+                Box {
+                    IconButton(onClick = { attachMenuExpanded = true }, enabled = !uiState.isTranscribing) {
+                        Icon(
+                            Icons.Filled.Add,
+                            contentDescription = stringResource(R.string.chat_attach_button),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    DropdownMenu(expanded = attachMenuExpanded, onDismissRequest = { attachMenuExpanded = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.chat_attach_photo_button)) },
+                            leadingIcon = { Icon(Icons.Filled.PhotoCamera, contentDescription = null) },
+                            onClick = { attachMenuExpanded = false; cameraCapture.launch() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.capture_voice_start)) },
+                            leadingIcon = { Icon(Icons.Filled.Mic, contentDescription = null) },
+                            onClick = { attachMenuExpanded = false; onMicTap() },
+                        )
+                    }
+                }
             }
             OutlinedTextField(
                 value = uiState.inputText,
@@ -210,6 +254,32 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
             }
         }
     }
+
+    if (showClearHistoryDialog) {
+        ClearHistoryDialog(
+            onDismiss = { showClearHistoryDialog = false },
+            onConfirm = { showClearHistoryDialog = false; viewModel.clearHistory() },
+        )
+    }
+}
+
+@Composable
+private fun ClearHistoryDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.chat_clear_history_dialog_title)) },
+        text = { Text(stringResource(R.string.chat_clear_history_dialog_text)) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(stringResource(R.string.chat_clear_history_dialog_confirm), color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.entry_detail_delete_dialog_cancel))
+            }
+        },
+    )
 }
 
 @Composable

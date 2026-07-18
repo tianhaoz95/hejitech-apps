@@ -110,6 +110,10 @@ class ChatViewModel : ViewModel() {
         _uiState.value = _uiState.value.copy(pendingImage = null)
     }
 
+    fun clearHistory() {
+        _uiState.value = _uiState.value.copy(messages = emptyList(), errorMessage = null)
+    }
+
     fun send() {
         val question = _uiState.value.inputText.trim()
         val image = _uiState.value.pendingImage
