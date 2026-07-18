@@ -18,9 +18,9 @@ name: Deploy Firebase rules & config
 # account's permissions for — keep deploying it manually per CLAUDE.md's
 # `firebase deploy --only auth` instructions instead.
 #
-# The two jobs below both run on every trigger of this workflow rather than
-# being gated to only the paths that changed (e.g. a rules-only push still
-# redeploys Hosting) — same bundling philosophy already used for
+# The jobs below all run on every trigger of this workflow rather than being
+# gated to only the paths that changed (e.g. a rules-only push still
+# redeploys both Hosting sites) — same bundling philosophy already used for
 # rules+indexes+storage in deploy-rules, and cheap/idempotent enough for a
 # single-pilot-user MVP not to be worth a paths-filter job to avoid.
 on:
@@ -33,6 +33,7 @@ on:
       - "backend/firebase.json"
       - "backend/.firebaserc"
       - "web/**"
+      - "feedback/**"
       - ".github/workflows/firebase-deploy.yml"
   workflow_dispatch: {}
 
@@ -100,5 +101,33 @@ jobs:
         run: |
           npx -y firebase-tools@latest deploy \
             --only hosting:contempo \
+            --project contempo-platform \
+            --non-interactive
+
+  deploy-feedback:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: contempo-platform
+          workload_identity_provider: projects/646737053318/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider
+          service_account: firebase-ci@contempo-platform.iam.gserviceaccount.com
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # No install/build step needed — feedback/ is a zero-dependency static
+      # site (see feedback/README.md); firebase.json's predeploy hook just
+      # copies it into backend/feedback-dist.
+      - name: Deploy Hosting (contempo-feedback site)
+        working-directory: backend
+        run: |
+          npx -y firebase-tools@latest deploy \
+            --only hosting:contempo-feedback \
             --project contempo-platform \
             --non-interactive

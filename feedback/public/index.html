@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Send feedback on Contempo — no account needed." />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <title>Contempo — Feedback</title>
+    <link rel="stylesheet" href="assets/style.css" />
+  </head>
+  <body>
+    <div class="page-bg" aria-hidden="true">
+      <div class="bg-blob bg-blob-1"></div>
+      <div class="bg-blob bg-blob-2"></div>
+      <div class="bg-blob bg-blob-3"></div>
+    </div>
+
+    <header class="topbar">
+      <a class="wordmark" href="https://contempo.web.app">
+        <span class="name">Contempo</span>
+        <span class="stamp">feedback</span>
+      </a>
+      <button class="theme-toggle" id="theme-toggle" aria-label="Toggle color theme">◐</button>
+    </header>
+
+    <main class="page-main">
+      <div class="card">
+        <!-- Same ring/dot mark as favicon.svg + the app icon, so this page
+             reads as unmistakably Contempo rather than a generic form. -->
+        <div class="icon-mark" aria-hidden="true">
+          <svg viewBox="0 0 108 108" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="54" cy="54" r="24" stroke="currentColor" stroke-width="9" />
+            <circle cx="54" cy="48" r="9" fill="currentColor" />
+          </svg>
+        </div>
+
+        <div class="eyebrow">We read every one</div>
+        <h1>Send feedback</h1>
+        <p class="subtitle">
+          Bug, idea, or anything else — no account needed.
+        </p>
+
+        <form id="feedback-form" novalidate>
+          <label for="message">Your feedback</label>
+          <textarea id="message" name="message" required maxlength="5000"></textarea>
+
+          <label for="email">Email (optional, if you'd like a reply)</label>
+          <input id="email" name="email" type="email" maxlength="200" />
+
+          <div class="honeypot-field" aria-hidden="true">
+            <label for="website">Website</label>
+            <input id="website" name="website" type="text" tabindex="-1" autocomplete="off" />
+          </div>
+
+          <button type="submit">Send feedback</button>
+          <p id="status" class="status" role="status"></p>
+        </form>
+      </div>
+    </main>
+
+    <script src="assets/theme.js"></script>
+    <script type="module" src="assets/script.js"></script>
+  </body>
+</html>

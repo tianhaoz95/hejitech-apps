@@ -1,0 +1,338 @@
+/* Same token set as branding/landing_v0/site/assets/style.css — the real
+   Contempo pine/navy/brass identity, not a one-off palette for this page. */
+:root {
+  --paper: #f5f6f2;
+  --paper-raised: #ffffff;
+  --ink: #14201b;
+  --ink-soft: #45524b;
+  --ink-faint: #7c8880;
+  --pine: #1f5c46;
+  --pine-deep: #163f31;
+  --pine-tint: #e4eee8;
+  --navy: #16273d;
+  --navy-tint: #e7ebf1;
+  --brass: #a67c34;
+  --brass-tint: #f3e9d6;
+  --hairline: #dbe1d8;
+  --hairline-strong: #c3ccc3;
+  --danger: #a13f36;
+  --danger-tint: #fbeceb;
+  --shadow-1: 0 1px 2px rgba(20, 32, 27, 0.05), 0 8px 24px rgba(20, 32, 27, 0.06);
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #0e1613;
+    --paper-raised: #16201c;
+    --ink: #eceee8;
+    --ink-soft: #a9b3ac;
+    --ink-faint: #71827a;
+    --pine: #45a67c;
+    --pine-deep: #327a5b;
+    --pine-tint: #16261f;
+    --navy: #9fb2cf;
+    --navy-tint: #17222f;
+    --brass: #cda35c;
+    --brass-tint: #2a2214;
+    --hairline: #263029;
+    --hairline-strong: #364039;
+    --danger: #d97a70;
+    --danger-tint: #2c1a18;
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper: #0e1613; --paper-raised: #16201c; --ink: #eceee8; --ink-soft: #a9b3ac;
+  --ink-faint: #71827a; --pine: #45a67c; --pine-deep: #327a5b; --pine-tint: #16261f;
+  --navy: #9fb2cf; --navy-tint: #17222f; --brass: #cda35c; --brass-tint: #2a2214;
+  --hairline: #263029; --hairline-strong: #364039; --danger: #d97a70; --danger-tint: #2c1a18;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --paper: #f5f6f2; --paper-raised: #ffffff; --ink: #14201b; --ink-soft: #45524b;
+  --ink-faint: #7c8880; --pine: #1f5c46; --pine-deep: #163f31; --pine-tint: #e4eee8;
+  --navy: #16273d; --navy-tint: #e7ebf1; --brass: #a67c34; --brass-tint: #f3e9d6;
+  --hairline: #dbe1d8; --hairline-strong: #c3ccc3; --danger: #a13f36; --danger-tint: #fbeceb;
+  --shadow-1: 0 1px 2px rgba(20, 32, 27, 0.05), 0 8px 24px rgba(20, 32, 27, 0.06);
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  color: var(--ink);
+  font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Segoe UI", sans-serif;
+  line-height: 1.6;
+}
+
+/* No background on html/body: an opaque background on the .page-bg's own
+   parent paints in FRONT of that fixed z-index:-1 child (a negative
+   z-index child only escapes behind its parent's own background if that
+   parent has none) — the paper fill lives on .page-bg itself instead, or
+   the blobs render invisibly behind a solid canvas. */
+
+/* Slowly drifting pine/brass blobs behind everything — so the page reads as
+   designed rather than a bare form on flat paper. Fixed + overflow:hidden so
+   nothing scrolls/leaks past the viewport edge on tall pages. Pure CSS, no
+   JS/canvas — cheap and trivially disabled for reduced motion below. */
+.page-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  background: var(--paper);
+}
+
+.bg-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  will-change: transform;
+}
+
+/* Full-strength pine/brass/navy (not the *-tint surface colors, which read
+   as nearly invisible once blurred) as a FLAT color-mix fill, not a radial
+   gradient — a gradient's own falloff plus blur() compound to dilute nearly
+   all the color away. blur() alone is what softens the disc into a glow. */
+.bg-blob-1 {
+  width: 55vmax;
+  height: 55vmax;
+  top: -14vmax;
+  left: -16vmax;
+  background: color-mix(in srgb, var(--pine) 42%, transparent);
+  animation: drift-1 26s ease-in-out infinite;
+}
+
+.bg-blob-2 {
+  width: 48vmax;
+  height: 48vmax;
+  bottom: -12vmax;
+  right: -14vmax;
+  background: color-mix(in srgb, var(--brass) 42%, transparent);
+  animation: drift-2 32s ease-in-out infinite;
+}
+
+.bg-blob-3 {
+  width: 36vmax;
+  height: 36vmax;
+  top: 32%;
+  left: 56%;
+  background: color-mix(in srgb, var(--navy) 34%, transparent);
+  animation: drift-3 22s ease-in-out infinite;
+}
+
+@keyframes drift-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(6vmax, 5vmax) scale(1.12); }
+}
+
+@keyframes drift-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-5vmax, -6vmax) scale(1.08); }
+}
+
+@keyframes drift-3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-4vmax, 3vmax) scale(0.9); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bg-blob { animation: none; }
+}
+
+a { color: var(--pine); }
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 1.5rem;
+}
+
+.wordmark {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.wordmark .name {
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.wordmark .stamp {
+  font-family: ui-monospace, "SF Mono", monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  color: var(--brass);
+  border: 1px solid var(--brass);
+  border-radius: 999px;
+  padding: 0.08rem 0.5rem;
+  text-transform: uppercase;
+}
+
+.theme-toggle {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--hairline-strong);
+  background: var(--paper-raised);
+  color: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.theme-toggle:hover { border-color: var(--pine); color: var(--pine); }
+
+.page-main {
+  display: flex;
+  justify-content: center;
+  padding: 1.5rem 1.25rem 4rem;
+}
+
+.card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  padding: 2.2rem 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Accent bar across the top of the card — small, brand-colored detail that
+   keeps a single-form page from reading as a bare, generic input box. */
+.card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--pine), var(--brass));
+}
+
+.icon-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--pine-tint);
+  color: var(--pine);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.1rem;
+}
+.icon-mark svg { width: 24px; height: 24px; }
+
+.eyebrow {
+  font-family: ui-monospace, "SF Mono", "IBM Plex Mono", Menlo, Consolas, monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pine);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+.eyebrow::before {
+  content: "";
+  width: 18px;
+  height: 1px;
+  background: var(--pine);
+  display: inline-block;
+}
+
+h1 {
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 1.5rem;
+  margin: 0 0 0.4rem;
+}
+
+.subtitle {
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  margin: 0 0 1.6rem;
+}
+
+label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+
+textarea, input[type="email"] {
+  width: 100%;
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-md);
+  padding: 0.65rem 0.75rem;
+  margin-bottom: 1.1rem;
+}
+
+textarea:focus, input[type="email"]:focus {
+  outline: 2px solid var(--pine);
+  outline-offset: 1px;
+}
+
+textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+/* Honeypot — visually hidden but present in the tab/accessibility tree
+   in a way that off-screen-positioning survives more bot heuristics than
+   display:none does. */
+.honeypot-field {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+button[type="submit"] {
+  font: inherit;
+  font-weight: 600;
+  color: #fdfdfb;
+  background: var(--pine);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1.2rem;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.15s ease;
+}
+button[type="submit"]:hover:not(:disabled) { background: var(--pine-deep); }
+button[type="submit"]:disabled { opacity: 0.6; cursor: default; }
+
+.status {
+  margin-top: 1rem;
+  font-size: 0.88rem;
+  min-height: 1.2em;
+}
+
+.status-success { color: var(--pine); font-weight: 600; }
+.status-error { color: var(--danger); }

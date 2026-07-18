@@ -44,6 +44,7 @@ backend/firestore-debug.log
 # hosting.predeploy hook (public dirs can't reference paths outside the
 # Firebase project directory, i.e. can't point straight at ../web/dist)
 backend/web-dist/
+backend/feedback-dist/
 backend/ui-debug.log
 backend/.firebase/
 

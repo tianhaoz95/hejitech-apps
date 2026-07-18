@@ -33,6 +33,14 @@ planning/branding artifacts:
   up yet (`web/src/billing/subscription.ts` has a `TODO(stripe)`); Auth
   (Google Sign-In) and Firestore are wired against the real `contempo-platform`
   project, same as `android/`.
+- `feedback/` — a standalone, login-free feedback form (see
+  `feedback/README.md`), zero-dependency static site like `reports/` and
+  `branding/landing_v0/`. Writes anonymously to a top-level `feedback`
+  Firestore collection via its own Firebase Web App registration ("Contempo
+  Feedback", separate from `web/`'s "Contempo Web" app, though same
+  `contempo-platform` project) and its own Hosting site (`contempo-feedback`,
+  `https://contempo-feedback.web.app`) — entirely separate from the main
+  `contempo` Hosting site `web/` deploys to.
 
 The **real Firebase project is `contempo-platform`** (project number
 `646737053318`), backing `android/`, `backend/`, `web/`, and eventually `ios/` —
@@ -237,7 +245,12 @@ The Firebase project root — `firebase` CLI commands (prefixed
   `core/model/Entry.kt` and `Property.kt`, tested against the emulator via
   `@firebase/rules-unit-testing` before each rules deploy). `corrections` is
   additionally append-only at the rules layer (`allow update, delete: if
-  false`), not just by client convention. Rules deploy automatically from
+  false`), not just by client convention. Separately, a top-level (not
+  nested under `users/{uid}` — there's no owner) `feedback/{feedbackId}`
+  collection backs `feedback/`'s login-free form: public create-only, with
+  no read access for anyone including the submitter (review via the
+  Firestore console) and a server-pinned `createdAt` (`== request.time`) so
+  submissions can't be backdated. Rules deploy automatically from
   `main` via `.github/workflows/firebase-deploy.yml`, authenticating through
   Workload Identity Federation (no service-account key stored anywhere) —
   see that workflow file for the underlying GCP IAM/WIF setup.

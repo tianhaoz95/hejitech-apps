@@ -87,6 +87,24 @@ service cloud.firestore {
         isLatLng(d, 'lat', 'lng');
     }
 
+    // No owner (submitted from the login-free feedback/ site) — server-set
+    // createdAt (== request.time, not just `is timestamp`) so a submitter
+    // can't backdate it, same idea as corrections' append-only rule below.
+    function isValidFeedback(d) {
+      return d.message is string && d.message.size() > 0 && d.message.size() <= 5000 &&
+        optionalType(d, 'email', 'string') &&
+        (!('email' in d) || d.email == null || d.email.size() <= 200) &&
+        d.createdAt == request.time;
+    }
+
+    // Public/anonymous — see feedback/README.md and firebase.json's
+    // "contempo-feedback" hosting site. Nobody can read submissions back
+    // (including the submitter); review them via the Firestore console.
+    match /feedback/{feedbackId} {
+      allow create: if isValidFeedback(request.resource.data);
+      allow read, update, delete: if false;
+    }
+
     match /users/{uid} {
       allow read, write: if isOwner(uid);
 
