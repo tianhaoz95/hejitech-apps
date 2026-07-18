@@ -19,9 +19,10 @@
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   }
 
+  // Same copy as web/src/components/ThemeToggle.tsx's toggle button.
   function updateIcon() {
     if (!toggle) return;
-    toggle.textContent = currentTheme() === "dark" ? "○" : "◐";
+    toggle.textContent = currentTheme() === "dark" ? "☀ Light" : "☾ Dark";
   }
 
   if (toggle) {
