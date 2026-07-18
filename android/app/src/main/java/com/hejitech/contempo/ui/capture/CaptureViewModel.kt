@@ -468,7 +468,7 @@ class CaptureViewModel : ViewModel() {
                         draft.property, draft.task, Timestamp.now(), stopLocation?.first, stopLocation?.second,
                     )
                     if (stopped != null) {
-                        _uiState.value = CaptureUiState(timerMessage = "Stopped — logged ${stopped.durationMinutes}m")
+                        _uiState.value = CaptureUiState()
                         return
                     }
                     // Nothing was open to close — fall through and treat this
@@ -570,7 +570,10 @@ class CaptureViewModel : ViewModel() {
             val stopLocation = captureLocation()
             val stopped = timerEntryCoordinator.handleStop(null, null, Timestamp.now(), stopLocation?.first, stopLocation?.second)
             if (stopped != null) {
-                _uiState.value = CaptureUiState(timerMessage = "Stopped — logged ${stopped.durationMinutes}m")
+                // No bottom confirmation — the "in progress" banner simply
+                // disappears once openTimerEntry goes null, which is
+                // confirmation enough (see the "start" side, same reasoning).
+                _uiState.value = CaptureUiState()
             }
         }
     }
