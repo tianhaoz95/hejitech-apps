@@ -36,7 +36,6 @@
     <string name="help_walkthrough_chat_body">Ask questions about your entries or material participation rules and get answers grounded in your own records.</string>
     <string name="help_walkthrough_settings_title">Set up your properties</string>
     <string name="help_walkthrough_settings_body">Add properties, pick a capture language, and manage your account here.</string>
-    <string name="capture_language_label">Language</string>
     <string name="capture_language_english">English</string>
     <string name="capture_language_chinese">中文</string>
     <string name="capture_language_auto">Auto</string>
@@ -76,6 +75,7 @@
     <string name="capture_stop_trip_button">Stop trip (GPS)</string>
     <string name="capture_location_permission_needed">Location access is needed to track a trip — tap again to grant it.</string>
     <string name="capture_other_button">Other (start work, photo, odometer, mileage trip)</string>
+    <string name="capture_other_button_label">More ways to capture</string>
     <string name="capture_other_button_trip_open">Trip in progress — tap for options</string>
     <string name="capture_voice_button_label">Tap to speak</string>
     <string name="capture_type_instead">Type instead</string>

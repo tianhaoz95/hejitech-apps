@@ -42,14 +42,17 @@ import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -327,32 +330,23 @@ fun CaptureScreen(
                 val quickCaptureToggleDescription = stringResource(R.string.capture_quick_capture_toggle_content_description)
                 val typeInsteadDescription = stringResource(R.string.capture_type_instead)
 
-                // Same prominence as the Quick Capture row below (label +
-                // control, no card/background) — this is per-capture, not a
-                // standing setting like Quick Capture, but it needs to be
-                // just as visible since picking wrong is exactly the failure
-                // mode it exists to prevent. Persists across app restarts
-                // (see CaptureLanguageStore) but is read fresh at the moment
-                // each recording stops, not live at background-processing
-                // time — see CaptureUiState.captureLanguage's kdoc.
+                // No label above this — a language picker reads as itself
+                // (English/中文/Auto) without needing "Language:" spelled
+                // out. Persists across app restarts (see CaptureLanguageStore)
+                // but is read fresh at the moment each recording stops, not
+                // live at background-processing time — see
+                // CaptureUiState.captureLanguage's kdoc.
                 //
                 // Hidden by default (see CaptureLanguageSelectorVisibilityStore,
                 // toggled from Settings) — most hosts speak one language and
                 // never need this, so it stays off screen until opted into,
                 // falling back to captureLanguage's own default (English).
                 if (uiState.showLanguageSelector) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            stringResource(R.string.capture_language_label),
-                            style = MaterialTheme.typography.labelLarge,
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        CaptureLanguageSelector(
-                            selected = uiState.captureLanguage,
-                            enabled = !busy,
-                            onSelect = viewModel::setCaptureLanguage,
-                        )
-                    }
+                    CaptureLanguageSelector(
+                        selected = uiState.captureLanguage,
+                        enabled = !busy,
+                        onSelect = viewModel::setCaptureLanguage,
+                    )
 
                     Spacer(Modifier.height(20.dp))
                 }
@@ -421,15 +415,26 @@ fun CaptureScreen(
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box {
-                        IconButton(onClick = { otherMenuExpanded = true }, enabled = !busy) {
-                            Icon(
-                                Icons.Filled.MoreHoriz,
-                                contentDescription = otherContentDescription,
-                                // A trip left running is worth a glance even
-                                // when this icon is the only trace of it on
-                                // screen, now that its old full-width label
-                                // text is gone.
-                                tint = if (gpsTripOpen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        // A labeled button rather than a bare "..." icon —
+                        // an unlabeled overflow glyph didn't read as
+                        // discoverable (start work, photo, odometer, mileage
+                        // trip are all hidden behind it). The label swaps to
+                        // a trip-in-progress call-out when relevant, same
+                        // "worth a glance even collapsed" reasoning as the
+                        // old icon tint.
+                        TextButton(
+                            onClick = { otherMenuExpanded = true },
+                            enabled = !busy,
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = if (gpsTripOpen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            ),
+                            modifier = Modifier.semantics { contentDescription = otherContentDescription },
+                        ) {
+                            Icon(Icons.Filled.MoreHoriz, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                if (gpsTripOpen) stringResource(R.string.capture_other_button_trip_open)
+                                else stringResource(R.string.capture_other_button_label)
                             )
                         }
                         DropdownMenu(expanded = otherMenuExpanded, onDismissRequest = { otherMenuExpanded = false }) {
@@ -762,13 +767,14 @@ private fun quickCaptureStageLabel(stage: AudioProcessingStage): String = string
 )
 
 /**
- * Three FilterChips rather than a segmented button — visually lighter/more
- * compact, and this app has no other segmented-button usage to stay
- * consistent with, whereas FilterChip's selected/unselected look is already
- * a familiar Material3 pattern. ENGLISH picks the dedicated tiny.en model,
- * CHINESE forces the multilingual model's language to "zh", AUTO leaves
- * Whisper's own (less reliable, but only real option for anything else)
- * per-utterance detection on — see WhisperTranscriber's kdoc.
+ * A connected segmented-button group (Material3's dedicated component for
+ * "pick exactly one of a few options") rather than separate FilterChips —
+ * reads as one control instead of three individual toggles, appropriate
+ * since only one language is ever selected at a time. ENGLISH picks the
+ * dedicated tiny.en model, CHINESE forces the multilingual model's language
+ * to "zh", AUTO leaves Whisper's own (less reliable, but only real option
+ * for anything else) per-utterance detection on — see WhisperTranscriber's
+ * kdoc.
  */
 @Composable
 private fun CaptureLanguageSelector(
@@ -776,36 +782,22 @@ private fun CaptureLanguageSelector(
     enabled: Boolean,
     onSelect: (CaptureLanguage) -> Unit,
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        CaptureLanguageChip(
-            label = stringResource(R.string.capture_language_english),
-            selected = selected == CaptureLanguage.ENGLISH,
-            enabled = enabled,
-            onClick = { onSelect(CaptureLanguage.ENGLISH) },
-        )
-        CaptureLanguageChip(
-            label = stringResource(R.string.capture_language_chinese),
-            selected = selected == CaptureLanguage.CHINESE,
-            enabled = enabled,
-            onClick = { onSelect(CaptureLanguage.CHINESE) },
-        )
-        CaptureLanguageChip(
-            label = stringResource(R.string.capture_language_auto),
-            selected = selected == CaptureLanguage.AUTO,
-            enabled = enabled,
-            onClick = { onSelect(CaptureLanguage.AUTO) },
-        )
-    }
-}
-
-@Composable
-private fun CaptureLanguageChip(label: String, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
-    FilterChip(
-        selected = selected,
-        onClick = onClick,
-        enabled = enabled,
-        label = { Text(label, style = MaterialTheme.typography.labelMedium) },
+    val options = listOf(
+        CaptureLanguage.ENGLISH to stringResource(R.string.capture_language_english),
+        CaptureLanguage.CHINESE to stringResource(R.string.capture_language_chinese),
+        CaptureLanguage.AUTO to stringResource(R.string.capture_language_auto),
     )
+    SingleChoiceSegmentedButtonRow {
+        options.forEachIndexed { index, (language, label) ->
+            SegmentedButton(
+                selected = selected == language,
+                onClick = { onSelect(language) },
+                enabled = enabled,
+                shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                label = { Text(label, style = MaterialTheme.typography.labelMedium) },
+            )
+        }
+    }
 }
 
 /**
