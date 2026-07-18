@@ -1,5 +1,8 @@
 package com.hejitech.contempo.ui.chat
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -33,6 +38,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,6 +67,28 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
     }
 
     val cameraCapture = rememberCameraCapture { bitmap, _ -> viewModel.attachImage(bitmap) }
+
+    var pendingRecordAfterPermission by remember { mutableStateOf(false) }
+    var micPermissionDenied by remember { mutableStateOf(false) }
+    val micPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted && pendingRecordAfterPermission) viewModel.startRecording()
+        micPermissionDenied = !granted
+        pendingRecordAfterPermission = false
+    }
+
+    fun onMicTap() {
+        when {
+            uiState.isRecording -> viewModel.stopRecordingAndSend()
+            uiState.isTranscribing -> Unit
+            viewModel.hasRecordAudioPermission() -> viewModel.startRecording()
+            else -> {
+                pendingRecordAfterPermission = true
+                micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            }
+        }
+    }
 
     // .imePadding() needs android:windowSoftInputMode="adjustResize" (see
     // AndroidManifest.xml) to receive correct, live WindowInsets.ime values.
@@ -104,6 +134,28 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
             Spacer(Modifier.height(4.dp))
         }
 
+        if (micPermissionDenied) {
+            Text(
+                stringResource(R.string.chat_mic_permission_needed),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(4.dp))
+        }
+
+        if (uiState.isTranscribing) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    stringResource(R.string.capture_transcribing),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.height(4.dp))
+        }
+
         uiState.pendingImage?.let { image ->
             Box(modifier = Modifier.padding(bottom = 8.dp)) {
                 Image(
@@ -125,23 +177,34 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
         }
 
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = cameraCapture::launch) {
+            IconButton(onClick = cameraCapture::launch, enabled = !uiState.isRecording && !uiState.isTranscribing) {
                 Icon(
                     Icons.Filled.PhotoCamera,
                     contentDescription = stringResource(R.string.chat_attach_photo_button),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            IconButton(onClick = ::onMicTap, enabled = !uiState.isTranscribing) {
+                Icon(
+                    Icons.Filled.Mic,
+                    contentDescription = stringResource(
+                        if (uiState.isRecording) R.string.capture_voice_stop else R.string.capture_voice_start
+                    ),
+                    tint = if (uiState.isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             OutlinedTextField(
                 value = uiState.inputText,
                 onValueChange = viewModel::onInputChanged,
                 modifier = Modifier.weight(1f),
-                placeholder = { Text(stringResource(R.string.chat_input_hint)) },
+                enabled = !uiState.isRecording && !uiState.isTranscribing,
+                placeholder = { Text(stringResource(if (uiState.isRecording) R.string.capture_listening else R.string.chat_input_hint)) },
             )
             IconButton(
                 onClick = viewModel::send,
                 enabled = (uiState.inputText.isNotBlank() || uiState.pendingImage != null) &&
-                    !uiState.isSending && uiState.aiAvailability is AiAvailability.Ready,
+                    !uiState.isSending && !uiState.isRecording && !uiState.isTranscribing &&
+                    uiState.aiAvailability is AiAvailability.Ready,
             ) {
                 Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.capture_send_button))
             }

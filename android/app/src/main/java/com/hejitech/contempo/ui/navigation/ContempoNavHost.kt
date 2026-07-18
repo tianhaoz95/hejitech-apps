@@ -1,28 +1,29 @@
 package com.hejitech.contempo.ui.navigation
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.ShowChart
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
@@ -40,29 +41,78 @@ import com.hejitech.contempo.ui.capture.CaptureScreen
 import com.hejitech.contempo.ui.chat.ChatScreen
 import com.hejitech.contempo.ui.confirm.ConfirmScreen
 import com.hejitech.contempo.ui.dashboard.DashboardScreen
-import com.hejitech.contempo.ui.export.ExportScreen
+import com.hejitech.contempo.ui.entrydetail.EntryDetailScreen
 import com.hejitech.contempo.ui.settings.SettingsScreen
 
 private sealed class TopLevelDestination(val route: String, val labelRes: Int) {
     data object Capture : TopLevelDestination("capture", R.string.nav_capture)
     data object Dashboard : TopLevelDestination("dashboard", R.string.nav_dashboard)
     data object Chat : TopLevelDestination("chat", R.string.nav_chat)
-    data object Export : TopLevelDestination("export", R.string.nav_export)
+    data object Settings : TopLevelDestination("settings", R.string.nav_settings)
 }
 
 private val topLevelDestinations = listOf(
     TopLevelDestination.Capture,
     TopLevelDestination.Dashboard,
     TopLevelDestination.Chat,
-    TopLevelDestination.Export,
+    TopLevelDestination.Settings,
 )
 
-private const val SETTINGS_ROUTE = "settings"
+/** -1 for non-top-level routes (Confirm, EntryDetail) — those never take part in the slide/swipe. */
+private fun topLevelIndex(route: String?): Int = topLevelDestinations.indexOfFirst { it.route == route }
+
+// Tab order (Capture -> Dashboard -> Chat -> Settings) doubles as left/right
+// direction: moving to a higher index slides the new content in from the
+// right, same as swiping left to reveal the "next" tab — shared by both the
+// bottom bar's taps and the swipe gesture below so the two stay consistent.
+private val topLevelEnterTransition: AnimatedContentTransitionScope<androidx.navigation.NavBackStackEntry>.() -> EnterTransition = {
+    val forward = topLevelIndex(targetState.destination.route) >= topLevelIndex(initialState.destination.route)
+    slideInHorizontally(initialOffsetX = { fullWidth -> if (forward) fullWidth else -fullWidth })
+}
+private val topLevelExitTransition: AnimatedContentTransitionScope<androidx.navigation.NavBackStackEntry>.() -> ExitTransition = {
+    val forward = topLevelIndex(targetState.destination.route) >= topLevelIndex(initialState.destination.route)
+    slideOutHorizontally(targetOffsetX = { fullWidth -> if (forward) -fullWidth else fullWidth })
+}
+
+/** Shared by bottom-bar taps and the swipe gesture so both navigate identically. */
+private fun navigateToTab(navController: NavHostController, destination: TopLevelDestination) {
+    // The Capture tab is the graph's start destination, and Navigation-Compose's
+    // popUpTo(startDestinationId){ saveState = true } + navigate(...){ restoreState = true }
+    // combo has a real bug when the tab being navigated TO is also the popUpTo
+    // target/start destination: instead of showing Capture, it can surface a
+    // *different* tab's saved-state entry (reproduced live: tapping Capture from
+    // Ask landed on Dashboard). Start destination is never actually removed from
+    // the back stack in the first place, so a plain popBackStack to it sidesteps
+    // the restoreState codepath entirely instead of relying on it.
+    if (destination.route == TopLevelDestination.Capture.route) {
+        navController.popBackStack(
+            navController.graph.findStartDestination().id,
+            inclusive = false,
+        )
+    } else {
+        navController.navigate(destination.route) {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+}
+
+object EntryDetailRoute {
+    const val PATTERN = "entryDetail/{entryId}"
+    fun build(entryId: String) = "entryDetail/$entryId"
+}
+
+object LegalRoute {
+    const val PATTERN = "legal/{doc}"
+    fun build(doc: com.hejitech.contempo.ui.legal.LegalDoc) = "legal/${doc.routeArg}"
+}
 
 object ConfirmRoute {
     const val PATTERN = "confirm?property={property}&task={task}&durationMinutes={durationMinutes}" +
         "&category={category}&isVague={isVague}&isBackfilled={isBackfilled}&daysLate={daysLate}" +
-        "&source={source}&captureSource={captureSource}&photoUri={photoUri}&entryId={entryId}"
+        "&source={source}&captureSource={captureSource}&miles={miles}&photoUri={photoUri}&entryId={entryId}" +
+        "&captureLat={captureLat}&captureLng={captureLng}"
 
     fun build(
         property: String,
@@ -74,17 +124,22 @@ object ConfirmRoute {
         daysLate: Int,
         source: String = "",
         captureSource: String = "",
+        miles: Double = 0.0,
         photoUri: String? = null,
         /** Non-blank when resuming a pending_review entry (see DashboardScreen's pending badge). */
         entryId: String = "",
+        /** Best-effort "captured from here" location — see CaptureViewModel.captureLocation. */
+        captureLat: Double? = null,
+        captureLng: Double? = null,
     ) = "confirm?property=$property&task=$task&durationMinutes=$durationMinutes" +
         "&category=$category&isVague=$isVague&isBackfilled=$isBackfilled&daysLate=$daysLate" +
-        "&source=$source&captureSource=$captureSource" +
+        "&source=$source&captureSource=$captureSource&miles=$miles" +
         // photoUri is a content:// URI (colons, slashes) — the only field
         // here that can't survive being pasted raw into a query string, so
         // it's the only one that gets encoded/decoded.
         "&photoUri=${photoUri?.let { java.net.URLEncoder.encode(it, "UTF-8") } ?: ""}" +
-        "&entryId=$entryId"
+        "&entryId=$entryId" +
+        "&captureLat=${captureLat ?: ""}&captureLng=${captureLng ?: ""}"
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -103,25 +158,6 @@ fun ContempoNavHost() {
     val imeVisible = WindowInsets.isImeVisible
 
     Scaffold(
-        topBar = {
-            if (isTopLevelScreen) {
-                TopAppBar(
-                    title = {},
-                    actions = {
-                        IconButton(onClick = { navController.navigate(SETTINGS_ROUTE) }) {
-                            Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.nav_settings))
-                        }
-                    },
-                    // TopAppBar defaults to colorScheme.surface, but Scaffold's
-                    // content area paints with colorScheme.background — two
-                    // different tones in this theme (surface = paper-raised/
-                    // white for cards, background = paper for the page canvas).
-                    // Matching background here keeps the bar visually part of
-                    // the page instead of a contrasting white strip.
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-                )
-            }
-        },
         bottomBar = { if (isTopLevelScreen && !imeVisible) ContempoBottomBar(navController) },
     ) { innerPadding ->
         NavHost(
@@ -129,7 +165,11 @@ fun ContempoNavHost() {
             startDestination = TopLevelDestination.Capture.route,
             modifier = androidx.compose.ui.Modifier.padding(innerPadding),
         ) {
-            composable(TopLevelDestination.Capture.route) {
+            composable(
+                TopLevelDestination.Capture.route,
+                enterTransition = topLevelEnterTransition,
+                exitTransition = topLevelExitTransition,
+            ) {
                 CaptureScreen(
                     onDraftReady = { result ->
                         navController.navigate(
@@ -143,7 +183,10 @@ fun ContempoNavHost() {
                                 daysLate = 0,
                                 source = result.parseSource,
                                 captureSource = result.captureSource.name,
+                                miles = result.draft.miles ?: 0.0,
                                 photoUri = result.photoUri,
+                                captureLat = result.captureLat,
+                                captureLng = result.captureLng,
                             )
                         )
                     }
@@ -161,8 +204,17 @@ fun ContempoNavHost() {
                     navArgument("daysLate") { type = NavType.IntType; defaultValue = 0 },
                     navArgument("source") { type = NavType.StringType; defaultValue = "" },
                     navArgument("captureSource") { type = NavType.StringType; defaultValue = "" },
+                    // No native Double NavType — carried as a string and
+                    // parsed on read, same reasoning as durationMinutes
+                    // being Int-only elsewhere in this route.
+                    navArgument("miles") { type = NavType.StringType; defaultValue = "0.0" },
                     navArgument("photoUri") { type = NavType.StringType; defaultValue = "" },
                     navArgument("entryId") { type = NavType.StringType; defaultValue = "" },
+                    // Also string-carried (no native nullable-Double
+                    // NavType) — empty string means "no fix captured",
+                    // distinct from an actual 0.0 coordinate.
+                    navArgument("captureLat") { type = NavType.StringType; defaultValue = "" },
+                    navArgument("captureLng") { type = NavType.StringType; defaultValue = "" },
                 ),
                 // A subtle slide-up + fade "settling into the structured
                 // record UI" — the visual bridge from Capture's finalized-
@@ -179,9 +231,12 @@ fun ContempoNavHost() {
                     category = backStackEntry.arguments?.getString("category").orEmpty(),
                     source = backStackEntry.arguments?.getString("source").orEmpty(),
                     captureSource = backStackEntry.arguments?.getString("captureSource").orEmpty(),
+                    miles = backStackEntry.arguments?.getString("miles")?.toDoubleOrNull() ?: 0.0,
                     photoUri = encodedPhotoUri.takeIf { it.isNotEmpty() }
                         ?.let { java.net.URLDecoder.decode(it, "UTF-8") },
                     entryId = backStackEntry.arguments?.getString("entryId").orEmpty(),
+                    captureLat = backStackEntry.arguments?.getString("captureLat")?.toDoubleOrNull(),
+                    captureLng = backStackEntry.arguments?.getString("captureLng")?.toDoubleOrNull(),
                     onConfirmed = {
                         navController.navigate(TopLevelDestination.Dashboard.route) {
                             popUpTo(TopLevelDestination.Capture.route)
@@ -189,9 +244,54 @@ fun ContempoNavHost() {
                     },
                 )
             }
-            composable(TopLevelDestination.Dashboard.route) {
+            composable(
+                TopLevelDestination.Dashboard.route,
+                enterTransition = topLevelEnterTransition,
+                exitTransition = topLevelExitTransition,
+            ) {
                 DashboardScreen(
-                    onCompleteEntry = { entry ->
+                    onEntryClick = { entry -> navController.navigate(EntryDetailRoute.build(entry.id)) },
+                )
+            }
+            composable(
+                TopLevelDestination.Chat.route,
+                enterTransition = topLevelEnterTransition,
+                exitTransition = topLevelExitTransition,
+            ) { ChatScreen() }
+            composable(
+                TopLevelDestination.Settings.route,
+                enterTransition = topLevelEnterTransition,
+                exitTransition = topLevelExitTransition,
+            ) {
+                SettingsScreen(
+                    onOpenLegalDoc = { doc -> navController.navigate(LegalRoute.build(doc)) },
+                )
+            }
+            composable(
+                LegalRoute.PATTERN,
+                arguments = listOf(navArgument("doc") { type = NavType.StringType }),
+                enterTransition = { slideInVertically(initialOffsetY = { it / 6 }) + fadeIn() },
+                exitTransition = { fadeOut() },
+                popExitTransition = { slideOutVertically(targetOffsetY = { it / 6 }) + fadeOut() },
+            ) { backStackEntry ->
+                com.hejitech.contempo.ui.legal.LegalScreen(
+                    doc = com.hejitech.contempo.ui.legal.LegalDoc.fromRouteArg(
+                        backStackEntry.arguments?.getString("doc"),
+                    ),
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable(
+                EntryDetailRoute.PATTERN,
+                arguments = listOf(navArgument("entryId") { type = NavType.StringType }),
+                enterTransition = { slideInVertically(initialOffsetY = { it / 6 }) + fadeIn() },
+                exitTransition = { fadeOut() },
+                popExitTransition = { slideOutVertically(targetOffsetY = { it / 6 }) + fadeOut() },
+            ) { backStackEntry ->
+                EntryDetailScreen(
+                    entryId = backStackEntry.arguments?.getString("entryId").orEmpty(),
+                    onBack = { navController.popBackStack() },
+                    onEditEntry = { entry ->
                         navController.navigate(
                             ConfirmRoute.build(
                                 property = entry.propertyName,
@@ -202,6 +302,7 @@ fun ContempoNavHost() {
                                 isBackfilled = false,
                                 daysLate = 0,
                                 captureSource = entry.sourceEnum.name,
+                                miles = entry.miles,
                                 entryId = entry.id,
                                 // Deliberately not threading photoUri here —
                                 // it's only meaningful as a fresh local
@@ -213,11 +314,6 @@ fun ContempoNavHost() {
                         )
                     },
                 )
-            }
-            composable(TopLevelDestination.Chat.route) { ChatScreen() }
-            composable(TopLevelDestination.Export.route) { ExportScreen() }
-            composable(SETTINGS_ROUTE) {
-                SettingsScreen(onBack = { navController.popBackStack() })
             }
         }
     }
@@ -235,37 +331,16 @@ private fun ContempoBottomBar(navController: NavHostController) {
             val selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true
             NavigationBarItem(
                 selected = selected,
-                onClick = {
-                    // The Capture tab is the graph's start destination, and
-                    // Navigation-Compose's popUpTo(startDestinationId){
-                    // saveState = true } + navigate(...){ restoreState = true }
-                    // combo has a real bug when the tab being navigated TO is
-                    // also the popUpTo target/start destination: instead of
-                    // showing Capture, it can surface a *different* tab's
-                    // saved-state entry (reproduced live: tapping Capture from
-                    // Ask landed on Dashboard). Start destination is never
-                    // actually removed from the back stack in the first
-                    // place, so a plain popBackStack to it sidesteps the
-                    // restoreState codepath entirely instead of relying on it.
-                    if (destination.route == TopLevelDestination.Capture.route) {
-                        navController.popBackStack(
-                            navController.graph.findStartDestination().id,
-                            inclusive = false,
-                        )
-                    } else {
-                        navController.navigate(destination.route) {
-                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    }
-                },
+                onClick = { navigateToTab(navController, destination) },
                 icon = {
                     val icon = when (destination) {
                         TopLevelDestination.Capture -> Icons.Filled.Mic
                         TopLevelDestination.Dashboard -> Icons.AutoMirrored.Filled.ShowChart
-                        TopLevelDestination.Chat -> Icons.AutoMirrored.Filled.Chat
-                        TopLevelDestination.Export -> Icons.Filled.Share
+                        // A sparkle rather than a generic chat bubble — this
+                        // tab is specifically the AI Q&A feature (see
+                        // "Ask AI" label), not a messaging inbox.
+                        TopLevelDestination.Chat -> Icons.Filled.AutoAwesome
+                        TopLevelDestination.Settings -> Icons.Filled.Settings
                     }
                     Icon(icon, contentDescription = stringResource(destination.labelRes))
                 },

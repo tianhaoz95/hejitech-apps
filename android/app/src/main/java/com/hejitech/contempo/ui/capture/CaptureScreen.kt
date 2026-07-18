@@ -17,28 +17,36 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -63,21 +71,25 @@ import com.hejitech.contempo.R
 import com.hejitech.contempo.agent.AiAvailability
 import com.hejitech.contempo.agent.CaptureResult
 import com.hejitech.contempo.agent.ParsingStage
+import com.hejitech.contempo.mileage.MileageTrackingService
 import com.hejitech.contempo.ui.aiAvailabilityMessage
 import com.hejitech.contempo.ui.rememberCameraCapture
+import com.hejitech.contempo.ui.theme.BulletAwareText
 import com.hejitech.contempo.ui.theme.ContempoCard
 import com.hejitech.contempo.ui.theme.Eyebrow
 import com.hejitech.contempo.ui.theme.RecordingIndicator
 import kotlinx.coroutines.delay
 
 /**
- * Voice and photo are the product's actual differentiators (hands-free,
- * contemporaneous capture) and the target user is a real-estate host, not a
- * technical one — so this screen leads with one big, unmistakable mic button
- * (the primary action), a large secondary camera button below it, and typing
- * demoted behind a "Type instead" link rather than a competing text field up
- * front. See the AskUserQuestion decision in conversation history for the
- * layout options considered.
+ * Voice is the product's actual differentiator (hands-free, contemporaneous
+ * capture) and the target user is a real-estate host, not a technical one —
+ * so this screen leads with one big, unmistakable mic button and nothing
+ * else competing with it at first glance. Photo/odometer/GPS-trip capture
+ * are real but secondary paths, collapsed behind a single "Other" toggle
+ * (same expand-in-place pattern as "Type instead" below it) rather than
+ * three full-width buttons sitting at equal visual weight right under the
+ * mic. See the AskUserQuestion decision in conversation history for the
+ * original layout options considered.
  */
 @Composable
 fun CaptureScreen(
@@ -91,6 +103,8 @@ fun CaptureScreen(
     var pendingRecordAfterPermission by remember { mutableStateOf(false) }
     var micPermissionDenied by remember { mutableStateOf(false) }
     var typeExpanded by rememberSaveable { mutableStateOf(false) }
+    var otherMenuExpanded by remember { mutableStateOf(false) }
+    var showQuickCaptureExplanation by remember { mutableStateOf(false) }
 
     val micPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -105,12 +119,38 @@ fun CaptureScreen(
     val cameraCapture = rememberCameraCapture { bitmap, photoUri ->
         viewModel.processPhoto(bitmap, photoUri) { result -> onDraftReady(result) }
     }
+    val odometerCameraCapture = rememberCameraCapture { bitmap, _ ->
+        viewModel.logOdometerPhoto(bitmap)
+    }
+    val openTripEntry by viewModel.openTripEntry.collectAsState()
+    // Only a GPS-started trip toggles off via this button — an odometer-
+    // photo trip closes via its own button instead (see openTripEntry's use
+    // above), since the two capture methods end a trip differently.
+    val gpsTripOpen = openTripEntry?.mileageCaptureMethod == "gps"
+    val openTimerEntry by viewModel.openTimerEntry.collectAsState()
+
+    var locationPermissionDenied by remember { mutableStateOf(false) }
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        locationPermissionDenied = !granted
+        if (granted) MileageTrackingService.start(context)
+    }
+
+    fun onTripButtonTap() {
+        when {
+            gpsTripOpen -> MileageTrackingService.stop(context)
+            hasPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) -> MileageTrackingService.start(context)
+            else -> locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+    }
 
     val busy = uiState.isRecording || uiState.isTranscribing || uiState.isDraftingFromPhoto ||
         uiState.isParsing || uiState.finalizedTranscript != null
 
     fun onMicTap() {
         when {
+            uiState.isRecording && uiState.quickCaptureEnabled -> viewModel.stopQuickCaptureAndSave()
             uiState.isRecording -> viewModel.stopRecordingAndProcess { result -> onDraftReady(result) }
             // ignore taps mid-processing — recording stopped, transcript
             // finalized, or already drafting/parsing
@@ -142,122 +182,244 @@ fun CaptureScreen(
     ) {
         Eyebrow(stringResource(R.string.capture_eyebrow))
 
-        Spacer(Modifier.height(40.dp))
+        Spacer(Modifier.height(24.dp))
 
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            VoiceButton(
-                isRecording = uiState.isRecording,
-                isThinking = uiState.isTranscribing,
-                amplitude = recordingAmplitude,
-                onClick = ::onMicTap,
+        // Typed mode replaces the entire voice-capture UI (mic button, Quick
+        // Capture, ongoing-work banner, "Other" methods) with just the text
+        // field and its own actions — triggered by the keyboard icon at the
+        // bottom of voice mode, reversed by the back arrow here. Kept as a
+        // hard either/or rather than always showing both, per the redesign:
+        // typing is an escape hatch from voice, not a permanently-visible
+        // second option competing with it.
+        if (typeExpanded) {
+            IconButton(onClick = { typeExpanded = false }, enabled = !busy) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.capture_back_to_voice_content_description))
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            OutlinedTextField(
+                value = uiState.inputText,
+                onValueChange = viewModel::onInputChanged,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !busy,
+                placeholder = { Text(stringResource(R.string.capture_hint)) },
             )
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
 
-            when {
-                uiState.isRecording -> RecordingIndicator(stringResource(R.string.capture_listening))
-                uiState.isTranscribing -> ThinkingIndicator(stringResource(R.string.capture_transcribing))
-                uiState.isParsing || uiState.finalizedTranscript != null -> Unit // owned by the blocks below
-                micPermissionDenied -> Text(
-                    stringResource(R.string.capture_mic_permission_needed),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                else -> Text(
-                    stringResource(R.string.capture_voice_button_label),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
-            uiState.finalizedTranscript?.let { text ->
-                Spacer(Modifier.height(16.dp))
-                FinalizedTranscriptCard(text)
-            }
-
-            if (uiState.isParsing && !typeExpanded) {
-                Spacer(Modifier.height(16.dp))
-                ParsingProgress(uiState.parsingStage)
-            }
-
-            Spacer(Modifier.height(32.dp))
-
-            OutlinedButton(
-                onClick = cameraCapture::launch,
-                enabled = !busy,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp),
-                shape = MaterialTheme.shapes.large,
-                contentPadding = PaddingValues(vertical = 16.dp),
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Filled.PhotoCamera, contentDescription = null, modifier = Modifier.size(28.dp))
-                Spacer(Modifier.width(12.dp))
-                Text(stringResource(R.string.capture_photo_button), style = MaterialTheme.typography.titleMedium)
+                TextButton(
+                    onClick = { viewModel.manualEntry { result -> onDraftReady(result) } },
+                    enabled = !busy,
+                ) {
+                    Text(stringResource(R.string.capture_manual_button))
+                }
+
+                Button(
+                    onClick = { viewModel.submit { result -> onDraftReady(result) } },
+                    enabled = uiState.inputText.isNotBlank() && !uiState.isParsing && !busy &&
+                        uiState.aiAvailability is AiAvailability.Ready,
+                    shape = MaterialTheme.shapes.small,
+                ) {
+                    if (uiState.isParsing) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp).padding(end = 8.dp), strokeWidth = 2.dp)
+                        Text(stringResource(R.string.capture_parsing))
+                    } else {
+                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                        Text(stringResource(R.string.capture_send_button))
+                    }
+                }
             }
 
-            if (uiState.isDraftingFromPhoto) {
-                Spacer(Modifier.height(8.dp))
-                BusyLabel(stringResource(R.string.capture_drafting_from_photo))
-            } else if (cameraCapture.permissionDenied) {
+            if (uiState.isParsing) {
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    stringResource(R.string.capture_camera_permission_needed),
+                    parsingStageLabel(uiState.parsingStage),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-
-            Spacer(Modifier.height(24.dp))
-
-            if (!typeExpanded) {
-                TextButton(onClick = { typeExpanded = true }, enabled = !busy) {
-                    Text(stringResource(R.string.capture_type_instead))
-                }
-            } else {
-                OutlinedTextField(
-                    value = uiState.inputText,
-                    onValueChange = viewModel::onInputChanged,
-                    modifier = Modifier.fillMaxWidth(),
+        } else {
+            openTimerEntry?.let { timerEntry ->
+                OngoingWorkBanner(
+                    entry = timerEntry,
                     enabled = !busy,
-                    placeholder = { Text(stringResource(R.string.capture_hint)) },
+                    onTapToComplete = viewModel::completeOpenTimer,
+                )
+                Spacer(Modifier.height(24.dp))
+            }
+
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                VoiceButton(
+                    isRecording = uiState.isRecording,
+                    isThinking = uiState.isTranscribing,
+                    amplitude = recordingAmplitude,
+                    onClick = ::onMicTap,
                 )
 
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(16.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    TextButton(
-                        onClick = { viewModel.manualEntry { result -> onDraftReady(result) } },
-                        enabled = !busy,
-                    ) {
-                        Text(stringResource(R.string.capture_manual_button))
-                    }
+                when {
+                    uiState.isRecording -> RecordingIndicator(stringResource(R.string.capture_listening))
+                    uiState.isTranscribing -> ThinkingIndicator(stringResource(R.string.capture_transcribing))
+                    uiState.isParsing || uiState.finalizedTranscript != null -> Unit // owned by the blocks below
+                    micPermissionDenied -> Text(
+                        stringResource(R.string.capture_mic_permission_needed),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    else -> Text(
+                        stringResource(R.string.capture_voice_button_label),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
 
-                    Button(
-                        onClick = { viewModel.submit { result -> onDraftReady(result) } },
-                        enabled = uiState.inputText.isNotBlank() && !uiState.isParsing && !busy &&
-                            uiState.aiAvailability is AiAvailability.Ready,
-                        shape = MaterialTheme.shapes.small,
-                    ) {
-                        if (uiState.isParsing) {
-                            CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp), strokeWidth = 2.dp)
-                            Text(stringResource(R.string.capture_parsing))
-                        } else {
-                            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                            Text(stringResource(R.string.capture_send_button))
-                        }
-                    }
+                uiState.finalizedTranscript?.let { text ->
+                    Spacer(Modifier.height(16.dp))
+                    FinalizedTranscriptCard(
+                        text = text,
+                        onClick = { viewModel.confirmTranscript { result -> onDraftReady(result) } },
+                    )
                 }
 
                 if (uiState.isParsing) {
+                    Spacer(Modifier.height(16.dp))
+                    ParsingProgress(uiState.parsingStage)
+                }
+
+                Spacer(Modifier.height(56.dp))
+
+                val odometerBusy = busy || uiState.isProcessingOdometerPhoto
+                val otherContentDescription = if (gpsTripOpen) {
+                    stringResource(R.string.capture_other_button_trip_open)
+                } else {
+                    stringResource(R.string.capture_other_button)
+                }
+                val quickCaptureToggleDescription = stringResource(R.string.capture_quick_capture_toggle_content_description)
+                val typeInsteadDescription = stringResource(R.string.capture_type_instead)
+
+                // Split by purpose rather than one dense row: Quick Capture
+                // is a persistent setting (its own compact, settings-style
+                // row — label, switch, and the info button that explains it,
+                // all hugging each other rather than spanning the full
+                // width), while "Other" and typed mode are momentary actions
+                // (a separate icon row below). Both rows are centered to
+                // match the mic button above them, instead of one
+                // full-width row reading left-aligned against it.
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        stringResource(R.string.capture_quick_capture_label),
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Switch(
+                        checked = uiState.quickCaptureEnabled,
+                        onCheckedChange = viewModel::setQuickCaptureEnabled,
+                        enabled = !busy,
+                        modifier = Modifier.semantics { contentDescription = quickCaptureToggleDescription },
+                    )
+                    IconButton(onClick = { showQuickCaptureExplanation = true }) {
+                        Icon(
+                            Icons.Filled.Info,
+                            contentDescription = stringResource(R.string.capture_quick_capture_info_content_description),
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(20.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box {
+                        IconButton(onClick = { otherMenuExpanded = true }, enabled = !busy) {
+                            Icon(
+                                Icons.Filled.MoreHoriz,
+                                contentDescription = otherContentDescription,
+                                // A trip left running is worth a glance even
+                                // when this icon is the only trace of it on
+                                // screen, now that its old full-width label
+                                // text is gone.
+                                tint = if (gpsTripOpen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        DropdownMenu(expanded = otherMenuExpanded, onDismissRequest = { otherMenuExpanded = false }) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.capture_photo_button)) },
+                                leadingIcon = { Icon(Icons.Filled.PhotoCamera, contentDescription = null) },
+                                enabled = !busy,
+                                onClick = { otherMenuExpanded = false; cameraCapture.launch() },
+                            )
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        stringResource(
+                                            if (openTripEntry != null) R.string.capture_odometer_end_button
+                                            else R.string.capture_odometer_start_button
+                                        )
+                                    )
+                                },
+                                leadingIcon = { Icon(Icons.Filled.PhotoCamera, contentDescription = null) },
+                                enabled = !odometerBusy,
+                                onClick = { otherMenuExpanded = false; odometerCameraCapture.launch() },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(if (gpsTripOpen) R.string.capture_stop_trip_button else R.string.capture_start_trip_button)) },
+                                leadingIcon = { Icon(Icons.Filled.LocationOn, contentDescription = null) },
+                                enabled = !busy,
+                                onClick = { otherMenuExpanded = false; onTripButtonTap() },
+                            )
+                        }
+                    }
+                    IconButton(
+                        onClick = { typeExpanded = true },
+                        enabled = !busy,
+                        modifier = Modifier.semantics { contentDescription = typeInsteadDescription },
+                    ) {
+                        Icon(Icons.Filled.Keyboard, contentDescription = null)
+                    }
+                }
+
+                // Status/permission text stays anchored here regardless of
+                // whether the "Other" menu itself is still open — an
+                // in-progress photo read or a denied permission is worth
+                // surfacing even after the picker that triggered it has closed.
+                if (uiState.isDraftingFromPhoto) {
+                    Spacer(Modifier.height(8.dp))
+                    BusyLabel(stringResource(R.string.capture_drafting_from_photo))
+                } else if (cameraCapture.permissionDenied) {
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        parsingStageLabel(uiState.parsingStage),
+                        stringResource(R.string.capture_camera_permission_needed),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                if (uiState.isProcessingOdometerPhoto) {
+                    Spacer(Modifier.height(8.dp))
+                    BusyLabel(stringResource(R.string.capture_reading_odometer))
+                } else if (odometerCameraCapture.permissionDenied) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        stringResource(R.string.capture_camera_permission_needed),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                if (locationPermissionDenied) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        stringResource(R.string.capture_location_permission_needed),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -274,20 +436,67 @@ fun CaptureScreen(
             Spacer(Modifier.height(16.dp))
             Text(error, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.error)
         }
+
+        uiState.timerMessage?.let { message ->
+            Spacer(Modifier.height(16.dp))
+            Text(message, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
+        }
+
+        uiState.tripMessage?.let { message ->
+            Spacer(Modifier.height(16.dp))
+            Text(message, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
+        }
+    }
+
+    // Start/stop timer captures write straight to Firestore and never reach
+    // Confirm (see CaptureViewModel.handleTimerStart/parseAndProceed) — this
+    // transient confirmation is the only feedback the user gets, so it
+    // self-clears rather than lingering until the next capture.
+    LaunchedEffect(uiState.timerMessage) {
+        if (uiState.timerMessage != null) {
+            delay(TIMER_MESSAGE_HOLD_MS)
+            viewModel.dismissTimerMessage()
+        }
+    }
+
+    // Odometer-photo start/end also writes straight to Firestore (see
+    // CaptureViewModel.logOdometerPhoto) — same transient-confirmation
+    // pattern as the timer message above.
+    LaunchedEffect(uiState.tripMessage) {
+        if (uiState.tripMessage != null) {
+            delay(TIMER_MESSAGE_HOLD_MS)
+            viewModel.dismissTripMessage()
+        }
+    }
+
+    if (showQuickCaptureExplanation) {
+        AlertDialog(
+            onDismissRequest = { showQuickCaptureExplanation = false },
+            title = { Text(stringResource(R.string.capture_quick_capture_label)) },
+            text = { Text(stringResource(R.string.capture_quick_capture_caption)) },
+            confirmButton = {
+                TextButton(onClick = { showQuickCaptureExplanation = false }) {
+                    Text(stringResource(android.R.string.ok))
+                }
+            },
+        )
     }
 }
+
+private const val TIMER_MESSAGE_HOLD_MS = 3000L
 
 /**
  * The primary CTA — big enough to be an unmistakable thumb target, colored
  * to flip from "start" (primary) to "stop" (error/red, universally read as
  * recording) to "thinking" (tertiary/brass, once recording stops and
- * transcribing/cleanup is running) with no icon change needed. The tight
- * ring reacts to live mic amplitude (see AudioRecorder.amplitude's kdoc —
- * built for exactly this) so the user gets immediate confirmation the app
- * is hearing them; a second, slower "breathing" ring keeps the button
- * visibly alive during quiet pauses in speech, not just reactive to
- * instantaneous peaks. While thinking, an indeterminate ring communicates
- * "still working" without literal streaming text.
+ * transcribing/cleanup is running) with no icon change needed. The button
+ * itself is a fixed size at all times — it used to grow/shrink with mic
+ * amplitude and a "breathing" idle pulse, which read as the whole control
+ * jittering around rather than a deliberate signal. Instead, while recording
+ * the static mic icon swaps for a small live equalizer (see VolumeBars)
+ * anchored inside the same fixed footprint: the button sits still, the bars
+ * move. While thinking, an indeterminate ring communicates "still working"
+ * without literal streaming text.
  */
 @Composable
 private fun VoiceButton(
@@ -300,16 +509,6 @@ private fun VoiceButton(
         targetValue = if (isRecording) amplitude else 0f,
         animationSpec = tween(durationMillis = 100),
         label = "mic-amplitude",
-    )
-    val infiniteTransition = rememberInfiniteTransition(label = "voice-button-loop")
-    val breath by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1400, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "breath",
     )
     val containerColor = when {
         isRecording -> MaterialTheme.colorScheme.error
@@ -326,20 +525,6 @@ private fun VoiceButton(
     )
 
     Box(contentAlignment = Alignment.Center) {
-        if (isRecording) {
-            Box(
-                modifier = Modifier
-                    .size(184.dp + (animatedAmplitude * 40).dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.error.copy(alpha = 0.18f)),
-            )
-            Box(
-                modifier = Modifier
-                    .size(184.dp + (breath * 64).dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.error.copy(alpha = 0.08f * breath)),
-            )
-        }
         if (isThinking) {
             CircularProgressIndicator(
                 modifier = Modifier.size(212.dp),
@@ -357,14 +542,66 @@ private fun VoiceButton(
                 .semantics { contentDescription = statusLabel },
             contentAlignment = Alignment.Center,
         ) {
-            Icon(
-                imageVector = Icons.Filled.Mic,
-                contentDescription = null,
-                tint = contentColor,
-                modifier = Modifier.size(72.dp),
-            )
+            if (isRecording) {
+                VolumeBars(amplitude = animatedAmplitude, color = contentColor)
+            } else {
+                Icon(
+                    imageVector = Icons.Filled.Mic,
+                    contentDescription = null,
+                    tint = contentColor,
+                    modifier = Modifier.size(72.dp),
+                )
+            }
         }
     }
+}
+
+private const val VOLUME_BAR_COUNT = 5
+private val VOLUME_BAR_MAX_HEIGHT = 56.dp
+
+/**
+ * A small live equalizer standing in for the mic icon while recording — each
+ * bar free-runs its own infinite loop (staggered duration/delay so they're
+ * never in lockstep) and is then scaled by the live mic amplitude, so it
+ * reads as "reacting to your voice" rather than a canned decorative loop
+ * while still sitting on a fixed footprint (VOLUME_BAR_MAX_HEIGHT never
+ * changes — only each bar's height within it does).
+ */
+@Composable
+private fun VolumeBars(amplitude: Float, color: androidx.compose.ui.graphics.Color) {
+    Row(
+        modifier = Modifier.height(VOLUME_BAR_MAX_HEIGHT),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        repeat(VOLUME_BAR_COUNT) { index -> VolumeBar(amplitude = amplitude, indexInSet = index, color = color) }
+    }
+}
+
+@Composable
+private fun VolumeBar(amplitude: Float, indexInSet: Int, color: androidx.compose.ui.graphics.Color) {
+    val infiniteTransition = rememberInfiniteTransition(label = "volume-bar-$indexInSet")
+    val phase by infiniteTransition.animateFloat(
+        initialValue = 0.25f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 420 + indexInSet * 90,
+                delayMillis = indexInSet * 70,
+                easing = LinearEasing,
+            ),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "volume-bar-phase-$indexInSet",
+    )
+    val heightFraction = (phase * (0.45f + amplitude * 0.75f)).coerceIn(0.15f, 1f)
+    Box(
+        modifier = Modifier
+            .width(6.dp)
+            .height(VOLUME_BAR_MAX_HEIGHT * heightFraction)
+            .clip(RoundedCornerShape(3.dp))
+            .background(color),
+    )
 }
 
 @Composable
@@ -419,9 +656,57 @@ private fun ThinkingIndicator(text: String, modifier: Modifier = Modifier) {
 }
 
 /** The "here's what we heard" beat — shown briefly right before parsing starts. */
+/**
+ * Surfaces a work timer left open by an earlier "start work" voice utterance
+ * (see CaptureViewModel.openTimerEntry/TimerEntryCoordinator) — without
+ * this, the only way to close it was another voice utterance ("finished"),
+ * so a user who forgot the phrasing (or just prefers a tap) had no visible
+ * way back into a capture already in progress. Tapping completes it the
+ * same way a voice "stop" would, including recording the completion time/
+ * location (see CaptureViewModel.completeOpenTimer).
+ */
 @Composable
-private fun FinalizedTranscriptCard(text: String) {
-    ContempoCard(modifier = Modifier.fillMaxWidth()) {
+private fun OngoingWorkBanner(
+    entry: com.hejitech.core.model.Entry,
+    enabled: Boolean,
+    onTapToComplete: () -> Unit,
+) {
+    ContempoCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onTapToComplete),
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Filled.Mic,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    stringResource(
+                        R.string.capture_ongoing_work_title,
+                        entry.propertyName.ifBlank { entry.task.ifBlank { stringResource(R.string.capture_ongoing_work_untitled) } },
+                    ),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    stringResource(R.string.capture_ongoing_work_tap_hint),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FinalizedTranscriptCard(text: String, onClick: () -> Unit) {
+    ContempoCard(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 stringResource(R.string.capture_finalized_heading),
@@ -429,7 +714,13 @@ private fun FinalizedTranscriptCard(text: String) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(4.dp))
-            Text(text, style = MaterialTheme.typography.bodyLarge)
+            BulletAwareText(text, style = MaterialTheme.typography.bodyLarge)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                stringResource(R.string.capture_finalized_tap_hint),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
         }
     }
 }

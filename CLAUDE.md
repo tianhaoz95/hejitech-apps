@@ -246,10 +246,18 @@ The Firebase project root — `firebase` CLI commands (prefixed
   is what auto-provisions the web/Android OAuth clients — the Firebase Console
   toggle alone doesn't do this the same way).
 - **Functions** (`functions/`, TypeScript, Genkit): `parseEntryFlow` (cloud
-  fallback for entry parsing) and `flagRisk` (deterministic
-  contemporaneity/vagueness heuristics, no LLM call). Needs
+  fallback for entry parsing), `flagRisk` (deterministic
+  contemporaneity/vagueness heuristics, no LLM call), and `askAgent` (the
+  freeform legal-question chat copilot — cloud Gemini Flash, not the curated
+  static FAQ the MVP scope doc originally specced). Needs
   `GOOGLE_GENAI_API_KEY` (env var locally, `firebase functions:secrets:set` when
   deployed) only to actually call the cloud model, not to start emulators.
+  Separately, `account.ts` has `deleteAccount` (a plain `onCall`, not
+  Genkit — recursively wipes a user's Firestore/Storage data via the Admin
+  SDK then deletes their Auth account; deliberately `enforceAppCheck: false`
+  since it must be callable from web, which has no App Check provider set up
+  yet) and `cleanupDeletedUserData` (a v1 Auth `onDelete` trigger, safety-net
+  cleanup for accounts removed any other way).
 - **Local dev without a real project**: `firebase emulators:start --project
   demo-contempo` runs fully offline against a Firebase "demo project" — no real
   project or billing needed until you're ready to test against the real one.

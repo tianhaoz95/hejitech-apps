@@ -9,6 +9,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -115,4 +116,38 @@ fun ContempoCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         content = content,
     )
+}
+
+/**
+ * Renders the parse prompt's only allowed markdown construct — lines
+ * starting with "- " — as an actual bullet list; anything else (the common
+ * single-task case) is just a plain paragraph. Deliberately hand-rolled
+ * rather than a markdown library: bullets are the only formatting the
+ * prompt ever produces (see AgentClient.buildEntryPrompt), so a full
+ * renderer would be unused surface area. Shared across Capture's review
+ * card, Dashboard's entry rows, and Entry detail's task row — anywhere
+ * entry.task is shown read-only (Confirm's task field stays a plain
+ * editable OutlinedTextField, not this — rendering markdown inside an
+ * editable field is a different problem).
+ */
+@Composable
+fun BulletAwareText(text: String, style: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.bodyLarge) {
+    val lines = text.lines()
+    if (lines.none { it.trimStart().startsWith("- ") }) {
+        Text(text, style = style)
+        return
+    }
+    Column {
+        lines.forEach { line ->
+            val trimmed = line.trimStart()
+            if (trimmed.startsWith("- ")) {
+                Row {
+                    Text("•  ", style = style)
+                    Text(trimmed.removePrefix("- "), style = style)
+                }
+            } else if (trimmed.isNotEmpty()) {
+                Text(trimmed, style = style)
+            }
+        }
+    }
 }

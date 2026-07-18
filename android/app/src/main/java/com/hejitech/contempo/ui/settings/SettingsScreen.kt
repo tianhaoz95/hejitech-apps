@@ -1,5 +1,8 @@
 package com.hejitech.contempo.ui.settings
 
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings as AndroidSettings
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -7,26 +10,33 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -34,38 +44,66 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hejitech.contempo.R
 import com.hejitech.contempo.agent.InferencePreference
 import com.hejitech.contempo.agent.OnDeviceModelUiStatus
+import com.hejitech.contempo.ui.export.ExportViewModel
+import com.hejitech.contempo.ui.export.shareCsv
+import com.hejitech.contempo.ui.legal.LegalDoc
+import com.hejitech.contempo.ui.theme.Eyebrow
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onBack: () -> Unit,
     viewModel: SettingsViewModel = viewModel(),
+    exportViewModel: ExportViewModel = viewModel(),
+    onOpenLegalDoc: (LegalDoc) -> Unit = {},
 ) {
     val account = viewModel.currentAccount()
     val preference by viewModel.inferencePreference.collectAsState()
     val onDeviceStatus by viewModel.onDeviceModelStatus.collectAsState()
+    val exportState by exportViewModel.uiState.collectAsState()
+    val deleteAccountState by viewModel.deleteAccountState.collectAsState()
+    val context = LocalContext.current
+    var showWearExplanation by remember { mutableStateOf(false) }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.nav_settings)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.nav_back))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-            )
-        }
-    ) { innerPadding ->
-        Column(modifier = Modifier.fillMaxSize().padding(innerPadding).padding(24.dp)) {
-            Text(stringResource(R.string.settings_account_section), style = MaterialTheme.typography.titleMedium)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
+    ) {
+        Eyebrow(stringResource(R.string.settings_eyebrow))
+        Spacer(Modifier.height(12.dp))
+        Text(stringResource(R.string.nav_settings), style = MaterialTheme.typography.headlineMedium)
+        Spacer(Modifier.height(24.dp))
+
+        Text(stringResource(R.string.settings_account_section), style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
             Text(account.displayName ?: stringResource(R.string.settings_no_name), style = MaterialTheme.typography.bodyLarge)
             account.email?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             Spacer(Modifier.height(12.dp))
             OutlinedButton(onClick = viewModel::signOut, shape = MaterialTheme.shapes.small) {
                 Text(stringResource(R.string.settings_sign_out))
+            }
+
+            Spacer(Modifier.height(12.dp))
+            TextButton(
+                onClick = { showDeleteConfirmation = true },
+                enabled = !deleteAccountState.isDeleting,
+            ) {
+                if (deleteAccountState.isDeleting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.padding(end = 8.dp).size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                Text(
+                    stringResource(R.string.settings_delete_account),
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+            deleteAccountState.errorMessage?.let { error ->
+                Spacer(Modifier.height(4.dp))
+                Text(error, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
 
             Spacer(Modifier.height(32.dp))
@@ -102,7 +140,128 @@ fun SettingsScreen(
                 Spacer(Modifier.height(16.dp))
                 OnDeviceModelStatusPanel(status = onDeviceStatus, onRetry = viewModel::retryOnDeviceModelCheck)
             }
+
+            Spacer(Modifier.height(32.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(24.dp))
+
+            Text(stringResource(R.string.settings_wear_section), style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(4.dp))
+            // The full explanation is several lines long — collapsed behind
+            // a button rather than always shown, so this section doesn't
+            // dominate the Settings screen for something most users only
+            // need to read once.
+            TextButton(onClick = { showWearExplanation = true }) {
+                Icon(Icons.Filled.Info, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(4.dp))
+                Text(stringResource(R.string.settings_wear_explain_button))
+            }
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = {
+                    val intent = Intent(AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.fromParts("package", context.packageName, null)
+                    }
+                    context.startActivity(intent)
+                },
+                shape = MaterialTheme.shapes.small,
+            ) {
+                Text(stringResource(R.string.settings_wear_open_battery_settings))
+            }
+
+        Spacer(Modifier.height(32.dp))
+        HorizontalDivider()
+        Spacer(Modifier.height(24.dp))
+
+        Text(stringResource(R.string.export_title), style = MaterialTheme.typography.titleMedium)
+        Text(
+            stringResource(R.string.export_eyebrow),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(12.dp))
+
+        Button(
+            onClick = { exportViewModel.generateCsv() },
+            enabled = !exportState.isGenerating,
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.small,
+        ) {
+            if (exportState.isGenerating) {
+                CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp), strokeWidth = 2.dp)
+            }
+            Text(stringResource(R.string.export_csv_button))
         }
+
+        exportState.csv?.let { csv ->
+            Spacer(Modifier.height(12.dp))
+            Button(
+                onClick = { shareCsv(context, csv) },
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.small,
+            ) {
+                Text(stringResource(R.string.export_share_button))
+            }
+        }
+
+        exportState.errorMessage?.let { error ->
+            Spacer(Modifier.height(12.dp))
+            Text(error, color = MaterialTheme.colorScheme.error)
+        }
+
+        Spacer(Modifier.height(32.dp))
+        HorizontalDivider()
+        Spacer(Modifier.height(24.dp))
+
+        Text(stringResource(R.string.settings_legal_section), style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(8.dp))
+        Row {
+            TextButton(onClick = { onOpenLegalDoc(LegalDoc.PRIVACY) }) {
+                Text(stringResource(R.string.settings_privacy_policy))
+            }
+            TextButton(onClick = { onOpenLegalDoc(LegalDoc.TERMS) }) {
+                Text(stringResource(R.string.settings_terms_of_service))
+            }
+        }
+    }
+
+    if (showWearExplanation) {
+        AlertDialog(
+            onDismissRequest = { showWearExplanation = false },
+            title = { Text(stringResource(R.string.settings_wear_section)) },
+            text = { Text(stringResource(R.string.settings_wear_section_hint)) },
+            confirmButton = {
+                TextButton(onClick = { showWearExplanation = false }) {
+                    Text(stringResource(android.R.string.ok))
+                }
+            },
+        )
+    }
+
+    if (showDeleteConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            title = { Text(stringResource(R.string.settings_delete_account_confirm_title)) },
+            text = { Text(stringResource(R.string.settings_delete_account_confirm_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteConfirmation = false
+                        viewModel.deleteAccount()
+                    },
+                ) {
+                    Text(
+                        stringResource(R.string.settings_delete_account_confirm_button),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmation = false }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            },
+        )
     }
 }
 

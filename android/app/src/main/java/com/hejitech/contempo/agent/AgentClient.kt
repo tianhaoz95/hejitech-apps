@@ -97,6 +97,32 @@ class AgentClient(
         }
     }
 
+    /**
+     * Reads a single odometer number from a photo — used by the mileage-
+     * trip photo capture method (see MileageTripCoordinator): the first
+     * photo of a trip becomes odometerStart, the next one becomes
+     * odometerEnd, and the two are diffed. Same CLOUD_ONLY/ON_DEVICE_ONLY/
+     * PREFER_ON_DEVICE honesty policy as draftEntryFromPhoto — no cloud
+     * vision fallback yet, so a failed attempt says so rather than guessing.
+     * Deliberately its own method rather than reusing draftEntryFromPhoto:
+     * this reads one plain number, not a structured EntryDraft.
+     */
+    suspend fun readOdometerFromPhoto(bitmap: Bitmap): OdometerReadOutcome {
+        val prompt = buildOdometerPrompt()
+        return when (inferencePreference()) {
+            InferencePreference.CLOUD_ONLY ->
+                OdometerReadOutcome.Failure("Odometer reading isn't available in Cloud-only mode yet — switch to On-device only or Prefer on-device in Settings, or enter the mileage manually.")
+
+            InferencePreference.ON_DEVICE_ONLY ->
+                onDeviceReadOdometer(bitmap, prompt)
+                    ?: OdometerReadOutcome.Failure("On-device model unavailable for odometer reading — no cloud fallback (On-device only is selected in Settings).")
+
+            InferencePreference.PREFER_ON_DEVICE ->
+                onDeviceReadOdometer(bitmap, prompt)
+                    ?: OdometerReadOutcome.Failure("This device's on-device model isn't ready for photo understanding yet, and cloud odometer reading isn't built yet — enter the mileage manually.")
+        }
+    }
+
     suspend fun askQuestion(history: List<ChatMessage>, question: String, stats: UserStats, image: Bitmap? = null): AskOutcome {
         val prompt = buildChatPrompt(history, question, stats)
         if (image != null) {
@@ -162,6 +188,29 @@ class AgentClient(
             // Expected and non-fatal in PREFER_ON_DEVICE: model not ready
             // yet, or a response that didn't parse as JSON. In ON_DEVICE_ONLY
             // this null is what turns into the loud failure above instead.
+            null
+        }
+    }
+
+    /**
+     * Null return here means "the model itself didn't run" (not ready, or
+     * threw) — the only case readOdometerFromPhoto should override with its
+     * generic "on-device model unavailable" message. A model that ran but
+     * couldn't read a clear number (e.g. responded "unknown") is a distinct,
+     * non-fatal outcome with its own actionable message — collapsing the two
+     * into one null would tell the user to check AI Settings when the real
+     * fix is just retaking the photo.
+     */
+    private suspend fun onDeviceReadOdometer(bitmap: Bitmap, prompt: String): OdometerReadOutcome? {
+        return try {
+            val text = onDeviceLlm.generateFromImage(bitmap, prompt) ?: return null
+            val miles = extractNumber(text)
+            if (miles != null) {
+                OdometerReadOutcome.Success(miles, ParseSource.ON_DEVICE)
+            } else {
+                OdometerReadOutcome.Failure("Couldn't read a number from that photo — make sure the odometer digits are clearly visible and try again.")
+            }
+        } catch (e: Exception) {
             null
         }
     }
@@ -238,6 +287,8 @@ class AgentClient(
             task = map["task"] as? String,
             durationMinutes = (map["durationMinutes"] as? Number)?.toInt(),
             category = map["category"] as? String,
+            eventType = map["eventType"] as? String,
+            miles = (map["miles"] as? Number)?.toDouble(),
         )
     }
 
@@ -249,9 +300,14 @@ class AgentClient(
         appendLine("Respond with ONLY a single JSON object, no markdown fences, no commentary, matching exactly this shape:")
         appendLine(
             """{"property": string|null, "task": string|null, "durationMinutes": integer|null, """ +
-                """"category": one of "maintenance"|"turnover"|"guest_communication"|"supply_run"|"admin"|"other"|null}"""
+                """"category": one of "maintenance"|"turnover"|"guest_communication"|"supply_run"|"admin"|"other"|null, """ +
+                """"eventType": one of "start"|"stop"|null, "miles": number|null}"""
         )
-        appendLine("Capture is meant to be fast, not a conversation: fill in every field you can confidently determine, and leave any field you genuinely can't determine as null. Never withhold a field or ask a question — the host reviews and fills in gaps themselves afterward, so a partial entry is the correct output, not a failure.")
+        appendLine("The \"task\" field is dictated speech, not typed text — clean it up before extracting it: remove filler words and disfluencies (\"uh\", \"um\", false starts, mid-sentence restarts) that carry no information, and fix likely transcription errors, punctuation, and capitalization. Never change the meaning or drop a real detail.")
+        appendLine("Format \"task\" as plain prose by default. Only use a markdown bullet list (lines starting with \"- \") when the host clearly describes multiple distinct sub-tasks in one capture — a single task never needs a bullet. Never use headers, tables, or bold; a bullet list is the only formatting ever appropriate here, and only when it actually makes several items easier to scan than a sentence would.")
+        appendLine("Set eventType only if the host is opening or closing a start/stop timer rather than describing a complete task: \"start\" for phrasing like 'I'm starting to work on X' / 'beginning work now' / 'clocking in', \"stop\" for phrasing like 'I just finished' / 'wrapping up' / 'clocking out'. Leave eventType null for a normal complete description of work already done — most messages are this case. When eventType is \"start\", durationMinutes should be null.")
+        appendLine("Set miles if the host states a distance driven (e.g. 'drove 12 miles to pick up supplies') — a separate business-mileage tax deduction, not the hours above, so extract it whenever mentioned even alongside a normal task/duration. Leave miles null if no distance is mentioned.")
+        appendLine("Capture is meant to be fast, not a conversation: fill in every field you can confidently determine, and leave any field you genuinely can't determine as null. Never withhold a field or ask a question— the host reviews and fills in gaps themselves afterward, so a partial entry is the correct output, not a failure.")
         appendLine("Host's message: \"$rawText\"")
     }
 
@@ -285,6 +341,16 @@ class AgentClient(
         appendLine("Host: $question")
         appendLine("Respond with plain text only — no markdown, no JSON.")
     }
+
+    private fun buildOdometerPrompt(): String = buildString {
+        appendLine("You are reading a car odometer or trip-mileage display from a photo.")
+        appendLine("Respond with ONLY the number shown — digits only, no units, no commentary, no markdown.")
+        appendLine("If you cannot clearly read a number in the photo, respond with exactly: unknown")
+    }
+
+    /** First number found in the model's response, or null (covers "unknown" and any non-numeric reply). */
+    private fun extractNumber(text: String): Double? =
+        Regex("""\d+(\.\d+)?""").find(text)?.value?.toDoubleOrNull()
 
     /** Strips markdown code fences etc. in case the on-device model adds them despite instructions not to. */
     private fun extractJsonObject(text: String): String {

@@ -103,7 +103,7 @@ class OnDeviceModelStatusTest {
         // Typing is demoted behind "Type instead" in the voice/camera-first
         // redesign — see CaptureScreen.kt's kdoc — so the field must be
         // expanded before it can be found/typed into.
-        composeTestRule.onNodeWithText("Type instead").performClick()
+        composeTestRule.onNodeWithContentDescription("Type instead").performClick()
         val captureField = hasText("Say or type what you did…") and hasSetTextAction()
 
         if (ready) {

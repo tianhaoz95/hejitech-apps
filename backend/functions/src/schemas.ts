@@ -30,9 +30,34 @@ export type Entry = z.infer<typeof EntrySchema>;
  */
 export const EntryDraftSchema = z.object({
   property: z.string().nullable(),
+  /**
+   * Cleaned-up description of the work performed — filler words ("uh",
+   * "um") and dictation errors already stripped by the parse prompt (see
+   * parseEntry.ts). Plain prose for a single task; may be a markdown
+   * bullet list ("- " lines) when the host described multiple distinct
+   * sub-tasks in one capture, never headers/tables/bold.
+   */
   task: z.string().nullable(),
   durationMinutes: z.number().int().positive().nullable(),
   category: EntrySchema.shape.category.nullable(),
+  /**
+   * Set only when the host is opening or closing a start/stop timer rather
+   * than describing a complete, already-finished task (e.g. "I'm starting
+   * to work on unit 4" vs "I just finished cleaning unit 4"). This is a
+   * fallback signal only — the app's own deterministic keyword classifier
+   * (TimerIntentClassifier, Android-side) runs first and is authoritative
+   * when it fires; this field only matters for phrasing that classifier
+   * doesn't cover.
+   */
+  eventType: z.enum(["start", "stop"]).nullable(),
+  /**
+   * Business miles driven, only when the host actually states a distance
+   * (e.g. "drove 12 miles to pick up supplies") — a separate tax deduction
+   * from the material-participation hours this app otherwise tracks, so it
+   * rides along on the same parse rather than needing its own capture flow.
+   * Nullable/optional on every entry, not just driving-related ones.
+   */
+  miles: z.number().nonnegative().nullable(),
 });
 export type EntryDraft = z.infer<typeof EntryDraftSchema>;
 

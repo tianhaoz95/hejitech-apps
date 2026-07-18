@@ -9,14 +9,18 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Verifies the vendored sherpa-onnx + bundled Whisper tiny.en model actually
- * produces a correct transcript on real device hardware — not just that the
- * native library loads without crashing. Uses one of sherpa-onnx's own test
- * WAV files (see android/whisper-vendor/ at the repo root for provenance —
- * not shipped in the app) with a known ground-truth transcript, so this is
- * a real correctness check against a known-good expected output, not a
- * smoke test. No Firebase/sign-in needed — this only exercises the
- * transcription pipeline, independent of the rest of the app.
+ * Verifies the vendored sherpa-onnx + bundled multilingual Whisper tiny
+ * model actually produces a correct transcript on real device hardware —
+ * not just that the native library loads without crashing. Uses one of
+ * sherpa-onnx's own test WAV files (see android/whisper-vendor/ at the repo
+ * root for provenance — not shipped in the app) with a known ground-truth
+ * transcript, so this is a real correctness check against a known-good
+ * expected output, not a smoke test. This is an English clip specifically
+ * to confirm the switch to the multilingual model (from the former
+ * English-only tiny.en, made to add Chinese support — see
+ * WhisperTranscriber's kdoc) didn't regress English via auto-detection.
+ * No Firebase/sign-in needed — this only exercises the transcription
+ * pipeline, independent of the rest of the app.
  */
 @RunWith(AndroidJUnit4::class)
 class WhisperTranscriberTest {

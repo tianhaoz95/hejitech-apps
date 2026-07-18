@@ -4,6 +4,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".ContempoApp"
@@ -16,7 +20,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.Contempo"
+            android:theme="@style/Theme.Contempo.Starting"
             android:windowSoftInputMode="adjustResize">
             <!-- Without this, the default (effectively adjustPan-ish here since
                  enableEdgeToEdge() means decorFitsSystemWindows=false) has the
@@ -42,5 +46,17 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <!-- Continuously accumulates distance during a GPS-tracked mileage
+             trip — see mileage/MileageTrackingService.kt. Started by a direct
+             user tap while the app is foregrounded (not on boot or from
+             background), which is what the foreground-service exemption for
+             continued location updates while backgrounded/screen-off relies
+             on — see the mileage plan's note on ACCESS_BACKGROUND_LOCATION. -->
+        <service
+            android:name=".mileage.MileageTrackingService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+
     </application>
 </manifest>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Referenced by Theme.Contempo.Starting's windowSplashScreenAnimatedIcon.
+     Only plays on API 31+ (Android 12+) — pre-31 devices, via the
+     core-splashscreen compat library, get the static base drawable with no
+     animation, which is an acceptable degrade (still shows the brand mark
+     correctly, just without the draw-in). -->
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/ic_splash_icon_base">
+    <target
+        android:name="ring"
+        android:animation="@animator/splash_ring_draw" />
+    <target
+        android:name="dotGroup"
+        android:animation="@animator/splash_dot_pop" />
+</animated-vector>

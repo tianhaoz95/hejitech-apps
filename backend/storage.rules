@@ -2,10 +2,34 @@ rules_version = '2';
 
 // Photo evidence attachments, one folder per user. Same "single owner"
 // simplification as firestore.rules — see the note there.
+//
+// Both paths below split allow read (ownership only — a signed-in owner
+// can always read their own evidence back, even if it somehow failed a
+// write-time check, e.g. legacy files or a future intentional relaxation)
+// from allow write (ownership PLUS content-type/size validation), rather
+// than one combined "read, write" line — write is the side that actually
+// needs hardening against a corrupted/malicious upload masquerading as
+// evidence.
 service firebase.storage {
   match /b/{bucket}/o {
     match /users/{uid}/entries/{entryId}/{fileName} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if request.auth != null && request.auth.uid == uid &&
+        request.resource.contentType.matches('image/.*') &&
+        request.resource.size < 15 * 1024 * 1024;
+    }
+
+    // Raw audio uploaded straight from the recording device (watch or
+    // phone) — entry-independent, since it's uploaded and queued before any
+    // Entry exists yet. Kept permanently, never deleted. See
+    // core/data/AudioCaptureQueue.kt. 50MB matches
+    // AudioCaptureProcessor.MAX_AUDIO_BYTES (the read-side cap) so a
+    // document this can't ever download couldn't have been written either.
+    match /users/{uid}/audioCaptures/{fileName} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if request.auth != null && request.auth.uid == uid &&
+        request.resource.contentType.matches('audio/.*') &&
+        request.resource.size < 50 * 1024 * 1024;
     }
   }
 }

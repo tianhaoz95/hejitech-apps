@@ -10,9 +10,17 @@ import kotlinx.coroutines.withContext
 
 /**
  * On-device speech-to-text via sherpa-onnx (k2-fsa/sherpa-onnx) + a bundled
- * Whisper tiny.en model (assets/sherpa-onnx-whisper-tiny.en, int8-quantized,
- * ~99MB) — replaces the legacy RecognizerIntent voice input, which routes
- * through a separate system dialog on a lower-quality recognizer.
+ * multilingual Whisper tiny model (assets/sherpa-onnx-whisper-tiny,
+ * int8-quantized, ~99MB) — replaces the legacy RecognizerIntent voice input,
+ * which routes through a separate system dialog on a lower-quality
+ * recognizer. Was originally the English-only tiny.en checkpoint; swapped
+ * for the multilingual tiny checkpoint (near-identical size) to add Chinese
+ * (and any other Whisper-supported language) support — `language = ""` below
+ * asks Whisper to auto-detect the spoken language per utterance rather than
+ * forcing a single language, so English capture needs no change in
+ * behavior. Multilingual "tiny" is measurably less accurate than "tiny.en"
+ * was for English, and non-English accuracy at this smallest model size is
+ * modest — a real accuracy/size trade-off, not a hidden regression.
  *
  * sherpa-onnx has no Maven artifact as of this writing — the
  * com.k2fsa.sherpa.onnx.* Kotlin API files under
@@ -31,16 +39,22 @@ class WhisperTranscriber(context: Context) {
     private val appContext = context.applicationContext
 
     private val recognizer: OfflineRecognizer by lazy {
-        val modelDir = "sherpa-onnx-whisper-tiny.en"
+        val modelDir = "sherpa-onnx-whisper-tiny"
         OfflineRecognizer(
             assetManager = appContext.assets,
             config = OfflineRecognizerConfig(
                 modelConfig = OfflineModelConfig(
                     whisper = OfflineWhisperModelConfig(
-                        encoder = "$modelDir/tiny.en-encoder.int8.onnx",
-                        decoder = "$modelDir/tiny.en-decoder.int8.onnx",
+                        encoder = "$modelDir/tiny-encoder.int8.onnx",
+                        decoder = "$modelDir/tiny-decoder.int8.onnx",
+                        // Empty (not the class default "en") triggers Whisper's
+                        // own per-utterance language detection — see
+                        // offline-whisper-greedy-search-decoder.cc's
+                        // DetectLanguage call — instead of forcing every
+                        // capture to be interpreted as English.
+                        language = "",
                     ),
-                    tokens = "$modelDir/tiny.en-tokens.txt",
+                    tokens = "$modelDir/tiny-tokens.txt",
                     modelType = "whisper",
                     numThreads = 2,
                 ),

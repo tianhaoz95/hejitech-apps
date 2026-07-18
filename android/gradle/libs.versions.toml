@@ -17,15 +17,23 @@ firebaseAi = "17.13.0"
 firebaseAiOnDevice = "16.0.0-beta03"
 appCheckDebug = "19.2.0"
 kotlinxCoroutinesPlayServices = "1.9.0"
+kotlinxCoroutinesGuava = "1.9.0"
 kotlinxSerializationJson = "1.7.3"
 credentials = "1.5.0"
 googleid = "1.1.1"
 wearCompose = "1.4.1"
 playServicesWearable = "19.0.0"
+playServicesLocation = "21.3.0"
+wearTiles = "1.4.1"
+wearProtolayout = "1.2.0"
+wearWatchfaceComplications = "1.2.1"
 androidxTestExtJunit = "1.2.1"
+androidxTestRunner = "1.7.0"
 espressoCore = "3.6.1"
 uiautomator = "2.3.0"
 liteRtLm = "0.14.0"
+workManager = "2.10.0"
+coreSplashscreen = "1.0.1"
 
 [libraries]
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -61,6 +69,8 @@ firebase-ai-ondevice = { group = "com.google.firebase", name = "firebase-ai-onde
 litertlm-android = { group = "com.google.ai.edge.litertlm", name = "litertlm-android", version.ref = "liteRtLm" }
 
 kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "kotlinxCoroutinesPlayServices" }
+# ListenableFuture <-> coroutine bridge for TileService.onTileRequest (see wear/tile).
+kotlinx-coroutines-guava = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-guava", version.ref = "kotlinxCoroutinesGuava" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 
 # Current (non-deprecated) Google Sign-In stack: Credential Manager +
@@ -72,15 +82,42 @@ googleid = { group = "com.google.android.libraries.identity.googleid", name = "g
 wear-compose-material = { group = "androidx.wear.compose", name = "compose-material", version.ref = "wearCompose" }
 wear-compose-foundation = { group = "androidx.wear.compose", name = "compose-foundation", version.ref = "wearCompose" }
 play-services-wearable = { group = "com.google.android.gms", name = "play-services-wearable", version.ref = "playServicesWearable" }
+# FusedLocationProviderClient for GPS mileage-trip tracking (MileageTrackingService).
+play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
+
+# Watch face complication (Ours logged" glanceable) + Tile (swipeable
+# progress card) — see wear/complication and wear/tile.
+wear-watchface-complications-data-source-ktx = { group = "androidx.wear.watchface", name = "watchface-complications-data-source-ktx", version.ref = "wearWatchfaceComplications" }
+wear-tiles = { group = "androidx.wear.tiles", name = "tiles", version.ref = "wearTiles" }
+wear-protolayout = { group = "androidx.wear.protolayout", name = "protolayout", version.ref = "wearProtolayout" }
+wear-protolayout-material = { group = "androidx.wear.protolayout", name = "protolayout-material", version.ref = "wearProtolayout" }
 
 # Instrumented tests (androidTest) — run against a real device/emulator so
 # the debug-only USE_FIREBASE_EMULATOR path (see AuthManager.kt) applies,
 # same as a manual dev run. No separate mocking layer.
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestExtJunit" }
+# Declared explicitly (not left to androidx-test-ext-junit's transitive
+# resolution) — androidx.test.runner.AndroidJUnitRunner was missing from the
+# test APK's runtime classpath without this, crashing every connectedAndroidTest
+# run with a ClassNotFoundException before a single test could execute.
+androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }
+# GrantPermissionRule — pre-grants runtime permissions before the app under
+# test launches, so a first-run-after-install system permission dialog (e.g.
+# POST_NOTIFICATIONS) can't steal window focus mid-test and silently break
+# performTextInput on later steps. See CoreFlowTest.kt.
+androidx-test-rules = { group = "androidx.test", name = "rules", version.ref = "androidxTestRunner" }
 espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "uiautomator" }
+
+# Periodic background sync of recordings the phone relay couldn't reach
+# immediately — see wear/capture/PendingCaptureSyncWorker.kt.
+androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workManager" }
+
+# Cold-start splash screen (animated brand mark) — see MainActivity.kt and
+# res/values/themes.xml's Theme.Contempo.Starting.
+androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashscreen" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

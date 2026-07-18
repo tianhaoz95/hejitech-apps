@@ -8,6 +8,8 @@ import { askAgentFlow } from "./flows/askAgent";
 
 initializeApp();
 
+export { deleteAccount, cleanupDeletedUserData } from "./account";
+
 // Set via: firebase functions:secrets:set GOOGLE_GENAI_API_KEY
 // Not needed for local emulator use against the Genkit dev UI with a
 // personal API key exported as an env var instead — see backend/README.md.

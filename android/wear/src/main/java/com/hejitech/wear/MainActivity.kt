@@ -1,43 +1,83 @@
 package com.hejitech.wear
 
+import android.Manifest
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.wear.compose.material.MaterialTheme
-import androidx.wear.compose.material.Text
+import com.hejitech.wear.capture.WearCaptureScreen
+import com.hejitech.wear.capture.WearCaptureViewModel
+import com.hejitech.wear.capture.WearSignInScreen
 
 /**
- * Placeholder only — real Wear capture (mic tap -> parse -> confirm on the
- * watch, syncing to the same Firestore entries as the phone app) is
- * fast-follow, see reports/mvp-scope-v0.html Section 5.1. This exists so
- * `:wear` is a real, installable module today, not just a folder name.
+ * Real Wear OS capture (see reports/mvp-scope-v0.html Section 5.1's
+ * fast-follow plan, now built): sign in -> tap the mic, tap again to stop ->
+ * the recording is relayed to the paired phone over the Wear Data Layer,
+ * which runs it through the exact same on-device Whisper + parse pipeline
+ * the phone app itself uses (see net/PhoneAudioRelay.kt) -> saved straight
+ * to `users/{uid}/entries`, confirmed outright when the parse came back
+ * complete, pending_review (finish on the phone) otherwise.
  */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { WearComingSoonScreen() }
+        setContent { WearRootScreen() }
     }
 }
 
+// Deliberately not named "WearApp" — that name collides with the
+// Application subclass in WearApp.kt in this same package, and a bare
+// `WearApp()` call resolves to THAT class's constructor (a harmless no-op
+// object construction, not a composable invocation) rather than this
+// function, silently rendering nothing with no error anywhere. Reproduced
+// live: renamed this and the screen appeared immediately.
 @Composable
-private fun WearComingSoonScreen() {
+private fun WearRootScreen(viewModel: WearCaptureViewModel = viewModel()) {
+    val uiState by viewModel.uiState.collectAsState()
+    val amplitude by viewModel.recordingAmplitude.collectAsState()
+    var pendingRecordAfterPermission by remember { mutableStateOf(false) }
+
+    val micPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted && pendingRecordAfterPermission) viewModel.startRecording()
+        pendingRecordAfterPermission = false
+    }
+
+    fun onMicTap() {
+        if (uiState.isRecording) {
+            viewModel.stopRecordingAndSend()
+        } else if (viewModel.hasRecordAudioPermission()) {
+            viewModel.startRecording()
+        } else {
+            pendingRecordAfterPermission = true
+            micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
     MaterialTheme {
-        Box(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = stringResource(R.string.wear_coming_soon),
-                textAlign = TextAlign.Center,
+        if (!uiState.isSignedIn) {
+            WearSignInScreen(
+                isSigningIn = uiState.isSigningIn,
+                errorMessage = uiState.errorMessage,
+                onSignIn = viewModel::signIn,
+            )
+        } else {
+            WearCaptureScreen(
+                uiState = uiState,
+                amplitude = amplitude,
+                onMicTap = ::onMicTap,
+                onUploadPendingNow = viewModel::uploadPendingNow,
+                onDismissMessages = viewModel::dismissMessages,
             )
         }
     }

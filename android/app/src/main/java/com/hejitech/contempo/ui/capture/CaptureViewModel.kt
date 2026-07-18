@@ -1,25 +1,48 @@
 package com.hejitech.contempo.ui.capture
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
+import androidx.work.WorkManager
 import com.hejitech.contempo.agent.AiAvailability
 import com.hejitech.contempo.agent.CaptureResult
 import com.hejitech.contempo.agent.EntryDraft
+import com.hejitech.contempo.agent.OdometerReadOutcome
 import com.hejitech.contempo.agent.ParseOutcome
 import com.hejitech.contempo.agent.ParseSource
 import com.hejitech.contempo.agent.ParsingStage
+import com.hejitech.contempo.agent.TimerIntent
+import com.hejitech.contempo.agent.TimerIntentClassifier
+import com.hejitech.contempo.agent.TripIntent
+import com.hejitech.contempo.agent.TripIntentClassifier
+import com.hejitech.contempo.agent.WhisperTranscriber
 import com.hejitech.contempo.agent.aiAvailability
+import com.hejitech.contempo.capture.PendingCaptureSyncWorker
 import com.hejitech.contempo.data.ServiceLocator
+import com.hejitech.contempo.mileage.MileageTrackingService
+import com.hejitech.core.audio.WavAudio
 import com.hejitech.core.model.CaptureSource
-import kotlinx.coroutines.delay
+import com.hejitech.core.model.Entry
+import com.google.android.gms.location.LocationServices
+import com.google.firebase.Timestamp
+import com.google.firebase.firestore.FirebaseFirestoreException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeoutOrNull
 
 data class CaptureUiState(
     val inputText: String = "",
@@ -37,10 +60,22 @@ data class CaptureUiState(
     // capture finishes transcribing/cleanup, before parsing starts.
     val finalizedTranscript: String? = null,
     val parsingStage: ParsingStage = ParsingStage.IDLE,
+    // Transient "started/stopped tracking" confirmation shown after a
+    // start/stop timer utterance — these write straight to Firestore and
+    // skip Confirm entirely (see parseAndProceed/handleTimerEvent), so this
+    // is the only feedback the user gets.
+    val timerMessage: String? = null,
+    val isProcessingOdometerPhoto: Boolean = false,
+    val tripMessage: String? = null,
+    // Persisted (see QuickCaptureSettingsStore) — when on, stopping a
+    // recording skips transcribe/parse/Confirm entirely: audio + location +
+    // time are saved and queued for later background processing, and the
+    // screen returns to idle immediately. See stopQuickCaptureAndSave.
+    val quickCaptureEnabled: Boolean = false,
 )
 
-/** How long the finalized-transcript card holds before parsing starts. */
-private const val FINALIZED_TRANSCRIPT_HOLD_MS = 700L
+/** Best-effort only — never worth delaying a capture over. */
+private const val LOCATION_TIMEOUT_MS = 1_500L
 
 class CaptureViewModel : ViewModel() {
     private val agentClient = ServiceLocator.agentClient
@@ -49,6 +84,14 @@ class CaptureViewModel : ViewModel() {
     private val onDeviceLlm = ServiceLocator.onDeviceLlm
     private val audioRecorder = ServiceLocator.audioRecorder
     private val whisperTranscriber = ServiceLocator.whisperTranscriber
+    private val timerEntryCoordinator = ServiceLocator.timerEntryCoordinator
+    private val mileageTripCoordinator = ServiceLocator.mileageTripCoordinator
+    private val quickCaptureSettingsStore = ServiceLocator.quickCaptureSettingsStore
+
+    // Set by parseAndProceed's holdForManualConfirm branch (voice path only)
+    // once parsing succeeds, and released by confirmTranscript on the user's
+    // tap — see stopRecordingAndProcess/confirmTranscript.
+    private var pendingVoiceResult: CaptureResult? = null
 
     val recordingAmplitude = audioRecorder.amplitude
 
@@ -57,15 +100,63 @@ class CaptureViewModel : ViewModel() {
         _uiState,
         aiSettingsStore.preference,
         onDeviceLlm.status,
-    ) { state, preference, modelStatus ->
-        state.copy(aiAvailability = aiAvailability(preference, modelStatus))
+        quickCaptureSettingsStore.enabled,
+    ) { state, preference, modelStatus, quickCaptureEnabled ->
+        state.copy(aiAvailability = aiAvailability(preference, modelStatus), quickCaptureEnabled = quickCaptureEnabled)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CaptureUiState())
+
+    // Live open mileage trip, if any — drives the odometer-photo/GPS trip
+    // button's label. Deliberately its own StateFlow rather than a
+    // CaptureUiState field: several flows above reset _uiState wholesale
+    // (`_uiState.value = CaptureUiState()`) after a normal capture, which
+    // would wrongly blank this until the next real Firestore change if it
+    // lived there — a work timer and a trip can both be open at once (see
+    // MileageTripCoordinator), so this has to survive those resets.
+    val openTripEntry: StateFlow<Entry?> = entryRepository.observeEntries()
+        .map { entries -> entries.find { it.inProgress && it.isTrip } }
+        // A stale/invalid session (e.g. a corrupted local auth cache) makes
+        // Firestore reject this listener with PERMISSION_DENIED, which
+        // otherwise propagates as an uncaught exception in viewModelScope
+        // and crashes the whole app. Sign out so AuthGate falls back to the
+        // sign-in screen instead; any other error just degrades to "no open
+        // trip" rather than crashing.
+        .catch { e ->
+            if (e is FirebaseFirestoreException &&
+                (e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED ||
+                    e.code == FirebaseFirestoreException.Code.UNAUTHENTICATED)
+            ) {
+                ServiceLocator.authManager.signOut()
+            }
+            emit(null)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    /**
+     * Live open work timer, if any — mirrors [openTripEntry] above (same
+     * "own StateFlow so a wholesale _uiState reset can't blank it" reasoning)
+     * so the Capture tab can show "work in progress, tap to complete" and
+     * let a tap finish the entry without requiring the user to say "stop."
+     */
+    val openTimerEntry: StateFlow<Entry?> = entryRepository.observeEntries()
+        .map { entries -> entries.find { it.inProgress && !it.isTrip } }
+        .catch { e ->
+            if (e is FirebaseFirestoreException &&
+                (e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED ||
+                    e.code == FirebaseFirestoreException.Code.UNAUTHENTICATED)
+            ) {
+                ServiceLocator.authManager.signOut()
+            }
+            emit(null)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     fun onInputChanged(text: String) {
         _uiState.value = _uiState.value.copy(inputText = text, errorMessage = null)
     }
 
     fun hasRecordAudioPermission(): Boolean = audioRecorder.hasPermission()
+
+    fun setQuickCaptureEnabled(value: Boolean) = quickCaptureSettingsStore.setEnabled(value)
 
     fun startRecording() {
         if (_uiState.value.isRecording || !audioRecorder.hasPermission()) return
@@ -74,12 +165,46 @@ class CaptureViewModel : ViewModel() {
     }
 
     /**
-     * Stop -> on-device Whisper transcribe -> on-device cleanup pass (fixes
-     * dictation typos/punctuation, see AgentClient.cleanupTranscript) ->
-     * straight into the same parse-and-proceed path as typed text, same as
-     * the PRD's "no unlock, no-home-screen capture" hands-free intent — the
-     * user doesn't need a second manual tap once they've finished speaking.
-     * The cleaned text is shown in the field throughout while transcribing.
+     * Quick Capture: stop -> WAV-encode -> save locally -> done. Deliberately
+     * skips transcribe/parse/Confirm and shows nothing beyond the mic
+     * returning to idle — the point is that the user can walk away the
+     * instant they stop talking, with the actual Whisper transcription and
+     * parsing happening later in the background (see
+     * app/wear/AudioCaptureProcessor.kt, which already drains this same
+     * queue for the watch's captures — this reuses that exact pipeline). A
+     * one-time expedited WorkManager request kicks the Storage upload off
+     * right away; capture/PendingCaptureSyncWorker's periodic job is the
+     * fallback for whenever this phone has no connectivity at record time.
+     */
+    fun stopQuickCaptureAndSave() {
+        if (!_uiState.value.isRecording) return
+        _uiState.value = _uiState.value.copy(isRecording = false)
+
+        viewModelScope.launch {
+            val samples = audioRecorder.stop()
+            if (samples.isEmpty()) return@launch
+            val wav = WavAudio.encode(samples, WhisperTranscriber.SAMPLE_RATE_HZ)
+            val location = captureLocation()
+            ServiceLocator.pendingCaptureStore.save(wav, location?.first, location?.second)
+            enqueueExpeditedPendingCaptureUpload()
+        }
+    }
+
+    private fun enqueueExpeditedPendingCaptureUpload() {
+        val request = OneTimeWorkRequestBuilder<PendingCaptureSyncWorker>()
+            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+            .build()
+        WorkManager.getInstance(ServiceLocator.appContext)
+            .enqueueUniqueWork("pending-capture-upload-now", ExistingWorkPolicy.APPEND_OR_REPLACE, request)
+    }
+
+    /**
+     * Stop -> on-device Whisper transcribe -> straight into parseAndProceed
+     * (its prompt itself strips filler words/dictation errors and extracts
+     * the structured draft — see AgentClient.buildEntryPrompt), but holds the
+     * result rather than handing it to onDraftReady: the cleaned-up task text
+     * is shown on the "here's what we heard" card for the user to check, and
+     * only a manual tap (see confirmTranscript) actually proceeds to Confirm.
      */
     fun stopRecordingAndProcess(onDraftReady: (CaptureResult) -> Unit) {
         if (!_uiState.value.isRecording) return
@@ -97,18 +222,22 @@ class CaptureViewModel : ViewModel() {
                 return@launch
             }
 
-            _uiState.value = _uiState.value.copy(inputText = rawTranscript)
-            val cleaned = runCatching { agentClient.cleanupTranscript(rawTranscript) }.getOrDefault(rawTranscript)
-            _uiState.value = _uiState.value.copy(inputText = cleaned, isTranscribing = false, finalizedTranscript = cleaned)
-
-            // Hold the "here's what we heard" beat briefly before moving on
-            // — guarantees it's perceivable even on a fast device, not just
-            // whatever's left over after cleanup happens to finish.
-            delay(FINALIZED_TRANSCRIPT_HOLD_MS)
-            _uiState.value = _uiState.value.copy(finalizedTranscript = null)
-
-            parseAndProceed(cleaned, CaptureSource.VOICE, onDraftReady)
+            _uiState.value = _uiState.value.copy(inputText = rawTranscript, isTranscribing = false)
+            parseAndProceed(rawTranscript, CaptureSource.VOICE, onDraftReady, holdForManualConfirm = true)
         }
+    }
+
+    /**
+     * The manual "looks right, continue" step after stopRecordingAndProcess
+     * — tapping the finalized-transcript card releases the already-parsed
+     * result to onDraftReady (navigating to Confirm); nothing after
+     * transcription happens automatically.
+     */
+    fun confirmTranscript(onDraftReady: (CaptureResult) -> Unit) {
+        val result = pendingVoiceResult ?: return
+        pendingVoiceResult = null
+        _uiState.value = CaptureUiState()
+        onDraftReady(result)
     }
 
     /**
@@ -147,8 +276,9 @@ class CaptureViewModel : ViewModel() {
                 is ParseOutcome.Success -> {
                     val draft = outcome.result.draft
                     val source = if (outcome.result.source == ParseSource.ON_DEVICE) "on_device" else "cloud"
+                    val location = captureLocation()
                     _uiState.value = CaptureUiState()
-                    onDraftReady(CaptureResult(draft, source, CaptureSource.PHOTO, photoUri))
+                    onDraftReady(CaptureResult(draft, source, CaptureSource.PHOTO, photoUri, location?.first, location?.second))
                 }
                 is ParseOutcome.Failure -> {
                     // pendingPhotoUri (set above) stays, so the photo is
@@ -167,10 +297,59 @@ class CaptureViewModel : ViewModel() {
         val photoUri = _uiState.value.pendingPhotoUri
         val captureSource = if (photoUri != null) CaptureSource.PHOTO else CaptureSource.MANUAL
         _uiState.value = CaptureUiState()
-        onDraftReady(CaptureResult(EntryDraft(), "", captureSource, photoUri))
+        viewModelScope.launch {
+            val location = captureLocation()
+            onDraftReady(CaptureResult(EntryDraft(), "", captureSource, photoUri, location?.first, location?.second))
+        }
     }
 
-    private suspend fun parseAndProceed(text: String, captureSource: CaptureSource, onDraftReady: (CaptureResult) -> Unit) {
+    /**
+     * General "said/captured from here" evidence, distinct from the
+     * trip-specific GPS/odometer fields MileageTripCoordinator already
+     * tracks — a quick cached-location read (not a fresh GPS fix), capped so
+     * a missing/slow fix never delays handing off to Confirm. Same approach
+     * as the watch's capture path (see WearCaptureViewModel.captureLocation).
+     */
+    private suspend fun captureLocation(): Pair<Double, Double>? {
+        val context = ServiceLocator.appContext
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return null
+        }
+        return runCatching {
+            withTimeoutOrNull(LOCATION_TIMEOUT_MS) {
+                LocationServices.getFusedLocationProviderClient(context).lastLocation.await()
+                    ?.let { it.latitude to it.longitude }
+            }
+        }.getOrNull()
+    }
+
+    private suspend fun parseAndProceed(
+        text: String,
+        captureSource: CaptureSource,
+        onDraftReady: (CaptureResult) -> Unit,
+        holdForManualConfirm: Boolean = false,
+    ) {
+        // Trip start/stop needs no parsed fields — MileageTrackingService
+        // owns property/task-free trip creation — so it's checked before
+        // ever calling parseEntry, unlike the timer intent below which needs
+        // the parsed draft's property/task for handleTimerStart.
+        val tripIntent = TripIntentClassifier.classify(text)
+        if (tripIntent == TripIntent.START) {
+            MileageTrackingService.start(ServiceLocator.appContext)
+            _uiState.value = CaptureUiState(tripMessage = "Trip started — tracking your drive")
+            return
+        }
+        if (tripIntent == TripIntent.STOP) {
+            val openGpsTrip = entryRepository.findOpenEntry(isTrip = true)?.takeIf { it.mileageCaptureMethod == "gps" }
+            if (openGpsTrip != null) {
+                MileageTrackingService.stop(ServiceLocator.appContext)
+                _uiState.value = CaptureUiState(tripMessage = "Trip ended — logged automatically")
+                return
+            }
+            // No GPS trip was open — fall through and treat this like a
+            // normal capture rather than silently dropping it.
+        }
+
         _uiState.value = _uiState.value.copy(isParsing = true, errorMessage = null, parsingStage = ParsingStage.READING)
 
         // Best-effort — an empty list is a fine fallback, the model just
@@ -185,6 +364,32 @@ class CaptureViewModel : ViewModel() {
         when (outcome) {
             is ParseOutcome.Success -> {
                 val draft = outcome.result.draft
+                // Deterministic keyword pass is tried first and is
+                // authoritative when it fires (see TimerIntentClassifier's
+                // kdoc); the LLM's own eventType only matters for phrasing
+                // the keyword list doesn't cover.
+                val intent = TimerIntentClassifier.classify(text) ?: when (draft.eventType) {
+                    "start" -> TimerIntent.START
+                    "stop" -> TimerIntent.STOP
+                    else -> null
+                }
+                if (intent == TimerIntent.START) {
+                    handleTimerStart(draft)
+                    return
+                }
+                if (intent == TimerIntent.STOP) {
+                    val stopLocation = captureLocation()
+                    val stopped = timerEntryCoordinator.handleStop(
+                        draft.property, draft.task, Timestamp.now(), stopLocation?.first, stopLocation?.second,
+                    )
+                    if (stopped != null) {
+                        _uiState.value = CaptureUiState(timerMessage = "Stopped — logged ${stopped.durationMinutes}m")
+                        return
+                    }
+                    // Nothing was open to close — fall through and treat this
+                    // like a normal capture rather than silently dropping it.
+                }
+
                 val source = if (outcome.result.source == ParseSource.ON_DEVICE) "on_device" else "cloud"
                 // A photo captured earlier in this session failed to draft
                 // (see processPhoto's Failure branch) and the user is
@@ -193,8 +398,23 @@ class CaptureViewModel : ViewModel() {
                 // still needs to be attached as evidence.
                 val pendingPhotoUri = _uiState.value.pendingPhotoUri
                 val effectiveCaptureSource = if (pendingPhotoUri != null) CaptureSource.PHOTO else captureSource
-                _uiState.value = CaptureUiState() // reset for next capture
-                onDraftReady(CaptureResult(draft, source, effectiveCaptureSource, pendingPhotoUri))
+                val location = captureLocation()
+                val result = CaptureResult(draft, source, effectiveCaptureSource, pendingPhotoUri, location?.first, location?.second)
+                if (holdForManualConfirm) {
+                    // Voice path only: hold the already-parsed result and show
+                    // its cleaned-up task text for the user to check — see
+                    // confirmTranscript, which releases this on a manual tap
+                    // rather than navigating to Confirm automatically.
+                    pendingVoiceResult = result
+                    _uiState.value = _uiState.value.copy(
+                        isParsing = false,
+                        parsingStage = ParsingStage.IDLE,
+                        finalizedTranscript = draft.task?.takeIf { it.isNotBlank() } ?: text,
+                    )
+                } else {
+                    _uiState.value = CaptureUiState() // reset for next capture
+                    onDraftReady(result)
+                }
             }
             is ParseOutcome.Failure -> {
                 _uiState.value = _uiState.value.copy(
@@ -204,5 +424,101 @@ class CaptureViewModel : ViewModel() {
                 )
             }
         }
+    }
+
+    /**
+     * A "start" timer utterance writes straight to Firestore and skips
+     * Confirm entirely — matches how the watch-relay path already writes
+     * directly with no human tap in between, keeping starting the clock
+     * truly hands-free (see TimerEntryCoordinator's kdoc). "Stop" is handled
+     * inline in parseAndProceed instead, since a miss (nothing open) needs
+     * to fall through to the normal Confirm flow rather than short-circuit.
+     */
+    private suspend fun handleTimerStart(draft: EntryDraft) {
+        timerEntryCoordinator.handleStart(
+            property = draft.property,
+            task = draft.task,
+            category = draft.category,
+            source = CaptureSource.VOICE,
+            startedAt = Timestamp.now(),
+        )
+        val label = draft.property?.let { "Started tracking — $it" } ?: "Started tracking — clock is running"
+        _uiState.value = CaptureUiState(timerMessage = label)
+    }
+
+    /**
+     * Tap-to-complete for the "work in progress" indicator (see
+     * [openTimerEntry]) — the manual-tap equivalent of saying "stop,"
+     * recording the completion time/location the exact same way a voice
+     * stop does rather than leaving those fields null just because no
+     * utterance was involved.
+     */
+    fun completeOpenTimer() {
+        viewModelScope.launch {
+            val stopLocation = captureLocation()
+            val stopped = timerEntryCoordinator.handleStop(null, null, Timestamp.now(), stopLocation?.first, stopLocation?.second)
+            if (stopped != null) {
+                _uiState.value = CaptureUiState(timerMessage = "Stopped — logged ${stopped.durationMinutes}m")
+            }
+        }
+    }
+
+    fun dismissTimerMessage() {
+        _uiState.value = _uiState.value.copy(timerMessage = null)
+    }
+
+    /**
+     * A just-taken odometer photo. Start vs. end is auto-detected the same
+     * way as the voice timer's start/stop: no open trip -> this reading is
+     * the start; one already open -> this reading closes it. Checks
+     * findOpenEntry directly (authoritative) rather than the cached
+     * openTripEntry StateFlow, so a stale snapshot can't misclassify which
+     * side of the trip this photo is on.
+     */
+    fun logOdometerPhoto(bitmap: Bitmap) {
+        _uiState.value = _uiState.value.copy(isProcessingOdometerPhoto = true, errorMessage = null)
+        viewModelScope.launch {
+            when (val outcome = agentClient.readOdometerFromPhoto(bitmap)) {
+                is OdometerReadOutcome.Success -> {
+                    val openTrip = entryRepository.findOpenEntry(isTrip = true)
+                    if (openTrip == null) {
+                        mileageTripCoordinator.handleStartTrip(
+                            property = null,
+                            task = null,
+                            category = null,
+                            source = CaptureSource.PHOTO,
+                            startedAt = Timestamp.now(),
+                            captureMethod = "photo",
+                            odometerStart = outcome.miles,
+                        )
+                        _uiState.value = _uiState.value.copy(
+                            isProcessingOdometerPhoto = false,
+                            tripMessage = "Trip started — odometer ${outcome.miles}",
+                        )
+                    } else {
+                        val result = mileageTripCoordinator.handleEndTrip(
+                            endedAt = Timestamp.now(),
+                            captureMethod = "photo",
+                            odometerEnd = outcome.miles,
+                        )
+                        _uiState.value = _uiState.value.copy(
+                            isProcessingOdometerPhoto = false,
+                            tripMessage = result?.let { "Trip ended — logged ${it.miles} mi" }
+                                ?: "Couldn't close the trip — try again.",
+                        )
+                    }
+                }
+                is OdometerReadOutcome.Failure -> {
+                    _uiState.value = _uiState.value.copy(
+                        isProcessingOdometerPhoto = false,
+                        errorMessage = outcome.message,
+                    )
+                }
+            }
+        }
+    }
+
+    fun dismissTripMessage() {
+        _uiState.value = _uiState.value.copy(tripMessage = null)
     }
 }

@@ -99,6 +99,7 @@ dependencies {
     implementation(project(":core"))
 
     implementation(libs.core.ktx)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.lifecycle.runtime.ktx)
     implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.activity.compose)
@@ -145,11 +146,25 @@ dependencies {
     implementation(libs.credentials.play.services.auth)
     implementation(libs.googleid)
 
+    // FusedLocationProviderClient for GPS mileage-trip tracking — see
+    // mileage/MileageTrackingService.kt.
+    implementation(libs.play.services.location)
+
+    // Periodic background processing of the watch's pending-audio backlog
+    // — see wear/PendingAudioProcessWorker.kt.
+    implementation(libs.androidx.work.runtime.ktx)
+
     // Instrumented tests — run on-device/emulator against the Firebase
     // emulator suite (see androidTest/.../CoreFlowTest.kt). Firebase/core
     // classes don't need re-declaring here: androidTest links against the
     // app-under-test's own classpath automatically.
     androidTestImplementation(libs.androidx.test.ext.junit)
+    // Declared explicitly — see core/build.gradle.kts's comment on the same
+    // dependency: androidx.test.runner.AndroidJUnitRunner was missing from
+    // the test APK's runtime classpath without it, crashing every
+    // connectedAndroidTest run before a single test could execute.
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.rules)
     androidTestImplementation(libs.espresso.core)
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.test.junit4)

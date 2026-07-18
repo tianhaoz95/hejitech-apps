@@ -32,6 +32,9 @@ backend/functions/lib/
 # Env/secrets
 .env
 .env.*
+# ...except templates — these document required config and should be
+# committed, same convention as google-services.json.example.
+!.env.example
 
 # Firebase emulator/tooling artifacts
 backend/firestore-debug.log

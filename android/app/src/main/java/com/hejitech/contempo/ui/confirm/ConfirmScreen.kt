@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -64,13 +65,20 @@ fun ConfirmScreen(
     source: String = "",
     /** CaptureSource enum name (MANUAL/TEXT/VOICE/PHOTO) — see ConfirmRoute. */
     captureSource: String = "",
+    /** Business miles driven, if any — always optional, unlike duration. */
+    miles: Double = 0.0,
     /** Local content:// URI for a just-taken photo, if this entry came from photo capture. */
     photoUri: String? = null,
     /** Non-blank when resuming a pending_review entry from the Dashboard's pending badge. */
     entryId: String = "",
+    /** Best-effort "captured from here" location — see CaptureViewModel.captureLocation. */
+    captureLat: Double? = null,
+    captureLng: Double? = null,
     onConfirmed: () -> Unit,
     viewModel: ConfirmViewModel = viewModel(
-        factory = ConfirmViewModel.Factory(property, task, durationMinutes, category, captureSource, photoUri, entryId)
+        factory = ConfirmViewModel.Factory(
+            property, task, durationMinutes, category, captureSource, miles, photoUri, entryId, captureLat, captureLng,
+        )
     ),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -197,6 +205,15 @@ fun ConfirmScreen(
         )
         Spacer(Modifier.height(12.dp))
 
+        OutlinedTextField(
+            value = uiState.miles,
+            onValueChange = viewModel::onMilesChanged,
+            label = { Text(stringResource(R.string.confirm_miles_label)) },
+            placeholder = { Text(stringResource(R.string.confirm_miles_placeholder)) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(12.dp))
+
         ExposedDropdownMenuBox(
             expanded = categoryMenuExpanded,
             onExpandedChange = { categoryMenuExpanded = it },
@@ -237,10 +254,14 @@ fun ConfirmScreen(
                     modifier = Modifier.weight(1f),
                     shape = MaterialTheme.shapes.small,
                 ) {
+                    // Replaces the label rather than appending to it — an
+                    // appended spinner widened/wrapped the fixed-width
+                    // button, visibly resizing it while saving.
                     if (uiState.isSavingForLater) {
-                        CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text(stringResource(R.string.confirm_complete_later_button))
                     }
-                    Text(stringResource(R.string.confirm_complete_later_button))
                 }
             }
 
@@ -251,9 +272,10 @@ fun ConfirmScreen(
                 shape = MaterialTheme.shapes.small,
             ) {
                 if (uiState.isSaving) {
-                    CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp), strokeWidth = 2.dp)
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else {
+                    Text(stringResource(R.string.confirm_button))
                 }
-                Text(stringResource(R.string.confirm_button))
             }
         }
 

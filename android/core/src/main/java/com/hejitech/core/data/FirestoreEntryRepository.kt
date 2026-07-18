@@ -8,10 +8,13 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.storageMetadata
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+
+private const val FIRESTORE_BATCH_LIMIT = 500
 
 class FirestoreEntryRepository(
     private val firestore: FirebaseFirestore,
@@ -70,8 +73,26 @@ class FirestoreEntryRepository(
         return ref.id
     }
 
+    override fun newEntryId(): String = entriesCollection().document().id
+
     override suspend fun getEntry(entryId: String): Entry? {
         val doc = entriesCollection().document(entryId).get().await()
+        return doc.toObject(Entry::class.java)?.copy(id = doc.id)
+    }
+
+    override suspend fun findOpenEntry(isTrip: Boolean): Entry? {
+        val snapshot = entriesCollection()
+            .whereEqualTo("inProgress", true)
+            // Entry.isTrip carries explicit @PropertyName("isTrip")
+            // annotations specifically so this literal field name is what's
+            // actually stored — see Entry.kt's kdoc on that field for why
+            // (Firestore's default Kotlin-boolean-getter convention would
+            // otherwise silently store/query the wrong field name).
+            .whereEqualTo("isTrip", isTrip)
+            .limit(1)
+            .get()
+            .await()
+        val doc = snapshot.documents.firstOrNull() ?: return null
         return doc.toObject(Entry::class.java)?.copy(id = doc.id)
     }
 
@@ -83,9 +104,22 @@ class FirestoreEntryRepository(
         entriesCollection().document(entryId).delete().await()
     }
 
+    override suspend fun deleteEntries(entryIds: List<String>) {
+        entryIds.chunked(FIRESTORE_BATCH_LIMIT).forEach { chunk ->
+            val batch = firestore.batch()
+            chunk.forEach { entryId -> batch.delete(entriesCollection().document(entryId)) }
+            batch.commit().await()
+        }
+    }
+
     override suspend fun attachPhoto(entryId: String, localUri: Uri): String {
         val photoRef = storage.reference.child("users/$uid/entries/$entryId/${System.currentTimeMillis()}.jpg")
-        photoRef.putFile(localUri).await()
+        // Explicit rather than relying on putFile's ContentResolver-based
+        // inference — storage.rules now validates contentType matches
+        // image/*, and this guarantees that check has something real to
+        // match regardless of the source URI's provider.
+        val metadata = storageMetadata { contentType = "image/jpeg" }
+        photoRef.putFile(localUri, metadata).await()
         val downloadUrl = photoRef.downloadUrl.await().toString()
         entriesCollection().document(entryId)
             .update("photoUrls", FieldValue.arrayUnion(downloadUrl))

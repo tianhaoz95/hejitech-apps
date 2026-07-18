@@ -25,6 +25,8 @@ data class ChatUiState(
     val inputText: String = "",
     val pendingImage: Bitmap? = null,
     val isSending: Boolean = false,
+    val isRecording: Boolean = false,
+    val isTranscribing: Boolean = false,
     val errorMessage: String? = null,
     val aiAvailability: AiAvailability = AiAvailability.Ready,
 )
@@ -40,6 +42,12 @@ class ChatViewModel : ViewModel() {
     private val aiSettingsStore = ServiceLocator.aiSettingsStore
     private val onDeviceLlm = ServiceLocator.onDeviceLlm
 
+    // Same shared recorder/transcriber Capture uses — safe to reuse since
+    // only one top-level screen is ever visible/interactive at a time.
+    private val audioRecorder = ServiceLocator.audioRecorder
+    private val whisperTranscriber = ServiceLocator.whisperTranscriber
+    val recordingAmplitude = audioRecorder.amplitude
+
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = combine(
         _uiState,
@@ -51,6 +59,41 @@ class ChatViewModel : ViewModel() {
 
     fun onInputChanged(text: String) {
         _uiState.value = _uiState.value.copy(inputText = text, errorMessage = null)
+    }
+
+    fun hasRecordAudioPermission(): Boolean = audioRecorder.hasPermission()
+
+    fun startRecording() {
+        if (_uiState.value.isRecording || !audioRecorder.hasPermission()) return
+        _uiState.value = _uiState.value.copy(isRecording = true, errorMessage = null)
+        audioRecorder.start(viewModelScope)
+    }
+
+    /**
+     * Stop -> on-device Whisper transcribe -> cleanup pass -> auto-send,
+     * mirroring Capture's hands-free "speak and it just happens" flow
+     * rather than making the user also tap Send after dictating.
+     */
+    fun stopRecordingAndSend() {
+        if (!_uiState.value.isRecording) return
+        _uiState.value = _uiState.value.copy(isRecording = false, isTranscribing = true)
+
+        viewModelScope.launch {
+            val samples = audioRecorder.stop()
+            val rawTranscript = runCatching { whisperTranscriber.transcribe(samples) }.getOrDefault("")
+
+            if (rawTranscript.isBlank()) {
+                _uiState.value = _uiState.value.copy(
+                    isTranscribing = false,
+                    errorMessage = "Didn't catch that — try again.",
+                )
+                return@launch
+            }
+
+            val cleaned = runCatching { agentClient.cleanupTranscript(rawTranscript) }.getOrDefault(rawTranscript)
+            _uiState.value = _uiState.value.copy(inputText = cleaned, isTranscribing = false)
+            send()
+        }
     }
 
     fun attachImage(bitmap: Bitmap) {

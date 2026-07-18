@@ -17,6 +17,14 @@ interface EntryRepository {
     suspend fun createEntry(entry: Entry): String
 
     /**
+     * Allocates a new entry id locally, with no network call — lets a caller
+     * commit to an id up front (e.g. ConfirmViewModel) so a retry after a
+     * timed-out write becomes an idempotent overwrite via [updateEntry]
+     * instead of risking a second document from a second createEntry call.
+     */
+    fun newEntryId(): String
+
+    /**
      * Looks up a single entry by id — used when resuming a pending_review
      * entry into Confirm, to preserve its original loggedAt (the
      * contemporaneity anchor) and photoUrls across the update rather than
@@ -24,10 +32,25 @@ interface EntryRepository {
      */
     suspend fun getEntry(entryId: String): Entry?
 
+    /**
+     * The single open entry of the given kind for this user, if any —
+     * scoped by [isTrip] so a work timer (isTrip = false, see
+     * TimerEntryCoordinator) and a mileage trip (isTrip = true, see
+     * MileageTripCoordinator) can be open simultaneously without either
+     * auto-closing the other. Within one kind, at most one entry ever has
+     * inProgress = true by construction (a new "start" always closes the
+     * previous one of the same kind first), so this is a plain existence
+     * lookup, not a "most recent of many."
+     */
+    suspend fun findOpenEntry(isTrip: Boolean): Entry?
+
     /** Applies edits and/or flips status to confirmed. */
     suspend fun updateEntry(entryId: String, entry: Entry)
 
     suspend fun deleteEntry(entryId: String)
+
+    /** Bulk delete — see Dashboard's multi-select. Atomic per underlying batch (chunked at Firestore's 500-write batch limit). */
+    suspend fun deleteEntries(entryIds: List<String>)
 
     /**
      * Uploads a locally-captured photo to Storage under this entry and adds

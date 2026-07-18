@@ -12,6 +12,13 @@ android {
 
     defaultConfig {
         minSdk = 26
+        // Only exercised by :core:connectedAndroidTest (see
+        // src/androidTest/.../FirebaseEmulatorTestEnv.kt) — this module has
+        // no google-services.json of its own (only app/wear apply that
+        // plugin), so those tests build FirebaseOptions by hand and talk to
+        // a locally running emulator suite, same "contempo-platform" project
+        // id CoreFlowTest.kt (app module) already assumes.
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     compileOptions {
@@ -33,4 +40,8 @@ dependencies {
     implementation(libs.firebase.storage)
     implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.kotlinx.serialization.json)
+
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.kotlinx.coroutines.play.services)
 }

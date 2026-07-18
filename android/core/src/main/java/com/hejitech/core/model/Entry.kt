@@ -2,6 +2,7 @@ package com.hejitech.core.model
 
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.Exclude
+import com.google.firebase.firestore.PropertyName
 
 /**
  * Firestore document shape for `users/{uid}/entries/{entryId}`. Mirrors
@@ -25,11 +26,77 @@ data class Entry(
     /** When this entry was first written to Firestore — the contemporaneity anchor. */
     val loggedAt: Timestamp = Timestamp.now(),
     val confirmedAt: Timestamp? = null,
-    val isVague: Boolean = false,
-    val isBackfilled: Boolean = false,
+    // Same Kotlin-Boolean-property Firestore bug documented on isTrip below
+    // (getter's "is" prefix stripped on write, not restored on read) —
+    // confirmed live via FirestoreEntryRepositoryTest.roundTrip_isVagueAndIsBackfilled_surviveThroughFirestore:
+    // without these annotations, an entry correctly flagged vague/backfilled
+    // at write time silently reads back as false, undermining the risk-flag
+    // feature this whole app is built around. Needs `var` for the same
+    // setter-based-reflection reason isTrip does.
+    @get:PropertyName("isVague") @set:PropertyName("isVague")
+    var isVague: Boolean = false,
+    @get:PropertyName("isBackfilled") @set:PropertyName("isBackfilled")
+    var isBackfilled: Boolean = false,
     val daysLate: Int = 0,
     val riskReasons: List<String> = emptyList(),
     val photoUrls: List<String> = emptyList(),
+    /** True while this entry is an open start/stop timer with no end yet — see TimerEntryCoordinator. */
+    val inProgress: Boolean = false,
+    /**
+     * Marks this entry as (also) a mileage trip — orthogonal to inProgress/
+     * hours, not a replacement: a work timer and a driving trip can be open
+     * at the same time (e.g. timing a maintenance visit that includes a
+     * supply run), so EntryRepository.findOpenEntry is scoped by this flag
+     * rather than there being one global "the one open entry." See
+     * MileageTripCoordinator.
+     */
+    // Firestore's Java-bean reflection strips the "is" prefix off a Kotlin
+    // Boolean getter (isTrip() -> derived property "trip"), and — confirmed
+    // live, the hard way — its Kotlin data-class deserialization path does
+    // NOT symmetrically apply the same stripping when reading a document
+    // back, nor does it fall back to matching a literal "isTrip" field
+    // either: without these annotations this always silently deserializes
+    // to false regardless of what's actually stored, and needs a real
+    // setter (hence `var`, unlike every other field on this class) for
+    // Firestore's setter-based reflection to have something to call.
+    @get:PropertyName("isTrip") @set:PropertyName("isTrip")
+    var isTrip: Boolean = false,
+    /** "manual" / "photo" / "gps" — how the mileage below was captured, for audit-trail transparency and CSV export. */
+    val mileageCaptureMethod: String = "",
+    /** Final recorded mileage for this trip — 0.0 = not applicable, same convention as durationMinutes = 0. */
+    val miles: Double = 0.0,
+    /** Real evidence, not just a diff — populated by the odometer-photo capture method (and optionally manual entry). */
+    val odometerStart: Double? = null,
+    val odometerEnd: Double? = null,
+    /** Populated by the GPS capture method — raw start/end coordinates as supporting evidence. */
+    val tripStartLat: Double? = null,
+    val tripStartLng: Double? = null,
+    val tripEndLat: Double? = null,
+    val tripEndLng: Double? = null,
+    /**
+     * Where this entry was captured (general "said from here" evidence),
+     * distinct from the trip-specific tripStart/tripEnd fields above —
+     * populated at record time on whichever device captured it, when
+     * location is available. See AudioCaptureProcessor/AudioCaptureQueue.
+     */
+    val captureLat: Double? = null,
+    val captureLng: Double? = null,
+    /**
+     * Permanent Storage download URL for the raw audio behind this entry —
+     * kept forever (never deleted), unlike the transient local queue it
+     * came through. Populated for voice-captured entries only.
+     */
+    val audioUrl: String = "",
+    /**
+     * When/where a start/stop timer entry (see [inProgress]/TimerEntryCoordinator)
+     * was actually stopped — captured at the moment of the "finished"
+     * utterance or the Dashboard/Capture tap-to-complete action, distinct
+     * from [captureLat]/[captureLng] which records the *start* location.
+     * Null while the timer is still open.
+     */
+    val stoppedAt: Timestamp? = null,
+    val stopLat: Double? = null,
+    val stopLng: Double? = null,
 ) {
     // @get:Exclude — computed, not stored: without this Firestore's reflection-based
     // mapper tries to find a matching field/setter for these and logs a harmless

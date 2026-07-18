@@ -100,7 +100,7 @@
 
         <h3>4.3 Output</h3>
         <ul>
-          <li>Simple pacing dashboard: hours logged vs. the selected test's threshold, with a projected finish date at current pace</li>
+          <li>Simple pacing dashboard (in-app): hours logged vs. the selected test's threshold, with a projected finish date at current pace — a richer analysis view (trends, per-property breakdown) lives on web instead, see 4.4</li>
           <li>CSV export</li>
           <li>A minimal print/PDF view of the entry list — not the full narrative CPA package from the PRD, just something a host can hand over today</li>
         </ul>
@@ -108,8 +108,20 @@
         <h3>4.4 Platform</h3>
         <ul>
           <li>Android app (Section 6) — text, voice, manual, and photo capture all live here at MVP; the SMS gateway is deferred (Section 5.1)</li>
-          <li>A minimal web app: export and account settings only, not a capture surface</li>
+          <li>A web app — never a capture surface, but scoped to three things: subscription/billing (see callout below), an analysis dashboard (hours by property/activity, contemporaneity trend, threshold progress — the bigger-screen counterpart to the in-app pacing dashboard), and CPA export/account settings</li>
         </ul>
+        <div class="callout">
+          <span class="callout-label">Decided</span>
+          <strong>Subscriptions are sold on web only, never via in-app purchase on
+          Android or iOS.</strong> Skipping IAP entirely avoids Apple/Google's
+          platform fee on subscription revenue. The mobile apps carry no purchase
+          flow, no pricing mention, and no external-purchase link out — they only
+          read entitlement status (synced from Stripe into Firestore, via
+          Stripe's Firebase Extension) and gate premium features accordingly.
+          Because the apps never link out to a purchase flow, this stays clear of
+          Apple's External Purchase Link Entitlement process altogether, rather
+          than needing to comply with it.
+        </div>
 
         <h2>5. Deferred, With Reasoning</h2>
 

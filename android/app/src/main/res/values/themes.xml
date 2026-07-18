@@ -7,4 +7,17 @@
         <item name="android:windowBackground">@color/contempo_paper</item>
         <item name="android:statusBarColor">@color/contempo_paper</item>
     </style>
+
+    <!-- Cold-start splash theme (MainActivity only — see AndroidManifest.xml).
+         windowSplashScreenBackground is always the brand pine, regardless of
+         system light/dark mode: it's the same fixed backdrop the launcher
+         icon itself sits on, so it should read as "the app icon, briefly
+         fullscreen" rather than re-theme with the OS. postSplashScreenTheme
+         hands off to the real Theme.Contempo the instant the splash exits. -->
+    <style name="Theme.Contempo.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/contempo_pine</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_icon_animated</item>
+        <item name="windowSplashScreenAnimationDuration">800</item>
+        <item name="postSplashScreenTheme">@style/Theme.Contempo</item>
+    </style>
 </resources>
