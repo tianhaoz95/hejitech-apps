@@ -23,6 +23,19 @@
     <string name="nav_back">Back</string>
 
     <string name="capture_eyebrow">Say it once</string>
+    <string name="capture_help_content_description">Help</string>
+    <string name="help_walkthrough_skip_button">Skip</string>
+    <string name="help_walkthrough_back_button">Back</string>
+    <string name="help_walkthrough_next_button">Next</string>
+    <string name="help_walkthrough_done_button">Got it</string>
+    <string name="help_walkthrough_capture_title">Say what you did</string>
+    <string name="help_walkthrough_capture_body">Tap the mic and describe your work — Contempo turns it into a structured, timestamped entry. Photos and typed notes work too.</string>
+    <string name="help_walkthrough_dashboard_title">Watch your hours add up</string>
+    <string name="help_walkthrough_dashboard_body">See your logged hours track toward the 100/500-hour STR tests or the REPS 750-hour threshold, broken down by property.</string>
+    <string name="help_walkthrough_chat_title">Ask your logbook anything</string>
+    <string name="help_walkthrough_chat_body">Ask questions about your entries or material participation rules and get answers grounded in your own records.</string>
+    <string name="help_walkthrough_settings_title">Set up your properties</string>
+    <string name="help_walkthrough_settings_body">Add properties, pick a capture language, and manage your account here.</string>
     <string name="capture_language_label">Language</string>
     <string name="capture_language_english">English</string>
     <string name="capture_language_chinese">中文</string>

@@ -31,6 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.LocationOn
@@ -110,6 +111,7 @@ fun CaptureScreen(
     var typeExpanded by rememberSaveable { mutableStateOf(false) }
     var otherMenuExpanded by remember { mutableStateOf(false) }
     var showQuickCaptureExplanation by remember { mutableStateOf(false) }
+    var showHelpWalkthrough by remember { mutableStateOf(false) }
 
     val micPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -186,7 +188,19 @@ fun CaptureScreen(
             .padding(24.dp),
         verticalArrangement = Arrangement.Center,
     ) {
-        Eyebrow(stringResource(R.string.capture_eyebrow))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Eyebrow(stringResource(R.string.capture_eyebrow))
+            IconButton(onClick = { showHelpWalkthrough = true }) {
+                Icon(
+                    Icons.Filled.HelpOutline,
+                    contentDescription = stringResource(R.string.capture_help_content_description),
+                )
+            }
+        }
 
         Spacer(Modifier.height(24.dp))
 
@@ -546,6 +560,10 @@ fun CaptureScreen(
                 }
             },
         )
+    }
+
+    if (showHelpWalkthrough) {
+        HelpWalkthroughDialog(onDismiss = { showHelpWalkthrough = false })
     }
 }
 
