@@ -14,6 +14,21 @@
   "storage": {
     "rules": "storage.rules"
   },
+  "hosting": {
+    "site": "contempo",
+    "public": "web-dist",
+    "ignore": ["firebase.json", "**/.*"],
+    "predeploy": [
+      "npm --prefix ../web run build",
+      "rm -rf web-dist && cp -r ../web/dist web-dist"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  },
   "functions": [
     {
       "source": "functions",

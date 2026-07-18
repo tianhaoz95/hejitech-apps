@@ -8,6 +8,7 @@ import com.hejitech.contempo.agent.OnDeviceLlm
 import com.hejitech.contempo.agent.WhisperTranscriber
 import com.hejitech.contempo.auth.AuthManager
 import com.hejitech.contempo.capture.PendingCaptureStore
+import com.hejitech.contempo.capture.QuickCaptureStatsStore
 import com.hejitech.core.data.AudioCaptureQueue
 import com.hejitech.core.data.EntryRepository
 import com.hejitech.core.data.FirestoreEntryRepository
@@ -61,6 +62,8 @@ object ServiceLocator {
         private set
     lateinit var pendingCaptureStore: PendingCaptureStore
         private set
+    lateinit var quickCaptureStatsStore: QuickCaptureStatsStore
+        private set
 
     // Process-lifetime scope for cross-screen background work (currently
     // just OnDeviceLlm's status/download tracking) — same lifetime as the
@@ -76,6 +79,7 @@ object ServiceLocator {
         audioCaptureQueue = AudioCaptureQueue(Firebase.firestore, auth)
         quickCaptureSettingsStore = QuickCaptureSettingsStore(context)
         pendingCaptureStore = PendingCaptureStore(context)
+        quickCaptureStatsStore = QuickCaptureStatsStore(context)
         aiSettingsStore = AiSettingsStore(context)
         // LiteRtLlm (Gemma 4 E2B via LiteRT-LM) is the active OnDeviceLlm —
         // see OnDeviceLlm's kdoc for why this replaced Gemini Nano/AICore

@@ -26,12 +26,17 @@ import com.hejitech.contempo.agent.aiAvailability
 import com.hejitech.contempo.capture.PendingCaptureSyncWorker
 import com.hejitech.contempo.data.ServiceLocator
 import com.hejitech.contempo.mileage.MileageTrackingService
+import com.hejitech.contempo.wear.AudioCaptureProcessor
+import com.hejitech.contempo.wear.AudioProcessingStage
 import com.hejitech.core.audio.WavAudio
 import com.hejitech.core.model.CaptureSource
 import com.hejitech.core.model.Entry
 import com.google.android.gms.location.LocationServices
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestoreException
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -43,6 +48,30 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeoutOrNull
+
+/**
+ * Quick Capture's status summary for today, shown on the Capture tab (see
+ * CaptureScreen's QuickCaptureStatusRow) — combines the phone's own
+ * not-yet-uploaded local queue (PendingCaptureStore), the shared Firestore
+ * audioCaptures queue (uploaded but not yet processed — populated by both
+ * this phone's Quick Capture and any paired watch), and the live processing
+ * stage (at most one item at a time — see AudioCaptureProcessor). All three
+ * counts are scoped to today only, matching the feature's actual value
+ * proposition ("did today's quick notes make it in"), not a running total
+ * that could include stale backlog from days ago.
+ */
+data class QuickCaptureStatusUiState(
+    val pendingCount: Int = 0,
+    val processingStage: AudioProcessingStage? = null,
+    val completedTodayCount: Int = 0,
+) {
+    val hasAnything: Boolean get() = pendingCount > 0 || processingStage != null || completedTodayCount > 0
+}
+
+private fun isToday(timestamp: Timestamp): Boolean =
+    Instant.ofEpochSecond(timestamp.seconds, timestamp.nanoseconds.toLong())
+        .atZone(ZoneId.systemDefault())
+        .toLocalDate() == LocalDate.now()
 
 data class CaptureUiState(
     val inputText: String = "",
@@ -149,6 +178,25 @@ class CaptureViewModel : ViewModel() {
             emit(null)
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    /** See QuickCaptureStatusUiState's kdoc. */
+    val quickCaptureStatus: StateFlow<QuickCaptureStatusUiState> = combine(
+        ServiceLocator.pendingCaptureStore.pendingTodayCount,
+        ServiceLocator.audioCaptureQueue.observePending(),
+        AudioCaptureProcessor.currentlyProcessing,
+        ServiceLocator.quickCaptureStatsStore.completedToday,
+    ) { localPendingToday, queuedCaptures, processingStage, completedToday ->
+        val queuedTodayCount = queuedCaptures.count { isToday(it.capturedAt) }
+        // The one item currently being processed (if any) is still present
+        // in queuedCaptures until it's fully done — subtract it out of
+        // "pending" so it isn't counted in both buckets at once.
+        val activeOffset = if (processingStage != null) 1 else 0
+        QuickCaptureStatusUiState(
+            pendingCount = (localPendingToday + queuedTodayCount - activeOffset).coerceAtLeast(0),
+            processingStage = processingStage,
+            completedTodayCount = completedToday,
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), QuickCaptureStatusUiState())
 
     fun onInputChanged(text: String) {
         _uiState.value = _uiState.value.copy(inputText = text, errorMessage = null)

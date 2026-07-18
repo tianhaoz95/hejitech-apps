@@ -72,6 +72,7 @@ import com.hejitech.contempo.agent.AiAvailability
 import com.hejitech.contempo.agent.CaptureResult
 import com.hejitech.contempo.agent.ParsingStage
 import com.hejitech.contempo.mileage.MileageTrackingService
+import com.hejitech.contempo.wear.AudioProcessingStage
 import com.hejitech.contempo.ui.aiAvailabilityMessage
 import com.hejitech.contempo.ui.rememberCameraCapture
 import com.hejitech.contempo.ui.theme.BulletAwareText
@@ -128,6 +129,7 @@ fun CaptureScreen(
     // above), since the two capture methods end a trip differently.
     val gpsTripOpen = openTripEntry?.mileageCaptureMethod == "gps"
     val openTimerEntry by viewModel.openTimerEntry.collectAsState()
+    val quickCaptureStatus by viewModel.quickCaptureStatus.collectAsState()
 
     var locationPermissionDenied by remember { mutableStateOf(false) }
     val locationPermissionLauncher = rememberLauncherForActivityResult(
@@ -334,6 +336,16 @@ fun CaptureScreen(
                             modifier = Modifier.size(18.dp),
                         )
                     }
+                }
+
+                // Visible whenever Quick Capture is on (so it reads as "here's
+                // what's happening" even at zero backlog) or whenever there's
+                // still a backlog left over from earlier even after the user
+                // turned the toggle back off — hidden entirely otherwise so a
+                // host who's never touched this feature sees nothing extra.
+                if (uiState.quickCaptureEnabled || quickCaptureStatus.hasAnything) {
+                    Spacer(Modifier.height(12.dp))
+                    QuickCaptureStatusRow(quickCaptureStatus)
                 }
 
                 Spacer(Modifier.height(20.dp))
@@ -612,6 +624,63 @@ private fun BusyLabel(text: String) {
         Text(text, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
+
+/**
+ * Today's Quick Capture status: how many recordings are still waiting to
+ * become entries, what the one currently mid-pipeline is up to (if any —
+ * see AudioCaptureProcessor, which drains strictly one at a time), and how
+ * many finished today. All three numbers reset at midnight (see
+ * QuickCaptureStatusUiState/CaptureViewModel.quickCaptureStatus) — this is
+ * about today's backlog, not an all-time total.
+ */
+@Composable
+private fun QuickCaptureStatusRow(status: QuickCaptureStatusUiState) {
+    Column(
+        modifier = Modifier
+            .clip(MaterialTheme.shapes.small)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    ) {
+        Text(
+            stringResource(R.string.capture_quick_capture_status_today),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(2.dp))
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                stringResource(R.string.capture_quick_capture_status_pending, status.pendingCount),
+                style = MaterialTheme.typography.labelMedium,
+            )
+            status.processingStage?.let { stage ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 1.5.dp, color = MaterialTheme.colorScheme.tertiary)
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        quickCaptureStageLabel(stage),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.tertiary,
+                    )
+                }
+            }
+            Text(
+                stringResource(R.string.capture_quick_capture_status_completed, status.completedTodayCount),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun quickCaptureStageLabel(stage: AudioProcessingStage): String = stringResource(
+    when (stage) {
+        AudioProcessingStage.DOWNLOADING -> R.string.capture_quick_capture_stage_downloading
+        AudioProcessingStage.TRANSCRIBING -> R.string.capture_quick_capture_stage_transcribing
+        AudioProcessingStage.PARSING -> R.string.capture_quick_capture_stage_parsing
+        AudioProcessingStage.SAVING -> R.string.capture_quick_capture_stage_saving
+    }
+)
 
 /**
  * The "being finalized" moment right after recording stops — same pill

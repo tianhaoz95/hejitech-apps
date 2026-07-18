@@ -15,6 +15,9 @@ import com.hejitech.core.model.EntryStatus
 import com.google.firebase.Firebase
 import com.google.firebase.Timestamp
 import com.google.firebase.storage.storage
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.tasks.await
 
@@ -22,6 +25,16 @@ private const val TAG = "ContempoAudioProcessor"
 
 /** Generous enough for a several-minute WAV recording. */
 private const val MAX_AUDIO_BYTES = 50_000_000L
+
+/**
+ * Coarse-grained steps inside [AudioCaptureProcessor.processOne] — surfaced
+ * live via [AudioCaptureProcessor.currentlyProcessing] for the Capture tab's
+ * Quick Capture status indicator (see CaptureViewModel.quickCaptureStatus).
+ * Items are drained strictly one at a time (see processPendingCaptures'
+ * forEach, not a parallel map), so at most one capture is ever "processing"
+ * at once — the rest of the backlog is simply queued/pending.
+ */
+enum class AudioProcessingStage { DOWNLOADING, TRANSCRIBING, PARSING, SAVING }
 
 /**
  * Drains AudioCaptureQueue — audio recorded on a device that can't
@@ -44,13 +57,26 @@ private const val MAX_AUDIO_BYTES = 50_000_000L
  * to wait on anymore, so this just drains whatever's currently queued.
  */
 object AudioCaptureProcessor {
+    // Which capture (if any) is actively mid-pipeline right now, and at what
+    // step — null the rest of the time. See AudioProcessingStage's kdoc for
+    // why this is a single nullable value rather than a per-item map.
+    private val _currentlyProcessing = MutableStateFlow<AudioProcessingStage?>(null)
+    val currentlyProcessing: StateFlow<AudioProcessingStage?> = _currentlyProcessing.asStateFlow()
+
     suspend fun processPendingCaptures() {
         val pending = runCatching { ServiceLocator.audioCaptureQueue.listPending() }
             .getOrElse { e -> Log.e(TAG, "failed to list pending captures", e); return }
-        pending.forEach { capture -> processOne(capture) }
+        pending.forEach { capture ->
+            try {
+                processOne(capture)
+            } finally {
+                _currentlyProcessing.value = null
+            }
+        }
     }
 
     private suspend fun processOne(capture: PendingAudioCapture) {
+        _currentlyProcessing.value = AudioProcessingStage.DOWNLOADING
         val storageRef = Firebase.storage.reference.child(capture.storagePath)
         val wavBytes = runCatching { storageRef.getBytes(MAX_AUDIO_BYTES).await() }.getOrNull()
         if (wavBytes == null) {
@@ -58,6 +84,7 @@ object AudioCaptureProcessor {
             return
         }
 
+        _currentlyProcessing.value = AudioProcessingStage.TRANSCRIBING
         val samples = WavAudio.decode(wavBytes)
         val rawText = runCatching { ServiceLocator.whisperTranscriber.transcribe(samples) }.getOrDefault("")
         if (rawText.isBlank()) {
@@ -69,12 +96,16 @@ object AudioCaptureProcessor {
             return
         }
 
+        _currentlyProcessing.value = AudioProcessingStage.PARSING
         val audioUrl = runCatching { storageRef.downloadUrl.await().toString() }.getOrDefault("")
         val knownProperties = runCatching {
             ServiceLocator.entryRepository.observeProperties().first().map { it.name }
         }.getOrDefault(emptyList())
 
-        when (val outcome = ServiceLocator.agentClient.parseEntry(rawText, knownProperties)) {
+        val outcome = ServiceLocator.agentClient.parseEntry(rawText, knownProperties)
+
+        _currentlyProcessing.value = AudioProcessingStage.SAVING
+        when (outcome) {
             is ParseOutcome.Success -> saveFromDraft(outcome.result.draft, rawText, capture, audioUrl)
             is ParseOutcome.Failure -> saveFallback(rawText, capture, audioUrl)
         }
@@ -144,8 +175,16 @@ object AudioCaptureProcessor {
         ServiceLocator.entryRepository.createEntry(entry)
     }
 
+    /**
+     * Every call site here represents an item that finished the pipeline
+     * (a real entry saved, a timer/trip event recorded, or a blank
+     * transcription correctly discarded) — so this is also where the
+     * Capture tab's "completed today" count gets incremented, rather than
+     * duplicating that bookkeeping at each individual call site.
+     */
     private suspend fun removeFromQueue(captureId: String) {
         runCatching { ServiceLocator.audioCaptureQueue.remove(captureId) }
             .onFailure { e -> Log.e(TAG, "failed to remove queue doc $captureId", e) }
+            .onSuccess { ServiceLocator.quickCaptureStatsStore.recordCompleted() }
     }
 }

@@ -8,6 +8,7 @@
 # Android / Gradle build outputs
 android/**/build/
 android/.gradle/
+android/.kotlin/
 android/local.properties
 android/captures/
 android/**/.externalNativeBuild/
@@ -38,6 +39,11 @@ backend/functions/lib/
 
 # Firebase emulator/tooling artifacts
 backend/firestore-debug.log
+
+# Hosting deploy artifact — copied from web/dist by backend/firebase.json's
+# hosting.predeploy hook (public dirs can't reference paths outside the
+# Firebase project directory, i.e. can't point straight at ../web/dist)
+backend/web-dist/
 backend/ui-debug.log
 backend/.firebase/
 

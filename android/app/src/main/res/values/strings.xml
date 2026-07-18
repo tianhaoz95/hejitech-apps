@@ -27,6 +27,13 @@
     <string name="capture_quick_capture_caption">Save audio instantly and finish the entry later — nothing on screen, safe to leave the app right away</string>
     <string name="capture_quick_capture_toggle_content_description">Quick capture toggle</string>
     <string name="capture_quick_capture_info_content_description">What is quick capture?</string>
+    <string name="capture_quick_capture_status_today">Today</string>
+    <string name="capture_quick_capture_status_pending">%1$d waiting</string>
+    <string name="capture_quick_capture_status_completed">%1$d done</string>
+    <string name="capture_quick_capture_stage_downloading">Downloading…</string>
+    <string name="capture_quick_capture_stage_transcribing">Transcribing…</string>
+    <string name="capture_quick_capture_stage_parsing">Structuring…</string>
+    <string name="capture_quick_capture_stage_saving">Saving…</string>
     <string name="capture_back_to_voice_content_description">Back to voice capture</string>
     <string name="capture_hint">Say or type what you did…</string>
     <string name="capture_ongoing_work_title">In progress — %1$s</string>

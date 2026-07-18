@@ -3,7 +3,12 @@ package com.hejitech.contempo.capture
 import android.content.Context
 import org.json.JSONObject
 import java.io.File
+import java.time.Instant
+import java.time.ZoneId
 import java.util.UUID
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 data class PendingCapture(
     val id: String,
@@ -12,6 +17,10 @@ data class PendingCapture(
     val lat: Double? = null,
     val lng: Double? = null,
 )
+
+private fun isToday(epochMillis: Long): Boolean =
+    Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).toLocalDate() ==
+        java.time.LocalDate.now()
 
 /**
  * Durable local queue of recorded-but-not-yet-uploaded WAV files for this
@@ -27,6 +36,13 @@ data class PendingCapture(
 class PendingCaptureStore(context: Context) {
     private val dir = File(context.filesDir, "pendingCaptures").apply { mkdirs() }
 
+    // Reactive count of today's not-yet-uploaded recordings, for the Capture
+    // tab's Quick Capture status indicator (see CaptureViewModel.quickCaptureStatus)
+    // — recomputed on every save()/delete() rather than polled, since those
+    // are the only two places this local queue's contents change.
+    private val _pendingTodayCount = MutableStateFlow(computePendingTodayCount())
+    val pendingTodayCount: StateFlow<Int> = _pendingTodayCount.asStateFlow()
+
     fun save(wavBytes: ByteArray, lat: Double? = null, lng: Double? = null): PendingCapture {
         val id = UUID.randomUUID().toString()
         val file = File(dir, "$id.wav")
@@ -37,6 +53,7 @@ class PendingCaptureStore(context: Context) {
                 if (lng != null) put("lng", lng)
             }.toString())
         }
+        _pendingTodayCount.value = computePendingTodayCount()
         return PendingCapture(id, file, file.lastModified(), lat, lng)
     }
 
@@ -59,7 +76,10 @@ class PendingCaptureStore(context: Context) {
     fun delete(capture: PendingCapture) {
         capture.file.delete()
         metaFile(capture.id).delete()
+        _pendingTodayCount.value = computePendingTodayCount()
     }
+
+    private fun computePendingTodayCount(): Int = listPending().count { isToday(it.capturedAtEpochMillis) }
 
     private fun metaFile(id: String) = File(dir, "$id.meta.json")
 }

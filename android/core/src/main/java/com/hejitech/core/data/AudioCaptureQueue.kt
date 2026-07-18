@@ -4,6 +4,9 @@ import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
 data class PendingAudioCapture(
@@ -51,17 +54,39 @@ class AudioCaptureQueue(
     /** Oldest capturedAt first, so a backlog processes in the order it was actually spoken. */
     suspend fun listPending(): List<PendingAudioCapture> {
         val snapshot = collection().orderBy("capturedAt", Query.Direction.ASCENDING).get().await()
-        return snapshot.documents.mapNotNull { doc ->
-            val storagePath = doc.getString("storagePath") ?: return@mapNotNull null
-            val capturedAt = doc.getTimestamp("capturedAt") ?: return@mapNotNull null
-            PendingAudioCapture(
-                id = doc.id,
-                storagePath = storagePath,
-                capturedAt = capturedAt,
-                lat = doc.getDouble("lat"),
-                lng = doc.getDouble("lng"),
-            )
-        }
+        return snapshot.documents.mapNotNull(::toPendingAudioCapture)
+    }
+
+    /**
+     * Live twin of [listPending] — used by the Capture tab's Quick Capture
+     * status indicator (see CaptureViewModel.quickCaptureStatus), which needs
+     * to react instantly as items are enqueued/removed rather than on a poll
+     * timer, the same way FirestoreEntryRepository.observeEntries() does for
+     * entries.
+     */
+    fun observePending(): Flow<List<PendingAudioCapture>> = callbackFlow {
+        val registration = collection()
+            .orderBy("capturedAt", Query.Direction.ASCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                trySend(snapshot?.documents.orEmpty().mapNotNull(::toPendingAudioCapture))
+            }
+        awaitClose { registration.remove() }
+    }
+
+    private fun toPendingAudioCapture(doc: com.google.firebase.firestore.DocumentSnapshot): PendingAudioCapture? {
+        val storagePath = doc.getString("storagePath") ?: return null
+        val capturedAt = doc.getTimestamp("capturedAt") ?: return null
+        return PendingAudioCapture(
+            id = doc.id,
+            storagePath = storagePath,
+            capturedAt = capturedAt,
+            lat = doc.getDouble("lat"),
+            lng = doc.getDouble("lng"),
+        )
     }
 
     suspend fun remove(captureId: String) {

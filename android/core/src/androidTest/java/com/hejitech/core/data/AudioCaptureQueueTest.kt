@@ -2,6 +2,7 @@ package com.hejitech.core.data
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.firebase.Timestamp
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -87,5 +88,23 @@ class AudioCaptureQueueTest {
     @Test
     fun listPending_onEmptyQueue_returnsEmptyList() = runBlocking {
         assertEquals(0, queue.listPending().size)
+    }
+
+    /**
+     * observePending() backs the Capture tab's live Quick Capture status
+     * indicator (see CaptureViewModel.quickCaptureStatus) — its first
+     * emission on subscribe must match the queue's current state, same
+     * ordering guarantee as listPending().
+     */
+    @Test
+    fun observePending_firstEmissionMatchesCurrentQueueState() = runBlocking {
+        val oldest = Timestamp(Timestamp.now().seconds - 3600, 0)
+        queue.enqueue("path/newer.wav", Timestamp.now(), null, null)
+        queue.enqueue("path/older.wav", oldest, null, null)
+
+        val emitted = queue.observePending().first()
+        assertEquals(2, emitted.size)
+        assertEquals("path/older.wav", emitted[0].storagePath)
+        assertEquals("path/newer.wav", emitted[1].storagePath)
     }
 }
