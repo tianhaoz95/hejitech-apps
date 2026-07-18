@@ -66,88 +66,17 @@
 
 * { box-sizing: border-box; }
 
+/* Same flat, undecorated background as web/src/styles/tokens.css — no
+   gradient/animation, this page is meant to read as part of the same
+   product, not a marketing page. */
 html, body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
+  background: var(--paper);
   color: var(--ink);
   font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Segoe UI", sans-serif;
   line-height: 1.6;
-}
-
-/* No background on html/body: an opaque background on the .page-bg's own
-   parent paints in FRONT of that fixed z-index:-1 child (a negative
-   z-index child only escapes behind its parent's own background if that
-   parent has none) — the paper fill lives on .page-bg itself instead, or
-   the blobs render invisibly behind a solid canvas. */
-
-/* Slowly drifting pine/brass blobs behind everything — so the page reads as
-   designed rather than a bare form on flat paper. Fixed + overflow:hidden so
-   nothing scrolls/leaks past the viewport edge on tall pages. Pure CSS, no
-   JS/canvas — cheap and trivially disabled for reduced motion below. */
-.page-bg {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  overflow: hidden;
-  background: var(--paper);
-}
-
-.bg-blob {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(90px);
-  will-change: transform;
-}
-
-/* Full-strength pine/brass/navy (not the *-tint surface colors, which read
-   as nearly invisible once blurred) as a FLAT color-mix fill, not a radial
-   gradient — a gradient's own falloff plus blur() compound to dilute nearly
-   all the color away. blur() alone is what softens the disc into a glow. */
-.bg-blob-1 {
-  width: 55vmax;
-  height: 55vmax;
-  top: -14vmax;
-  left: -16vmax;
-  background: color-mix(in srgb, var(--pine) 42%, transparent);
-  animation: drift-1 26s ease-in-out infinite;
-}
-
-.bg-blob-2 {
-  width: 48vmax;
-  height: 48vmax;
-  bottom: -12vmax;
-  right: -14vmax;
-  background: color-mix(in srgb, var(--brass) 42%, transparent);
-  animation: drift-2 32s ease-in-out infinite;
-}
-
-.bg-blob-3 {
-  width: 36vmax;
-  height: 36vmax;
-  top: 32%;
-  left: 56%;
-  background: color-mix(in srgb, var(--navy) 34%, transparent);
-  animation: drift-3 22s ease-in-out infinite;
-}
-
-@keyframes drift-1 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(6vmax, 5vmax) scale(1.12); }
-}
-
-@keyframes drift-2 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(-5vmax, -6vmax) scale(1.08); }
-}
-
-@keyframes drift-3 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(-4vmax, 3vmax) scale(0.9); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .bg-blob { animation: none; }
 }
 
 a { color: var(--pine); }
@@ -213,9 +142,6 @@ label {
   margin-bottom: 0.4rem;
 }
 
-/* --paper-raised (an opaque surface), not --paper — the page background is
-   now the animated wash itself rather than flat paper, so inputs need a
-   surface that stays clearly legible/usable on top of it. */
 textarea, input[type="email"] {
   width: 100%;
   font: inherit;
