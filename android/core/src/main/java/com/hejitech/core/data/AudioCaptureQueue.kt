@@ -1,5 +1,6 @@
 package com.hejitech.core.data
 
+import com.hejitech.core.model.CaptureLanguage
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -15,6 +16,10 @@ data class PendingAudioCapture(
     val capturedAt: Timestamp,
     val lat: Double?,
     val lng: Double?,
+    // Defaults to AUTO for captures with no explicit selection (currently:
+    // every watch-relayed capture, since the language toggle only exists on
+    // the phone's Capture tab) — see CaptureLanguage's kdoc.
+    val language: CaptureLanguage = CaptureLanguage.AUTO,
 )
 
 /**
@@ -40,12 +45,19 @@ class AudioCaptureQueue(
 
     private fun collection() = firestore.collection("users").document(uid).collection("audioCaptures")
 
-    suspend fun enqueue(storagePath: String, capturedAt: Timestamp, lat: Double?, lng: Double?): String {
+    suspend fun enqueue(
+        storagePath: String,
+        capturedAt: Timestamp,
+        lat: Double?,
+        lng: Double?,
+        language: CaptureLanguage = CaptureLanguage.AUTO,
+    ): String {
         val doc = mapOf(
             "storagePath" to storagePath,
             "capturedAt" to capturedAt,
             "lat" to lat,
             "lng" to lng,
+            "language" to language.firestoreValue,
         )
         val ref = collection().add(doc).await()
         return ref.id
@@ -86,6 +98,9 @@ class AudioCaptureQueue(
             capturedAt = capturedAt,
             lat = doc.getDouble("lat"),
             lng = doc.getDouble("lng"),
+            // Missing on docs written before this field existed — AUTO matches
+            // their actual prior behavior (the only mode that existed then).
+            language = doc.getString("language")?.let(CaptureLanguage::fromFirestoreValue) ?: CaptureLanguage.AUTO,
         )
     }
 

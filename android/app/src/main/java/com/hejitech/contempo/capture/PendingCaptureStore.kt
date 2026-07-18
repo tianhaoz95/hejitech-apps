@@ -1,6 +1,7 @@
 package com.hejitech.contempo.capture
 
 import android.content.Context
+import com.hejitech.core.model.CaptureLanguage
 import org.json.JSONObject
 import java.io.File
 import java.time.Instant
@@ -16,6 +17,11 @@ data class PendingCapture(
     val capturedAtEpochMillis: Long,
     val lat: Double? = null,
     val lng: Double? = null,
+    // Whichever language was selected on the Capture tab's toggle at the
+    // moment this was recorded — see CaptureLanguage's kdoc for why this
+    // travels with the specific recording rather than being re-read from the
+    // (possibly since-changed) toggle when this eventually gets processed.
+    val language: CaptureLanguage = CaptureLanguage.AUTO,
 )
 
 private fun isToday(epochMillis: Long): Boolean =
@@ -43,18 +49,22 @@ class PendingCaptureStore(context: Context) {
     private val _pendingTodayCount = MutableStateFlow(computePendingTodayCount())
     val pendingTodayCount: StateFlow<Int> = _pendingTodayCount.asStateFlow()
 
-    fun save(wavBytes: ByteArray, lat: Double? = null, lng: Double? = null): PendingCapture {
+    fun save(
+        wavBytes: ByteArray,
+        lat: Double? = null,
+        lng: Double? = null,
+        language: CaptureLanguage = CaptureLanguage.AUTO,
+    ): PendingCapture {
         val id = UUID.randomUUID().toString()
         val file = File(dir, "$id.wav")
         file.writeBytes(wavBytes)
-        if (lat != null || lng != null) {
-            metaFile(id).writeText(JSONObject().apply {
-                if (lat != null) put("lat", lat)
-                if (lng != null) put("lng", lng)
-            }.toString())
-        }
+        metaFile(id).writeText(JSONObject().apply {
+            if (lat != null) put("lat", lat)
+            if (lng != null) put("lng", lng)
+            put("language", language.name)
+        }.toString())
         _pendingTodayCount.value = computePendingTodayCount()
-        return PendingCapture(id, file, file.lastModified(), lat, lng)
+        return PendingCapture(id, file, file.lastModified(), lat, lng, language)
     }
 
     /** Oldest first, so a backlog syncs in the order it was actually spoken. */
@@ -70,6 +80,11 @@ class PendingCaptureStore(context: Context) {
                     capturedAtEpochMillis = file.lastModified(),
                     lat = meta?.optDouble("lat")?.takeIf { !it.isNaN() },
                     lng = meta?.optDouble("lng")?.takeIf { !it.isNaN() },
+                    // Defaults to AUTO for any capture saved before this field
+                    // existed, or if the meta file is missing/corrupt.
+                    language = meta?.optString("language")
+                        ?.let { runCatching { CaptureLanguage.valueOf(it) }.getOrNull() }
+                        ?: CaptureLanguage.AUTO,
                 )
             }
 

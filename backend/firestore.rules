@@ -84,7 +84,12 @@ service cloud.firestore {
     function isValidAudioCapture(d) {
       return d.storagePath is string && d.storagePath.size() > 0 && d.storagePath.size() <= 500 &&
         d.capturedAt is timestamp &&
-        isLatLng(d, 'lat', 'lng');
+        isLatLng(d, 'lat', 'lng') &&
+        // Which Whisper checkpoint to transcribe this capture with — absent
+        // on docs written before this field existed, which is fine, same
+        // "unknown/missing extra fields don't get rejected" policy as
+        // everywhere else in this file.
+        (!('language' in d) || d.language in ['en', 'zh', 'auto']);
     }
 
     // No owner (submitted from the login-free feedback/ site) — server-set

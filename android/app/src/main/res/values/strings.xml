@@ -23,6 +23,10 @@
     <string name="nav_back">Back</string>
 
     <string name="capture_eyebrow">Say it once</string>
+    <string name="capture_language_label">Language</string>
+    <string name="capture_language_english">English</string>
+    <string name="capture_language_chinese">中文</string>
+    <string name="capture_language_auto">Auto</string>
     <string name="capture_quick_capture_label">Quick capture</string>
     <string name="capture_quick_capture_caption">Save audio instantly and finish the entry later — nothing on screen, safe to leave the app right away</string>
     <string name="capture_quick_capture_toggle_content_description">Quick capture toggle</string>
@@ -34,6 +38,7 @@
     <string name="capture_quick_capture_stage_transcribing">Transcribing…</string>
     <string name="capture_quick_capture_stage_parsing">Structuring…</string>
     <string name="capture_quick_capture_stage_saving">Saving…</string>
+    <string name="capture_quick_capture_process_now_content_description">Process quick capture backlog now</string>
     <string name="capture_back_to_voice_content_description">Back to voice capture</string>
     <string name="capture_hint">Say or type what you did…</string>
     <string name="capture_ongoing_work_title">In progress — %1$s</string>
@@ -126,6 +131,14 @@
     <string name="entry_detail_confirmed_date_label">When it was confirmed</string>
     <string name="entry_detail_photos_label">Photos</string>
     <string name="entry_detail_photos_count">%1$d attached</string>
+    <string name="entry_detail_audio_label">Voice recording</string>
+    <string name="entry_detail_audio_recording">Original recording</string>
+    <string name="entry_detail_audio_loading">Loading…</string>
+    <string name="entry_detail_audio_playing">Playing…</string>
+    <string name="entry_detail_audio_paused">Paused</string>
+    <string name="entry_detail_audio_error">Couldn\'t play this recording</string>
+    <string name="entry_detail_audio_play_content_description">Play recording</string>
+    <string name="entry_detail_audio_pause_content_description">Pause recording</string>
     <string name="entry_detail_complete_button">Complete this entry</string>
     <string name="entry_detail_stop_timer_button">Stop timer</string>
     <string name="entry_detail_edit_button">Edit entry</string>

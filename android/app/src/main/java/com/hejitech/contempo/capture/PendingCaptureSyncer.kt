@@ -45,7 +45,7 @@ object PendingCaptureSyncer {
 
         val capturedAt = Timestamp(pending.capturedAtEpochMillis / 1000, ((pending.capturedAtEpochMillis % 1000) * 1_000_000).toInt())
         runCatching {
-            ServiceLocator.audioCaptureQueue.enqueue(storagePath, capturedAt, pending.lat, pending.lng)
+            ServiceLocator.audioCaptureQueue.enqueue(storagePath, capturedAt, pending.lat, pending.lng, pending.language)
         }.onFailure { e ->
             Log.e(TAG, "queue enqueue failed for ${pending.id}", e)
             return false

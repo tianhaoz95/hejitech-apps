@@ -28,7 +28,9 @@ import com.hejitech.contempo.data.ServiceLocator
 import com.hejitech.contempo.mileage.MileageTrackingService
 import com.hejitech.contempo.wear.AudioCaptureProcessor
 import com.hejitech.contempo.wear.AudioProcessingStage
+import com.hejitech.contempo.wear.PendingAudioProcessWorker
 import com.hejitech.core.audio.WavAudio
+import com.hejitech.core.model.CaptureLanguage
 import com.hejitech.core.model.CaptureSource
 import com.hejitech.core.model.Entry
 import com.google.android.gms.location.LocationServices
@@ -101,6 +103,12 @@ data class CaptureUiState(
     // time are saved and queued for later background processing, and the
     // screen returns to idle immediately. See stopQuickCaptureAndSave.
     val quickCaptureEnabled: Boolean = false,
+    // Persisted (see CaptureLanguageStore) — which Whisper checkpoint the
+    // next recording uses. Read at the moment recording stops (both the
+    // live path and Quick Capture's save-for-later path), not re-read later,
+    // so switching this before the *next* capture never changes how an
+    // already-recorded one gets transcribed.
+    val captureLanguage: CaptureLanguage = CaptureLanguage.AUTO,
 )
 
 /** Best-effort only — never worth delaying a capture over. */
@@ -116,6 +124,7 @@ class CaptureViewModel : ViewModel() {
     private val timerEntryCoordinator = ServiceLocator.timerEntryCoordinator
     private val mileageTripCoordinator = ServiceLocator.mileageTripCoordinator
     private val quickCaptureSettingsStore = ServiceLocator.quickCaptureSettingsStore
+    private val captureLanguageStore = ServiceLocator.captureLanguageStore
 
     // Set by parseAndProceed's holdForManualConfirm branch (voice path only)
     // once parsing succeeds, and released by confirmTranscript on the user's
@@ -130,8 +139,13 @@ class CaptureViewModel : ViewModel() {
         aiSettingsStore.preference,
         onDeviceLlm.status,
         quickCaptureSettingsStore.enabled,
-    ) { state, preference, modelStatus, quickCaptureEnabled ->
-        state.copy(aiAvailability = aiAvailability(preference, modelStatus), quickCaptureEnabled = quickCaptureEnabled)
+        captureLanguageStore.selected,
+    ) { state, preference, modelStatus, quickCaptureEnabled, captureLanguage ->
+        state.copy(
+            aiAvailability = aiAvailability(preference, modelStatus),
+            quickCaptureEnabled = quickCaptureEnabled,
+            captureLanguage = captureLanguage,
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CaptureUiState())
 
     // Live open mileage trip, if any — drives the odometer-photo/GPS trip
@@ -206,6 +220,25 @@ class CaptureViewModel : ViewModel() {
 
     fun setQuickCaptureEnabled(value: Boolean) = quickCaptureSettingsStore.setEnabled(value)
 
+    fun setCaptureLanguage(value: CaptureLanguage) = captureLanguageStore.setSelected(value)
+
+    /**
+     * Manual "process now" for the QuickCaptureStatusRow's sync button —
+     * otherwise the backlog only drains on app foreground (MainActivity's
+     * resumed-loop) or the 15-minute PendingAudioProcessWorker schedule (see
+     * ContempoApp), which can leave a host staring at "3 waiting" with no way
+     * to make it happen sooner. Expedited one-time request, same pattern as
+     * enqueueExpeditedPendingCaptureUpload() below — this only *enqueues* the
+     * work; quickCaptureStatus's processingStage reflects when it actually runs.
+     */
+    fun processQuickCaptureBacklogNow() {
+        val request = OneTimeWorkRequestBuilder<PendingAudioProcessWorker>()
+            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+            .build()
+        WorkManager.getInstance(ServiceLocator.appContext)
+            .enqueueUniqueWork("pending-audio-process-now", ExistingWorkPolicy.APPEND_OR_REPLACE, request)
+    }
+
     fun startRecording() {
         if (_uiState.value.isRecording || !audioRecorder.hasPermission()) return
         _uiState.value = _uiState.value.copy(isRecording = true, errorMessage = null)
@@ -226,6 +259,9 @@ class CaptureViewModel : ViewModel() {
      */
     fun stopQuickCaptureAndSave() {
         if (!_uiState.value.isRecording) return
+        // Captured now, not re-read later — see CaptureUiState.captureLanguage's
+        // kdoc on why this travels with the specific recording.
+        val language = _uiState.value.captureLanguage
         _uiState.value = _uiState.value.copy(isRecording = false)
 
         viewModelScope.launch {
@@ -233,7 +269,7 @@ class CaptureViewModel : ViewModel() {
             if (samples.isEmpty()) return@launch
             val wav = WavAudio.encode(samples, WhisperTranscriber.SAMPLE_RATE_HZ)
             val location = captureLocation()
-            ServiceLocator.pendingCaptureStore.save(wav, location?.first, location?.second)
+            ServiceLocator.pendingCaptureStore.save(wav, location?.first, location?.second, language)
             enqueueExpeditedPendingCaptureUpload()
         }
     }
@@ -256,11 +292,12 @@ class CaptureViewModel : ViewModel() {
      */
     fun stopRecordingAndProcess(onDraftReady: (CaptureResult) -> Unit) {
         if (!_uiState.value.isRecording) return
+        val language = _uiState.value.captureLanguage
         _uiState.value = _uiState.value.copy(isRecording = false, isTranscribing = true)
 
         viewModelScope.launch {
             val samples = audioRecorder.stop()
-            val rawTranscript = runCatching { whisperTranscriber.transcribe(samples) }.getOrDefault("")
+            val rawTranscript = runCatching { whisperTranscriber.transcribe(samples, language) }.getOrDefault("")
 
             if (rawTranscript.isBlank()) {
                 _uiState.value = _uiState.value.copy(

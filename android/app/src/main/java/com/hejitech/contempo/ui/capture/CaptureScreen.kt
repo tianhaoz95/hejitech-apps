@@ -37,11 +37,13 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -73,6 +75,7 @@ import com.hejitech.contempo.agent.CaptureResult
 import com.hejitech.contempo.agent.ParsingStage
 import com.hejitech.contempo.mileage.MileageTrackingService
 import com.hejitech.contempo.wear.AudioProcessingStage
+import com.hejitech.core.model.CaptureLanguage
 import com.hejitech.contempo.ui.aiAvailabilityMessage
 import com.hejitech.contempo.ui.rememberCameraCapture
 import com.hejitech.contempo.ui.theme.BulletAwareText
@@ -309,6 +312,29 @@ fun CaptureScreen(
                 val quickCaptureToggleDescription = stringResource(R.string.capture_quick_capture_toggle_content_description)
                 val typeInsteadDescription = stringResource(R.string.capture_type_instead)
 
+                // Same prominence as the Quick Capture row below (label +
+                // control, no card/background) — this is per-capture, not a
+                // standing setting like Quick Capture, but it needs to be
+                // just as visible since picking wrong is exactly the failure
+                // mode it exists to prevent. Persists across app restarts
+                // (see CaptureLanguageStore) but is read fresh at the moment
+                // each recording stops, not live at background-processing
+                // time — see CaptureUiState.captureLanguage's kdoc.
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        stringResource(R.string.capture_language_label),
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    CaptureLanguageSelector(
+                        selected = uiState.captureLanguage,
+                        enabled = !busy,
+                        onSelect = viewModel::setCaptureLanguage,
+                    )
+                }
+
+                Spacer(Modifier.height(20.dp))
+
                 // Split by purpose rather than one dense row: Quick Capture
                 // is a persistent setting (its own compact, settings-style
                 // row — label, switch, and the info button that explains it,
@@ -345,7 +371,28 @@ fun CaptureScreen(
                 // host who's never touched this feature sees nothing extra.
                 if (uiState.quickCaptureEnabled || quickCaptureStatus.hasAnything) {
                     Spacer(Modifier.height(12.dp))
-                    QuickCaptureStatusRow(quickCaptureStatus)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        QuickCaptureStatusRow(quickCaptureStatus)
+                        IconButton(
+                            onClick = viewModel::processQuickCaptureBacklogNow,
+                            // Nothing to gain from tapping this with an empty
+                            // backlog or while the one processing slot is
+                            // already busy — WorkManager would just enqueue a
+                            // request that finds nothing to do.
+                            enabled = quickCaptureStatus.pendingCount > 0 && quickCaptureStatus.processingStage == null,
+                            modifier = Modifier.size(32.dp),
+                        ) {
+                            if (quickCaptureStatus.processingStage != null) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 1.5.dp)
+                            } else {
+                                Icon(
+                                    Icons.Filled.Sync,
+                                    contentDescription = stringResource(R.string.capture_quick_capture_process_now_content_description),
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                        }
+                    }
                 }
 
                 Spacer(Modifier.height(20.dp))
@@ -681,6 +728,53 @@ private fun quickCaptureStageLabel(stage: AudioProcessingStage): String = string
         AudioProcessingStage.SAVING -> R.string.capture_quick_capture_stage_saving
     }
 )
+
+/**
+ * Three FilterChips rather than a segmented button — visually lighter/more
+ * compact, and this app has no other segmented-button usage to stay
+ * consistent with, whereas FilterChip's selected/unselected look is already
+ * a familiar Material3 pattern. ENGLISH picks the dedicated tiny.en model,
+ * CHINESE forces the multilingual model's language to "zh", AUTO leaves
+ * Whisper's own (less reliable, but only real option for anything else)
+ * per-utterance detection on — see WhisperTranscriber's kdoc.
+ */
+@Composable
+private fun CaptureLanguageSelector(
+    selected: CaptureLanguage,
+    enabled: Boolean,
+    onSelect: (CaptureLanguage) -> Unit,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        CaptureLanguageChip(
+            label = stringResource(R.string.capture_language_english),
+            selected = selected == CaptureLanguage.ENGLISH,
+            enabled = enabled,
+            onClick = { onSelect(CaptureLanguage.ENGLISH) },
+        )
+        CaptureLanguageChip(
+            label = stringResource(R.string.capture_language_chinese),
+            selected = selected == CaptureLanguage.CHINESE,
+            enabled = enabled,
+            onClick = { onSelect(CaptureLanguage.CHINESE) },
+        )
+        CaptureLanguageChip(
+            label = stringResource(R.string.capture_language_auto),
+            selected = selected == CaptureLanguage.AUTO,
+            enabled = enabled,
+            onClick = { onSelect(CaptureLanguage.AUTO) },
+        )
+    }
+}
+
+@Composable
+private fun CaptureLanguageChip(label: String, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        enabled = enabled,
+        label = { Text(label, style = MaterialTheme.typography.labelMedium) },
+    )
+}
 
 /**
  * The "being finalized" moment right after recording stops — same pill

@@ -52,13 +52,25 @@ class LiteRtLlm(
             aiSettingsStore.preference.collect { preference ->
                 if (preference != InferencePreference.CLOUD_ONLY) {
                     checkAndMaybeDownload()
+                    // Pre-warm in the background right away, rather than
+                    // paying this multi-second model-load cost on the user's
+                    // first actual prompt — ensureEngine() is a no-op if the
+                    // model isn't downloaded yet (checked internally), so
+                    // this is safe to call unconditionally here, and it
+                    // re-fires (harmlessly — engine is already non-null by
+                    // then) whenever the preference flow re-collects, e.g.
+                    // right after switching away from Cloud only.
+                    ensureEngine()
                 }
             }
         }
     }
 
     override fun retry() {
-        scope.launch { checkAndMaybeDownload() }
+        scope.launch {
+            checkAndMaybeDownload()
+            ensureEngine()
+        }
     }
 
     private suspend fun checkAndMaybeDownload() {

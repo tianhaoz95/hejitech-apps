@@ -46,6 +46,10 @@ class ChatViewModel : ViewModel() {
     // only one top-level screen is ever visible/interactive at a time.
     private val audioRecorder = ServiceLocator.audioRecorder
     private val whisperTranscriber = ServiceLocator.whisperTranscriber
+    // Same language toggle Capture's tab shows — one shared preference for
+    // both features rather than a second, independent setting, since it's
+    // the same underlying transcription quality question either place.
+    private val captureLanguageStore = ServiceLocator.captureLanguageStore
     val recordingAmplitude = audioRecorder.amplitude
 
     private val _uiState = MutableStateFlow(ChatUiState())
@@ -80,7 +84,9 @@ class ChatViewModel : ViewModel() {
 
         viewModelScope.launch {
             val samples = audioRecorder.stop()
-            val rawTranscript = runCatching { whisperTranscriber.transcribe(samples) }.getOrDefault("")
+            val rawTranscript = runCatching {
+                whisperTranscriber.transcribe(samples, captureLanguageStore.selected.value)
+            }.getOrDefault("")
 
             if (rawTranscript.isBlank()) {
                 _uiState.value = _uiState.value.copy(

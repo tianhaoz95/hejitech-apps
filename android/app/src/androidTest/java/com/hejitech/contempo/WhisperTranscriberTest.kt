@@ -3,30 +3,42 @@ package com.hejitech.contempo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.hejitech.contempo.agent.WhisperTranscriber
+import com.hejitech.core.model.CaptureLanguage
 import com.k2fsa.sherpa.onnx.WaveReader
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Verifies the vendored sherpa-onnx + bundled multilingual Whisper tiny
- * model actually produces a correct transcript on real device hardware —
- * not just that the native library loads without crashing. Uses one of
- * sherpa-onnx's own test WAV files (see android/whisper-vendor/ at the repo
- * root for provenance — not shipped in the app) with a known ground-truth
- * transcript, so this is a real correctness check against a known-good
- * expected output, not a smoke test. This is an English clip specifically
- * to confirm the switch to the multilingual model (from the former
- * English-only tiny.en, made to add Chinese support — see
- * WhisperTranscriber's kdoc) didn't regress English via auto-detection.
+ * Verifies the vendored sherpa-onnx + bundled Whisper models actually
+ * produce a correct transcript on real device hardware — not just that the
+ * native library loads without crashing. Uses one of sherpa-onnx's own test
+ * WAV files (see android/whisper-vendor/ at the repo root for provenance —
+ * not shipped in the app) with a known ground-truth transcript, so this is a
+ * real correctness check against a known-good expected output, not a smoke
+ * test. This is an English clip, exercised against both the ENGLISH
+ * (dedicated tiny.en) and AUTO (multilingual, auto-detect) paths — see
+ * WhisperTranscriber's kdoc for why those are two separate on-device models.
  * No Firebase/sign-in needed — this only exercises the transcription
  * pipeline, independent of the rest of the app.
  */
 @RunWith(AndroidJUnit4::class)
 class WhisperTranscriberTest {
 
+    // Ground truth (sherpa-onnx's own test_wavs/trans.txt): "AFTER EARLY
+    // NIGHTFALL THE YELLOW LAMPS WOULD LIGHT UP HERE AND THERE THE SQUALID
+    // QUARTER OF THE BROTHELS". Checking distinctive content words rather
+    // than an exact match — Whisper's punctuation/casing legitimately varies
+    // run to run, the words shouldn't.
+    private val expectedWords = listOf("nightfall", "yellow", "lamps", "squalid", "brothels")
+
     @Test
-    fun transcribe_knownTestClip_producesExpectedWords() {
+    fun transcribe_english_knownTestClip_producesExpectedWords() = assertKnownClipTranscribes(CaptureLanguage.ENGLISH)
+
+    @Test
+    fun transcribe_auto_knownTestClip_producesExpectedWords() = assertKnownClipTranscribes(CaptureLanguage.AUTO)
+
+    private fun assertKnownClipTranscribes(language: CaptureLanguage) {
         val testContext = InstrumentationRegistry.getInstrumentation().context
         val targetContext = InstrumentationRegistry.getInstrumentation().targetContext
 
@@ -36,17 +48,11 @@ class WhisperTranscriberTest {
         val wave = WaveReader.readWave(testContext.assets, "whisper-test-sample.wav")
         val transcriber = WhisperTranscriber(targetContext)
 
-        val text = runBlocking { transcriber.transcribe(wave.samples) }.lowercase()
+        val text = runBlocking { transcriber.transcribe(wave.samples, language) }.lowercase()
 
-        // Ground truth (sherpa-onnx's own test_wavs/trans.txt): "AFTER EARLY
-        // NIGHTFALL THE YELLOW LAMPS WOULD LIGHT UP HERE AND THERE THE
-        // SQUALID QUARTER OF THE BROTHELS". Checking distinctive content
-        // words rather than an exact match — Whisper's punctuation/casing
-        // legitimately varies run to run, the words shouldn't.
-        val expectedWords = listOf("nightfall", "yellow", "lamps", "squalid", "brothels")
         val missing = expectedWords.filter { it !in text }
         check(missing.isEmpty()) {
-            "Transcript missing expected words $missing. Got: \"$text\""
+            "[$language] Transcript missing expected words $missing. Got: \"$text\""
         }
     }
 }

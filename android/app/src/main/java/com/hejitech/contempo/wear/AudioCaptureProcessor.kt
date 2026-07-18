@@ -86,7 +86,9 @@ object AudioCaptureProcessor {
 
         _currentlyProcessing.value = AudioProcessingStage.TRANSCRIBING
         val samples = WavAudio.decode(wavBytes)
-        val rawText = runCatching { ServiceLocator.whisperTranscriber.transcribe(samples) }.getOrDefault("")
+        val rawText = runCatching {
+            ServiceLocator.whisperTranscriber.transcribe(samples, capture.language)
+        }.getOrDefault("")
         if (rawText.isBlank()) {
             // Nothing usable — matches the phone's own live-capture behavior
             // for a blank transcription. The audio itself stays in Storage

@@ -1,5 +1,6 @@
 package com.hejitech.contempo.ui.entrydetail
 
+import android.media.MediaPlayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,12 +10,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -25,6 +30,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -168,6 +174,11 @@ private fun EntryDetailContent(entry: Entry, onEditEntry: (Entry) -> Unit) {
             stringResource(R.string.entry_detail_photos_count, entry.photoUrls.size),
         )
     }
+    if (entry.audioUrl.isNotBlank()) {
+        DetailRow(stringResource(R.string.entry_detail_audio_label)) {
+            AudioPlayerRow(entry.audioUrl)
+        }
+    }
 
     if (entry.riskFlags.hasWarning) {
         Spacer(Modifier.height(8.dp))
@@ -237,6 +248,93 @@ private fun StatusBadge(isPending: Boolean) {
                     }
                 )
                 .padding(horizontal = 8.dp, vertical = 2.dp),
+        )
+    }
+}
+
+private enum class AudioPlaybackState { IDLE, LOADING, PLAYING, PAUSED, ERROR }
+
+/**
+ * Plain android.media.MediaPlayer, not Media3/ExoPlayer — nothing else in
+ * this app plays audio, and a single play/pause button on a remote HTTPS URL
+ * (Entry.audioUrl, a Firebase Storage download URL) doesn't need a whole
+ * player framework. One MediaPlayer instance lives for exactly as long as
+ * this composable does (released in onDispose), matching how briefly a host
+ * is likely to sit on an entry's detail screen.
+ */
+@Composable
+private fun AudioPlayerRow(audioUrl: String) {
+    var playbackState by remember { mutableStateOf(AudioPlaybackState.IDLE) }
+    val mediaPlayer = remember { MediaPlayer() }
+
+    DisposableEffect(audioUrl) {
+        onDispose { mediaPlayer.release() }
+    }
+
+    fun play() {
+        when (playbackState) {
+            AudioPlaybackState.PAUSED -> {
+                mediaPlayer.start()
+                playbackState = AudioPlaybackState.PLAYING
+            }
+            AudioPlaybackState.IDLE, AudioPlaybackState.ERROR -> {
+                playbackState = AudioPlaybackState.LOADING
+                runCatching {
+                    mediaPlayer.reset()
+                    mediaPlayer.setDataSource(audioUrl)
+                    mediaPlayer.setOnPreparedListener {
+                        it.start()
+                        playbackState = AudioPlaybackState.PLAYING
+                    }
+                    mediaPlayer.setOnCompletionListener { playbackState = AudioPlaybackState.IDLE }
+                    mediaPlayer.setOnErrorListener { _, _, _ -> playbackState = AudioPlaybackState.ERROR; true }
+                    mediaPlayer.prepareAsync()
+                }.onFailure { playbackState = AudioPlaybackState.ERROR }
+            }
+            AudioPlaybackState.LOADING, AudioPlaybackState.PLAYING -> Unit
+        }
+    }
+
+    fun pause() {
+        if (playbackState == AudioPlaybackState.PLAYING) {
+            mediaPlayer.pause()
+            playbackState = AudioPlaybackState.PAUSED
+        }
+    }
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        IconButton(
+            onClick = { if (playbackState == AudioPlaybackState.PLAYING) pause() else play() },
+            enabled = playbackState != AudioPlaybackState.LOADING,
+        ) {
+            when (playbackState) {
+                AudioPlaybackState.LOADING -> CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                AudioPlaybackState.PLAYING -> Icon(
+                    Icons.Filled.Pause,
+                    contentDescription = stringResource(R.string.entry_detail_audio_pause_content_description),
+                )
+                else -> Icon(
+                    Icons.Filled.PlayArrow,
+                    contentDescription = stringResource(R.string.entry_detail_audio_play_content_description),
+                )
+            }
+        }
+        Spacer(Modifier.width(4.dp))
+        val statusText = when (playbackState) {
+            AudioPlaybackState.LOADING -> stringResource(R.string.entry_detail_audio_loading)
+            AudioPlaybackState.PLAYING -> stringResource(R.string.entry_detail_audio_playing)
+            AudioPlaybackState.PAUSED -> stringResource(R.string.entry_detail_audio_paused)
+            AudioPlaybackState.ERROR -> stringResource(R.string.entry_detail_audio_error)
+            AudioPlaybackState.IDLE -> stringResource(R.string.entry_detail_audio_recording)
+        }
+        Text(
+            statusText,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (playbackState == AudioPlaybackState.ERROR) {
+                MaterialTheme.colorScheme.error
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
         )
     }
 }

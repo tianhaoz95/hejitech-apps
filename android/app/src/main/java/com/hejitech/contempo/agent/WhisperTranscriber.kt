@@ -1,6 +1,7 @@
 package com.hejitech.contempo.agent
 
 import android.content.Context
+import com.hejitech.core.model.CaptureLanguage
 import com.k2fsa.sherpa.onnx.OfflineModelConfig
 import com.k2fsa.sherpa.onnx.OfflineRecognizer
 import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig
@@ -9,18 +10,33 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * On-device speech-to-text via sherpa-onnx (k2-fsa/sherpa-onnx) + a bundled
- * multilingual Whisper tiny model (assets/sherpa-onnx-whisper-tiny,
- * int8-quantized, ~99MB) — replaces the legacy RecognizerIntent voice input,
- * which routes through a separate system dialog on a lower-quality
- * recognizer. Was originally the English-only tiny.en checkpoint; swapped
- * for the multilingual tiny checkpoint (near-identical size) to add Chinese
- * (and any other Whisper-supported language) support — `language = ""` below
- * asks Whisper to auto-detect the spoken language per utterance rather than
- * forcing a single language, so English capture needs no change in
- * behavior. Multilingual "tiny" is measurably less accurate than "tiny.en"
- * was for English, and non-English accuracy at this smallest model size is
- * modest — a real accuracy/size trade-off, not a hidden regression.
+ * On-device speech-to-text via sherpa-onnx (k2-fsa/sherpa-onnx). Three
+ * bundled Whisper checkpoints, one per [CaptureLanguage]:
+ *  - ENGLISH: the dedicated tiny.en checkpoint (assets/sherpa-onnx-whisper-tiny.en,
+ *    int8-quantized, ~103MB) — measurably more accurate on English than the
+ *    multilingual model forced to English would be (this is exactly what
+ *    this app used before Chinese support was added — see CHINESE/AUTO below
+ *    — and OpenAI's own published benchmarks show the same gap).
+ *  - CHINESE: the multilingual tiny checkpoint (assets/sherpa-onnx-whisper-tiny,
+ *    ~99MB), with `language = "zh"` forced — skips Whisper's own per-utterance
+ *    language-ID step entirely, which is the actual unreliable part at this
+ *    model size (confirmed live: Chinese captures were sometimes getting
+ *    silently mis-detected as English), not the decoder itself.
+ *  - AUTO: the same multilingual checkpoint, `language = ""` (Whisper's own
+ *    auto-detection) — for anything else, or before the user has picked.
+ *
+ * Whisper's forced/detected language is baked into OfflineRecognizerConfig at
+ * construction time (see sherpa-onnx's offline-whisper-greedy-search-decoder.cc:
+ * `config_` is a fixed copy taken once, not a per-stream/decode-time option),
+ * so CHINESE and AUTO need two separate OfflineRecognizer instances even
+ * though they load the same underlying model files — there's no cheaper way
+ * to change the forced language on an already-built recognizer. Each of the
+ * three is built lazily on first use and cached for the process's lifetime,
+ * so a user who only ever picks one or two languages only pays the memory
+ * cost for those, not all three at once.
+ *
+ * Replaces the legacy RecognizerIntent voice input, which routes through a
+ * separate system dialog on a lower-quality recognizer.
  *
  * sherpa-onnx has no Maven artifact as of this writing — the
  * com.k2fsa.sherpa.onnx.* Kotlin API files under
@@ -38,47 +54,58 @@ import kotlinx.coroutines.withContext
 class WhisperTranscriber(context: Context) {
     private val appContext = context.applicationContext
 
-    private val recognizer: OfflineRecognizer by lazy {
-        val modelDir = "sherpa-onnx-whisper-tiny"
+    private val englishRecognizer: OfflineRecognizer by lazy {
+        buildRecognizer(modelDir = "sherpa-onnx-whisper-tiny.en", filePrefix = "tiny.en", language = "en")
+    }
+    private val chineseRecognizer: OfflineRecognizer by lazy {
+        buildRecognizer(modelDir = "sherpa-onnx-whisper-tiny", filePrefix = "tiny", language = "zh")
+    }
+    private val autoRecognizer: OfflineRecognizer by lazy {
+        buildRecognizer(modelDir = "sherpa-onnx-whisper-tiny", filePrefix = "tiny", language = "")
+    }
+
+    private fun buildRecognizer(modelDir: String, filePrefix: String, language: String): OfflineRecognizer =
         OfflineRecognizer(
             assetManager = appContext.assets,
             config = OfflineRecognizerConfig(
                 modelConfig = OfflineModelConfig(
                     whisper = OfflineWhisperModelConfig(
-                        encoder = "$modelDir/tiny-encoder.int8.onnx",
-                        decoder = "$modelDir/tiny-decoder.int8.onnx",
-                        // Empty (not the class default "en") triggers Whisper's
-                        // own per-utterance language detection — see
-                        // offline-whisper-greedy-search-decoder.cc's
-                        // DetectLanguage call — instead of forcing every
-                        // capture to be interpreted as English.
-                        language = "",
+                        encoder = "$modelDir/$filePrefix-encoder.int8.onnx",
+                        decoder = "$modelDir/$filePrefix-decoder.int8.onnx",
+                        language = language,
                     ),
-                    tokens = "$modelDir/tiny-tokens.txt",
+                    tokens = "$modelDir/$filePrefix-tokens.txt",
                     modelType = "whisper",
                     numThreads = 2,
                 ),
             ),
         )
+
+    private fun recognizerFor(language: CaptureLanguage): OfflineRecognizer = when (language) {
+        CaptureLanguage.ENGLISH -> englishRecognizer
+        CaptureLanguage.CHINESE -> chineseRecognizer
+        CaptureLanguage.AUTO -> autoRecognizer
     }
 
     /**
      * [samples] must be 16kHz mono, normalized to [-1, 1] — see
-     * AudioRecorder. Loading the recognizer (first call only) and decoding
-     * both do real CPU work, hence Dispatchers.Default rather than the
-     * calling coroutine's own dispatcher.
+     * AudioRecorder. Loading a recognizer (first use of that particular
+     * [language] only) and decoding both do real CPU work, hence
+     * Dispatchers.Default rather than the calling coroutine's own dispatcher.
      */
-    suspend fun transcribe(samples: FloatArray): String = withContext(Dispatchers.Default) {
-        if (samples.isEmpty()) return@withContext ""
-        val stream = recognizer.createStream()
-        try {
-            stream.acceptWaveform(samples, sampleRate = SAMPLE_RATE_HZ)
-            recognizer.decode(stream)
-            recognizer.getResult(stream).text.trim()
-        } finally {
-            stream.release()
+    suspend fun transcribe(samples: FloatArray, language: CaptureLanguage): String =
+        withContext(Dispatchers.Default) {
+            if (samples.isEmpty()) return@withContext ""
+            val recognizer = recognizerFor(language)
+            val stream = recognizer.createStream()
+            try {
+                stream.acceptWaveform(samples, sampleRate = SAMPLE_RATE_HZ)
+                recognizer.decode(stream)
+                recognizer.getResult(stream).text.trim()
+            } finally {
+                stream.release()
+            }
         }
-    }
 
     companion object {
         const val SAMPLE_RATE_HZ = 16_000
