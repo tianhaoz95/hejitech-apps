@@ -527,8 +527,10 @@ class CaptureViewModel : ViewModel() {
             source = CaptureSource.VOICE,
             startedAt = Timestamp.now(),
         )
-        val label = draft.property?.let { "Started tracking — $it" } ?: "Started tracking — clock is running"
-        _uiState.value = CaptureUiState(timerMessage = label)
+        // No bottom confirmation text here — the "in progress" banner at the
+        // top of the screen (driven by openTimerEntry) already shows the
+        // clock is running the moment this suspends, live duration included.
+        _uiState.value = CaptureUiState()
     }
 
     /**
@@ -550,7 +552,9 @@ class CaptureViewModel : ViewModel() {
                 source = CaptureSource.MANUAL,
                 startedAt = Timestamp.now(),
             )
-            _uiState.value = CaptureUiState(timerMessage = "Started tracking — clock is running")
+            // Same reasoning as handleTimerStart above — the top banner is
+            // the confirmation, no separate bottom message needed.
+            _uiState.value = CaptureUiState()
         }
     }
 

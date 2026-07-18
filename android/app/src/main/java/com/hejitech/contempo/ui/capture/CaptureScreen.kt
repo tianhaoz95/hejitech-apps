@@ -841,6 +841,19 @@ private fun OngoingWorkBanner(
     enabled: Boolean,
     onTapToComplete: () -> Unit,
 ) {
+    // Ticks once a second so the banner itself reads as a live running clock —
+    // this is now the only "tracking" feedback in Capture (see
+    // CaptureViewModel.handleTimerStart/startNewWork, which no longer set a
+    // separate bottom confirmation message).
+    var nowSeconds by remember(entry.activityDate) { mutableStateOf(System.currentTimeMillis() / 1000) }
+    LaunchedEffect(entry.activityDate) {
+        while (true) {
+            nowSeconds = System.currentTimeMillis() / 1000
+            delay(1000)
+        }
+    }
+    val elapsedSeconds = (nowSeconds - entry.activityDate.seconds).coerceAtLeast(0)
+
     ContempoCard(
         modifier = Modifier
             .fillMaxWidth()
@@ -865,12 +878,28 @@ private fun OngoingWorkBanner(
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Text(
+                    formatElapsedDuration(elapsedSeconds),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Text(
                     stringResource(R.string.capture_ongoing_work_tap_hint),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
+    }
+}
+
+private fun formatElapsedDuration(totalSeconds: Long): String {
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    val seconds = totalSeconds % 60
+    return if (hours > 0) {
+        "%d:%02d:%02d".format(hours, minutes, seconds)
+    } else {
+        "%d:%02d".format(minutes, seconds)
     }
 }
 
