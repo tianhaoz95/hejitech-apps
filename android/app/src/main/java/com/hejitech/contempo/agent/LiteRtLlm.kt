@@ -3,11 +3,17 @@ package com.hejitech.contempo.agent
 import android.app.DownloadManager
 import android.content.Context
 import android.graphics.Bitmap
+import android.util.Log
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Content
 import com.google.ai.edge.litertlm.Contents
+import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
+import com.google.ai.edge.litertlm.Message
+import com.google.ai.edge.litertlm.ToolCall
+import com.google.ai.edge.litertlm.ToolProvider
+import com.google.ai.edge.litertlm.tool
 import com.hejitech.contempo.data.AiSettingsStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -20,6 +26,18 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
+import java.time.Duration
+import java.time.Instant
+
+/**
+ * Generous enough for getCurrentTime + up to two time-offset calls + the terminal
+ * recordEntry call, with slack — while guaranteeing the manual tool loop in
+ * [LiteRtLlm.extractEntryDraft] always terminates (mirrors the SDK's own
+ * RECURRING_TOOL_CALL_LIMIT=25 at a scale appropriate to this task).
+ */
+private const val MAX_TOOL_LOOP_ITERATIONS = 6
+
+private const val TAG = "LiteRtLlm"
 
 /**
  * LiteRT-LM implementation of OnDeviceLlm, running a downloaded Gemma 4 E2B
@@ -46,6 +64,10 @@ class LiteRtLlm(
     // the first load.
     private var engine: Engine? = null
     private val engineMutex = Mutex()
+
+    // Schemas derived once via reflection over EntryTools — see that file's kdoc for
+    // why its function bodies are never actually invoked.
+    private val entryToolProvider: ToolProvider = tool(EntryTools)
 
     init {
         scope.launch {
@@ -174,6 +196,100 @@ class LiteRtLlm(
             }
         }
         return generate(Contents.of(Content.ImageBytes(jpegBytes), Content.Text(prompt)))
+    }
+
+    override suspend fun extractEntryDraft(rawText: String, knownProperties: List<String>): EntryDraft? {
+        val eng = ensureEngine() ?: return null
+        return try {
+            withContext(Dispatchers.Default) {
+                val config = ConversationConfig(
+                    systemInstruction = Contents.of(buildEntryToolSystemPrompt(knownProperties)),
+                    tools = listOf(entryToolProvider),
+                    automaticToolCalling = false,
+                )
+                eng.createConversation(config).use { conversation ->
+                    var message = conversation.sendMessage(rawText)
+                    repeat(MAX_TOOL_LOOP_ITERATIONS) {
+                        val recordCall = message.toolCalls.firstOrNull { it.name == "record_entry" }
+                        if (recordCall != null) return@withContext entryDraftFromArguments(recordCall.arguments)
+
+                        val pending = message.toolCalls
+                        // Model replied in prose instead of calling a tool — no
+                        // structured output to extract, same as a malformed-JSON
+                        // failure in the previous text-based approach.
+                        if (pending.isEmpty()) return@withContext null
+
+                        val responses = pending.map { call ->
+                            Content.ToolResponse(call.name, dispatchDeterministicTool(call))
+                        }
+                        message = conversation.sendMessage(Message.tool(Contents.of(*responses.toTypedArray())))
+                    }
+                    Log.w(TAG, "extractEntryDraft: exceeded MAX_TOOL_LOOP_ITERATIONS ($MAX_TOOL_LOOP_ITERATIONS) without a record_entry call")
+                    null
+                }
+            }
+        } catch (e: Exception) {
+            // Expected and non-fatal in PREFER_ON_DEVICE (same contract as
+            // generateText's failure modes) — logged (unlike generateText)
+            // because a tool-calling failure here is more likely to indicate
+            // a real integration bug (e.g. a tool/param name mismatch against
+            // what ReflectionTool actually advertises — see EntryTools.kt)
+            // than ordinary "model not ready" churn.
+            Log.w(TAG, "extractEntryDraft failed", e)
+            null
+        }
+    }
+
+    /**
+     * [call] is always get_current_time/compute_time_before/compute_time_after here —
+     * record_entry is handled by the caller before this is reached. Tool and param
+     * names arrive snake_cased (LiteRT-LM's ReflectionTool converts the Kotlin
+     * camelCase declarations in EntryTools.kt before advertising them to the model —
+     * confirmed empirically on-device, e.g. getCurrentTime -> get_current_time) —
+     * matching that here rather than fighting it via the (Experimental, unstable)
+     * ExperimentalFlags.convertCamelToSnakeCaseInToolDescription toggle.
+     */
+    private fun dispatchDeterministicTool(call: ToolCall): Any = when (call.name) {
+        "get_current_time" -> Instant.now().toString()
+        "compute_time_before" -> offsetIso(call.arguments, forward = false)
+        "compute_time_after" -> offsetIso(call.arguments, forward = true)
+        else -> throw IllegalArgumentException("Unexpected tool call: ${call.name}")
+    }
+
+    private fun offsetIso(args: Map<String, Any?>, forward: Boolean): String {
+        val reference = Instant.parse(args["reference_iso"] as String)
+        val amount = (args["amount"] as Number).toLong().let { if (forward) it else -it }
+        val duration = when (args["unit"] as String) {
+            "minutes" -> Duration.ofMinutes(amount)
+            "hours" -> Duration.ofHours(amount)
+            "days" -> Duration.ofDays(amount)
+            else -> Duration.ZERO
+        }
+        return reference.plus(duration).toString()
+    }
+
+    private fun entryDraftFromArguments(arguments: Map<String, Any?>): EntryDraft = EntryDraft(
+        property = arguments["property"] as? String,
+        task = arguments["task"] as? String,
+        durationMinutes = (arguments["duration_minutes"] as? Number)?.toInt(),
+        category = arguments["category"] as? String,
+        eventType = arguments["event_type"] as? String,
+        miles = (arguments["miles"] as? Number)?.toDouble(),
+        resolvedActivityDateIso = arguments["resolved_activity_date_iso"] as? String,
+    )
+
+    private fun buildEntryToolSystemPrompt(knownProperties: List<String>): String = buildString {
+        appendLine("You extract short-term-rental work-log entries from a host's own words.")
+        if (knownProperties.isNotEmpty()) {
+            appendLine("Known properties: ${knownProperties.joinToString(", ")}.")
+        }
+        appendLine("The host's message is dictated speech, not typed text — clean it up before extracting \"task\": remove filler words and disfluencies (\"uh\", \"um\", false starts, mid-sentence restarts) that carry no information, and fix likely transcription errors, punctuation, and capitalization. Never change the meaning or drop a real detail.")
+        appendLine("Format \"task\" as plain prose by default. Only use a markdown bullet list (lines starting with \"- \") when the host clearly describes multiple distinct sub-tasks in one capture — a single task never needs a bullet. Never use headers, tables, or bold; a bullet list is the only formatting ever appropriate here, and only when it actually makes several items easier to scan than a sentence would.")
+        appendLine("Set event_type only if the host is opening or closing a start/stop timer rather than describing a complete task: \"start\" for phrasing like 'I'm starting to work on X' / 'beginning work now' / 'clocking in', \"stop\" for phrasing like 'I just finished' / 'wrapping up' / 'clocking out'. Leave event_type null for a normal complete description of work already done — most messages are this case. When event_type is \"start\", duration_minutes should be null.")
+        appendLine("Set miles if the host states a distance driven (e.g. 'drove 12 miles to pick up supplies') — a separate business-mileage tax deduction, not the hours above, so extract it whenever mentioned even alongside a normal task/duration. Leave miles null if no distance is mentioned.")
+        appendLine("If the host mentions when the work happened relative to now (e.g. \"4 hours ago\", \"this morning\", \"last night\", \"yesterday\") or at a specific clock time (e.g. \"at 3pm\"), call get_current_time first, then compute_time_before or compute_time_after as needed to compute the actual timestamp — never compute the arithmetic yourself. Leave resolved_activity_date_iso null if the host mentions no time reference at all — most messages are this case.")
+        appendLine("Capture is meant to be fast, not a conversation: fill in every field you can confidently determine, and leave any field you genuinely can't determine as null. Never withhold a field or ask a question — the host reviews and fills in gaps themselves afterward, so a partial entry is the correct output, not a failure.")
+        appendLine("Once you have everything you can determine, call record_entry exactly once with the final result.")
     }
 
     private suspend fun generate(contents: Contents): String? {

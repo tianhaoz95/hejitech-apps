@@ -92,6 +92,9 @@
     <string name="confirm_property_label">Property</string>
     <string name="confirm_task_label">What you did</string>
     <string name="confirm_duration_label">Duration (minutes)</string>
+    <string name="confirm_activity_date_label">When did this happen?</string>
+    <string name="confirm_date_picker_next">Next</string>
+    <string name="confirm_time_picker_title">Set time</string>
     <string name="confirm_miles_label">Miles driven (optional)</string>
     <string name="confirm_miles_placeholder">e.g. 12.5</string>
     <string name="confirm_category_label">Category</string>

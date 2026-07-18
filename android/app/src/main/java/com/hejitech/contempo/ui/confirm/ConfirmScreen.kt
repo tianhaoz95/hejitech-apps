@@ -1,6 +1,7 @@
 package com.hejitech.contempo.ui.confirm
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,8 +18,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -31,6 +35,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -51,6 +58,14 @@ import com.hejitech.contempo.R
 import com.hejitech.contempo.ui.theme.Eyebrow
 import com.hejitech.contempo.util.PhotoUtils
 import com.hejitech.core.model.EntryCategory
+import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.ZoneId
+import java.time.ZoneOffset
+import java.util.Date
+import java.util.Locale
 
 private const val PHOTO_PREVIEW_MAX_DIMENSION_PX = 512
 
@@ -67,6 +82,8 @@ fun ConfirmScreen(
     captureSource: String = "",
     /** Business miles driven, if any — always optional, unlike duration. */
     miles: Double = 0.0,
+    /** AI-resolved activity time from the parse draft, if any — see EntryDraft.resolvedActivityDateIso. */
+    resolvedActivityDateIso: String? = null,
     /** Local content:// URI for a just-taken photo, if this entry came from photo capture. */
     photoUri: String? = null,
     /** Non-blank when resuming a pending_review entry from the Dashboard's pending badge. */
@@ -77,7 +94,8 @@ fun ConfirmScreen(
     onConfirmed: () -> Unit,
     viewModel: ConfirmViewModel = viewModel(
         factory = ConfirmViewModel.Factory(
-            property, task, durationMinutes, category, captureSource, miles, photoUri, entryId, captureLat, captureLng,
+            property, task, durationMinutes, category, captureSource, miles, resolvedActivityDateIso,
+            photoUri, entryId, captureLat, captureLng,
         )
     ),
 ) {
@@ -205,6 +223,9 @@ fun ConfirmScreen(
         )
         Spacer(Modifier.height(12.dp))
 
+        ActivityDateTimeField(millis = uiState.activityDateMillis, onChanged = viewModel::onActivityDateTimeChanged)
+        Spacer(Modifier.height(12.dp))
+
         OutlinedTextField(
             value = uiState.miles,
             onValueChange = viewModel::onMilesChanged,
@@ -293,3 +314,81 @@ private fun RequiredFieldLabel(text: String, missing: Boolean) {
         color = if (missing) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
+
+/**
+ * Read-only trigger field (mirrors the category dropdown's pattern) that
+ * opens a date picker, then a time picker, merging both into a single
+ * epoch-millis value. No Material3 TimePickerDialog exists, so the time
+ * step is a plain AlertDialog wrapping TimePicker.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ActivityDateTimeField(millis: Long, onChanged: (Long) -> Unit) {
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+    var pendingMillis by remember { mutableStateOf(millis) }
+
+    OutlinedTextField(
+        value = formatActivityDateTime(millis),
+        onValueChange = {},
+        readOnly = true,
+        label = { Text(stringResource(R.string.confirm_activity_date_label)) },
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                pendingMillis = millis
+                showDatePicker = true
+            },
+    )
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = utcMidnightMillis(pendingMillis))
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { pendingMillis = mergeUtcDateWithLocalTime(it, pendingMillis) }
+                    showDatePicker = false
+                    showTimePicker = true
+                }) { Text(stringResource(R.string.confirm_date_picker_next)) }
+            },
+            dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.confirm_cancel_button)) } },
+        ) { DatePicker(state = datePickerState) }
+    }
+
+    if (showTimePicker) {
+        val localTime = Instant.ofEpochMilli(pendingMillis).atZone(ZoneId.systemDefault()).toLocalTime()
+        val timePickerState = rememberTimePickerState(initialHour = localTime.hour, initialMinute = localTime.minute)
+        AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            title = { Text(stringResource(R.string.confirm_time_picker_title)) },
+            text = { TimePicker(state = timePickerState) },
+            confirmButton = {
+                TextButton(onClick = {
+                    onChanged(mergeLocalTimeIntoMillis(pendingMillis, timePickerState.hour, timePickerState.minute))
+                    showTimePicker = false
+                }) { Text(stringResource(R.string.confirm_button)) }
+            },
+            dismissButton = { TextButton(onClick = { showTimePicker = false }) { Text(stringResource(R.string.confirm_cancel_button)) } },
+        )
+    }
+}
+
+/** Material3's DatePicker seeds/reports selections as UTC-midnight millis for the calendar date. */
+private fun utcMidnightMillis(millis: Long): Long =
+    Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+
+/** Takes the UTC-midnight date the picker returned, keeps the previously-selected time-of-day. */
+private fun mergeUtcDateWithLocalTime(utcMidnightMillisValue: Long, previousMillis: Long): Long {
+    val newDate = Instant.ofEpochMilli(utcMidnightMillisValue).atZone(ZoneOffset.UTC).toLocalDate()
+    val previousTime = Instant.ofEpochMilli(previousMillis).atZone(ZoneId.systemDefault()).toLocalTime()
+    return LocalDateTime.of(newDate, previousTime).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+}
+
+private fun mergeLocalTimeIntoMillis(baseMillis: Long, hour: Int, minute: Int): Long {
+    val baseDate = Instant.ofEpochMilli(baseMillis).atZone(ZoneId.systemDefault()).toLocalDate()
+    return LocalDateTime.of(baseDate, LocalTime.of(hour, minute)).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+}
+
+private val activityDateFormatter = SimpleDateFormat("EEE MMM d, HH:mm", Locale.getDefault())
+private fun formatActivityDateTime(millis: Long): String = activityDateFormatter.format(Date(millis))

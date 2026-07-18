@@ -41,4 +41,12 @@ interface OnDeviceLlm {
 
     /** Null if this runtime/model doesn't support image input, isn't ready, or generation fails. */
     suspend fun generateFromImage(bitmap: Bitmap, prompt: String): String?
+
+    /**
+     * Structured entry extraction via tool-calling, when the runtime supports it. Null
+     * on any failure — unsupported, not ready, no tool call was produced (model replied
+     * in prose instead), or a generation error — same "unavailable" contract as
+     * generateText, so callers (AgentClient) don't need a different fallback story.
+     */
+    suspend fun extractEntryDraft(rawText: String, knownProperties: List<String>): EntryDraft?
 }

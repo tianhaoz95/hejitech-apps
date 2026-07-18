@@ -89,6 +89,10 @@ class GeminiNanoLlm(
         null
     }
 
+    // Not supported — this implementation is currently unused/kept in reserve (see
+    // OnDeviceLlm's kdoc); LiteRtLlm is the only implementation with real tool-calling.
+    override suspend fun extractEntryDraft(rawText: String, knownProperties: List<String>): EntryDraft? = null
+
     @OptIn(PublicPreviewAPI::class)
     private suspend fun checkAndMaybeDownload() {
         _status.value = OnDeviceModelUiStatus.Checking

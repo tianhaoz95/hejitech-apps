@@ -58,6 +58,15 @@ export const EntryDraftSchema = z.object({
    * Nullable/optional on every entry, not just driving-related ones.
    */
   miles: z.number().nonnegative().nullable(),
+  /**
+   * Absolute ISO-8601 timestamp for when the described work actually
+   * happened, resolved by the model from any time reference in the host's
+   * own words (relative — "4 hours ago", "this morning", "yesterday" — or
+   * absolute — "at 3pm") using the `nowIso` current-time context supplied
+   * in the prompt. Null when the host mentions no time reference at all,
+   * meaning "now" — the app's pre-existing default behavior.
+   */
+  resolvedActivityDateIso: z.string().nullable(),
 });
 export type EntryDraft = z.infer<typeof EntryDraftSchema>;
 
@@ -66,7 +75,9 @@ export const ParseEntryInputSchema = z.object({
   knownProperties: z
     .array(z.string())
     .describe("The host's existing property names, so the model can match rather than invent new ones"),
-  nowIso: z.string().describe("Current timestamp (ISO 8601), for resolving relative time references like 'this morning'"),
+  nowIso: z
+    .string()
+    .describe("Current timestamp (ISO 8601) — the model resolves any time reference in rawText (relative or absolute) into resolvedActivityDateIso relative to this"),
 });
 export type ParseEntryInput = z.infer<typeof ParseEntryInputSchema>;
 

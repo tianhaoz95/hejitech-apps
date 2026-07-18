@@ -114,6 +114,20 @@ object AudioCaptureProcessor {
         removeFromQueue(capture.id)
     }
 
+    /**
+     * Prefers the model's resolved time (e.g. "4 hours ago") over the
+     * recording's own timestamp when present; falls back to [fallback] if
+     * unparsable or missing. Guards against a future-resolved timestamp the
+     * same way ConfirmViewModel.resolveValidatedMillis does — no arbitrary
+     * lookback window beyond that.
+     */
+    private fun resolveActivityDate(resolvedIso: String?, fallback: Timestamp): Timestamp {
+        val instant = resolvedIso?.let { runCatching { java.time.Instant.parse(it) }.getOrNull() } ?: return fallback
+        val now = java.time.Instant.now()
+        val clamped = if (instant.isAfter(now)) now else instant
+        return Timestamp(clamped.epochSecond, clamped.nano)
+    }
+
     private suspend fun saveFromDraft(draft: EntryDraft, rawText: String, capture: PendingAudioCapture, audioUrl: String) {
         // Same deterministic-first, LLM-eventType-fallback resolution as the
         // phone's own CaptureViewModel.parseAndProceed — see
@@ -151,7 +165,7 @@ object AudioCaptureProcessor {
                 ?: EntryCategory.OTHER.firestoreValue,
             status = (if (isComplete) EntryStatus.CONFIRMED else EntryStatus.PENDING_REVIEW).firestoreValue,
             source = CaptureSource.VOICE.firestoreValue,
-            activityDate = capture.capturedAt,
+            activityDate = resolveActivityDate(draft.resolvedActivityDateIso, fallback = capture.capturedAt),
             loggedAt = Timestamp.now(),
             confirmedAt = if (isComplete) Timestamp.now() else null,
             miles = draft.miles ?: 0.0,

@@ -46,6 +46,18 @@ data class EntryDraft(
      * server-side mirror.
      */
     val miles: Double? = null,
+    /**
+     * Absolute ISO-8601 timestamp for when the described work actually
+     * happened, resolved by the model from any time reference in the
+     * host's words relative to "current time" (see
+     * AgentClient.buildEntryPrompt / parseEntry.ts). Null means no time
+     * reference was mentioned — the consuming code
+     * (ConfirmViewModel.save / AudioCaptureProcessor) treats that, and any
+     * value that fails to parse or lands in the future, as "use now
+     * instead." See EntryDraftSchema in backend/functions/src/schemas.ts
+     * for the server-side mirror.
+     */
+    val resolvedActivityDateIso: String? = null,
 )
 
 enum class ParseSource { ON_DEVICE, CLOUD }

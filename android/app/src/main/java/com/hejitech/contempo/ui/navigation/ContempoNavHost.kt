@@ -112,7 +112,7 @@ object ConfirmRoute {
     const val PATTERN = "confirm?property={property}&task={task}&durationMinutes={durationMinutes}" +
         "&category={category}&isVague={isVague}&isBackfilled={isBackfilled}&daysLate={daysLate}" +
         "&source={source}&captureSource={captureSource}&miles={miles}&photoUri={photoUri}&entryId={entryId}" +
-        "&captureLat={captureLat}&captureLng={captureLng}"
+        "&captureLat={captureLat}&captureLng={captureLng}&resolvedActivityDateIso={resolvedActivityDateIso}"
 
     fun build(
         property: String,
@@ -131,6 +131,8 @@ object ConfirmRoute {
         /** Best-effort "captured from here" location — see CaptureViewModel.captureLocation. */
         captureLat: Double? = null,
         captureLng: Double? = null,
+        /** AI-resolved activity time from the parse draft, if any — see EntryDraft.resolvedActivityDateIso. */
+        resolvedActivityDateIso: String? = null,
     ) = "confirm?property=$property&task=$task&durationMinutes=$durationMinutes" +
         "&category=$category&isVague=$isVague&isBackfilled=$isBackfilled&daysLate=$daysLate" +
         "&source=$source&captureSource=$captureSource&miles=$miles" +
@@ -139,7 +141,9 @@ object ConfirmRoute {
         // it's the only one that gets encoded/decoded.
         "&photoUri=${photoUri?.let { java.net.URLEncoder.encode(it, "UTF-8") } ?: ""}" +
         "&entryId=$entryId" +
-        "&captureLat=${captureLat ?: ""}&captureLng=${captureLng ?: ""}"
+        "&captureLat=${captureLat ?: ""}&captureLng=${captureLng ?: ""}" +
+        // Also encoded — an ISO-8601 timestamp contains ':' characters, unsafe raw in a query string.
+        "&resolvedActivityDateIso=${resolvedActivityDateIso?.let { java.net.URLEncoder.encode(it, "UTF-8") } ?: ""}"
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -187,6 +191,7 @@ fun ContempoNavHost() {
                                 photoUri = result.photoUri,
                                 captureLat = result.captureLat,
                                 captureLng = result.captureLng,
+                                resolvedActivityDateIso = result.draft.resolvedActivityDateIso,
                             )
                         )
                     }
@@ -215,6 +220,9 @@ fun ContempoNavHost() {
                     // distinct from an actual 0.0 coordinate.
                     navArgument("captureLat") { type = NavType.StringType; defaultValue = "" },
                     navArgument("captureLng") { type = NavType.StringType; defaultValue = "" },
+                    // URL-encoded, same reasoning as photoUri — an ISO-8601
+                    // timestamp contains ':' characters unsafe raw in a query string.
+                    navArgument("resolvedActivityDateIso") { type = NavType.StringType; defaultValue = "" },
                 ),
                 // A subtle slide-up + fade "settling into the structured
                 // record UI" — the visual bridge from Capture's finalized-
@@ -224,6 +232,7 @@ fun ContempoNavHost() {
                 popExitTransition = { slideOutVertically(targetOffsetY = { it / 6 }) + fadeOut() },
             ) { backStackEntry ->
                 val encodedPhotoUri = backStackEntry.arguments?.getString("photoUri").orEmpty()
+                val encodedResolvedActivityDateIso = backStackEntry.arguments?.getString("resolvedActivityDateIso").orEmpty()
                 ConfirmScreen(
                     property = backStackEntry.arguments?.getString("property").orEmpty(),
                     task = backStackEntry.arguments?.getString("task").orEmpty(),
@@ -237,6 +246,8 @@ fun ContempoNavHost() {
                     entryId = backStackEntry.arguments?.getString("entryId").orEmpty(),
                     captureLat = backStackEntry.arguments?.getString("captureLat")?.toDoubleOrNull(),
                     captureLng = backStackEntry.arguments?.getString("captureLng")?.toDoubleOrNull(),
+                    resolvedActivityDateIso = encodedResolvedActivityDateIso.takeIf { it.isNotEmpty() }
+                        ?.let { java.net.URLDecoder.decode(it, "UTF-8") },
                     onConfirmed = {
                         navController.navigate(TopLevelDestination.Dashboard.route) {
                             popUpTo(TopLevelDestination.Capture.route)

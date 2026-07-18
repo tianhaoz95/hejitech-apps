@@ -13,11 +13,13 @@ import java.time.Instant
  *  1. Try the on-device model (see OnDeviceLlm — currently Gemma 4 E2B via
  *     LiteRT-LM) — free, no network round trip. This class only ever talks
  *     to the generic [OnDeviceLlm] interface, never a specific runtime's
- *     types directly, so swapping runtimes doesn't touch this file. No
- *     forced JSON response schema is assumed on-device — parseEntry prompts
- *     for plain text formatted as JSON and best-effort parses it, rather
- *     than relying on a schema guarantee; askQuestion just wants plain text
- *     back, so it doesn't hit that limitation at all.
+ *     types directly, so swapping runtimes doesn't touch this file.
+ *     parseEntry gets a real schema guarantee on-device via LiteRT-LM's
+ *     tool-calling (see OnDeviceLlm.extractEntryDraft / LiteRtLlm /
+ *     EntryTools) — no text-JSON parsing involved. Photo drafting
+ *     (draftEntryFromPhoto) and askQuestion still just want plain text back,
+ *     the former best-effort-parsed as JSON, so neither goes through the
+ *     tool-calling path.
  *
  *  2. Cloud fallback: the parseEntry / askAgent Genkit flows in
  *     backend/functions/src/flows, which do get a real enforced
@@ -48,7 +50,6 @@ class AgentClient(
         knownProperties: List<String>,
         onStage: (ParsingStage) -> Unit = {},
     ): ParseOutcome {
-        val prompt = buildEntryPrompt(rawText, knownProperties)
         return when (inferencePreference()) {
             InferencePreference.CLOUD_ONLY -> {
                 onStage(ParsingStage.STRUCTURING)
@@ -57,13 +58,13 @@ class AgentClient(
 
             InferencePreference.ON_DEVICE_ONLY -> {
                 onStage(ParsingStage.TRYING_ON_DEVICE)
-                onDeviceParseEntry(prompt)
+                onDeviceExtractEntry(rawText, knownProperties)
                     ?: ParseOutcome.Failure("On-device model unavailable — no cloud fallback (On-device only is selected in Settings).")
             }
 
             InferencePreference.PREFER_ON_DEVICE -> {
                 onStage(ParsingStage.TRYING_ON_DEVICE)
-                onDeviceParseEntry(prompt) ?: run {
+                onDeviceExtractEntry(rawText, knownProperties) ?: run {
                     onStage(ParsingStage.FALLING_BACK_TO_CLOUD)
                     cloudParseEntry(rawText, knownProperties)
                 }
@@ -179,17 +180,14 @@ class AgentClient(
         appendLine("Dictated text: \"$rawText\"")
     }
 
-    private suspend fun onDeviceParseEntry(prompt: String): ParseOutcome? {
-        return try {
-            val text = onDeviceLlm.generateText(prompt) ?: return null
-            val draft = json.decodeFromString<EntryDraft>(extractJsonObject(text))
-            ParseOutcome.Success(ParseResult(draft, ParseSource.ON_DEVICE))
-        } catch (e: Exception) {
-            // Expected and non-fatal in PREFER_ON_DEVICE: model not ready
-            // yet, or a response that didn't parse as JSON. In ON_DEVICE_ONLY
-            // this null is what turns into the loud failure above instead.
-            null
-        }
+    private suspend fun onDeviceExtractEntry(rawText: String, knownProperties: List<String>): ParseOutcome? {
+        // Null covers every on-device failure mode uniformly — model not
+        // ready, no tool call produced, a generation error — same "expected
+        // and non-fatal in PREFER_ON_DEVICE" contract the old text-JSON path
+        // had. In ON_DEVICE_ONLY this null is what turns into the loud
+        // failure above instead.
+        val draft = onDeviceLlm.extractEntryDraft(rawText, knownProperties) ?: return null
+        return ParseOutcome.Success(ParseResult(draft, ParseSource.ON_DEVICE))
     }
 
     /**
@@ -289,26 +287,8 @@ class AgentClient(
             category = map["category"] as? String,
             eventType = map["eventType"] as? String,
             miles = (map["miles"] as? Number)?.toDouble(),
+            resolvedActivityDateIso = map["resolvedActivityDateIso"] as? String,
         )
-    }
-
-    private fun buildEntryPrompt(rawText: String, knownProperties: List<String>): String = buildString {
-        appendLine("You extract short-term-rental work-log entries from a host's own words.")
-        if (knownProperties.isNotEmpty()) {
-            appendLine("Known properties: ${knownProperties.joinToString(", ")}.")
-        }
-        appendLine("Respond with ONLY a single JSON object, no markdown fences, no commentary, matching exactly this shape:")
-        appendLine(
-            """{"property": string|null, "task": string|null, "durationMinutes": integer|null, """ +
-                """"category": one of "maintenance"|"turnover"|"guest_communication"|"supply_run"|"admin"|"other"|null, """ +
-                """"eventType": one of "start"|"stop"|null, "miles": number|null}"""
-        )
-        appendLine("The \"task\" field is dictated speech, not typed text — clean it up before extracting it: remove filler words and disfluencies (\"uh\", \"um\", false starts, mid-sentence restarts) that carry no information, and fix likely transcription errors, punctuation, and capitalization. Never change the meaning or drop a real detail.")
-        appendLine("Format \"task\" as plain prose by default. Only use a markdown bullet list (lines starting with \"- \") when the host clearly describes multiple distinct sub-tasks in one capture — a single task never needs a bullet. Never use headers, tables, or bold; a bullet list is the only formatting ever appropriate here, and only when it actually makes several items easier to scan than a sentence would.")
-        appendLine("Set eventType only if the host is opening or closing a start/stop timer rather than describing a complete task: \"start\" for phrasing like 'I'm starting to work on X' / 'beginning work now' / 'clocking in', \"stop\" for phrasing like 'I just finished' / 'wrapping up' / 'clocking out'. Leave eventType null for a normal complete description of work already done — most messages are this case. When eventType is \"start\", durationMinutes should be null.")
-        appendLine("Set miles if the host states a distance driven (e.g. 'drove 12 miles to pick up supplies') — a separate business-mileage tax deduction, not the hours above, so extract it whenever mentioned even alongside a normal task/duration. Leave miles null if no distance is mentioned.")
-        appendLine("Capture is meant to be fast, not a conversation: fill in every field you can confidently determine, and leave any field you genuinely can't determine as null. Never withhold a field or ask a question— the host reviews and fills in gaps themselves afterward, so a partial entry is the correct output, not a failure.")
-        appendLine("Host's message: \"$rawText\"")
     }
 
     private fun buildPhotoEntryPrompt(knownProperties: List<String>): String = buildString {

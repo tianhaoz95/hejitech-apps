@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeout
+import java.util.Date
 
 // A stalled Firestore stream (e.g. a gRPC reconnect after the emulator/network
 // drops the channel, or a real mobile-network hiccup — reproduced live on a
@@ -44,6 +45,13 @@ data class ConfirmUiState(
     val category: EntryCategory = EntryCategory.OTHER,
     /** Business miles driven — always optional, unlike duration, since most entries have none. */
     val miles: String = "",
+    /**
+     * When the work actually happened, shown/editable via the date+time
+     * picker — always concrete (defaults to "now" at construction), unlike
+     * the AI-sourced field it may have been seeded from. Epoch millis for
+     * direct interop with Material3's DatePicker/TimePicker state.
+     */
+    val activityDateMillis: Long = System.currentTimeMillis(),
     val properties: List<Property> = emptyList(),
     val isAddingNewProperty: Boolean = false,
     val newPropertyName: String = "",
@@ -64,6 +72,7 @@ class ConfirmViewModel(
     initialCategory: String,
     initialCaptureSource: String,
     initialMiles: Double,
+    initialResolvedActivityDateIso: String?,
     private val photoUri: String?,
     private val entryId: String,
     private val initialCaptureLat: Double?,
@@ -82,6 +91,11 @@ class ConfirmViewModel(
     // reports/mvp-scope-v0.html Section 8.
     private val aiOriginal = Triple(initialProperty, initialTask, initialDurationMinutes)
     private val aiOriginalMiles = initialMiles
+
+    // Null genuinely means "the AI proposed nothing" (no time reference in the
+    // utterance) — distinct from any concrete millis value, so this can't
+    // reuse the ">0 means unset" convention the other aiOriginal* fields use.
+    private val aiOriginalActivityDateMillis: Long? = resolveValidatedMillis(initialResolvedActivityDateIso)
 
     // Seeded from the existing document when resuming a pending_review entry
     // (entryId non-blank) — updateEntry does a full-document overwrite, so
@@ -109,6 +123,7 @@ class ConfirmViewModel(
             durationMinutes = if (initialDurationMinutes > 0) initialDurationMinutes.toString() else "",
             category = EntryCategory.fromFirestoreValue(initialCategory),
             miles = if (initialMiles > 0) initialMiles.toCleanString() else "",
+            activityDateMillis = aiOriginalActivityDateMillis ?: System.currentTimeMillis(),
         )
     )
     val uiState: StateFlow<ConfirmUiState> = _uiState.asStateFlow()
@@ -140,6 +155,7 @@ class ConfirmViewModel(
             _uiState.value = _uiState.value.copy(miles = value)
         }
     }
+    fun onActivityDateTimeChanged(millis: Long) { _uiState.value = _uiState.value.copy(activityDateMillis = millis) }
 
     fun onPropertySelected(property: Property) {
         _uiState.value = _uiState.value.copy(property = property.name, isAddingNewProperty = false)
@@ -240,6 +256,19 @@ class ConfirmViewModel(
         }
     }
 
+    /**
+     * Validates the model's resolved-time guess: unparsable -> null (caller
+     * falls back to now), future-relative-to-device-now -> clamp to now (work
+     * can't happen in the future). Deliberately no arbitrary "reasonable
+     * window" beyond that — trust the LLM's resolution given it was handed
+     * current time as context, rather than hand-coding what's plausible.
+     */
+    private fun resolveValidatedMillis(iso: String?): Long? {
+        val instant = iso?.let { runCatching { java.time.Instant.parse(it) }.getOrNull() } ?: return null
+        val now = java.time.Instant.now()
+        return if (instant.isAfter(now)) now.toEpochMilli() else instant.toEpochMilli()
+    }
+
     private suspend fun save(state: ConfirmUiState, status: EntryStatus, confirmedAt: Timestamp?) {
         val now = Timestamp.now()
         val duration = state.durationMinutes.toIntOrNull() ?: 0
@@ -252,10 +281,11 @@ class ConfirmViewModel(
             category = state.category.firestoreValue,
             status = status.firestoreValue,
             source = captureSource.firestoreValue,
-            // MVP: assumes "now" for a fresh capture — a date picker for
-            // backdating is a fast-follow UI addition. Resuming a pending
-            // entry preserves its original activityDate/loggedAt instead.
-            activityDate = existing?.activityDate ?: now,
+            // Resuming a pending entry preserves its original
+            // activityDate/loggedAt; a fresh capture uses whatever the user
+            // confirmed in the date+time picker (seeded from the AI's
+            // resolved-time guess, or "now" if it resolved nothing).
+            activityDate = existing?.activityDate ?: Timestamp(Date(state.activityDateMillis)),
             loggedAt = existing?.loggedAt ?: now,
             confirmedAt = confirmedAt,
             photoUrls = existing?.photoUrls ?: emptyList(),
@@ -307,6 +337,14 @@ class ConfirmViewModel(
         if (aiOriginalMiles > 0 && aiOriginalMiles != miles) {
             entryRepository.recordCorrection(savedEntryId, "miles", aiOriginalMiles.toString(), miles.toString())
         }
+        if (aiOriginalActivityDateMillis != null && aiOriginalActivityDateMillis != state.activityDateMillis) {
+            entryRepository.recordCorrection(
+                savedEntryId,
+                "activityDate",
+                java.time.Instant.ofEpochMilli(aiOriginalActivityDateMillis).toString(),
+                java.time.Instant.ofEpochMilli(state.activityDateMillis).toString(),
+            )
+        }
     }
 
     class Factory(
@@ -316,6 +354,7 @@ class ConfirmViewModel(
         private val category: String,
         private val captureSource: String,
         private val miles: Double,
+        private val resolvedActivityDateIso: String?,
         private val photoUri: String?,
         private val entryId: String = "",
         private val captureLat: Double? = null,
@@ -324,7 +363,8 @@ class ConfirmViewModel(
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             return ConfirmViewModel(
-                property, task, durationMinutes, category, captureSource, miles, photoUri, entryId, captureLat, captureLng,
+                property, task, durationMinutes, category, captureSource, miles, resolvedActivityDateIso,
+                photoUri, entryId, captureLat, captureLng,
             ) as T
         }
     }
