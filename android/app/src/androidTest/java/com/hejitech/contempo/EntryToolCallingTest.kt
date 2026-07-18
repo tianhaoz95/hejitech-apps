@@ -87,7 +87,12 @@ class EntryToolCallingTest {
     private fun onDeviceParseOrNull(rawText: String): EntryDraft? = runBlocking {
         ServiceLocator.aiSettingsStore.setPreference(InferencePreference.ON_DEVICE_ONLY)
 
-        val status = withTimeoutOrNull(180_000) {
+        // 300s, not 180s: observed live that a cold Engine load (mmap + XNNPack
+        // weight-cache rebuild for a ~2.6GB model) can take meaningfully longer
+        // than 180s under real device load/thermal variance — same "genuinely
+        // generous window, not a tighter bound that papers over device variance"
+        // reasoning as OnDeviceModelStatusTest's own download/inference waits.
+        val status = withTimeoutOrNull(300_000) {
             ServiceLocator.onDeviceLlm.status.first {
                 it is OnDeviceModelUiStatus.Available ||
                     it is OnDeviceModelUiStatus.Unavailable ||

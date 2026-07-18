@@ -241,31 +241,36 @@ class LiteRtLlm(
     }
 
     /**
-     * [call] is always get_current_time/compute_time_before/compute_time_after here —
-     * record_entry is handled by the caller before this is reached. Tool and param
-     * names arrive snake_cased (LiteRT-LM's ReflectionTool converts the Kotlin
-     * camelCase declarations in EntryTools.kt before advertising them to the model —
-     * confirmed empirically on-device, e.g. getCurrentTime -> get_current_time) —
-     * matching that here rather than fighting it via the (Experimental, unstable)
-     * ExperimentalFlags.convertCamelToSnakeCaseInToolDescription toggle.
+     * [call] is always get_current_time/convert_to_minutes/compute_time_before/
+     * compute_time_after here — record_entry is handled by the caller before this is
+     * reached. Tool and param names arrive snake_cased (LiteRT-LM's ReflectionTool
+     * converts the Kotlin camelCase declarations in EntryTools.kt before advertising
+     * them to the model — confirmed empirically on-device, e.g. getCurrentTime ->
+     * get_current_time) — matching that here rather than fighting it via the
+     * (Experimental, unstable) ExperimentalFlags.convertCamelToSnakeCaseInToolDescription
+     * toggle.
      */
     private fun dispatchDeterministicTool(call: ToolCall): Any = when (call.name) {
         "get_current_time" -> Instant.now().toString()
+        "convert_to_minutes" -> convertToMinutes(call.arguments)
         "compute_time_before" -> offsetIso(call.arguments, forward = false)
         "compute_time_after" -> offsetIso(call.arguments, forward = true)
         else -> throw IllegalArgumentException("Unexpected tool call: ${call.name}")
     }
 
+    private fun convertToMinutes(args: Map<String, Any?>): Int {
+        val amount = (args["amount"] as Number).toInt()
+        return when (args["unit"] as String) {
+            "hours" -> amount * 60
+            "days" -> amount * 1440
+            else -> amount // "minutes", or anything unrecognized: identity
+        }
+    }
+
     private fun offsetIso(args: Map<String, Any?>, forward: Boolean): String {
         val reference = Instant.parse(args["reference_iso"] as String)
-        val amount = (args["amount"] as Number).toLong().let { if (forward) it else -it }
-        val duration = when (args["unit"] as String) {
-            "minutes" -> Duration.ofMinutes(amount)
-            "hours" -> Duration.ofHours(amount)
-            "days" -> Duration.ofDays(amount)
-            else -> Duration.ZERO
-        }
-        return reference.plus(duration).toString()
+        val amountMinutes = (args["amount_minutes"] as Number).toLong().let { if (forward) it else -it }
+        return reference.plus(Duration.ofMinutes(amountMinutes)).toString()
     }
 
     private fun entryDraftFromArguments(arguments: Map<String, Any?>): EntryDraft = EntryDraft(
@@ -287,7 +292,7 @@ class LiteRtLlm(
         appendLine("Format \"task\" as plain prose by default. Only use a markdown bullet list (lines starting with \"- \") when the host clearly describes multiple distinct sub-tasks in one capture — a single task never needs a bullet. Never use headers, tables, or bold; a bullet list is the only formatting ever appropriate here, and only when it actually makes several items easier to scan than a sentence would.")
         appendLine("Set event_type only if the host is opening or closing a start/stop timer rather than describing a complete task: \"start\" for phrasing like 'I'm starting to work on X' / 'beginning work now' / 'clocking in', \"stop\" for phrasing like 'I just finished' / 'wrapping up' / 'clocking out'. Leave event_type null for a normal complete description of work already done — most messages are this case. When event_type is \"start\", duration_minutes should be null.")
         appendLine("Set miles if the host states a distance driven (e.g. 'drove 12 miles to pick up supplies') — a separate business-mileage tax deduction, not the hours above, so extract it whenever mentioned even alongside a normal task/duration. Leave miles null if no distance is mentioned.")
-        appendLine("If the host mentions when the work happened relative to now (e.g. \"4 hours ago\", \"this morning\", \"last night\", \"yesterday\") or at a specific clock time (e.g. \"at 3pm\"), call get_current_time first, then compute_time_before or compute_time_after as needed to compute the actual timestamp — never compute the arithmetic yourself. Leave resolved_activity_date_iso null if the host mentions no time reference at all — most messages are this case.")
+        appendLine("If the host mentions when the work happened relative to now (e.g. \"4 hours ago\", \"this morning\", \"last night\", \"yesterday\") or at a specific clock time (e.g. \"at 3pm\"), call get_current_time first. compute_time_before/compute_time_after take amount_minutes only — always minutes, never hours or days — so if the host's amount isn't already in minutes, call convert_to_minutes first (e.g. \"4 hours\" -> convert_to_minutes(amount=4, unit=\"hours\")) and use its result as amount_minutes. Never compute any of this arithmetic yourself — always call the tools. Leave resolved_activity_date_iso null if the host mentions no time reference at all — most messages are this case.")
         appendLine("Capture is meant to be fast, not a conversation: fill in every field you can confidently determine, and leave any field you genuinely can't determine as null. Never withhold a field or ask a question — the host reviews and fills in gaps themselves afterward, so a partial entry is the correct output, not a failure.")
         appendLine("Once you have everything you can determine, call record_entry exactly once with the final result.")
     }
