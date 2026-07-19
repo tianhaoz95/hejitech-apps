@@ -16,6 +16,11 @@ firebaseBom = "33.7.0"
 firebaseAi = "17.13.0"
 firebaseAiOnDevice = "16.0.0-beta03"
 appCheckDebug = "19.2.0"
+# Gradle plugin, not a BoM-managed library — the plugin/SDK versions are
+# independent (see google-services below, same situation). Verify like the
+# rest of this file before first sync.
+firebaseCrashlyticsPlugin = "3.0.2"
+firebasePerfPlugin = "1.4.2"
 kotlinxCoroutinesPlayServices = "1.9.0"
 kotlinxCoroutinesGuava = "1.9.0"
 kotlinxSerializationJson = "1.7.3"
@@ -57,6 +62,21 @@ firebase-functions = { group = "com.google.firebase", name = "firebase-functions
 firebase-appcheck = { group = "com.google.firebase", name = "firebase-appcheck" }
 firebase-appcheck-playintegrity = { group = "com.google.firebase", name = "firebase-appcheck-playintegrity" }
 firebase-appcheck-debug = { group = "com.google.firebase", name = "firebase-appcheck-debug", version.ref = "appCheckDebug" }
+# Crash + non-fatal-exception reporting — see ContempoApp.kt (collection
+# toggled off for USE_FIREBASE_EMULATOR builds, same pattern as App Check)
+# and AuthAwareFlow.kt (records a non-fatal on the auth-race fallback path).
+firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics-ktx" }
+# Custom traces around the app's actual slow operations (on-device
+# transcription/parsing, Firestore save) — see PerformanceTrace.kt and its
+# three call sites. Automatic screen-render/network instrumentation comes
+# free with just this dependency; the custom traces are the point though,
+# since this app's real bottlenecks are on-device ML work, not classic
+# HTTP/UI jank.
+firebase-performance = { group = "com.google.firebase", name = "firebase-perf-ktx" }
+# Remote kill switch for cloud AI usage — see RemoteConfigStore.kt. No
+# Gradle plugin needed (unlike Crashlytics/Performance above) — plain
+# runtime SDK, BoM-managed like auth/firestore/storage/functions.
+firebase-remoteconfig = { group = "com.google.firebase", name = "firebase-config-ktx" }
 # Not in the Firebase BoM yet as of this writing (per Firebase AI Logic hybrid
 # docs) — pinned directly rather than via the BoM.
 firebase-ai = { group = "com.google.firebase", name = "firebase-ai", version.ref = "firebaseAi" }
@@ -114,6 +134,10 @@ androidx-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomato
 # Periodic background sync of recordings the phone relay couldn't reach
 # immediately — see wear/capture/PendingCaptureSyncWorker.kt.
 androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workManager" }
+# TestListenableWorkerBuilder — exercises PendingCaptureSyncWorker.doWork()
+# directly (see wear/src/androidTest/.../PendingCaptureSyncWorkerTest.kt)
+# without needing a real WorkManager scheduler/constraints engine.
+androidx-work-testing = { group = "androidx.work", name = "work-testing", version.ref = "workManager" }
 
 # Cold-start splash screen (animated brand mark) — see MainActivity.kt and
 # res/values/themes.xml's Theme.Contempo.Starting.
@@ -126,3 +150,5 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 google-services = { id = "com.google.gms.google-services", version = "4.4.2" }
+firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "firebaseCrashlyticsPlugin" }
+firebase-perf = { id = "com.google.firebase.firebase-perf", version.ref = "firebasePerfPlugin" }

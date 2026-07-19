@@ -38,6 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -59,6 +60,7 @@ fun SettingsScreen(
 ) {
     val account = viewModel.currentAccount()
     val preference by viewModel.inferencePreference.collectAsState()
+    val cloudAiEnabled by viewModel.cloudAiEnabled.collectAsState()
     val onDeviceStatus by viewModel.onDeviceModelStatus.collectAsState()
     val showLanguageSelector by viewModel.showLanguageSelector.collectAsState()
     val exportState by exportViewModel.uiState.collectAsState()
@@ -135,7 +137,17 @@ fun SettingsScreen(
                 InferenceOptionRow(
                     label = stringResource(R.string.settings_ai_cloud_only),
                     selected = preference == InferencePreference.CLOUD_ONLY,
+                    enabled = cloudAiEnabled,
                     onClick = { viewModel.setInferencePreference(InferencePreference.CLOUD_ONLY) },
+                )
+            }
+
+            if (!cloudAiEnabled) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    stringResource(R.string.settings_ai_cloud_disabled_notice),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
@@ -369,14 +381,15 @@ private fun formatEta(totalSeconds: Long): String {
 }
 
 @Composable
-private fun InferenceOptionRow(label: String, selected: Boolean, onClick: () -> Unit) {
+private fun InferenceOptionRow(label: String, selected: Boolean, onClick: () -> Unit, enabled: Boolean = true) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .selectable(selected = selected, onClick = onClick, role = Role.RadioButton)
+            .selectable(selected = selected, enabled = enabled, onClick = onClick, role = Role.RadioButton)
+            .alpha(if (enabled) 1f else 0.5f)
             .padding(vertical = 8.dp),
     ) {
-        RadioButton(selected = selected, onClick = null)
+        RadioButton(selected = selected, onClick = null, enabled = enabled)
         Spacer(Modifier.height(0.dp))
         Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(start = 12.dp))
     }

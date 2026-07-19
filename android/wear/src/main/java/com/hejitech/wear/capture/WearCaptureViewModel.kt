@@ -15,10 +15,12 @@ import com.hejitech.core.model.EntryStatus
 import com.google.android.gms.location.LocationServices
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
+import com.google.firebase.firestore.FirebaseFirestoreException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -70,6 +72,23 @@ class WearCaptureViewModel : ViewModel() {
         entryRepository.observeEntries()
             .map { entries ->
                 entries.filter { it.statusEnum == EntryStatus.CONFIRMED }.sumOf { it.durationMinutes } / 60.0
+            }
+            // A stale/invalid session (e.g. a corrupted local auth cache, or
+            // the emulator-token-not-yet-propagated race right after a fresh
+            // sign-in) makes Firestore reject this listener with
+            // PERMISSION_DENIED, which otherwise propagates as an uncaught
+            // exception in viewModelScope and crashes the whole watch
+            // process — same failure mode already fixed on the phone side
+            // (see DashboardViewModel/CaptureViewModel's identical .catch).
+            .catch { e ->
+                if (e is FirebaseFirestoreException &&
+                    (e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED ||
+                        e.code == FirebaseFirestoreException.Code.UNAUTHENTICATED)
+                ) {
+                    authManager.signOut()
+                    _uiState.update { it.copy(isSignedIn = false) }
+                }
+                emit(0.0)
             }
             .onEach { hours -> _uiState.update { it.copy(confirmedHours = hours) } }
             .launchIn(viewModelScope)

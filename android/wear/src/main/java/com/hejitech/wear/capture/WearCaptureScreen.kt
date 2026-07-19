@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material.Chip
@@ -170,6 +171,7 @@ private fun MicButton(isRecording: Boolean, amplitude: Float, onClick: () -> Uni
     Box(contentAlignment = Alignment.Center) {
         Box(
             modifier = Modifier
+                .testTag("mic_button")
                 .size(76.dp)
                 .clip(CircleShape)
                 .background(if (isRecording) MaterialTheme.colors.error else MaterialTheme.colors.primary)

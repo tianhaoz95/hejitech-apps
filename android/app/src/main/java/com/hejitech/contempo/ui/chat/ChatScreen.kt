@@ -59,6 +59,7 @@ import com.hejitech.contempo.R
 import com.hejitech.contempo.agent.AiAvailability
 import com.hejitech.contempo.agent.ChatMessage
 import com.hejitech.contempo.agent.ChatRole
+import com.hejitech.contempo.agent.GenerationEvent
 import com.hejitech.contempo.ui.aiAvailabilityMessage
 import com.hejitech.contempo.ui.rememberCameraCapture
 import com.hejitech.contempo.ui.theme.Eyebrow
@@ -70,6 +71,18 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
 
     LaunchedEffect(uiState.messages.size) {
         if (uiState.messages.isNotEmpty()) listState.animateScrollToItem(uiState.messages.size - 1)
+    }
+    // Follow the growing answer during streaming — messages.size alone doesn't
+    // change while a chunk-by-chunk answer is still in progress, so without this
+    // the list stays pinned at the user's own message and the reply appears
+    // "frozen" even though it's actively generating further down. A plain
+    // scrollToItem(index) only brings the item's *top* into view, which still
+    // leaves a long answer's growing tail (and the token counter) below the
+    // fold — the huge scrollOffset pushes as far into the item as it has
+    // content for, i.e. keeps the tail pinned to the bottom of the viewport.
+    // No animation, since this fires once per chunk.
+    LaunchedEffect(uiState.streamingStatus) {
+        if (uiState.isSending) listState.scrollToItem(uiState.messages.size, scrollOffset = 1_000_000)
     }
 
     val cameraCapture = rememberCameraCapture { bitmap, _ -> viewModel.attachImage(bitmap) }
@@ -134,7 +147,7 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
             LazyColumn(modifier = Modifier.weight(1f), state = listState, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(uiState.messages) { message -> ChatBubble(message) }
                 if (uiState.isSending) {
-                    item { CircularProgressIndicator(modifier = Modifier.padding(8.dp), strokeWidth = 2.dp) }
+                    item { SendingIndicator(uiState.streamingStatus) }
                 }
             }
         }
@@ -280,6 +293,38 @@ private fun ClearHistoryDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
             }
         },
     )
+}
+
+/**
+ * Live "is this actually doing something" signal for the pending AI answer —
+ * a "Thinking…" spinner during prefill (also the fallback for a cloud/image
+ * answer, where no events ever fire), then the growing answer itself once
+ * chunks start arriving, with a running token count underneath. See
+ * GenerationEvent's kdoc for what "tokens" means here (a callback-count
+ * proxy, not an exact BPE count).
+ */
+@Composable
+private fun SendingIndicator(status: GenerationEvent?) {
+    when (status) {
+        is GenerationEvent.Streaming -> Column {
+            ChatBubble(ChatMessage(ChatRole.AGENT, status.textSoFar))
+            Text(
+                stringResource(R.string.chat_tokens_generated, status.chunkCount),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 4.dp, top = 2.dp),
+            )
+        }
+        is GenerationEvent.Prefilling, null -> Row(verticalAlignment = Alignment.CenterVertically) {
+            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+            Spacer(Modifier.width(8.dp))
+            Text(
+                stringResource(R.string.chat_thinking),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }
 
 @Composable

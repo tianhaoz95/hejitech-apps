@@ -43,6 +43,18 @@ interface OnDeviceLlm {
     suspend fun generateFromImage(bitmap: Bitmap, prompt: String): String?
 
     /**
+     * Same contract as generateText (null on any failure/unsupported), but
+     * reports live progress via [onEvent] as generation actually happens —
+     * [GenerationEvent.Prefilling] once immediately, then
+     * [GenerationEvent.Streaming] as each chunk of the answer arrives. A
+     * runtime with no real streaming support may just fire Prefilling then a
+     * single Streaming call with the full text — callers should treat the
+     * event stream as a nice-to-have UI signal, not assume any particular
+     * chunk cadence.
+     */
+    suspend fun generateTextStream(prompt: String, onEvent: (GenerationEvent) -> Unit): String?
+
+    /**
      * Structured entry extraction via tool-calling, when the runtime supports it. Null
      * on any failure — unsupported, not ready, no tool call was produced (model replied
      * in prose instead), or a generation error — same "unavailable" contract as

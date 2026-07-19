@@ -25,7 +25,9 @@ import com.hejitech.contempo.agent.WhisperTranscriber
 import com.hejitech.contempo.agent.aiAvailability
 import com.hejitech.contempo.capture.PendingCaptureSyncWorker
 import com.hejitech.contempo.data.ServiceLocator
+import com.hejitech.contempo.data.recoverFromAuthRaceOrSignOut
 import com.hejitech.contempo.mileage.MileageTrackingService
+import com.hejitech.contempo.timer.OngoingWorkNotificationService
 import com.hejitech.contempo.wear.AudioCaptureProcessor
 import com.hejitech.contempo.wear.AudioProcessingStage
 import com.hejitech.contempo.wear.PendingAudioProcessWorker
@@ -35,14 +37,12 @@ import com.hejitech.core.model.CaptureSource
 import com.hejitech.core.model.Entry
 import com.google.android.gms.location.LocationServices
 import com.google.firebase.Timestamp
-import com.google.firebase.firestore.FirebaseFirestoreException
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -175,18 +175,10 @@ class CaptureViewModel : ViewModel() {
         // A stale/invalid session (e.g. a corrupted local auth cache) makes
         // Firestore reject this listener with PERMISSION_DENIED, which
         // otherwise propagates as an uncaught exception in viewModelScope
-        // and crashes the whole app. Sign out so AuthGate falls back to the
-        // sign-in screen instead; any other error just degrades to "no open
-        // trip" rather than crashing.
-        .catch { e ->
-            if (e is FirebaseFirestoreException &&
-                (e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED ||
-                    e.code == FirebaseFirestoreException.Code.UNAUTHENTICATED)
-            ) {
-                ServiceLocator.authManager.signOut()
-            }
-            emit(null)
-        }
+        // and crashes the whole app. See recoverFromAuthRaceOrSignOut's kdoc
+        // for why this retries once before signing out — a genuinely stale
+        // session still degrades to "no open trip" the same as before.
+        .recoverFromAuthRaceOrSignOut { null }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     /**
@@ -197,15 +189,7 @@ class CaptureViewModel : ViewModel() {
      */
     val openTimerEntry: StateFlow<Entry?> = entryRepository.observeEntries()
         .map { entries -> entries.find { it.inProgress && !it.isTrip } }
-        .catch { e ->
-            if (e is FirebaseFirestoreException &&
-                (e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED ||
-                    e.code == FirebaseFirestoreException.Code.UNAUTHENTICATED)
-            ) {
-                ServiceLocator.authManager.signOut()
-            }
-            emit(null)
-        }
+        .recoverFromAuthRaceOrSignOut { null }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     /** See QuickCaptureStatusUiState's kdoc. */
@@ -542,6 +526,10 @@ class CaptureViewModel : ViewModel() {
             source = CaptureSource.VOICE,
             startedAt = Timestamp.now(),
         )
+        // Persistent notification so the timer can be marked done without
+        // reopening the app — see OngoingWorkNotificationService's kdoc.
+        // Decorative, never worth failing the actual timer start over.
+        runCatching { OngoingWorkNotificationService.start(ServiceLocator.appContext) }
         // No bottom confirmation text here — the "in progress" banner at the
         // top of the screen (driven by openTimerEntry) already shows the
         // clock is running the moment this suspends, live duration included.
@@ -567,6 +555,7 @@ class CaptureViewModel : ViewModel() {
                 source = CaptureSource.MANUAL,
                 startedAt = Timestamp.now(),
             )
+            runCatching { OngoingWorkNotificationService.start(ServiceLocator.appContext) }
             // Same reasoning as handleTimerStart above — the top banner is
             // the confirmation, no separate bottom message needed.
             _uiState.value = CaptureUiState()

@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.hejitech.contempo.data.ServiceLocator
+import com.hejitech.contempo.data.recoverFromAuthRaceOrSignOut
+import com.hejitech.contempo.data.traced
 import com.hejitech.core.model.CaptureSource
 import com.hejitech.core.model.Entry
 import com.hejitech.core.model.EntryCategory
@@ -12,7 +14,6 @@ import com.hejitech.core.model.EntryStatus
 import com.hejitech.core.model.Property
 import com.google.firebase.Firebase
 import com.google.firebase.Timestamp
-import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.firestore
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
@@ -21,7 +22,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -132,14 +132,7 @@ class ConfirmViewModel(
         entryRepository.observeProperties()
             // See CaptureViewModel.openTripEntry's comment — same crash risk
             // here since this listener is attached unconditionally in init.
-            .catch { e ->
-                if (e is FirebaseFirestoreException &&
-                    (e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED ||
-                        e.code == FirebaseFirestoreException.Code.UNAUTHENTICATED)
-                ) {
-                    ServiceLocator.authManager.signOut()
-                }
-            }
+            .recoverFromAuthRaceOrSignOut { emptyList() }
             .onEach { properties -> _uiState.value = _uiState.value.copy(properties = properties) }
             .launchIn(viewModelScope)
     }
@@ -314,8 +307,15 @@ class ConfirmViewModel(
         )
         // set()-based, so re-running this after a timed-out attempt (same
         // resolvedEntryId every time) overwrites the same document instead
-        // of risking a duplicate via createEntry's add().
-        entryRepository.updateEntry(resolvedEntryId, entry)
+        // of risking a duplicate via createEntry's add(). Traced by itself
+        // (not the whole save() call, which also does local Entry
+        // construction and the best-effort photo upload below) since this
+        // write is the exact operation SAVE_TIMEOUT_MS/
+        // resetFirestoreConnection exist for — the known-flaky one worth
+        // isolated visibility into.
+        traced("entry_save", mapOf("status" to status.name)) {
+            entryRepository.updateEntry(resolvedEntryId, entry)
+        }
         val savedEntryId = resolvedEntryId
 
         // Best-effort: a failed upload shouldn't block the entry itself

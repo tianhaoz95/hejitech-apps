@@ -93,6 +93,16 @@ class GeminiNanoLlm(
     // OnDeviceLlm's kdoc); LiteRtLlm is the only implementation with real tool-calling.
     override suspend fun extractEntryDraft(rawText: String, knownProperties: List<String>): EntryDraft? = null
 
+    // No real streaming support in this (currently unused) implementation —
+    // graceful degrade rather than null, so chat still works if this backend
+    // were ever swapped back in, just without a live per-chunk indicator.
+    override suspend fun generateTextStream(prompt: String, onEvent: (GenerationEvent) -> Unit): String? {
+        onEvent(GenerationEvent.Prefilling)
+        val text = generateText(prompt) ?: return null
+        onEvent(GenerationEvent.Streaming(text, 1))
+        return text
+    }
+
     @OptIn(PublicPreviewAPI::class)
     private suspend fun checkAndMaybeDownload() {
         _status.value = OnDeviceModelUiStatus.Checking

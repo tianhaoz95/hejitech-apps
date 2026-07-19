@@ -268,6 +268,18 @@ fun CaptureScreen(
                 )
             }
         } else {
+            openTripEntry?.let { tripEntry ->
+                OngoingTripBanner(
+                    entry = tripEntry,
+                    isGps = gpsTripOpen,
+                    enabled = !busy,
+                    onTap = {
+                        if (gpsTripOpen) MileageTrackingService.stop(context) else odometerCameraCapture.launch()
+                    },
+                )
+                Spacer(Modifier.height(24.dp))
+            }
+
             openTimerEntry?.let { timerEntry ->
                 OngoingWorkBanner(
                     entry = timerEntry,
@@ -901,6 +913,79 @@ private fun OngoingWorkBanner(
                 )
                 Text(
                     stringResource(R.string.capture_ongoing_work_tap_hint),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Mirrors OngoingWorkBanner above for a running mileage trip — before this,
+ * the only sign a trip was still open was the "Other" menu button's label/
+ * tint swapping to "Trip in progress" (see otherContentDescription above),
+ * easy to miss since it's collapsed behind a menu. GPS trips tap-to-stop the
+ * same way the work timer taps-to-complete; odometer trips instead launch
+ * the ending odometer photo capture, since that's how that capture method
+ * actually closes a trip (see [isGps]).
+ */
+@Composable
+private fun OngoingTripBanner(
+    entry: com.hejitech.core.model.Entry,
+    isGps: Boolean,
+    enabled: Boolean,
+    onTap: () -> Unit,
+) {
+    var nowSeconds by remember(entry.activityDate) { mutableStateOf(System.currentTimeMillis() / 1000) }
+    LaunchedEffect(entry.activityDate) {
+        while (true) {
+            nowSeconds = System.currentTimeMillis() / 1000
+            delay(1000)
+        }
+    }
+    val elapsedSeconds = (nowSeconds - entry.activityDate.seconds).coerceAtLeast(0)
+
+    ContempoCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onTap),
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Filled.LocationOn,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    stringResource(R.string.capture_ongoing_trip_title),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    formatElapsedDuration(elapsedSeconds),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                // Only GPS trips checkpoint live distance (see
+                // MileageTrackingService.locationCallback); an odometer trip
+                // won't know its distance until the ending photo is logged.
+                if (isGps) {
+                    Text(
+                        stringResource(R.string.capture_ongoing_trip_distance, "%.2f".format(entry.miles)),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Text(
+                    stringResource(
+                        if (isGps) R.string.capture_ongoing_trip_tap_hint_gps
+                        else R.string.capture_ongoing_trip_tap_hint_odometer
+                    ),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

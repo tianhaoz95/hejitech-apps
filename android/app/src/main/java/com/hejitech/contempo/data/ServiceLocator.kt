@@ -3,6 +3,7 @@ package com.hejitech.contempo.data
 import android.content.Context
 import com.hejitech.contempo.agent.AgentClient
 import com.hejitech.contempo.agent.AudioRecorder
+import com.hejitech.contempo.agent.InferencePreference
 import com.hejitech.contempo.agent.LiteRtLlm
 import com.hejitech.contempo.agent.OnDeviceLlm
 import com.hejitech.contempo.agent.WhisperTranscriber
@@ -46,6 +47,8 @@ object ServiceLocator {
         private set
     lateinit var aiSettingsStore: AiSettingsStore
         private set
+    lateinit var remoteConfigStore: RemoteConfigStore
+        private set
     lateinit var onDeviceLlm: OnDeviceLlm
         private set
     lateinit var audioRecorder: AudioRecorder
@@ -87,6 +90,7 @@ object ServiceLocator {
         captureLanguageStore = CaptureLanguageStore(context)
         captureLanguageSelectorVisibilityStore = CaptureLanguageSelectorVisibilityStore(context)
         aiSettingsStore = AiSettingsStore(context)
+        remoteConfigStore = RemoteConfigStore()
         // LiteRtLlm (Gemma 4 E2B via LiteRT-LM) is the active OnDeviceLlm —
         // see OnDeviceLlm's kdoc for why this replaced Gemini Nano/AICore
         // (GeminiNanoLlm, kept but unused). Swapping back, or to a future
@@ -95,7 +99,19 @@ object ServiceLocator {
         agentClient = AgentClient(
             onDeviceLlm = onDeviceLlm,
             functions = Firebase.functions,
-            inferencePreference = { aiSettingsStore.preference.value },
+            // Remotely disabling cloud AI (RemoteConfigStore's kill switch)
+            // overrides the user's own stored preference, not just adds a
+            // separate check — a user who picked CLOUD_ONLY or
+            // PREFER_ON_DEVICE before the switch flipped shouldn't need to
+            // change their setting for the override to take effect.
+            inferencePreference = {
+                val stored = aiSettingsStore.preference.value
+                if (!remoteConfigStore.cloudAiEnabled.value && stored != InferencePreference.ON_DEVICE_ONLY) {
+                    InferencePreference.ON_DEVICE_ONLY
+                } else {
+                    stored
+                }
+            },
         )
         authManager = AuthManager(context.applicationContext)
         audioRecorder = AudioRecorder(context.applicationContext)

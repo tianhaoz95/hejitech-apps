@@ -31,10 +31,13 @@ class SettingsViewModel : ViewModel() {
     private val authManager = ServiceLocator.authManager
     private val onDeviceLlm = ServiceLocator.onDeviceLlm
     private val captureLanguageSelectorVisibilityStore = ServiceLocator.captureLanguageSelectorVisibilityStore
+    private val remoteConfigStore = ServiceLocator.remoteConfigStore
 
     val inferencePreference: StateFlow<InferencePreference> = aiSettingsStore.preference
     val onDeviceModelStatus: StateFlow<OnDeviceModelUiStatus> = onDeviceLlm.status
     val showLanguageSelector: StateFlow<Boolean> = captureLanguageSelectorVisibilityStore.visible
+    /** See RemoteConfigStore's kdoc — "Cloud only" shouldn't be selectable (or read as available) while this is false. */
+    val cloudAiEnabled: StateFlow<Boolean> = remoteConfigStore.cloudAiEnabled
 
     private val _deleteAccountState = MutableStateFlow(DeleteAccountUiState())
     val deleteAccountState: StateFlow<DeleteAccountUiState> = _deleteAccountState.asStateFlow()

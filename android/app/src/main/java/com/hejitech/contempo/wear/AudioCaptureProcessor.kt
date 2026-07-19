@@ -6,6 +6,7 @@ import com.hejitech.contempo.agent.ParseOutcome
 import com.hejitech.contempo.agent.TimerIntent
 import com.hejitech.contempo.agent.TimerIntentClassifier
 import com.hejitech.contempo.data.ServiceLocator
+import com.hejitech.contempo.timer.OngoingWorkNotificationService
 import com.hejitech.core.audio.WavAudio
 import com.hejitech.core.data.PendingAudioCapture
 import com.hejitech.core.model.CaptureSource
@@ -145,6 +146,11 @@ object AudioCaptureProcessor {
                 source = CaptureSource.VOICE,
                 startedAt = capture.capturedAt,
             )
+            // Best-effort — this runs from a plain (non-expedited) periodic
+            // WorkManager job when the app isn't foregrounded, where
+            // Android 12+ can refuse a background foreground-service start;
+            // never worth failing the actual timer-start entry over.
+            runCatching { OngoingWorkNotificationService.start(ServiceLocator.appContext) }
             return
         }
         if (intent == TimerIntent.STOP) {

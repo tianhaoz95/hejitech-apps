@@ -7,6 +7,7 @@ import com.hejitech.contempo.agent.AiAvailability
 import com.hejitech.contempo.agent.AskOutcome
 import com.hejitech.contempo.agent.ChatMessage
 import com.hejitech.contempo.agent.ChatRole
+import com.hejitech.contempo.agent.GenerationEvent
 import com.hejitech.contempo.agent.UserStats
 import com.hejitech.contempo.agent.aiAvailability
 import com.hejitech.contempo.data.ServiceLocator
@@ -29,6 +30,8 @@ data class ChatUiState(
     val isTranscribing: Boolean = false,
     val errorMessage: String? = null,
     val aiAvailability: AiAvailability = AiAvailability.Ready,
+    /** Live on-device generation progress while isSending — see AgentClient.askQuestionStream. Null outside a streamed send (not sending, or a cloud/image answer that never emits events). */
+    val streamingStatus: GenerationEvent? = null,
 )
 
 /**
@@ -128,6 +131,7 @@ class ChatViewModel : ViewModel() {
             inputText = "",
             pendingImage = null,
             isSending = true,
+            streamingStatus = null,
             errorMessage = null,
         )
 
@@ -146,15 +150,26 @@ class ChatViewModel : ViewModel() {
                 UserStats(0.0, MaterialParticipationTest.THRESHOLD_HOURS, MaterialParticipationTest.NAME)
             )
 
-            when (val outcome = agentClient.askQuestion(history, effectiveQuestion, stats, image)) {
+            // Streaming progress only exists for the text-only on-device path
+            // (see askQuestionStream's kdoc) — a photo question falls back to
+            // the plain non-streaming askQuestion, same as before this feature.
+            val outcome = if (image != null) {
+                agentClient.askQuestion(history, effectiveQuestion, stats, image)
+            } else {
+                agentClient.askQuestionStream(history, effectiveQuestion, stats) { event ->
+                    _uiState.value = _uiState.value.copy(streamingStatus = event)
+                }
+            }
+            when (outcome) {
                 is AskOutcome.Success -> {
                     _uiState.value = _uiState.value.copy(
                         messages = _uiState.value.messages + ChatMessage(ChatRole.AGENT, outcome.answer),
                         isSending = false,
+                        streamingStatus = null,
                     )
                 }
                 is AskOutcome.Failure -> {
-                    _uiState.value = _uiState.value.copy(isSending = false, errorMessage = outcome.message)
+                    _uiState.value = _uiState.value.copy(isSending = false, streamingStatus = null, errorMessage = outcome.message)
                 }
             }
         }

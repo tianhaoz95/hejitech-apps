@@ -1,6 +1,7 @@
 package com.hejitech.contempo.agent
 
 import android.graphics.Bitmap
+import com.hejitech.contempo.data.traced
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.FirebaseFunctionsException
 import kotlinx.coroutines.tasks.await
@@ -49,27 +50,32 @@ class AgentClient(
         rawText: String,
         knownProperties: List<String>,
         onStage: (ParsingStage) -> Unit = {},
-    ): ParseOutcome {
-        return when (inferencePreference()) {
+    ): ParseOutcome = traced("llm_parse_entry", mapOf("inference_preference" to inferencePreference().name)) {
+        val outcome = when (inferencePreference()) {
             InferencePreference.CLOUD_ONLY -> {
                 onStage(ParsingStage.STRUCTURING)
+                putAttribute("path_taken", "cloud")
                 cloudParseEntry(rawText, knownProperties)
             }
 
             InferencePreference.ON_DEVICE_ONLY -> {
                 onStage(ParsingStage.TRYING_ON_DEVICE)
+                putAttribute("path_taken", "on_device")
                 onDeviceExtractEntry(rawText, knownProperties)
                     ?: ParseOutcome.Failure("On-device model unavailable — no cloud fallback (On-device only is selected in Settings).")
             }
 
             InferencePreference.PREFER_ON_DEVICE -> {
                 onStage(ParsingStage.TRYING_ON_DEVICE)
-                onDeviceExtractEntry(rawText, knownProperties) ?: run {
+                onDeviceExtractEntry(rawText, knownProperties)?.also { putAttribute("path_taken", "on_device") } ?: run {
                     onStage(ParsingStage.FALLING_BACK_TO_CLOUD)
+                    putAttribute("path_taken", "cloud_fallback")
                     cloudParseEntry(rawText, knownProperties)
                 }
             }
         }
+        putAttribute("outcome", if (outcome is ParseOutcome.Success) "success" else "failure")
+        outcome
     }
 
     /**
@@ -121,6 +127,34 @@ class AgentClient(
             InferencePreference.PREFER_ON_DEVICE ->
                 onDeviceReadOdometer(bitmap, prompt)
                     ?: OdometerReadOutcome.Failure("This device's on-device model isn't ready for photo understanding yet, and cloud odometer reading isn't built yet — enter the mileage manually.")
+        }
+    }
+
+    /**
+     * Text-only variant of askQuestion that reports live generation progress
+     * via [onEvent] on the on-device path (see OnDeviceLlm.generateTextStream)
+     * — no image param, since photo questions don't have a verified streaming
+     * story yet (see askQuestion's own image handling). Cloud calls (CLOUD_ONLY,
+     * or PREFER_ON_DEVICE's fallback) never stream — [onEvent] simply won't
+     * fire for those, same as an ordinary non-streaming answer.
+     */
+    suspend fun askQuestionStream(
+        history: List<ChatMessage>,
+        question: String,
+        stats: UserStats,
+        onEvent: (GenerationEvent) -> Unit,
+    ): AskOutcome {
+        val prompt = buildChatPrompt(history, question, stats)
+        return when (inferencePreference()) {
+            InferencePreference.CLOUD_ONLY ->
+                cloudAskQuestion(history, question, stats)
+
+            InferencePreference.ON_DEVICE_ONLY ->
+                onDeviceAskQuestionStream(prompt, onEvent)
+                    ?: AskOutcome.Failure("On-device model unavailable — no cloud fallback (On-device only is selected in Settings).")
+
+            InferencePreference.PREFER_ON_DEVICE ->
+                onDeviceAskQuestionStream(prompt, onEvent) ?: cloudAskQuestion(history, question, stats)
         }
     }
 
@@ -225,6 +259,11 @@ class AgentClient(
 
     private suspend fun onDeviceAskQuestion(prompt: String): AskOutcome? {
         val text = onDeviceLlm.generateText(prompt) ?: return null
+        return AskOutcome.Success(text, ParseSource.ON_DEVICE)
+    }
+
+    private suspend fun onDeviceAskQuestionStream(prompt: String, onEvent: (GenerationEvent) -> Unit): AskOutcome? {
+        val text = onDeviceLlm.generateTextStream(prompt, onEvent) ?: return null
         return AskOutcome.Success(text, ParseSource.ON_DEVICE)
     }
 

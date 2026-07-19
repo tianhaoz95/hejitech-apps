@@ -7,10 +7,12 @@ import android.util.Log
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Content
 import com.google.ai.edge.litertlm.Contents
+import com.google.ai.edge.litertlm.Conversation
 import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.Message
+import com.google.ai.edge.litertlm.MessageCallback
 import com.google.ai.edge.litertlm.ToolCall
 import com.google.ai.edge.litertlm.ToolProvider
 import com.google.ai.edge.litertlm.tool
@@ -24,7 +26,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.ByteArrayOutputStream
 import java.time.Duration
 import java.time.Instant
@@ -36,6 +40,17 @@ import java.time.Instant
  * RECURRING_TOOL_CALL_LIMIT=25 at a scale appropriate to this task).
  */
 private const val MAX_TOOL_LOOP_ITERATIONS = 6
+
+/**
+ * conversation.sendMessage() has been observed to just never return on some
+ * devices — the native call gets wedged with no exception and no callback,
+ * so without a bound here a single capture hangs the Capture screen forever
+ * (see [Conversation.sendMessageBounded]'s kdoc). 45s is generous for a
+ * single CPU-backend Gemma round (including a tool-call round, which is
+ * shorter than a full prose response) while still giving up in bounded time
+ * rather than leaving the user staring at a spinner indefinitely.
+ */
+private const val ON_DEVICE_RESPONSE_TIMEOUT_MS = 45_000L
 
 private const val TAG = "LiteRtLlm"
 
@@ -188,6 +203,31 @@ class LiteRtLlm(
 
     override suspend fun generateText(prompt: String): String? = generate(Contents.of(prompt))
 
+    /**
+     * Uses the plain MessageCallback overload of sendMessageAsync, not the
+     * Flow<Message> one — confirmed on-device that the Flow overload's
+     * internal callbackFlow bridging throws a NoSuchMethodError on
+     * SendChannel.close$default (a kotlinx-coroutines ABI mismatch between
+     * what litertlm-android:0.14.0 was compiled against and what's in this
+     * app's dependency graph). The plain callback path never goes through
+     * that bridging code, and streams genuinely incrementally: confirmed
+     * live, ~40 separate chunks for a two-sentence answer, each a new
+     * fragment of text (not the cumulative total) arriving every ~30-90ms.
+     */
+    override suspend fun generateTextStream(prompt: String, onEvent: (GenerationEvent) -> Unit): String? {
+        val eng = ensureEngine() ?: return null
+        return try {
+            withContext(Dispatchers.Default) {
+                eng.createConversation().use { conversation ->
+                    onEvent(GenerationEvent.Prefilling)
+                    conversation.sendMessageAsyncBounded(prompt, onEvent)
+                }
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     override suspend fun generateFromImage(bitmap: Bitmap, prompt: String): String? {
         val jpegBytes = withContext(Dispatchers.Default) {
             ByteArrayOutputStream().use { stream ->
@@ -208,7 +248,8 @@ class LiteRtLlm(
                     automaticToolCalling = false,
                 )
                 eng.createConversation(config).use { conversation ->
-                    var message = conversation.sendMessage(rawText)
+                    var message = conversation.sendMessageBounded { sendMessage(rawText) }
+                        ?: return@withContext null
                     repeat(MAX_TOOL_LOOP_ITERATIONS) {
                         val recordCall = message.toolCalls.firstOrNull { it.name == "record_entry" }
                         if (recordCall != null) return@withContext entryDraftFromArguments(recordCall.arguments)
@@ -222,7 +263,9 @@ class LiteRtLlm(
                         val responses = pending.map { call ->
                             Content.ToolResponse(call.name, dispatchDeterministicTool(call))
                         }
-                        message = conversation.sendMessage(Message.tool(Contents.of(*responses.toTypedArray())))
+                        message = conversation.sendMessageBounded {
+                            sendMessage(Message.tool(Contents.of(*responses.toTypedArray())))
+                        } ?: return@withContext null
                     }
                     Log.w(TAG, "extractEntryDraft: exceeded MAX_TOOL_LOOP_ITERATIONS ($MAX_TOOL_LOOP_ITERATIONS) without a record_entry call")
                     null
@@ -302,7 +345,8 @@ class LiteRtLlm(
         return try {
             withContext(Dispatchers.Default) {
                 eng.createConversation().use { conversation ->
-                    val response = conversation.sendMessage(contents)
+                    val response = conversation.sendMessageBounded { sendMessage(contents) }
+                        ?: return@withContext null
                     response.contents.contents
                         .filterIsInstance<Content.Text>()
                         .joinToString("") { it.text }
@@ -314,4 +358,68 @@ class LiteRtLlm(
             null
         }
     }
+}
+
+/**
+ * conversation.sendMessage() has been observed to just never return on some
+ * devices (no exception, no result) — with no timeout here, that wedges the
+ * calling coroutine forever, which is exactly what made voice capture hang
+ * indefinitely once it reached parsing (see ON_DEVICE_RESPONSE_TIMEOUT_MS's
+ * kdoc). withTimeoutOrNull only stops *waiting* on the call, so on a timeout
+ * this also calls cancelProcess() to actually unblock the native side —
+ * otherwise the same wedged conversation would just time out again on every
+ * later call built on top of it.
+ */
+private suspend fun Conversation.sendMessageBounded(block: suspend Conversation.() -> Message): Message? =
+    withTimeoutOrNull(ON_DEVICE_RESPONSE_TIMEOUT_MS) { block() } ?: run {
+        Log.w(TAG, "on-device response timed out after ${ON_DEVICE_RESPONSE_TIMEOUT_MS}ms — cancelling")
+        runCatching { cancelProcess() }
+        null
+    }
+
+/**
+ * Same wedge/timeout risk as sendMessageBounded, adapted for the callback-
+ * based async API: accumulates each chunk (onMessage delivers a new
+ * fragment, not the running total) and fires [onEvent] live as they arrive,
+ * resolving to the full accumulated text on completion. Deliberately does
+ * NOT use sendMessageAsync's Flow<Message> overload — see
+ * generateTextStream's kdoc for the real crash that ruled that out.
+ */
+private suspend fun Conversation.sendMessageAsyncBounded(
+    text: String,
+    onEvent: (GenerationEvent) -> Unit,
+): String? {
+    val accumulated = StringBuilder()
+    var chunkCount = 0
+    val result = withTimeoutOrNull(ON_DEVICE_RESPONSE_TIMEOUT_MS) {
+        suspendCancellableCoroutine<String> { cont ->
+            sendMessageAsync(
+                text,
+                object : MessageCallback {
+                    override fun onMessage(message: Message) {
+                        val chunk = message.contents.contents
+                            .filterIsInstance<Content.Text>()
+                            .joinToString("") { it.text }
+                        accumulated.append(chunk)
+                        chunkCount++
+                        onEvent(GenerationEvent.Streaming(accumulated.toString(), chunkCount))
+                    }
+
+                    override fun onDone() {
+                        if (cont.isActive) cont.resumeWith(Result.success(accumulated.toString()))
+                    }
+
+                    override fun onError(throwable: Throwable) {
+                        if (cont.isActive) cont.resumeWith(Result.failure(throwable))
+                    }
+                },
+                emptyMap(),
+            )
+        }
+    }
+    if (result == null) {
+        Log.w(TAG, "on-device streaming response timed out after ${ON_DEVICE_RESPONSE_TIMEOUT_MS}ms — cancelling")
+        runCatching { cancelProcess() }
+    }
+    return result
 }

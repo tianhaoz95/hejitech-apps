@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -21,6 +22,7 @@ import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.firebase.Timestamp
+import com.hejitech.contempo.MainActivity
 import com.hejitech.contempo.R
 import com.hejitech.contempo.data.ServiceLocator
 import com.hejitech.core.model.CaptureSource
@@ -33,6 +35,7 @@ import kotlin.math.roundToInt
 
 private const val CHANNEL_ID = "mileage_trip"
 private const val NOTIFICATION_ID = 1002
+private const val ACTION_STOP_TRIP = "com.hejitech.contempo.mileage.ACTION_STOP_TRIP"
 
 /** Roughly every 10s, plus a minimum-displacement filter — cuts GPS jitter noise without needing a dedicated smoothing pass. */
 private const val UPDATE_INTERVAL_MS = 10_000L
@@ -99,7 +102,17 @@ class MileageTrackingService : Service() {
         startLocationUpdates()
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Same "Stop trip" action as the notification's button — stopSelf()
+        // runs the normal onDestroy teardown below (removes location
+        // updates, writes the final accumulated distance via
+        // mileageTripCoordinator.handleEndTrip), same as a manual
+        // MileageTrackingService.stop() call from the Capture screen.
+        if (intent?.action == ACTION_STOP_TRIP) {
+            stopSelf()
+        }
+        return START_STICKY
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -129,19 +142,32 @@ class MileageTrackingService : Service() {
 
     private fun ensureChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(CHANNEL_ID, "Mileage trip", NotificationManager.IMPORTANCE_LOW)
+            // DEFAULT, not LOW — see OngoingWorkNotificationService's
+            // ensureChannel kdoc: on OEM shades that treat IMPORTANCE_LOW
+            // channels as "silent" (e.g. ColorOS), this ongoing notification
+            // was getting buried below every other app's notifications,
+            // effectively invisible during a drive.
+            val channel = NotificationChannel(CHANNEL_ID, "Mileage trip", NotificationManager.IMPORTANCE_DEFAULT)
             notificationManager.createNotificationChannel(channel)
         }
     }
 
     private fun buildTrackingNotification(miles: Double): Notification {
         ensureChannel()
+        val contentIntent = PendingIntent.getActivity(
+            this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE,
+        )
+        val stopIntent = PendingIntent.getForegroundService(
+            this, 0, Intent(this, MileageTrackingService::class.java).setAction(ACTION_STOP_TRIP), PendingIntent.FLAG_IMMUTABLE,
+        )
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentTitle(getString(R.string.mileage_tracking_notification_title))
             .setContentText(getString(R.string.mileage_tracking_notification_text, "%.2f".format(miles)))
+            .setContentIntent(contentIntent)
+            .addAction(0, getString(R.string.mileage_tracking_notification_action), stopIntent)
             .build()
     }
 

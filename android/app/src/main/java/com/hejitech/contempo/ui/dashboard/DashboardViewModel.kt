@@ -3,14 +3,13 @@ package com.hejitech.contempo.ui.dashboard
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hejitech.contempo.data.ServiceLocator
+import com.hejitech.contempo.data.recoverFromAuthRaceOrSignOut
 import com.hejitech.core.model.Entry
 import com.hejitech.core.model.EntryStatus
 import com.hejitech.core.model.MaterialParticipationTest
-import com.google.firebase.firestore.FirebaseFirestoreException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -63,15 +62,7 @@ class DashboardViewModel : ViewModel() {
         // See CaptureViewModel.openTripEntry's comment — an uncaught
         // Firestore listener error here crashes the whole app on this
         // screen specifically, since it's an eagerly-collected StateFlow.
-        .catch { e ->
-            if (e is FirebaseFirestoreException &&
-                (e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED ||
-                    e.code == FirebaseFirestoreException.Code.UNAUTHENTICATED)
-            ) {
-                ServiceLocator.authManager.signOut()
-            }
-            emit(DashboardUiState())
-        }
+        .recoverFromAuthRaceOrSignOut { DashboardUiState() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DashboardUiState())
 
     private val _selection = MutableStateFlow(SelectionState())

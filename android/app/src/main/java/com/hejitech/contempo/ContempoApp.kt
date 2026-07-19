@@ -3,11 +3,14 @@ package com.hejitech.contempo
 import android.app.Application
 import com.hejitech.contempo.capture.PendingCaptureSyncWorker
 import com.hejitech.contempo.data.ServiceLocator
+import com.hejitech.contempo.timer.OngoingWorkNotificationService
 import com.hejitech.contempo.wear.PendingAudioProcessWorker
 import com.google.firebase.Firebase
 import com.google.firebase.appcheck.appCheck
 import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
 import com.google.firebase.auth.auth
+import com.google.firebase.crashlytics.crashlytics
+import com.google.firebase.perf.performance
 import com.google.firebase.firestore.firestore
 import com.google.firebase.firestore.firestoreSettings
 import com.google.firebase.firestore.memoryCacheSettings
@@ -19,6 +22,9 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
 /**
@@ -35,6 +41,18 @@ class ContempoApp : Application() {
     override fun onCreate() {
         super.onCreate()
         Firebase.initialize(this)
+
+        // Off for local/emulator dev builds so that dev-machine crashes and
+        // the known emulator-only flakiness (see AuthAwareFlow.kt's kdoc)
+        // don't pollute the real crash console — same "only the real path
+        // talks to real backend services" split as the App Check branch
+        // right below.
+        Firebase.crashlytics.setCrashlyticsCollectionEnabled(!BuildConfig.USE_FIREBASE_EMULATOR)
+        // Same reasoning — dev-loop traces (against a local emulator, on
+        // whatever machine happens to be running it) aren't representative
+        // of real device/network performance and would just muddy the real
+        // trace data. See PerformanceTrace.kt for the actual custom traces.
+        Firebase.performance.isPerformanceCollectionEnabled = !BuildConfig.USE_FIREBASE_EMULATOR
 
         if (BuildConfig.USE_FIREBASE_EMULATOR) {
             connectToEmulators()
@@ -60,6 +78,42 @@ class ContempoApp : Application() {
 
         schedulePendingAudioProcessing()
         schedulePendingCaptureSync()
+        resumeOngoingWorkNotificationIfNeeded()
+        refreshRemoteConfig()
+    }
+
+    /**
+     * Best-effort, fire-and-forget — RemoteConfigStore.cloudAiEnabled
+     * already defaults to "enabled" until this resolves (see its kdoc), so
+     * there's nothing to block app startup on here; this just lets a
+     * console-side kill switch take effect as soon as reasonably possible
+     * after launch rather than waiting for AgentClient's first call.
+     */
+    private fun refreshRemoteConfig() {
+        CoroutineScope(Dispatchers.Default).launch {
+            ServiceLocator.remoteConfigStore.refresh()
+        }
+    }
+
+    /**
+     * Covers the case where the process was killed (or the app wasn't
+     * running yet) while a work timer was still open — OngoingWorkNotificationService
+     * is normally started right when the timer starts (CaptureViewModel/
+     * AudioCaptureProcessor), but that notification doesn't survive a
+     * process death (see that service's kdoc on why it's START_NOT_STICKY,
+     * not START_STICKY). Re-detecting here means reopening the app after a
+     * kill brings the notification back rather than losing it silently for
+     * the rest of that timer's duration.
+     */
+    private fun resumeOngoingWorkNotificationIfNeeded() {
+        if (Firebase.auth.currentUser == null) return
+        CoroutineScope(Dispatchers.Default).launch {
+            runCatching {
+                if (ServiceLocator.entryRepository.findOpenEntry(isTrip = false) != null) {
+                    OngoingWorkNotificationService.start(this@ContempoApp)
+                }
+            }
+        }
     }
 
     /**

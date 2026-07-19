@@ -11,6 +11,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.wear.compose.material.MaterialTheme
@@ -44,7 +45,15 @@ class MainActivity : ComponentActivity() {
 private fun WearRootScreen(viewModel: WearCaptureViewModel = viewModel()) {
     val uiState by viewModel.uiState.collectAsState()
     val amplitude by viewModel.recordingAmplitude.collectAsState()
-    var pendingRecordAfterPermission by remember { mutableStateOf(false) }
+    // rememberSaveable, not remember: on at least one real Wear OS system
+    // image, the full-screen RECORD_AUDIO permission dialog was observed to
+    // trigger a genuine Activity recreation (not just pause/resume — seen
+    // live via instance-identity logging). A plain remember would silently
+    // reset this to false across that recreation, so the permission-result
+    // launcher's callback below would see pendingRecordAfterPermission =
+    // false even though the user just granted it, and never call
+    // startRecording() at all.
+    var pendingRecordAfterPermission by rememberSaveable { mutableStateOf(false) }
 
     val micPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),

@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
@@ -57,6 +58,17 @@
             android:name=".mileage.MileageTrackingService"
             android:exported="false"
             android:foregroundServiceType="location" />
+
+        <!-- Persistent "work in progress" notification with a live elapsed
+             timer and a "Mark done" action, so a host can close out a work
+             timer without opening the app — see timer/OngoingWorkNotificationService.kt.
+             "dataSync" rather than "location"/etc.: this service just keeps a
+             Firestore listener alive, not tied to any of the other typed
+             foreground-service categories. -->
+        <service
+            android:name=".timer.OngoingWorkNotificationService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
     </application>
 </manifest>

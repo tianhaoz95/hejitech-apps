@@ -7,6 +7,8 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.google.services)
+    alias(libs.plugins.firebase.crashlytics)
+    alias(libs.plugins.firebase.perf)
 }
 
 // Real (non-emulator) Google Sign-In needs the Firebase project's OAuth Web
@@ -125,6 +127,12 @@ dependencies {
     // class still has to be on the compile classpath for every build type,
     // including release/prod).
     implementation(libs.firebase.appcheck.debug)
+    // Crash + non-fatal reporting — see ContempoApp.kt/AuthAwareFlow.kt.
+    implementation(libs.firebase.crashlytics)
+    // Custom performance traces — see ContempoApp.kt/PerformanceTrace.kt.
+    implementation(libs.firebase.performance)
+    // Remote kill switch for cloud AI usage — see RemoteConfigStore.kt.
+    implementation(libs.firebase.remoteconfig)
 
     // Firebase AI Logic hybrid inference — kept for GeminiNanoLlm (see
     // agent/OnDeviceLlm.kt), an alternate OnDeviceLlm implementation that's

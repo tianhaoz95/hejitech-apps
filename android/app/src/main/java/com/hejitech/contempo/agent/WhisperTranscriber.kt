@@ -1,6 +1,7 @@
 package com.hejitech.contempo.agent
 
 import android.content.Context
+import com.hejitech.contempo.data.traced
 import com.hejitech.core.model.CaptureLanguage
 import com.k2fsa.sherpa.onnx.OfflineModelConfig
 import com.k2fsa.sherpa.onnx.OfflineRecognizer
@@ -94,16 +95,18 @@ class WhisperTranscriber(context: Context) {
      * Dispatchers.Default rather than the calling coroutine's own dispatcher.
      */
     suspend fun transcribe(samples: FloatArray, language: CaptureLanguage): String =
-        withContext(Dispatchers.Default) {
-            if (samples.isEmpty()) return@withContext ""
-            val recognizer = recognizerFor(language)
-            val stream = recognizer.createStream()
-            try {
-                stream.acceptWaveform(samples, sampleRate = SAMPLE_RATE_HZ)
-                recognizer.decode(stream)
-                recognizer.getResult(stream).text.trim()
-            } finally {
-                stream.release()
+        traced("whisper_transcribe", mapOf("language" to language.name)) {
+            withContext(Dispatchers.Default) {
+                if (samples.isEmpty()) return@withContext ""
+                val recognizer = recognizerFor(language)
+                val stream = recognizer.createStream()
+                try {
+                    stream.acceptWaveform(samples, sampleRate = SAMPLE_RATE_HZ)
+                    recognizer.decode(stream)
+                    recognizer.getResult(stream).text.trim()
+                } finally {
+                    stream.release()
+                }
             }
         }
 
