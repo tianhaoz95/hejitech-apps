@@ -66,8 +66,18 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 # --- locate adb -------------------------------------------------------------
+# Order: PATH, then $ANDROID_HOME/$ANDROID_SDK_ROOT (the standard SDK-location
+# env vars a real shell setup exports — see ~/.zshrc), then
+# android/local.properties's sdk.dir as a last resort. That file is
+# machine-specific and easy to leave stale after moving the SDK — confirmed
+# live: it silently kept pointing at a since-removed location after an SDK
+# move, and this script's only fallback at the time was that stale file.
 if command -v adb >/dev/null 2>&1; then
   ADB="$(command -v adb)"
+elif [[ -n "${ANDROID_HOME:-}" && -x "$ANDROID_HOME/platform-tools/adb" ]]; then
+  ADB="$ANDROID_HOME/platform-tools/adb"
+elif [[ -n "${ANDROID_SDK_ROOT:-}" && -x "$ANDROID_SDK_ROOT/platform-tools/adb" ]]; then
+  ADB="$ANDROID_SDK_ROOT/platform-tools/adb"
 elif [[ -f "$ANDROID_DIR/local.properties" ]]; then
   SDK_DIR="$(sed -n 's/^sdk.dir=//p' "$ANDROID_DIR/local.properties")"
   if [[ -x "$SDK_DIR/platform-tools/adb" ]]; then
@@ -75,7 +85,7 @@ elif [[ -f "$ANDROID_DIR/local.properties" ]]; then
   fi
 fi
 if [[ -z "$ADB" ]]; then
-  warn "Could not find adb (not on PATH, and no usable android/local.properties)."
+  warn "Could not find adb (not on PATH, \$ANDROID_HOME/\$ANDROID_SDK_ROOT unset or wrong, and no usable android/local.properties)."
   exit 1
 fi
 if ! command -v firebase >/dev/null 2>&1; then
