@@ -22,15 +22,21 @@ planning/branding artifacts:
   Functions). See "`backend/` architecture" below.
 - `ios/` — reserved, not started (see its README). Fast-follow after the
   Android core loop validates with the pilot user.
-- `web/` — initial scaffold only (Vite/React/TypeScript, see `web/README.md`),
-  not MVP. Scoped to three things — subscription/billing, an analysis
-  dashboard, and CPA export/back-office — but never day-to-day capture.
-  **Subscriptions are web-only by design**: neither the Android nor iOS app
-  will ever contain a purchase flow or pricing mention, specifically to avoid
-  Apple/Google's in-app-purchase platform fee — the apps only read entitlement
-  status (synced from Stripe into Firestore, via Stripe's official Firebase
+- `web/` — Vite/React/TypeScript (see `web/README.md`), not MVP (never
+  day-to-day capture) but no longer just a scaffold: real Dashboard/Entries/
+  Settings/Billing/Sign-in pages, working account deletion (calls the same
+  `deleteAccount` Cloud Function as Android), and legal pages
+  (`/legal/privacy`, `/legal/terms`) live and reachable signed-out (Play Store
+  review requires this). Auto-deployed to Firebase Hosting (site `contempo`,
+  `https://contempo.web.app`) via `.github/workflows/firebase-deploy.yml`'s
+  `deploy-hosting` job on every push to `main`. **Subscriptions are web-only
+  by design**: neither the Android nor iOS app will ever contain a purchase
+  flow or pricing mention, specifically to avoid Apple/Google's
+  in-app-purchase platform fee — the apps only read entitlement status
+  (synced from Stripe into Firestore, via Stripe's official Firebase
   Extension) and gate premium features accordingly. Stripe itself isn't wired
-  up yet (`web/src/billing/subscription.ts` has a `TODO(stripe)`); Auth
+  up yet (`web/src/billing/subscription.ts` has a `TODO(stripe)`) — the
+  Billing page is UI without a working purchase flow behind it yet; Auth
   (Google Sign-In) and Firestore are wired against the real `contempo-platform`
   project, same as `android/`.
 - `feedback/` — a standalone, login-free feedback form (see
@@ -202,7 +208,10 @@ Gradle multi-module (Kotlin, Jetpack Compose, version catalog in
 `gradle/libs.versions.toml`): `app` (the phone MVP), `core` (shared domain
 models + repository interfaces, e.g. `EntryRepository` /
 `FirestoreEntryRepository` in `core/src/main/java/com/hejitech/core/`), `wear`
-(Wear OS companion, not yet built out).
+(Wear OS companion — voice capture relayed to the phone for processing, plus
+a progress Tile and an hours Complication; see its `capture`/`tile`/
+`complication` packages and its own instrumented test suite,
+`wear/src/androidTest/`).
 
 - **`android/app/google-services.json`** and **`android/local.properties`** are
   both gitignored (real credentials) — `.example` files document the expected
@@ -218,10 +227,34 @@ models + repository interfaces, e.g. `EntryRepository` /
   google-services-plugin-generated resource, since that resource only exists
   once an `oauth_client` entry is present) plus Credential Manager + Google
   Identity Services (not the deprecated `GoogleSignInClient` API).
-- Firebase Auth, Firestore, Storage, Functions, and App Check are all wired in
-  `app/build.gradle.kts` via the Firebase BoM; Firebase AI Logic (hybrid
-  on-device/cloud inference, see `agent/AgentClient.kt`) is pinned directly
-  since it isn't in the BoM yet.
+- Firebase Auth, Firestore, Storage, Functions, App Check, Crashlytics,
+  Performance Monitoring, and Remote Config are all wired in
+  `app/build.gradle.kts` via the Firebase BoM (Crashlytics/Performance also
+  need their own Gradle plugins, applied alongside `google-services`);
+  Firebase AI Logic (hybrid on-device/cloud inference, see
+  `agent/AgentClient.kt`) is pinned directly since it isn't in the BoM yet.
+  Crashlytics/Performance collection is toggled off for
+  `USE_FIREBASE_EMULATOR` builds (`ContempoApp.onCreate()`) so local dev
+  noise never reaches the real console — only a build with that flag false
+  (a release-style build) actually reports. Performance custom traces
+  (on-device transcription/parsing, the Firestore entry save) go through the
+  shared `data/PerformanceTrace.kt` helper; Remote Config's one real flag so
+  far, `cloud_ai_enabled`, is a kill switch for cloud AI spend, gated
+  centrally in `ServiceLocator`'s `AgentClient.inferencePreference` lambda
+  (see `data/RemoteConfigStore.kt`) rather than at each call site.
+- **`data/AuthAwareFlow.kt`'s `recoverFromAuthRaceOrSignOut()`** is the
+  standard way every eagerly-collected Firestore listener (Capture/Dashboard/
+  Confirm ViewModels) handles `PERMISSION_DENIED`/`UNAUTHENTICATED` — retries
+  once after a short delay (a real, confirmed-live token-propagation race on
+  fresh sign-in, not just an emulator quirk) before falling back to sign-out.
+  Use this rather than a bespoke `.catch` block for any new eagerly-collected
+  listener.
+- Persistent "work in progress" / "trip in progress" notifications
+  (`timer/OngoingWorkNotificationService.kt`, `mileage/MileageTrackingService.kt`)
+  use `IMPORTANCE_DEFAULT` channels, not `IMPORTANCE_LOW` — confirmed live
+  that at least one OEM (ColorOS) treats `IMPORTANCE_LOW` as "silent" and
+  buries the notification below every other app's, defeating an
+  ongoing-status notification's entire purpose.
 - `scripts/run-android-with-emulators.sh` is the fastest real-device dev loop —
   starts the Firebase emulator suite, `adb reverse`s the emulator ports to a
   connected physical device, builds/installs/launches the app, streams filtered
@@ -271,6 +304,15 @@ The Firebase project root — `firebase` CLI commands (prefixed
   since it must be callable from web, which has no App Check provider set up
   yet) and `cleanupDeletedUserData` (a v1 Auth `onDelete` trigger, safety-net
   cleanup for accounts removed any other way).
+- **Hosting**: two sites, both deployed together via `deploy-hosting` in
+  `.github/workflows/firebase-deploy.yml` on every push to `main` (`--only
+  hosting`, not scoped to one site — the Firebase CLI runs every hosting
+  entry's predeploy hook regardless of which site `--only` narrows to, so
+  there's no cost saved by deploying them separately). `contempo` serves
+  `web/` (`https://contempo.web.app`); `contempo-feedback` serves
+  `feedback/`'s static site (`https://contempo-feedback.web.app`), entirely
+  separate registrations/apps despite sharing the `contempo-platform`
+  project.
 - **Local dev without a real project**: `firebase emulators:start --project
   demo-contempo` runs fully offline against a Firebase "demo project" — no real
   project or billing needed until you're ready to test against the real one.
@@ -278,8 +320,15 @@ The Firebase project root — `firebase` CLI commands (prefixed
 
 ## Product context worth knowing before writing more planning content
 
-Full detail lives in `reports/prd-v0.html` and `reports/mvp-scope-v0.html`, but
-the load-bearing facts:
+Full detail lives in `reports/prd-v0.html` and `reports/mvp-scope-v0.html`
+(original planning), `reports/prd-status-v0.html` and
+`reports/mvp-implementation-v0.html` (what's actually built vs. planned —
+check these before assuming a planning doc still reflects current state),
+`reports/web-implementation-v0.html`, and `reports/play-store-listing-v0.html`
+(release-readiness tracking — note some of its content drifts stale quickly,
+e.g. it may still describe a gap as open after that gap's actually been
+closed by later work; verify live rather than trusting it outright). All are
+linked from `reports/index.html`'s card grid. The load-bearing facts:
 
 - Four real competitors were researched: REPSLog, HourProof, STR Loophole
   (strhours.com — the funded/multi-product one to watch), and Field Ledger.
