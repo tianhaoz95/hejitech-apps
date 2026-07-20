@@ -165,31 +165,36 @@ fi
 IOS_DEST_ID=""
 IS_IOS_PHYSICAL=false
 
+# Always locate an iOS simulator/device to use as the xcodebuild destination —
+# even in --watch-only mode — because the watchOS app is an embedded target
+# inside the Contempo scheme and xcodebuild requires a valid iOS destination.
 log "Looking for iOS target device / simulator..."
-if [[ "$INSTALL_IOS" == "true" ]]; then
-  if [[ -n "$TARGET_IOS_DEST" ]]; then
-    IOS_DEST_ID="$TARGET_IOS_DEST"
-    # Check if target is a physical device vs simulator
-    if xcrun simctl list devices 2>/dev/null | grep -q "$IOS_DEST_ID"; then
-      IS_IOS_PHYSICAL=false
-      echo "  using specified iOS Simulator: $IOS_DEST_ID"
-    else
-      IS_IOS_PHYSICAL=true
-      echo "  using specified physical iOS device: $IOS_DEST_ID"
-    fi
+if [[ -n "$TARGET_IOS_DEST" ]]; then
+  IOS_DEST_ID="$TARGET_IOS_DEST"
+  if xcrun simctl list devices 2>/dev/null | grep -q "$IOS_DEST_ID"; then
+    IS_IOS_PHYSICAL=false
+    echo "  using specified iOS Simulator: $IOS_DEST_ID"
   else
-    # 1. Look for booted simulator
-    IOS_DEST_ID="$(xcrun simctl list devices 2>/dev/null | grep -E "iPhone.*\(Booted\)" | head -n 1 | sed -E 's/.*\(([A-F0-9-]+)\).*/\1/')" || true
-    # 2. Look for available simulator
-    if [[ -z "$IOS_DEST_ID" ]]; then
-      IOS_DEST_ID="$(xcrun simctl list devices available 2>/dev/null | grep "iPhone" | head -n 1 | sed -E 's/.*\(([A-F0-9-]+)\).*/\1/')" || true
-    fi
+    IS_IOS_PHYSICAL=true
+    echo "  using specified physical iOS device: $IOS_DEST_ID"
+  fi
+else
+  # 1. Look for booted simulator
+  IOS_DEST_ID="$(xcrun simctl list devices 2>/dev/null | grep -E "iPhone.*\(Booted\)" | head -n 1 | sed -E 's/.*\(([A-F0-9-]+)\).*/\1/')" || true
+  # 2. Look for available simulator
+  if [[ -z "$IOS_DEST_ID" ]]; then
+    IOS_DEST_ID="$(xcrun simctl list devices available 2>/dev/null | grep "iPhone" | head -n 1 | sed -E 's/.*\(([A-F0-9-]+)\).*/\1/')" || true
+  fi
 
-    if [[ -z "$IOS_DEST_ID" ]]; then
-      warn "Could not find an available iOS device or Simulator."
-      exit 1
-    fi
+  if [[ -z "$IOS_DEST_ID" ]]; then
+    warn "Could not find an available iOS device or Simulator (needed as xcodebuild destination even for watch-only builds)."
+    exit 1
+  fi
+
+  if [[ "$INSTALL_IOS" == "true" ]]; then
     echo "  using iOS Simulator: $IOS_DEST_ID"
+  else
+    echo "  using iOS Simulator $IOS_DEST_ID as xcodebuild host (watch-only mode)"
   fi
 fi
 
@@ -257,8 +262,14 @@ log "Building Contempo iOS app, watchOS app, and ContempoWidgets in Release (pro
 ( cd "$IOS_DIR" && xcodebuild -project Contempo.xcodeproj -scheme Contempo -configuration Release -destination "$BUILD_DEST" -derivedDataPath Build build )
 
 
-IOS_APP_PATH="$(find "$IOS_DIR/Build" -name "Contempo.app" -type d | head -n 1)"
-WATCH_APP_PATH="$(find "$IOS_DIR/Build" -name "Contempo Watch App.app" -type d | head -n 1)"
+IOS_APP_PATH="$(find "$IOS_DIR/Build/Build/Products" -maxdepth 2 -name "Contempo.app" -not -path "*/Watch/*" -type d 2>/dev/null | head -n 1)"
+# Prefer the standalone watchsimulator/watch product over the copy embedded
+# inside Contempo.app/Watch/ — simctl install on the watch simulator needs
+# the top-level standalone bundle, not the embedded one.
+WATCH_APP_PATH="$(find "$IOS_DIR/Build/Build/Products" -maxdepth 2 -name "Contempo Watch App.app" -type d 2>/dev/null | grep -v "/Watch/" | head -n 1)"
+if [[ -z "$WATCH_APP_PATH" ]]; then
+  WATCH_APP_PATH="$(find "$IOS_DIR/Build" -name "Contempo Watch App.app" -type d 2>/dev/null | head -n 1)"
+fi
 
 if [[ "$INSTALL_IOS" == "true" ]] && [[ -z "$IOS_APP_PATH" || ! -d "$IOS_APP_PATH" ]]; then
   warn "Could not find built Contempo.app bundle in $IOS_DIR/Build."

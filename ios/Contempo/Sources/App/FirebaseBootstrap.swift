@@ -1,4 +1,5 @@
 import ContempoCore
+import FirebaseAppCheck
 import FirebaseAuth
 import FirebaseCore
 import FirebaseFirestore
@@ -17,10 +18,33 @@ enum FirebaseBootstrap {
     private static let emulatorHost = "localhost"
 
     static func configure() {
+        configureAppCheck()
         FirebaseApp.configure()
 
         #if USE_FIREBASE_EMULATOR
         connectToEmulators()
+        #endif
+    }
+
+    // MARK: - App Check
+
+    /// Configures Firebase App Check before `FirebaseApp.configure()`.
+    /// - Simulator / Debug builds: uses the debug provider so the emulator
+    ///   and simulator test runs aren't blocked.  Set the
+    ///   `FIRAAppCheckDebugToken` environment variable (or let the SDK print
+    ///   one on first launch) and register it in the Firebase Console under
+    ///   App Check > Apps > Debug tokens.
+    /// - Release / device builds: uses DeviceCheck, the lightweight Apple
+    ///   attestation service that works on all iOS 11+ devices without extra
+    ///   entitlements (unlike App Attest which requires iOS 14+ and a separate
+    ///   entitlement).  Switch to `AppAttestProvider` if you need the stronger
+    ///   guarantee in the future.
+    private static func configureAppCheck() {
+        #if targetEnvironment(simulator) || DEBUG
+        let debugProvider = AppCheckDebugProviderFactory()
+        AppCheck.setAppCheckProviderFactory(debugProvider)
+        #else
+        AppCheck.setAppCheckProviderFactory(DeviceCheckProviderFactory())
         #endif
     }
 

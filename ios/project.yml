@@ -96,6 +96,8 @@ targets:
         product: FirebaseFunctions
       - package: firebase-ios-sdk
         product: FirebaseRemoteConfig
+      - package: firebase-ios-sdk
+        product: FirebaseAppCheck
       - package: GoogleSignIn-iOS
         product: GoogleSignIn
       - package: GoogleSignIn-iOS
