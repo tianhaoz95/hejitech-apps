@@ -55,6 +55,19 @@ import kotlinx.coroutines.withContext
 class WhisperTranscriber(context: Context) {
     private val appContext = context.applicationContext
 
+    val isAvailable: Boolean
+        get() = try {
+            appContext.assets.open("sherpa-onnx-whisper-tiny.en/tiny.en-encoder.int8.onnx").close()
+            true
+        } catch (_: Exception) {
+            try {
+                appContext.assets.open("sherpa-onnx-whisper-tiny/tiny-encoder.int8.onnx").close()
+                true
+            } catch (_: Exception) {
+                false
+            }
+        }
+
     private val englishRecognizer: OfflineRecognizer by lazy {
         buildRecognizer(modelDir = "sherpa-onnx-whisper-tiny.en", filePrefix = "tiny.en", language = "en")
     }

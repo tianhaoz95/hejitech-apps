@@ -41,6 +41,22 @@ public enum WavAudio {
 
         return header + pcm
     }
+
+    /// Decodes a 44-byte header PCM16 mono WAV Data into `[Float]` samples normalized to [-1, 1].
+    public static func decode(_ wavData: Data) -> [Float] {
+        guard wavData.count >= 44 else { return [] }
+        let pcmBytes = wavData.dropFirst(44)
+        var samples = [Float]()
+        samples.reserveCapacity(pcmBytes.count / 2)
+        pcmBytes.withUnsafeBytes { buffer in
+            guard let p16 = buffer.bindMemory(to: Int16.self).baseAddress else { return }
+            for i in 0..<(pcmBytes.count / 2) {
+                let intSample = Int16(littleEndian: p16[i])
+                samples.append(Float(intSample) / Float(Int16.max))
+            }
+        }
+        return samples
+    }
 }
 
 private extension Data {

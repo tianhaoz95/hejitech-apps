@@ -1,4 +1,4 @@
-import FirebaseAuth
+@preconcurrency import FirebaseAuth
 import Foundation
 
 /// Watch-side counterpart to `ContempoFirestore`'s (SDK-based)

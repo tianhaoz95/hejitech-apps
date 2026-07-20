@@ -25,6 +25,12 @@ import Foundation
 final class WhisperTranscriber {
     static let sampleRateHz = 16_000
 
+    var isAvailable: Bool {
+        let englishEncoder = Bundle.main.path(forResource: "tiny.en-encoder.int8", ofType: "onnx", inDirectory: "sherpa-onnx-whisper-tiny.en")
+        let tinyEncoder = Bundle.main.path(forResource: "tiny-encoder.int8", ofType: "onnx", inDirectory: "sherpa-onnx-whisper-tiny")
+        return englishEncoder != nil || tinyEncoder != nil
+    }
+
     private lazy var englishRecognizer = Self.buildRecognizer(modelDir: "sherpa-onnx-whisper-tiny.en", filePrefix: "tiny.en", language: "en")
     private lazy var chineseRecognizer = Self.buildRecognizer(modelDir: "sherpa-onnx-whisper-tiny", filePrefix: "tiny", language: "zh")
     private lazy var autoRecognizer = Self.buildRecognizer(modelDir: "sherpa-onnx-whisper-tiny", filePrefix: "tiny", language: "")

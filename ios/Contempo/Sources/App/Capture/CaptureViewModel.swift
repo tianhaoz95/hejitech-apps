@@ -23,6 +23,23 @@ final class CaptureViewModel {
     private let mileageTracker = ServiceLocator.mileageTracker
     private let captureLanguageStore = ServiceLocator.captureLanguageStore
 
+    private let quickCaptureSettingsStore = ServiceLocator.quickCaptureSettingsStore
+    private let quickCaptureStatsStore = ServiceLocator.quickCaptureStatsStore
+    private let pendingCaptureStore = ServiceLocator.pendingCaptureStore
+
+    var quickCaptureEnabled: Bool {
+        get { quickCaptureSettingsStore.enabled }
+        set { quickCaptureSettingsStore.setEnabled(newValue) }
+    }
+
+    var quickCaptureStatus: QuickCaptureStatusUiState {
+        QuickCaptureStatusUiState(
+            pendingCount: pendingCaptureStore.pendingTodayCount,
+            completedTodayCount: quickCaptureStatsStore.completedTodayCount,
+            processingStage: AudioCaptureProcessor.shared.currentlyProcessingStage
+        )
+    }
+
     var showLanguageSelector: Bool { captureLanguageStore.showLanguageSelector }
     var selectedCaptureLanguage: CaptureLanguage {
         get { captureLanguageStore.selected }
@@ -161,13 +178,38 @@ final class CaptureViewModel {
 
         guard !rawTranscript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             isTranscribing = false
-            errorMessage = "Didn't catch that — try again."
+            errorMessage = "Didn't catch any words — hold the mic button and speak."
             return
         }
 
-        inputText = rawTranscript
         isTranscribing = false
         await parseAndHold(rawTranscript, captureSource: .voice)
+    }
+
+    /// Quick Capture mode: saves recorded WAV bytes to disk immediately,
+    /// returns the UI to idle state instantly, and triggers background sync.
+    func stopQuickCaptureAndSave() {
+        guard isRecording else { return }
+        isRecording = false
+        let samples = audioRecorder.stop()
+        let wavData = WavAudio.encode(samples: samples, sampleRateHz: WhisperTranscriber.sampleRateHz)
+
+        pendingCaptureStore.save(
+            wavData: wavData,
+            language: captureLanguageStore.selected
+        )
+
+        Task {
+            await PendingCaptureSyncer.syncAll()
+            await AudioCaptureProcessor.shared.processPendingCaptures()
+        }
+    }
+
+    func processQuickCaptureBacklogNow() {
+        Task {
+            await PendingCaptureSyncer.syncAll()
+            await AudioCaptureProcessor.shared.processPendingCaptures()
+        }
     }
 
     /// The manual "looks right, continue" step after `stopRecordingAndProcess`.

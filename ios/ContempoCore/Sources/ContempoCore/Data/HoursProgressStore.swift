@@ -6,7 +6,7 @@ import Foundation
 /// Foundation-only, no Firebase dependency, so this lives in the
 /// platform-agnostic `ContempoCore` product alongside the rest of the
 /// cross-target model code.
-public struct HoursProgressStore: Sendable {
+public struct HoursProgressStore: @unchecked Sendable {
     private static let hoursKey = "confirmed_hours"
 
     private let defaults: UserDefaults?

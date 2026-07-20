@@ -20,8 +20,7 @@ planning/branding artifacts:
   `wear`). See "`android/` architecture" below.
 - `backend/` — the Firebase project root (Firestore, Auth, Storage, Genkit Cloud
   Functions). See "`backend/` architecture" below.
-- `ios/` — reserved, not started (see its README). Fast-follow after the
-  Android core loop validates with the pilot user.
+- `ios/` — the iOS + watchOS app (SwiftUI, XcodeGen multi-module: `Contempo` phone app, `Contempo Watch App`, `ContempoWidgets`, `Contempo Watch Widgets`, and `ContempoCore` package). Parity with `android/` and `android/wear/`. See `ios/README.md`.
 - `web/` — Vite/React/TypeScript (see `web/README.md`), not MVP (never
   day-to-day capture) but no longer just a scaffold: real Dashboard/Entries/
   Settings/Billing/Sign-in pages, working account deletion (calls the same
@@ -77,10 +76,14 @@ there without a reason.
 # Build/install the Android app
 cd android && ./gradlew :app:assembleDebug   # or :app:installDebug with a device attached
 
-# Full local dev loop: Firebase emulators + build + install + logcat, all torn
-# down together on Ctrl+C. Requires exactly one physical device over USB.
-./scripts/run-android-with-emulators.sh                    # emulators against demo-contempo
-./scripts/run-android-with-emulators.sh contempo-platform  # against the real project
+# Full local dev loop: Firebase emulators + build + install, torn down together on Ctrl+C.
+./scripts/run-android-with-emulators.sh                    # Android against demo-contempo
+./scripts/run-android-with-emulators.sh contempo-platform  # Android against real project
+./scripts/run-ios-with-emulators.sh                        # iOS + watchOS against demo-contempo
+
+# Build & install production/release builds (real Firebase contempo-platform, no emulators):
+./scripts/install-android-prod.sh                           # Android + Wear OS
+./scripts/install-ios-prod.sh                               # iOS + watchOS
 
 # Firebase CLI commands (run from backend/, or pass --project) always prefer
 # `npx -y firebase-tools@latest ...` over a global `firebase` install.

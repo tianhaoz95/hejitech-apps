@@ -12,6 +12,7 @@ final class SettingsViewModel {
     private let aiSettingsStore = ServiceLocator.aiSettingsStore
     private let remoteConfigStore = ServiceLocator.remoteConfigStore
     private let onDeviceLlm = ServiceLocator.onDeviceLlm
+    private let whisperTranscriber = ServiceLocator.whisperTranscriber
     private let captureLanguageStore = ServiceLocator.captureLanguageStore
 
     var displayName: String { Auth.auth().currentUser?.displayName ?? "Signed in" }
@@ -20,6 +21,7 @@ final class SettingsViewModel {
     var inferencePreference: InferencePreference { aiSettingsStore.preference }
     var cloudAiEnabled: Bool { remoteConfigStore.cloudAiEnabled }
     var onDeviceStatus: OnDeviceModelUiStatus { onDeviceLlm.status }
+    var asrAvailable: Bool { whisperTranscriber.isAvailable }
 
     var showLanguageSelector: Bool { captureLanguageStore.showLanguageSelector }
     var selectedCaptureLanguage: CaptureLanguage { captureLanguageStore.selected }

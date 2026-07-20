@@ -1,4 +1,4 @@
-import FirebaseAuth
+@preconcurrency import FirebaseAuth
 import Foundation
 
 /// Watch-side read counterpart to `WatchAudioCaptureQueueWriter` — the

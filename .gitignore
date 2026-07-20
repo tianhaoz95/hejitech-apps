@@ -66,4 +66,6 @@ backend/ui-debug.log
 backend/.firebase/
 
 # Claude Code local lock files
-.claude/scheduled_tasks.lock
+.claude/
+scratch/
+ios/Build/

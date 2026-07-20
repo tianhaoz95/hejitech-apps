@@ -35,6 +35,7 @@ class SettingsViewModel : ViewModel() {
 
     val inferencePreference: StateFlow<InferencePreference> = aiSettingsStore.preference
     val onDeviceModelStatus: StateFlow<OnDeviceModelUiStatus> = onDeviceLlm.status
+    val asrModelAvailable: StateFlow<Boolean> = MutableStateFlow(ServiceLocator.whisperTranscriber.isAvailable).asStateFlow()
     val showLanguageSelector: StateFlow<Boolean> = captureLanguageSelectorVisibilityStore.visible
     /** See RemoteConfigStore's kdoc — "Cloud only" shouldn't be selectable (or read as available) while this is false. */
     val cloudAiEnabled: StateFlow<Boolean> = remoteConfigStore.cloudAiEnabled

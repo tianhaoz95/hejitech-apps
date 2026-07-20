@@ -8,7 +8,7 @@ public extension View {
     /// system chrome (tab bars, nav bars) to pick Liquid Glass up for free.
     @ViewBuilder
     func contempoGlass<S: Shape>(tint: Color? = nil, in shape: S) -> some View {
-        if #available(iOS 26.0, watchOS 26.0, *) {
+        if #available(iOS 26.0, watchOS 26.0, macOS 26.0, *) {
             self.glassEffect(tint.map { Glass.regular.tint($0) } ?? .regular, in: shape)
         } else {
             self.background(.ultraThinMaterial, in: shape)

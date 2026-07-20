@@ -151,9 +151,15 @@ fun SettingsScreen(
                 )
             }
 
+            val asrModelAvailable by viewModel.asrModelAvailable.collectAsState()
+
             if (preference != InferencePreference.CLOUD_ONLY) {
                 Spacer(Modifier.height(16.dp))
-                OnDeviceModelStatusPanel(status = onDeviceStatus, onRetry = viewModel::retryOnDeviceModelCheck)
+                OnDeviceModelStatusPanel(
+                    asrAvailable = asrModelAvailable,
+                    status = onDeviceStatus,
+                    onRetry = viewModel::retryOnDeviceModelCheck
+                )
             }
 
             Spacer(Modifier.height(32.dp))
@@ -301,8 +307,42 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun OnDeviceModelStatusPanel(status: OnDeviceModelUiStatus, onRetry: () -> Unit) {
+private fun OnDeviceModelStatusPanel(
+    asrAvailable: Boolean,
+    status: OnDeviceModelUiStatus,
+    onRetry: () -> Unit,
+) {
     Column {
+        // Speech Recognition Model (ASR - Whisper)
+        Text(
+            text = "Speech Recognition (Whisper ASR)",
+            style = MaterialTheme.typography.titleSmall,
+        )
+        Spacer(Modifier.height(4.dp))
+        if (asrAvailable) {
+            Text(
+                text = "On-device speech model ready (bundled)",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        } else {
+            Text(
+                text = "On-device speech model unavailable",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+
+        Spacer(Modifier.height(12.dp))
+        HorizontalDivider()
+        Spacer(Modifier.height(12.dp))
+
+        // Language Model (LLM - Gemma)
+        Text(
+            text = "Language Model (Gemma LLM)",
+            style = MaterialTheme.typography.titleSmall,
+        )
+        Spacer(Modifier.height(4.dp))
         when (status) {
             is OnDeviceModelUiStatus.Checking, is OnDeviceModelUiStatus.NotDownloaded ->
                 Text(

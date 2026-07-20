@@ -133,38 +133,80 @@ struct SettingsScreen: View {
 
     @ViewBuilder
     private var onDeviceStatusPanel: some View {
-        switch viewModel.onDeviceStatus {
-        case .checking, .notDownloaded:
-            Text("Checking on-device model…")
-                .font(ContempoFont.labelSmall())
-                .foregroundStyle(palette.inkFaint)
-        case .unavailable:
-            Text("Not supported on this device — cloud will be used instead.")
-                .font(ContempoFont.labelSmall())
-                .foregroundStyle(palette.inkFaint)
-        case .available:
-            Text("On-device model ready.")
-                .font(ContempoFont.labelSmall())
-                .foregroundStyle(palette.pine)
-        case .downloading(let bytesDownloaded, let totalBytes, let etaSeconds):
-            VStack(alignment: .leading, spacing: 6) {
-                Text(downloadingLabel(bytesDownloaded: bytesDownloaded, totalBytes: totalBytes, etaSeconds: etaSeconds))
-                    .font(ContempoFont.labelSmall())
-                    .foregroundStyle(palette.inkFaint)
-                if totalBytes > 0 {
-                    ProgressView(value: Double(bytesDownloaded), total: Double(totalBytes))
+        VStack(alignment: .leading, spacing: 10) {
+            // Speech Recognition Model (ASR - Whisper)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Speech Recognition (Whisper ASR)")
+                    .font(ContempoFont.labelLarge())
+                    .foregroundStyle(palette.ink)
+                if viewModel.asrAvailable {
+                    HStack(spacing: 6) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(palette.pine)
+                        Text("On-device speech model ready (bundled)")
+                            .font(ContempoFont.labelSmall())
+                            .foregroundStyle(palette.pine)
+                    }
                 } else {
-                    ProgressView()
+                    HStack(spacing: 6) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(palette.brass)
+                        Text("On-device speech model unavailable")
+                            .font(ContempoFont.labelSmall())
+                            .foregroundStyle(palette.brass)
+                    }
                 }
             }
-        case .failed(let message):
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Couldn't prepare the on-device model: \(message)")
-                    .font(ContempoFont.labelSmall())
-                    .foregroundStyle(palette.danger)
-                Button("Retry") { viewModel.retryOnDeviceModelCheck() }
+
+            Divider()
+
+            // Language Model (LLM - Gemma)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Language Model (Gemma LLM)")
+                    .font(ContempoFont.labelLarge())
+                    .foregroundStyle(palette.ink)
+
+                switch viewModel.onDeviceStatus {
+                case .checking, .notDownloaded:
+                    Text("Checking on-device model…")
+                        .font(ContempoFont.labelSmall())
+                        .foregroundStyle(palette.inkFaint)
+                case .unavailable:
+                    Text("Not supported on this device — cloud will be used instead.")
+                        .font(ContempoFont.labelSmall())
+                        .foregroundStyle(palette.inkFaint)
+                case .available:
+                    HStack(spacing: 6) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(palette.pine)
+                        Text("On-device language model ready.")
+                            .font(ContempoFont.labelSmall())
+                            .foregroundStyle(palette.pine)
+                    }
+                case .downloading(let bytesDownloaded, let totalBytes, let etaSeconds):
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(downloadingLabel(bytesDownloaded: bytesDownloaded, totalBytes: totalBytes, etaSeconds: etaSeconds))
+                            .font(ContempoFont.labelSmall())
+                            .foregroundStyle(palette.inkFaint)
+                        if totalBytes > 0 {
+                            ProgressView(value: Double(bytesDownloaded), total: Double(totalBytes))
+                        } else {
+                            ProgressView()
+                        }
+                    }
+                case .failed(let message):
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Couldn't prepare the on-device model: \(message)")
+                            .font(ContempoFont.labelSmall())
+                            .foregroundStyle(palette.danger)
+                        Button("Retry") { viewModel.retryOnDeviceModelCheck() }
+                    }
+                }
             }
         }
+        .padding(12)
+        .background(palette.paperRaised)
+        .clipShape(RoundedRectangle(cornerRadius: ContempoRadius.medium))
     }
 
     private func downloadingLabel(bytesDownloaded: Int64, totalBytes: Int64, etaSeconds: Int?) -> String {

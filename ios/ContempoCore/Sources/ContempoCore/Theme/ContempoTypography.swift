@@ -21,6 +21,8 @@ public enum ContempoFont {
     public static func titleMedium() -> Font { .system(size: 17, weight: .semibold, design: .serif) }
 
     public static func bodyLarge() -> Font { .system(size: 16, weight: .regular, design: .default) }
+    public static func bodyMedium() -> Font { .system(size: 14, weight: .regular, design: .default) }
+    public static func bodySmall() -> Font { .system(size: 12, weight: .regular, design: .default) }
 
     public static func labelLarge() -> Font { .system(size: 14, weight: .medium, design: .default) }
 

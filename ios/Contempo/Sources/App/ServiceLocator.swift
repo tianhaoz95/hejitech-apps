@@ -33,6 +33,9 @@ enum ServiceLocator {
     static let audioRecorder = AudioRecorder()
     static let whisperTranscriber = WhisperTranscriber()
     static let captureLanguageStore = CaptureLanguageStore()
+    static let quickCaptureSettingsStore = QuickCaptureSettingsStore()
+    static let quickCaptureStatsStore = QuickCaptureStatsStore()
+    static let pendingCaptureStore = PendingCaptureStore()
     static let agentClient = AgentClient(
         onDeviceLlm: onDeviceLlm,
         functions: Functions.functions(),
