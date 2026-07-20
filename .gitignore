@@ -25,6 +25,23 @@ android/wear/google-services.json
 # committed under android/app/src/main/{assets,jniLibs})
 android/whisper-vendor/
 
+# iOS / Xcode — project.pbxproj is XcodeGen-generated from ios/project.yml,
+# not hand-edited, so it's not committed either (same "generated, not
+# authored" reasoning as not committing Gradle's build/ output).
+ios/*.xcodeproj/
+ios/*.xcworkspace/
+ios/**/xcuserdata/
+ios/**/.build/
+ios/**/.swiftpm/
+ios/Contempo/GoogleService-Info.plist
+ios/Contempo/Config/Secrets.xcconfig
+ios/Contempo Watch App/GoogleService-Info.plist
+
+# ios/Vendor/sherpa-onnx/'s prebuilt xcframeworks ARE committed (same
+# "runtime assets get committed, only build scratch is ignored" reasoning as
+# android/whisper-vendor/ above — these are the iOS equivalent of Android's
+# committed jniLibs, not a reproducible build scratch dir).
+
 # Node
 node_modules/
 backend/functions/lib/

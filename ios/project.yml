@@ -1,0 +1,232 @@
+name: Contempo
+options:
+  bundleIdPrefix: com.hejitech
+  deploymentTarget:
+    iOS: "17.0"
+    watchOS: "10.0"
+  createIntermediateGroups: true
+
+packages:
+  ContempoCore:
+    path: ContempoCore
+  firebase-ios-sdk:
+    url: https://github.com/firebase/firebase-ios-sdk.git
+    from: 11.0.0
+  GoogleSignIn-iOS:
+    url: https://github.com/google/GoogleSignIn-iOS.git
+    from: 8.0.0
+
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    MARKETING_VERSION: "0.1.0-mvp"
+    CURRENT_PROJECT_VERSION: "1"
+
+targets:
+  Contempo:
+    type: application
+    platform: iOS
+    sources:
+      - path: Contempo/Sources
+      # Folder references (not flattened file lists) — WhisperTranscriber
+      # looks these up via Bundle.main's `inDirectory:`, which needs the
+      # on-disk subdirectory structure preserved inside the app bundle.
+      - path: Contempo/Resources/sherpa-onnx-whisper-tiny.en
+        type: folder
+      - path: Contempo/Resources/sherpa-onnx-whisper-tiny
+        type: folder
+      - path: Contempo/GoogleService-Info.plist
+        optional: true
+    info:
+      path: Contempo/Info.plist
+      properties:
+        UILaunchScreen: {}
+        NSMicrophoneUsageDescription: "Contempo uses your microphone to capture spoken work-log entries."
+        NSCameraUsageDescription: "Contempo uses your camera to attach a photo, or read an odometer, to a work-log entry."
+        NSLocationWhenInUseUsageDescription: "Contempo uses your location to record where a work entry or mileage trip started and ended."
+        NSPhotoLibraryAddUsageDescription: "Contempo saves photos you attach to work-log entries."
+        UIBackgroundModes: [audio, location, fetch, processing]
+        NSSupportsLiveActivities: true
+        CFBundleURLTypes:
+          - CFBundleURLSchemes:
+              - "$(REVERSED_CLIENT_ID)"
+        # Debug builds (USE_FIREBASE_EMULATOR) talk to plain http://localhost
+        # for Auth/Firestore/Storage/Functions — App Transport Security
+        # blocks that by default, even for loopback, unless explicitly
+        # allowed. This is Firebase's own documented iOS Local Emulator
+        # Suite requirement, not a Contempo-specific relaxation of ATS —
+        # release builds never hit this path (USE_FIREBASE_EMULATOR is
+        # Debug-only, see Config/Debug.xcconfig), so it doesn't loosen
+        # anything in production.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.contempo
+        INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
+        TARGETED_DEVICE_FAMILY: "1"
+        ENABLE_PREVIEWS: "YES"
+        # sherpa-onnx.xcframework wraps a plain static library with no
+        # "HeadersPath" in its Info.plist (confirmed — Xcode doesn't expose
+        # its headers automatically the way it would for a proper .framework
+        # bundle), so the bridging header's `#import "sherpa-onnx/c-api/c-api.h"`
+        # needs an explicit search path to the flat Headers/ dir the release
+        # tarball ships alongside the binary.
+        SWIFT_OBJC_BRIDGING_HEADER: Contempo/Sources/Vendor/SherpaOnnx/SherpaOnnx-Bridging-Header.h
+        HEADER_SEARCH_PATHS: "$(SRCROOT)/Vendor/sherpa-onnx/sherpa-onnx.xcframework/Headers"
+        # Vendored CLiteRTLM.xcframework only ships an arm64 Simulator slice
+        # (no x86_64) — nobody tests iOS 17+ on an Intel Simulator in
+        # practice, so excluding it here rather than chasing a slice that
+        # doesn't exist upstream either.
+        "EXCLUDED_ARCHS[sdk=iphonesimulator*]": x86_64
+    dependencies:
+      - package: ContempoCore
+        product: ContempoCore
+      - package: ContempoCore
+        product: ContempoFirestore
+      - package: firebase-ios-sdk
+        product: FirebaseAuth
+      - package: firebase-ios-sdk
+        product: FirebaseFirestore
+      - package: firebase-ios-sdk
+        product: FirebaseStorage
+      - package: firebase-ios-sdk
+        product: FirebaseFunctions
+      - package: firebase-ios-sdk
+        product: FirebaseRemoteConfig
+      - package: GoogleSignIn-iOS
+        product: GoogleSignIn
+      - package: GoogleSignIn-iOS
+        product: GoogleSignInSwift
+      - framework: Vendor/sherpa-onnx/sherpa-onnx.xcframework
+        embed: false
+      - framework: Vendor/sherpa-onnx/onnxruntime.xcframework
+        embed: false
+      # Vendored directly (source + prebuilt xcframework under
+      # ios/Vendor/litert-lm/), not via SPM: the SPM package's `revision`-
+      # pinned requirement was not being honored by xcodebuild's package
+      # resolver in this environment (kept re-resolving to the v0.14.0 tag
+      # regardless of the pin — a reproducible Xcode/SwiftPM quirk, not
+      # something fixable from project.yml), and that tag's own Package.swift
+      # declares binaryTarget checksums that don't match the real release
+      # assets at their fixed download URLs (confirmed by downloading and
+      # hashing CLiteRTLM.xcframework.zip directly) — an upstream packaging
+      # inconsistency. Vendoring sidesteps both problems the same way
+      # sherpa-onnx already is above. A real .framework with its own
+      # Headers/Modules (unlike sherpa-onnx's raw static lib), so no bridging
+      # header or header search path needed — `import CLiteRTLM` just works
+      # once linked. It's a dynamic library, so (unlike sherpa-onnx) it does
+      # need embedding.
+      - framework: Vendor/litert-lm/CLiteRTLM.xcframework
+        embed: true
+      - target: "Contempo Watch App"
+        embed: true
+        codeSign: true
+      - target: ContempoWidgets
+        embed: true
+        codeSign: true
+    configFiles:
+      Debug: Contempo/Config/Debug.xcconfig
+      Release: Contempo/Config/Release.xcconfig
+
+  ContempoWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ContempoWidgets/Sources
+      # Shared ActivityAttributes types — see the Contempo target's own
+      # comment on why this isn't listed there too (it's already covered by
+      # `Contempo/Sources`'s recursive folder reference).
+      - path: Contempo/Sources/Shared
+    info:
+      path: ContempoWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: "Contempo Widgets"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.contempo.widgets
+        INFOPLIST_KEY_CFBundleDisplayName: "Contempo Widgets"
+        SKIP_INSTALL: "NO"
+        "EXCLUDED_ARCHS[sdk=iphonesimulator*]": x86_64
+
+  "Contempo Watch App":
+    type: application
+    platform: watchOS
+    sources:
+      - path: "Contempo Watch App/Sources"
+      - path: "Contempo Watch App/GoogleService-Info.plist"
+        optional: true
+    info:
+      path: "Contempo Watch App/Info.plist"
+      properties:
+        UILaunchScreen: {}
+        NSMicrophoneUsageDescription: "Contempo uses your microphone to capture spoken work-log entries from your wrist."
+        WKCompanionAppBundleIdentifier: com.hejitech.contempo
+        WKApplication: true
+        UIBackgroundModes: [audio, processing]
+        BGTaskSchedulerPermittedIdentifiers:
+          - com.hejitech.contempo.watchkitapp.pending-upload
+        # Same USE_FIREBASE_EMULATOR/localhost reasoning as the phone
+        # target's Info.plist entry — see its comment. The watch talks to
+        # the emulator both via FirebaseAuth's own networking and the
+        # plain-REST WatchAudioCaptureQueueWriter/WatchEntryStatsReader.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.contempo.watchkitapp
+        INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
+        TARGETED_DEVICE_FAMILY: "4"
+        SKIP_INSTALL: "NO"
+      configs:
+        Debug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) DEBUG USE_FIREBASE_EMULATOR"
+    entitlements:
+      # Shared with "Contempo Watch Widgets" below so the complication can
+      # read the progress this app writes via HoursProgressStore — separate
+      # processes can't share plain UserDefaults.standard.
+      path: "Contempo Watch App/Contempo Watch App.entitlements"
+      properties:
+        com.apple.security.application-groups:
+          - group.com.hejitech.contempo
+    dependencies:
+      # No FirebaseFirestore here — its SDK target isn't built for watchOS
+      # at all (see ContempoCore/Package.swift's comment); the watch writes
+      # its audioCaptures queue doc via ContempoCore's REST-based
+      # WatchAudioCaptureQueueWriter instead, which only needs FirebaseAuth.
+      - package: ContempoCore
+        product: ContempoCore
+      - package: firebase-ios-sdk
+        product: FirebaseAuth
+      - package: firebase-ios-sdk
+        product: FirebaseStorage
+      - target: "Contempo Watch Widgets"
+        embed: true
+        codeSign: true
+
+  "Contempo Watch Widgets":
+    type: app-extension
+    platform: watchOS
+    sources:
+      - path: "Contempo Watch Widgets/Sources"
+    info:
+      path: "Contempo Watch Widgets/Info.plist"
+      properties:
+        CFBundleDisplayName: "Contempo Widgets"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.contempo.watchkitapp.widgets
+        INFOPLIST_KEY_CFBundleDisplayName: "Contempo Widgets"
+        SKIP_INSTALL: "NO"
+    entitlements:
+      path: "Contempo Watch Widgets/Contempo Watch Widgets.entitlements"
+      properties:
+        com.apple.security.application-groups:
+          - group.com.hejitech.contempo
+    dependencies:
+      - package: ContempoCore
+        product: ContempoCore

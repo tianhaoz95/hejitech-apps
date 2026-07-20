@@ -88,6 +88,17 @@ data class Entry(
      */
     val audioUrl: String = "",
     /**
+     * The verbatim Whisper transcription this entry was parsed from — before
+     * AgentClient's cleanup (filler words, dictation-error fixes) produced
+     * [task]. Only ever populated alongside [audioUrl] (see
+     * AudioCaptureProcessor's saveFromDraft/saveFallback — currently the
+     * only capture path that uploads its audio at all), so a blank value
+     * here is the normal case for anything not voice-captured via the
+     * watch. Surfaced in EntryDetailScreen next to the audio player, for a
+     * host who wants to check the AI's parse against what was actually said.
+     */
+    val rawTranscript: String = "",
+    /**
      * When/where a start/stop timer entry (see [inProgress]/TimerEntryCoordinator)
      * was actually stopped — captured at the moment of the "finished"
      * utterance or the Dashboard/Capture tap-to-complete action, distinct

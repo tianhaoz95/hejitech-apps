@@ -70,6 +70,10 @@ service cloud.firestore {
         isLatLng(d, 'captureLat', 'captureLng') &&
         isLatLng(d, 'stopLat', 'stopLng') &&
         d.audioUrl is string && d.audioUrl.size() <= 2000 &&
+        // Absent on docs written before this field existed — same
+        // "unknown/missing extra fields don't get rejected" policy as
+        // isValidAudioCapture's `language` field below.
+        (!('rawTranscript' in d) || (d.rawTranscript is string && d.rawTranscript.size() <= 5000)) &&
         optionalType(d, 'stoppedAt', 'timestamp');
     }
 

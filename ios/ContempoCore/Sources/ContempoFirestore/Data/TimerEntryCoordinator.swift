@@ -1,0 +1,117 @@
+import ContempoCore
+import FirebaseFirestore
+import Foundation
+
+public enum TimerEventResult: Sendable, Equatable {
+    case started(entryId: String)
+    case stopped(entryId: String, durationMinutes: Int)
+}
+
+/// Orchestrates the "start work" / "finished work" voice-timer feature: at
+/// most one Entry ever has `inProgress = true` for a given user (enforced
+/// here, not by a Firestore rule — see `EntryRepository.findOpenEntry`),
+/// since a host can't honestly claim overlapping hours across two
+/// simultaneous tasks. Shared by the phone-direct capture path and the
+/// watch-relay path — both point at the same real Firestore/uid, so "the one
+/// open entry" is consistent regardless of which device queries it.
+public final class TimerEntryCoordinator: Sendable {
+    /// Beyond this, an elapsed timer is almost certainly a forgotten "stop" — cap and flag rather than trust it.
+    public static let maxOpenTimerMinutes = 12 * 60
+
+    private let entryRepository: EntryRepository
+
+    public init(entryRepository: EntryRepository) {
+        self.entryRepository = entryRepository
+    }
+
+    /// Opens a new timer, auto-closing whatever was previously open first (no
+    /// blocking/asking — matches this app's "capture is meant to be fast, not
+    /// a conversation" principle). `startedAt` is the moment the "start"
+    /// utterance actually happened, not necessarily now — the watch-relay
+    /// path can be syncing minutes late, so callers must pass the original
+    /// capture time, or the timer anchors late and every later duration
+    /// computed from it is proportionally wrong.
+    public func handleStart(
+        property: String?,
+        task: String?,
+        category: String?,
+        source: CaptureSource,
+        startedAt: Timestamp
+    ) async throws -> TimerEventResult {
+        if let previous = try await entryRepository.findOpenEntry(isTrip: false) {
+            _ = try await closeEntry(previous, closedAt: startedAt)
+        }
+
+        let entry = Entry(
+            propertyName: property ?? "",
+            task: task ?? "",
+            durationMinutes: 0,
+            category: category.map { EntryCategory(firestoreValue: $0).firestoreValue } ?? EntryCategory.other.firestoreValue,
+            status: EntryStatus.pendingReview.firestoreValue,
+            source: source.firestoreValue,
+            activityDate: startedAt,
+            loggedAt: Timestamp(date: Date()),
+            inProgress: true
+        )
+        let entryId = try await entryRepository.createEntry(entry)
+        return .started(entryId: entryId)
+    }
+
+    /// Closes the open timer, if any. `stoppedAt` is the original "finished"
+    /// capture time for the same late-sync reason as `handleStart`. `stopLat`/
+    /// `stopLng` are best-effort "where the user was when they finished" —
+    /// distinct from `Entry.captureLat`/`captureLng`, which records the
+    /// *start* location instead. Returns nil when nothing was open — callers
+    /// should fall back to treating the utterance as a normal standalone
+    /// entry rather than silently dropping it.
+    public func handleStop(
+        property: String?,
+        task: String?,
+        stoppedAt: Timestamp,
+        stopLat: Double? = nil,
+        stopLng: Double? = nil
+    ) async throws -> TimerEventResult? {
+        guard let open = try await entryRepository.findOpenEntry(isTrip: false) else { return nil }
+        let duration = try await closeEntry(open, closedAt: stoppedAt, property: property, task: task, stopLat: stopLat, stopLng: stopLng)
+        return .stopped(entryId: open.id ?? "", durationMinutes: duration)
+    }
+
+    @discardableResult
+    private func closeEntry(
+        _ open: Entry,
+        closedAt: Timestamp,
+        property: String? = nil,
+        task: String? = nil,
+        stopLat: Double? = nil,
+        stopLng: Double? = nil
+    ) async throws -> Int {
+        let elapsedMinutes = max(0, Int((closedAt.seconds - open.activityDate.seconds) / 60))
+        let isStale = elapsedMinutes > Self.maxOpenTimerMinutes
+        let duration = isStale ? Self.maxOpenTimerMinutes : elapsedMinutes
+
+        // Only fill in from the closing utterance if the timer didn't already
+        // know it — never clobber what the user said at start time.
+        let resolvedProperty = open.propertyName.isEmpty ? (property ?? "") : open.propertyName
+        let resolvedTask = open.task.isEmpty ? (task ?? "") : open.task
+        let isComplete = !resolvedProperty.isEmpty && !resolvedTask.isEmpty && duration > 0
+
+        var updated = open
+        updated.propertyName = resolvedProperty
+        updated.task = resolvedTask
+        updated.durationMinutes = duration
+        updated.inProgress = false
+        updated.status = (isComplete ? EntryStatus.confirmed : EntryStatus.pendingReview).firestoreValue
+        updated.confirmedAt = isComplete ? Timestamp(date: Date()) : nil
+        updated.isVague = open.isVague || isStale
+        if isStale {
+            updated.riskReasons = open.riskReasons + ["Very long duration between start and stop — please double-check"]
+        }
+        updated.stoppedAt = closedAt
+        updated.stopLat = stopLat
+        updated.stopLng = stopLng
+
+        guard let entryId = open.id else { return duration }
+        try await entryRepository.updateEntry(entryId: entryId, entry: updated)
+        return duration
+    }
+}

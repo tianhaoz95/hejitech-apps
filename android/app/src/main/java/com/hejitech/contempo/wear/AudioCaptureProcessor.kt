@@ -178,6 +178,7 @@ object AudioCaptureProcessor {
             captureLat = capture.lat,
             captureLng = capture.lng,
             audioUrl = audioUrl,
+            rawTranscript = rawText,
         )
         ServiceLocator.entryRepository.createEntry(entry)
     }
@@ -193,6 +194,7 @@ object AudioCaptureProcessor {
             captureLat = capture.lat,
             captureLng = capture.lng,
             audioUrl = audioUrl,
+            rawTranscript = rawText,
         )
         ServiceLocator.entryRepository.createEntry(entry)
     }

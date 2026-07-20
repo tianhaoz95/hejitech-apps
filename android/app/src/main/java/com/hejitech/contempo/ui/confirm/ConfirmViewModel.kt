@@ -282,6 +282,12 @@ class ConfirmViewModel(
             loggedAt = existing?.loggedAt ?: now,
             confirmedAt = confirmedAt,
             photoUrls = existing?.photoUrls ?: emptyList(),
+            // No UI here to edit this — carried forward untouched so
+            // confirming/editing a voice-captured pending entry doesn't
+            // silently wipe it via this full-document overwrite, same
+            // reasoning as photoUrls above.
+            audioUrl = existing?.audioUrl ?: "",
+            rawTranscript = existing?.rawTranscript ?: "",
             miles = miles,
             // Trip-specific fields aren't editable here (no UI for them,
             // this screen only lets the user correct the final miles

@@ -164,6 +164,9 @@
     <string name="entry_detail_audio_error">Couldn\'t play this recording</string>
     <string name="entry_detail_audio_play_content_description">Play recording</string>
     <string name="entry_detail_audio_pause_content_description">Pause recording</string>
+    <string name="entry_detail_transcript_label">Raw transcript</string>
+    <string name="entry_detail_transcript_show_content_description">Show raw transcript</string>
+    <string name="entry_detail_transcript_hide_content_description">Hide raw transcript</string>
     <string name="entry_detail_complete_button">Complete this entry</string>
     <string name="entry_detail_stop_timer_button">Stop timer</string>
     <string name="entry_detail_edit_button">Edit entry</string>

@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -176,7 +177,7 @@ private fun EntryDetailContent(entry: Entry, onEditEntry: (Entry) -> Unit) {
     }
     if (entry.audioUrl.isNotBlank()) {
         DetailRow(stringResource(R.string.entry_detail_audio_label)) {
-            AudioPlayerRow(entry.audioUrl)
+            AudioPlayerRow(entry.audioUrl, entry.rawTranscript)
         }
     }
 
@@ -263,8 +264,9 @@ private enum class AudioPlaybackState { IDLE, LOADING, PLAYING, PAUSED, ERROR }
  * is likely to sit on an entry's detail screen.
  */
 @Composable
-private fun AudioPlayerRow(audioUrl: String) {
+private fun AudioPlayerRow(audioUrl: String, rawTranscript: String) {
     var playbackState by remember { mutableStateOf(AudioPlaybackState.IDLE) }
+    var showTranscript by remember { mutableStateOf(false) }
     val mediaPlayer = remember { MediaPlayer() }
 
     DisposableEffect(audioUrl) {
@@ -302,40 +304,79 @@ private fun AudioPlayerRow(audioUrl: String) {
         }
     }
 
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        IconButton(
-            onClick = { if (playbackState == AudioPlaybackState.PLAYING) pause() else play() },
-            enabled = playbackState != AudioPlaybackState.LOADING,
-        ) {
-            when (playbackState) {
-                AudioPlaybackState.LOADING -> CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                AudioPlaybackState.PLAYING -> Icon(
-                    Icons.Filled.Pause,
-                    contentDescription = stringResource(R.string.entry_detail_audio_pause_content_description),
-                )
-                else -> Icon(
-                    Icons.Filled.PlayArrow,
-                    contentDescription = stringResource(R.string.entry_detail_audio_play_content_description),
-                )
+    Column {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(
+                onClick = { if (playbackState == AudioPlaybackState.PLAYING) pause() else play() },
+                enabled = playbackState != AudioPlaybackState.LOADING,
+            ) {
+                when (playbackState) {
+                    AudioPlaybackState.LOADING -> CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    AudioPlaybackState.PLAYING -> Icon(
+                        Icons.Filled.Pause,
+                        contentDescription = stringResource(R.string.entry_detail_audio_pause_content_description),
+                    )
+                    else -> Icon(
+                        Icons.Filled.PlayArrow,
+                        contentDescription = stringResource(R.string.entry_detail_audio_play_content_description),
+                    )
+                }
+            }
+            Spacer(Modifier.width(4.dp))
+            val statusText = when (playbackState) {
+                AudioPlaybackState.LOADING -> stringResource(R.string.entry_detail_audio_loading)
+                AudioPlaybackState.PLAYING -> stringResource(R.string.entry_detail_audio_playing)
+                AudioPlaybackState.PAUSED -> stringResource(R.string.entry_detail_audio_paused)
+                AudioPlaybackState.ERROR -> stringResource(R.string.entry_detail_audio_error)
+                AudioPlaybackState.IDLE -> stringResource(R.string.entry_detail_audio_recording)
+            }
+            Text(
+                statusText,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (playbackState == AudioPlaybackState.ERROR) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                modifier = Modifier.weight(1f),
+            )
+            // Only entries voice-captured via the watch have this (see
+            // AudioCaptureProcessor) — a phone-recorded entry's audioUrl
+            // (if that path ever uploads its own audio) would show the
+            // player above with no transcript button, which is correct:
+            // there's genuinely nothing to show.
+            if (rawTranscript.isNotBlank()) {
+                IconButton(onClick = { showTranscript = !showTranscript }) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Article,
+                        contentDescription = stringResource(
+                            if (showTranscript) {
+                                R.string.entry_detail_transcript_hide_content_description
+                            } else {
+                                R.string.entry_detail_transcript_show_content_description
+                            }
+                        ),
+                    )
+                }
             }
         }
-        Spacer(Modifier.width(4.dp))
-        val statusText = when (playbackState) {
-            AudioPlaybackState.LOADING -> stringResource(R.string.entry_detail_audio_loading)
-            AudioPlaybackState.PLAYING -> stringResource(R.string.entry_detail_audio_playing)
-            AudioPlaybackState.PAUSED -> stringResource(R.string.entry_detail_audio_paused)
-            AudioPlaybackState.ERROR -> stringResource(R.string.entry_detail_audio_error)
-            AudioPlaybackState.IDLE -> stringResource(R.string.entry_detail_audio_recording)
+        if (showTranscript && rawTranscript.isNotBlank()) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                stringResource(R.string.entry_detail_transcript_label),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                rawTranscript,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                    .padding(12.dp),
+            )
         }
-        Text(
-            statusText,
-            style = MaterialTheme.typography.bodyMedium,
-            color = if (playbackState == AudioPlaybackState.ERROR) {
-                MaterialTheme.colorScheme.error
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
-        )
     }
 }
 
