@@ -14,17 +14,17 @@
 # (see app/build.gradle.kts and wear/build.gradle.kts) rather than a
 # dedicated release key — that debug keystore's SHA-1/SHA-256 are what's
 # registered with the real project for Google Sign-In, and there's no Play
-# Store pipeline yet to need a real signing key for. "prod" here means "real
+# Store pipeline yet to need a real signing key for. "prod" means "real
 # backend," not "ready to publish."
 #
-# Builds, installs, and launches, then exits — it never streams logcat. Use
-# `adb logcat` yourself if you need to watch the log.
-#
-# Usage: ./scripts/install-android-prod.sh [--no-launch] [--android] [--wear-os]
-#   --no-launch: build and install only, skip launching too.
-#   --android:   only install the phone app, skip the wear/ companion app.
-#   --wear-os:   only install the wear/ companion app, skip the phone app.
-#   Passing neither (or both) installs both, which is the default.
+# Usage: ./scripts/install-android-prod.sh [options]
+#   --no-launch, --build-only  : build and install only, skip launching.
+#   --android                 : only install the phone app, skip the wear/ companion app.
+#   --wear-os, --wear, --wearOS: only install the wear/ companion app, skip the phone app.
+#   -s, --device <serial>     : target a specific phone device serial.
+#   --wear-device <serial>    : target a specific Wear OS device serial.
+#   --clean                   : run `./gradlew clean` before building.
+#   -h, --help                : show this help message.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -36,20 +36,73 @@ INSTALL_ANDROID=true
 INSTALL_WEAR=true
 WANT_ANDROID_ONLY=false
 WANT_WEAR_ONLY=false
-for arg in "$@"; do
-  case "$arg" in
-    --no-launch) LAUNCH=false ;;
-    --android) WANT_ANDROID_ONLY=true ;;
-    --wear-os) WANT_WEAR_ONLY=true ;;
+TARGET_DEVICE_SERIAL="${ANDROID_SERIAL:-}"
+TARGET_WEAR_SERIAL=""
+CLEAN=false
+
+show_help() {
+  cat <<'EOF'
+Usage: ./scripts/install-android-prod.sh [options]
+
+Builds and installs the production (release) Android phone app and Wear OS companion app.
+
+Options:
+  --no-launch, --build-only   Build and install only, skip launching the app(s).
+  --android                   Install only the phone app, skip the wear/ companion app.
+  --wear-os, --wear, --wearOS Install only the wear/ companion app, skip the phone app.
+  -s, --device <serial>       Specify target phone device serial (overrides auto-detection).
+  --wear-device <serial>      Specify target Wear OS device serial (overrides auto-detection).
+  --clean                     Run `./gradlew clean` before building.
+  -h, --help                  Show this help message and exit.
+EOF
+  exit 0
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --no-launch|--build-only)
+      LAUNCH=false
+      shift
+      ;;
+    --android)
+      WANT_ANDROID_ONLY=true
+      shift
+      ;;
+    --wear-os|--wear|--wearOS|--wear-OS)
+      WANT_WEAR_ONLY=true
+      shift
+      ;;
+    -s|--device)
+      if [[ -z "${2:-}" ]]; then
+        echo "Error: $1 requires a serial argument." >&2
+        exit 1
+      fi
+      TARGET_DEVICE_SERIAL="$2"
+      shift 2
+      ;;
+    --wear-device)
+      if [[ -z "${2:-}" ]]; then
+        echo "Error: $1 requires a serial argument." >&2
+        exit 1
+      fi
+      TARGET_WEAR_SERIAL="$2"
+      shift 2
+      ;;
+    --clean)
+      CLEAN=true
+      shift
+      ;;
+    -h|--help)
+      show_help
+      ;;
     *)
-      echo "Unknown option: $arg" >&2
-      echo "Usage: $0 [--no-launch] [--android] [--wear-os]" >&2
+      echo "Unknown option: $1" >&2
+      echo "Run '$0 --help' for usage details." >&2
       exit 1
       ;;
   esac
 done
-# --android and --wear-os alone each restrict to that platform; passing both
-# (or neither) cancels back out to the default of installing both.
+
 if [[ "$WANT_ANDROID_ONLY" == "true" && "$WANT_WEAR_ONLY" != "true" ]]; then
   INSTALL_WEAR=false
 elif [[ "$WANT_WEAR_ONLY" == "true" && "$WANT_ANDROID_ONLY" != "true" ]]; then
@@ -63,12 +116,6 @@ log()  { printf '\n==> %s\n' "$*"; }
 warn() { printf '\n!! %s\n' "$*" >&2; }
 
 # --- locate adb -------------------------------------------------------------
-# Order: PATH, then $ANDROID_HOME/$ANDROID_SDK_ROOT (the standard SDK-location
-# env vars a real shell setup exports — see ~/.zshrc), then
-# android/local.properties's sdk.dir as a last resort. That file is
-# machine-specific and easy to leave stale after moving the SDK — confirmed
-# live: it silently kept pointing at a since-removed location after an SDK
-# move, and this script's only fallback at the time was that stale file.
 if command -v adb >/dev/null 2>&1; then
   ADB="$(command -v adb)"
 elif [[ -n "${ANDROID_HOME:-}" && -x "$ANDROID_HOME/platform-tools/adb" ]]; then
@@ -81,42 +128,32 @@ elif [[ -f "$ANDROID_DIR/local.properties" ]]; then
     ADB="$SDK_DIR/platform-tools/adb"
   fi
 fi
+
 if [[ -z "$ADB" ]]; then
   warn "Could not find adb (not on PATH, \$ANDROID_HOME/\$ANDROID_SDK_ROOT unset or wrong, and no usable android/local.properties)."
   exit 1
 fi
 
 # --- look for a Wear OS device (emulator or real watch) ----------------------
-# Run before the phone search below, and excluded from it: a real watch
-# connected over adb has no "emulator-" prefix to tell it apart from a phone,
-# so without this the phone search could miscount it as a second phone and
-# abort with a confusing "multiple physical devices" error. Detected by
-# feature flag, not serial naming, so an AVD is picked up the same way a real
-# watch is.
-# (Written for bash 3.2 — macOS's default /bin/bash — so no mapfile/readarray,
-# and no associative arrays for the "is this serial a watch" containment
-# check below.)
 log "Looking for a connected Wear OS device..."
 "$ADB" start-server >/dev/null 2>&1 || true
 WEAR_SERIAL=""
 WEAR_CANDIDATES=()
-while IFS=$'\t' read -r serial state; do
-  [[ -z "$serial" || -z "$state" ]] && continue
-  [[ "$state" != "device" ]] && continue
-  # </dev/null matters: without it, `adb shell` inherits this loop's own
-  # stdin (the process-substitution pipe below) and can drain it, starving
-  # the next `read` — reproduced live: the loop silently stopped after the
-  # first device once this call was in its body.
-  if "$ADB" -s "$serial" shell pm list features </dev/null 2>/dev/null | grep -q "android.hardware.type.watch"; then
-    WEAR_CANDIDATES+=("$serial")
-  fi
-done < <("$ADB" devices | grep -E $'^\\S+\t')
+
+if [[ -n "$TARGET_WEAR_SERIAL" ]]; then
+  WEAR_CANDIDATES=("$TARGET_WEAR_SERIAL")
+else
+  while IFS=$'\t' read -r serial state; do
+    [[ -z "$serial" || -z "$state" ]] && continue
+    [[ "$state" != "device" ]] && continue
+    if "$ADB" -s "$serial" shell pm list features </dev/null 2>/dev/null | grep -q "android.hardware.type.watch"; then
+      WEAR_CANDIDATES+=("$serial")
+    fi
+  done < <("$ADB" devices | grep -E $'^\\S+\t')
+fi
 
 is_wear_serial() {
   local target="$1" candidate
-  # bash 3.2 (macOS's default /bin/bash) treats "${arr[@]}" on an empty array
-  # as an unbound variable under `set -u` — the ${arr[@]:-} default guards
-  # against that when WEAR_CANDIDATES has nothing in it.
   for candidate in "${WEAR_CANDIDATES[@]:-}"; do
     [[ -n "$candidate" && "$candidate" == "$target" ]] && return 0
   done
@@ -129,7 +166,7 @@ if [[ ${#WEAR_CANDIDATES[@]} -eq 1 ]]; then
 elif [[ ${#WEAR_CANDIDATES[@]} -eq 0 ]]; then
   echo "  none found — skipping the wear/ companion app"
 else
-  warn "Multiple Wear OS devices connected: ${WEAR_CANDIDATES[*]}. Skipping the wear/ companion app — disconnect all but one to install it too."
+  warn "Multiple Wear OS devices connected: ${WEAR_CANDIDATES[*]}. Skipping the wear/ companion app — use --wear-device <serial> or disconnect all but one to install it too."
 fi
 
 if [[ "$INSTALL_WEAR" != "true" ]]; then
@@ -142,31 +179,37 @@ if [[ "$INSTALL_ANDROID" != "true" && -z "$WEAR_SERIAL" ]]; then
   exit 1
 fi
 
-# --- find exactly one physical device --------------------------------------
+# --- find physical device for phone app -------------------------------------
 if [[ "$INSTALL_ANDROID" == "true" ]]; then
   log "Looking for a connected physical device..."
-  CANDIDATES=()
-  while IFS=$'\t' read -r serial state; do
-    [[ -z "$serial" || -z "$state" ]] && continue
-    case "$serial" in emulator-*) continue ;; esac
-    is_wear_serial "$serial" && continue
-    if [[ "$state" == "device" ]]; then
-      CANDIDATES+=("$serial")
-    elif [[ "$state" == "unauthorized" ]]; then
-      warn "Device $serial is unauthorized — accept the USB debugging prompt on the device."
-    fi
-  done < <("$ADB" devices | grep -E $'^\\S+\t')
+  if [[ -n "$TARGET_DEVICE_SERIAL" ]]; then
+    DEVICE_SERIAL="$TARGET_DEVICE_SERIAL"
+    export ANDROID_SERIAL="$DEVICE_SERIAL"
+    echo "  using specified device $DEVICE_SERIAL"
+  else
+    CANDIDATES=()
+    while IFS=$'\t' read -r serial state; do
+      [[ -z "$serial" || -z "$state" ]] && continue
+      case "$serial" in emulator-*) continue ;; esac
+      is_wear_serial "$serial" && continue
+      if [[ "$state" == "device" ]]; then
+        CANDIDATES+=("$serial")
+      elif [[ "$state" == "unauthorized" ]]; then
+        warn "Device $serial is unauthorized — accept the USB debugging prompt on the device."
+      fi
+    done < <("$ADB" devices | grep -E $'^\\S+\t')
 
-  if [[ ${#CANDIDATES[@]} -eq 0 ]]; then
-    warn "No authorized physical device found. Plug one in via USB, enable USB debugging, and accept the prompt."
-    exit 1
-  elif [[ ${#CANDIDATES[@]} -gt 1 ]]; then
-    warn "Multiple physical devices connected: ${CANDIDATES[*]}. Disconnect all but one and retry."
-    exit 1
+    if [[ ${#CANDIDATES[@]} -eq 0 ]]; then
+      warn "No authorized physical device found. Plug one in via USB, enable USB debugging, and accept the prompt."
+      exit 1
+    elif [[ ${#CANDIDATES[@]} -gt 1 ]]; then
+      warn "Multiple physical devices connected: ${CANDIDATES[*]}. Use -s/--device <serial> or disconnect all but one and retry."
+      exit 1
+    fi
+    DEVICE_SERIAL="${CANDIDATES[0]}"
+    export ANDROID_SERIAL="$DEVICE_SERIAL"
+    echo "  using device $DEVICE_SERIAL"
   fi
-  DEVICE_SERIAL="${CANDIDATES[0]}"
-  export ANDROID_SERIAL="$DEVICE_SERIAL"
-  echo "  using device $DEVICE_SERIAL"
 
   # --- sanity-check config ---------------------------------------------------
   GOOGLE_SERVICES="$ANDROID_DIR/app/google-services.json"
@@ -188,9 +231,6 @@ if [[ "$INSTALL_ANDROID" == "true" ]]; then
   fi
 fi
 
-# A missing/placeholder wear/google-services.json only skips the wear
-# install (WEAR_SERIAL cleared below) — it must never fail the phone install,
-# which is this script's actual point.
 if [[ -n "$WEAR_SERIAL" ]]; then
   WEAR_GOOGLE_SERVICES="$ANDROID_DIR/wear/google-services.json"
   if [[ ! -f "$WEAR_GOOGLE_SERVICES" ]]; then
@@ -202,14 +242,24 @@ if [[ -n "$WEAR_SERIAL" ]]; then
   fi
 fi
 
+if [[ "$INSTALL_ANDROID" != "true" && -z "$WEAR_SERIAL" ]]; then
+  warn "Nothing to install: no valid target device or companion app configured."
+  exit 1
+fi
+
 # --- build and install ------------------------------------------------------
+if [[ "$CLEAN" == "true" ]]; then
+  log "Cleaning Android build output..."
+  ( cd "$ANDROID_DIR" && ./gradlew clean )
+fi
+
 if [[ "$INSTALL_ANDROID" == "true" ]]; then
-  log "Building and installing the release (prod) app on $DEVICE_SERIAL..."
-  ( cd "$ANDROID_DIR" && ./gradlew :app:installRelease )
+  log "Building and installing the release (prod) app (com.hejitech.contempo) on $DEVICE_SERIAL..."
+  ( cd "$ANDROID_DIR" && ANDROID_SERIAL="$DEVICE_SERIAL" ./gradlew :app:installRelease )
 fi
 
 if [[ -n "$WEAR_SERIAL" ]]; then
-  log "Building and installing the wear companion app on $WEAR_SERIAL..."
+  log "Building and installing the wear companion app (com.hejitech.wear) on $WEAR_SERIAL..."
   ( cd "$ANDROID_DIR" && ANDROID_SERIAL="$WEAR_SERIAL" ./gradlew :wear:installRelease )
 fi
 
@@ -230,3 +280,4 @@ if [[ "$INSTALL_ANDROID" == "true" ]]; then
 fi
 
 log "Done."
+

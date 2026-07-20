@@ -81,6 +81,11 @@ cd android && ./gradlew :app:assembleDebug   # or :app:installDebug with a devic
 ./scripts/run-android-with-emulators.sh contempo-platform  # Android against real project
 ./scripts/run-ios-with-emulators.sh                        # iOS + watchOS against demo-contempo
 
+# Launch Android and Wear OS emulators (AVDs)
+./scripts/launch-android-emulators.sh                       # Launch Android phone & Wear OS AVDs
+./scripts/launch-android-emulators.sh --phone               # Launch phone AVD only
+./scripts/launch-android-emulators.sh --wear                # Launch Wear OS AVD only
+
 # Build & install production/release builds (real Firebase contempo-platform, no emulators):
 ./scripts/install-android-prod.sh                           # Android + Wear OS
 ./scripts/install-ios-prod.sh                               # iOS + watchOS

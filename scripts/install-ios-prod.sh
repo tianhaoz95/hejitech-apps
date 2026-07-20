@@ -6,15 +6,17 @@
 # Firebase emulator suite.
 #
 # If a watchOS simulator or device is available, the watchOS companion app is
-# built and installed on it too, same Release configuration. This is
-# best-effort: no watch device found is not an error, it's the normal case for
-# anyone not also testing the watch app.
+# built and installed on it too, same Release configuration. Embedded targets
+# (ContempoWidgets and Contempo Watch Widgets) are built and included automatically.
 #
-# Usage: ./scripts/install-ios-prod.sh [--no-launch] [--ios] [--watch-os|--watchOS|--watch]
-#   --no-launch: build and install only, skip launching too.
-#   --ios:       only install the iOS phone app, skip the watch app.
-#   --watch-os:  only install the watchOS companion app, skip the phone app.
-#   Passing neither (or both) installs both, which is the default.
+# Usage: ./scripts/install-ios-prod.sh [options]
+#   --no-launch, --build-only     : build and install only, skip launching.
+#   --ios                         : only install the iOS phone app, skip the watch app.
+#   --watch-os, --watchOS, --watch: only install the watchOS companion app, skip the phone app.
+#   -s, --device <id_or_name>     : target a specific iOS simulator or physical device ID/name.
+#   --watch-device <id_or_name>   : target a specific watchOS simulator or physical device ID/name.
+#   --clean                       : clean build artifacts before building.
+#   -h, --help                    : show this help message.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -26,15 +28,68 @@ INSTALL_IOS=true
 INSTALL_WATCH=true
 WANT_IOS_ONLY=false
 WANT_WATCH_ONLY=false
+TARGET_IOS_DEST="${IOS_DEST_ID:-}"
+TARGET_WATCH_DEST=""
+CLEAN=false
 
-for arg in "$@"; do
-  case "$arg" in
-    --no-launch) LAUNCH=false ;;
-    --ios) WANT_IOS_ONLY=true ;;
-    --watch-os|--watchOS|--watch) WANT_WATCH_ONLY=true ;;
+show_help() {
+  cat <<'EOF'
+Usage: ./scripts/install-ios-prod.sh [options]
+
+Builds and installs the production (Release configuration) iOS app, watchOS companion app, and embedded Widget extensions.
+
+Options:
+  --no-launch, --build-only      Build and install only, skip launching the app(s).
+  --ios                          Install only the iOS phone app, skip the watchOS app.
+  --watch-os, --watchOS, --watch Install only the watchOS companion app, skip the phone app.
+  -s, --device <id_or_name>      Specify target iOS simulator or physical device ID/name.
+  --watch-device <id_or_name>    Specify target watchOS simulator or physical device ID/name.
+  --clean                        Clean build artifacts before building.
+  -h, --help                     Show this help message and exit.
+EOF
+  exit 0
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --no-launch|--build-only)
+      LAUNCH=false
+      shift
+      ;;
+    --ios)
+      WANT_IOS_ONLY=true
+      shift
+      ;;
+    --watch-os|--watchOS|--watch)
+      WANT_WATCH_ONLY=true
+      shift
+      ;;
+    -s|--device)
+      if [[ -z "${2:-}" ]]; then
+        echo "Error: $1 requires a device ID or name argument." >&2
+        exit 1
+      fi
+      TARGET_IOS_DEST="$2"
+      shift 2
+      ;;
+    --watch-device)
+      if [[ -z "${2:-}" ]]; then
+        echo "Error: $1 requires a device ID or name argument." >&2
+        exit 1
+      fi
+      TARGET_WATCH_DEST="$2"
+      shift 2
+      ;;
+    --clean)
+      CLEAN=true
+      shift
+      ;;
+    -h|--help)
+      show_help
+      ;;
     *)
-      echo "Unknown option: $arg" >&2
-      echo "Usage: $0 [--no-launch] [--ios] [--watch-os|--watchOS|--watch]" >&2
+      echo "Unknown option: $1" >&2
+      echo "Run '$0 --help' for usage details." >&2
       exit 1
       ;;
   esac
@@ -106,58 +161,101 @@ if [[ "$INSTALL_IOS" != "true" ]] && [[ "$INSTALL_WATCH" != "true" ]]; then
   exit 1
 fi
 
-# --- locate iOS & watchOS simulators / devices -----------------------------
+# --- locate iOS & watchOS target devices / simulators -----------------------
 IOS_DEST_ID=""
 IS_IOS_PHYSICAL=false
 
 log "Looking for iOS target device / simulator..."
 if [[ "$INSTALL_IOS" == "true" ]]; then
-  # Look for booted simulator first, then available simulator
-  IOS_DEST_ID="$(xcrun simctl list devices | grep -E "iPhone.*\(Booted\)" | head -n 1 | sed -E 's/.*\(([A-F0-9-]+)\).*/\1/')" || true
-  if [[ -z "$IOS_DEST_ID" ]]; then
-    IOS_DEST_ID="$(xcrun simctl list devices available | grep "iPhone" | head -n 1 | sed -E 's/.*\(([A-F0-9-]+)\).*/\1/')" || true
-  fi
+  if [[ -n "$TARGET_IOS_DEST" ]]; then
+    IOS_DEST_ID="$TARGET_IOS_DEST"
+    # Check if target is a physical device vs simulator
+    if xcrun simctl list devices 2>/dev/null | grep -q "$IOS_DEST_ID"; then
+      IS_IOS_PHYSICAL=false
+      echo "  using specified iOS Simulator: $IOS_DEST_ID"
+    else
+      IS_IOS_PHYSICAL=true
+      echo "  using specified physical iOS device: $IOS_DEST_ID"
+    fi
+  else
+    # 1. Look for booted simulator
+    IOS_DEST_ID="$(xcrun simctl list devices 2>/dev/null | grep -E "iPhone.*\(Booted\)" | head -n 1 | sed -E 's/.*\(([A-F0-9-]+)\).*/\1/')" || true
+    # 2. Look for available simulator
+    if [[ -z "$IOS_DEST_ID" ]]; then
+      IOS_DEST_ID="$(xcrun simctl list devices available 2>/dev/null | grep "iPhone" | head -n 1 | sed -E 's/.*\(([A-F0-9-]+)\).*/\1/')" || true
+    fi
 
-  if [[ -z "$IOS_DEST_ID" ]]; then
-    warn "Could not find an available iOS device or Simulator."
-    exit 1
+    if [[ -z "$IOS_DEST_ID" ]]; then
+      warn "Could not find an available iOS device or Simulator."
+      exit 1
+    fi
+    echo "  using iOS Simulator: $IOS_DEST_ID"
   fi
-  echo "  using iOS Simulator: $IOS_DEST_ID"
 fi
 
 WATCH_DEST_ID=""
+IS_WATCH_PHYSICAL=false
 if [[ "$INSTALL_WATCH" == "true" ]]; then
   log "Looking for watchOS target device / simulator..."
-  WATCH_DEST_ID="$(xcrun simctl list devices | grep -E "Watch.*\(Booted\)" | head -n 1 | sed -E 's/.*\(([A-F0-9-]+)\).*/\1/')" || true
-  if [[ -z "$WATCH_DEST_ID" ]]; then
-    WATCH_DEST_ID="$(xcrun simctl list devices available | grep "Watch" | head -n 1 | sed -E 's/.*\(([A-F0-9-]+)\).*/\1/')" || true
-  fi
-
-  if [[ -n "$WATCH_DEST_ID" ]]; then
-    echo "  using watchOS Simulator: $WATCH_DEST_ID"
+  if [[ -n "$TARGET_WATCH_DEST" ]]; then
+    WATCH_DEST_ID="$TARGET_WATCH_DEST"
+    if xcrun simctl list devices 2>/dev/null | grep -q "$WATCH_DEST_ID"; then
+      IS_WATCH_PHYSICAL=false
+      echo "  using specified watchOS Simulator: $WATCH_DEST_ID"
+    else
+      IS_WATCH_PHYSICAL=true
+      echo "  using specified physical watchOS device: $WATCH_DEST_ID"
+    fi
   else
-    echo "  none found — skipping watchOS app"
-    INSTALL_WATCH=false
+    WATCH_DEST_ID="$(xcrun simctl list devices 2>/dev/null | grep -E "Watch.*\(Booted\)" | head -n 1 | sed -E 's/.*\(([A-F0-9-]+)\).*/\1/')" || true
+    if [[ -z "$WATCH_DEST_ID" ]]; then
+      WATCH_DEST_ID="$(xcrun simctl list devices available 2>/dev/null | grep "Watch" | head -n 1 | sed -E 's/.*\(([A-F0-9-]+)\).*/\1/')" || true
+    fi
+
+    if [[ -n "$WATCH_DEST_ID" ]]; then
+      echo "  using watchOS Simulator: $WATCH_DEST_ID"
+    else
+      echo "  none found — skipping watchOS app"
+      INSTALL_WATCH=false
+    fi
   fi
 fi
 
-# Ensure Simulator app is open and booted if using Simulators
+# Boot Simulators if necessary
 if [[ "$INSTALL_IOS" == "true" ]] && [[ "$IS_IOS_PHYSICAL" != "true" ]]; then
   open -a Simulator 2>/dev/null || true
   xcrun simctl boot "$IOS_DEST_ID" 2>/dev/null || true
   xcrun simctl bootstatus "$IOS_DEST_ID" -b >/dev/null 2>&1 || true
 fi
-if [[ "$INSTALL_WATCH" == "true" ]] && [[ -n "$WATCH_DEST_ID" ]]; then
+if [[ "$INSTALL_WATCH" == "true" ]] && [[ "$IS_WATCH_PHYSICAL" != "true" ]] && [[ -n "$WATCH_DEST_ID" ]]; then
   xcrun simctl boot "$WATCH_DEST_ID" 2>/dev/null || true
   xcrun simctl bootstatus "$WATCH_DEST_ID" -b >/dev/null 2>&1 || true
 fi
 
 # --- generate project & build ----------------------------------------------
+if [[ "$CLEAN" == "true" ]]; then
+  log "Cleaning Xcode build directory..."
+  rm -rf "$IOS_DIR/Build" "$IOS_DIR/Contempo.xcodeproj"
+fi
+
 log "Generating Xcode project with xcodegen..."
 ( cd "$IOS_DIR" && xcodegen generate )
 
-log "Building Contempo iOS & watchOS apps in Release (prod) configuration..."
-( cd "$IOS_DIR" && xcodebuild -project Contempo.xcodeproj -scheme Contempo -configuration Release -destination "id=$IOS_DEST_ID" -derivedDataPath Build build )
+BUILD_DEST="id=$IOS_DEST_ID"
+if [[ "$IS_IOS_PHYSICAL" == "true" ]]; then
+  BUILD_DEST="generic/platform=iOS"
+fi
+
+log "Resolving Swift Package dependencies..."
+if ! ( cd "$IOS_DIR" && xcodebuild -project Contempo.xcodeproj -scheme Contempo -destination "$BUILD_DEST" -derivedDataPath Build -resolvePackageDependencies ); then
+  warn "Package dependency resolution failed. Clearing corrupted SwiftPM artifact cache and retrying..."
+  rm -rf "$HOME/Library/Caches/org.swift.swiftpm/artifacts"/* "$HOME/Library/Caches/org.swift.swiftpm/repositories"/* 2>/dev/null || true
+  ( cd "$IOS_DIR" && xcodebuild -project Contempo.xcodeproj -scheme Contempo -destination "$BUILD_DEST" -derivedDataPath Build -resolvePackageDependencies )
+fi
+
+log "Building Contempo iOS app, watchOS app, and ContempoWidgets in Release (prod) configuration..."
+( cd "$IOS_DIR" && xcodebuild -project Contempo.xcodeproj -scheme Contempo -configuration Release -destination "$BUILD_DEST" -derivedDataPath Build build )
+
 
 IOS_APP_PATH="$(find "$IOS_DIR/Build" -name "Contempo.app" -type d | head -n 1)"
 WATCH_APP_PATH="$(find "$IOS_DIR/Build" -name "Contempo Watch App.app" -type d | head -n 1)"
@@ -169,13 +267,32 @@ fi
 
 # --- install ----------------------------------------------------------------
 if [[ "$INSTALL_IOS" == "true" ]]; then
-  log "Installing Release app (com.hejitech.contempo) onto $IOS_DEST_ID..."
-  xcrun simctl install "$IOS_DEST_ID" "$IOS_APP_PATH"
+  if [[ "$IS_IOS_PHYSICAL" == "true" ]]; then
+    log "Installing Release app (com.hejitech.contempo) onto physical iOS device $IOS_DEST_ID..."
+    if command -v devicectl >/dev/null 2>&1 || xcrun --find devicectl >/dev/null 2>&1; then
+      xcrun devicectl device install app --device "$IOS_DEST_ID" "$IOS_APP_PATH"
+    elif command -v ios-deploy >/dev/null 2>&1; then
+      ios-deploy --id "$IOS_DEST_ID" --bundle "$IOS_APP_PATH"
+    else
+      warn "Neither xcrun devicectl nor ios-deploy found. Cannot install onto physical device."
+      exit 1
+    fi
+  else
+    log "Installing Release app (com.hejitech.contempo) onto simulator $IOS_DEST_ID..."
+    xcrun simctl install "$IOS_DEST_ID" "$IOS_APP_PATH"
+  fi
 fi
 
 if [[ "$INSTALL_WATCH" == "true" ]] && [[ -n "$WATCH_DEST_ID" ]] && [[ -n "$WATCH_APP_PATH" ]] && [[ -d "$WATCH_APP_PATH" ]]; then
-  log "Installing Release watch app (com.hejitech.contempo.watchkitapp) onto $WATCH_DEST_ID..."
-  xcrun simctl install "$WATCH_DEST_ID" "$WATCH_APP_PATH" 2>/dev/null || true
+  if [[ "$IS_WATCH_PHYSICAL" == "true" ]]; then
+    log "Installing Release watch app (com.hejitech.contempo.watchkitapp) onto physical watch $WATCH_DEST_ID..."
+    if command -v devicectl >/dev/null 2>&1 || xcrun --find devicectl >/dev/null 2>&1; then
+      xcrun devicectl device install app --device "$WATCH_DEST_ID" "$WATCH_APP_PATH" 2>/dev/null || true
+    fi
+  else
+    log "Installing Release watch app (com.hejitech.contempo.watchkitapp) onto simulator $WATCH_DEST_ID..."
+    xcrun simctl install "$WATCH_DEST_ID" "$WATCH_APP_PATH" 2>/dev/null || true
+  fi
 fi
 
 if [[ "$LAUNCH" != "true" ]]; then
@@ -186,18 +303,29 @@ fi
 # --- launch ------------------------------------------------------------------
 if [[ "$INSTALL_IOS" == "true" ]]; then
   log "Launching Contempo..."
-  if ! xcrun simctl launch "$IOS_DEST_ID" com.hejitech.contempo 2>/dev/null; then
-    sleep 1
-    xcrun simctl launch "$IOS_DEST_ID" com.hejitech.contempo
+  if [[ "$IS_IOS_PHYSICAL" == "true" ]]; then
+    if command -v devicectl >/dev/null 2>&1 || xcrun --find devicectl >/dev/null 2>&1; then
+      xcrun devicectl device process launch --device "$IOS_DEST_ID" com.hejitech.contempo 2>/dev/null || true
+    elif command -v ios-deploy >/dev/null 2>&1; then
+      ios-deploy --id "$IOS_DEST_ID" --justlaunch --bundle "$IOS_APP_PATH" 2>/dev/null || true
+    fi
+  else
+    if ! xcrun simctl launch "$IOS_DEST_ID" com.hejitech.contempo 2>/dev/null; then
+      sleep 1
+      xcrun simctl launch "$IOS_DEST_ID" com.hejitech.contempo
+    fi
   fi
 fi
 
 if [[ "$INSTALL_WATCH" == "true" ]] && [[ -n "$WATCH_DEST_ID" ]]; then
   log "Launching Contempo Watch App..."
-  if ! xcrun simctl launch "$WATCH_DEST_ID" com.hejitech.contempo.watchkitapp 2>/dev/null; then
-    sleep 1
-    xcrun simctl launch "$WATCH_DEST_ID" com.hejitech.contempo.watchkitapp 2>/dev/null || true
+  if [[ "$IS_WATCH_PHYSICAL" != "true" ]]; then
+    if ! xcrun simctl launch "$WATCH_DEST_ID" com.hejitech.contempo.watchkitapp 2>/dev/null; then
+      sleep 1
+      xcrun simctl launch "$WATCH_DEST_ID" com.hejitech.contempo.watchkitapp 2>/dev/null || true
+    fi
   fi
 fi
 
 log "Done."
+
