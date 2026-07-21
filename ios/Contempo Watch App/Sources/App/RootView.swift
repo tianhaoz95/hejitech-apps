@@ -8,16 +8,8 @@ struct RootView: View {
         Group {
             if authManager.isSignedIn {
                 WatchCaptureScreen()
-            } else if authManager.isWaitingForPhone {
-                VStack(spacing: 8) {
-                    ProgressView()
-                    Text("Open Contempo on your phone to finish pairing.")
-                        .font(ContempoFont.bodyLarge())
-                        .multilineTextAlignment(.center)
-                }
-                .padding()
             } else {
-                ProgressView()
+                WatchSignInView()
             }
         }
         .contempoTheme()

@@ -17,7 +17,7 @@ import Foundation
 public final class WatchAudioCaptureQueueWriter: Sendable {
     private let projectId: String
     private let emulatorHost: String?
-    private let auth: Auth
+    private let customAuth: Auth?
 
     /// - Parameters:
     ///   - projectId: `FirebaseApp.app()?.options.projectID` — passed in
@@ -26,10 +26,14 @@ public final class WatchAudioCaptureQueueWriter: Sendable {
     ///     `USE_FIREBASE_EMULATOR` is set, matching `FirebaseBootstrap`'s own
     ///     dual-path convention. The Firestore emulator serves the identical
     ///     REST surface on its Firestore port, over plain HTTP.
-    public init(projectId: String, emulatorHost: String?, auth: Auth = Auth.auth()) {
+    public init(projectId: String, emulatorHost: String?, auth: Auth? = nil) {
         self.projectId = projectId
         self.emulatorHost = emulatorHost
-        self.auth = auth
+        self.customAuth = auth
+    }
+
+    private var auth: Auth {
+        customAuth ?? Auth.auth()
     }
 
     private var uid: String {
@@ -41,11 +45,16 @@ public final class WatchAudioCaptureQueueWriter: Sendable {
         }
     }
 
+    private var activeProjectId: String {
+        if !projectId.isEmpty { return projectId }
+        return "contempo-platform"
+    }
+
     private var documentsBaseURL: String {
         if let emulatorHost {
-            return "http://\(emulatorHost):8080/v1/projects/\(projectId)/databases/(default)/documents"
+            return "http://\(emulatorHost):8080/v1/projects/\(activeProjectId)/databases/(default)/documents"
         }
-        return "https://firestore.googleapis.com/v1/projects/\(projectId)/databases/(default)/documents"
+        return "https://firestore.googleapis.com/v1/projects/\(activeProjectId)/databases/(default)/documents"
     }
 
     @discardableResult

@@ -11,19 +11,28 @@ import Foundation
 public final class WatchEntryStatsReader: Sendable {
     private let projectId: String
     private let emulatorHost: String?
-    private let auth: Auth
+    private let customAuth: Auth?
 
-    public init(projectId: String, emulatorHost: String?, auth: Auth = Auth.auth()) {
+    public init(projectId: String, emulatorHost: String?, auth: Auth? = nil) {
         self.projectId = projectId
         self.emulatorHost = emulatorHost
-        self.auth = auth
+        self.customAuth = auth
+    }
+
+    private var auth: Auth {
+        customAuth ?? Auth.auth()
+    }
+
+    private var activeProjectId: String {
+        if !projectId.isEmpty { return projectId }
+        return "contempo-platform"
     }
 
     private var documentsBaseURL: String {
         if let emulatorHost {
-            return "http://\(emulatorHost):8080/v1/projects/\(projectId)/databases/(default)/documents"
+            return "http://\(emulatorHost):8080/v1/projects/\(activeProjectId)/databases/(default)/documents"
         }
-        return "https://firestore.googleapis.com/v1/projects/\(projectId)/databases/(default)/documents"
+        return "https://firestore.googleapis.com/v1/projects/\(activeProjectId)/databases/(default)/documents"
     }
 
     /// Sum of `durationMinutes` across every entry with `status == "confirmed"`, in hours.

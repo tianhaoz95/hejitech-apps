@@ -236,3 +236,30 @@ targets:
     dependencies:
       - package: ContempoCore
         product: ContempoCore
+
+  ContempoTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: ContempoTests
+    settings:
+      GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: Contempo
+      - package: ContempoCore
+        product: ContempoCore
+      - package: ContempoCore
+        product: ContempoFirestore
+
+  ContempoWatchAppTests:
+    type: bundle.unit-test
+    platform: watchOS
+    sources:
+      - path: ContempoWatchAppTests
+    settings:
+      GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: "Contempo Watch App"
+      - package: ContempoCore
+        product: ContempoCore
+

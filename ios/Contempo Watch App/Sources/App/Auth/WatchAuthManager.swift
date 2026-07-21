@@ -18,45 +18,132 @@ final class WatchAuthManager: NSObject, WCSessionDelegate {
 
     private(set) var isSignedIn = false
     private(set) var isWaitingForPhone = false
+    private(set) var statusMessage: String? = nil
 
     private override init() {
         super.init()
-        isSignedIn = Auth.auth().currentUser != nil
+        checkAuthStatus()
     }
 
     func start() {
+        checkAuthStatus()
+
         Auth.auth().addStateDidChangeListener { [weak self] _, user in
-            self?.isSignedIn = user != nil
+            Task { @MainActor [weak self] in
+                self?.isSignedIn = user != nil
+                self?.isWaitingForPhone = user == nil
+            }
         }
 
-        #if USE_FIREBASE_EMULATOR
-        if Auth.auth().currentUser == nil {
-            Task { try? await signInWithFakeEmulatorIdentity() }
+        if WCSession.isSupported() {
+            WCSession.default.delegate = self
+            WCSession.default.activate()
         }
-        #else
-        guard WCSession.isSupported() else { return }
-        WCSession.default.delegate = self
-        WCSession.default.activate()
-        isWaitingForPhone = Auth.auth().currentUser == nil
-        #endif
+
+        if !isSignedIn {
+            requestTokenFromPhone()
+        }
+    }
+
+    func checkAuthStatus() {
+        let signedIn = Auth.auth().currentUser != nil
+        isSignedIn = signedIn
+        isWaitingForPhone = !signedIn
+        if !signedIn {
+            requestTokenFromPhone()
+        }
+    }
+
+    func requestTokenFromPhone() {
+        guard WCSession.isSupported(), WCSession.default.activationState == .activated else {
+            statusMessage = "WatchConnectivity starting…"
+            return
+        }
+
+        if let context = WCSession.default.receivedApplicationContext as [String: Any]?, !context.isEmpty {
+            processAuthPayload(context)
+            if isSignedIn { return }
+        }
+
+        statusMessage = "Contacting iPhone…"
+        WCSession.default.sendMessage(["requestAuthToken": true]) { [weak self] reply in
+            Task { @MainActor [weak self] in
+                self?.processAuthPayload(reply)
+            }
+        } errorHandler: { [weak self] error in
+            Task { @MainActor [weak self] in
+                #if USE_FIREBASE_EMULATOR
+                try? await self?.signInWithFakeEmulatorIdentity()
+                #else
+                self?.statusMessage = "Open Contempo on iPhone"
+                #endif
+            }
+        }
+    }
+
+    func signOut() {
+        try? Auth.auth().signOut()
+        checkAuthStatus()
     }
 
     #if USE_FIREBASE_EMULATOR
-    /// Same fixed test identity as the phone app, so both land on the same emulator-mode user.
-    private func signInWithFakeEmulatorIdentity() async throws {
+    /// Fixed test identity matching the phone app in emulator mode.
+    func signInWithFakeEmulatorIdentity() async throws {
         let fakeIdToken = #"{"sub":"emulator-pilot-user","email":"pilot@example.test","email_verified":true,"name":"Pilot Host"}"#
         let credential = GoogleAuthProvider.credential(withIDToken: fakeIdToken, accessToken: "")
         try await Auth.auth().signIn(with: credential)
+        statusMessage = nil
+        checkAuthStatus()
     }
     #endif
 
-    nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {}
+    func processAuthPayload(_ payload: [String: Any]) {
+        if let customToken = payload["customToken"] as? String {
+            Task {
+                do {
+                    try await Auth.auth().signIn(withCustomToken: customToken)
+                    statusMessage = nil
+                    checkAuthStatus()
+                } catch {
+                    statusMessage = "Sign-in error: \(error.localizedDescription)"
+                }
+            }
+        } else if payload["isEmulator"] as? Bool == true {
+            #if USE_FIREBASE_EMULATOR
+            Task {
+                try? await signInWithFakeEmulatorIdentity()
+                statusMessage = nil
+            }
+            #endif
+        } else if let errorMsg = payload["error"] as? String {
+            if errorMsg == "not_signed_in" {
+                statusMessage = "Sign in on iPhone first"
+            } else {
+                statusMessage = errorMsg
+            }
+        }
+    }
+
+    nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
+        Task { @MainActor in
+            if activationState == .activated && !self.isSignedIn {
+                self.requestTokenFromPhone()
+                if let context = session.receivedApplicationContext as [String: Any]?, !context.isEmpty {
+                    self.processAuthPayload(context)
+                }
+            }
+        }
+    }
 
     nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
-        guard let customToken = userInfo["customToken"] as? String else { return }
         Task { @MainActor in
-            try? await Auth.auth().signIn(withCustomToken: customToken)
-            isWaitingForPhone = false
+            self.processAuthPayload(userInfo)
+        }
+    }
+
+    nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
+        Task { @MainActor in
+            self.processAuthPayload(applicationContext)
         }
     }
 }

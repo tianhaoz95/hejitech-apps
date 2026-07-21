@@ -75,6 +75,11 @@ final class ChatViewModel {
         send()
     }
 
+    func sendPrompt(_ prompt: String) {
+        inputText = prompt
+        send()
+    }
+
     func send() {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty || pendingImageData != nil else { return }

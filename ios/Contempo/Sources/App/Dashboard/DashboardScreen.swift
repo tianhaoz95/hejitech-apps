@@ -35,6 +35,7 @@ struct DashboardScreen: View {
                             Capsule()
                                 .fill(palette.pine)
                                 .frame(width: max(10, geo.size.width * CGFloat(progress)), height: 10)
+                                .animation(.spring(response: 0.6, dampingFraction: 0.75), value: progress)
                         }
                     }
                     .frame(height: 10)

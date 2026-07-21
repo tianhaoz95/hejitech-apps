@@ -3,12 +3,20 @@ import Foundation
 /// A recording saved locally but not yet durably uploaded. `id` doubles as
 /// the eventual Storage object name (`{id}.wav`) so the sync step doesn't
 /// need to invent one later.
-struct PendingCapture: Sendable {
-    let id: String
-    let fileURL: URL
-    let capturedAt: Date
-    let lat: Double?
-    let lng: Double?
+public struct PendingCapture: Sendable {
+    public let id: String
+    public let fileURL: URL
+    public let capturedAt: Date
+    public let lat: Double?
+    public let lng: Double?
+
+    public init(id: String, fileURL: URL, capturedAt: Date, lat: Double?, lng: Double?) {
+        self.id = id
+        self.fileURL = fileURL
+        self.capturedAt = capturedAt
+        self.lat = lat
+        self.lng = lng
+    }
 }
 
 /// watchOS port of Android Wear's `PendingCaptureStore` — durable-before-
@@ -16,17 +24,21 @@ struct PendingCapture: Sendable {
 /// process death or lost connectivity between "stop" and a successful
 /// Storage upload. One `.wav` file plus a sidecar `.json` of capture
 /// metadata per pending recording, both in the app's Documents directory.
-final class PendingCaptureStore {
+public final class PendingCaptureStore: Sendable {
     private let directory: URL
 
-    init() {
-        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        directory = documents.appendingPathComponent("PendingCaptures", isDirectory: true)
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    public init(directory: URL? = nil) {
+        if let directory {
+            self.directory = directory
+        } else {
+            let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            self.directory = documents.appendingPathComponent("PendingCaptures", isDirectory: true)
+        }
+        try? FileManager.default.createDirectory(at: self.directory, withIntermediateDirectories: true)
     }
 
     @discardableResult
-    func save(wav: Data, lat: Double?, lng: Double?) -> PendingCapture {
+    public func save(wav: Data, lat: Double?, lng: Double?) -> PendingCapture {
         let id = UUID().uuidString
         let fileURL = directory.appendingPathComponent("\(id).wav")
         let metadataURL = directory.appendingPathComponent("\(id).json")
@@ -41,7 +53,7 @@ final class PendingCaptureStore {
         return PendingCapture(id: id, fileURL: fileURL, capturedAt: capturedAt, lat: lat, lng: lng)
     }
 
-    func listPending() -> [PendingCapture] {
+    public func listPending() -> [PendingCapture] {
         guard let files = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) else { return [] }
         return files
             .filter { $0.pathExtension == "wav" }
@@ -58,7 +70,7 @@ final class PendingCaptureStore {
             }
     }
 
-    func delete(_ pending: PendingCapture) {
+    public func delete(_ pending: PendingCapture) {
         try? FileManager.default.removeItem(at: pending.fileURL)
         try? FileManager.default.removeItem(at: directory.appendingPathComponent("\(pending.id).json"))
     }

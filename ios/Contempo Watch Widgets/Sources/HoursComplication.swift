@@ -12,25 +12,41 @@ import WidgetKit
 struct HoursComplicationEntry: TimelineEntry {
     let date: Date
     let confirmedHours: Double
+    let isTimerRunning: Bool
+    let elapsedSeconds: Int
+    let taskName: String
 }
 
 struct HoursComplicationProvider: TimelineProvider {
     private let store = HoursProgressStore(appGroupId: "group.com.hejitech.contempo")
+    private let timerStore = WatchWorkTimerStore(appGroupId: "group.com.hejitech.contempo")
 
     func placeholder(in context: Context) -> HoursComplicationEntry {
-        HoursComplicationEntry(date: Date(), confirmedHours: 0)
+        HoursComplicationEntry(
+            date: Date(),
+            confirmedHours: 0,
+            isTimerRunning: false,
+            elapsedSeconds: 0,
+            taskName: ""
+        )
     }
 
     func getSnapshot(in context: Context, completion: @escaping (HoursComplicationEntry) -> Void) {
-        completion(HoursComplicationEntry(date: Date(), confirmedHours: store.read()))
+        completion(createEntry())
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<HoursComplicationEntry>) -> Void) {
-        let entry = HoursComplicationEntry(date: Date(), confirmedHours: store.read())
-        // No further reloads scheduled here — the watch app itself calls
-        // `WidgetCenter.shared.reloadTimelines` whenever it refreshes
-        // `confirmedHours`, which is the actual trigger for new data.
-        completion(Timeline(entries: [entry], policy: .never))
+        completion(Timeline(entries: [createEntry()], policy: .never))
+    }
+
+    private func createEntry() -> HoursComplicationEntry {
+        HoursComplicationEntry(
+            date: Date(),
+            confirmedHours: store.read(),
+            isTimerRunning: timerStore.isTimerRunning(),
+            elapsedSeconds: timerStore.elapsedSeconds(),
+            taskName: timerStore.currentTask()
+        )
     }
 }
 
@@ -39,8 +55,8 @@ struct HoursComplication: Widget {
         StaticConfiguration(kind: "HoursComplication", provider: HoursComplicationProvider()) { entry in
             HoursComplicationView(entry: entry)
         }
-        .configurationDisplayName("Hours progress")
-        .description("Confirmed hours toward the \(MaterialParticipationTest.name) test.")
+        .configurationDisplayName("Hours & Work Timer")
+        .description("Confirmed hours & active work session for \(MaterialParticipationTest.name).")
         .supportedFamilies([.accessoryCircular, .accessoryRectangular, .accessoryInline])
     }
 }
@@ -53,23 +69,58 @@ private struct HoursComplicationView: View {
         entry.confirmedHours.formatted(.number.precision(.fractionLength(1)))
     }
 
+    private var elapsedMinutesText: String {
+        let mins = entry.elapsedSeconds / 60
+        return "\(mins)m"
+    }
+
     var body: some View {
-        switch family {
-        case .accessoryCircular:
-            Gauge(value: min(1, entry.confirmedHours / Double(MaterialParticipationTest.thresholdHours))) {
-                Text("hrs")
-            } currentValueLabel: {
-                Text(hoursText)
+        if entry.isTimerRunning {
+            switch family {
+            case .accessoryCircular:
+                VStack(spacing: 0) {
+                    Image(systemName: "stopwatch.fill")
+                        .font(.system(size: 14))
+                    Text(elapsedMinutesText)
+                        .font(.system(size: 11, weight: .bold))
+                }
+            case .accessoryInline:
+                Text("⏱️ WORKING: \(elapsedMinutesText)")
+            default:
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(Color.green)
+                            .frame(width: 6, height: 6)
+                        Text("WORK IN PROGRESS")
+                            .font(.system(size: 10, weight: .bold))
+                    }
+                    Text(entry.taskName)
+                        .font(.caption2)
+                        .lineLimit(1)
+                    Text("Elapsed: \(elapsedMinutesText)")
+                        .font(.caption)
+                        .bold()
+                }
             }
-            .gaugeStyle(.accessoryCircular)
-        case .accessoryInline:
-            Text("\(hoursText) / \(MaterialParticipationTest.thresholdHours) hrs")
-        default:
-            VStack(alignment: .leading) {
+        } else {
+            switch family {
+            case .accessoryCircular:
+                Gauge(value: min(1, entry.confirmedHours / Double(MaterialParticipationTest.thresholdHours))) {
+                    Text("hrs")
+                } currentValueLabel: {
+                    Text(hoursText)
+                }
+                .gaugeStyle(.accessoryCircular)
+            case .accessoryInline:
                 Text("\(hoursText) / \(MaterialParticipationTest.thresholdHours) hrs")
-                    .font(.headline)
-                Text(MaterialParticipationTest.name + " test")
-                    .font(.caption2)
+            default:
+                VStack(alignment: .leading) {
+                    Text("\(hoursText) / \(MaterialParticipationTest.thresholdHours) hrs")
+                        .font(.headline)
+                    Text(MaterialParticipationTest.name + " test")
+                        .font(.caption2)
+                }
             }
         }
     }

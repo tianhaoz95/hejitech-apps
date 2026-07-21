@@ -21,6 +21,7 @@ final class WatchCaptureViewModel {
     private let uploadStatsStore = WatchServiceLocator.uploadStatsStore
     private let entryStatsReader = WatchServiceLocator.entryStatsReader
     private let hoursProgressStore = WatchServiceLocator.hoursProgressStore
+    private let timerStore = WatchWorkTimerStore(appGroupId: "group.com.hejitech.contempo")
 
     var isRecording = false
     var confirmedHours: Double = 0
@@ -30,16 +31,56 @@ final class WatchCaptureViewModel {
     var uploadedTodayCount = 0
     var isUploadingPending = false
 
+    // Active Work Timer State
+    var isTimerRunning = false
+    var timerTask = "STR General Work"
+    var elapsedSeconds = 0
+
     var recordingAmplitude: Float { audioRecorder.amplitude }
 
     private var statsPollTask: Task<Void, Never>?
+    private var timerTickerTask: Task<Void, Never>?
 
     init() {
         refreshLocalStats()
+        refreshTimerState()
         statsPollTask = Task { [weak self] in
             while !Task.isCancelled {
                 await self?.refreshConfirmedHours()
                 try? await Task.sleep(nanoseconds: 15_000_000_000)
+            }
+        }
+    }
+
+    func startWorkTimer(task: String = "STR General Work") {
+        timerStore.startWorkTimer(task: task)
+        refreshTimerState()
+        WidgetCenter.shared.reloadTimelines(ofKind: "HoursComplication")
+    }
+
+    func stopAndCompleteWorkTimer() {
+        guard let completed = timerStore.stopAndCompleteWorkTimer() else { return }
+        refreshTimerState()
+        
+        lastSavedSummary = "Work Logged — \(completed.durationMinutes) mins!"
+        confirmedHours += Double(completed.durationMinutes) / 60.0
+        hoursProgressStore.write(confirmedHours: confirmedHours)
+        WidgetCenter.shared.reloadTimelines(ofKind: "HoursComplication")
+    }
+
+    private func refreshTimerState() {
+        isTimerRunning = timerStore.isTimerRunning()
+        timerTask = timerStore.currentTask()
+        elapsedSeconds = timerStore.elapsedSeconds()
+
+        timerTickerTask?.cancel()
+        if isTimerRunning {
+            timerTickerTask = Task { [weak self] in
+                while !Task.isCancelled {
+                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                    guard let self else { return }
+                    self.elapsedSeconds = self.timerStore.elapsedSeconds()
+                }
             }
         }
     }
@@ -78,7 +119,13 @@ final class WatchCaptureViewModel {
         pendingCaptureStore.save(wav: wav, lat: nil, lng: nil)
         lastSavedSummary = "Saved — uploading shortly"
         refreshLocalStats()
-        Task { await PendingCaptureSyncer.syncAll(); refreshLocalStats() }
+        Task {
+            let result = await PendingCaptureSyncer.syncAll()
+            refreshLocalStats()
+            if !result.isSuccess {
+                errorMessage = result.errorMessage
+            }
+        }
     }
 
     /// User-initiated "upload now" — syncs the pending backlog directly for
@@ -90,13 +137,16 @@ final class WatchCaptureViewModel {
         errorMessage = nil
         lastSavedSummary = nil
         Task {
-            await PendingCaptureSyncer.syncAll()
+            let result = await PendingCaptureSyncer.syncAll()
             let stillPending = pendingCaptureStore.listPending().count
             isUploadingPending = false
             pendingCount = stillPending
             uploadedTodayCount = uploadStatsStore.uploadedTodayCount()
-            lastSavedSummary = stillPending == 0 ? "All uploaded" : nil
-            errorMessage = stillPending > 0 ? "\(stillPending) still pending — check connection" : nil
+            if stillPending == 0 {
+                lastSavedSummary = "All uploaded"
+            } else {
+                errorMessage = !result.errorMessage.isEmpty ? result.errorMessage : "\(stillPending) still pending — check connection"
+            }
         }
     }
 

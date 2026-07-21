@@ -19,10 +19,18 @@ struct ConfirmScreen: View {
         Form {
             Section("Property") {
                 if viewModel.isAddingNewProperty {
-                    HStack {
-                        TextField("New property name", text: $viewModel.newPropertyName)
-                        Button("Add") { viewModel.onConfirmNewProperty() }
-                        Button("Cancel") { viewModel.onCancelAddNewProperty() }
+                    VStack(alignment: .leading, spacing: 8) {
+                        AddressAutoCompleteField(
+                            placeholder: "New property address",
+                            text: $viewModel.newPropertyName
+                        )
+                        HStack {
+                            Spacer()
+                            Button("Cancel") { viewModel.onCancelAddNewProperty() }
+                                .buttonStyle(.bordered)
+                            Button("Add") { viewModel.onConfirmNewProperty() }
+                                .buttonStyle(.borderedProminent)
+                        }
                     }
                 } else {
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -37,7 +45,10 @@ struct ConfirmScreen: View {
                                 .buttonStyle(.bordered)
                         }
                     }
-                    TextField("Property name", text: $viewModel.property)
+                    AddressAutoCompleteField(
+                        placeholder: "Property name or address",
+                        text: $viewModel.property
+                    )
                 }
             }
 

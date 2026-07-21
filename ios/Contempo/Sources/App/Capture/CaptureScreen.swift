@@ -7,6 +7,7 @@ struct CaptureScreen: View {
     @State private var viewModel = CaptureViewModel()
     @State private var typeExpanded = false
     @State private var showQuickCaptureExplanation = false
+    @State private var showHelpWalkthrough = false
     @Environment(\.contempoPalette) private var palette
 
     private var busy: Bool {
@@ -19,6 +20,15 @@ struct CaptureScreen: View {
                 HStack {
                     Eyebrow("Capture")
                     Spacer()
+                    Button {
+                        showHelpWalkthrough = true
+                    } label: {
+                        Image(systemName: "questionmark.circle")
+                            .font(.title3)
+                            .foregroundStyle(palette.inkSoft)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Help & walkthrough")
                 }
 
                 if let tripEntry = viewModel.openTripEntry {
@@ -269,6 +279,9 @@ struct CaptureScreen: View {
         .navigationTitle("Capture")
         .sheet(isPresented: $showQuickCaptureExplanation) {
             QuickCaptureExplanationSheet()
+        }
+        .sheet(isPresented: $showHelpWalkthrough) {
+            HelpWalkthroughSheet()
         }
     }
 

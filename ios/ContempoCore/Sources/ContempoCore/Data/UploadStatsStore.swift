@@ -1,16 +1,14 @@
 import Foundation
 
-/// Tiny persisted "how many recordings uploaded today" counter — mirrors
+/// Persisted "how many recordings uploaded today" counter — mirrors
 /// Android Wear's `UploadStatsStore`. Local, upload-time bookkeeping, not
-/// derived from Firestore: the `audioCaptures` queue doc is deleted once the
-/// phone processes it, so it can't answer "how many uploaded today" after
-/// the fact.
-final class UploadStatsStore {
+/// derived from Firestore.
+public final class UploadStatsStore: Sendable {
     private static let dateKey = "upload_stats_date"
     private static let countKey = "upload_stats_count"
     private let defaults: UserDefaults
 
-    init(defaults: UserDefaults = .standard) {
+    public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
     }
 
@@ -21,13 +19,13 @@ final class UploadStatsStore {
         return formatter.string(from: Date())
     }
 
-    func recordUpload() {
+    public func recordUpload() {
         let count = defaults.string(forKey: Self.dateKey) == today ? defaults.integer(forKey: Self.countKey) + 1 : 1
         defaults.set(today, forKey: Self.dateKey)
         defaults.set(count, forKey: Self.countKey)
     }
 
-    func uploadedTodayCount() -> Int {
+    public func uploadedTodayCount() -> Int {
         defaults.string(forKey: Self.dateKey) == today ? defaults.integer(forKey: Self.countKey) : 0
     }
 }

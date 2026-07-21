@@ -82,6 +82,8 @@ fun WearCaptureScreen(
     uiState: WearUiState,
     amplitude: Float,
     onMicTap: () -> Unit,
+    onStartWorkTimer: () -> Unit,
+    onStopWorkTimer: () -> Unit,
     onUploadPendingNow: () -> Unit,
     onDismissMessages: () -> Unit,
 ) {
@@ -95,15 +97,58 @@ fun WearCaptureScreen(
                 style = MaterialTheme.typography.caption1,
                 color = MaterialTheme.colors.onBackground,
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
 
-            MicButton(
-                isRecording = uiState.isRecording,
-                amplitude = amplitude,
-                onClick = onMicTap,
-            )
+            if (uiState.isTimerRunning) {
+                // Active Running Work Timer View
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colors.surface)
+                        .padding(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        "🟢 WORK IN PROGRESS",
+                        style = MaterialTheme.typography.caption2,
+                        color = MaterialTheme.colors.primary,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        formatDuration(uiState.elapsedSeconds),
+                        style = MaterialTheme.typography.title2,
+                        color = MaterialTheme.colors.onSurface,
+                    )
+                    Text(
+                        uiState.timerTask,
+                        style = MaterialTheme.typography.caption2,
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Chip(
+                        onClick = onStopWorkTimer,
+                        label = { Text("Complete", style = MaterialTheme.typography.button) },
+                        colors = ChipDefaults.primaryChipColors(),
+                    )
+                }
+            } else {
+                MicButton(
+                    isRecording = uiState.isRecording,
+                    amplitude = amplitude,
+                    onClick = onMicTap,
+                )
 
-            Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(8.dp))
+
+                Chip(
+                    onClick = onStartWorkTimer,
+                    label = { Text("Start Work Timer", style = MaterialTheme.typography.caption2) },
+                    colors = ChipDefaults.secondaryChipColors(),
+                )
+            }
+
+            Spacer(Modifier.height(6.dp))
 
             val messageColor = MaterialTheme.colors.onBackground
             when {
@@ -120,7 +165,7 @@ fun WearCaptureScreen(
                     color = messageColor,
                     textAlign = TextAlign.Center,
                 )
-                else -> Text("Tap to speak", style = MaterialTheme.typography.caption2, color = messageColor)
+                else -> if (!uiState.isTimerRunning) Text("Tap mic to speak", style = MaterialTheme.typography.caption2, color = messageColor)
             }
 
             if (uiState.pendingCount > 0 || uiState.uploadedTodayCount > 0) {
@@ -133,7 +178,7 @@ fun WearCaptureScreen(
             }
 
             if (uiState.pendingCount > 0 && !uiState.isRecording) {
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(6.dp))
                 Chip(
                     onClick = onUploadPendingNow,
                     enabled = !uiState.isUploadingPending,
@@ -150,13 +195,22 @@ fun WearCaptureScreen(
         }
     }
 
-    // Transient confirmation/error messages self-clear so the watch face
-    // returns to a plain "tap to speak" idle state without another input.
     LaunchedEffect(uiState.lastSavedSummary, uiState.errorMessage) {
         if (uiState.lastSavedSummary != null || uiState.errorMessage != null) {
             kotlinx.coroutines.delay(4000)
             onDismissMessages()
         }
+    }
+}
+
+private fun formatDuration(totalSeconds: Int): String {
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    val seconds = totalSeconds % 60
+    return if (hours > 0) {
+        "%d:%02d:%02d".format(hours, minutes, seconds)
+    } else {
+        "%02d:%02d".format(minutes, seconds)
     }
 }
 

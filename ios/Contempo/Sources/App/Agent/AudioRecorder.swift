@@ -47,6 +47,7 @@ final class AudioRecorder {
             throw AudioRecorderError.formatUnavailable
         }
 
+        var lastAmplitudeUpdate: Double = 0
         input.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { [weak self] buffer, _ in
             guard let self else { return }
             guard let converted = AVAudioPCMBuffer(pcmFormat: targetFormat, frameCapacity: buffer.frameLength) else { return }
@@ -59,9 +60,19 @@ final class AudioRecorder {
             let frameCount = Int(converted.frameLength)
             let floats = Array(UnsafeBufferPointer(start: channelData[0], count: frameCount))
             let peak = floats.reduce(Float(0)) { max($0, abs($1)) }
+            
+            let now = CACurrentMediaTime()
+            let shouldUpdateAmplitude = (now - lastAmplitudeUpdate) >= 0.04
+            if shouldUpdateAmplitude {
+                lastAmplitudeUpdate = now
+            }
+
             Task { @MainActor [weak self] in
-                self?.samples.append(contentsOf: floats)
-                self?.amplitude = peak
+                guard let self else { return }
+                self.samples.append(contentsOf: floats)
+                if shouldUpdateAmplitude {
+                    self.amplitude = peak
+                }
             }
         }
 

@@ -94,6 +94,13 @@ cd android && ./gradlew :app:assembleDebug   # or :app:installDebug with a devic
 # `npx -y firebase-tools@latest ...` over a global `firebase` install.
 ```
 
+**Task Completion Rule**: Upon completing code changes or any task, always run both production build scripts to verify there are no compilation or build regressions:
+```bash
+./scripts/install-android-prod.sh
+./scripts/install-ios-prod.sh --no-launch
+```
+*Note*: It is acceptable if installation fails due to no connected device/simulator, but any build, compilation, script, or configuration error must be debugged and fixed before considering the task complete.
+
 **Always stop any Firebase emulator instance once you're done with it** — whether
 started via `./scripts/run-android-with-emulators.sh` (Ctrl+C tears down
 build/install/logcat/emulators together) or started ad hoc (e.g. `firebase

@@ -13,37 +13,100 @@ struct WatchCaptureScreen: View {
                     .font(ContempoFont.labelLarge())
                     .foregroundStyle(palette.ink)
 
-                // Hero Mic Button
-                Button {
-                    Task {
-                        if viewModel.isRecording {
-                            await viewModel.stopRecordingAndSend()
-                        } else {
-                            await viewModel.startRecording()
+                // Active Running Work Timer View vs Hero Voice Mic
+                if viewModel.isTimerRunning {
+                    VStack(spacing: 8) {
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(palette.pine)
+                                .frame(width: 6, height: 6)
+                            Text("WORK IN PROGRESS")
+                                .font(ContempoFont.labelSmall())
+                                .tracking(ContempoFont.labelSmallTracking)
+                                .foregroundStyle(palette.pine)
                         }
-                    }
-                } label: {
-                    ZStack {
-                        Circle()
-                            .fill(viewModel.isRecording ? palette.danger : palette.pine)
-                            .frame(width: 72, height: 72)
-                            .shadow(color: (viewModel.isRecording ? palette.danger : palette.pine).opacity(0.3), radius: 6, x: 0, y: 3)
 
-                        if viewModel.isRecording {
-                            WatchVolumeBars(amplitude: viewModel.recordingAmplitude, color: .white)
-                        } else {
-                            Image(systemName: "mic.fill")
-                                .font(.system(size: 30, weight: .semibold))
-                                .foregroundStyle(.white)
+                        Text(formatDuration(viewModel.elapsedSeconds))
+                            .font(.system(size: 26, weight: .bold, design: .monospaced))
+                            .foregroundStyle(palette.ink)
+
+                        Text(viewModel.timerTask)
+                            .font(ContempoFont.bodySmall())
+                            .foregroundStyle(palette.inkFaint)
+                            .lineLimit(1)
+
+                        Button {
+                            withAnimation {
+                                viewModel.stopAndCompleteWorkTimer()
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "checkmark.circle.fill")
+                                Text("Complete")
+                            }
+                            .font(ContempoFont.labelLarge())
+                            .bold()
+                            .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(palette.pine)
+                    }
+                    .padding(10)
+                    .background(palette.paperRaised)
+                    .clipShape(RoundedRectangle(cornerRadius: ContempoRadius.large))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: ContempoRadius.large)
+                            .stroke(palette.pine, lineWidth: 1.5)
+                    )
+                } else {
+                    // Hero Mic Button
+                    Button {
+                        Task {
+                            if viewModel.isRecording {
+                                await viewModel.stopRecordingAndSend()
+                            } else {
+                                await viewModel.startRecording()
+                            }
+                        }
+                    } label: {
+                        ZStack {
+                            Circle()
+                                .fill(viewModel.isRecording ? palette.danger : palette.pine)
+                                .frame(width: 68, height: 68)
+                                .shadow(color: (viewModel.isRecording ? palette.danger : palette.pine).opacity(0.3), radius: 6, x: 0, y: 3)
+
+                            if viewModel.isRecording {
+                                WatchVolumeBars(amplitude: viewModel.recordingAmplitude, color: .white)
+                            } else {
+                                Image(systemName: "mic.fill")
+                                    .font(.system(size: 28, weight: .semibold))
+                                    .foregroundStyle(.white)
+                            }
                         }
                     }
+                    .buttonStyle(.plain)
+
+                    // Status Message
+                    Text(viewModel.isRecording ? "Listening…" : "Tap mic to speak")
+                        .font(ContempoFont.labelSmall())
+                        .foregroundStyle(palette.inkFaint)
+
+                    // Start Generic Work Timer Button
+                    Button {
+                        withAnimation {
+                            viewModel.startWorkTimer(task: "STR General Work")
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "play.circle.fill")
+                            Text("Start Work Timer")
+                        }
+                        .font(ContempoFont.labelSmall())
+                        .bold()
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(palette.pine)
                 }
-                .buttonStyle(.plain)
-
-                // Status Message
-                Text(viewModel.isRecording ? "Listening…" : "Tap to speak")
-                    .font(ContempoFont.labelSmall())
-                    .foregroundStyle(palette.inkFaint)
 
                 if let lastSavedSummary = viewModel.lastSavedSummary {
                     Text(lastSavedSummary)
@@ -81,9 +144,34 @@ struct WatchCaptureScreen: View {
                     .tint(palette.brass)
                     .disabled(viewModel.isUploadingPending)
                 }
+
+                Divider()
+
+                Button(role: .destructive) {
+                    WatchAuthManager.shared.signOut()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                        Text("Sign Out")
+                    }
+                    .font(ContempoFont.labelSmall())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(palette.danger)
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
+        }
+    }
+
+    private func formatDuration(_ totalSeconds: Int) -> String {
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            return String(format: "%02d:%02d", minutes, seconds)
         }
     }
 }

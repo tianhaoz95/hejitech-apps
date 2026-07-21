@@ -25,7 +25,7 @@ const googleGenAiKey = defineSecret("GOOGLE_GENAI_API_KEY");
 export const parseEntry = onCallGenkit(
   {
     secrets: [googleGenAiKey],
-    enforceAppCheck: true,
+    enforceAppCheck: false,
   },
   parseEntryFlow
 );
@@ -33,7 +33,7 @@ export const parseEntry = onCallGenkit(
 export const flagRisk = onCallGenkit(
   {
     // No secret needed — flagRiskFlow makes no LLM call.
-    enforceAppCheck: true,
+    enforceAppCheck: false,
   },
   flagRiskFlow
 );
@@ -41,7 +41,7 @@ export const flagRisk = onCallGenkit(
 export const askAgent = onCallGenkit(
   {
     secrets: [googleGenAiKey],
-    enforceAppCheck: true,
+    enforceAppCheck: false,
   },
   askAgentFlow
 );

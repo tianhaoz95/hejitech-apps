@@ -5,6 +5,7 @@ struct SettingsScreen: View {
     @State private var viewModel = SettingsViewModel()
     @Environment(\.contempoPalette) private var palette
     @State private var showDeleteConfirm = false
+    @State private var showWalkthrough = false
 
     var body: some View {
         List {
@@ -93,10 +94,21 @@ struct SettingsScreen: View {
                 }
             }
 
+            Section("Help") {
+                Button {
+                    showWalkthrough = true
+                } label: {
+                    Label("Feature Walkthrough", systemImage: "questionmark.circle")
+                }
+            }
+
             Section("Legal") {
                 NavigationLink("Privacy Policy", value: AppRoute.legal(.privacy))
                 NavigationLink("Terms of Service", value: AppRoute.legal(.terms))
             }
+        }
+        .sheet(isPresented: $showWalkthrough) {
+            HelpWalkthroughSheet()
         }
         .navigationTitle("Settings")
         .confirmationDialog(

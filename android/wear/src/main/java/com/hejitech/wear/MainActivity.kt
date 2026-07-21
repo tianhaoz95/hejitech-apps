@@ -85,6 +85,8 @@ private fun WearRootScreen(viewModel: WearCaptureViewModel = viewModel()) {
                 uiState = uiState,
                 amplitude = amplitude,
                 onMicTap = ::onMicTap,
+                onStartWorkTimer = { viewModel.startWorkTimer() },
+                onStopWorkTimer = { viewModel.stopAndCompleteWorkTimer() },
                 onUploadPendingNow = viewModel::uploadPendingNow,
                 onDismissMessages = viewModel::dismissMessages,
             )

@@ -22,12 +22,17 @@ enum WatchServiceLocator {
     static let uploadStatsStore = UploadStatsStore()
     static let hoursProgressStore = HoursProgressStore(appGroupId: appGroupId)
 
-    static let audioCaptureQueueWriter = WatchAudioCaptureQueueWriter(
-        projectId: FirebaseApp.app()?.options.projectID ?? "",
-        emulatorHost: FirebaseBootstrap.emulatorHost
-    )
-    static let entryStatsReader = WatchEntryStatsReader(
-        projectId: FirebaseApp.app()?.options.projectID ?? "",
-        emulatorHost: FirebaseBootstrap.emulatorHost
-    )
+    static var audioCaptureQueueWriter: WatchAudioCaptureQueueWriter {
+        WatchAudioCaptureQueueWriter(
+            projectId: FirebaseApp.app()?.options.projectID ?? "contempo-platform",
+            emulatorHost: FirebaseBootstrap.emulatorHost
+        )
+    }
+
+    static var entryStatsReader: WatchEntryStatsReader {
+        WatchEntryStatsReader(
+            projectId: FirebaseApp.app()?.options.projectID ?? "contempo-platform",
+            emulatorHost: FirebaseBootstrap.emulatorHost
+        )
+    }
 }

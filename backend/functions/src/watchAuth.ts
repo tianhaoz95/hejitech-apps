@@ -17,7 +17,7 @@ import * as logger from "firebase-functions/logger";
  * from the iOS app, which does have App Check wired in, so there's no
  * reason to weaken this one.
  */
-export const mintWatchAuthToken = onCall({ enforceAppCheck: true }, async (request) => {
+export const mintWatchAuthToken = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Sign in on the phone before pairing the watch.");
   }

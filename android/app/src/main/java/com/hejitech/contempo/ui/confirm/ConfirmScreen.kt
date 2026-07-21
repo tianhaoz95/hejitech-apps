@@ -1,5 +1,6 @@
 package com.hejitech.contempo.ui.confirm
 
+import com.hejitech.contempo.ui.components.OsmAddressAutoCompleteField
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -149,7 +150,7 @@ fun ConfirmScreen(
 
         if (uiState.isAddingNewProperty) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(
+                OsmAddressAutoCompleteField(
                     value = uiState.newPropertyName,
                     onValueChange = viewModel::onNewPropertyNameChanged,
                     label = { Text(stringResource(R.string.confirm_new_property_label)) },
@@ -193,7 +194,7 @@ fun ConfirmScreen(
             Spacer(Modifier.height(4.dp))
         }
 
-        OutlinedTextField(
+        OsmAddressAutoCompleteField(
             value = uiState.property,
             onValueChange = viewModel::onPropertyChanged,
             label = { RequiredFieldLabel(stringResource(R.string.confirm_property_label), missing = uiState.property.isBlank()) },

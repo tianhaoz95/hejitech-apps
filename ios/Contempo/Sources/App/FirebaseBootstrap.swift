@@ -18,7 +18,6 @@ enum FirebaseBootstrap {
     private static let emulatorHost = "localhost"
 
     static func configure() {
-        configureAppCheck()
         FirebaseApp.configure()
 
         #if USE_FIREBASE_EMULATOR

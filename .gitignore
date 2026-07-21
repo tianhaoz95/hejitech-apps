@@ -69,3 +69,4 @@ backend/.firebase/
 .claude/
 scratch/
 ios/Build/
+Build/

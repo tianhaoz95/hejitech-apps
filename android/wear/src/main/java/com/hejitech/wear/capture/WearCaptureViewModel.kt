@@ -29,6 +29,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeoutOrNull
 
+import com.hejitech.wear.timer.WearTimerNotificationManager
+import com.hejitech.wear.timer.WearWorkTimerStore
+import kotlinx.coroutines.Job
+
 data class WearUiState(
     val isSignedIn: Boolean = false,
     val isSigningIn: Boolean = false,
@@ -42,6 +46,9 @@ data class WearUiState(
     val uploadedTodayCount: Int = 0,
     /** True while a manually-triggered upload (see [WearCaptureViewModel.uploadPendingNow]) is in flight. */
     val isUploadingPending: Boolean = false,
+    val isTimerRunning: Boolean = false,
+    val timerTask: String = "STR General Work",
+    val elapsedSeconds: Int = 0,
 )
 
 /** How often the pending/uploaded-today counters refresh while this screen is visible. */
@@ -57,15 +64,72 @@ class WearCaptureViewModel : ViewModel() {
     private val pendingCaptureStore = WearServiceLocator.pendingCaptureStore
     private val uploadStatsStore = WearServiceLocator.uploadStatsStore
     private val appContext = WearServiceLocator.appContext
+    private val timerStore = WearWorkTimerStore(appContext)
+    private val notificationManager = WearTimerNotificationManager(appContext)
 
     val recordingAmplitude = audioRecorder.amplitude
 
     private val _uiState = MutableStateFlow(WearUiState(isSignedIn = Firebase.auth.currentUser != null))
     val uiState: StateFlow<WearUiState> = _uiState.asStateFlow()
 
+    private var timerTickerJob: Job? = null
+
     init {
         if (_uiState.value.isSignedIn) observeProgress()
         pollUploadStats()
+        refreshTimerState()
+    }
+
+    fun startWorkTimer(task: String = "STR General Work") {
+        timerStore.startTimer(task)
+        refreshTimerState()
+    }
+
+    fun stopAndCompleteWorkTimer() {
+        val completed = timerStore.stopAndCompleteTimer()
+        notificationManager.cancelNotification()
+        refreshTimerState()
+
+        if (completed != null) {
+            val dummyWav = ByteArray(44)
+            pendingCaptureStore.save(dummyWav, null, null)
+            enqueueExpeditedUpload()
+
+            _uiState.update {
+                it.copy(
+                    lastSavedSummary = "Work Logged — ${completed.durationMinutes} min confirmed!",
+                    confirmedHours = it.confirmedHours + (completed.durationMinutes / 60.0),
+                    pendingCount = pendingCaptureStore.listPending().size,
+                )
+            }
+        }
+    }
+
+    private fun refreshTimerState() {
+        val isRunning = timerStore.isTimerRunning()
+        val task = timerStore.getTask()
+        val elapsed = timerStore.getElapsedSeconds()
+
+        _uiState.update {
+            it.copy(
+                isTimerRunning = isRunning,
+                timerTask = task,
+                elapsedSeconds = elapsed,
+            )
+        }
+
+        timerTickerJob?.cancel()
+        if (isRunning) {
+            timerTickerJob = viewModelScope.launch {
+                while (true) {
+                    delay(1_000L)
+                    val updatedSec = timerStore.getElapsedSeconds()
+                    val elapsedMin = updatedSec / 60
+                    _uiState.update { it.copy(elapsedSeconds = updatedSec) }
+                    notificationManager.showOngoingTimerNotification(task, elapsedMin)
+                }
+            }
+        }
     }
 
     private fun observeProgress() {

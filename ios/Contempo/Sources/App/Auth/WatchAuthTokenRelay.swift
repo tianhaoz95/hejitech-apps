@@ -6,10 +6,8 @@ import WatchConnectivity
 /// Sends the paired watch a Firebase custom token once this phone is signed
 /// in, so the watch can bootstrap its own independent Firebase session (see
 /// `mintWatchAuthToken` in backend/functions and the watch-side
-/// `WatchAuthManager`). Uses `transferUserInfo`, which queues durably and
-/// delivers next time the watch app is reachable — including across a phone
-/// or watch relaunch — rather than requiring both apps to be foregrounded
-/// at the same instant.
+/// `WatchAuthManager`). Uses `transferUserInfo` + `updateApplicationContext`
+/// and responds to interactive `sendMessage` requests from the watch.
 @MainActor
 final class WatchAuthTokenRelay: NSObject, WCSessionDelegate {
     static let shared = WatchAuthTokenRelay()
@@ -27,23 +25,66 @@ final class WatchAuthTokenRelay: NSObject, WCSessionDelegate {
     func sendTokenIfSignedIn() {
         guard Auth.auth().currentUser != nil else { return }
         Task {
+            #if USE_FIREBASE_EMULATOR
+            let payload: [String: Any] = ["isEmulator": true]
+            _ = try? WCSession.default.updateApplicationContext(payload)
+            WCSession.default.transferUserInfo(payload)
+            #else
             do {
                 let result = try await Functions.functions().httpsCallable("mintWatchAuthToken").call()
                 guard let data = result.data as? [String: Any], let customToken = data["customToken"] as? String else {
                     return
                 }
                 guard WCSession.default.activationState == .activated else { return }
-                WCSession.default.transferUserInfo(["customToken": customToken])
+                let payload: [String: Any] = ["customToken": customToken]
+                _ = try? WCSession.default.updateApplicationContext(payload)
+                WCSession.default.transferUserInfo(payload)
             } catch {
-                // Best-effort — the watch keeps whatever session it already
-                // has (or shows its own sign-in prompt) if this fails.
+                #if DEBUG
+                // Fallback for Debug / Simulator when Cloud Function is not deployed
+                let payload: [String: Any] = ["isEmulator": true]
+                _ = try? WCSession.default.updateApplicationContext(payload)
+                WCSession.default.transferUserInfo(payload)
+                #else
+                print("[WatchAuthTokenRelay] Error minting/transferring watch token: \(error)")
+                #endif
             }
+            #endif
         }
     }
 
     nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
         Task { @MainActor in
             sendTokenIfSignedIn()
+        }
+    }
+
+    nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
+        Task { @MainActor in
+            guard let user = Auth.auth().currentUser else {
+                replyHandler(["error": "Sign in on iPhone first"])
+                return
+            }
+            #if USE_FIREBASE_EMULATOR
+            replyHandler(["isEmulator": true])
+            self.sendTokenIfSignedIn()
+            #else
+            do {
+                _ = try? await user.getIDToken(forcingRefresh: true)
+                let result = try await Functions.functions().httpsCallable("mintWatchAuthToken").call()
+                if let data = result.data as? [String: Any], let customToken = data["customToken"] as? String {
+                    replyHandler(["customToken": customToken])
+                    let payload: [String: Any] = ["customToken": customToken]
+                    _ = try? WCSession.default.updateApplicationContext(payload)
+                    WCSession.default.transferUserInfo(payload)
+                } else {
+                    replyHandler(["error": "Mint failed — try again"])
+                }
+            } catch {
+                print("[WatchAuthTokenRelay] mintWatchAuthToken error: \(error)")
+                replyHandler(["error": error.localizedDescription])
+            }
+            #endif
         }
     }
 
