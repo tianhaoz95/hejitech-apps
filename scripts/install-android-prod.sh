@@ -179,34 +179,44 @@ if [[ "$INSTALL_ANDROID" != "true" && -z "$WEAR_SERIAL" ]]; then
   exit 1
 fi
 
-# --- find physical device for phone app -------------------------------------
+# --- find physical device or emulator for phone app -------------------------
 if [[ "$INSTALL_ANDROID" == "true" ]]; then
-  log "Looking for a connected physical device..."
+  log "Looking for a connected physical device or emulator..."
   if [[ -n "$TARGET_DEVICE_SERIAL" ]]; then
     DEVICE_SERIAL="$TARGET_DEVICE_SERIAL"
     export ANDROID_SERIAL="$DEVICE_SERIAL"
     echo "  using specified device $DEVICE_SERIAL"
   else
-    CANDIDATES=()
+    PHYSICAL_CANDIDATES=()
+    EMULATOR_CANDIDATES=()
     while IFS=$'\t' read -r serial state; do
       [[ -z "$serial" || -z "$state" ]] && continue
-      case "$serial" in emulator-*) continue ;; esac
       is_wear_serial "$serial" && continue
       if [[ "$state" == "device" ]]; then
-        CANDIDATES+=("$serial")
+        if [[ "$serial" =~ ^emulator- ]] || [[ "$serial" =~ ^127\.0\.0\.1: ]] || [[ "$serial" =~ ^localhost: ]]; then
+          EMULATOR_CANDIDATES+=("$serial")
+        else
+          PHYSICAL_CANDIDATES+=("$serial")
+        fi
       elif [[ "$state" == "unauthorized" ]]; then
         warn "Device $serial is unauthorized — accept the USB debugging prompt on the device."
       fi
     done < <("$ADB" devices | grep -E $'^\\S+\t')
 
-    if [[ ${#CANDIDATES[@]} -eq 0 ]]; then
-      warn "No authorized physical device found. Plug one in via USB, enable USB debugging, and accept the prompt."
+    if [[ ${#PHYSICAL_CANDIDATES[@]} -gt 1 ]]; then
+      warn "Multiple physical devices connected: ${PHYSICAL_CANDIDATES[*]}. Use -s/--device <serial> or disconnect all but one and retry."
       exit 1
-    elif [[ ${#CANDIDATES[@]} -gt 1 ]]; then
-      warn "Multiple physical devices connected: ${CANDIDATES[*]}. Use -s/--device <serial> or disconnect all but one and retry."
+    elif [[ ${#PHYSICAL_CANDIDATES[@]} -eq 1 ]]; then
+      DEVICE_SERIAL="${PHYSICAL_CANDIDATES[0]}"
+    elif [[ ${#EMULATOR_CANDIDATES[@]} -gt 1 ]]; then
+      warn "Multiple emulators running: ${EMULATOR_CANDIDATES[*]}. Use -s/--device <serial> or close all but one and retry."
+      exit 1
+    elif [[ ${#EMULATOR_CANDIDATES[@]} -eq 1 ]]; then
+      DEVICE_SERIAL="${EMULATOR_CANDIDATES[0]}"
+    else
+      warn "No authorized physical device or emulator found. Plug in a device via USB or start an emulator, enable USB debugging, and accept the prompt."
       exit 1
     fi
-    DEVICE_SERIAL="${CANDIDATES[0]}"
     export ANDROID_SERIAL="$DEVICE_SERIAL"
     echo "  using device $DEVICE_SERIAL"
   fi
