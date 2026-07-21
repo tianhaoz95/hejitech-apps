@@ -32,6 +32,10 @@ data class DashboardUiState(
     val selectedIds: Set<String> = emptySet(),
     val isDeleting: Boolean = false,
     val deleteError: String? = null,
+    val isSyncing: Boolean = false,
+    val syncStatusMessage: String = "",
+    val syncProgressFraction: Float = 0f,
+    val syncNotice: String? = null,
 )
 
 /** Local, non-Firestore-derived selection state — kept separate from the entries flow below so a bulk-delete in flight (or a stale selection) doesn't get wiped by every incoming snapshot. */
@@ -39,6 +43,13 @@ private data class SelectionState(
     val selectedIds: Set<String> = emptySet(),
     val isDeleting: Boolean = false,
     val deleteError: String? = null,
+)
+
+private data class SyncState(
+    val isSyncing: Boolean = false,
+    val syncStatusMessage: String = "",
+    val syncProgressFraction: Float = 0f,
+    val syncNotice: String? = null,
 )
 
 class DashboardViewModel : ViewModel() {
@@ -51,31 +62,28 @@ class DashboardViewModel : ViewModel() {
             DashboardUiState(
                 confirmedHours = totalMinutes / 60.0,
                 entries = entries,
-                // Excludes the open timer/trip — they're "still running,"
-                // not "needs completing," and get their own callouts instead.
                 pendingCount = entries.count { it.statusEnum == EntryStatus.PENDING_REVIEW && !it.inProgress },
                 openTimerEntry = entries.find { it.inProgress && !it.isTrip },
                 openTripEntry = entries.find { it.inProgress && it.isTrip },
                 totalMiles = entries.sumOf { it.miles },
             )
         }
-        // See CaptureViewModel.openTripEntry's comment — an uncaught
-        // Firestore listener error here crashes the whole app on this
-        // screen specifically, since it's an eagerly-collected StateFlow.
         .recoverFromAuthRaceOrSignOut { DashboardUiState() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DashboardUiState())
 
     private val _selection = MutableStateFlow(SelectionState())
+    private val _syncState = MutableStateFlow(SyncState())
 
-    val uiState: StateFlow<DashboardUiState> = combine(entriesState, _selection) { entriesUiState, selection ->
-        // Prunes selections for entries that vanished from underneath the
-        // user (deleted elsewhere, or a stale id after this delete
-        // completes) so a phantom "N selected" can never linger.
+    val uiState: StateFlow<DashboardUiState> = combine(entriesState, _selection, _syncState) { entriesUiState, selection, sync ->
         val validIds = entriesUiState.entries.mapTo(HashSet()) { it.id }
         entriesUiState.copy(
             selectedIds = selection.selectedIds.intersect(validIds),
             isDeleting = selection.isDeleting,
             deleteError = selection.deleteError,
+            isSyncing = sync.isSyncing,
+            syncStatusMessage = sync.syncStatusMessage,
+            syncProgressFraction = sync.syncProgressFraction,
+            syncNotice = sync.syncNotice,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DashboardUiState())
 
@@ -95,14 +103,6 @@ class DashboardViewModel : ViewModel() {
         _selection.update { it.copy(selectedIds = emptySet(), deleteError = null) }
     }
 
-    /**
-     * Single-entry delete via the Dashboard's swipe-to-delete gesture —
-     * separate from the multi-select batch path above; reuses the same
-     * repository call with a one-element list. Suspends (rather than firing
-     * off its own viewModelScope.launch) and reports success/failure so the
-     * caller — DashboardScreen's LaunchedEffect — can snap the swiped row
-     * back if the delete didn't actually go through.
-     */
     suspend fun deleteEntry(entryId: String): Boolean =
         runCatching { entryRepository.deleteEntries(listOf(entryId)) }.isSuccess
 
@@ -122,5 +122,84 @@ class DashboardViewModel : ViewModel() {
 
     fun dismissDeleteError() {
         _selection.update { it.copy(deleteError = null) }
+    }
+
+    fun refreshAndProcessPendingAudios() {
+        viewModelScope.launch {
+            _syncState.update { it.copy(isSyncing = true, syncNotice = null) }
+
+            val localPending = ServiceLocator.pendingCaptureStore.listPending()
+            val cloudPending = runCatching { ServiceLocator.audioCaptureQueue.listPending() }.getOrDefault(emptyList())
+            val total = localPending.size + cloudPending.size
+
+            if (total == 0) {
+                _syncState.update {
+                    it.copy(
+                        syncStatusMessage = "Checking for pending voice entries...",
+                        syncProgressFraction = 1f,
+                    )
+                }
+                kotlinx.coroutines.delay(400)
+                _syncState.update {
+                    it.copy(
+                        isSyncing = false,
+                        syncNotice = "Dashboard up to date — no pending voice notes.",
+                    )
+                }
+                kotlinx.coroutines.delay(3000)
+                _syncState.update {
+                    if (it.syncNotice == "Dashboard up to date — no pending voice notes.") it.copy(syncNotice = null) else it
+                }
+                return@launch
+            }
+
+            // Phase 1: Uploading local pending WAVs
+            localPending.forEachIndexed { index, item ->
+                val step = index + 1
+                _syncState.update {
+                    it.copy(
+                        syncStatusMessage = "Uploading voice recording $step of $total...",
+                        syncProgressFraction = step.toFloat() / (total + 1),
+                    )
+                }
+                com.hejitech.contempo.capture.PendingCaptureSyncer.syncOne(item)
+            }
+
+            // Phase 2: Transcribing & parsing cloud queue
+            val processedCount = com.hejitech.contempo.wear.AudioCaptureProcessor.processPendingCaptures { current, _, stage ->
+                val step = localPending.size + current
+                val stageText = when (stage) {
+                    com.hejitech.contempo.wear.AudioProcessingStage.DOWNLOADING -> "Downloading audio"
+                    com.hejitech.contempo.wear.AudioProcessingStage.TRANSCRIBING -> "Transcribing voice note"
+                    com.hejitech.contempo.wear.AudioProcessingStage.PARSING -> "Structuring entry"
+                    com.hejitech.contempo.wear.AudioProcessingStage.SAVING -> "Saving entry"
+                }
+                _syncState.update {
+                    it.copy(
+                        syncStatusMessage = "$stageText ($step of $total)...",
+                        syncProgressFraction = step.toFloat() / (total + 1),
+                    )
+                }
+            }
+
+            val totalDone = maxOf(processedCount, localPending.size)
+            val notice = if (totalDone > 0) {
+                "Successfully processed $totalDone pending voice ${if (totalDone == 1) "entry" else "entries"}"
+            } else {
+                "Dashboard refreshed"
+            }
+
+            _syncState.update {
+                it.copy(
+                    isSyncing = false,
+                    syncProgressFraction = 1f,
+                    syncStatusMessage = "Sync complete",
+                    syncNotice = notice,
+                )
+            }
+
+            kotlinx.coroutines.delay(4000)
+            _syncState.update { it.copy(syncNotice = null) }
+        }
     }
 }

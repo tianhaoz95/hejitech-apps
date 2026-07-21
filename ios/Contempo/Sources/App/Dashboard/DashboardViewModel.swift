@@ -25,6 +25,12 @@ final class DashboardViewModel {
     var isDeleting = false
     var deleteError: String?
 
+    // Pull-to-refresh & pending audio sync state
+    var isSyncing = false
+    var syncStatusMessage = ""
+    var syncProgressFraction: Double = 0
+    var syncNotice: String?
+
     init() {
         let repository = entryRepository
         Task { [weak self] in
@@ -99,5 +105,59 @@ final class DashboardViewModel {
 
     func dismissDeleteError() {
         deleteError = nil
+    }
+
+    func refreshAndProcessPendingAudios() async {
+        isSyncing = true
+        syncNotice = nil
+
+        let localPending = ServiceLocator.pendingCaptureStore.listPending()
+        let cloudPending = (try? await ServiceLocator.audioCaptureQueue.listPending()) ?? []
+        let total = localPending.count + cloudPending.count
+
+        if total == 0 {
+            syncStatusMessage = "Checking for pending voice entries..."
+            syncProgressFraction = 1.0
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            isSyncing = false
+            syncNotice = "Dashboard up to date — no pending voice notes."
+            Task {
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                if self.syncNotice == "Dashboard up to date — no pending voice notes." {
+                    self.syncNotice = nil
+                }
+            }
+            return
+        }
+
+        // Phase 1: Uploading local pending WAVs
+        for (index, item) in localPending.enumerated() {
+            let step = index + 1
+            syncStatusMessage = "Uploading voice recording \(step) of \(total)..."
+            syncProgressFraction = Double(step) / Double(total + 1)
+            _ = await PendingCaptureSyncer.syncOne(item)
+        }
+
+        // Phase 2: Transcribing and parsing cloud queue
+        let processedCount = await AudioCaptureProcessor.shared.processPendingCaptures { current, _, stage in
+            let step = localPending.count + current
+            self.syncStatusMessage = "\(stage.rawValue) (\(step) of \(total))..."
+            self.syncProgressFraction = Double(step) / Double(total + 1)
+        }
+
+        syncProgressFraction = 1.0
+        syncStatusMessage = "Sync complete"
+        isSyncing = false
+        if processedCount > 0 || localPending.count > 0 {
+            let totalDone = max(processedCount, localPending.count)
+            syncNotice = "Successfully processed \(totalDone) pending voice \(totalDone == 1 ? "entry" : "entries")"
+        } else {
+            syncNotice = "Dashboard refreshed"
+        }
+
+        Task {
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            self.syncNotice = nil
+        }
     }
 }

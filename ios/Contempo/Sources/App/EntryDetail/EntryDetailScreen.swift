@@ -1,3 +1,5 @@
+import AVFoundation
+import Combine
 import ContempoCore
 import ContempoFirestore
 import SwiftUI
@@ -43,21 +45,29 @@ struct EntryDetailScreen: View {
                             LabeledContent("Photos", value: "\(entry.photoUrls.count)")
                         }
                     }
-                    if !entry.rawTranscript.isEmpty {
+                    if !entry.audioUrl.isEmpty {
+                        Section("Voice recording") {
+                            AudioPlayerRow(audioUrl: entry.audioUrl, rawTranscript: entry.rawTranscript)
+                        }
+                    } else if !entry.rawTranscript.isEmpty {
+                        // Transcript without audio (edge case — audio was purged but
+                        // transcript kept, or legacy entries with transcript only).
                         Section("Voice transcript") {
                             Text(entry.rawTranscript).font(ContempoFont.bodyLarge())
                         }
                     }
                 }
-
-                NavigationLink(value: confirmRoute(for: entry)) {
-                    Text(actionLabel(for: entry)).bold()
-                        .frame(maxWidth: .infinity)
-                        .padding()
+                .safeAreaInset(edge: .bottom) {
+                    NavigationLink(value: confirmRoute(for: entry)) {
+                        Text(actionLabel(for: entry)).bold()
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(palette.pine)
+                    .padding()
+                    .background(Color(.systemGroupedBackground))
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(palette.pine)
-                .padding()
             } else if viewModel.isLoading {
                 ProgressView()
             } else {
@@ -66,11 +76,12 @@ struct EntryDetailScreen: View {
         }
         .navigationTitle("Entry")
         .toolbar {
-            ToolbarItem(placement: .destructiveAction) {
-                Button(role: .destructive) {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
                     viewModel.delete { dismiss() }
                 } label: {
                     Image(systemName: "trash")
+                        .foregroundStyle(palette.danger)
                 }
                 .disabled(viewModel.isDeleting)
             }
@@ -110,5 +121,156 @@ struct EntryDetailScreen: View {
             captureLng: entry.captureLng
         )
         return .confirm(params)
+    }
+}
+
+// MARK: - Audio Player
+
+private enum AudioPlaybackState {
+    case idle, loading, playing, paused, error
+}
+
+/// Streams audio from a Firebase Storage download URL using AVPlayer.
+/// Lifecycle is tied to the List row: the player is paused and cleaned up
+/// when the view disappears, matching the Android MediaPlayer.release()
+/// behaviour in DisposableEffect.
+private struct AudioPlayerRow: View {
+    let audioUrl: String
+    let rawTranscript: String
+
+    @State private var playbackState: AudioPlaybackState = .idle
+    @State private var showTranscript = false
+    @State private var player: AVPlayer?
+    @State private var statusCancellable: AnyCancellable?
+    @Environment(\.contempoPalette) private var palette
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 4) {
+                // Play / Pause / Loading button
+                Button {
+                    if playbackState == .playing {
+                        pause()
+                    } else {
+                        play()
+                    }
+                } label: {
+                    Group {
+                        if playbackState == .loading {
+                            ProgressView()
+                                .controlSize(.small)
+                                .frame(width: 22, height: 22)
+                        } else {
+                            Image(systemName: playbackState == .playing ? "pause.circle.fill" : "play.circle.fill")
+                                .font(.system(size: 32))
+                                .foregroundStyle(palette.pine)
+                        }
+                    }
+                    .frame(width: 36, height: 36)
+                }
+                .buttonStyle(.plain)
+                .disabled(playbackState == .loading)
+
+                // Status label
+                Text(statusLabel)
+                    .font(ContempoFont.labelSmall())
+                    .foregroundStyle(playbackState == .error ? palette.danger : palette.inkSoft)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                // Transcript toggle — only shown when a transcript exists
+                if !rawTranscript.isEmpty {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showTranscript.toggle()
+                        }
+                    } label: {
+                        Image(systemName: showTranscript ? "doc.text.fill" : "doc.text")
+                            .font(.system(size: 16))
+                            .foregroundStyle(showTranscript ? palette.pine : palette.inkSoft)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(showTranscript ? "Hide transcript" : "Show transcript")
+                }
+            }
+
+            // Expandable transcript
+            if showTranscript && !rawTranscript.isEmpty {
+                Text(rawTranscript)
+                    .font(ContempoFont.bodyLarge())
+                    .foregroundStyle(palette.ink)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(palette.paper)
+                    .clipShape(RoundedRectangle(cornerRadius: ContempoRadius.small))
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .onDisappear {
+            // Release the player when the row leaves the screen, exactly as
+            // Android's DisposableEffect/onDispose calls mediaPlayer.release().
+            statusCancellable?.cancel()
+            player?.pause()
+            player = nil
+            playbackState = .idle
+        }
+    }
+
+    private var statusLabel: String {
+        switch playbackState {
+        case .idle:    return "Voice recording"
+        case .loading: return "Loading…"
+        case .playing: return "Playing"
+        case .paused:  return "Paused"
+        case .error:   return "Couldn't load audio"
+        }
+    }
+
+    private func play() {
+        switch playbackState {
+        case .paused:
+            player?.play()
+            playbackState = .playing
+
+        case .idle, .error:
+            guard let url = URL(string: audioUrl) else {
+                playbackState = .error
+                return
+            }
+            playbackState = .loading
+            let item = AVPlayerItem(url: url)
+            let newPlayer = AVPlayer(playerItem: item)
+
+            // KVO via Combine — fires once when status leaves .unknown.
+            statusCancellable?.cancel()
+            statusCancellable = item.publisher(for: \.status)
+                .filter { $0 != .unknown }
+                .prefix(1)
+                .receive(on: DispatchQueue.main)
+                .sink { [weak newPlayer] status in
+                    if status == .readyToPlay {
+                        newPlayer?.play()
+                        playbackState = .playing
+                    } else {
+                        playbackState = .error
+                    }
+                }
+
+            // Reset to idle when playback reaches the end.
+            NotificationCenter.default.addObserver(
+                forName: AVPlayerItem.didPlayToEndTimeNotification,
+                object: item,
+                queue: .main
+            ) { _ in playbackState = .idle }
+
+            player = newPlayer
+
+        case .loading, .playing:
+            break
+        }
+    }
+
+    private func pause() {
+        player?.pause()
+        playbackState = .paused
     }
 }

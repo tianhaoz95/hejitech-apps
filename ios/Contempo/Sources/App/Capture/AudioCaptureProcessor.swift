@@ -24,21 +24,29 @@ public final class AudioCaptureProcessor {
 
     private init() {}
 
-    public func processPendingCaptures() async {
-        guard let pending = try? await ServiceLocator.audioCaptureQueue.listPending() else { return }
+    @discardableResult
+    public func processPendingCaptures(onProgress: ((_ current: Int, _ total: Int, _ stage: AudioProcessingStage) -> Void)? = nil) async -> Int {
+        guard let pending = try? await ServiceLocator.audioCaptureQueue.listPending() else { return 0 }
+        var processedCount = 0
+        let total = pending.count
 
-        for capture in pending {
+        for (index, capture) in pending.enumerated() {
             do {
-                try await processOne(capture)
+                try await processOne(capture) { stage in
+                    onProgress?(index + 1, total, stage)
+                }
+                processedCount += 1
             } catch {
                 // Log and continue to next item in queue
             }
             self.currentlyProcessingStage = nil
         }
+        return processedCount
     }
 
-    private func processOne(_ capture: PendingAudioCapture) async throws {
+    private func processOne(_ capture: PendingAudioCapture, onStageChange: ((AudioProcessingStage) -> Void)? = nil) async throws {
         self.currentlyProcessingStage = .downloading
+        onStageChange?(.downloading)
         let storageRef = Storage.storage().reference(withPath: capture.storagePath)
 
         let maxAudioBytes: Int64 = 50_000_000
@@ -47,6 +55,7 @@ public final class AudioCaptureProcessor {
         }
 
         self.currentlyProcessingStage = .transcribing
+        onStageChange?(.transcribing)
         let samples = WavAudio.decode(wavBytes)
         let rawText = (try? await ServiceLocator.whisperTranscriber.transcribe(samples: samples, language: capture.language)) ?? ""
 
@@ -56,12 +65,14 @@ public final class AudioCaptureProcessor {
         }
 
         self.currentlyProcessingStage = .parsing
+        onStageChange?(.parsing)
         let audioUrl = (try? await storageRef.downloadURL())?.absoluteString ?? ""
         let knownProperties = (try? await ServiceLocator.entryRepository.observeProperties().first(where: { _ in true }))?.map { $0.name } ?? []
 
         let outcome = await ServiceLocator.agentClient.parseEntry(rawText: rawText, knownProperties: knownProperties)
 
         self.currentlyProcessingStage = .saving
+        onStageChange?(.saving)
         switch outcome {
         case .success(let result):
             await saveFromDraft(result.draft, rawText: rawText, capture: capture, audioUrl: audioUrl)

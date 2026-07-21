@@ -55,6 +55,9 @@ import com.hejitech.core.model.EntryStatus
 import java.text.SimpleDateFormat
 import java.util.Locale
 
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     onEntryClick: (Entry) -> Unit = {},
@@ -64,8 +67,58 @@ fun DashboardScreen(
     val isSelectionMode = uiState.selectedIds.isNotEmpty()
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
-        if (isSelectionMode) {
+    PullToRefreshBox(
+        isRefreshing = uiState.isSyncing,
+        onRefresh = viewModel::refreshAndProcessPendingAudios,
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+            if (uiState.isSyncing) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .padding(16.dp),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.padding(end = 12.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+                        Text(
+                            text = uiState.syncStatusMessage.ifBlank { "Syncing pending audios..." },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    LinearProgressIndicator(
+                        progress = { uiState.syncProgressFraction },
+                        modifier = Modifier.fillMaxWidth().height(4.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                Spacer(Modifier.height(16.dp))
+            } else if (uiState.syncNotice != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .padding(12.dp),
+                ) {
+                    Text(
+                        text = uiState.syncNotice!!,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.height(16.dp))
+            }
+
+            if (isSelectionMode) {
             SelectionToolbar(
                 selectedCount = uiState.selectedIds.size,
                 totalCount = uiState.entries.size,
@@ -156,6 +209,7 @@ fun DashboardScreen(
                 }
             }
         }
+    }
     }
 
     if (showDeleteDialog) {

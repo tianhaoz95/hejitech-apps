@@ -64,20 +64,32 @@ object AudioCaptureProcessor {
     private val _currentlyProcessing = MutableStateFlow<AudioProcessingStage?>(null)
     val currentlyProcessing: StateFlow<AudioProcessingStage?> = _currentlyProcessing.asStateFlow()
 
-    suspend fun processPendingCaptures() {
+    suspend fun processPendingCaptures(
+        onProgress: ((current: Int, total: Int, stage: AudioProcessingStage) -> Unit)? = null
+    ): Int {
         val pending = runCatching { ServiceLocator.audioCaptureQueue.listPending() }
-            .getOrElse { e -> Log.e(TAG, "failed to list pending captures", e); return }
-        pending.forEach { capture ->
+            .getOrElse { e -> Log.e(TAG, "failed to list pending captures", e); return 0 }
+        var processedCount = 0
+        val total = pending.size
+        pending.forEachIndexed { index, capture ->
             try {
-                processOne(capture)
+                processOne(capture) { stage ->
+                    onProgress?.invoke(index + 1, total, stage)
+                }
+                processedCount++
             } finally {
                 _currentlyProcessing.value = null
             }
         }
+        return processedCount
     }
 
-    private suspend fun processOne(capture: PendingAudioCapture) {
+    private suspend fun processOne(
+        capture: PendingAudioCapture,
+        onStageChange: ((AudioProcessingStage) -> Unit)? = null
+    ) {
         _currentlyProcessing.value = AudioProcessingStage.DOWNLOADING
+        onStageChange?.invoke(AudioProcessingStage.DOWNLOADING)
         val storageRef = Firebase.storage.reference.child(capture.storagePath)
         val wavBytes = runCatching { storageRef.getBytes(MAX_AUDIO_BYTES).await() }.getOrNull()
         if (wavBytes == null) {
@@ -86,6 +98,7 @@ object AudioCaptureProcessor {
         }
 
         _currentlyProcessing.value = AudioProcessingStage.TRANSCRIBING
+        onStageChange?.invoke(AudioProcessingStage.TRANSCRIBING)
         val samples = WavAudio.decode(wavBytes)
         val rawText = runCatching {
             ServiceLocator.whisperTranscriber.transcribe(samples, capture.language)
@@ -100,6 +113,7 @@ object AudioCaptureProcessor {
         }
 
         _currentlyProcessing.value = AudioProcessingStage.PARSING
+        onStageChange?.invoke(AudioProcessingStage.PARSING)
         val audioUrl = runCatching { storageRef.downloadUrl.await().toString() }.getOrDefault("")
         val knownProperties = runCatching {
             ServiceLocator.entryRepository.observeProperties().first().map { it.name }
@@ -108,6 +122,7 @@ object AudioCaptureProcessor {
         val outcome = ServiceLocator.agentClient.parseEntry(rawText, knownProperties)
 
         _currentlyProcessing.value = AudioProcessingStage.SAVING
+        onStageChange?.invoke(AudioProcessingStage.SAVING)
         when (outcome) {
             is ParseOutcome.Success -> saveFromDraft(outcome.result.draft, rawText, capture, audioUrl)
             is ParseOutcome.Failure -> saveFallback(rawText, capture, audioUrl)
