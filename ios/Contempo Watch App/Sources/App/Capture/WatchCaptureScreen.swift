@@ -58,6 +58,50 @@ struct WatchCaptureScreen: View {
                         RoundedRectangle(cornerRadius: ContempoRadius.large)
                             .stroke(palette.pine, lineWidth: 1.5)
                     )
+                } else if viewModel.isTripActive {
+                    VStack(spacing: 8) {
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(palette.pine)
+                                .frame(width: 6, height: 6)
+                            Text("GPS TRIP ACTIVE")
+                                .font(ContempoFont.labelSmall())
+                                .tracking(ContempoFont.labelSmallTracking)
+                                .foregroundStyle(palette.pine)
+                        }
+
+                        Text(formatDuration(viewModel.tripElapsedSeconds))
+                            .font(.system(size: 26, weight: .bold, design: .monospaced))
+                            .foregroundStyle(palette.ink)
+
+                        Text("Tracking mileage & location")
+                            .font(ContempoFont.bodySmall())
+                            .foregroundStyle(palette.inkFaint)
+                            .lineLimit(1)
+
+                        Button {
+                            withAnimation {
+                                viewModel.stopGpsTrip()
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "checkmark.circle.fill")
+                                Text("Complete Trip")
+                            }
+                            .font(ContempoFont.labelLarge())
+                            .bold()
+                            .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(palette.pine)
+                    }
+                    .padding(10)
+                    .background(palette.paperRaised)
+                    .clipShape(RoundedRectangle(cornerRadius: ContempoRadius.large))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: ContempoRadius.large)
+                            .stroke(palette.pine, lineWidth: 1.5)
+                    )
                 } else {
                     // Hero Mic Button
                     Button {
@@ -91,21 +135,38 @@ struct WatchCaptureScreen: View {
                         .font(ContempoFont.labelSmall())
                         .foregroundStyle(palette.inkFaint)
 
-                    // Start Generic Work Timer Button
-                    Button {
-                        withAnimation {
-                            viewModel.startWorkTimer(task: "STR General Work")
+                    // Side-by-Side Start Work Timer and Start Trip Buttons
+                    HStack(spacing: 6) {
+                        Button {
+                            withAnimation {
+                                viewModel.startWorkTimer(task: "STR General Work")
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "play.circle.fill")
+                                Text("Work")
+                            }
+                            .font(ContempoFont.labelSmall())
+                            .bold()
                         }
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "play.circle.fill")
-                            Text("Start Work Timer")
+                        .buttonStyle(.bordered)
+                        .tint(palette.pine)
+
+                        Button {
+                            withAnimation {
+                                viewModel.startGpsTrip()
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "location.fill")
+                                Text("Trip")
+                            }
+                            .font(ContempoFont.labelSmall())
+                            .bold()
                         }
-                        .font(ContempoFont.labelSmall())
-                        .bold()
+                        .buttonStyle(.bordered)
+                        .tint(palette.pine)
                     }
-                    .buttonStyle(.bordered)
-                    .tint(palette.pine)
                 }
 
                 if let lastSavedSummary = viewModel.lastSavedSummary {

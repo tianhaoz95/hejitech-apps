@@ -22,6 +22,7 @@ final class WatchCaptureViewModel {
     private let entryStatsReader = WatchServiceLocator.entryStatsReader
     private let hoursProgressStore = WatchServiceLocator.hoursProgressStore
     private let timerStore = WatchWorkTimerStore(appGroupId: "group.com.hejitech.contempo")
+    private let tripStore = WatchGpsTripStore(appGroupId: "group.com.hejitech.contempo")
 
     var isRecording = false
     var confirmedHours: Double = 0
@@ -36,14 +37,20 @@ final class WatchCaptureViewModel {
     var timerTask = "STR General Work"
     var elapsedSeconds = 0
 
+    // Active GPS Trip State
+    var isTripActive = false
+    var tripElapsedSeconds = 0
+
     var recordingAmplitude: Float { audioRecorder.amplitude }
 
     private var statsPollTask: Task<Void, Never>?
     private var timerTickerTask: Task<Void, Never>?
+    private var tripTickerTask: Task<Void, Never>?
 
     init() {
         refreshLocalStats()
         refreshTimerState()
+        refreshTripState()
         statsPollTask = Task { [weak self] in
             while !Task.isCancelled {
                 await self?.refreshConfirmedHours()
@@ -55,6 +62,24 @@ final class WatchCaptureViewModel {
     func startWorkTimer(task: String = "STR General Work") {
         timerStore.startWorkTimer(task: task)
         refreshTimerState()
+        WidgetCenter.shared.reloadTimelines(ofKind: "HoursComplication")
+    }
+
+    func startGpsTrip() {
+        tripStore.startGpsTrip()
+        refreshTripState()
+        WidgetCenter.shared.reloadTimelines(ofKind: "HoursComplication")
+    }
+
+    func stopGpsTrip() {
+        guard let completed = tripStore.stopAndCompleteGpsTrip() else {
+            tripStore.clearTrip()
+            refreshTripState()
+            return
+        }
+        refreshTripState()
+
+        lastSavedSummary = "GPS Trip Logged — \(completed.durationMinutes) mins!"
         WidgetCenter.shared.reloadTimelines(ofKind: "HoursComplication")
     }
 
@@ -80,6 +105,22 @@ final class WatchCaptureViewModel {
                     try? await Task.sleep(nanoseconds: 1_000_000_000)
                     guard let self else { return }
                     self.elapsedSeconds = self.timerStore.elapsedSeconds()
+                }
+            }
+        }
+    }
+
+    private func refreshTripState() {
+        isTripActive = tripStore.isTripActive()
+        tripElapsedSeconds = tripStore.elapsedSeconds()
+
+        tripTickerTask?.cancel()
+        if isTripActive {
+            tripTickerTask = Task { [weak self] in
+                while !Task.isCancelled {
+                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                    guard let self else { return }
+                    self.tripElapsedSeconds = self.tripStore.elapsedSeconds()
                 }
             }
         }

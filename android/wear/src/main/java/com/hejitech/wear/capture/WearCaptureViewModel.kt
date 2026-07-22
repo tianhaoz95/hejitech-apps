@@ -29,6 +29,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeoutOrNull
 
+import com.hejitech.wear.timer.WearGpsTripStore
 import com.hejitech.wear.timer.WearTimerNotificationManager
 import com.hejitech.wear.timer.WearWorkTimerStore
 import kotlinx.coroutines.Job
@@ -49,6 +50,8 @@ data class WearUiState(
     val isTimerRunning: Boolean = false,
     val timerTask: String = "STR General Work",
     val elapsedSeconds: Int = 0,
+    val isTripActive: Boolean = false,
+    val tripElapsedSeconds: Int = 0,
 )
 
 /** How often the pending/uploaded-today counters refresh while this screen is visible. */
@@ -65,6 +68,7 @@ class WearCaptureViewModel : ViewModel() {
     private val uploadStatsStore = WearServiceLocator.uploadStatsStore
     private val appContext = WearServiceLocator.appContext
     private val timerStore = WearWorkTimerStore(appContext)
+    private val tripStore = WearGpsTripStore(appContext)
     private val notificationManager = WearTimerNotificationManager(appContext)
 
     val recordingAmplitude = audioRecorder.amplitude
@@ -73,16 +77,36 @@ class WearCaptureViewModel : ViewModel() {
     val uiState: StateFlow<WearUiState> = _uiState.asStateFlow()
 
     private var timerTickerJob: Job? = null
+    private var tripTickerJob: Job? = null
 
     init {
         if (_uiState.value.isSignedIn) observeProgress()
         pollUploadStats()
         refreshTimerState()
+        refreshTripState()
     }
 
     fun startWorkTimer(task: String = "STR General Work") {
         timerStore.startTimer(task)
         refreshTimerState()
+    }
+
+    fun startGpsTrip() {
+        tripStore.startTrip()
+        refreshTripState()
+    }
+
+    fun stopGpsTrip() {
+        val completed = tripStore.stopAndCompleteTrip()
+        refreshTripState()
+
+        if (completed != null) {
+            _uiState.update {
+                it.copy(
+                    lastSavedSummary = "GPS Trip Logged — ${completed.durationMinutes} mins!",
+                )
+            }
+        }
     }
 
     fun stopAndCompleteWorkTimer() {
@@ -127,6 +151,29 @@ class WearCaptureViewModel : ViewModel() {
                     val elapsedMin = updatedSec / 60
                     _uiState.update { it.copy(elapsedSeconds = updatedSec) }
                     notificationManager.showOngoingTimerNotification(task, elapsedMin)
+                }
+            }
+        }
+    }
+
+    private fun refreshTripState() {
+        val isRunning = tripStore.isTripActive()
+        val elapsed = tripStore.getElapsedSeconds()
+
+        _uiState.update {
+            it.copy(
+                isTripActive = isRunning,
+                tripElapsedSeconds = elapsed,
+            )
+        }
+
+        tripTickerJob?.cancel()
+        if (isRunning) {
+            tripTickerJob = viewModelScope.launch {
+                while (true) {
+                    delay(1_000L)
+                    val updatedSec = tripStore.getElapsedSeconds()
+                    _uiState.update { it.copy(tripElapsedSeconds = updatedSec) }
                 }
             }
         }

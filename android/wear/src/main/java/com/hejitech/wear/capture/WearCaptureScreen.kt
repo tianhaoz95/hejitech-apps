@@ -84,8 +84,10 @@ fun WearCaptureScreen(
     onMicTap: () -> Unit,
     onStartWorkTimer: () -> Unit,
     onStopWorkTimer: () -> Unit,
-    onUploadPendingNow: () -> Unit,
-    onDismissMessages: () -> Unit,
+    onStartGpsTrip: () -> Unit = {},
+    onStopGpsTrip: () -> Unit = {},
+    onUploadPendingNow: () -> Unit = {},
+    onDismissMessages: () -> Unit = {},
 ) {
     Box(modifier = Modifier.fillMaxSize().padding(PaddingValues(horizontal = 16.dp, vertical = 8.dp)), contentAlignment = Alignment.Center) {
         Column(
@@ -132,6 +134,39 @@ fun WearCaptureScreen(
                         colors = ChipDefaults.primaryChipColors(),
                     )
                 }
+            } else if (uiState.isTripActive) {
+                // Active Running GPS Trip View
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colors.surface)
+                        .padding(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        "🟢 GPS TRIP ACTIVE",
+                        style = MaterialTheme.typography.caption2,
+                        color = MaterialTheme.colors.primary,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        formatDuration(uiState.tripElapsedSeconds),
+                        style = MaterialTheme.typography.title2,
+                        color = MaterialTheme.colors.onSurface,
+                    )
+                    Text(
+                        "Tracking mileage & location",
+                        style = MaterialTheme.typography.caption2,
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Chip(
+                        onClick = onStopGpsTrip,
+                        label = { Text("Complete Trip", style = MaterialTheme.typography.button) },
+                        colors = ChipDefaults.primaryChipColors(),
+                    )
+                }
             } else {
                 MicButton(
                     isRecording = uiState.isRecording,
@@ -141,11 +176,23 @@ fun WearCaptureScreen(
 
                 Spacer(Modifier.height(8.dp))
 
-                Chip(
-                    onClick = onStartWorkTimer,
-                    label = { Text("Start Work Timer", style = MaterialTheme.typography.caption2) },
-                    colors = ChipDefaults.secondaryChipColors(),
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Chip(
+                        modifier = Modifier.weight(1f),
+                        onClick = onStartWorkTimer,
+                        label = { Text("Work", style = MaterialTheme.typography.caption2, maxLines = 1) },
+                        colors = ChipDefaults.secondaryChipColors(),
+                    )
+                    Chip(
+                        modifier = Modifier.weight(1f),
+                        onClick = onStartGpsTrip,
+                        label = { Text("Trip", style = MaterialTheme.typography.caption2, maxLines = 1) },
+                        colors = ChipDefaults.secondaryChipColors(),
+                    )
+                }
             }
 
             Spacer(Modifier.height(6.dp))
