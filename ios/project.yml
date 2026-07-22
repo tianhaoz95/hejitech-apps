@@ -182,6 +182,15 @@ targets:
         UIBackgroundModes: [audio, processing]
         BGTaskSchedulerPermittedIdentifiers:
           - com.hejitech.contempo.watchkitapp.pending-upload
+        CLKComplicationSupportedFamilies:
+          - CLKComplicationFamilyCircularSmall
+          - CLKComplicationFamilyModularSmall
+          - CLKComplicationFamilyModularLarge
+          - CLKComplicationFamilyUtilitarianSmall
+          - CLKComplicationFamilyUtilitarianLarge
+          - CLKComplicationFamilyGraphicCorner
+          - CLKComplicationFamilyGraphicCircular
+          - CLKComplicationFamilyGraphicRectangular
         # Same USE_FIREBASE_EMULATOR/localhost reasoning as the phone
         # target's Info.plist entry — see its comment. The watch talks to
         # the emulator both via FirebaseAuth's own networking and the
@@ -230,6 +239,7 @@ targets:
       path: "Contempo Watch Widgets/Info.plist"
       properties:
         CFBundleDisplayName: "Contempo Widgets"
+        WKAppBundleIdentifier: com.hejitech.contempo.watchkitapp
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:
