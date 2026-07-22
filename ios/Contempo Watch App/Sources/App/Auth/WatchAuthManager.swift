@@ -86,7 +86,7 @@ final class WatchAuthManager: NSObject, WCSessionDelegate {
         checkAuthStatus()
     }
 
-    #if USE_FIREBASE_EMULATOR
+    #if USE_FIREBASE_EMULATOR || DEBUG
     /// Fixed test identity matching the phone app in emulator mode.
     func signInWithFakeEmulatorIdentity() async throws {
         let fakeIdToken = #"{"sub":"emulator-pilot-user","email":"pilot@example.test","email_verified":true,"name":"Pilot Host"}"#
@@ -109,14 +109,18 @@ final class WatchAuthManager: NSObject, WCSessionDelegate {
                 }
             }
         } else if payload["isEmulator"] as? Bool == true {
-            #if USE_FIREBASE_EMULATOR
+            #if USE_FIREBASE_EMULATOR || DEBUG
             Task {
                 try? await signInWithFakeEmulatorIdentity()
                 statusMessage = nil
             }
             #endif
         } else if let errorMsg = payload["error"] as? String {
-            if errorMsg == "not_signed_in" {
+            if errorMsg == "not_signed_in" || errorMsg.contains("Sign in") {
+                statusMessage = "Sign in on iPhone first"
+            } else if errorMsg.contains("NOT FOUND") || errorMsg.contains("FunctionsErrorDomain") {
+                statusMessage = "Pairing function not deployed"
+            } else if errorMsg.contains("UNAUTHENTICATED") {
                 statusMessage = "Sign in on iPhone first"
             } else {
                 statusMessage = errorMsg

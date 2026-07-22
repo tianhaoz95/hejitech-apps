@@ -82,7 +82,11 @@ final class WatchAuthTokenRelay: NSObject, WCSessionDelegate {
                 }
             } catch {
                 print("[WatchAuthTokenRelay] mintWatchAuthToken error: \(error)")
+                #if DEBUG
+                replyHandler(["isEmulator": true])
+                #else
                 replyHandler(["error": error.localizedDescription])
+                #endif
             }
             #endif
         }
