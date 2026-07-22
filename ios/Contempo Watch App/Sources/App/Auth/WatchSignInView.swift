@@ -47,7 +47,7 @@ struct WatchSignInView: View {
                     }
                 }
 
-                #if USE_FIREBASE_EMULATOR || DEBUG
+                #if USE_FIREBASE_EMULATOR
                 Button {
                     Task {
                         try? await authManager.signInWithFakeEmulatorIdentity()

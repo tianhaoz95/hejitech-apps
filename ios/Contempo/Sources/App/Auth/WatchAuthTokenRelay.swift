@@ -40,14 +40,7 @@ final class WatchAuthTokenRelay: NSObject, WCSessionDelegate {
                 _ = try? WCSession.default.updateApplicationContext(payload)
                 WCSession.default.transferUserInfo(payload)
             } catch {
-                #if DEBUG
-                // Fallback for Debug / Simulator when Cloud Function is not deployed
-                let payload: [String: Any] = ["isEmulator": true]
-                _ = try? WCSession.default.updateApplicationContext(payload)
-                WCSession.default.transferUserInfo(payload)
-                #else
                 print("[WatchAuthTokenRelay] Error minting/transferring watch token: \(error)")
-                #endif
             }
             #endif
         }
@@ -70,7 +63,7 @@ final class WatchAuthTokenRelay: NSObject, WCSessionDelegate {
             self.sendTokenIfSignedIn()
             #else
             do {
-                _ = try? await user.getIDToken(forcingRefresh: true)
+                _ = try? await user.getIDToken()
                 let result = try await Functions.functions().httpsCallable("mintWatchAuthToken").call()
                 if let data = result.data as? [String: Any], let customToken = data["customToken"] as? String {
                     replyHandler(["customToken": customToken])
@@ -82,11 +75,7 @@ final class WatchAuthTokenRelay: NSObject, WCSessionDelegate {
                 }
             } catch {
                 print("[WatchAuthTokenRelay] mintWatchAuthToken error: \(error)")
-                #if DEBUG
-                replyHandler(["isEmulator": true])
-                #else
                 replyHandler(["error": error.localizedDescription])
-                #endif
             }
             #endif
         }
