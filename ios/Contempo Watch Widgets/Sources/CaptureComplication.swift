@@ -45,17 +45,17 @@ private struct CaptureComplicationView: View {
                 Text("REC")
                     .font(.system(size: 9, weight: .bold))
             }
-            .widgetUrl(URL(string: "contempo://capture?mode=voice"))
+            .widgetURL(URL(string: "contempo://capture?mode=voice"))
 
         case .accessoryCorner:
             Image(systemName: "mic.fill")
                 .font(.system(size: 16))
                 .foregroundStyle(Color.red)
-                .widgetUrl(URL(string: "contempo://capture?mode=voice"))
+                .widgetURL(URL(string: "contempo://capture?mode=voice"))
 
         case .accessoryInline:
             Text("🎙️ Tap to Log Work")
-                .widgetUrl(URL(string: "contempo://capture?mode=voice"))
+                .widgetURL(URL(string: "contempo://capture?mode=voice"))
 
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 4) {
