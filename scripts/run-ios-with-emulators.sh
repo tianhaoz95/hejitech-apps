@@ -144,8 +144,18 @@ log "Generating Xcode project with xcodegen..."
 log "Building Contempo iOS & watchOS apps with xcodebuild..."
 ( cd "$IOS_DIR" && xcodebuild -project Contempo.xcodeproj -scheme Contempo -destination "id=$IOS_SIM_ID" -derivedDataPath Build build )
 
-IOS_APP_PATH="$(find "$IOS_DIR/Build" -name "Contempo.app" -type d | head -n 1)"
-WATCH_APP_PATH="$(find "$IOS_DIR/Build" -name "Contempo Watch App.app" -type d | head -n 1)"
+IOS_APP_PATH="$(find "$IOS_DIR/Build/Build/Products" -path "*/Debug-*" -name "Contempo.app" -not -path "*/Watch/*" -type d 2>/dev/null | head -n 1)"
+if [[ -z "$IOS_APP_PATH" ]]; then
+  IOS_APP_PATH="$(find "$IOS_DIR/Build" -name "Contempo.app" -not -path "*/Watch/*" -type d | head -n 1)"
+fi
+
+WATCH_APP_PATH="$(find "$IOS_DIR/Build/Build/Products" -path "*/Debug-watchsimulator*" -name "Contempo Watch App.app" -type d 2>/dev/null | head -n 1)"
+if [[ -z "$WATCH_APP_PATH" || ! -d "$WATCH_APP_PATH" ]] && [[ -n "$IOS_APP_PATH" ]] && [[ -d "$IOS_APP_PATH/Watch/Contempo Watch App.app" ]]; then
+  WATCH_APP_PATH="$IOS_APP_PATH/Watch/Contempo Watch App.app"
+fi
+if [[ -z "$WATCH_APP_PATH" || ! -d "$WATCH_APP_PATH" ]]; then
+  WATCH_APP_PATH="$(find "$IOS_DIR/Build/Build/Products" -path "*/Debug-*" -name "Contempo Watch App.app" -type d 2>/dev/null | head -n 1)"
+fi
 
 if [[ -z "$IOS_APP_PATH" || ! -d "$IOS_APP_PATH" ]]; then
   warn "Could not find built Contempo.app bundle in $IOS_DIR/Build."

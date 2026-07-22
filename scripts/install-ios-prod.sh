@@ -262,13 +262,18 @@ log "Building Contempo iOS app, watchOS app, and ContempoWidgets in Release (pro
 ( cd "$IOS_DIR" && xcodebuild -project Contempo.xcodeproj -scheme Contempo -configuration Release -destination "$BUILD_DEST" -derivedDataPath Build build )
 
 
-IOS_APP_PATH="$(find "$IOS_DIR/Build/Build/Products" -maxdepth 2 -name "Contempo.app" -not -path "*/Watch/*" -type d 2>/dev/null | head -n 1)"
-# Prefer the standalone watchsimulator/watch product over the copy embedded
-# inside Contempo.app/Watch/ — simctl install on the watch simulator needs
-# the top-level standalone bundle, not the embedded one.
-WATCH_APP_PATH="$(find "$IOS_DIR/Build/Build/Products" -maxdepth 2 -name "Contempo Watch App.app" -type d 2>/dev/null | grep -v "/Watch/" | head -n 1)"
-if [[ -z "$WATCH_APP_PATH" ]]; then
-  WATCH_APP_PATH="$(find "$IOS_DIR/Build" -name "Contempo Watch App.app" -type d 2>/dev/null | head -n 1)"
+IOS_APP_PATH="$(find "$IOS_DIR/Build/Build/Products" -path "*/Release-*" -name "Contempo.app" -not -path "*/Watch/*" -type d 2>/dev/null | head -n 1)"
+if [[ -z "$IOS_APP_PATH" ]]; then
+  IOS_APP_PATH="$(find "$IOS_DIR/Build/Build/Products" -name "Contempo.app" -not -path "*/Watch/*" -type d 2>/dev/null | head -n 1)"
+fi
+
+# Prefer the freshly built Release watch app (standalone watchsimulator bundle or embedded inside Contempo.app/Watch/)
+WATCH_APP_PATH="$(find "$IOS_DIR/Build/Build/Products" -path "*/Release-watchsimulator*" -name "Contempo Watch App.app" -type d 2>/dev/null | head -n 1)"
+if [[ -z "$WATCH_APP_PATH" || ! -d "$WATCH_APP_PATH" ]] && [[ -n "$IOS_APP_PATH" ]] && [[ -d "$IOS_APP_PATH/Watch/Contempo Watch App.app" ]]; then
+  WATCH_APP_PATH="$IOS_APP_PATH/Watch/Contempo Watch App.app"
+fi
+if [[ -z "$WATCH_APP_PATH" || ! -d "$WATCH_APP_PATH" ]]; then
+  WATCH_APP_PATH="$(find "$IOS_DIR/Build/Build/Products" -path "*/Release-*" -name "Contempo Watch App.app" -type d 2>/dev/null | head -n 1)"
 fi
 
 if [[ "$INSTALL_IOS" == "true" ]] && [[ -z "$IOS_APP_PATH" || ! -d "$IOS_APP_PATH" ]]; then
