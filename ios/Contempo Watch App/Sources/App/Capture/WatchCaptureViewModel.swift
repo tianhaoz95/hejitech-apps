@@ -20,6 +20,7 @@ final class WatchCaptureViewModel {
     private let pendingCaptureStore = WatchServiceLocator.pendingCaptureStore
     private let uploadStatsStore = WatchServiceLocator.uploadStatsStore
     private let entryStatsReader = WatchServiceLocator.entryStatsReader
+    private let entryWriter = WatchServiceLocator.entryWriter
     private let hoursProgressStore = WatchServiceLocator.hoursProgressStore
     private let timerStore = WatchWorkTimerStore(appGroupId: "group.com.hejitech.contempo")
     private let tripStore = WatchGpsTripStore(appGroupId: "group.com.hejitech.contempo")
@@ -81,6 +82,18 @@ final class WatchCaptureViewModel {
 
         lastSavedSummary = "GPS Trip Logged — \(completed.durationMinutes) mins!"
         WidgetCenter.shared.reloadTimelines(ofKind: "HoursComplication")
+
+        Task {
+            _ = try? await entryWriter.saveConfirmedEntry(
+                task: "GPS Mileage Trip",
+                durationMinutes: completed.durationMinutes,
+                category: EntryCategory.other.firestoreValue,
+                isTrip: true,
+                startedAt: completed.startedAt,
+                stoppedAt: completed.stoppedAt
+            )
+            await refreshConfirmedHours()
+        }
     }
 
     func stopAndCompleteWorkTimer() {
@@ -91,6 +104,18 @@ final class WatchCaptureViewModel {
         confirmedHours += Double(completed.durationMinutes) / 60.0
         hoursProgressStore.write(confirmedHours: confirmedHours)
         WidgetCenter.shared.reloadTimelines(ofKind: "HoursComplication")
+
+        Task {
+            _ = try? await entryWriter.saveConfirmedEntry(
+                task: completed.task,
+                durationMinutes: completed.durationMinutes,
+                category: EntryCategory.admin.firestoreValue,
+                isTrip: false,
+                startedAt: completed.startedAt,
+                stoppedAt: completed.stoppedAt
+            )
+            await refreshConfirmedHours()
+        }
     }
 
     private func refreshTimerState() {

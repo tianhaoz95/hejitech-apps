@@ -35,4 +35,11 @@ enum WatchServiceLocator {
             emulatorHost: FirebaseBootstrap.emulatorHost
         )
     }
+
+    static var entryWriter: WatchEntryWriter {
+        WatchEntryWriter(
+            projectId: FirebaseApp.app()?.options.projectID ?? "contempo-platform",
+            emulatorHost: FirebaseBootstrap.emulatorHost
+        )
+    }
 }

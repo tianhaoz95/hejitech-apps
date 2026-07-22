@@ -29,6 +29,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeoutOrNull
 
+import com.hejitech.core.model.Entry
+import com.hejitech.core.model.EntryCategory
+import com.hejitech.core.model.CaptureSource
+import com.google.firebase.Timestamp
+import java.util.Date
+
 import com.hejitech.wear.timer.WearGpsTripStore
 import com.hejitech.wear.timer.WearTimerNotificationManager
 import com.hejitech.wear.timer.WearWorkTimerStore
@@ -101,6 +107,24 @@ class WearCaptureViewModel : ViewModel() {
         refreshTripState()
 
         if (completed != null) {
+            viewModelScope.launch {
+                runCatching {
+                    val entry = Entry(
+                        task = "GPS Mileage Trip",
+                        durationMinutes = completed.durationMinutes,
+                        category = EntryCategory.OTHER.firestoreValue,
+                        status = EntryStatus.CONFIRMED.firestoreValue,
+                        source = CaptureSource.MANUAL.firestoreValue,
+                        activityDate = Timestamp(Date(completed.startedAtMs)),
+                        loggedAt = Timestamp(Date(completed.stoppedAtMs)),
+                        confirmedAt = Timestamp(Date(completed.stoppedAtMs)),
+                        isTrip = true,
+                        mileageCaptureMethod = "gps",
+                    )
+                    entryRepository.createEntry(entry)
+                }
+            }
+
             _uiState.update {
                 it.copy(
                     lastSavedSummary = "GPS Trip Logged — ${completed.durationMinutes} mins!",
@@ -115,9 +139,21 @@ class WearCaptureViewModel : ViewModel() {
         refreshTimerState()
 
         if (completed != null) {
-            val dummyWav = ByteArray(44)
-            pendingCaptureStore.save(dummyWav, null, null)
-            enqueueExpeditedUpload()
+            viewModelScope.launch {
+                runCatching {
+                    val entry = Entry(
+                        task = completed.task,
+                        durationMinutes = completed.durationMinutes,
+                        category = EntryCategory.ADMIN.firestoreValue,
+                        status = EntryStatus.CONFIRMED.firestoreValue,
+                        source = CaptureSource.MANUAL.firestoreValue,
+                        activityDate = Timestamp(Date(completed.startedAtMs)),
+                        loggedAt = Timestamp(Date(completed.stoppedAtMs)),
+                        confirmedAt = Timestamp(Date(completed.stoppedAtMs)),
+                    )
+                    entryRepository.createEntry(entry)
+                }
+            }
 
             _uiState.update {
                 it.copy(
