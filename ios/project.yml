@@ -154,6 +154,14 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: "Contempo Widgets"
         SKIP_INSTALL: "NO"
         "EXCLUDED_ARCHS[sdk=iphonesimulator*]": x86_64
+    entitlements:
+      path: ContempoWidgets/ContempoWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.hejitech.contempo
+    dependencies:
+      - package: ContempoCore
+        product: ContempoCore
 
   "Contempo Watch App":
     type: application
