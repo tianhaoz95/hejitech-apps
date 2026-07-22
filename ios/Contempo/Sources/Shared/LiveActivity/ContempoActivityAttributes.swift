@@ -1,3 +1,4 @@
+#if canImport(ActivityKit)
 import ActivityKit
 import Foundation
 
@@ -27,3 +28,4 @@ struct TripActivityAttributes: ActivityAttributes {
         var miles: Double
     }
 }
+#endif

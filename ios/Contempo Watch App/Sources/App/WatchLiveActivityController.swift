@@ -1,3 +1,4 @@
+#if canImport(ActivityKit)
 import ActivityKit
 import Foundation
 
@@ -35,3 +36,14 @@ enum WatchLiveActivityController {
         Task { await activity.end(nil, dismissalPolicy: .immediate) }
     }
 }
+#else
+import Foundation
+
+@MainActor
+enum WatchLiveActivityController {
+    static func startTimer(subjectName: String, startedAt: Date) {}
+    static func endTimer() {}
+    static func startTrip(startedAt: Date = Date()) {}
+    static func endTrip() {}
+}
+#endif
