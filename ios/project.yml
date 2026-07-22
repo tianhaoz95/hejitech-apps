@@ -169,6 +169,7 @@ targets:
     sources:
       - path: "Contempo Watch App/Sources"
       - path: "Contempo Watch App/Assets.xcassets"
+      - path: Contempo/Sources/Shared/LiveActivity
       - path: "Contempo Watch App/GoogleService-Info.plist"
         optional: true
     info:

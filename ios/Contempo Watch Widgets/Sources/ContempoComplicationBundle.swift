@@ -5,5 +5,6 @@ import WidgetKit
 struct ContempoComplicationBundle: WidgetBundle {
     var body: some Widget {
         HoursComplication()
+        CaptureComplication()
     }
 }

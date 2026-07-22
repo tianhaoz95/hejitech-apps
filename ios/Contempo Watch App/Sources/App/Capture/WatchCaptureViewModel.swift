@@ -63,16 +63,19 @@ final class WatchCaptureViewModel {
     func startWorkTimer(task: String = "STR General Work") {
         timerStore.startWorkTimer(task: task)
         refreshTimerState()
+        WatchLiveActivityController.startTimer(subjectName: task, startedAt: timerStore.startedAt() ?? Date())
         WidgetCenter.shared.reloadTimelines(ofKind: "HoursComplication")
     }
 
     func startGpsTrip() {
         tripStore.startGpsTrip()
         refreshTripState()
+        WatchLiveActivityController.startTrip(startedAt: tripStore.startedAt() ?? Date())
         WidgetCenter.shared.reloadTimelines(ofKind: "HoursComplication")
     }
 
     func stopGpsTrip() {
+        WatchLiveActivityController.endTrip()
         guard let completed = tripStore.stopAndCompleteGpsTrip() else {
             tripStore.clearTrip()
             refreshTripState()
@@ -97,6 +100,7 @@ final class WatchCaptureViewModel {
     }
 
     func stopAndCompleteWorkTimer() {
+        WatchLiveActivityController.endTimer()
         guard let completed = timerStore.stopAndCompleteWorkTimer() else { return }
         refreshTimerState()
         
