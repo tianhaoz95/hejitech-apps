@@ -336,7 +336,7 @@ fun CaptureScreen(
                 Spacer(Modifier.height(16.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterHorizontally),
                     verticalAlignment = Alignment.Top,
                 ) {
                     if (openTimerEntry == null) {
@@ -355,8 +355,6 @@ fun CaptureScreen(
                             onClick = ::onTripButtonTap,
                         )
                     }
-
-                    Spacer(Modifier.weight(1f))
 
                     // Same size/shape as the buttons above so it reads as
                     // part of the same row, but left in its original neutral

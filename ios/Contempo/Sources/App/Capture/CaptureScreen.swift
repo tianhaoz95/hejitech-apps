@@ -168,8 +168,6 @@ struct CaptureScreen: View {
                                 .disabled(viewModel.isTranscribing || viewModel.isParsing)
                             }
 
-                            Spacer()
-
                             // Same size/shape as the buttons above so it
                             // reads as part of the same row, but left in its
                             // original neutral tint rather than the pine
