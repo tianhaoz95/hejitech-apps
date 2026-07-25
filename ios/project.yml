@@ -292,12 +292,15 @@ targets:
       - path: ContempoTests
     settings:
       GENERATE_INFOPLIST_FILE: YES
+      "EXCLUDED_ARCHS[sdk=iphonesimulator*]": x86_64
+      # `@testable import Contempo` pulls in AudioRecorder.swift/
+      # WhisperTranscriber.swift, which need the same vendored sherpa-onnx C
+      # headers the host app target resolves via its own bridging header —
+      # not inherited automatically from the Contempo target dependency.
+      SWIFT_OBJC_BRIDGING_HEADER: Contempo/Sources/Vendor/SherpaOnnx/SherpaOnnx-Bridging-Header.h
+      HEADER_SEARCH_PATHS: "$(SRCROOT)/Vendor/sherpa-onnx/sherpa-onnx.xcframework/Headers"
     dependencies:
       - target: Contempo
-      - package: ContempoCore
-        product: ContempoCore
-      - package: ContempoCore
-        product: ContempoFirestore
 
   ContempoUITests:
     type: bundle.ui-testing
@@ -328,13 +331,27 @@ schemes:
       targets:
         Contempo: all
         ContempoUITests: [test]
+        ContempoTests: [test]
     run:
       config: Debug
     test:
       config: Debug
       targets:
         - ContempoUITests
+        - ContempoTests
     archive:
       config: Release
       revealArchiveInOrganizer: true
+
+  Contempo Watch App:
+    build:
+      targets:
+        "Contempo Watch App": all
+        ContempoWatchAppTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - ContempoWatchAppTests
 

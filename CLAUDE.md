@@ -290,8 +290,13 @@ The Firebase project root — `firebase` CLI commands (prefixed
   the path segment, not client-supplied data) for read access, **plus
   field-level type/size/range validation on every write** (entry field types
   and enums, string/array/lat-lng bounds, etc. — mirrored by hand from
-  `core/model/Entry.kt` and `Property.kt`, tested against the emulator via
-  `@firebase/rules-unit-testing` before each rules deploy). `corrections` is
+  `core/model/Entry.kt` and `Property.kt`; a suite in `backend/firestore-tests/`
+  (`npm test` there, requires the emulator running — see its README) covers
+  the highest-risk boundaries — cross-user isolation, the `roles` collection,
+  and `isValidNoteUpdate` — via `@firebase/rules-unit-testing`, though it
+  doesn't exhaustively re-test every field constraint on `isValidEntry`; a
+  rules change beyond what it covers should still get a manual emulator
+  check before deploying). `corrections` is
   additionally append-only at the rules layer (`allow update, delete: if
   false`), not just by client convention. Separately, a top-level (not
   nested under `users/{uid}` — there's no owner) `feedback/{feedbackId}`
