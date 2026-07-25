@@ -18,6 +18,7 @@ struct EntryDetailScreen: View {
     @State private var previewURL: URL?
     @State private var downloadingAttachmentId: String?
     @State private var downloadError: String?
+    @State private var noteEditingTarget: Attachment?
 
     init(entryId: String) {
         self.entryId = entryId
@@ -151,6 +152,11 @@ struct EntryDetailScreen: View {
                 QuickLookPreview(url: previewURL)
             }
         }
+        .sheet(item: $noteEditingTarget) { attachment in
+            AttachmentNoteEditor(attachment: attachment) { note in
+                viewModel.updateNote(attachment, note: note)
+            }
+        }
     }
 
     // Split out of `body` — SwiftUI's ViewBuilder type-checker times out
@@ -193,6 +199,12 @@ struct EntryDetailScreen: View {
                 } label: {
                     Label("Delete", systemImage: "trash")
                 }
+                Button {
+                    noteEditingTarget = attachment
+                } label: {
+                    Label(attachment.note?.isEmpty == false ? "Edit Note" : "Add Note", systemImage: "note.text")
+                }
+                .tint(palette.pine)
             }
         }
     }
@@ -458,6 +470,12 @@ private struct AttachmentRow: View {
                 Text("\(sizeLabel) · \(timeLabel)")
                     .font(ContempoFont.labelSmall())
                     .foregroundStyle(palette.inkFaint)
+                if let note = attachment.note, !note.isEmpty {
+                    Text(note)
+                        .font(ContempoFont.labelSmall())
+                        .foregroundStyle(palette.inkSoft)
+                        .lineLimit(2)
+                }
             }
             Spacer()
             if isDownloading {
@@ -479,5 +497,57 @@ private struct AttachmentRow: View {
 
     private var timeLabel: String {
         attachment.uploadedAt.dateValue().formatted(.relative(presentation: .named))
+    }
+}
+
+// MARK: - Attachment Note Editor
+
+private struct AttachmentNoteEditor: View {
+    let attachment: Attachment
+    let onSave: (String) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.contempoPalette) private var palette
+    @State private var noteText: String
+
+    init(attachment: Attachment, onSave: @escaping (String) -> Void) {
+        self.attachment = attachment
+        self.onSave = onSave
+        _noteText = State(initialValue: attachment.note ?? "")
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(attachment.fileName)
+                    .font(ContempoFont.labelSmall())
+                    .foregroundStyle(palette.inkFaint)
+                    .lineLimit(1)
+                TextEditor(text: $noteText)
+                    .frame(minHeight: 160)
+                    .padding(8)
+                    .background(palette.paperRaised)
+                    .clipShape(RoundedRectangle(cornerRadius: ContempoRadius.medium))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: ContempoRadius.medium)
+                            .stroke(palette.hairline, lineWidth: 1)
+                    )
+                Spacer()
+            }
+            .padding(20)
+            .navigationTitle("Note")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        onSave(noteText.trimmingCharacters(in: .whitespacesAndNewlines))
+                        dismiss()
+                    }
+                }
+            }
+        }
     }
 }

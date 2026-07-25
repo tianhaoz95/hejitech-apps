@@ -183,6 +183,11 @@
     <string name="entry_detail_attachment_error_dialog_title">Something went wrong</string>
     <string name="entry_detail_attachment_error_dialog_dismiss">OK</string>
     <string name="entry_detail_attachment_open_chooser_title">Open with</string>
+    <string name="entry_detail_attachment_edit_note_content_description">Edit note</string>
+    <string name="entry_detail_attachment_note_dialog_title">Note</string>
+    <string name="entry_detail_attachment_note_placeholder">What is this for?</string>
+    <string name="entry_detail_attachment_note_save">Save</string>
+    <string name="entry_detail_attachment_note_cancel">Cancel</string>
 
     <string name="chat_eyebrow">Ask your logbook</string>
     <string name="chat_empty_hint">Ask anything — "will cleaning the pool count toward my 100 hours?", "how many hours do I still need?"</string>

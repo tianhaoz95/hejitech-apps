@@ -101,7 +101,23 @@ service cloud.firestore {
         d.fileSize is number && d.fileSize > 0 && d.fileSize <= 104857600 &&
         d.storagePath is string && d.storagePath.size() > 0 && d.storagePath.size() <= 500 &&
         d.downloadURL is string && d.downloadURL.size() <= 2000 &&
-        d.uploadedAt is timestamp;
+        d.uploadedAt is timestamp &&
+        d.note is string && d.note.size() <= 2000;
+    }
+
+    // A note is the one editable field on an otherwise-immutable attachment
+    // doc (see the `attachments` match block below) — everything else must
+    // stay byte-for-byte identical to what create() wrote, so this can't be
+    // used to sneak in a changed storagePath/downloadURL pointing at
+    // different file content under the same doc.
+    function isValidNoteUpdate(before, after) {
+      return after.fileName == before.fileName &&
+        after.contentType == before.contentType &&
+        after.fileSize == before.fileSize &&
+        after.storagePath == before.storagePath &&
+        after.downloadURL == before.downloadURL &&
+        after.uploadedAt == before.uploadedAt &&
+        after.note is string && after.note.size() <= 2000;
     }
 
     function isValidAudioCapture(d) {
@@ -150,7 +166,7 @@ service cloud.firestore {
         match /attachments/{attachmentId} {
           allow read: if isOwner(uid);
           allow create: if isOwner(uid) && isValidAttachment(request.resource.data);
-          allow update: if false;
+          allow update: if isOwner(uid) && isValidNoteUpdate(resource.data, request.resource.data);
           allow delete: if isOwner(uid);
         }
       }

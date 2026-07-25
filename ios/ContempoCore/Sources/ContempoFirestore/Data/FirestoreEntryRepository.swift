@@ -149,6 +149,7 @@ public final class FirestoreEntryRepository: EntryRepository, @unchecked Sendabl
             "storagePath": storagePath,
             "downloadURL": downloadURL.absoluteString,
             "uploadedAt": Timestamp(date: Date()),
+            "note": "",
         ]
         let ref = try await attachmentsCollection(entryId: entryId).addDocument(data: data)
         return Attachment(
@@ -158,8 +159,13 @@ public final class FirestoreEntryRepository: EntryRepository, @unchecked Sendabl
             fileSize: uploadedMetadata.size,
             storagePath: storagePath,
             downloadURL: downloadURL.absoluteString,
-            uploadedAt: Timestamp(date: Date())
+            uploadedAt: Timestamp(date: Date()),
+            note: ""
         )
+    }
+
+    public func updateAttachmentNote(entryId: String, attachmentId: String, note: String) async throws {
+        try await attachmentsCollection(entryId: entryId).document(attachmentId).updateData(["note": note])
     }
 
     public func deleteAttachment(entryId: String, attachment: Attachment) async throws {

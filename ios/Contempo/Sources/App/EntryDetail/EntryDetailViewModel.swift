@@ -103,4 +103,18 @@ final class EntryDetailViewModel {
     func localFileURL(for attachment: Attachment) async throws -> URL {
         try await entryRepository.downloadAttachment(entryId: entryId, attachment: attachment) { _ in }
     }
+
+    func updateNote(_ attachment: Attachment, note: String) {
+        guard let attachmentId = attachment.id else { return }
+        Task {
+            do {
+                try await entryRepository.updateAttachmentNote(entryId: entryId, attachmentId: attachmentId, note: note)
+                if let index = attachments.firstIndex(where: { $0.id == attachmentId }) {
+                    attachments[index].note = note
+                }
+            } catch {
+                attachmentError = error.localizedDescription
+            }
+        }
+    }
 }

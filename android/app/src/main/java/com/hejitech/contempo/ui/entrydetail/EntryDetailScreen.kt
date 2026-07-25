@@ -33,6 +33,7 @@ import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Pause
@@ -47,6 +48,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -444,6 +446,7 @@ private fun DetailRow(label: String, content: @Composable () -> Unit) {
 private fun AttachmentsSection(uiState: EntryDetailUiState, viewModel: EntryDetailViewModel) {
     val context = LocalContext.current
     var previewTarget by remember { mutableStateOf<Pair<Attachment, File>?>(null) }
+    var noteEditingTarget by remember { mutableStateOf<Attachment?>(null) }
     // At most one attachment downloads at a time from this screen — good
     // enough for audit-evidence file counts, and keeps the progress-UI state
     // simple (one id, one float) rather than a map.
@@ -514,11 +517,23 @@ private fun AttachmentsSection(uiState: EntryDetailUiState, viewModel: EntryDeta
                 )
             },
             onDelete = { viewModel.deleteAttachment(attachment) },
+            onEditNote = { noteEditingTarget = attachment },
         )
     }
 
     previewTarget?.let { (attachment, file) ->
         AttachmentPreviewDialog(attachment = attachment, file = file, onDismiss = { previewTarget = null })
+    }
+
+    noteEditingTarget?.let { attachment ->
+        AttachmentNoteDialog(
+            attachment = attachment,
+            onDismiss = { noteEditingTarget = null },
+            onSave = { note ->
+                viewModel.updateAttachmentNote(attachment, note)
+                noteEditingTarget = null
+            },
+        )
     }
 
     uiState.attachmentError?.let { error ->
@@ -542,6 +557,7 @@ private fun AttachmentRow(
     downloadProgress: Float,
     onClick: () -> Unit,
     onDelete: () -> Unit,
+    onEditNote: () -> Unit,
 ) {
     val context = LocalContext.current
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
@@ -559,6 +575,14 @@ private fun AttachmentRow(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (attachment.note.isNotEmpty()) {
+                    Text(
+                        attachment.note,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                    )
+                }
             }
             if (isDownloading) {
                 CircularProgressIndicator(
@@ -567,6 +591,12 @@ private fun AttachmentRow(
                     strokeWidth = 2.dp,
                 )
                 Spacer(Modifier.width(8.dp))
+            }
+            IconButton(onClick = onEditNote) {
+                Icon(
+                    Icons.Filled.EditNote,
+                    contentDescription = stringResource(R.string.entry_detail_attachment_edit_note_content_description),
+                )
             }
             IconButton(onClick = onDelete) {
                 Icon(
@@ -577,6 +607,43 @@ private fun AttachmentRow(
             }
         }
     }
+}
+
+@Composable
+private fun AttachmentNoteDialog(attachment: Attachment, onDismiss: () -> Unit, onSave: (String) -> Unit) {
+    var noteText by remember(attachment.id) { mutableStateOf(attachment.note) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.entry_detail_attachment_note_dialog_title)) },
+        text = {
+            Column {
+                Text(
+                    attachment.fileName,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = noteText,
+                    onValueChange = { noteText = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    placeholder = { Text(stringResource(R.string.entry_detail_attachment_note_placeholder)) },
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(noteText.trim()) }) {
+                Text(stringResource(R.string.entry_detail_attachment_note_save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.entry_detail_attachment_note_cancel))
+            }
+        },
+    )
 }
 
 private fun attachmentIcon(contentType: String) = when {

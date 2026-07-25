@@ -144,6 +144,21 @@ class EntryDetailViewModel(private val entryId: String) : ViewModel() {
         _uiState.value = _uiState.value.copy(attachmentError = null)
     }
 
+    fun updateAttachmentNote(attachment: Attachment, note: String) {
+        viewModelScope.launch {
+            try {
+                entryRepository.updateAttachmentNote(entryId, attachment.id, note)
+                _uiState.value = _uiState.value.copy(
+                    attachments = _uiState.value.attachments.map {
+                        if (it.id == attachment.id) it.copy(note = note) else it
+                    },
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(attachmentError = e.message ?: "Couldn't save this note — try again.")
+            }
+        }
+    }
+
     private fun resolveFileName(context: Context, uri: Uri): String {
         val queried = runCatching {
             context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->

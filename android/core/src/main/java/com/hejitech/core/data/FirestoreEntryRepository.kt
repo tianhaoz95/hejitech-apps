@@ -190,6 +190,7 @@ class FirestoreEntryRepository(
             "storagePath" to storagePath,
             "downloadURL" to downloadUrl,
             "uploadedAt" to uploadedAt,
+            "note" to "",
         )
         val ref = attachmentsCollection(entryId).add(doc).await()
         return Attachment(
@@ -200,12 +201,17 @@ class FirestoreEntryRepository(
             storagePath = storagePath,
             downloadURL = downloadUrl,
             uploadedAt = uploadedAt,
+            note = "",
         )
     }
 
     override suspend fun deleteAttachment(entryId: String, attachment: Attachment) {
         storage.reference.child(attachment.storagePath).delete().await()
         attachmentsCollection(entryId).document(attachment.id).delete().await()
+    }
+
+    override suspend fun updateAttachmentNote(entryId: String, attachmentId: String, note: String) {
+        attachmentsCollection(entryId).document(attachmentId).update("note", note).await()
     }
 
     override suspend fun downloadAttachment(

@@ -60,4 +60,8 @@ public protocol EntryRepository: Sendable {
     /// Downloads an attachment to a local file for in-app viewing/sharing,
     /// skipping the download if already cached locally. Returns the local file URL.
     func downloadAttachment(entryId: String, attachment: Attachment, onProgress: @escaping @Sendable (Double) -> Void) async throws -> URL
+
+    /// Updates just the `note` field on an already-uploaded attachment —
+    /// the one field on that doc that isn't immutable, see `Attachment.note`.
+    func updateAttachmentNote(entryId: String, attachmentId: String, note: String) async throws
 }

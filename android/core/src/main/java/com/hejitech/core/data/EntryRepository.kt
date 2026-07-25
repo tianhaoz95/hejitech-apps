@@ -103,4 +103,10 @@ interface EntryRepository {
         destinationDir: File,
         onProgress: (Float) -> Unit,
     ): File
+
+    /**
+     * Updates just the [Attachment.note] field on an already-uploaded
+     * attachment — the one field on that doc that isn't immutable.
+     */
+    suspend fun updateAttachmentNote(entryId: String, attachmentId: String, note: String)
 }
