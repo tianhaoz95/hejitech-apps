@@ -284,7 +284,7 @@ fi
 # --- install ----------------------------------------------------------------
 if [[ "$INSTALL_IOS" == "true" ]]; then
   if [[ "$IS_IOS_PHYSICAL" == "true" ]]; then
-    log "Installing Release app (com.hejitech.contempo) onto physical iOS device $IOS_DEST_ID..."
+    log "Installing Release app (com.hejitech.contempoapp) onto physical iOS device $IOS_DEST_ID..."
     if command -v devicectl >/dev/null 2>&1 || xcrun --find devicectl >/dev/null 2>&1; then
       xcrun devicectl device install app --device "$IOS_DEST_ID" "$IOS_APP_PATH"
     elif command -v ios-deploy >/dev/null 2>&1; then
@@ -294,19 +294,19 @@ if [[ "$INSTALL_IOS" == "true" ]]; then
       exit 1
     fi
   else
-    log "Installing Release app (com.hejitech.contempo) onto simulator $IOS_DEST_ID..."
+    log "Installing Release app (com.hejitech.contempoapp) onto simulator $IOS_DEST_ID..."
     xcrun simctl install "$IOS_DEST_ID" "$IOS_APP_PATH"
   fi
 fi
 
 if [[ "$INSTALL_WATCH" == "true" ]] && [[ -n "$WATCH_DEST_ID" ]] && [[ -n "$WATCH_APP_PATH" ]] && [[ -d "$WATCH_APP_PATH" ]]; then
   if [[ "$IS_WATCH_PHYSICAL" == "true" ]]; then
-    log "Installing Release watch app (com.hejitech.contempo.watchkitapp) onto physical watch $WATCH_DEST_ID..."
+    log "Installing Release watch app (com.hejitech.contempoapp.watchkitapp) onto physical watch $WATCH_DEST_ID..."
     if command -v devicectl >/dev/null 2>&1 || xcrun --find devicectl >/dev/null 2>&1; then
       xcrun devicectl device install app --device "$WATCH_DEST_ID" "$WATCH_APP_PATH" 2>/dev/null || true
     fi
   else
-    log "Installing Release watch app (com.hejitech.contempo.watchkitapp) onto simulator $WATCH_DEST_ID..."
+    log "Installing Release watch app (com.hejitech.contempoapp.watchkitapp) onto simulator $WATCH_DEST_ID..."
     xcrun simctl install "$WATCH_DEST_ID" "$WATCH_APP_PATH" 2>/dev/null || true
   fi
 fi
@@ -321,14 +321,14 @@ if [[ "$INSTALL_IOS" == "true" ]]; then
   log "Launching Contempo..."
   if [[ "$IS_IOS_PHYSICAL" == "true" ]]; then
     if command -v devicectl >/dev/null 2>&1 || xcrun --find devicectl >/dev/null 2>&1; then
-      xcrun devicectl device process launch --device "$IOS_DEST_ID" com.hejitech.contempo 2>/dev/null || true
+      xcrun devicectl device process launch --device "$IOS_DEST_ID" com.hejitech.contempoapp 2>/dev/null || true
     elif command -v ios-deploy >/dev/null 2>&1; then
       ios-deploy --id "$IOS_DEST_ID" --justlaunch --bundle "$IOS_APP_PATH" 2>/dev/null || true
     fi
   else
-    if ! xcrun simctl launch "$IOS_DEST_ID" com.hejitech.contempo 2>/dev/null; then
+    if ! xcrun simctl launch "$IOS_DEST_ID" com.hejitech.contempoapp 2>/dev/null; then
       sleep 1
-      xcrun simctl launch "$IOS_DEST_ID" com.hejitech.contempo
+      xcrun simctl launch "$IOS_DEST_ID" com.hejitech.contempoapp
     fi
   fi
 fi
@@ -336,9 +336,9 @@ fi
 if [[ "$INSTALL_WATCH" == "true" ]] && [[ -n "$WATCH_DEST_ID" ]]; then
   log "Launching Contempo Watch App..."
   if [[ "$IS_WATCH_PHYSICAL" != "true" ]]; then
-    if ! xcrun simctl launch "$WATCH_DEST_ID" com.hejitech.contempo.watchkitapp 2>/dev/null; then
+    if ! xcrun simctl launch "$WATCH_DEST_ID" com.hejitech.contempoapp.watchkitapp 2>/dev/null; then
       sleep 1
-      xcrun simctl launch "$WATCH_DEST_ID" com.hejitech.contempo.watchkitapp 2>/dev/null || true
+      xcrun simctl launch "$WATCH_DEST_ID" com.hejitech.contempoapp.watchkitapp 2>/dev/null || true
     fi
   fi
 fi

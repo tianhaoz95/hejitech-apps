@@ -22,8 +22,8 @@ final class WatchCaptureViewModel {
     private let entryStatsReader = WatchServiceLocator.entryStatsReader
     private let entryWriter = WatchServiceLocator.entryWriter
     private let hoursProgressStore = WatchServiceLocator.hoursProgressStore
-    private let timerStore = WatchWorkTimerStore(appGroupId: "group.com.hejitech.contempo")
-    private let tripStore = WatchGpsTripStore(appGroupId: "group.com.hejitech.contempo")
+    private let timerStore = WatchWorkTimerStore(appGroupId: "group.com.hejitech.contempoapp")
+    private let tripStore = WatchGpsTripStore(appGroupId: "group.com.hejitech.contempoapp")
 
     var isRecording = false
     var confirmedHours: Double = 0

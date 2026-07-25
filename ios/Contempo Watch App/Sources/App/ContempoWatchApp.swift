@@ -7,7 +7,7 @@ import WatchKit
 /// foregrounded attempt in `WatchCaptureViewModel.stopRecordingAndSend`
 /// already covers the common case). watchOS's `WKApplicationRefreshBackgroundTask`
 /// equivalent of Android Wear's periodic `PendingCaptureSyncWorker`.
-let pendingUploadBackgroundTaskId = "com.hejitech.contempo.watchkitapp.pending-upload"
+let pendingUploadBackgroundTaskId = "com.hejitech.contempoapp.watchkitapp.pending-upload"
 private let backgroundRefreshIntervalSeconds: TimeInterval = 15 * 60
 
 @main

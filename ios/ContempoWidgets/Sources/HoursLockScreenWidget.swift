@@ -8,7 +8,7 @@ struct HoursLockScreenEntry: TimelineEntry {
 }
 
 struct HoursLockScreenProvider: TimelineProvider {
-    private let store = HoursProgressStore(appGroupId: "group.com.hejitech.contempo")
+    private let store = HoursProgressStore(appGroupId: "group.com.hejitech.contempoapp")
 
     func placeholder(in context: Context) -> HoursLockScreenEntry {
         HoursLockScreenEntry(date: Date(), confirmedHours: 35.0)

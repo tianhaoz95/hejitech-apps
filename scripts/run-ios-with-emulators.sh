@@ -163,14 +163,14 @@ if [[ -z "$IOS_APP_PATH" || ! -d "$IOS_APP_PATH" ]]; then
 fi
 
 # --- install and launch -----------------------------------------------------
-log "Installing & launching iOS app (com.hejitech.contempo)..."
+log "Installing & launching iOS app (com.hejitech.contempoapp)..."
 xcrun simctl install "$IOS_SIM_ID" "$IOS_APP_PATH"
-xcrun simctl launch "$IOS_SIM_ID" com.hejitech.contempo
+xcrun simctl launch "$IOS_SIM_ID" com.hejitech.contempoapp
 
 if [[ -n "$WATCH_SIM_ID" && -d "$WATCH_APP_PATH" ]]; then
-  log "Installing & launching watchOS app (com.hejitech.contempo.watchkitapp)..."
+  log "Installing & launching watchOS app (com.hejitech.contempoapp.watchkitapp)..."
   xcrun simctl install "$WATCH_SIM_ID" "$WATCH_APP_PATH" 2>/dev/null || true
-  xcrun simctl launch "$WATCH_SIM_ID" com.hejitech.contempo.watchkitapp 2>/dev/null || true
+  xcrun simctl launch "$WATCH_SIM_ID" com.hejitech.contempoapp.watchkitapp 2>/dev/null || true
 fi
 
 log "Streaming iOS simulator logs (Ctrl+C to stop everything)..."

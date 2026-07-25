@@ -3,7 +3,7 @@ import XCTest
 
 final class HoursProgressStoreTests: XCTestCase {
     func testReadAndWriteConfirmedHours() {
-        let testSuiteName = "group.com.hejitech.contempo.test.\(UUID().uuidString)"
+        let testSuiteName = "group.com.hejitech.contempoapp.test.\(UUID().uuidString)"
         let store = HoursProgressStore(appGroupId: testSuiteName)
 
         XCTAssertEqual(store.read(), 0.0)

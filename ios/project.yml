@@ -19,8 +19,14 @@ packages:
 settings:
   base:
     SWIFT_VERSION: "5.10"
-    MARKETING_VERSION: "0.1.0-mvp"
-    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "2.8"
+    CURRENT_PROJECT_VERSION: "11"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: 68CTFST8W2
+  configs:
+    Release:
+      CODE_SIGN_STYLE: Manual
+      CODE_SIGN_IDENTITY: "Apple Distribution"
 
 targets:
   Contempo:
@@ -41,12 +47,14 @@ targets:
     info:
       path: Contempo/Info.plist
       properties:
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         UILaunchScreen: {}
         NSMicrophoneUsageDescription: "Contempo uses your microphone to capture spoken work-log entries."
         NSCameraUsageDescription: "Contempo uses your camera to attach a photo, or read an odometer, to a work-log entry."
         NSLocationWhenInUseUsageDescription: "Contempo uses your location to record where a work entry or mileage trip started and ended."
         NSPhotoLibraryAddUsageDescription: "Contempo saves photos you attach to work-log entries."
-        UIBackgroundModes: [audio, location, fetch, processing]
+        UIBackgroundModes: [audio, location, fetch]
         NSSupportsLiveActivities: true
         CFBundleURLTypes:
           - CFBundleURLSchemes:
@@ -63,7 +71,7 @@ targets:
           NSAllowsLocalNetworking: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.contempo
+        PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.contempoapp
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
         TARGETED_DEVICE_FAMILY: "1"
@@ -81,6 +89,10 @@ targets:
         # practice, so excluding it here rather than chasing a slice that
         # doesn't exist upstream either.
         "EXCLUDED_ARCHS[sdk=iphonesimulator*]": x86_64
+      configs:
+        Release:
+          PROVISIONING_PROFILE_SPECIFIER: "Contempo AppStore Contempo"
+          CODE_SIGN_IDENTITY: "Apple Distribution"
     dependencies:
       - package: ContempoCore
         product: ContempoCore
@@ -145,20 +157,26 @@ targets:
     info:
       path: ContempoWidgets/Info.plist
       properties:
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         CFBundleDisplayName: "Contempo Widgets"
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.contempo.widgets
+        PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.contempoapp.widgets
         INFOPLIST_KEY_CFBundleDisplayName: "Contempo Widgets"
         SKIP_INSTALL: "NO"
         "EXCLUDED_ARCHS[sdk=iphonesimulator*]": x86_64
+      configs:
+        Release:
+          PROVISIONING_PROFILE_SPECIFIER: "Contempo AppStore ContempoWidgets"
+          CODE_SIGN_IDENTITY: "Apple Distribution"
     entitlements:
       path: ContempoWidgets/ContempoWidgets.entitlements
       properties:
         com.apple.security.application-groups:
-          - group.com.hejitech.contempo
+          - group.com.hejitech.contempoapp
     dependencies:
       - package: ContempoCore
         product: ContempoCore
@@ -175,13 +193,15 @@ targets:
     info:
       path: "Contempo Watch App/Info.plist"
       properties:
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         UILaunchScreen: {}
         NSMicrophoneUsageDescription: "Contempo uses your microphone to capture spoken work-log entries from your wrist."
-        WKCompanionAppBundleIdentifier: com.hejitech.contempo
+        WKCompanionAppBundleIdentifier: com.hejitech.contempoapp
         WKApplication: true
         UIBackgroundModes: [audio, processing]
         BGTaskSchedulerPermittedIdentifiers:
-          - com.hejitech.contempo.watchkitapp.pending-upload
+          - com.hejitech.contempoapp.watchkitapp.pending-upload
         CLKComplicationSupportedFamilies:
           - CLKComplicationFamilyCircularSmall
           - CLKComplicationFamilyModularSmall
@@ -199,7 +219,7 @@ targets:
           NSAllowsLocalNetworking: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.contempo.watchkitapp
+        PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.contempoapp.watchkitapp
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
         TARGETED_DEVICE_FAMILY: "4"
@@ -207,6 +227,9 @@ targets:
       configs:
         Debug:
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) DEBUG USE_FIREBASE_EMULATOR"
+        Release:
+          PROVISIONING_PROFILE_SPECIFIER: "Contempo AppStore ContempoWatchApp"
+          CODE_SIGN_IDENTITY: "Apple Distribution"
     entitlements:
       # Shared with "Contempo Watch Widgets" below so the complication can
       # read the progress this app writes via HoursProgressStore — separate
@@ -214,7 +237,7 @@ targets:
       path: "Contempo Watch App/Contempo Watch App.entitlements"
       properties:
         com.apple.security.application-groups:
-          - group.com.hejitech.contempo
+          - group.com.hejitech.contempoapp
     dependencies:
       # No FirebaseFirestore here — its SDK target isn't built for watchOS
       # at all (see ContempoCore/Package.swift's comment); the watch writes
@@ -238,20 +261,26 @@ targets:
     info:
       path: "Contempo Watch Widgets/Info.plist"
       properties:
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         CFBundleDisplayName: "Contempo Widgets"
-        WKAppBundleIdentifier: com.hejitech.contempo.watchkitapp
+        WKAppBundleIdentifier: com.hejitech.contempoapp.watchkitapp
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.contempo.watchkitapp.widgets
+        PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.contempoapp.watchkitapp.widgets
         INFOPLIST_KEY_CFBundleDisplayName: "Contempo Widgets"
         SKIP_INSTALL: "NO"
+      configs:
+        Release:
+          PROVISIONING_PROFILE_SPECIFIER: "Contempo AppStore ContempoWatchWidgets"
+          CODE_SIGN_IDENTITY: "Apple Distribution"
     entitlements:
       path: "Contempo Watch Widgets/Contempo Watch Widgets.entitlements"
       properties:
         com.apple.security.application-groups:
-          - group.com.hejitech.contempo
+          - group.com.hejitech.contempoapp
     dependencies:
       - package: ContempoCore
         product: ContempoCore
@@ -270,6 +299,17 @@ targets:
       - package: ContempoCore
         product: ContempoFirestore
 
+  ContempoUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: ContempoUITests
+    settings:
+      GENERATE_INFOPLIST_FILE: YES
+      TEST_TARGET_NAME: Contempo
+    dependencies:
+      - target: Contempo
+
   ContempoWatchAppTests:
     type: bundle.unit-test
     platform: watchOS
@@ -281,4 +321,20 @@ targets:
       - target: "Contempo Watch App"
       - package: ContempoCore
         product: ContempoCore
+
+schemes:
+  Contempo:
+    build:
+      targets:
+        Contempo: all
+        ContempoUITests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - ContempoUITests
+    archive:
+      config: Release
+      revealArchiveInOrganizer: true
 

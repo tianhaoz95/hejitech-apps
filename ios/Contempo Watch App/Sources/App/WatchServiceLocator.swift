@@ -15,7 +15,7 @@ enum WatchServiceLocator {
     /// Shares progress data with the `Contempo Watch Widgets` complication
     /// extension — see `HoursProgressStore`'s doc comment. Must match the
     /// App Group entitlement configured on both targets in `project.yml`.
-    static let appGroupId = "group.com.hejitech.contempo"
+    static let appGroupId = "group.com.hejitech.contempoapp"
 
     static let audioRecorder = WatchAudioRecorder()
     static let pendingCaptureStore = PendingCaptureStore()

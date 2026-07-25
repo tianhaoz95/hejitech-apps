@@ -3,7 +3,7 @@ import XCTest
 
 final class WatchWorkTimerStoreTests: XCTestCase {
     func testStartStopWorkTimerFlow() {
-        let testSuiteName = "group.com.hejitech.contempo.test.\(UUID().uuidString)"
+        let testSuiteName = "group.com.hejitech.contempoapp.test.\(UUID().uuidString)"
         let store = WatchWorkTimerStore(appGroupId: testSuiteName)
 
         XCTAssertFalse(store.isTimerRunning())

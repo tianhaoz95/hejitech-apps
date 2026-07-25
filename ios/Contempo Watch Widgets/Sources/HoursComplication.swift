@@ -18,8 +18,8 @@ struct HoursComplicationEntry: TimelineEntry {
 }
 
 struct HoursComplicationProvider: TimelineProvider {
-    private let store = HoursProgressStore(appGroupId: "group.com.hejitech.contempo")
-    private let timerStore = WatchWorkTimerStore(appGroupId: "group.com.hejitech.contempo")
+    private let store = HoursProgressStore(appGroupId: "group.com.hejitech.contempoapp")
+    private let timerStore = WatchWorkTimerStore(appGroupId: "group.com.hejitech.contempoapp")
 
     func placeholder(in context: Context) -> HoursComplicationEntry {
         HoursComplicationEntry(
