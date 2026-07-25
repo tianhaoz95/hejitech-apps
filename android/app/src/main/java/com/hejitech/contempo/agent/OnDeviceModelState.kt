@@ -21,13 +21,15 @@ sealed interface OnDeviceModelUiStatus {
     /**
      * [totalBytes] is 0 if a DownloadStarted event was never observed (e.g. a
      * download already in progress from a prior app session) — render as
-     * indeterminate progress in that case. [etaSeconds] is null until enough
-     * samples exist to estimate throughput; it's a rough client-computed
-     * estimate, not an SDK-provided value (the SDK doesn't expose one).
+     * indeterminate progress in that case. [bytesPerSecond] and [etaSeconds]
+     * are null until enough samples exist to estimate throughput; they're a
+     * rough client-computed estimate, not an SDK-provided value (the SDK
+     * doesn't expose one).
      */
     data class Downloading(
         val bytesDownloaded: Long,
         val totalBytes: Long,
+        val bytesPerSecond: Double?,
         val etaSeconds: Long?,
     ) : OnDeviceModelUiStatus
 

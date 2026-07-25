@@ -60,6 +60,11 @@ class SettingsViewModel : ViewModel() {
         onDeviceLlm.retry()
     }
 
+    /** Confirmation is the caller's job (see SettingsScreen's confirmation dialog). */
+    fun deleteOnDeviceModel() {
+        onDeviceLlm.deleteDownloadedModel()
+    }
+
     fun signOut() {
         authManager.signOut()
     }

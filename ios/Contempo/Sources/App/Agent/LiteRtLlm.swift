@@ -13,14 +13,24 @@ private let onDeviceResponseTimeoutSeconds: UInt64 = 45
 /// `NoOpOnDeviceLlm` placeholder. The model itself isn't bundled in the app
 /// (Google's own guidance: too large) — it's downloaded on demand via
 /// `ModelDownloader`.
+@Observable
 @MainActor
 final class LiteRtLlm: OnDeviceLlm {
+    @ObservationIgnored
     private let downloader: ModelDownloader
+    @ObservationIgnored
     private let aiSettingsStore: AiSettingsStore
 
     // Loading a ~2.6GB model is expensive — built once, reused for the
-    // process lifetime.
+    // process lifetime. Deliberately NOT `@ObservationIgnored` — engine load
+    // finishes asynchronously well after `downloader.state` last changed (it
+    // starts once the download completes, but itself takes real time), so a
+    // SwiftUI view reading `status` needs its own mutation of these two
+    // properties tracked, or the view never re-renders past "checking" once
+    // the download hits 100% and stays frozen there until something
+    // unrelated forces a re-render.
     private var engine: Engine?
+    @ObservationIgnored
     private var engineLoadTask: Task<Engine?, Never>?
     private var engineLoadFailed = false
 
@@ -32,9 +42,13 @@ final class LiteRtLlm: OnDeviceLlm {
     var status: OnDeviceModelUiStatus {
         switch downloader.state {
         case .notStarted:
-            return engine != nil ? .available : .checking
-        case .downloading(let bytesDownloaded, let totalBytes):
-            return .downloading(bytesDownloaded: bytesDownloaded, totalBytes: totalBytes, etaSeconds: nil)
+            return engine != nil ? .available : .notDownloaded
+        case .downloading(let bytesDownloaded, let totalBytes, let bytesPerSecond):
+            let etaSeconds: Int? = {
+                guard let bytesPerSecond, bytesPerSecond > 0, totalBytes > bytesDownloaded else { return nil }
+                return Int(Double(totalBytes - bytesDownloaded) / bytesPerSecond)
+            }()
+            return .downloading(bytesDownloaded: bytesDownloaded, totalBytes: totalBytes, bytesPerSecond: bytesPerSecond, etaSeconds: etaSeconds)
         case .completed:
             if engine != nil { return .available }
             return engineLoadFailed ? .failed(message: "Couldn't load the on-device model") : .checking
@@ -60,6 +74,19 @@ final class LiteRtLlm: OnDeviceLlm {
             await checkAndMaybeDownload()
             _ = await ensureEngine()
         }
+    }
+
+    func deleteDownloadedModel() {
+        engineLoadTask?.cancel()
+        engineLoadTask = nil
+        engine = nil
+        engineLoadFailed = false
+        downloader.deleteDownloadedModel()
+        // Immediately re-check rather than leaving `status` sitting at
+        // `.notDownloaded` until something else happens to call `retry()` —
+        // without this, deleting used to strand the UI with no indication
+        // anything could be done next.
+        retry()
     }
 
     private func checkAndMaybeDownload() async {

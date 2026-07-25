@@ -10,12 +10,15 @@ public enum OnDeviceModelUiStatus: Equatable, Sendable {
     case checking
     /// Hardware/OS doesn't support on-device inference at all — cloud is the only option here.
     case unavailable
-    /// Known downloadable but a download hasn't been observed starting yet (brief, transitional).
+    /// Known downloadable but not currently being fetched — either briefly
+    /// at launch before the automatic check kicks in, or a steady state
+    /// after the user deletes a previously-downloaded model. Settings shows
+    /// a manual "Download" button here.
     case notDownloaded
     /// `totalBytes` is 0 if a download-started event was never observed —
-    /// render as indeterminate progress in that case. `etaSeconds` is nil
-    /// until enough samples exist to estimate throughput.
-    case downloading(bytesDownloaded: Int64, totalBytes: Int64, etaSeconds: Int?)
+    /// render as indeterminate progress in that case. `bytesPerSecond` and
+    /// `etaSeconds` are nil until enough samples exist to estimate throughput.
+    case downloading(bytesDownloaded: Int64, totalBytes: Int64, bytesPerSecond: Double?, etaSeconds: Int?)
     case available
     case failed(message: String)
 }
@@ -39,6 +42,11 @@ public protocol OnDeviceLlm: AnyObject, Sendable {
 
     /// Re-checks readiness and (re)starts a stalled/failed download. User-triggered from Settings.
     func retry()
+
+    /// Deletes the downloaded model (if any) and releases any loaded engine,
+    /// returning to `.notDownloaded`/`.checking`. User-triggered from
+    /// Settings, either to free storage or to force a clean re-download.
+    func deleteDownloadedModel()
 
     /// Plain text in, plain text out — callers handle their own prompt
     /// construction and response parsing. Nil on any failure: unsupported,
@@ -67,6 +75,7 @@ public final class NoOpOnDeviceLlm: OnDeviceLlm {
 
     @MainActor public var status: OnDeviceModelUiStatus { .unavailable }
     public func retry() {}
+    public func deleteDownloadedModel() {}
     public func generateText(_ prompt: String) async -> String? { nil }
     public func generateFromImage(_ imageData: Data, prompt: String) async -> String? { nil }
     public func generateTextStream(_ prompt: String, onEvent: @escaping (GenerationEvent) -> Void) async -> String? { nil }

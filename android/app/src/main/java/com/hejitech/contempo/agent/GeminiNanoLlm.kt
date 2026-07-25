@@ -58,6 +58,12 @@ class GeminiNanoLlm(
         scope.launch { checkAndMaybeDownload() }
     }
 
+    // Not supported — AICore/Firebase AI Logic manages this model's storage
+    // itself; the SDK doesn't expose a way for app code to delete it. This
+    // implementation is currently unused/kept in reserve (see OnDeviceLlm's
+    // kdoc), so this is a pragmatic no-op rather than dead-code plumbing.
+    override fun deleteDownloadedModel() {}
+
     @OptIn(PublicPreviewAPI::class)
     private fun model(): GenerativeModel =
         Firebase.ai(backend = GenerativeBackend.googleAI())
@@ -142,7 +148,7 @@ class GeminiNanoLlm(
                         totalBytes = downloadStatus.bytesToDownload
                         baselineBytes = 0L
                         baselineTimeMs = nowMs
-                        _status.value = OnDeviceModelUiStatus.Downloading(0, totalBytes, null)
+                        _status.value = OnDeviceModelUiStatus.Downloading(0, totalBytes, null, null)
                     }
                     is DownloadStatus.DownloadInProgress -> {
                         if (baselineTimeMs == 0L) {
@@ -151,8 +157,12 @@ class GeminiNanoLlm(
                         }
                         val elapsedSeconds = (nowMs - baselineTimeMs) / 1000.0
                         val bytesSinceBaseline = downloadStatus.totalBytesDownloaded - baselineBytes
-                        val eta = if (elapsedSeconds > 1.0 && bytesSinceBaseline > 0 && totalBytes > 0) {
-                            val bytesPerSecond = bytesSinceBaseline / elapsedSeconds
+                        val bytesPerSecond = if (elapsedSeconds > 1.0 && bytesSinceBaseline > 0) {
+                            bytesSinceBaseline / elapsedSeconds
+                        } else {
+                            null
+                        }
+                        val eta = if (bytesPerSecond != null && totalBytes > 0) {
                             ((totalBytes - downloadStatus.totalBytesDownloaded) / bytesPerSecond)
                                 .toLong()
                                 .coerceAtLeast(0)
@@ -162,6 +172,7 @@ class GeminiNanoLlm(
                         _status.value = OnDeviceModelUiStatus.Downloading(
                             bytesDownloaded = downloadStatus.totalBytesDownloaded,
                             totalBytes = totalBytes.coerceAtLeast(downloadStatus.totalBytesDownloaded),
+                            bytesPerSecond = bytesPerSecond,
                             etaSeconds = eta,
                         )
                     }

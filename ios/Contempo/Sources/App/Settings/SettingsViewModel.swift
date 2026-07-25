@@ -48,6 +48,12 @@ final class SettingsViewModel {
         onDeviceLlm.retry()
     }
 
+    /// Confirmation is the caller's job (see `SettingsScreen`'s confirmation
+    /// dialog) — this only performs the deletion once the user has agreed.
+    func deleteOnDeviceModel() {
+        onDeviceLlm.deleteDownloadedModel()
+    }
+
     func signOut() {
         try? authManager.signOut()
     }

@@ -22,7 +22,7 @@ final class ModelDownloader: NSObject {
 
     enum State: Equatable {
         case notStarted
-        case downloading(bytesDownloaded: Int64, totalBytes: Int64)
+        case downloading(bytesDownloaded: Int64, totalBytes: Int64, bytesPerSecond: Double?)
         case completed
         case failed(String)
     }
@@ -30,8 +30,11 @@ final class ModelDownloader: NSObject {
     private(set) var state: State = .notStarted
 
     @ObservationIgnored
+    private var downloadStartDate: Date?
+
+    @ObservationIgnored
     private lazy var session: URLSession = {
-        let config = URLSessionConfiguration.background(withIdentifier: "com.hejitech.contempo.model-download")
+        let config = URLSessionConfiguration.background(withIdentifier: "com.hejitech.contempoapp.model-download")
         config.allowsCellularAccess = false
         config.isDiscretionary = false
         config.sessionSendsLaunchEvents = true
@@ -39,6 +42,19 @@ final class ModelDownloader: NSObject {
     }()
 
     private var continuation: CheckedContinuation<Void, Error>?
+
+    /// Guards `start()` against concurrent invocations creating a second,
+    /// overlapping `URLSessionDownloadTask` — `checkAndMaybeDownload()` can
+    /// legitimately be called more than once while a download is already in
+    /// flight (e.g. a "Download" button tap racing the automatic
+    /// launch-time check, or delete-then-retry). Without this, a second call
+    /// would overwrite `continuation`/`downloadStartDate` out from under the
+    /// first download's in-progress task, orphaning its eventual completion
+    /// callback — the observed symptom was the UI freezing at 100% forever,
+    /// since the original download's `didFinishDownloadingTo` had nothing
+    /// left to resume.
+    @ObservationIgnored
+    private var activeDownloadTask: Task<Void, Never>?
 
     var modelFile: URL { Self.resolveModelFile() }
 
@@ -60,6 +76,15 @@ final class ModelDownloader: NSObject {
         return size >= Self.modelSizeBytes
     }
 
+    /// Removes the downloaded model file, freeing its ~2.6GB — user-triggered
+    /// from Settings, either to reclaim space or to force a clean re-download
+    /// after a corrupt/stalled file. Safe to call even if nothing was ever
+    /// downloaded.
+    func deleteDownloadedModel() {
+        try? FileManager.default.removeItem(at: modelFile)
+        state = .notStarted
+    }
+
     func hasEnoughFreeSpace() -> Bool {
         let dir = modelFile.deletingLastPathComponent()
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -75,21 +100,36 @@ final class ModelDownloader: NSObject {
             state = .completed
             return
         }
+        // Already downloading — join the existing attempt rather than
+        // starting a second, overlapping one (see `activeDownloadTask`'s doc
+        // comment).
+        if let activeDownloadTask {
+            await activeDownloadTask.value
+            return
+        }
         guard hasEnoughFreeSpace() else {
             state = .failed("Not enough free storage for the on-device model — needs about 2.6GB free.")
             return
         }
-        state = .downloading(bytesDownloaded: 0, totalBytes: Self.modelSizeBytes)
-        do {
-            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                self.continuation = continuation
-                let task = session.downloadTask(with: Self.modelURL)
-                task.resume()
+        let task = Task { [weak self] in
+            guard let self else { return }
+            self.state = .downloading(bytesDownloaded: 0, totalBytes: Self.modelSizeBytes, bytesPerSecond: nil)
+            self.downloadStartDate = Date()
+            do {
+                try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                    self.continuation = continuation
+                    let downloadTask = self.session.downloadTask(with: Self.modelURL)
+                    downloadTask.resume()
+                }
+                self.state = .completed
+            } catch {
+                self.state = .failed(error.localizedDescription)
             }
-            state = .completed
-        } catch {
-            state = .failed(error.localizedDescription)
+            self.downloadStartDate = nil
         }
+        activeDownloadTask = task
+        await task.value
+        activeDownloadTask = nil
     }
 }
 
@@ -103,7 +143,12 @@ extension ModelDownloader: URLSessionDownloadDelegate {
     ) {
         Task { @MainActor in
             let total = totalBytesExpectedToWrite > 0 ? totalBytesExpectedToWrite : Self.modelSizeBytes
-            state = .downloading(bytesDownloaded: totalBytesWritten, totalBytes: total)
+            // Average rate since this download started, rather than an
+            // instantaneous per-callback rate — callbacks can fire in bursts,
+            // which would otherwise make the speed readout jump around.
+            let elapsed = downloadStartDate.map { Date().timeIntervalSince($0) } ?? 0
+            let bytesPerSecond = elapsed > 0.5 ? Double(totalBytesWritten) / elapsed : nil
+            state = .downloading(bytesDownloaded: totalBytesWritten, totalBytes: total, bytesPerSecond: bytesPerSecond)
         }
     }
 

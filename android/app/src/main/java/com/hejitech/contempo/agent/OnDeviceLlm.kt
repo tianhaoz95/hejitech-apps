@@ -30,6 +30,13 @@ interface OnDeviceLlm {
     fun retry()
 
     /**
+     * Deletes the downloaded model (if any) and releases any loaded engine,
+     * returning to NotDownloaded/Checking. User-triggered from Settings,
+     * either to free storage or to force a clean re-download.
+     */
+    fun deleteDownloadedModel()
+
+    /**
      * Plain text in, plain text out — callers (AgentClient) handle their own
      * prompt construction and response parsing (e.g. JSON extraction), same
      * as before this abstraction existed. Null on any failure: unsupported,

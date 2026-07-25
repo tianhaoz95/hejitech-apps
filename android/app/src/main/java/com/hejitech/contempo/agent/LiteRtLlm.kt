@@ -110,6 +110,22 @@ class LiteRtLlm(
         }
     }
 
+    override fun deleteDownloadedModel() {
+        scope.launch {
+            engineMutex.withLock {
+                engine?.close()
+                engine = null
+            }
+            downloader.deleteDownloadedModel()
+            // Immediately re-check rather than leaving status sitting at
+            // NotDownloaded until something else happens to call retry() —
+            // without this, deleting used to strand the UI with no
+            // indication anything could be done next.
+            checkAndMaybeDownload()
+            ensureEngine()
+        }
+    }
+
     private suspend fun checkAndMaybeDownload() {
         if (downloader.isDownloaded()) {
             _status.value = OnDeviceModelUiStatus.Available
@@ -160,8 +176,12 @@ class LiteRtLlm(
                     }
                     val elapsedSeconds = (nowMs - baselineTimeMs) / 1000.0
                     val bytesSinceBaseline = snapshot.bytesDownloaded - baselineBytes
-                    val eta = if (elapsedSeconds > 1.0 && bytesSinceBaseline > 0 && snapshot.totalBytes > 0) {
-                        val bytesPerSecond = bytesSinceBaseline / elapsedSeconds
+                    val bytesPerSecond = if (elapsedSeconds > 1.0 && bytesSinceBaseline > 0) {
+                        bytesSinceBaseline / elapsedSeconds
+                    } else {
+                        null
+                    }
+                    val eta = if (bytesPerSecond != null && snapshot.totalBytes > 0) {
                         ((snapshot.totalBytes - snapshot.bytesDownloaded) / bytesPerSecond)
                             .toLong()
                             .coerceAtLeast(0)
@@ -171,6 +191,7 @@ class LiteRtLlm(
                     _status.value = OnDeviceModelUiStatus.Downloading(
                         bytesDownloaded = snapshot.bytesDownloaded,
                         totalBytes = snapshot.totalBytes.takeIf { it > 0 } ?: ModelDownloader.MODEL_SIZE_BYTES,
+                        bytesPerSecond = bytesPerSecond,
                         etaSeconds = eta,
                     )
                 }

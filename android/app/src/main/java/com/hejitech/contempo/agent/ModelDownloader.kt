@@ -82,6 +82,16 @@ class ModelDownloader(context: Context) {
         clearDownloadId()
     }
 
+    /**
+     * Removes the downloaded model file, freeing its ~2.6GB — user-triggered
+     * from Settings, either to reclaim space or to force a clean re-download
+     * after a corrupt/stalled file. Safe to call even if nothing was ever
+     * downloaded.
+     */
+    fun deleteDownloadedModel() {
+        modelFile.delete()
+    }
+
     companion object {
         // Generic (non-chip-specific) build — broadest device compatibility
         // over the slightly more optimized NPU-specific variants also

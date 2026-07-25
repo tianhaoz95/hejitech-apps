@@ -5,6 +5,7 @@ struct SettingsScreen: View {
     @State private var viewModel = SettingsViewModel()
     @Environment(\.contempoPalette) private var palette
     @State private var showDeleteConfirm = false
+    @State private var showDeleteModelConfirm = false
     @State private var showWalkthrough = false
 
     var body: some View {
@@ -121,6 +122,16 @@ struct SettingsScreen: View {
         } message: {
             Text("This permanently deletes your account and all your logged entries, properties, photos, and voice recordings. This cannot be undone.")
         }
+        .confirmationDialog(
+            "Delete the downloaded model?",
+            isPresented: $showDeleteModelConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) { viewModel.deleteOnDeviceModel() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Frees up about 2.6GB of storage. You can re-download it any time from here, or the app will re-download it automatically the next time on-device AI is needed.")
+        }
         .alert("Couldn't delete account", isPresented: Binding(
             get: { viewModel.deleteAccountError != nil },
             set: { if !$0 { viewModel.dismissDeleteAccountError() } }
@@ -148,7 +159,7 @@ struct SettingsScreen: View {
         VStack(alignment: .leading, spacing: 10) {
             // Speech Recognition Model (ASR - Whisper)
             VStack(alignment: .leading, spacing: 4) {
-                Text("Speech Recognition (Whisper ASR)")
+                Text("Speech Recognition")
                     .font(ContempoFont.labelLarge())
                     .foregroundStyle(palette.ink)
                 if viewModel.asrAvailable {
@@ -174,15 +185,22 @@ struct SettingsScreen: View {
 
             // Language Model (LLM - Gemma)
             VStack(alignment: .leading, spacing: 4) {
-                Text("Language Model (Gemma LLM)")
+                Text("Language Model")
                     .font(ContempoFont.labelLarge())
                     .foregroundStyle(palette.ink)
 
                 switch viewModel.onDeviceStatus {
-                case .checking, .notDownloaded:
+                case .checking:
                     Text("Checking on-device model…")
                         .font(ContempoFont.labelSmall())
                         .foregroundStyle(palette.inkFaint)
+                case .notDownloaded:
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("On-device language model not downloaded.")
+                            .font(ContempoFont.labelSmall())
+                            .foregroundStyle(palette.inkFaint)
+                        Button("Download") { viewModel.retryOnDeviceModelCheck() }
+                    }
                 case .unavailable:
                     Text("Not supported on this device — cloud will be used instead.")
                         .font(ContempoFont.labelSmall())
@@ -195,9 +213,13 @@ struct SettingsScreen: View {
                             .font(ContempoFont.labelSmall())
                             .foregroundStyle(palette.pine)
                     }
-                case .downloading(let bytesDownloaded, let totalBytes, let etaSeconds):
+                    Button("Delete downloaded model", role: .destructive) {
+                        showDeleteModelConfirm = true
+                    }
+                    .font(ContempoFont.labelSmall())
+                case .downloading(let bytesDownloaded, let totalBytes, let bytesPerSecond, let etaSeconds):
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(downloadingLabel(bytesDownloaded: bytesDownloaded, totalBytes: totalBytes, etaSeconds: etaSeconds))
+                        Text(downloadingHeadline(bytesDownloaded: bytesDownloaded, totalBytes: totalBytes))
                             .font(ContempoFont.labelSmall())
                             .foregroundStyle(palette.inkFaint)
                         if totalBytes > 0 {
@@ -205,13 +227,22 @@ struct SettingsScreen: View {
                         } else {
                             ProgressView()
                         }
+                        Text(downloadingDetail(bytesPerSecond: bytesPerSecond, etaSeconds: etaSeconds))
+                            .font(ContempoFont.labelSmall())
+                            .foregroundStyle(palette.inkFaint)
                     }
                 case .failed(let message):
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Couldn't prepare the on-device model: \(message)")
                             .font(ContempoFont.labelSmall())
                             .foregroundStyle(palette.danger)
-                        Button("Retry") { viewModel.retryOnDeviceModelCheck() }
+                        HStack(spacing: 12) {
+                            Button("Retry") { viewModel.retryOnDeviceModelCheck() }
+                            Button("Delete downloaded model", role: .destructive) {
+                                showDeleteModelConfirm = true
+                            }
+                            .font(ContempoFont.labelSmall())
+                        }
                     }
                 }
             }
@@ -221,13 +252,32 @@ struct SettingsScreen: View {
         .clipShape(RoundedRectangle(cornerRadius: ContempoRadius.medium))
     }
 
-    private func downloadingLabel(bytesDownloaded: Int64, totalBytes: Int64, etaSeconds: Int?) -> String {
+    private static let byteFormatter: ByteCountFormatter = {
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        return formatter
+    }()
+
+    private func downloadingHeadline(bytesDownloaded: Int64, totalBytes: Int64) -> String {
         guard totalBytes > 0 else { return "Downloading on-device model…" }
         let pct = Int(Double(bytesDownloaded) / Double(totalBytes) * 100)
-        guard let etaSeconds else { return "Downloading on-device model… \(pct)%" }
-        let minutes = etaSeconds / 60
-        let seconds = etaSeconds % 60
-        let etaLabel = minutes > 0 ? "\(minutes)m \(seconds)s" : "\(seconds)s"
-        return "Downloading on-device model… \(pct)% · about \(etaLabel) left"
+        let downloadedLabel = Self.byteFormatter.string(fromByteCount: bytesDownloaded)
+        let totalLabel = Self.byteFormatter.string(fromByteCount: totalBytes)
+        return "Downloading on-device model… \(pct)% (\(downloadedLabel) of \(totalLabel))"
+    }
+
+    private func downloadingDetail(bytesPerSecond: Double?, etaSeconds: Int?) -> String {
+        var parts: [String] = []
+        if let bytesPerSecond, bytesPerSecond > 0 {
+            let speedLabel = Self.byteFormatter.string(fromByteCount: Int64(bytesPerSecond))
+            parts.append("\(speedLabel)/s")
+        }
+        if let etaSeconds {
+            let minutes = etaSeconds / 60
+            let seconds = etaSeconds % 60
+            let etaLabel = minutes > 0 ? "\(minutes)m \(seconds)s" : "\(seconds)s"
+            parts.append("about \(etaLabel) left")
+        }
+        return parts.isEmpty ? "Estimating speed…" : parts.joined(separator: " · ")
     }
 }

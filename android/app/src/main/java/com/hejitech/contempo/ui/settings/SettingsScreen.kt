@@ -3,6 +3,7 @@ package com.hejitech.contempo.ui.settings
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings as AndroidSettings
+import android.text.format.Formatter
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -68,6 +69,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     var showWearExplanation by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var showDeleteModelConfirmation by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -158,7 +160,8 @@ fun SettingsScreen(
                 OnDeviceModelStatusPanel(
                     asrAvailable = asrModelAvailable,
                     status = onDeviceStatus,
-                    onRetry = viewModel::retryOnDeviceModelCheck
+                    onRetry = viewModel::retryOnDeviceModelCheck,
+                    onDeleteModel = { showDeleteModelConfirmation = true },
                 )
             }
 
@@ -304,6 +307,32 @@ fun SettingsScreen(
             },
         )
     }
+
+    if (showDeleteModelConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showDeleteModelConfirmation = false },
+            title = { Text(stringResource(R.string.on_device_status_delete_model_confirm_title)) },
+            text = { Text(stringResource(R.string.on_device_status_delete_model_confirm_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteModelConfirmation = false
+                        viewModel.deleteOnDeviceModel()
+                    },
+                ) {
+                    Text(
+                        stringResource(R.string.on_device_status_delete_model),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteModelConfirmation = false }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            },
+        )
+    }
 }
 
 @Composable
@@ -311,11 +340,12 @@ private fun OnDeviceModelStatusPanel(
     asrAvailable: Boolean,
     status: OnDeviceModelUiStatus,
     onRetry: () -> Unit,
+    onDeleteModel: () -> Unit,
 ) {
     Column {
         // Speech Recognition Model (ASR - Whisper)
         Text(
-            text = "Speech Recognition (Whisper ASR)",
+            text = "Speech Recognition",
             style = MaterialTheme.typography.titleSmall,
         )
         Spacer(Modifier.height(4.dp))
@@ -339,17 +369,29 @@ private fun OnDeviceModelStatusPanel(
 
         // Language Model (LLM - Gemma)
         Text(
-            text = "Language Model (Gemma LLM)",
+            text = "Language Model",
             style = MaterialTheme.typography.titleSmall,
         )
         Spacer(Modifier.height(4.dp))
         when (status) {
-            is OnDeviceModelUiStatus.Checking, is OnDeviceModelUiStatus.NotDownloaded ->
+            is OnDeviceModelUiStatus.Checking ->
                 Text(
                     stringResource(R.string.on_device_status_checking),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+
+            is OnDeviceModelUiStatus.NotDownloaded -> {
+                Text(
+                    stringResource(R.string.on_device_status_not_downloaded),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(onClick = onRetry, shape = MaterialTheme.shapes.small) {
+                    Text(stringResource(R.string.on_device_status_download))
+                }
+            }
 
             is OnDeviceModelUiStatus.Unavailable ->
                 Text(
@@ -358,12 +400,19 @@ private fun OnDeviceModelStatusPanel(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
 
-            is OnDeviceModelUiStatus.Available ->
+            is OnDeviceModelUiStatus.Available -> {
                 Text(
                     stringResource(R.string.on_device_status_ready),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
+                TextButton(onClick = onDeleteModel) {
+                    Text(
+                        stringResource(R.string.on_device_status_delete_model),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
 
             is OnDeviceModelUiStatus.Downloading -> {
                 val fraction = if (status.totalBytes > 0) {
@@ -372,7 +421,7 @@ private fun OnDeviceModelStatusPanel(
                     null
                 }
                 Text(
-                    downloadingLabel(status),
+                    downloadingHeadline(status),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -382,6 +431,12 @@ private fun OnDeviceModelStatusPanel(
                 } else {
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 }
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    downloadingDetail(status),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
             is OnDeviceModelUiStatus.Failed -> {
@@ -391,8 +446,17 @@ private fun OnDeviceModelStatusPanel(
                     color = MaterialTheme.colorScheme.error,
                 )
                 Spacer(Modifier.height(8.dp))
-                OutlinedButton(onClick = onRetry, shape = MaterialTheme.shapes.small) {
-                    Text(stringResource(R.string.on_device_status_retry))
+                Row {
+                    OutlinedButton(onClick = onRetry, shape = MaterialTheme.shapes.small) {
+                        Text(stringResource(R.string.on_device_status_retry))
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    TextButton(onClick = onDeleteModel) {
+                        Text(
+                            stringResource(R.string.on_device_status_delete_model),
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
                 }
             }
         }
@@ -400,17 +464,29 @@ private fun OnDeviceModelStatusPanel(
 }
 
 @Composable
-private fun downloadingLabel(status: OnDeviceModelUiStatus.Downloading): String {
+private fun downloadingHeadline(status: OnDeviceModelUiStatus.Downloading): String {
     val percent = if (status.totalBytes > 0) {
         ((status.bytesDownloaded.toFloat() / status.totalBytes) * 100).toInt()
     } else {
         null
     }
+    if (percent == null) return stringResource(R.string.on_device_status_downloading)
+    val context = LocalContext.current
+    val downloadedLabel = Formatter.formatShortFileSize(context, status.bytesDownloaded)
+    val totalLabel = Formatter.formatShortFileSize(context, status.totalBytes)
+    return stringResource(R.string.on_device_status_downloading_with_size, percent, downloadedLabel, totalLabel)
+}
+
+@Composable
+private fun downloadingDetail(status: OnDeviceModelUiStatus.Downloading): String {
     val eta = status.etaSeconds?.let(::formatEta)
+    val speedLabel = status.bytesPerSecond?.takeIf { it > 0 }?.let {
+        Formatter.formatShortFileSize(LocalContext.current, it.toLong())
+    }
     return when {
-        percent != null && eta != null -> stringResource(R.string.on_device_status_downloading_with_eta, percent, eta)
-        percent != null -> stringResource(R.string.on_device_status_downloading_percent, percent)
-        else -> stringResource(R.string.on_device_status_downloading)
+        speedLabel != null && eta != null -> stringResource(R.string.on_device_status_speed_and_eta, speedLabel, eta)
+        speedLabel != null -> stringResource(R.string.on_device_status_speed_only, speedLabel)
+        else -> stringResource(R.string.on_device_status_estimating_speed)
     }
 }
 
