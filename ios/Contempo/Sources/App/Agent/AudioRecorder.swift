@@ -1,4 +1,5 @@
 import AVFoundation
+import ContempoCore
 import Observation
 
 /// Raw 16kHz mono Float32 capture for `WhisperTranscriber`, via
@@ -47,18 +48,14 @@ final class AudioRecorder {
             throw AudioRecorderError.formatUnavailable
         }
 
+        // See AudioBufferResampler's doc comment for why this can't just be
+        // a naive `AVAudioPCMBuffer(pcmFormat:frameCapacity: buffer.frameLength)`
+        // + unconditional pull-block — that combination caused the "cut off
+        // every 0.1s" audio corruption bug.
         var lastAmplitudeUpdate: Double = 0
         input.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { [weak self] buffer, _ in
             guard let self else { return }
-            guard let converted = AVAudioPCMBuffer(pcmFormat: targetFormat, frameCapacity: buffer.frameLength) else { return }
-            var error: NSError?
-            converter.convert(to: converted, error: &error) { _, outStatus in
-                outStatus.pointee = .haveData
-                return buffer
-            }
-            guard error == nil, let channelData = converted.floatChannelData else { return }
-            let frameCount = Int(converted.frameLength)
-            let floats = Array(UnsafeBufferPointer(start: channelData[0], count: frameCount))
+            guard let floats = AudioBufferResampler.convert(buffer, using: converter, to: targetFormat) else { return }
             let peak = floats.reduce(Float(0)) { max($0, abs($1)) }
             
             let now = CACurrentMediaTime()
