@@ -194,7 +194,7 @@ struct ChatScreen: View {
                 HStack(spacing: 8) {
                     ProgressView()
                         .controlSize(.small)
-                    Text("Transcribing voice with Whisper…")
+                    Text("Transcribing voice…")
                         .font(ContempoFont.bodyMedium())
                         .foregroundStyle(palette.pine)
                 }

@@ -68,6 +68,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -237,14 +239,20 @@ fun CaptureScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 TextButton(
-                    onClick = { viewModel.manualEntry { result -> onDraftReady(result) } },
+                    onClick = {
+                        typeExpanded = false
+                        viewModel.manualEntry { result -> onDraftReady(result) }
+                    },
                     enabled = !busy,
                 ) {
                     Text(stringResource(R.string.capture_manual_button))
                 }
 
                 Button(
-                    onClick = { viewModel.submit { result -> onDraftReady(result) } },
+                    onClick = {
+                        typeExpanded = false
+                        viewModel.submit { result -> onDraftReady(result) }
+                    },
                     enabled = uiState.inputText.isNotBlank() && !uiState.isParsing && !busy &&
                         uiState.aiAvailability is AiAvailability.Ready,
                     shape = MaterialTheme.shapes.small,
@@ -318,6 +326,53 @@ fun CaptureScreen(
                     )
                 }
 
+                // Quick actions for the two other primary capture modes —
+                // promoted out of the "Other" menu so they're discoverable
+                // without an extra tap, but sized well below the hero
+                // VoiceButton so voice stays visually primary. Each hides
+                // once its own ongoing-session banner is showing above,
+                // since the banner already owns that mode's stop/complete
+                // affordance.
+                Spacer(Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(24.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    if (openTimerEntry == null) {
+                        QuickActionButton(
+                            icon = Icons.Filled.Timer,
+                            label = stringResource(R.string.capture_quick_action_work),
+                            enabled = !busy,
+                            onClick = viewModel::startNewWork,
+                        )
+                    }
+                    if (openTripEntry == null) {
+                        QuickActionButton(
+                            icon = Icons.Filled.LocationOn,
+                            label = stringResource(R.string.capture_quick_action_trip),
+                            enabled = !busy,
+                            onClick = ::onTripButtonTap,
+                        )
+                    }
+
+                    Spacer(Modifier.weight(1f))
+
+                    // Same size/shape as the buttons above so it reads as
+                    // part of the same row, but left in its original neutral
+                    // tint rather than the primary accent — this is an
+                    // escape hatch out of voice capture, not another
+                    // primary capture mode.
+                    QuickActionButton(
+                        icon = Icons.Filled.Keyboard,
+                        label = stringResource(R.string.capture_type_instead),
+                        enabled = !busy,
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        onClick = { typeExpanded = true },
+                    )
+                }
+
                 uiState.finalizedTranscript?.let { text ->
                     Spacer(Modifier.height(16.dp))
                     FinalizedTranscriptCard(
@@ -334,13 +389,8 @@ fun CaptureScreen(
                 Spacer(Modifier.height(56.dp))
 
                 val odometerBusy = busy || uiState.isProcessingOdometerPhoto
-                val otherContentDescription = if (gpsTripOpen) {
-                    stringResource(R.string.capture_other_button_trip_open)
-                } else {
-                    stringResource(R.string.capture_other_button)
-                }
+                val otherContentDescription = stringResource(R.string.capture_other_button)
                 val quickCaptureToggleDescription = stringResource(R.string.capture_quick_capture_toggle_content_description)
-                val typeInsteadDescription = stringResource(R.string.capture_type_instead)
 
                 // No label above this — a language picker reads as itself
                 // (English/中文/Auto) without needing "Language:" spelled
@@ -425,70 +475,44 @@ fun CaptureScreen(
 
                 Spacer(Modifier.height(20.dp))
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box {
-                        // A labeled button rather than a bare "..." icon —
-                        // an unlabeled overflow glyph didn't read as
-                        // discoverable (start work, photo, odometer, mileage
-                        // trip are all hidden behind it). The label swaps to
-                        // a trip-in-progress call-out when relevant, same
-                        // "worth a glance even collapsed" reasoning as the
-                        // old icon tint.
-                        TextButton(
-                            onClick = { otherMenuExpanded = true },
-                            enabled = !busy,
-                            colors = ButtonDefaults.textButtonColors(
-                                contentColor = if (gpsTripOpen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            ),
-                            modifier = Modifier.semantics { contentDescription = otherContentDescription },
-                        ) {
-                            Icon(Icons.Filled.MoreHoriz, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                if (gpsTripOpen) stringResource(R.string.capture_other_button_trip_open)
-                                else stringResource(R.string.capture_other_button_label)
-                            )
-                        }
-                        DropdownMenu(expanded = otherMenuExpanded, onDismissRequest = { otherMenuExpanded = false }) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.capture_start_new_work_button)) },
-                                leadingIcon = { Icon(Icons.Filled.Timer, contentDescription = null) },
-                                enabled = !busy,
-                                onClick = { otherMenuExpanded = false; viewModel.startNewWork() },
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.capture_photo_button)) },
-                                leadingIcon = { Icon(Icons.Filled.PhotoCamera, contentDescription = null) },
-                                enabled = !busy,
-                                onClick = { otherMenuExpanded = false; cameraCapture.launch() },
-                            )
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        stringResource(
-                                            if (openTripEntry != null) R.string.capture_odometer_end_button
-                                            else R.string.capture_odometer_start_button
-                                        )
-                                    )
-                                },
-                                leadingIcon = { Icon(Icons.Filled.PhotoCamera, contentDescription = null) },
-                                enabled = !odometerBusy,
-                                onClick = { otherMenuExpanded = false; odometerCameraCapture.launch() },
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(if (gpsTripOpen) R.string.capture_stop_trip_button else R.string.capture_start_trip_button)) },
-                                leadingIcon = { Icon(Icons.Filled.LocationOn, contentDescription = null) },
-                                enabled = !busy,
-                                onClick = { otherMenuExpanded = false; onTripButtonTap() },
-                            )
-                        }
-                    }
-                    IconButton(
-                        onClick = { typeExpanded = true },
+                Box {
+                    // A labeled button rather than a bare "..." icon — an
+                    // unlabeled overflow glyph didn't read as discoverable.
+                    // Start work/trip are promoted to their own top-level
+                    // QuickActionButtons above; this menu now only holds the
+                    // remaining photo-based capture paths.
+                    TextButton(
+                        onClick = { otherMenuExpanded = true },
                         enabled = !busy,
-                        modifier = Modifier.semantics { contentDescription = typeInsteadDescription },
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
+                        modifier = Modifier.semantics { contentDescription = otherContentDescription },
                     ) {
-                        Icon(Icons.Filled.Keyboard, contentDescription = null)
+                        Icon(Icons.Filled.MoreHoriz, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(stringResource(R.string.capture_other_button_label))
+                    }
+                    DropdownMenu(expanded = otherMenuExpanded, onDismissRequest = { otherMenuExpanded = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.capture_photo_button)) },
+                            leadingIcon = { Icon(Icons.Filled.PhotoCamera, contentDescription = null) },
+                            enabled = !busy,
+                            onClick = { otherMenuExpanded = false; cameraCapture.launch() },
+                        )
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    stringResource(
+                                        if (openTripEntry != null) R.string.capture_odometer_end_button
+                                        else R.string.capture_odometer_start_button
+                                    )
+                                )
+                            },
+                            leadingIcon = { Icon(Icons.Filled.PhotoCamera, contentDescription = null) },
+                            enabled = !odometerBusy,
+                            onClick = { otherMenuExpanded = false; odometerCameraCapture.launch() },
+                        )
                     }
                 }
 
@@ -661,6 +685,43 @@ private fun VoiceButton(
                 )
             }
         }
+    }
+}
+
+/**
+ * Smaller companion to [VoiceButton] (64dp vs. its 184dp) for the two other
+ * primary capture modes — big enough to read as a main action, not a
+ * secondary/overflow one, while still keeping voice capture visually
+ * dominant.
+ */
+@Composable
+private fun QuickActionButton(
+    icon: ImageVector,
+    label: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    containerColor: Color = MaterialTheme.colorScheme.primaryContainer,
+    contentColor: Color = MaterialTheme.colorScheme.primary,
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .clip(CircleShape)
+                .background(containerColor)
+                .clickable(onClick = onClick, enabled = enabled)
+                .semantics { contentDescription = label },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(24.dp),
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

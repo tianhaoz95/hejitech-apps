@@ -88,6 +88,7 @@ struct CaptureScreen: View {
 
                         HStack {
                             Button("Enter manually") {
+                                typeExpanded = false
                                 viewModel.manualEntry(onDrafted: onDrafted)
                             }
                             .buttonStyle(.bordered)
@@ -95,6 +96,7 @@ struct CaptureScreen: View {
                             Spacer()
 
                             Button {
+                                typeExpanded = false
                                 viewModel.submit(onDrafted: onDrafted)
                             } label: {
                                 Text("Parse & Continue").bold()
@@ -143,6 +145,44 @@ struct CaptureScreen: View {
                             Text("Tap to speak")
                                 .font(ContempoFont.titleMedium())
                                 .foregroundStyle(palette.inkSoft)
+                        }
+
+                        // Quick actions for the two other primary capture modes
+                        // — promoted out of the "Other options" menu so they're
+                        // discoverable without an extra tap, but sized well
+                        // below the hero VoiceButton so voice stays visually
+                        // primary. Each hides once its own ongoing-session
+                        // banner is showing above, since the banner already
+                        // owns that mode's stop/complete affordance.
+                        HStack(spacing: 24) {
+                            if viewModel.openTimerEntry == nil {
+                                QuickActionButton(icon: "timer", label: "Start Work") {
+                                    viewModel.startNewWork()
+                                }
+                                .disabled(viewModel.isTranscribing || viewModel.isParsing)
+                            }
+                            if viewModel.openTripEntry == nil {
+                                QuickActionButton(icon: "location.fill", label: "Start Trip") {
+                                    viewModel.toggleGpsTrip()
+                                }
+                                .disabled(viewModel.isTranscribing || viewModel.isParsing)
+                            }
+
+                            Spacer()
+
+                            // Same size/shape as the buttons above so it
+                            // reads as part of the same row, but left in its
+                            // original neutral tint rather than the pine
+                            // accent — this is an escape hatch out of voice
+                            // capture, not another primary capture mode.
+                            QuickActionButton(
+                                icon: "keyboard",
+                                label: "Type instead",
+                                tint: palette.inkSoft,
+                                tintBackground: palette.paperRaised
+                            ) {
+                                typeExpanded = true
+                            }
                         }
 
                         if let finalizedTranscript = viewModel.finalizedTranscript {
@@ -218,42 +258,6 @@ struct CaptureScreen: View {
                                     status: viewModel.quickCaptureStatus,
                                     onProcessNow: { viewModel.processQuickCaptureBacklogNow() }
                                 )
-                            }
-
-                            HStack(spacing: 20) {
-                                Menu {
-                                    Button {
-                                        viewModel.startNewWork()
-                                    } label: {
-                                        Label("Start new work", systemImage: "timer")
-                                    }
-                                    Button {
-                                        viewModel.toggleGpsTrip()
-                                    } label: {
-                                        Label(viewModel.gpsTripOpen ? "Stop GPS trip" : "Start GPS trip", systemImage: "location.fill")
-                                    }
-                                } label: {
-                                    HStack(spacing: 6) {
-                                        Image(systemName: "ellipsis.circle")
-                                        Text(viewModel.gpsTripOpen ? "Trip in progress" : "Other options")
-                                            .font(ContempoFont.labelSmall())
-                                    }
-                                    .foregroundStyle(viewModel.gpsTripOpen ? palette.pine : palette.inkSoft)
-                                }
-
-                                Spacer()
-
-                                Button {
-                                    typeExpanded = true
-                                } label: {
-                                    HStack(spacing: 6) {
-                                        Image(systemName: "keyboard")
-                                        Text("Type instead")
-                                            .font(ContempoFont.labelSmall())
-                                    }
-                                    .foregroundStyle(palette.inkSoft)
-                                }
-                                .buttonStyle(.plain)
                             }
                         }
                         .padding()
@@ -436,6 +440,39 @@ private struct VoiceButton: View {
             .buttonStyle(.plain)
             .disabled(isThinking)
         }
+    }
+}
+
+/// Smaller companion to `VoiceButton` (64pt vs. its 180pt) for the two other
+/// primary capture modes — big enough to read as a main action, not a
+/// secondary/overflow one, while still keeping voice capture visually
+/// dominant.
+private struct QuickActionButton: View {
+    let icon: String
+    let label: String
+    var tint: Color?
+    var tintBackground: Color?
+    let action: () -> Void
+
+    @Environment(\.contempoPalette) private var palette
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 6) {
+                ZStack {
+                    Circle()
+                        .fill(tintBackground ?? palette.pineTint)
+                        .frame(width: 64, height: 64)
+                    Image(systemName: icon)
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundStyle(tint ?? palette.pine)
+                }
+                Text(label)
+                    .font(ContempoFont.labelSmall())
+                    .foregroundStyle(palette.inkSoft)
+            }
+        }
+        .buttonStyle(.plain)
     }
 }
 
