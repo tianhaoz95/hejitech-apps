@@ -117,6 +117,22 @@ struct DashboardScreen: View {
                     .font(ContempoFont.labelSmall())
                     .foregroundStyle(palette.pine)
                 }
+
+                if !viewModel.otherRoleHours.isEmpty {
+                    Divider()
+                    Text("Only your own hours count above — the IRS tests require your participation to exceed everyone else's.")
+                        .font(ContempoFont.labelSmall())
+                        .foregroundStyle(palette.inkFaint)
+                    ForEach(viewModel.otherRoleHours) { summary in
+                        HStack {
+                            Text(summary.name)
+                            Spacer()
+                            Text("\(summary.hours.formatted(.number.precision(.fractionLength(1)))) hrs")
+                        }
+                        .font(ContempoFont.labelSmall())
+                        .foregroundStyle(palette.inkSoft)
+                    }
+                }
             }
             .padding(20)
             .background(palette.paperRaised)

@@ -5,13 +5,16 @@ import androidx.lifecycle.viewModelScope
 import com.hejitech.contempo.agent.InferencePreference
 import com.hejitech.contempo.agent.OnDeviceModelUiStatus
 import com.hejitech.contempo.data.ServiceLocator
+import com.hejitech.core.model.Role
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.functions.FirebaseFunctionsException
 import com.google.firebase.functions.functions
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
@@ -32,6 +35,7 @@ class SettingsViewModel : ViewModel() {
     private val onDeviceLlm = ServiceLocator.onDeviceLlm
     private val captureLanguageSelectorVisibilityStore = ServiceLocator.captureLanguageSelectorVisibilityStore
     private val remoteConfigStore = ServiceLocator.remoteConfigStore
+    private val entryRepository = ServiceLocator.entryRepository
 
     val inferencePreference: StateFlow<InferencePreference> = aiSettingsStore.preference
     val onDeviceModelStatus: StateFlow<OnDeviceModelUiStatus> = onDeviceLlm.status
@@ -40,8 +44,43 @@ class SettingsViewModel : ViewModel() {
     /** See RemoteConfigStore's kdoc — "Cloud only" shouldn't be selectable (or read as available) while this is false. */
     val cloudAiEnabled: StateFlow<Boolean> = remoteConfigStore.cloudAiEnabled
 
+    val roles: StateFlow<List<Role>> = entryRepository.observeRoles()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val _roleError = MutableStateFlow<String?>(null)
+    val roleError: StateFlow<String?> = _roleError.asStateFlow()
+
     private val _deleteAccountState = MutableStateFlow(DeleteAccountUiState())
     val deleteAccountState: StateFlow<DeleteAccountUiState> = _deleteAccountState.asStateFlow()
+
+    fun addRole(name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return
+        viewModelScope.launch {
+            runCatching { entryRepository.createRole(trimmed) }
+                .onFailure { e -> _roleError.value = e.message ?: "Couldn't add this role — try again." }
+        }
+    }
+
+    fun renameRole(role: Role, name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return
+        viewModelScope.launch {
+            runCatching { entryRepository.renameRole(role.id, trimmed) }
+                .onFailure { e -> _roleError.value = e.message ?: "Couldn't rename this role — try again." }
+        }
+    }
+
+    fun deleteRole(role: Role) {
+        viewModelScope.launch {
+            runCatching { entryRepository.deleteRole(role.id) }
+                .onFailure { e -> _roleError.value = e.message ?: "Couldn't delete this role — try again." }
+        }
+    }
+
+    fun dismissRoleError() {
+        _roleError.value = null
+    }
 
     fun currentAccount(): SettingsUiState {
         val user = Firebase.auth.currentUser

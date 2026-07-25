@@ -52,6 +52,21 @@ struct ConfirmScreen: View {
                 }
             }
 
+            Section("Role") {
+                Picker("Role", selection: Binding(
+                    get: { viewModel.selectedRoleId },
+                    set: { viewModel.onRoleSelected($0) }
+                )) {
+                    Text("Me").tag(String?.none)
+                    ForEach(viewModel.roles) { role in
+                        Text(role.name).tag(role.id)
+                    }
+                }
+                Text("Only your own hours (Me) count toward the 100-hour/500-hour progress on the Dashboard. Manage roles in Settings.")
+                    .font(ContempoFont.labelSmall())
+                    .foregroundStyle(palette.inkFaint)
+            }
+
             Section("Task") {
                 TextEditor(text: $viewModel.task)
                     .frame(minHeight: 80)

@@ -8,7 +8,13 @@ import Observation
 final class DashboardViewModel {
     private let entryRepository = ServiceLocator.entryRepository
 
+    /// Only entries with no role tagged (i.e. the owner's own hours) — see
+    /// `Entry.isOwnerHours`. This is deliberately NOT every confirmed hour;
+    /// the 100-hour/500-hour tests require the owner's participation to
+    /// exceed everyone else's, so other roles' hours must never inflate this.
     var confirmedHours: Double = 0
+    /// Other roles' confirmed hours, for audit-context comparison — see `RoleHoursSummary`.
+    var otherRoleHours: [RoleHoursSummary] = []
     let thresholdHours = MaterialParticipationTest.thresholdHours
     let testName = MaterialParticipationTest.name
     var entries: [Entry] = []
@@ -52,13 +58,13 @@ final class DashboardViewModel {
 
     private func apply(entries: [Entry]) {
         self.entries = entries
-        let confirmed = entries.filter { $0.statusEnum == .confirmed }
-        confirmedHours = confirmed.reduce(0) { $0 + Double($1.durationMinutes) } / 60.0
-        // Excludes the open timer/trip — they're "still running," not "needs completing."
-        pendingCount = entries.filter { $0.statusEnum == .pendingReview && !$0.inProgress }.count
-        openTimerEntry = entries.first { $0.inProgress && !$0.isTrip }
-        openTripEntry = entries.first { $0.inProgress && $0.isTrip }
-        totalMiles = entries.reduce(0) { $0 + $1.miles }
+        let metrics = DashboardMetrics.compute(from: entries)
+        confirmedHours = metrics.confirmedHours
+        otherRoleHours = metrics.otherRoleHours
+        pendingCount = metrics.pendingCount
+        openTimerEntry = metrics.openTimerEntry
+        openTripEntry = metrics.openTripEntry
+        totalMiles = metrics.totalMiles
         let validIds = Set(entries.compactMap(\.id))
         selectedIds = selectedIds.intersection(validIds)
     }

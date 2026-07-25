@@ -4,6 +4,7 @@ import android.net.Uri
 import com.hejitech.core.model.Attachment
 import com.hejitech.core.model.Entry
 import com.hejitech.core.model.Property
+import com.hejitech.core.model.Role
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -30,6 +31,7 @@ class FirestoreEntryRepository(
     private fun userDoc() = firestore.collection("users").document(uid)
     private fun entriesCollection() = userDoc().collection("entries")
     private fun propertiesCollection() = userDoc().collection("properties")
+    private fun rolesCollection() = userDoc().collection("roles")
     private fun correctionsCollection() = userDoc().collection("corrections")
     private fun attachmentsCollection(entryId: String) = entriesCollection().document(entryId).collection("attachments")
 
@@ -75,6 +77,36 @@ class FirestoreEntryRepository(
         val property = Property(name = name)
         val ref = propertiesCollection().add(property).await()
         return property.copy(id = ref.id)
+    }
+
+    override fun observeRoles(): Flow<List<Role>> = callbackFlow {
+        val registration = rolesCollection()
+            .orderBy("createdAt", Query.Direction.ASCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                val roles = snapshot?.documents.orEmpty().mapNotNull { doc ->
+                    doc.toObject(Role::class.java)?.copy(id = doc.id)
+                }
+                trySend(roles)
+            }
+        awaitClose { registration.remove() }
+    }
+
+    override suspend fun createRole(name: String): Role {
+        val role = Role(name = name)
+        val ref = rolesCollection().add(role).await()
+        return role.copy(id = ref.id)
+    }
+
+    override suspend fun renameRole(roleId: String, name: String) {
+        rolesCollection().document(roleId).update("name", name).await()
+    }
+
+    override suspend fun deleteRole(roleId: String) {
+        rolesCollection().document(roleId).delete().await()
     }
 
     override suspend fun createEntry(entry: Entry): String {

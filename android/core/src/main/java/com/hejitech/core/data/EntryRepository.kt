@@ -4,6 +4,7 @@ import android.net.Uri
 import com.hejitech.core.model.Attachment
 import com.hejitech.core.model.Entry
 import com.hejitech.core.model.Property
+import com.hejitech.core.model.Role
 import kotlinx.coroutines.flow.Flow
 import java.io.File
 
@@ -14,6 +15,15 @@ interface EntryRepository {
     fun observeProperties(): Flow<List<Property>>
 
     suspend fun createProperty(name: String): Property
+
+    /** Live stream of the user's role roster (Property Manager, Co-host, Cleaner, ...) managed in Settings. */
+    fun observeRoles(): Flow<List<Role>>
+
+    suspend fun createRole(name: String): Role
+
+    suspend fun renameRole(roleId: String, name: String)
+
+    suspend fun deleteRole(roleId: String)
 
     /** Writes a new entry (typically status = pending_review) and returns its assigned id. */
     suspend fun createEntry(entry: Entry): String

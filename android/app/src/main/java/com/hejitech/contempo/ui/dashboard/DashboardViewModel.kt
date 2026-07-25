@@ -16,8 +16,23 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/** Confirmed hours logged under someone else's role — see [DashboardUiState.otherRoleHours]. */
+data class RoleHoursSummary(
+    val id: String,
+    val name: String,
+    val hours: Double,
+)
+
 data class DashboardUiState(
+    /**
+     * Only entries with no role tagged (i.e. the owner's own hours) — see
+     * [Entry.isOwnerHours]. Deliberately NOT every confirmed hour; the
+     * 100-hour/500-hour tests require the owner's participation to exceed
+     * everyone else's, so other roles' hours must never inflate this.
+     */
     val confirmedHours: Double = 0.0,
+    /** Other roles' confirmed hours, for audit-context comparison. */
+    val otherRoleHours: List<RoleHoursSummary> = emptyList(),
     val thresholdHours: Int = MaterialParticipationTest.THRESHOLD_HOURS,
     val testName: String = MaterialParticipationTest.NAME,
     val entries: List<Entry> = emptyList(),
@@ -58,9 +73,21 @@ class DashboardViewModel : ViewModel() {
     private val entriesState: StateFlow<DashboardUiState> = entryRepository.observeEntries()
         .map { entries ->
             val confirmed = entries.filter { it.statusEnum == EntryStatus.CONFIRMED }
-            val totalMinutes = confirmed.sumOf { it.durationMinutes }
+            val ownerConfirmed = confirmed.filter { it.isOwnerHours }
+            val totalMinutes = ownerConfirmed.sumOf { it.durationMinutes }
+
+            val othersConfirmed = confirmed.filterNot { it.isOwnerHours }
+            val otherRoleHours = othersConfirmed
+                .groupBy { it.roleId.ifEmpty { it.roleName }.ifEmpty { "unknown" } }
+                .map { (key, roleEntries) ->
+                    val name = roleEntries.first().roleName.ifEmpty { "Other" }
+                    RoleHoursSummary(id = key, name = name, hours = roleEntries.sumOf { it.durationMinutes } / 60.0)
+                }
+                .sortedByDescending { it.hours }
+
             DashboardUiState(
                 confirmedHours = totalMinutes / 60.0,
+                otherRoleHours = otherRoleHours,
                 entries = entries,
                 pendingCount = entries.count { it.statusEnum == EntryStatus.PENDING_REVIEW && !it.inProgress },
                 openTimerEntry = entries.find { it.inProgress && !it.isTrip },

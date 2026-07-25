@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings as AndroidSettings
 import android.text.format.Formatter
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,15 +19,19 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -52,6 +57,9 @@ import com.hejitech.contempo.ui.export.ExportViewModel
 import com.hejitech.contempo.ui.export.shareCsv
 import com.hejitech.contempo.ui.legal.LegalDoc
 import com.hejitech.contempo.ui.theme.Eyebrow
+// Aliased — this file already imports androidx.compose.ui.semantics.Role
+// (used for e.g. `role = Role.RadioButton`) which would otherwise collide.
+import com.hejitech.core.model.Role as ParticipantRole
 
 @Composable
 fun SettingsScreen(
@@ -184,6 +192,74 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+
+            Spacer(Modifier.height(32.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(24.dp))
+
+            Text(stringResource(R.string.settings_roles_section), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.settings_roles_section_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(8.dp))
+
+            val roles by viewModel.roles.collectAsState()
+            val roleError by viewModel.roleError.collectAsState()
+            var showAddRole by remember { mutableStateOf(false) }
+            var renamingRole by remember { mutableStateOf<ParticipantRole?>(null) }
+
+            roles.forEach { role ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().clickable { renamingRole = role },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(role.name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                    IconButton(onClick = { viewModel.deleteRole(role) }) {
+                        Icon(
+                            Icons.Filled.Delete,
+                            contentDescription = stringResource(R.string.settings_roles_delete_content_description),
+                            tint = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
+            }
+
+            TextButton(onClick = { showAddRole = true }) {
+                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(4.dp))
+                Text(stringResource(R.string.settings_roles_add_button))
+            }
+
+            if (showAddRole) {
+                RoleNameDialog(
+                    title = stringResource(R.string.settings_roles_add_dialog_title),
+                    initialName = "",
+                    onDismiss = { showAddRole = false },
+                    onSave = { name -> viewModel.addRole(name); showAddRole = false },
+                )
+            }
+            renamingRole?.let { role ->
+                RoleNameDialog(
+                    title = stringResource(R.string.settings_roles_rename_dialog_title),
+                    initialName = role.name,
+                    onDismiss = { renamingRole = null },
+                    onSave = { name -> viewModel.renameRole(role, name); renamingRole = null },
+                )
+            }
+            roleError?.let { error ->
+                AlertDialog(
+                    onDismissRequest = viewModel::dismissRoleError,
+                    title = { Text(stringResource(R.string.settings_roles_error_dialog_title)) },
+                    text = { Text(error) },
+                    confirmButton = {
+                        TextButton(onClick = viewModel::dismissRoleError) {
+                            Text(stringResource(R.string.settings_roles_error_dialog_dismiss))
+                        }
+                    },
+                )
+            }
 
             Spacer(Modifier.height(32.dp))
             HorizontalDivider()
@@ -509,4 +585,31 @@ private fun InferenceOptionRow(label: String, selected: Boolean, onClick: () -> 
         Spacer(Modifier.height(0.dp))
         Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(start = 12.dp))
     }
+}
+
+@Composable
+private fun RoleNameDialog(title: String, initialName: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
+    var name by remember { mutableStateOf(initialName) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text(stringResource(R.string.settings_roles_name_placeholder)) },
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(name) }) {
+                Text(stringResource(R.string.settings_roles_save_button))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.settings_roles_cancel_button))
+            }
+        },
+    )
 }

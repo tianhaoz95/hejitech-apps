@@ -36,6 +36,9 @@ final class ConfirmViewModel {
     var properties: [Property] = []
     var isAddingNewProperty = false
     var newPropertyName = ""
+    var roles: [ParticipantRole] = []
+    /// nil = "Me" (the owner) — the implicit default for every entry.
+    var selectedRoleId: String?
     var isSaving = false
     var isSavingForLater = false
     var savedSuccessfully = false
@@ -87,6 +90,35 @@ final class ConfirmViewModel {
                 // Stream ended with a non-auth error — nothing else to do here.
             }
         }
+
+        Task { [weak self] in
+            let stream = AuthAwareStream.make(
+                fallback: { [] },
+                onAuthFailure: { try? await ServiceLocator.authManager.signOut() },
+                factory: { repository.observeRoles() }
+            )
+            do {
+                for try await roles in stream {
+                    guard let self else { return }
+                    self.roles = roles
+                }
+            } catch {
+                // Stream ended with a non-auth error — nothing else to do here.
+            }
+        }
+
+        // Resuming an existing (e.g. pending) entry should reflect its
+        // actual current role, even though `params` itself carries no role
+        // info — a fresh entry's `existingEntryTask` resolves to nil almost
+        // immediately, correctly leaving `selectedRoleId` at its "Me" default.
+        Task { [weak self] in
+            guard let self, let existing = await self.existingEntryTask.value else { return }
+            self.selectedRoleId = existing.roleId
+        }
+    }
+
+    func onRoleSelected(_ roleId: String?) {
+        selectedRoleId = roleId
     }
 
     func onPropertySelected(_ property: Property) {
@@ -219,7 +251,9 @@ final class ConfirmViewModel {
             captureLat: existing?.captureLat,
             captureLng: existing?.captureLng,
             audioUrl: existing?.audioUrl ?? "",
-            rawTranscript: existing?.rawTranscript ?? ""
+            rawTranscript: existing?.rawTranscript ?? "",
+            roleId: selectedRoleId,
+            roleName: selectedRoleId.flatMap { id in roles.first { $0.id == id }?.name }
         )
         // set()-based (via updateEntry), so re-running this after a
         // timed-out attempt (same resolvedEntryId every time) overwrites the

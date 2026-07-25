@@ -204,6 +204,7 @@ private fun EntryDetailContent(
         stringResource(R.string.confirm_duration_label),
         if (entry.inProgress) "$elapsedMinutes min so far" else "${entry.durationMinutes} min",
     )
+    DetailRow(stringResource(R.string.confirm_role_label), entry.roleName.ifEmpty { stringResource(R.string.confirm_role_me) })
     DetailRow(stringResource(R.string.confirm_category_label), entry.categoryEnum.name.lowercase().replace('_', ' '))
     DetailRow(stringResource(R.string.entry_detail_activity_date_label), dateFormatter.format(entry.activityDate.toDate()))
     DetailRow(stringResource(R.string.entry_detail_logged_date_label), dateFormatter.format(entry.loggedAt.toDate()))

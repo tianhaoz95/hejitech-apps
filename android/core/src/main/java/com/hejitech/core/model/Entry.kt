@@ -108,7 +108,21 @@ data class Entry(
     val stoppedAt: Timestamp? = null,
     val stopLat: Double? = null,
     val stopLng: Double? = null,
+    /**
+     * Who actually did this work — blank means "me" (the owner), the
+     * implicit default for every entry, including ones written before this
+     * field existed (Firestore's Kotlin mapper applies this default for a
+     * missing field, unlike Swift's Codable synthesis — see the iOS Entry
+     * model's comment on why roleId/roleName are Optional there instead).
+     * Only set when logged under someone else's role — see [Role].
+     */
+    val roleId: String = "",
+    val roleName: String = "",
 ) {
+    /** The only bucket that should count toward the 100-hour/500-hour material participation progress on the Dashboard. */
+    @get:Exclude
+    val isOwnerHours: Boolean get() = roleId.isEmpty()
+
     // @get:Exclude — computed, not stored: without this Firestore's reflection-based
     // mapper tries to find a matching field/setter for these and logs a harmless
     // but noisy "No setter/field found" warning on every read.

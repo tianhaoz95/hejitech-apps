@@ -102,6 +102,7 @@ fun ConfirmScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var categoryMenuExpanded by remember { mutableStateOf(false) }
+    var roleMenuExpanded by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val photoPreview = remember(photoUri) {
         photoUri?.let { uri -> runCatching { PhotoUtils.decodeSampledBitmap(context, uri.toUri(), PHOTO_PREVIEW_MAX_DIMENSION_PX) }.getOrNull() }
@@ -265,6 +266,51 @@ fun ConfirmScreen(
                 }
             }
         }
+        Spacer(Modifier.height(12.dp))
+
+        ExposedDropdownMenuBox(
+            expanded = roleMenuExpanded,
+            onExpandedChange = { roleMenuExpanded = it },
+        ) {
+            val selectedRoleName = uiState.roles.find { it.id == uiState.selectedRoleId }?.name
+                ?: stringResource(R.string.confirm_role_me)
+            OutlinedTextField(
+                value = selectedRoleName,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text(stringResource(R.string.confirm_role_label)) },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = roleMenuExpanded) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+            )
+            ExposedDropdownMenu(
+                expanded = roleMenuExpanded,
+                onDismissRequest = { roleMenuExpanded = false },
+            ) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.confirm_role_me)) },
+                    onClick = {
+                        viewModel.onRoleSelected(null)
+                        roleMenuExpanded = false
+                    },
+                )
+                uiState.roles.forEach { role ->
+                    DropdownMenuItem(
+                        text = { Text(role.name) },
+                        onClick = {
+                            viewModel.onRoleSelected(role.id)
+                            roleMenuExpanded = false
+                        },
+                    )
+                }
+            }
+        }
+        Text(
+            stringResource(R.string.confirm_role_hint),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
 
         Spacer(Modifier.height(24.dp))
 

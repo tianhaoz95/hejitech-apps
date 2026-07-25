@@ -22,6 +22,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -187,6 +188,29 @@ fun DashboardScreen(
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+
+        if (uiState.otherRoleHours.isNotEmpty()) {
+            Spacer(Modifier.height(12.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(8.dp))
+            Text(
+                stringResource(R.string.dashboard_other_roles_hint),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            uiState.otherRoleHours.forEach { summary ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(summary.name, style = MaterialTheme.typography.labelSmall)
+                    Text(
+                        stringResource(R.string.dashboard_other_role_hours, summary.hours.toInt()),
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                }
+            }
         }
 
         Spacer(Modifier.height(24.dp))

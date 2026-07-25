@@ -1,4 +1,5 @@
 import ContempoCore
+import ContempoFirestore
 import SwiftUI
 
 struct SettingsScreen: View {
@@ -7,6 +8,10 @@ struct SettingsScreen: View {
     @State private var showDeleteConfirm = false
     @State private var showDeleteModelConfirm = false
     @State private var showWalkthrough = false
+    @State private var showAddRole = false
+    @State private var newRoleName = ""
+    @State private var renamingRole: ParticipantRole?
+    @State private var renameRoleText = ""
 
     var body: some View {
         List {
@@ -64,6 +69,40 @@ struct SettingsScreen: View {
                 Text("Adds a language switcher to the Capture tab. Off by default — capture uses English.")
                     .font(ContempoFont.labelSmall())
                     .foregroundStyle(palette.inkFaint)
+            }
+
+            Section {
+                Text("Tag entries under a role (Property Manager, Co-host, Cleaner, a contractor, ...) when someone other than you did the work. Only your own hours (no role) count toward the 100-hour/500-hour progress on the Dashboard — the IRS tests require your participation to exceed everyone else's.")
+                    .font(ContempoFont.labelSmall())
+                    .foregroundStyle(palette.inkFaint)
+
+                ForEach(viewModel.roles) { role in
+                    HStack {
+                        Text(role.name)
+                        Spacer()
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        renamingRole = role
+                        renameRoleText = role.name
+                    }
+                    .swipeActions {
+                        Button(role: .destructive) {
+                            viewModel.deleteRole(role)
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
+                }
+
+                Button {
+                    newRoleName = ""
+                    showAddRole = true
+                } label: {
+                    Label("Add Role", systemImage: "plus.circle.fill")
+                }
+            } header: {
+                Text("Roles")
             }
 
             Section("Watch capture") {
@@ -139,6 +178,32 @@ struct SettingsScreen: View {
             Button("OK") { viewModel.dismissDeleteAccountError() }
         } message: {
             Text(viewModel.deleteAccountError ?? "")
+        }
+        .alert("Add Role", isPresented: $showAddRole) {
+            TextField("Role name", text: $newRoleName)
+            Button("Add") { viewModel.addRole(name: newRoleName) }
+            Button("Cancel", role: .cancel) {}
+        }
+        .alert("Rename Role", isPresented: Binding(
+            get: { renamingRole != nil },
+            set: { if !$0 { renamingRole = nil } }
+        )) {
+            TextField("Role name", text: $renameRoleText)
+            Button("Save") {
+                if let role = renamingRole {
+                    viewModel.renameRole(role, name: renameRoleText)
+                }
+                renamingRole = nil
+            }
+            Button("Cancel", role: .cancel) { renamingRole = nil }
+        }
+        .alert("Something went wrong", isPresented: Binding(
+            get: { viewModel.roleError != nil },
+            set: { if !$0 { viewModel.dismissRoleError() } }
+        )) {
+            Button("OK") { viewModel.dismissRoleError() }
+        } message: {
+            Text(viewModel.roleError ?? "")
         }
     }
 

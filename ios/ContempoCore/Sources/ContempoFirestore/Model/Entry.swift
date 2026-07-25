@@ -64,6 +64,15 @@ public struct Entry: Codable, Identifiable, Equatable, Sendable {
     public var stoppedAt: Timestamp?
     public var stopLat: Double?
     public var stopLng: Double?
+    /// Who actually did this work — nil/empty means "me" (the owner), the
+    /// implicit default for every entry before this field existed. Only set
+    /// when logged under someone else's role (see `ParticipantRole`). Optional (not a
+    /// defaulted "") because Swift's Codable synthesis does not fall back to
+    /// a property's default value for a missing key — an old entry doc
+    /// without this field would otherwise fail to decode and silently drop
+    /// out of every list (verified empirically; see Attachment.note).
+    public var roleId: String?
+    public var roleName: String?
 
     public init(
         id: String? = nil,
@@ -98,7 +107,9 @@ public struct Entry: Codable, Identifiable, Equatable, Sendable {
         rawTranscript: String = "",
         stoppedAt: Timestamp? = nil,
         stopLat: Double? = nil,
-        stopLng: Double? = nil
+        stopLng: Double? = nil,
+        roleId: String? = nil,
+        roleName: String? = nil
     ) {
         self.id = id
         self.propertyId = propertyId
@@ -133,7 +144,14 @@ public struct Entry: Codable, Identifiable, Equatable, Sendable {
         self.stoppedAt = stoppedAt
         self.stopLat = stopLat
         self.stopLng = stopLng
+        self.roleId = roleId
+        self.roleName = roleName
     }
+
+    /// True when this entry's hours belong to the app's own user (no role
+    /// tagged at all) — the only bucket that should count toward the
+    /// 100-hour/500-hour material participation progress on the Dashboard.
+    public var isOwnerHours: Bool { (roleId ?? "").isEmpty }
 
     public var categoryEnum: EntryCategory { EntryCategory(firestoreValue: category) }
     public var statusEnum: EntryStatus { EntryStatus(firestoreValue: status) }

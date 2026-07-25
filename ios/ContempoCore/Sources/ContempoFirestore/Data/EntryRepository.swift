@@ -8,6 +8,16 @@ public protocol EntryRepository: Sendable {
 
     func createProperty(name: String) async throws -> Property
 
+    /// Live stream of the user's role roster (Property Manager, Co-host,
+    /// Cleaner, ...) managed in Settings — see `ParticipantRole`.
+    func observeRoles() -> AsyncThrowingStream<[ParticipantRole], Error>
+
+    func createRole(name: String) async throws -> ParticipantRole
+
+    func renameRole(roleId: String, name: String) async throws
+
+    func deleteRole(roleId: String) async throws
+
     /// Writes a new entry (typically status = pending_review) and returns its assigned id.
     func createEntry(_ entry: Entry) async throws -> String
 

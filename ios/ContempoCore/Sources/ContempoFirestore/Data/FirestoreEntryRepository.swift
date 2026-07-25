@@ -26,6 +26,7 @@ public final class FirestoreEntryRepository: EntryRepository, @unchecked Sendabl
     private func userDoc() -> DocumentReference { firestore.collection("users").document(uid) }
     private func entriesCollection() -> CollectionReference { userDoc().collection("entries") }
     private func propertiesCollection() -> CollectionReference { userDoc().collection("properties") }
+    private func rolesCollection() -> CollectionReference { userDoc().collection("roles") }
     private func correctionsCollection() -> CollectionReference { userDoc().collection("corrections") }
     private func attachmentsCollection(entryId: String) -> CollectionReference {
         entriesCollection().document(entryId).collection("attachments")
@@ -49,6 +50,27 @@ public final class FirestoreEntryRepository: EntryRepository, @unchecked Sendabl
         let property = Property(name: name)
         let ref = try propertiesCollection().addDocument(from: property)
         return try await waitForPendingWrite(at: ref) { try $0.data(as: Property.self) } ?? property
+    }
+
+    public func observeRoles() -> AsyncThrowingStream<[ParticipantRole], Error> {
+        observeDecodedArray(
+            query: rolesCollection().order(by: "createdAt", descending: false),
+            as: ParticipantRole.self
+        )
+    }
+
+    public func createRole(name: String) async throws -> ParticipantRole {
+        let role = ParticipantRole(name: name)
+        let ref = try rolesCollection().addDocument(from: role)
+        return try await waitForPendingWrite(at: ref) { try $0.data(as: ParticipantRole.self) } ?? role
+    }
+
+    public func renameRole(roleId: String, name: String) async throws {
+        try await rolesCollection().document(roleId).updateData(["name": name])
+    }
+
+    public func deleteRole(roleId: String) async throws {
+        try await rolesCollection().document(roleId).delete()
     }
 
     public func createEntry(_ entry: Entry) async throws -> String {

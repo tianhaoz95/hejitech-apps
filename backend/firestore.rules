@@ -43,6 +43,16 @@ service cloud.firestore {
         d.createdAt is timestamp;
     }
 
+    // A role tags who actually did the work on an entry (Property Manager,
+    // Co-host, Cleaner, a contractor, ...) — the user's own hours are the
+    // implicit default (entry has no roleId/roleName at all), so this
+    // collection only ever holds *other* participants. Same shape/lifecycle
+    // as isValidProperty above (a small user-managed roster, full CRUD).
+    function isValidRole(d) {
+      return d.name is string && d.name.size() > 0 && d.name.size() <= 100 &&
+        d.createdAt is timestamp;
+    }
+
     function isValidEntry(d) {
       return d.propertyId is string && d.propertyId.size() <= 200 &&
         d.propertyName is string && d.propertyName.size() <= 200 &&
@@ -74,7 +84,13 @@ service cloud.firestore {
         // "unknown/missing extra fields don't get rejected" policy as
         // isValidAudioCapture's `language` field below.
         (!('rawTranscript' in d) || (d.rawTranscript is string && d.rawTranscript.size() <= 5000)) &&
-        optionalType(d, 'stoppedAt', 'timestamp');
+        optionalType(d, 'stoppedAt', 'timestamp') &&
+        // Absent (or null) means "me/owner" — see isValidRole above; only
+        // present when this entry is logged under someone else's role.
+        optionalType(d, 'roleId', 'string') &&
+        (!('roleId' in d) || d.roleId == null || d.roleId.size() <= 200) &&
+        optionalType(d, 'roleName', 'string') &&
+        (!('roleName' in d) || d.roleName == null || d.roleName.size() <= 200);
     }
 
     function isValidCorrection(d) {
@@ -155,6 +171,12 @@ service cloud.firestore {
       match /properties/{propertyId} {
         allow read: if isOwner(uid);
         allow create, update: if isOwner(uid) && isValidProperty(request.resource.data);
+        allow delete: if isOwner(uid);
+      }
+
+      match /roles/{roleId} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && isValidRole(request.resource.data);
         allow delete: if isOwner(uid);
       }
 

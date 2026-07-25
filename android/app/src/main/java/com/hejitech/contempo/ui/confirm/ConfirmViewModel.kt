@@ -12,6 +12,7 @@ import com.hejitech.core.model.Entry
 import com.hejitech.core.model.EntryCategory
 import com.hejitech.core.model.EntryStatus
 import com.hejitech.core.model.Property
+import com.hejitech.core.model.Role
 import com.google.firebase.Firebase
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.firestore
@@ -55,6 +56,9 @@ data class ConfirmUiState(
     val properties: List<Property> = emptyList(),
     val isAddingNewProperty: Boolean = false,
     val newPropertyName: String = "",
+    val roles: List<Role> = emptyList(),
+    /** null = "Me" (the owner) — the implicit default for every entry. */
+    val selectedRoleId: String? = null,
     val isSaving: Boolean = false,
     val isSavingForLater: Boolean = false,
     val savedSuccessfully: Boolean = false,
@@ -135,6 +139,25 @@ class ConfirmViewModel(
             .recoverFromAuthRaceOrSignOut { emptyList() }
             .onEach { properties -> _uiState.value = _uiState.value.copy(properties = properties) }
             .launchIn(viewModelScope)
+
+        entryRepository.observeRoles()
+            .recoverFromAuthRaceOrSignOut { emptyList() }
+            .onEach { roles -> _uiState.value = _uiState.value.copy(roles = roles) }
+            .launchIn(viewModelScope)
+
+        // Resuming an existing (e.g. pending) entry should reflect its
+        // actual current role — a fresh entry's existingEntryDeferred
+        // resolves to null almost immediately, correctly leaving
+        // selectedRoleId at its "Me" default.
+        viewModelScope.launch {
+            existingEntryDeferred.await()?.let { existing ->
+                _uiState.value = _uiState.value.copy(selectedRoleId = existing.roleId.ifEmpty { null })
+            }
+        }
+    }
+
+    fun onRoleSelected(roleId: String?) {
+        _uiState.value = _uiState.value.copy(selectedRoleId = roleId)
     }
 
     fun onPropertyChanged(value: String) { _uiState.value = _uiState.value.copy(property = value) }
@@ -310,6 +333,8 @@ class ConfirmViewModel(
             // lose it via updateEntry's full-document overwrite).
             captureLat = initialCaptureLat ?: existing?.captureLat,
             captureLng = initialCaptureLng ?: existing?.captureLng,
+            roleId = state.selectedRoleId ?: "",
+            roleName = state.roles.find { it.id == state.selectedRoleId }?.name ?: "",
         )
         // set()-based, so re-running this after a timed-out attempt (same
         // resolvedEntryId every time) overwrites the same document instead

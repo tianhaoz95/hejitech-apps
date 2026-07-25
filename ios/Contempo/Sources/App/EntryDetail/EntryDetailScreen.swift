@@ -41,6 +41,7 @@ struct EntryDetailScreen: View {
                     }
                     Section("Details") {
                         LabeledContent("Property", value: entry.propertyName.isEmpty ? "—" : entry.propertyName)
+                        LabeledContent("Role", value: (entry.roleName?.isEmpty ?? true) ? "Me" : entry.roleName!)
                         LabeledContent("Category", value: entry.categoryEnum.firestoreValue.replacingOccurrences(of: "_", with: " ").capitalized)
                         LabeledContent("Duration", value: "\(entry.durationMinutes) min")
                         LabeledContent("Activity date", value: entry.activityDate.dateValue().formatted())
