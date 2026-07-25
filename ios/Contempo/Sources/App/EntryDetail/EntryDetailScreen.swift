@@ -2,13 +2,22 @@ import AVFoundation
 import Combine
 import ContempoCore
 import ContempoFirestore
+import PhotosUI
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct EntryDetailScreen: View {
     let entryId: String
     @State private var viewModel: EntryDetailViewModel
     @Environment(\.contempoPalette) private var palette
     @Environment(\.dismiss) private var dismiss
+
+    @State private var showPhotosPicker = false
+    @State private var photoPickerSelection: [PhotosPickerItem] = []
+    @State private var showFileImporter = false
+    @State private var previewURL: URL?
+    @State private var downloadingAttachmentId: String?
+    @State private var downloadError: String?
 
     init(entryId: String) {
         self.entryId = entryId
@@ -44,6 +53,9 @@ struct EntryDetailScreen: View {
                         if !entry.photoUrls.isEmpty {
                             LabeledContent("Photos", value: "\(entry.photoUrls.count)")
                         }
+                    }
+                    Section("Attachments") {
+                        attachmentsSectionContent
                     }
                     if !entry.audioUrl.isEmpty {
                         Section("Voice recording") {
@@ -93,6 +105,142 @@ struct EntryDetailScreen: View {
             Button("OK") { viewModel.dismissDeleteError() }
         } message: {
             Text(viewModel.deleteError ?? "")
+        }
+        .alert("Attachment error", isPresented: Binding(
+            get: { viewModel.attachmentError != nil },
+            set: { if !$0 { viewModel.dismissAttachmentError() } }
+        )) {
+            Button("OK") { viewModel.dismissAttachmentError() }
+        } message: {
+            Text(viewModel.attachmentError ?? "")
+        }
+        .alert("Couldn't open file", isPresented: Binding(
+            get: { downloadError != nil },
+            set: { if !$0 { downloadError = nil } }
+        )) {
+            Button("OK") { downloadError = nil }
+        } message: {
+            Text(downloadError ?? "")
+        }
+        .photosPicker(
+            isPresented: $showPhotosPicker,
+            selection: $photoPickerSelection,
+            maxSelectionCount: nil,
+            matching: .any(of: [.images, .videos])
+        )
+        .onChange(of: photoPickerSelection) { _, newItems in
+            guard !newItems.isEmpty else { return }
+            for item in newItems {
+                Task { await importPickedPhoto(item) }
+            }
+            photoPickerSelection = []
+        }
+        .fileImporter(isPresented: $showFileImporter, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
+            switch result {
+            case .success(let urls):
+                for url in urls { importPickedFile(url) }
+            case .failure(let error):
+                viewModel.attachmentError = error.localizedDescription
+            }
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { previewURL != nil },
+            set: { if !$0 { previewURL = nil } }
+        )) {
+            if let previewURL {
+                QuickLookPreview(url: previewURL)
+            }
+        }
+    }
+
+    // Split out of `body` — SwiftUI's ViewBuilder type-checker times out
+    // combining this many rows/modifiers inline inside the enclosing List.
+    @ViewBuilder
+    private var attachmentsSectionContent: some View {
+        HStack {
+            Text(viewModel.attachments.isEmpty ? "No files yet" : "\(viewModel.attachments.count) file\(viewModel.attachments.count == 1 ? "" : "s")")
+                .font(ContempoFont.labelSmall())
+                .foregroundStyle(palette.inkFaint)
+            Spacer()
+            Menu {
+                Button {
+                    showPhotosPicker = true
+                } label: {
+                    Label("Photo or Video", systemImage: "photo.on.rectangle")
+                }
+                Button {
+                    showFileImporter = true
+                } label: {
+                    Label("Browse Files", systemImage: "folder")
+                }
+            } label: {
+                Label("Add", systemImage: "plus.circle.fill")
+            }
+        }
+        ForEach(viewModel.uploadingItems) { item in
+            AttachmentUploadRow(item: item)
+        }
+        ForEach(viewModel.attachments) { attachment in
+            Button {
+                previewAttachment(attachment)
+            } label: {
+                AttachmentRow(attachment: attachment, isDownloading: downloadingAttachmentId == attachment.id)
+            }
+            .buttonStyle(.plain)
+            .swipeActions {
+                Button(role: .destructive) {
+                    viewModel.deleteAttachment(attachment)
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
+        }
+    }
+
+    private func previewAttachment(_ attachment: Attachment) {
+        guard downloadingAttachmentId == nil else { return }
+        downloadingAttachmentId = attachment.id
+        Task {
+            do {
+                let url = try await viewModel.localFileURL(for: attachment)
+                downloadingAttachmentId = nil
+                previewURL = url
+            } catch {
+                downloadingAttachmentId = nil
+                downloadError = error.localizedDescription
+            }
+        }
+    }
+
+    private func importPickedPhoto(_ item: PhotosPickerItem) async {
+        guard let data = try? await item.loadTransferable(type: Data.self) else { return }
+        let utType = item.supportedContentTypes.first
+        let fileExtension = utType?.preferredFilenameExtension ?? "dat"
+        let contentType = utType?.preferredMIMEType ?? "application/octet-stream"
+        let fileName = "\(UUID().uuidString).\(fileExtension)"
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+        do {
+            try data.write(to: tempURL)
+            viewModel.addAttachment(fileURL: tempURL, fileName: fileName, contentType: contentType)
+        } catch {
+            viewModel.attachmentError = error.localizedDescription
+        }
+    }
+
+    /// fileImporter's URLs are only readable within the security scope, which
+    /// doesn't outlive this synchronous block — copy into our own temp dir
+    /// before handing off to the async upload.
+    private func importPickedFile(_ url: URL) {
+        guard url.startAccessingSecurityScopedResource() else { return }
+        defer { url.stopAccessingSecurityScopedResource() }
+        let fileName = url.lastPathComponent
+        let contentType = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString)_\(fileName)")
+        do {
+            try FileManager.default.copyItem(at: url, to: tempURL)
+            viewModel.addAttachment(fileURL: tempURL, fileName: fileName, contentType: contentType)
+        } catch {
+            viewModel.attachmentError = error.localizedDescription
         }
     }
 
@@ -272,5 +420,64 @@ private struct AudioPlayerRow: View {
     private func pause() {
         player?.pause()
         playbackState = .paused
+    }
+}
+
+// MARK: - Attachment Upload Row
+
+private struct AttachmentUploadRow: View {
+    let item: UploadingAttachment
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(item.fileName)
+                .font(ContempoFont.bodySmall())
+                .lineLimit(1)
+            ProgressView(value: item.progress)
+        }
+    }
+}
+
+// MARK: - Attachment Row
+
+private struct AttachmentRow: View {
+    let attachment: Attachment
+    let isDownloading: Bool
+    @Environment(\.contempoPalette) private var palette
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: iconName)
+                .foregroundStyle(palette.pine)
+                .frame(width: 24)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(attachment.fileName)
+                    .font(ContempoFont.bodyLarge())
+                    .foregroundStyle(palette.ink)
+                    .lineLimit(1)
+                Text("\(sizeLabel) · \(timeLabel)")
+                    .font(ContempoFont.labelSmall())
+                    .foregroundStyle(palette.inkFaint)
+            }
+            Spacer()
+            if isDownloading {
+                ProgressView()
+            }
+        }
+    }
+
+    private var iconName: String {
+        if attachment.contentType.hasPrefix("image/") { return "photo" }
+        if attachment.contentType.hasPrefix("video/") { return "video" }
+        if attachment.contentType == "application/pdf" { return "doc.richtext" }
+        return "doc"
+    }
+
+    private var sizeLabel: String {
+        ByteCountFormatter.string(fromByteCount: attachment.fileSize, countStyle: .file)
+    }
+
+    private var timeLabel: String {
+        attachment.uploadedAt.dateValue().formatted(.relative(presentation: .named))
     }
 }

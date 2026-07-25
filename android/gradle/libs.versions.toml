@@ -39,6 +39,8 @@ uiautomator = "2.3.0"
 liteRtLm = "0.14.0"
 workManager = "2.10.0"
 coreSplashscreen = "1.0.1"
+coil = "3.4.0"
+media3 = "1.10.1"
 
 [libraries]
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -142,6 +144,17 @@ androidx-work-testing = { group = "androidx.work", name = "work-testing", versio
 # Cold-start splash screen (animated brand mark) — see MainActivity.kt and
 # res/values/themes.xml's Theme.Contempo.Starting.
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashscreen" }
+
+# Full-screen image viewing for entry attachments — see EntryDetailScreen.kt's
+# attachment preview. Attachments are always previewed from a local
+# (already-downloaded) File, so no network fetcher artifact is needed here.
+coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
+
+# Video playback for video/* entry attachments — see EntryDetailScreen.kt's
+# attachment preview Dialog (ExoPlayer + PlayerView, released in
+# DisposableEffect like AudioPlayerRow's MediaPlayer).
+media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", version.ref = "media3" }
+media3-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "media3" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

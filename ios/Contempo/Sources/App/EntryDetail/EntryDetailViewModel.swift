@@ -3,6 +3,12 @@ import ContempoFirestore
 import Foundation
 import Observation
 
+struct UploadingAttachment: Identifiable {
+    let id: UUID
+    let fileName: String
+    var progress: Double
+}
+
 @Observable
 @MainActor
 final class EntryDetailViewModel {
@@ -14,11 +20,18 @@ final class EntryDetailViewModel {
     var isDeleting = false
     var deleteError: String?
 
+    var attachments: [Attachment] = []
+    var uploadingItems: [UploadingAttachment] = []
+    var attachmentError: String?
+
     init(entryId: String) {
         self.entryId = entryId
         Task {
             entry = try? await entryRepository.getEntry(entryId: entryId)
             isLoading = false
+        }
+        Task {
+            attachments = (try? await entryRepository.listAttachments(entryId: entryId)) ?? []
         }
     }
 
@@ -38,5 +51,56 @@ final class EntryDetailViewModel {
 
     func dismissDeleteError() {
         deleteError = nil
+    }
+
+    func addAttachment(fileURL: URL, fileName: String, contentType: String) {
+        // Keyed by a stable id, not array position — multi-selecting several
+        // files fires concurrent uploads whose completion order isn't
+        // guaranteed to match start order, and an earlier upload's removal
+        // would otherwise shift a later upload's captured index out from
+        // under it (crashing `remove(at:)` or updating the wrong row).
+        let uploadId = UUID()
+        uploadingItems.append(UploadingAttachment(id: uploadId, fileName: fileName, progress: 0))
+        Task {
+            do {
+                let attachment = try await entryRepository.uploadAttachment(
+                    entryId: entryId,
+                    fileURL: fileURL,
+                    fileName: fileName,
+                    contentType: contentType
+                ) { [weak self] progress in
+                    Task { @MainActor in
+                        guard let self else { return }
+                        if let index = self.uploadingItems.firstIndex(where: { $0.id == uploadId }) {
+                            self.uploadingItems[index].progress = progress
+                        }
+                    }
+                }
+                uploadingItems.removeAll { $0.id == uploadId }
+                attachments.append(attachment)
+            } catch {
+                uploadingItems.removeAll { $0.id == uploadId }
+                attachmentError = error.localizedDescription
+            }
+        }
+    }
+
+    func deleteAttachment(_ attachment: Attachment) {
+        Task {
+            do {
+                try await entryRepository.deleteAttachment(entryId: entryId, attachment: attachment)
+                attachments.removeAll { $0.id == attachment.id }
+            } catch {
+                attachmentError = error.localizedDescription
+            }
+        }
+    }
+
+    func dismissAttachmentError() {
+        attachmentError = nil
+    }
+
+    func localFileURL(for attachment: Attachment) async throws -> URL {
+        try await entryRepository.downloadAttachment(entryId: entryId, attachment: attachment) { _ in }
     }
 }

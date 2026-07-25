@@ -27,6 +27,9 @@ public final class FirestoreEntryRepository: EntryRepository, @unchecked Sendabl
     private func entriesCollection() -> CollectionReference { userDoc().collection("entries") }
     private func propertiesCollection() -> CollectionReference { userDoc().collection("properties") }
     private func correctionsCollection() -> CollectionReference { userDoc().collection("corrections") }
+    private func attachmentsCollection(entryId: String) -> CollectionReference {
+        entriesCollection().document(entryId).collection("attachments")
+    }
 
     public func observeEntries() -> AsyncThrowingStream<[Entry], Error> {
         observeDecodedArray(
@@ -110,6 +113,83 @@ public final class FirestoreEntryRepository: EntryRepository, @unchecked Sendabl
             "recordedAt": Timestamp(date: Date()),
         ]
         _ = try await correctionsCollection().addDocument(data: correction)
+    }
+
+    public func listAttachments(entryId: String) async throws -> [Attachment] {
+        let snapshot = try await attachmentsCollection(entryId: entryId)
+            .order(by: "uploadedAt")
+            .getDocuments()
+        return snapshot.documents.compactMap { try? $0.data(as: Attachment.self) }
+    }
+
+    public func uploadAttachment(
+        entryId: String,
+        fileURL: URL,
+        fileName: String,
+        contentType: String,
+        onProgress: @escaping @Sendable (Double) -> Void
+    ) async throws -> Attachment {
+        let sanitizedFileName = Self.sanitizeFileNameComponent(fileName)
+        let storagePath = "users/\(uid)/entries/\(entryId)/attachments/\(Int(Date().timeIntervalSince1970 * 1000))_\(sanitizedFileName)"
+        let attachmentRef = storage.reference(withPath: storagePath)
+        let metadata = StorageMetadata()
+        metadata.contentType = contentType
+
+        // putFile streams from disk rather than loading the whole file into
+        // memory — attachments can be up to 100MB.
+        let uploadedMetadata = try await attachmentRef.putFileAsync(from: fileURL, metadata: metadata) { progress in
+            onProgress(progress?.fractionCompleted ?? 0)
+        }
+        let downloadURL = try await attachmentRef.downloadURL()
+
+        let data: [String: Any] = [
+            "fileName": fileName,
+            "contentType": contentType,
+            "fileSize": uploadedMetadata.size,
+            "storagePath": storagePath,
+            "downloadURL": downloadURL.absoluteString,
+            "uploadedAt": Timestamp(date: Date()),
+        ]
+        let ref = try await attachmentsCollection(entryId: entryId).addDocument(data: data)
+        return Attachment(
+            id: ref.documentID,
+            fileName: fileName,
+            contentType: contentType,
+            fileSize: uploadedMetadata.size,
+            storagePath: storagePath,
+            downloadURL: downloadURL.absoluteString,
+            uploadedAt: Timestamp(date: Date())
+        )
+    }
+
+    public func deleteAttachment(entryId: String, attachment: Attachment) async throws {
+        try await storage.reference(withPath: attachment.storagePath).delete()
+        // An Attachment read back from Firestore always has an id; force-unwrap is safe here.
+        try await attachmentsCollection(entryId: entryId).document(attachment.id!).delete()
+    }
+
+    public func downloadAttachment(
+        entryId: String,
+        attachment: Attachment,
+        onProgress: @escaping @Sendable (Double) -> Void
+    ) async throws -> URL {
+        let cacheDirectory = FileManager.default.temporaryDirectory.appendingPathComponent("attachments", isDirectory: true)
+        try FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
+
+        let sanitizedFileName = Self.sanitizeFileNameComponent(attachment.fileName)
+        let localURL = cacheDirectory.appendingPathComponent("\(attachment.id!)_\(sanitizedFileName)")
+        if FileManager.default.fileExists(atPath: localURL.path) {
+            return localURL
+        }
+
+        let storageRef = storage.reference(withPath: attachment.storagePath)
+        return try await storageRef.writeAsync(toFile: localURL) { progress in
+            onProgress(progress?.fractionCompleted ?? 0)
+        }
+    }
+
+    private static func sanitizeFileNameComponent(_ fileName: String) -> String {
+        String(fileName.map { $0.isLetter || $0.isNumber || $0 == "." || $0 == "-" || $0 == "_" ? $0 : "_" })
     }
 
     /// Firestore's `addDocument(from:)` fires its write in the background and

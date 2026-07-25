@@ -1,8 +1,18 @@
 package com.hejitech.contempo.ui.entrydetail
 
+import android.graphics.Bitmap
+import android.graphics.pdf.PdfRenderer
 import android.media.MediaPlayer
+import android.net.Uri
+import android.os.ParcelFileDescriptor
+import android.text.format.Formatter
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,26 +22,36 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Article
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,15 +60,29 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
+import coil3.compose.AsyncImage
 import com.hejitech.contempo.R
+import com.hejitech.contempo.ui.export.openFileExternally
+import com.hejitech.contempo.ui.export.shareFile
 import com.hejitech.contempo.ui.theme.BulletAwareText
 import com.hejitech.contempo.ui.theme.Eyebrow
+import com.hejitech.core.model.Attachment
 import com.hejitech.core.model.Entry
 import com.hejitech.core.model.EntryStatus
 import com.google.firebase.Timestamp
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -96,7 +130,7 @@ fun EntryDetailScreen(
         when {
             uiState.isLoading -> CircularProgressIndicator()
             entry == null -> Text(stringResource(R.string.entry_detail_not_found))
-            else -> EntryDetailContent(entry, onEditEntry)
+            else -> EntryDetailContent(entry, onEditEntry, uiState, viewModel)
         }
     }
 
@@ -146,7 +180,12 @@ private fun DeleteEntryDialog(
 }
 
 @Composable
-private fun EntryDetailContent(entry: Entry, onEditEntry: (Entry) -> Unit) {
+private fun EntryDetailContent(
+    entry: Entry,
+    onEditEntry: (Entry) -> Unit,
+    uiState: EntryDetailUiState,
+    viewModel: EntryDetailViewModel,
+) {
     val isPending = entry.statusEnum == EntryStatus.PENDING_REVIEW
     // Elapsed-so-far for an open timer, computed locally — durationMinutes
     // itself stays 0 in Firestore until the timer actually closes (see
@@ -175,6 +214,7 @@ private fun EntryDetailContent(entry: Entry, onEditEntry: (Entry) -> Unit) {
             stringResource(R.string.entry_detail_photos_count, entry.photoUrls.size),
         )
     }
+    AttachmentsSection(uiState = uiState, viewModel = viewModel)
     if (entry.audioUrl.isNotBlank()) {
         DetailRow(stringResource(R.string.entry_detail_audio_label)) {
             AudioPlayerRow(entry.audioUrl, entry.rawTranscript)
@@ -391,5 +431,270 @@ private fun DetailRow(label: String, content: @Composable () -> Unit) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(2.dp))
         content()
+    }
+}
+
+/**
+ * Generic-attachment section — parallel to, and independent from, the
+ * entry.photoUrls DetailRow above (bare image-URL array, uploaded via
+ * EntryRepository.attachPhoto). This covers arbitrary file types recorded in
+ * the users/{uid}/entries/{entryId}/attachments subcollection.
+ */
+@Composable
+private fun AttachmentsSection(uiState: EntryDetailUiState, viewModel: EntryDetailViewModel) {
+    val context = LocalContext.current
+    var previewTarget by remember { mutableStateOf<Pair<Attachment, File>?>(null) }
+    // At most one attachment downloads at a time from this screen — good
+    // enough for audit-evidence file counts, and keeps the progress-UI state
+    // simple (one id, one float) rather than a map.
+    var downloadingId by remember { mutableStateOf<String?>(null) }
+    var downloadProgress by remember { mutableStateOf(0f) }
+
+    val pickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenMultipleDocuments(),
+    ) { uris -> uris.forEach { uri -> viewModel.addAttachment(context, uri) } }
+
+    Spacer(Modifier.height(8.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            stringResource(R.string.entry_detail_attachments_label),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        IconButton(onClick = { pickerLauncher.launch(arrayOf("*/*")) }) {
+            Icon(
+                Icons.Filled.Add,
+                contentDescription = stringResource(R.string.entry_detail_attachments_add_content_description),
+            )
+        }
+    }
+
+    uiState.uploadingItems.forEach { item ->
+        Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+            Text(item.fileName, style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.height(4.dp))
+            LinearProgressIndicator(progress = { item.progress }, modifier = Modifier.fillMaxWidth())
+        }
+    }
+
+    uiState.attachments.forEach { attachment ->
+        AttachmentRow(
+            attachment = attachment,
+            isDownloading = downloadingId == attachment.id,
+            downloadProgress = downloadProgress,
+            onClick = {
+                if (downloadingId != null) return@AttachmentRow
+                downloadingId = attachment.id
+                downloadProgress = 0f
+                viewModel.downloadForPreview(
+                    destinationDir = File(context.cacheDir, "attachments"),
+                    attachment = attachment,
+                    onProgress = { progress -> downloadProgress = progress },
+                    onResult = { result ->
+                        downloadingId = null
+                        result.onSuccess { file ->
+                            val isInAppViewable = attachment.contentType.startsWith("image/") ||
+                                attachment.contentType.startsWith("video/") ||
+                                attachment.contentType == "application/pdf"
+                            if (isInAppViewable) {
+                                previewTarget = attachment to file
+                            } else {
+                                // Uncommon types: no in-app renderer, so
+                                // "open" here just means hand it straight to
+                                // whatever external viewer/share target the
+                                // system offers.
+                                openFileExternally(context, file, attachment.contentType)
+                            }
+                        }
+                    },
+                )
+            },
+            onDelete = { viewModel.deleteAttachment(attachment) },
+        )
+    }
+
+    previewTarget?.let { (attachment, file) ->
+        AttachmentPreviewDialog(attachment = attachment, file = file, onDismiss = { previewTarget = null })
+    }
+
+    uiState.attachmentError?.let { error ->
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissAttachmentError() },
+            title = { Text(stringResource(R.string.entry_detail_attachment_error_dialog_title)) },
+            text = { Text(error) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.dismissAttachmentError() }) {
+                    Text(stringResource(R.string.entry_detail_attachment_error_dialog_dismiss))
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun AttachmentRow(
+    attachment: Attachment,
+    isDownloading: Boolean,
+    downloadProgress: Float,
+    onClick: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val context = LocalContext.current
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().clickable(enabled = !isDownloading, onClick = onClick),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(attachmentIcon(attachment.contentType), contentDescription = null)
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(attachment.fileName, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    "${Formatter.formatShortFileSize(context, attachment.fileSize)} · " +
+                        dateFormatter.format(attachment.uploadedAt.toDate()),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (isDownloading) {
+                CircularProgressIndicator(
+                    progress = { downloadProgress },
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp,
+                )
+                Spacer(Modifier.width(8.dp))
+            }
+            IconButton(onClick = onDelete) {
+                Icon(
+                    Icons.Filled.Delete,
+                    contentDescription = stringResource(R.string.entry_detail_attachment_delete_content_description),
+                    tint = MaterialTheme.colorScheme.error,
+                )
+            }
+        }
+    }
+}
+
+private fun attachmentIcon(contentType: String) = when {
+    contentType.startsWith("image/") -> Icons.Filled.Image
+    contentType.startsWith("video/") -> Icons.Filled.Movie
+    contentType == "application/pdf" -> Icons.Filled.PictureAsPdf
+    else -> Icons.AutoMirrored.Filled.Article
+}
+
+/**
+ * Full-screen preview for the three in-app-viewable attachment types
+ * (image/video/PDF) — anything else never reaches this Dialog (see
+ * AttachmentsSection's onClick, which opens externally instead). Shares the
+ * same close+share top bar regardless of content type.
+ */
+@Composable
+private fun AttachmentPreviewDialog(attachment: Attachment, file: File, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = onDismiss) {
+                    Icon(
+                        Icons.Filled.Close,
+                        contentDescription = stringResource(R.string.entry_detail_attachment_preview_close_content_description),
+                    )
+                }
+                Text(
+                    attachment.fileName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+                )
+                IconButton(onClick = { shareFile(context, file, attachment.contentType) }) {
+                    Icon(
+                        Icons.Filled.Share,
+                        contentDescription = stringResource(R.string.entry_detail_attachment_preview_share_content_description),
+                    )
+                }
+            }
+            Box(modifier = Modifier.fillMaxSize()) {
+                when {
+                    attachment.contentType.startsWith("image/") -> AsyncImage(
+                        model = file,
+                        contentDescription = stringResource(R.string.entry_detail_attachment_image_content_description),
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    attachment.contentType.startsWith("video/") -> VideoAttachmentPreview(file)
+                    attachment.contentType == "application/pdf" -> PdfAttachmentPreview(file)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * ExoPlayer + PlayerView for video attachments — mirrors AudioPlayerRow's
+ * lifecycle discipline above (one player instance per composition, released
+ * in onDispose), just for video instead of a remote-URL audio track.
+ */
+@Composable
+private fun VideoAttachmentPreview(file: File) {
+    val context = LocalContext.current
+    val exoPlayer = remember {
+        ExoPlayer.Builder(context).build().apply {
+            setMediaItem(MediaItem.fromUri(Uri.fromFile(file)))
+            prepare()
+            playWhenReady = true
+        }
+    }
+    DisposableEffect(file) {
+        onDispose { exoPlayer.release() }
+    }
+    AndroidView(
+        factory = { PlayerView(it).apply { player = exoPlayer } },
+        modifier = Modifier.fillMaxSize(),
+    )
+}
+
+/**
+ * Renders every page of a PDF attachment to a Bitmap up front via
+ * android.graphics.pdf.PdfRenderer and lays them out in a scrollable column
+ * — these are audit-evidence documents (receipts, invoices), not expected to
+ * be long enough to need page-by-page lazy rendering.
+ */
+@Composable
+private fun PdfAttachmentPreview(file: File) {
+    var pages by remember(file) { mutableStateOf<List<Bitmap>>(emptyList()) }
+
+    LaunchedEffect(file) {
+        val rendered = runCatching {
+            ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { descriptor ->
+                PdfRenderer(descriptor).use { renderer ->
+                    (0 until renderer.pageCount).map { index ->
+                        renderer.openPage(index).use { page ->
+                            Bitmap.createBitmap(page.width, page.height, Bitmap.Config.ARGB_8888).also { bitmap ->
+                                page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                            }
+                        }
+                    }
+                }
+            }
+        }.getOrDefault(emptyList())
+        pages = rendered
+    }
+
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        items(pages) { pageBitmap ->
+            Image(
+                bitmap = pageBitmap.asImageBitmap(),
+                contentDescription = null,
+                modifier = Modifier.fillMaxWidth(),
+                contentScale = ContentScale.FillWidth,
+            )
+        }
     }
 }

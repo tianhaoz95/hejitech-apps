@@ -45,4 +45,19 @@ public protocol EntryRepository: Sendable {
     /// even though nothing consumes it yet (see reports/mvp-scope-v0.html
     /// Section 8).
     func recordCorrection(entryId: String, fieldName: String, aiValue: String, finalValue: String) async throws
+
+    /// One-shot fetch of an entry's attachments, oldest first.
+    func listAttachments(entryId: String) async throws -> [Attachment]
+
+    /// Uploads an arbitrary local file to Storage under this entry's
+    /// attachments/ path and records it in Firestore. `onProgress` reports
+    /// fractional completion (0...1) for a progress UI.
+    func uploadAttachment(entryId: String, fileURL: URL, fileName: String, contentType: String, onProgress: @escaping @Sendable (Double) -> Void) async throws -> Attachment
+
+    /// Deletes both the Storage object and its Firestore doc.
+    func deleteAttachment(entryId: String, attachment: Attachment) async throws
+
+    /// Downloads an attachment to a local file for in-app viewing/sharing,
+    /// skipping the download if already cached locally. Returns the local file URL.
+    func downloadAttachment(entryId: String, attachment: Attachment, onProgress: @escaping @Sendable (Double) -> Void) async throws -> URL
 }

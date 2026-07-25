@@ -162,6 +162,14 @@ dependencies {
     // — see wear/PendingAudioProcessWorker.kt.
     implementation(libs.androidx.work.runtime.ktx)
 
+    // Image loading for entry attachment previews (image/* attachments) —
+    // see EntryDetailScreen.kt.
+    implementation(libs.coil.compose)
+    // Video playback for entry attachment previews (video/* attachments) —
+    // see EntryDetailScreen.kt.
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.ui)
+
     // Instrumented tests — run on-device/emulator against the Firebase
     // emulator suite (see androidTest/.../CoreFlowTest.kt). Firebase/core
     // classes don't need re-declaring here: androidTest links against the

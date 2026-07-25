@@ -1,9 +1,11 @@
 package com.hejitech.core.data
 
 import android.net.Uri
+import com.hejitech.core.model.Attachment
 import com.hejitech.core.model.Entry
 import com.hejitech.core.model.Property
 import kotlinx.coroutines.flow.Flow
+import java.io.File
 
 interface EntryRepository {
     /** Live stream of all entries for the current user, newest activity first. */
@@ -67,4 +69,38 @@ interface EntryRepository {
      * one even though nothing consumes it yet.
      */
     suspend fun recordCorrection(entryId: String, fieldName: String, aiValue: String, finalValue: String)
+
+    /** One-shot fetch of an entry's attachments, oldest first. */
+    suspend fun listAttachments(entryId: String): List<Attachment>
+
+    /**
+     * Uploads an arbitrary local file (from a content:// Uri, e.g. from a
+     * document/photo picker) to Storage under this entry's attachments/ path
+     * and records it in Firestore. `onProgress` reports fractional completion
+     * (0f..1f) for a progress UI. Separate Storage path
+     * (`.../attachments/...`) and separate Firestore subcollection from
+     * [attachPhoto]/[Entry.photoUrls] — this is the generic, any-file-type
+     * counterpart, not a replacement.
+     */
+    suspend fun uploadAttachment(
+        entryId: String,
+        localUri: Uri,
+        fileName: String,
+        contentType: String,
+        onProgress: (Float) -> Unit,
+    ): Attachment
+
+    /** Deletes both the Storage object and its Firestore doc. */
+    suspend fun deleteAttachment(entryId: String, attachment: Attachment)
+
+    /**
+     * Downloads an attachment into [destinationDir] for in-app viewing/sharing
+     * (skipping the download if already cached there). Returns the local file.
+     */
+    suspend fun downloadAttachment(
+        entryId: String,
+        attachment: Attachment,
+        destinationDir: File,
+        onProgress: (Float) -> Unit,
+    ): File
 }

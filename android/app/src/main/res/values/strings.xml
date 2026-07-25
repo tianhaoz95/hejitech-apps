@@ -72,19 +72,17 @@
     <string name="capture_send_button">Send</string>
     <string name="capture_manual_button">Enter manually instead</string>
     <string name="capture_parsing">Parsing…</string>
-    <string name="capture_start_new_work_button">Start new work</string>
+    <string name="capture_quick_action_work">Start Work</string>
     <string name="capture_photo_button">Take a photo</string>
     <string name="capture_drafting_from_photo">Looking at your photo…</string>
     <string name="capture_camera_permission_needed">Camera access is needed for photo capture — tap the camera again to grant it.</string>
     <string name="capture_odometer_start_button">Log odometer photo (start trip)</string>
     <string name="capture_odometer_end_button">Log odometer photo (end trip)</string>
     <string name="capture_reading_odometer">Reading odometer…</string>
-    <string name="capture_start_trip_button">Start trip (GPS)</string>
-    <string name="capture_stop_trip_button">Stop trip (GPS)</string>
+    <string name="capture_quick_action_trip">Start Trip</string>
     <string name="capture_location_permission_needed">Location access is needed to track a trip — tap again to grant it.</string>
-    <string name="capture_other_button">Other (start work, photo, odometer, mileage trip)</string>
+    <string name="capture_other_button">Other (photo, odometer)</string>
     <string name="capture_other_button_label">More ways to capture</string>
-    <string name="capture_other_button_trip_open">Trip in progress — tap for options</string>
     <string name="capture_voice_button_label">Tap to speak</string>
     <string name="capture_type_instead">Type instead</string>
     <string name="capture_finalized_heading">Here\'s what we heard</string>
@@ -176,6 +174,16 @@
     <string name="entry_detail_delete_dialog_confirm">Delete</string>
     <string name="entry_detail_delete_dialog_cancel">Cancel</string>
 
+    <string name="entry_detail_attachments_label">Attachments</string>
+    <string name="entry_detail_attachments_add_content_description">Add attachment</string>
+    <string name="entry_detail_attachment_delete_content_description">Delete attachment</string>
+    <string name="entry_detail_attachment_image_content_description">Attachment image preview</string>
+    <string name="entry_detail_attachment_preview_close_content_description">Close preview</string>
+    <string name="entry_detail_attachment_preview_share_content_description">Share attachment</string>
+    <string name="entry_detail_attachment_error_dialog_title">Something went wrong</string>
+    <string name="entry_detail_attachment_error_dialog_dismiss">OK</string>
+    <string name="entry_detail_attachment_open_chooser_title">Open with</string>
+
     <string name="chat_eyebrow">Ask your logbook</string>
     <string name="chat_empty_hint">Ask anything — "will cleaning the pool count toward my 100 hours?", "how many hours do I still need?"</string>
     <string name="chat_input_hint">Ask a question…</string>
@@ -227,13 +235,22 @@
     <string name="settings_terms_of_service">Terms of Service</string>
 
     <string name="on_device_status_checking">Checking on-device model…</string>
+    <string name="on_device_status_not_downloaded">On-device language model not downloaded.</string>
+    <string name="on_device_status_download">Download</string>
     <string name="on_device_status_unavailable">Not supported on this device — cloud will be used instead.</string>
     <string name="on_device_status_ready">On-device model ready.</string>
     <string name="on_device_status_downloading">Downloading on-device model…</string>
     <string name="on_device_status_downloading_percent">Downloading on-device model… %1$d%%</string>
+    <string name="on_device_status_downloading_with_size">Downloading on-device model… %1$d%% (%2$s of %3$s)</string>
     <string name="on_device_status_downloading_with_eta">Downloading on-device model… %1$d%% · about %2$s left</string>
+    <string name="on_device_status_speed_and_eta">%1$s/s · about %2$s left</string>
+    <string name="on_device_status_speed_only">%1$s/s</string>
+    <string name="on_device_status_estimating_speed">Estimating speed…</string>
     <string name="on_device_status_failed">Couldn\'t prepare the on-device model: %1$s</string>
     <string name="on_device_status_retry">Retry</string>
+    <string name="on_device_status_delete_model">Delete downloaded model</string>
+    <string name="on_device_status_delete_model_confirm_title">Delete the downloaded model?</string>
+    <string name="on_device_status_delete_model_confirm_body">Frees up about 2.6GB of storage. You can re-download it any time from here, or the app will re-download it automatically the next time on-device AI is needed.</string>
 
     <string name="ai_blocked_checking">Checking the on-device model — try again in a moment.</string>
     <string name="ai_blocked_downloading">On-device model is downloading — see Settings for progress.</string>

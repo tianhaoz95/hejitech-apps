@@ -1,6 +1,7 @@
 package com.hejitech.core.data
 
 import android.net.Uri
+import com.hejitech.core.model.Attachment
 import com.hejitech.core.model.Entry
 import com.hejitech.core.model.Property
 import com.google.firebase.auth.FirebaseAuth
@@ -13,6 +14,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import java.io.File
 
 private const val FIRESTORE_BATCH_LIMIT = 500
 
@@ -29,6 +31,13 @@ class FirestoreEntryRepository(
     private fun entriesCollection() = userDoc().collection("entries")
     private fun propertiesCollection() = userDoc().collection("properties")
     private fun correctionsCollection() = userDoc().collection("corrections")
+    private fun attachmentsCollection(entryId: String) = entriesCollection().document(entryId).collection("attachments")
+
+    // Storage path components (and cached local filenames, see
+    // downloadAttachment) can't safely reuse an arbitrary original filename
+    // verbatim — it may contain spaces, slashes, or other characters that
+    // are invalid in a Storage object path or on-disk filename.
+    private fun sanitizeFileNameComponent(fileName: String) = fileName.replace(Regex("[^A-Za-z0-9.\\-_]"), "_")
 
     override fun observeEntries(): Flow<List<Entry>> = callbackFlow {
         val registration = entriesCollection()
@@ -141,5 +150,78 @@ class FirestoreEntryRepository(
             "recordedAt" to com.google.firebase.Timestamp.now(),
         )
         correctionsCollection().add(correction).await()
+    }
+
+    override suspend fun listAttachments(entryId: String): List<Attachment> {
+        val snapshot = attachmentsCollection(entryId)
+            .orderBy("uploadedAt", Query.Direction.ASCENDING)
+            .get()
+            .await()
+        return snapshot.documents.mapNotNull { doc ->
+            doc.toObject(Attachment::class.java)?.copy(id = doc.id)
+        }
+    }
+
+    override suspend fun uploadAttachment(
+        entryId: String,
+        localUri: Uri,
+        fileName: String,
+        contentType: String,
+        onProgress: (Float) -> Unit,
+    ): Attachment {
+        val storagePath = "users/$uid/entries/$entryId/attachments/" +
+            "${System.currentTimeMillis()}_${sanitizeFileNameComponent(fileName)}"
+        val attachmentRef = storage.reference.child(storagePath)
+        val metadata = storageMetadata { this.contentType = contentType }
+        val uploadTask = attachmentRef.putFile(localUri, metadata)
+        uploadTask.addOnProgressListener { snapshot ->
+            onProgress(snapshot.bytesTransferred.toFloat() / snapshot.totalByteCount.toFloat())
+        }
+        // The upload task already knows the real byte count transferred —
+        // trust that rather than separately stat-ing the content:// Uri via
+        // ContentResolver, which isn't guaranteed to expose a size at all.
+        val fileSize = uploadTask.await().totalByteCount
+        val downloadUrl = attachmentRef.downloadUrl.await().toString()
+        val uploadedAt = com.google.firebase.Timestamp.now()
+        val doc = mapOf(
+            "fileName" to fileName,
+            "contentType" to contentType,
+            "fileSize" to fileSize,
+            "storagePath" to storagePath,
+            "downloadURL" to downloadUrl,
+            "uploadedAt" to uploadedAt,
+        )
+        val ref = attachmentsCollection(entryId).add(doc).await()
+        return Attachment(
+            id = ref.id,
+            fileName = fileName,
+            contentType = contentType,
+            fileSize = fileSize,
+            storagePath = storagePath,
+            downloadURL = downloadUrl,
+            uploadedAt = uploadedAt,
+        )
+    }
+
+    override suspend fun deleteAttachment(entryId: String, attachment: Attachment) {
+        storage.reference.child(attachment.storagePath).delete().await()
+        attachmentsCollection(entryId).document(attachment.id).delete().await()
+    }
+
+    override suspend fun downloadAttachment(
+        entryId: String,
+        attachment: Attachment,
+        destinationDir: File,
+        onProgress: (Float) -> Unit,
+    ): File {
+        destinationDir.mkdirs()
+        val destination = File(destinationDir, "${attachment.id}_${sanitizeFileNameComponent(attachment.fileName)}")
+        if (destination.exists()) return destination
+        val downloadTask = storage.reference.child(attachment.storagePath).getFile(destination)
+        downloadTask.addOnProgressListener { snapshot ->
+            onProgress(snapshot.bytesTransferred.toFloat() / snapshot.totalByteCount.toFloat())
+        }
+        downloadTask.await()
+        return destination
     }
 }

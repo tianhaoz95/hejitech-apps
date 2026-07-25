@@ -85,6 +85,25 @@ service cloud.firestore {
         d.recordedAt is timestamp;
     }
 
+    // Generic (arbitrary file type) attachments — distinct from the
+    // image-only `photoUrls` array still on the entry doc itself. One doc
+    // per uploaded file, nested under its entry (unlike corrections, which
+    // are a sibling collection with an entryId back-reference — attachments
+    // are true entry-owned children, and there's no cross-entry query need
+    // that would favor the sibling shape). `storagePath` is stored
+    // explicitly (not derived from downloadURL) so delete/download can
+    // build a StorageReference without parsing a signed URL. Immutable once
+    // written — no update rule — since a changed file should be a new
+    // attachment, not a silent overwrite of the audit trail.
+    function isValidAttachment(d) {
+      return d.fileName is string && d.fileName.size() > 0 && d.fileName.size() <= 300 &&
+        d.contentType is string && d.contentType.size() > 0 && d.contentType.size() <= 150 &&
+        d.fileSize is number && d.fileSize > 0 && d.fileSize <= 104857600 &&
+        d.storagePath is string && d.storagePath.size() > 0 && d.storagePath.size() <= 500 &&
+        d.downloadURL is string && d.downloadURL.size() <= 2000 &&
+        d.uploadedAt is timestamp;
+    }
+
     function isValidAudioCapture(d) {
       return d.storagePath is string && d.storagePath.size() > 0 && d.storagePath.size() <= 500 &&
         d.capturedAt is timestamp &&
@@ -127,6 +146,13 @@ service cloud.firestore {
         allow read: if isOwner(uid);
         allow create, update: if isOwner(uid) && isValidEntry(request.resource.data);
         allow delete: if isOwner(uid);
+
+        match /attachments/{attachmentId} {
+          allow read: if isOwner(uid);
+          allow create: if isOwner(uid) && isValidAttachment(request.resource.data);
+          allow update: if false;
+          allow delete: if isOwner(uid);
+        }
       }
 
       // Append-only: a correction is training signal, not app state, and
