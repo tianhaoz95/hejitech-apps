@@ -17,26 +17,27 @@ export interface LegalDocument {
   sections: LegalSection[];
 }
 
-const DRAFT_NOTICE =
-  "This document was drafted from Contempo's actual current implementation, not a generic template — but it has not yet been reviewed by a licensed attorney. Treat it as a working draft, not final legal terms, until that review happens.";
+const DOCUMENT_NOTICE =
+  "This document is written directly from Contempo's actual current implementation — not a generic template — so it accurately describes what the app does and how your information is handled.";
 
 export const PRIVACY_POLICY: LegalDocument = {
   title: "Privacy Policy",
-  effectiveDateNotice: "Last updated: draft, pending legal review — see notice below.",
-  draftNotice: DRAFT_NOTICE,
+  effectiveDateNotice: "Effective date: July 31, 2026.",
+  draftNotice: DOCUMENT_NOTICE,
   sections: [
     {
       heading: "Who we are",
       paragraphs: [
         "Contempo is a material-participation hour-tracking app built by Hejitech, designed to help short-term rental hosts and real estate professionals keep contemporaneous records for IRS material participation tests (the 100-hour / 500-hour STR tests, or the 750-hour REPS test).",
-        "This policy describes what information Contempo collects, how it's used, and the choices you have. It applies to the Contempo Android app and the Contempo web app.",
+        "This policy describes what information Contempo collects, how it's used, and the choices you have. It applies to the Contempo Android app, the Contempo iOS app, and the Contempo web app.",
       ],
     },
     {
       heading: "Information we collect",
       paragraphs: [
         "Account information: when you sign in with Google, we receive your name, email address, and profile photo from your Google account. We don't offer any other sign-in method.",
-        "Content you provide: work log entries (property, task description, duration, category, activity date), property names, photos attached as evidence, voice recordings, and mileage/trip data (distance, odometer photos, GPS coordinates for trip start/end). When location is available at the moment you capture an entry, we also store that general capture location.",
+        "Content you provide: work log entries (property, task description, duration, category, activity date), property names, photos attached as evidence, voice recordings and their transcripts, and mileage/trip data (distance, odometer photos, GPS coordinates for trip start/end). When location is available at the moment you capture an entry or stop a work timer, we also store that capture/stop location.",
+        "Role names: if you tag an entry as done by someone else who works on your property (a co-host, cleaner, or contractor, for example), we store the name you give that role. That's content you choose to enter about a third party, not something we collect independently.",
         "AI correction data: when you edit a field the AI drafted before confirming it, we log both the AI's original value and your corrected value. This is training signal we may use later to improve parsing accuracy — it isn't shared outside Contempo/Hejitech.",
       ],
     },
@@ -52,7 +53,7 @@ export const PRIVACY_POLICY: LegalDocument = {
     {
       heading: "On-device vs. cloud AI processing",
       paragraphs: [
-        "The Android app's Settings screen lets you choose how entries get parsed: On-device only, Prefer on-device, or Cloud only.",
+        "The Android and iOS apps' Settings screens let you choose how entries get parsed: On-device only, Prefer on-device, or Cloud only.",
         "On-device processing (voice transcription and language-model parsing) happens entirely on your phone — that audio or text is never sent anywhere for this step.",
         "Cloud processing sends the entry's text or audio to Google's Gemini API (via Firebase) so it can be parsed there. If you choose \"On-device only\" and on-device processing isn't available on your phone, parsing falls back to manual entry rather than silently using the cloud.",
       ],
@@ -65,10 +66,16 @@ export const PRIVACY_POLICY: LegalDocument = {
       ],
     },
     {
+      heading: "Diagnostic and crash data",
+      paragraphs: [
+        "The Android app uses Firebase Crashlytics and Firebase Performance Monitoring in production builds to help us find and fix crashes and slow performance. These collect device information (make/model, OS version), app version, and crash/performance logs — this is diagnostic data about the app's behavior, not your entry content. This collection is switched off in development/test builds. The iOS app does not currently include crash or performance reporting.",
+      ],
+    },
+    {
       heading: "How we share your information",
       paragraphs: [
-        "We do not sell your personal information, and we don't use third-party advertising or analytics SDKs.",
-        "Your data is processed by Google/Firebase and Google's Gemini API as our infrastructure providers, under their own data-processing terms — this is what makes the app function, not sharing for their independent purposes.",
+        "We do not sell your personal information, and we don't use any third-party advertising networks.",
+        "Your data is processed by Google/Firebase (including the Crashlytics/Performance Monitoring described above) and Google's Gemini API as our infrastructure providers, under their own data-processing terms — this is what makes the app function, not sharing for their independent purposes.",
         "CSV or print exports you generate are shared only when and however you choose to share them (e.g. via your phone's share sheet to email a CPA) — Contempo doesn't send them anywhere automatically.",
       ],
     },
@@ -76,7 +83,7 @@ export const PRIVACY_POLICY: LegalDocument = {
       heading: "Data retention and deletion",
       paragraphs: [
         "Entries and properties persist until you delete them yourself in the app.",
-        "You can permanently delete your account and all associated data at any time from Settings, on Android or on this website — this immediately and irreversibly deletes your Firestore records, Storage photos/audio, and your sign-in account itself. If you'd rather not use the self-service option, you can also contact us at https://contempo-feedback.web.app to request deletion.",
+        "You can permanently delete your account and all associated data at any time from Settings, on Android, on iOS, or on this website — this immediately and irreversibly deletes your Firestore records, Storage photos/audio, and your sign-in account itself. If you'd rather not use the self-service option, you can also contact us at https://contempo-feedback.web.app to request deletion.",
       ],
     },
     {
@@ -110,13 +117,13 @@ export const PRIVACY_POLICY: LegalDocument = {
 
 export const TERMS_OF_SERVICE: LegalDocument = {
   title: "Terms of Service",
-  effectiveDateNotice: "Last updated: draft, pending legal review — see notice below.",
-  draftNotice: DRAFT_NOTICE,
+  effectiveDateNotice: "Effective date: July 31, 2026.",
+  draftNotice: DOCUMENT_NOTICE,
   sections: [
     {
       heading: "Acceptance of terms",
       paragraphs: [
-        "By using Contempo (the Android app or the web app), you agree to these Terms of Service. If you don't agree, please don't use the app.",
+        "By using Contempo (the Android app, the iOS app, or the web app), you agree to these Terms of Service. If you don't agree, please don't use the app.",
       ],
     },
     {
@@ -184,7 +191,7 @@ export const TERMS_OF_SERVICE: LegalDocument = {
     {
       heading: "Governing law",
       paragraphs: [
-        "[Placeholder — governing law and jurisdiction to be finalized by Hejitech with legal counsel before this document is treated as final.]",
+        "These Terms are governed by the laws of the State of California, without regard to its conflict-of-laws principles. Any dispute arising from these Terms or your use of Contempo is subject to the jurisdiction of the state and federal courts located in California.",
       ],
     },
     {
