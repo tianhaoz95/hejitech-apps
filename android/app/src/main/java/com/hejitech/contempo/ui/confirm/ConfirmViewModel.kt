@@ -10,6 +10,7 @@ import com.hejitech.contempo.data.traced
 import com.hejitech.core.model.CaptureSource
 import com.hejitech.core.model.Entry
 import com.hejitech.core.model.EntryCategory
+import com.hejitech.core.model.EntryFieldValidation
 import com.hejitech.core.model.EntryStatus
 import com.hejitech.core.model.Property
 import com.hejitech.core.model.Role
@@ -64,9 +65,13 @@ data class ConfirmUiState(
     val savedSuccessfully: Boolean = false,
     val errorMessage: String? = null,
 ) {
+    /** Which required fields are still unset — see EntryFieldValidation. */
+    val missingFields: List<String>
+        get() = EntryFieldValidation.missingFields(property, task, durationMinutes.toIntOrNull() ?: 0)
+
     /** Drives the required-field markers and whether "Complete Later" shows. */
     val isIncomplete: Boolean
-        get() = property.isBlank() || task.isBlank() || (durationMinutes.toIntOrNull() ?: 0) <= 0
+        get() = missingFields.isNotEmpty()
 }
 
 class ConfirmViewModel(

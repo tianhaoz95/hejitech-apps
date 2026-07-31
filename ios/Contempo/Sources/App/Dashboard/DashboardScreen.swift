@@ -241,7 +241,11 @@ private struct EntryCard: View {
                 if entry.inProgress {
                     Badge(text: entry.isTrip ? "Trip" : "Timer", color: palette.navy)
                 } else if entry.statusEnum == .pendingReview {
-                    Badge(text: "Pending", color: palette.brass)
+                    if entry.missingFields.isEmpty {
+                        Badge(text: "Pending", color: palette.brass)
+                    } else {
+                        Badge(text: "Draft", color: palette.danger)
+                    }
                 } else {
                     Badge(text: "Confirmed", color: palette.pine)
                 }

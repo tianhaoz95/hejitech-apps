@@ -1,0 +1,14 @@
+Contempo helps short-term rental hosts log the hours they spend managing their properties — in a form that actually holds up if the IRS ever asks for proof.
+
+If you're using the STR "material participation" strategy to reclassify rental losses against your W-2 income, the tax code doesn't just require that you did the work — it requires contemporaneous records, logged as the work happens, not reconstructed at tax time from memory. Most hosts who fail an audit don't fail because they didn't do the hours. They fail because they can't prove it.
+
+How it works:
+• Talk or type what you just did — Contempo turns it into a structured, timestamped entry (property, task, duration, category), asking one quick follow-up only if it can't tell what you meant.
+• Attach a photo as evidence on any entry.
+• Every AI-drafted entry lands as a draft first — nothing is final until you confirm or edit it.
+• Entries logged well after the fact, or described too vaguely, get flagged automatically — visibly, on the entry itself — so you can fix a weak record before it becomes a problem at tax time, not after.
+• A simple dashboard shows hours logged against your threshold, and a CSV export hands your CPA a clean record on request.
+
+Entry parsing can run entirely on-device (nothing leaves your phone) or fall back to the cloud when needed — you choose which, in Settings.
+
+Contempo is built by Hejitech for real hosts, starting with one pilot user — this is an early build, and the feature set will keep growing as real usage informs it.

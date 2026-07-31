@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.google.services)
     alias(libs.plugins.firebase.crashlytics)
     alias(libs.plugins.firebase.perf)
+    alias(libs.plugins.play.publisher)
 }
 
 // Real (non-emulator) Google Sign-In needs the Firebase project's OAuth Web
@@ -23,15 +24,40 @@ val localProperties = Properties().apply {
 }
 val googleWebClientId: String = localProperties.getProperty("GOOGLE_WEB_CLIENT_ID", "")
 
+// Play Store upload-signing key. Checked into the repo (android/upload-keystore.jks
+// + android/keystore.properties) at the user's explicit direction — Play App
+// Signing means this is only the *upload* key (Google re-signs with its own
+// managed key for distribution), and Google can rotate this key on request if
+// it's ever compromised.
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+
+// gradle-play-publisher — automated releases after the required first manual
+// upload (Play App Signing enrollment can't happen via the API). See
+// CLAUDE.md's "Play Store publishing service account" note.
+play {
+    serviceAccountCredentials.set(rootProject.file("../credentials/play-publisher-service-account.json"))
+    defaultToAppBundles.set(true)
+    track.set("internal")
+}
+
 android {
     namespace = "com.hejitech.contempo"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.hejitech.contempo"
+        // Play Console already locked this app's listing to
+        // com.hejitech.contempoapp from an earlier upload — package names are
+        // permanent once set, so this has to match rather than the
+        // com.hejitech.<app> convention elsewhere in the repo (namespace below
+        // is unaffected — it only governs the generated R/BuildConfig
+        // package, not the installed package name).
+        applicationId = "com.hejitech.contempoapp"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
+        versionCode = 5
         versionName = "0.1.0-mvp"
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
         // Default for every build type except debug (which overrides to
@@ -61,17 +87,26 @@ android {
         noCompress += listOf("onnx")
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = rootProject.file(keystoreProperties.getProperty("storeFile", "upload-keystore.jks"))
+            storePassword = keystoreProperties.getProperty("storePassword")
+            keyAlias = keystoreProperties.getProperty("keyAlias")
+            keyPassword = keystoreProperties.getProperty("keyPassword")
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false // flip on once there's an actual release build to tune
-            // Reuses the default debug keystore/signing config rather than a
-            // dedicated release key — that debug keystore's SHA-1/SHA-256 are
-            // what's registered with the real contempo-platform Firebase
-            // project for Google Sign-In (see CLAUDE.md), and there's no Play
-            // Store distribution pipeline yet to need a real release key for.
-            // This build type means "real Firebase backend, installable for
-            // testing" — not "ready to publish."
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
+            // Best-effort: the vendored .so files (sherpa-onnx Whisper model,
+            // jniLibs/arm64-v8a) are prebuilt third-party binaries we don't
+            // control the debug info for — this just has AGP extract whatever
+            // symbol table survived in them, rather than nothing at all.
+            ndk {
+                debugSymbolLevel = "SYMBOL_TABLE"
+            }
         }
         debug {
             // Lets the app use Firebase's debug App Check provider against the

@@ -5,13 +5,18 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import com.hejitech.contempo.BuildConfig
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.Firebase
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.auth
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeout
 import java.util.UUID
+
+/** Confirmed live: an app whose signing certificate isn't registered as an authorized SHA fingerprint in Firebase makes Credential Manager hang indefinitely on some OEMs (Samsung) instead of failing fast — this bounds that failure mode to a normal, actionable error. */
+private const val CREDENTIAL_REQUEST_TIMEOUT_MS = 30_000L
 
 /**
  * Google Sign-In, with two entirely separate code paths selected by
@@ -62,15 +67,28 @@ class AuthManager(private val context: Context) {
             "GOOGLE_WEB_CLIENT_ID is not set in local.properties — see local.properties.example. " +
                 "Needed only for real (non-emulator) Google Sign-In."
         }
-        val googleIdOption = GetGoogleIdOption.Builder()
-            .setFilterByAuthorizedAccounts(false)
-            .setServerClientId(BuildConfig.GOOGLE_WEB_CLIENT_ID)
+        // GetGoogleIdOption(filterByAuthorizedAccounts = false) — confirmed
+        // live — unreliably returns NoCredentialException ("No credentials
+        // available") on some OEM/GMS-core combinations for an account that
+        // has never signed into this app before, since its "show accounts
+        // not yet authorized too" behavior isn't consistently supported.
+        // GetSignInWithGoogleOption is Google's current recommended
+        // replacement specifically for reliably supporting first-time sign-in
+        // across devices — it always shows the full account chooser rather
+        // than depending on a cached "authorized accounts" relationship.
+        val googleIdOption = GetSignInWithGoogleOption.Builder(BuildConfig.GOOGLE_WEB_CLIENT_ID)
             .setNonce(UUID.randomUUID().toString())
             .build()
         val request = GetCredentialRequest.Builder()
             .addCredentialOption(googleIdOption)
             .build()
-        val response = CredentialManager.create(context).getCredential(context, request)
+        val response = try {
+            withTimeout(CREDENTIAL_REQUEST_TIMEOUT_MS) {
+                CredentialManager.create(context).getCredential(context, request)
+            }
+        } catch (e: TimeoutCancellationException) {
+            error("Sign-in timed out — check your connection and try again.")
+        }
         val credential = response.credential
         check(
             credential is CustomCredential &&

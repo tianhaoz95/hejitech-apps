@@ -82,6 +82,7 @@ import com.hejitech.contempo.ui.theme.BulletAwareText
 import com.hejitech.contempo.ui.theme.Eyebrow
 import com.hejitech.core.model.Attachment
 import com.hejitech.core.model.Entry
+import com.hejitech.core.model.EntryFieldValidation
 import com.hejitech.core.model.EntryStatus
 import com.google.firebase.Timestamp
 import java.io.File
@@ -193,17 +194,44 @@ private fun EntryDetailContent(
     // itself stays 0 in Firestore until the timer actually closes (see
     // TimerEntryCoordinator), so this is display/prefill only.
     val elapsedMinutes = ((Timestamp.now().seconds - entry.activityDate.seconds) / 60).toInt().coerceAtLeast(0)
+    // Inline quick-edit (property/task/duration, without leaving this
+    // screen) only makes sense for a not-yet-confirmed, not-currently-timing
+    // entry — a confirmed entry keeps using the full Confirm-screen "Edit"
+    // path below, and an open timer's duration isn't a real field yet.
+    val canEditFieldsInline = isPending && !entry.inProgress
 
-    Text(entry.propertyName.ifBlank { "—" }, style = MaterialTheme.typography.headlineMedium)
-    Spacer(Modifier.height(8.dp))
-    StatusBadge(isPending)
+    if (!uiState.isEditingFields) {
+        Text(entry.propertyName.ifBlank { "—" }, style = MaterialTheme.typography.headlineMedium)
+        Spacer(Modifier.height(8.dp))
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        StatusBadge(isPending)
+        if (canEditFieldsInline && !uiState.isEditingFields) {
+            Spacer(Modifier.width(8.dp))
+            IconButton(onClick = viewModel::startEditingFields, modifier = Modifier.size(28.dp)) {
+                Icon(
+                    Icons.Filled.EditNote,
+                    contentDescription = stringResource(R.string.entry_detail_edit_fields_content_description),
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
+    }
     Spacer(Modifier.height(20.dp))
 
-    DetailRow(stringResource(R.string.confirm_task_label)) { BulletAwareText(entry.task.ifBlank { "—" }) }
-    DetailRow(
-        stringResource(R.string.confirm_duration_label),
-        if (entry.inProgress) "$elapsedMinutes min so far" else "${entry.durationMinutes} min",
-    )
+    if (uiState.isEditingFields) {
+        InlineFieldEditor(uiState = uiState, viewModel = viewModel)
+        Spacer(Modifier.height(20.dp))
+    } else {
+        DetailRow(stringResource(R.string.confirm_task_label)) { BulletAwareText(entry.task.ifBlank { "—" }) }
+        DetailRow(
+            stringResource(R.string.confirm_duration_label),
+            if (entry.inProgress) "$elapsedMinutes min so far" else "${entry.durationMinutes} min",
+        )
+        if (canEditFieldsInline && entry.missingFields.isNotEmpty()) {
+            MissingFieldsText(entry.missingFields)
+        }
+    }
     DetailRow(stringResource(R.string.confirm_role_label), entry.roleName.ifEmpty { stringResource(R.string.confirm_role_me) })
     DetailRow(stringResource(R.string.confirm_category_label), entry.categoryEnum.name.lowercase().replace('_', ' '))
     DetailRow(stringResource(R.string.entry_detail_activity_date_label), dateFormatter.format(entry.activityDate.toDate()))
@@ -267,6 +295,86 @@ private fun EntryDetailContent(
             Text(stringResource(R.string.entry_detail_edit_button))
         }
     }
+}
+
+/**
+ * Quick partial edit of property/task/duration directly on this screen — no
+ * navigation to Confirm, no validation, saved via
+ * [EntryDetailViewModel.saveFields]. A still-blank field just leaves the
+ * entry's (computed) missingFields non-empty; finishing the entry for real
+ * stays a separate, explicit action via the "Complete this entry" button.
+ */
+@Composable
+private fun InlineFieldEditor(uiState: EntryDetailUiState, viewModel: EntryDetailViewModel) {
+    Column {
+        OutlinedTextField(
+            value = uiState.editProperty,
+            onValueChange = viewModel::onEditPropertyChanged,
+            label = { Text(stringResource(R.string.confirm_property_label)) },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+        )
+        Spacer(Modifier.height(12.dp))
+        OutlinedTextField(
+            value = uiState.editTask,
+            onValueChange = viewModel::onEditTaskChanged,
+            label = { Text(stringResource(R.string.confirm_task_label)) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(12.dp))
+        OutlinedTextField(
+            value = uiState.editDurationMinutes,
+            onValueChange = viewModel::onEditDurationChanged,
+            label = { Text(stringResource(R.string.confirm_duration_label)) },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+        )
+        uiState.fieldSaveError?.let {
+            Spacer(Modifier.height(8.dp))
+            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Button(
+                onClick = viewModel::saveFields,
+                enabled = !uiState.isSavingFields,
+                shape = MaterialTheme.shapes.small,
+            ) {
+                if (uiState.isSavingFields) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else {
+                    Text(stringResource(R.string.entry_detail_save_fields_button))
+                }
+            }
+            OutlinedButton(
+                onClick = viewModel::cancelEditingFields,
+                enabled = !uiState.isSavingFields,
+                shape = MaterialTheme.shapes.small,
+            ) {
+                Text(stringResource(R.string.entry_detail_cancel_edit_fields_button))
+            }
+        }
+    }
+}
+
+@Composable
+private fun MissingFieldsText(missingFields: List<String>) {
+    val propertyLabel = stringResource(R.string.entry_detail_missing_field_property)
+    val taskLabel = stringResource(R.string.entry_detail_missing_field_task)
+    val durationLabel = stringResource(R.string.entry_detail_missing_field_duration)
+    val labels = missingFields.joinToString(", ") { field ->
+        when (field) {
+            EntryFieldValidation.FIELD_PROPERTY -> propertyLabel
+            EntryFieldValidation.FIELD_TASK -> taskLabel
+            else -> durationLabel
+        }
+    }
+    Spacer(Modifier.height(8.dp))
+    Text(
+        stringResource(R.string.entry_detail_missing_fields_label, labels),
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.error,
+    )
 }
 
 @Composable

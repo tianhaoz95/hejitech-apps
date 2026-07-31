@@ -34,26 +34,45 @@ struct EntryDetailScreen: View {
                             Text(entry.statusEnum == .confirmed ? "Confirmed" : (entry.inProgress ? "In progress" : "Pending"))
                                 .font(ContempoFont.labelSmall())
                                 .foregroundStyle(entry.statusEnum == .confirmed ? palette.pine : palette.brass)
+                            if canEditFieldsInline(entry) && !viewModel.isEditingFields {
+                                Spacer()
+                                Button {
+                                    viewModel.startEditingFields()
+                                } label: {
+                                    Image(systemName: "pencil")
+                                }
+                                .buttonStyle(.plain)
+                                .tint(palette.pine)
+                            }
                         }
                     }
-                    Section("Task") {
-                        BulletAwareText(entry.task)
-                    }
-                    Section("Details") {
-                        LabeledContent("Property", value: entry.propertyName.isEmpty ? "—" : entry.propertyName)
-                        LabeledContent("Role", value: (entry.roleName?.isEmpty ?? true) ? "Me" : entry.roleName!)
-                        LabeledContent("Category", value: entry.categoryEnum.firestoreValue.replacingOccurrences(of: "_", with: " ").capitalized)
-                        LabeledContent("Duration", value: "\(entry.durationMinutes) min")
-                        LabeledContent("Activity date", value: entry.activityDate.dateValue().formatted())
-                        LabeledContent("Logged", value: entry.loggedAt.dateValue().formatted())
-                        if let confirmedAt = entry.confirmedAt {
-                            LabeledContent("Confirmed", value: confirmedAt.dateValue().formatted())
+                    if viewModel.isEditingFields {
+                        inlineFieldEditorContent
+                    } else {
+                        Section("Task") {
+                            BulletAwareText(entry.task)
+                            if canEditFieldsInline(entry) && !entry.missingFields.isEmpty {
+                                Text("Still missing: \(missingFieldsLabel(entry.missingFields))")
+                                    .font(ContempoFont.labelSmall())
+                                    .foregroundStyle(palette.danger)
+                            }
                         }
-                        if entry.miles > 0 {
-                            LabeledContent("Miles", value: entry.miles.formatted(.number.precision(.fractionLength(1))))
-                        }
-                        if !entry.photoUrls.isEmpty {
-                            LabeledContent("Photos", value: "\(entry.photoUrls.count)")
+                        Section("Details") {
+                            LabeledContent("Property", value: entry.propertyName.isEmpty ? "—" : entry.propertyName)
+                            LabeledContent("Role", value: (entry.roleName?.isEmpty ?? true) ? "Me" : entry.roleName!)
+                            LabeledContent("Category", value: entry.categoryEnum.firestoreValue.replacingOccurrences(of: "_", with: " ").capitalized)
+                            LabeledContent("Duration", value: "\(entry.durationMinutes) min")
+                            LabeledContent("Activity date", value: entry.activityDate.dateValue().formatted())
+                            LabeledContent("Logged", value: entry.loggedAt.dateValue().formatted())
+                            if let confirmedAt = entry.confirmedAt {
+                                LabeledContent("Confirmed", value: confirmedAt.dateValue().formatted())
+                            }
+                            if entry.miles > 0 {
+                                LabeledContent("Miles", value: entry.miles.formatted(.number.precision(.fractionLength(1))))
+                            }
+                            if !entry.photoUrls.isEmpty {
+                                LabeledContent("Photos", value: "\(entry.photoUrls.count)")
+                            }
                         }
                     }
                     Section("Attachments") {
@@ -158,6 +177,60 @@ struct EntryDetailScreen: View {
                 viewModel.updateNote(attachment, note: note)
             }
         }
+    }
+
+    /// Inline quick edit of property/task/duration directly on this screen —
+    /// no navigation to Confirm, no validation, saved via
+    /// `EntryDetailViewModel.saveFields()`. A still-blank field just leaves
+    /// the entry's (computed) `missingFields` non-empty; finishing the entry
+    /// for real stays a separate, explicit action via the bottom "Complete"
+    /// button.
+    @ViewBuilder
+    private var inlineFieldEditorContent: some View {
+        Section("Edit") {
+            TextField("Property", text: $viewModel.editProperty)
+            TextField("Task", text: $viewModel.editTask, axis: .vertical)
+            TextField("Duration (minutes)", text: $viewModel.editDurationMinutes)
+                .keyboardType(.numberPad)
+            if let fieldSaveError = viewModel.fieldSaveError {
+                Text(fieldSaveError)
+                    .font(ContempoFont.labelSmall())
+                    .foregroundStyle(palette.danger)
+            }
+            HStack {
+                Button {
+                    viewModel.saveFields()
+                } label: {
+                    if viewModel.isSavingFields {
+                        ProgressView()
+                    } else {
+                        Text("Save")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(palette.pine)
+                .disabled(viewModel.isSavingFields)
+                Button("Cancel") {
+                    viewModel.cancelEditingFields()
+                }
+                .buttonStyle(.bordered)
+                .disabled(viewModel.isSavingFields)
+            }
+        }
+    }
+
+    private func canEditFieldsInline(_ entry: Entry) -> Bool {
+        entry.statusEnum == .pendingReview && !entry.inProgress
+    }
+
+    private func missingFieldsLabel(_ missingFields: [String]) -> String {
+        missingFields.map { field in
+            switch field {
+            case EntryFieldValidation.fieldProperty: return "Property"
+            case EntryFieldValidation.fieldTask: return "Task"
+            default: return "Duration"
+            }
+        }.joined(separator: ", ")
     }
 
     // Split out of `body` — SwiftUI's ViewBuilder type-checker times out

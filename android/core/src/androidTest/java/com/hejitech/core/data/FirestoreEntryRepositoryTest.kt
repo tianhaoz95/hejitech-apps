@@ -121,6 +121,18 @@ class FirestoreEntryRepositoryTest {
         repository.deleteEntry(id)
     }
 
+    /** Same Kotlin-Boolean-property Firestore bug as isVague/isBackfilled/isTrip above — this was the actual pause bug. */
+    @Test
+    fun roundTrip_isPaused_surviveThroughFirestore() = runBlocking {
+        val entry = Entry(task = "Pause check", inProgress = true, isPaused = true)
+        val id = repository.createEntry(entry)
+
+        val fetched = repository.getEntry(id)
+        assertTrue("isPaused should round-trip as true, not silently deserialize to false", fetched!!.isPaused)
+
+        repository.deleteEntry(id)
+    }
+
     /** findOpenEntry must be scoped by isTrip so a work timer and a mileage trip can be open at the same time without colliding. */
     @Test
     fun findOpenEntry_scopesByIsTrip_independently() = runBlocking {

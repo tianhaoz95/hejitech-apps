@@ -44,11 +44,12 @@ final class ConfirmViewModel {
     var savedSuccessfully = false
     var errorMessage: String?
 
-    var isIncomplete: Bool {
-        property.trimmingCharacters(in: .whitespaces).isEmpty
-            || task.trimmingCharacters(in: .whitespaces).isEmpty
-            || (Int(durationMinutes) ?? 0) <= 0
+    /// Which required fields are still unset — see EntryFieldValidation.
+    var missingFields: [String] {
+        EntryFieldValidation.missingFields(property: property, task: task, durationMinutes: Int(durationMinutes) ?? 0)
     }
+
+    var isIncomplete: Bool { !missingFields.isEmpty }
 
     init(params: ConfirmParams) {
         photoData = params.photoData

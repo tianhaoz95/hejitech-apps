@@ -124,7 +124,16 @@ class ChatViewModel : ViewModel() {
         // A photo with no typed question is a valid send (e.g. "what's this?"
         // implied by the photo itself) — give the model something to answer.
         val effectiveQuestion = question.ifEmpty { "What do you see in this photo?" }
+        sendQuestion(effectiveQuestion, image)
+    }
 
+    /** One-tap send for a starter-prompt card (see ChatScreen's empty-state hero) — same path as typing the question and tapping send. */
+    fun sendPrompt(prompt: String) {
+        if (uiState.value.aiAvailability != AiAvailability.Ready) return
+        sendQuestion(prompt, _uiState.value.pendingImage)
+    }
+
+    private fun sendQuestion(effectiveQuestion: String, image: Bitmap?) {
         val history = _uiState.value.messages
         _uiState.value = _uiState.value.copy(
             messages = history + ChatMessage(ChatRole.USER, effectiveQuestion, image),

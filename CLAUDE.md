@@ -50,14 +50,24 @@ planning/branding artifacts:
 The **real Firebase project is `contempo-platform`** (project number
 `646737053318`), backing `android/`, `backend/`, `web/`, and eventually `ios/` —
 all under the **Hejitech** business entity (`com.hejitech.<app>` package/bundle
-IDs — e.g. `com.hejitech.contempo` for the Android phone app, `com.hejitech.wear`
-for Wear OS — not `com.contempo.*`). It has Firestore (standard edition,
+IDs — e.g. `com.hejitech.wear` for Wear OS — not `com.contempo.*`). **Exception:**
+the Android phone app's `applicationId` is `com.hejitech.contempoapp`, not
+`com.hejitech.contempo` — Play Console locked its listing to that package name
+from an earlier upload (package names are permanent once a Play app has its
+first release), so the Gradle project's `applicationId` was changed to match
+rather than the other way around. The Gradle `namespace` (source/R-class
+package) is still `com.hejitech.contempo`, unaffected by this. It has Firestore (standard edition,
 `us-central1`, chosen over multi-region `nam5` to stay cheap pre-revenue —
 identical free-tier quota either way, but `nam5` costs more once billed and buys
 reliability this single-pilot-user MVP doesn't need yet) and Google Sign-In
-enabled. An Android app (`com.hejitech.contempo`) is registered in it with debug
-keystore SHA-1/SHA-256 fingerprints attached for real (non-emulator) Google
-Sign-In. `reports/` and `branding/landing_v0/` remain zero-dependency static
+enabled. An Android app (`com.hejitech.contempo`) is registered in it with both
+the debug keystore's and the release upload keystore's (`android/upload-keystore.jks`,
+alias `contempo-upload` — checked into the repo along with its passwords in
+`android/keystore.properties`, since the repo is private; this is the Play
+Store *upload* key, not the final app-signing key once Play App Signing takes
+over) SHA-1/SHA-256 fingerprints attached, so Google Sign-In works from both
+debug and release (`./gradlew :app:bundleRelease`) builds. `reports/` and
+`branding/landing_v0/` remain zero-dependency static
 sites — no backend, no build tooling — served locally via plain
 `python3 -m http.server` wrapper scripts; don't introduce a bundler/framework
 there without a reason.
@@ -92,6 +102,11 @@ cd android && ./gradlew :app:assembleDebug   # or :app:installDebug with a devic
 
 # Firebase CLI commands (run from backend/, or pass --project) always prefer
 # `npx -y firebase-tools@latest ...` over a global `firebase` install.
+
+# Ship a new Android build to the Play Console internal testing track
+# (bump versionCode in android/app/build.gradle.kts first — see "Play Store
+# publishing" below for one-time setup and caveats).
+cd android && ./gradlew :app:publishReleaseBundle
 ```
 
 **Task Completion Rule**: Upon completing code changes or any task, always run both production build scripts to verify there are no compilation or build regressions:
@@ -233,6 +248,39 @@ a progress Tile and an hours Complication; see its `capture`/`tile`/
   shape. Never commit the real ones. Regenerate `google-services.json` via
   `npx -y firebase-tools@latest apps:sdkconfig ANDROID <APP_ID> --project
   contempo-platform` rather than hand-editing it.
+- **Play Store publishing is automated via `gradle-play-publisher`**
+  (`com.github.triplet.play`, pinned to `3.13.0` in `gradle/libs.versions.toml`
+  — not the `4.0.0` latest, which requires Gradle 9.1+ and this project is on
+  Gradle 8.11.1/AGP 8.7.2), applied and configured in `android/app/build.gradle.kts`'s
+  `play { }` block (`defaultToAppBundles = true`, `track = "internal"`).
+  To ship a new build: **bump `versionCode`** in that file (Play rejects
+  re-uploading a code that's already been used, including for internal
+  testing), then from `android/`: `./gradlew :app:publishReleaseBundle`. This
+  builds, signs (with `android/upload-keystore.jks`), uploads, and commits the
+  release to the `internal` track in one step — no Play Console UI needed.
+  - Auth: `credentials/play-publisher-service-account.json` (gitignored —
+    `credentials/` is entirely git-ignored, unlike the release signing
+    keystore in `android/`, which is deliberately committed; this key is far
+    higher blast-radius since it can push a release straight to production,
+    not just sign a build) is a GCP service account key,
+    `play-store-deploy@contempo-platform.iam.gserviceaccount.com`, granted
+    Play Console API access (Setup → API access) to the app.
+  - The Google Play Android Developer API
+    (`androidpublisher.googleapis.com`) must be enabled on the
+    `contempo-platform` GCP project for this to work
+    (`gcloud services enable androidpublisher.googleapis.com --project
+    contempo-platform`) — it's not on by default even after granting the
+    service account Play Console permissions, and the first automated publish
+    attempt failed on exactly this until it was enabled.
+  - The Play Console listing's package name is **`com.hejitech.contempoapp`**,
+    not `com.hejitech.contempo` — see the exception noted above under "the
+    real Firebase project is contempo-platform." `applicationId` in
+    `app/build.gradle.kts` is set accordingly; don't "fix" it back to match
+    the `com.hejitech.<app>` convention, that would break publishing.
+  - The very first Play release still had to be a manual upload through the
+    Play Console web UI (Play App Signing enrollment + initial store listing
+    can't be done via the API) — this automation is for every release
+    *after* that first one.
 - **Two parallel code paths, everywhere, selected by
   `BuildConfig.USE_FIREBASE_EMULATOR`** (true in debug builds): an
   emulator-mode path (fake identities/local Firestore, no real project needed)

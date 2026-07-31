@@ -173,4 +173,16 @@ public struct Entry: Codable, Identifiable, Equatable, Sendable {
     public var statusEnum: EntryStatus { EntryStatus(firestoreValue: status) }
     public var sourceEnum: CaptureSource { CaptureSource(firestoreValue: source) }
     public var riskFlags: RiskFlags { RiskFlags(isVague: isVague, isBackfilled: isBackfilled, daysLate: daysLate, reasons: riskReasons) }
+
+    /// Which of property/task/duration are still unset, derived live from
+    /// this entry's own fields — see EntryFieldValidation. Not persisted:
+    /// always accurate (including for entries written before this existed),
+    /// and never needs a Firestore-rules change. Empty means fully filled in
+    /// (whether pending or confirmed); non-empty on a pendingReview entry
+    /// distinguishes an incomplete draft from one just awaiting a final
+    /// confirm tap — drives the Dashboard's Draft badge and Entry Detail's
+    /// missing-field text.
+    public var missingFields: [String] {
+        EntryFieldValidation.missingFields(property: propertyName, task: task, durationMinutes: durationMinutes)
+    }
 }

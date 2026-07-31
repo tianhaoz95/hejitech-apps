@@ -8,10 +8,13 @@ struct CaptureScreen: View {
     @State private var typeExpanded = false
     @State private var showQuickCaptureExplanation = false
     @State private var showHelpWalkthrough = false
+    @State private var photoCamera = CameraCaptureState()
+    @State private var odometerCamera = CameraCaptureState()
     @Environment(\.contempoPalette) private var palette
 
     private var busy: Bool {
-        viewModel.isRecording || viewModel.isTranscribing || viewModel.isParsing || viewModel.finalizedTranscript != nil
+        viewModel.isRecording || viewModel.isTranscribing || viewModel.isParsing || viewModel.finalizedTranscript != nil ||
+            viewModel.isDraftingFromPhoto
     }
 
     var body: some View {
@@ -290,6 +293,66 @@ struct CaptureScreen: View {
                             RoundedRectangle(cornerRadius: ContempoRadius.medium)
                                 .stroke(palette.hairline, lineWidth: 1)
                         )
+
+                        // Remaining photo-based capture paths — Start Work/
+                        // Start Trip/Type instead are promoted to their own
+                        // QuickActionButtons above, so this menu only holds
+                        // the photo-drafted entry and odometer-photo trip
+                        // capture, mirroring Android's "More ways to
+                        // capture" ("Other") menu.
+                        Menu {
+                            Button {
+                                photoCamera.launch()
+                            } label: {
+                                Label("Take a photo", systemImage: "camera.fill")
+                            }
+                            .disabled(busy)
+
+                            Button {
+                                odometerCamera.launch()
+                            } label: {
+                                Label(
+                                    viewModel.openTripEntry != nil ? "Log odometer photo (end trip)" : "Log odometer photo (start trip)",
+                                    systemImage: "camera.fill"
+                                )
+                            }
+                            .disabled(busy || viewModel.isProcessingOdometerPhoto)
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "ellipsis.circle")
+                                    .font(.system(size: 16))
+                                Text("More ways to capture")
+                                    .font(ContempoFont.labelLarge())
+                            }
+                            .foregroundStyle(palette.inkSoft)
+                        }
+                        .disabled(busy)
+
+                        if viewModel.isDraftingFromPhoto {
+                            ThinkingIndicator("Looking at your photo…")
+                        } else if photoCamera.permissionDenied {
+                            Text("Camera access is needed to attach a photo — tap again to grant it.")
+                                .font(ContempoFont.labelSmall())
+                                .foregroundStyle(palette.inkFaint)
+                        }
+
+                        if viewModel.isProcessingOdometerPhoto {
+                            ThinkingIndicator("Reading odometer…")
+                        } else if odometerCamera.permissionDenied {
+                            Text("Camera access is needed to read an odometer photo — tap again to grant it.")
+                                .font(ContempoFont.labelSmall())
+                                .foregroundStyle(palette.inkFaint)
+                        }
+
+                        if let tripMessage = viewModel.tripMessage {
+                            Text(tripMessage)
+                                .font(ContempoFont.bodyMedium())
+                                .foregroundStyle(palette.pine)
+                                .task(id: tripMessage) {
+                                    try? await Task.sleep(for: .seconds(3))
+                                    viewModel.dismissTripMessage()
+                                }
+                        }
                     }
                 }
 
@@ -309,6 +372,18 @@ struct CaptureScreen: View {
         }
         .sheet(isPresented: $showHelpWalkthrough) {
             HelpWalkthroughSheet()
+        }
+        .fullScreenCover(isPresented: $photoCamera.isPresented) {
+            CameraPicker { data in
+                viewModel.processPhoto(imageData: data, onDrafted: onDrafted)
+            }
+            .ignoresSafeArea()
+        }
+        .fullScreenCover(isPresented: $odometerCamera.isPresented) {
+            CameraPicker { data in
+                viewModel.logOdometerPhoto(imageData: data)
+            }
+            .ignoresSafeArea()
         }
     }
 

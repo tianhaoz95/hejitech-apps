@@ -4,6 +4,8 @@ import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,11 +22,14 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PhotoCamera
@@ -32,10 +37,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -52,7 +55,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hejitech.contempo.R
@@ -60,8 +65,9 @@ import com.hejitech.contempo.agent.AiAvailability
 import com.hejitech.contempo.agent.ChatMessage
 import com.hejitech.contempo.agent.ChatRole
 import com.hejitech.contempo.agent.GenerationEvent
-import com.hejitech.contempo.ui.aiAvailabilityMessage
 import com.hejitech.contempo.ui.rememberCameraCapture
+import com.hejitech.contempo.ui.theme.BulletAwareText
+import com.hejitech.contempo.ui.theme.ContempoCard
 import com.hejitech.contempo.ui.theme.Eyebrow
 
 @Composable
@@ -118,31 +124,34 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
     var showClearHistoryDialog by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize().imePadding().padding(16.dp)) {
+        // Mirrors iOS ChatScreen's top status bar: eyebrow + a live "AI
+        // Online"/"Checking AI…" pill, so availability is visible at a
+        // glance instead of only surfacing once a send is blocked.
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Eyebrow(stringResource(R.string.chat_eyebrow), modifier = Modifier.padding(start = 8.dp))
-            if (uiState.messages.isNotEmpty()) {
-                IconButton(onClick = { showClearHistoryDialog = true }) {
-                    Icon(
-                        Icons.Filled.DeleteOutline,
-                        contentDescription = stringResource(R.string.chat_clear_history_button),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AiStatusPill(uiState.aiAvailability)
+                if (uiState.messages.isNotEmpty()) {
+                    IconButton(onClick = { showClearHistoryDialog = true }) {
+                        Icon(
+                            Icons.Filled.DeleteOutline,
+                            contentDescription = stringResource(R.string.chat_clear_history_button),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }
         Spacer(Modifier.height(4.dp))
         if (uiState.messages.isEmpty()) {
-            Box(modifier = Modifier.weight(1f).fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                Text(
-                    stringResource(R.string.chat_empty_hint),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            ChatHeroEmptyState(
+                modifier = Modifier.weight(1f),
+                onSelectPrompt = viewModel::sendPrompt,
+            )
         } else {
             LazyColumn(modifier = Modifier.weight(1f), state = listState, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(uiState.messages) { message -> ChatBubble(message) }
@@ -154,11 +163,6 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
 
         uiState.errorMessage?.let { error ->
             Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
-            Spacer(Modifier.height(4.dp))
-        }
-
-        aiAvailabilityMessage(uiState.aiAvailability)?.let { message ->
-            Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(4.dp))
         }
 
@@ -215,9 +219,8 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
 
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             if (uiState.isRecording) {
-                // Recording is already underway — skip the menu and show the
-                // stop affordance directly, same as before this collapsed
-                // into a "+" (a menu tap-through would just add friction to
+                // Recording is already underway — skip straight to the stop
+                // affordance (a menu tap-through would just add friction to
                 // ending a recording that's already running).
                 IconButton(onClick = ::onMicTap, enabled = !uiState.isTranscribing) {
                     Icon(
@@ -227,27 +230,21 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
                     )
                 }
             } else {
-                var attachMenuExpanded by remember { mutableStateOf(false) }
-                Box {
-                    IconButton(onClick = { attachMenuExpanded = true }, enabled = !uiState.isTranscribing) {
-                        Icon(
-                            Icons.Filled.Add,
-                            contentDescription = stringResource(R.string.chat_attach_button),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    DropdownMenu(expanded = attachMenuExpanded, onDismissRequest = { attachMenuExpanded = false }) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.chat_attach_photo_button)) },
-                            leadingIcon = { Icon(Icons.Filled.PhotoCamera, contentDescription = null) },
-                            onClick = { attachMenuExpanded = false; cameraCapture.launch() },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.capture_voice_start)) },
-                            leadingIcon = { Icon(Icons.Filled.Mic, contentDescription = null) },
-                            onClick = { attachMenuExpanded = false; onMicTap() },
-                        )
-                    }
+                // Two direct buttons (photo, mic) rather than a "+" dropdown —
+                // matches iOS's input bar, where both actions are one tap away.
+                IconButton(onClick = cameraCapture::launch, enabled = !uiState.isTranscribing) {
+                    Icon(
+                        Icons.Filled.PhotoCamera,
+                        contentDescription = stringResource(R.string.chat_attach_photo_button),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                IconButton(onClick = ::onMicTap, enabled = !uiState.isTranscribing) {
+                    Icon(
+                        Icons.Filled.Mic,
+                        contentDescription = stringResource(R.string.capture_voice_start),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                 }
             }
             OutlinedTextField(
@@ -266,6 +263,16 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
                 Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.capture_send_button))
             }
         }
+
+        // Matches iOS's footer disclaimer — this screen answers tax/legal
+        // questions, so the "not a substitute for a CPA" framing needs to
+        // stay visible on both platforms, not just one.
+        Text(
+            stringResource(R.string.chat_disclaimer),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp, start = 4.dp),
+        )
     }
 
     if (showClearHistoryDialog) {
@@ -273,6 +280,108 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
             onDismiss = { showClearHistoryDialog = false },
             onConfirm = { showClearHistoryDialog = false; viewModel.clearHistory() },
         )
+    }
+}
+
+/** Small "AI Online"/"Checking AI…" capsule — mirrors iOS's top-bar status pill so availability is glanceable, not just an error once blocked. */
+@Composable
+private fun AiStatusPill(availability: AiAvailability) {
+    val label = when (availability) {
+        is AiAvailability.Ready -> stringResource(R.string.chat_ai_status_ready)
+        is AiAvailability.Checking -> stringResource(R.string.chat_ai_status_checking)
+        is AiAvailability.Downloading -> stringResource(R.string.chat_ai_status_downloading)
+        is AiAvailability.Unavailable -> stringResource(R.string.chat_ai_status_unavailable)
+        is AiAvailability.Failed -> stringResource(R.string.chat_ai_status_failed)
+    }
+    Text(
+        label,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .padding(end = 4.dp)
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(50))
+            .padding(horizontal = 8.dp, vertical = 3.dp),
+    )
+}
+
+/**
+ * Empty-state hero — mirrors iOS's HeroEmptyStateView: a short pitch card
+ * plus tappable starter-question cards that send immediately, rather than
+ * just a plain line of hint text. Tapping a starter is the one-tap
+ * equivalent of typing the same question and hitting send.
+ */
+@Composable
+private fun ChatHeroEmptyState(modifier: Modifier = Modifier, onSelectPrompt: (String) -> Unit) {
+    val starters = listOf(
+        Triple(
+            R.string.chat_starter_100_hour_title,
+            R.string.chat_starter_100_hour_subtitle,
+            R.string.chat_starter_100_hour_prompt,
+        ),
+        Triple(
+            R.string.chat_starter_mileage_title,
+            R.string.chat_starter_mileage_subtitle,
+            R.string.chat_starter_mileage_prompt,
+        ),
+        Triple(
+            R.string.chat_starter_audit_title,
+            R.string.chat_starter_audit_subtitle,
+            R.string.chat_starter_audit_prompt,
+        ),
+        Triple(
+            R.string.chat_starter_contemporaneous_title,
+            R.string.chat_starter_contemporaneous_subtitle,
+            R.string.chat_starter_contemporaneous_prompt,
+        ),
+    )
+
+    Column(modifier = modifier.fillMaxWidth().padding(vertical = 16.dp)) {
+        ContempoCard(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text(stringResource(R.string.chat_hero_title), style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            stringResource(R.string.chat_hero_subtitle),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Text(stringResource(R.string.chat_hero_description), style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+        Spacer(Modifier.height(16.dp))
+        Eyebrow(stringResource(R.string.chat_starter_section_label))
+        Spacer(Modifier.height(8.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            starters.forEach { (titleRes, subtitleRes, promptRes) ->
+                val prompt = stringResource(promptRes)
+                ContempoCard(modifier = Modifier.fillMaxWidth().clickable { onSelectPrompt(prompt) }) {
+                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(stringResource(titleRes), style = MaterialTheme.typography.labelLarge)
+                            Text(
+                                stringResource(subtitleRes),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -327,10 +436,37 @@ private fun SendingIndicator(status: GenerationEvent?) {
     }
 }
 
+/**
+ * Mirrors iOS's ChatBubbleView: a sparkle avatar marks agent replies (user
+ * bubbles need no avatar, same as iOS), agent text renders through
+ * [BulletAwareText] so a bulleted answer actually shows as a bulleted list
+ * instead of literal "- " lines, and a Copy action sits under agent replies
+ * only — there's nothing worth copying out of your own question.
+ */
 @Composable
 private fun ChatBubble(message: ChatMessage) {
     val isUser = message.role == ChatRole.USER
+    var copied by remember(message) { mutableStateOf(false) }
+    val clipboard = LocalClipboardManager.current
+
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start) {
+        if (!isUser) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Filled.AutoAwesome,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+        }
         Card(
             modifier = Modifier.widthIn(max = 280.dp),
             shape = MaterialTheme.shapes.large,
@@ -352,7 +488,31 @@ private fun ChatBubble(message: ChatMessage) {
                             .padding(bottom = 8.dp),
                     )
                 }
-                Text(message.text, style = MaterialTheme.typography.bodyLarge)
+                BulletAwareText(message.text, style = MaterialTheme.typography.bodyLarge)
+                if (!isUser && message.text.isNotBlank()) {
+                    Row(
+                        modifier = Modifier
+                            .padding(top = 6.dp)
+                            .clickable {
+                                clipboard.setText(AnnotatedString(message.text))
+                                copied = true
+                            },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            if (copied) Icons.Filled.Check else Icons.Filled.ContentCopy,
+                            contentDescription = stringResource(R.string.chat_copy_button),
+                            tint = if (copied) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            stringResource(if (copied) R.string.chat_copied_label else R.string.chat_copy_button),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (copied) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
         }
     }

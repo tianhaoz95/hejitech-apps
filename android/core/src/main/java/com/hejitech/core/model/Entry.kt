@@ -42,8 +42,15 @@ data class Entry(
     val photoUrls: List<String> = emptyList(),
     /** True while this entry is an open start/stop timer with no end yet — see TimerEntryCoordinator. */
     val inProgress: Boolean = false,
+    // Same Kotlin-Boolean-property Firestore bug documented on isTrip above
+    // (getter's "is" prefix stripped on write, not restored on read) —
+    // without these annotations this always silently deserializes to false
+    // regardless of what's actually stored, which is exactly why pause
+    // looked like a no-op: the write succeeds but every subsequent read
+    // reports isPaused == false again.
     /** True while an in-progress entry is paused — see TimerEntryCoordinator.handlePause/handleResume. */
-    val isPaused: Boolean = false,
+    @get:PropertyName("isPaused") @set:PropertyName("isPaused")
+    var isPaused: Boolean = false,
     /** Set when a pause begins, cleared on resume. Null whenever [isPaused] is false. */
     val pausedAt: Timestamp? = null,
     /** Running total of all completed pause spans for this entry, subtracted from elapsed time when computing [durationMinutes]. */
@@ -136,4 +143,17 @@ data class Entry(
     @get:Exclude val statusEnum: EntryStatus get() = EntryStatus.fromFirestoreValue(status)
     @get:Exclude val sourceEnum: CaptureSource get() = CaptureSource.fromFirestoreValue(source)
     @get:Exclude val riskFlags: RiskFlags get() = RiskFlags(isVague, isBackfilled, daysLate, riskReasons)
+
+    /**
+     * Which of property/task/duration are still unset, derived live from
+     * this entry's own fields — see EntryFieldValidation. Not persisted:
+     * always accurate (including for entries written before this existed),
+     * and never needs a Firestore-rules change. Empty means fully filled in
+     * (whether pending or confirmed); non-empty on a pending_review entry
+     * distinguishes an incomplete draft from one just awaiting a final
+     * confirm tap — drives the Dashboard's Draft badge and Entry Detail's
+     * missing-field text.
+     */
+    @get:Exclude val missingFields: List<String>
+        get() = EntryFieldValidation.missingFields(propertyName, task, durationMinutes)
 }

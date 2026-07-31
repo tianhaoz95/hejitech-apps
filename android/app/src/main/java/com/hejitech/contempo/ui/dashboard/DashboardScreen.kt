@@ -398,7 +398,7 @@ private fun EntryRow(
                     if (entry.isTrip) TripBadge() else TimerBadge()
                 } else if (isPending) {
                     Spacer(Modifier.height(4.dp))
-                    PendingBadge()
+                    if (entry.missingFields.isNotEmpty()) DraftBadge() else PendingBadge()
                 }
                 BulletAwareText(entry.task.ifBlank { "—" }, style = MaterialTheme.typography.bodyLarge)
                 Text(
@@ -446,6 +446,19 @@ private fun SwipeDeleteBackground(direction: SwipeToDismissBoxValue) {
             tint = MaterialTheme.colorScheme.onError,
         )
     }
+}
+
+@Composable
+private fun DraftBadge() {
+    Text(
+        stringResource(R.string.dashboard_draft_badge),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onErrorContainer,
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(MaterialTheme.colorScheme.errorContainer)
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+    )
 }
 
 @Composable

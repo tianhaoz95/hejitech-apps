@@ -31,6 +31,13 @@ data class EntryDetailUiState(
     val attachments: List<Attachment> = emptyList(),
     val uploadingItems: List<UploadingAttachment> = emptyList(),
     val attachmentError: String? = null,
+    /** Quick inline edit of property/task/duration, without leaving this screen — see [EntryDetailViewModel.saveFields]. */
+    val isEditingFields: Boolean = false,
+    val editProperty: String = "",
+    val editTask: String = "",
+    val editDurationMinutes: String = "",
+    val isSavingFields: Boolean = false,
+    val fieldSaveError: String? = null,
 )
 
 class EntryDetailViewModel(private val entryId: String) : ViewModel() {
@@ -61,6 +68,60 @@ class EntryDetailViewModel(private val entryId: String) : ViewModel() {
 
     fun dismissDeleteError() {
         _uiState.value = _uiState.value.copy(deleteError = null)
+    }
+
+    /** Seeds the inline edit fields from the currently-loaded entry and switches into edit mode. */
+    fun startEditingFields() {
+        val entry = _uiState.value.entry ?: return
+        _uiState.value = _uiState.value.copy(
+            isEditingFields = true,
+            editProperty = entry.propertyName,
+            editTask = entry.task,
+            editDurationMinutes = if (entry.durationMinutes > 0) entry.durationMinutes.toString() else "",
+            fieldSaveError = null,
+        )
+    }
+
+    fun onEditPropertyChanged(value: String) { _uiState.value = _uiState.value.copy(editProperty = value) }
+    fun onEditTaskChanged(value: String) { _uiState.value = _uiState.value.copy(editTask = value) }
+    fun onEditDurationChanged(value: String) {
+        if (value.all { it.isDigit() }) _uiState.value = _uiState.value.copy(editDurationMinutes = value)
+    }
+
+    fun cancelEditingFields() {
+        _uiState.value = _uiState.value.copy(isEditingFields = false, fieldSaveError = null)
+    }
+
+    /**
+     * No validation — same "save whatever's currently filled" policy as
+     * ConfirmViewModel.saveForLater, just without leaving this screen. Status
+     * is left untouched (confirming an entry stays an explicit action via the
+     * Confirm screen's "Complete" button) — this only updates the three
+     * fields, so a still-blank one keeps the entry's missingFields (computed
+     * from these same fields, see Entry.missingFields) non-empty.
+     */
+    fun saveFields() {
+        val state = _uiState.value
+        val entry = state.entry ?: return
+        val duration = state.editDurationMinutes.toIntOrNull() ?: 0
+        _uiState.value = state.copy(isSavingFields = true, fieldSaveError = null)
+        viewModelScope.launch {
+            try {
+                val updated = entry.copy(
+                    propertyName = state.editProperty,
+                    task = state.editTask,
+                    durationMinutes = duration,
+                )
+                entryRepository.updateEntry(entryId, updated)
+                _uiState.value = _uiState.value.copy(entry = updated, isEditingFields = false, isSavingFields = false)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isSavingFields = false, fieldSaveError = e.message ?: "Couldn't save — try again.")
+            }
+        }
+    }
+
+    fun dismissFieldSaveError() {
+        _uiState.value = _uiState.value.copy(fieldSaveError = null)
     }
 
     /**

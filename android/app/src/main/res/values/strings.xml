@@ -137,6 +137,7 @@
     <string name="dashboard_no_entries">No entries yet. Capture your first one to get started.</string>
     <string name="dashboard_pending_callout">%1$d entries need completing</string>
     <string name="dashboard_pending_badge">Pending</string>
+    <string name="dashboard_draft_badge">Draft</string>
     <string name="dashboard_timer_callout">Currently tracking: %1$s — started %2$s</string>
     <string name="dashboard_timer_badge">In progress</string>
     <string name="dashboard_trip_callout">On a trip: %1$s mi so far</string>
@@ -183,6 +184,13 @@
     <string name="entry_detail_complete_button">Complete this entry</string>
     <string name="entry_detail_stop_timer_button">Stop timer</string>
     <string name="entry_detail_edit_button">Edit entry</string>
+    <string name="entry_detail_edit_fields_content_description">Edit property, task, and duration</string>
+    <string name="entry_detail_save_fields_button">Save</string>
+    <string name="entry_detail_cancel_edit_fields_button">Cancel</string>
+    <string name="entry_detail_missing_fields_label">Still missing: %1$s</string>
+    <string name="entry_detail_missing_field_property">Property</string>
+    <string name="entry_detail_missing_field_task">Task</string>
+    <string name="entry_detail_missing_field_duration">Duration</string>
     <string name="entry_detail_delete_content_description">Delete entry</string>
     <string name="entry_detail_delete_dialog_title">Delete this entry?</string>
     <string name="entry_detail_delete_dialog_text">This can\'t be undone.</string>
@@ -205,9 +213,7 @@
     <string name="entry_detail_attachment_note_cancel">Cancel</string>
 
     <string name="chat_eyebrow">Ask your logbook</string>
-    <string name="chat_empty_hint">Ask anything — "will cleaning the pool count toward my 100 hours?", "how many hours do I still need?"</string>
-    <string name="chat_input_hint">Ask a question…</string>
-    <string name="chat_attach_button">Add photo or voice input</string>
+    <string name="chat_input_hint">Ask about STR tax rules or hours…</string>
     <string name="chat_attach_photo_button">Attach a photo</string>
     <string name="chat_remove_photo_button">Remove photo</string>
     <string name="chat_pending_photo_description">Photo to send with your question</string>
@@ -220,6 +226,30 @@
     <string name="chat_clear_history_dialog_confirm">Clear</string>
     <string name="chat_thinking">Thinking…</string>
     <string name="chat_tokens_generated">%1$d tokens</string>
+    <string name="chat_ai_status_ready">AI Online</string>
+    <string name="chat_ai_status_checking">Checking AI…</string>
+    <string name="chat_ai_status_downloading">Model Downloading</string>
+    <string name="chat_ai_status_unavailable">AI Unavailable</string>
+    <string name="chat_ai_status_failed">AI Error</string>
+    <string name="chat_hero_title">STR Audit Assistant</string>
+    <string name="chat_hero_subtitle">Grounded in IRS Section 469 regulations</string>
+    <string name="chat_hero_description">Ask questions about the 100-hour or 500-hour material participation tests, travel logging rules, contemporaneous record requirements, or how to prepare your CPA export.</string>
+    <string name="chat_starter_section_label">Popular STR tax questions</string>
+    <string name="chat_starter_100_hour_title">100-Hour Material Participation Test</string>
+    <string name="chat_starter_100_hour_subtitle">What direct management tasks count under Treasury Reg § 1.469-5T?</string>
+    <string name="chat_starter_100_hour_prompt">What activities count toward the 100-hour material participation test for my short-term rental?</string>
+    <string name="chat_starter_mileage_title">Travel Time &amp; Mileage Rules</string>
+    <string name="chat_starter_mileage_subtitle">Can I log property visits, guest runs, and supply trips?</string>
+    <string name="chat_starter_mileage_prompt">Can I count travel time and property visits toward my STR material participation hours?</string>
+    <string name="chat_starter_audit_title">IRS Audit Proof &amp; Evidence</string>
+    <string name="chat_starter_audit_subtitle">What documentation does an auditor expect to see?</string>
+    <string name="chat_starter_audit_prompt">What proof does the IRS demand in a short-term rental material participation audit?</string>
+    <string name="chat_starter_contemporaneous_title">Contemporaneous Logging</string>
+    <string name="chat_starter_contemporaneous_subtitle">Why post-hoc reconstructions fail IRS audits.</string>
+    <string name="chat_starter_contemporaneous_prompt">Why do contemporaneous logs matter so much for STR material participation?</string>
+    <string name="chat_copy_button">Copy</string>
+    <string name="chat_copied_label">Copied</string>
+    <string name="chat_disclaimer">Educational logging tool. Consult a CPA for official tax advice.</string>
 
     <string name="export_eyebrow">Ready for your CPA</string>
     <string name="export_title">Export</string>

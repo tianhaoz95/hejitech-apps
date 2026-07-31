@@ -24,6 +24,15 @@ final class EntryDetailViewModel {
     var uploadingItems: [UploadingAttachment] = []
     var attachmentError: String?
 
+    // Quick inline edit of property/task/duration, without leaving this
+    // screen — see saveFields().
+    var isEditingFields = false
+    var editProperty = ""
+    var editTask = ""
+    var editDurationMinutes = ""
+    var isSavingFields = false
+    var fieldSaveError: String?
+
     init(entryId: String) {
         self.entryId = entryId
         Task {
@@ -51,6 +60,53 @@ final class EntryDetailViewModel {
 
     func dismissDeleteError() {
         deleteError = nil
+    }
+
+    /// Seeds the inline edit fields from the currently-loaded entry and switches into edit mode.
+    func startEditingFields() {
+        guard let entry else { return }
+        editProperty = entry.propertyName
+        editTask = entry.task
+        editDurationMinutes = entry.durationMinutes > 0 ? String(entry.durationMinutes) : ""
+        fieldSaveError = nil
+        isEditingFields = true
+    }
+
+    func cancelEditingFields() {
+        isEditingFields = false
+        fieldSaveError = nil
+    }
+
+    /// No validation — same "save whatever's currently filled" policy as
+    /// ConfirmViewModel.saveForLater, just without leaving this screen.
+    /// Status is left untouched (confirming an entry stays an explicit
+    /// action via the Confirm screen's "Complete" button) — this only
+    /// updates the three fields, so a still-blank one keeps the entry's
+    /// missingFields (computed from these same fields, see Entry.missingFields)
+    /// non-empty.
+    func saveFields() {
+        guard var updated = entry else { return }
+        let duration = Int(editDurationMinutes) ?? 0
+        isSavingFields = true
+        fieldSaveError = nil
+        updated.propertyName = editProperty
+        updated.task = editTask
+        updated.durationMinutes = duration
+        Task {
+            do {
+                try await entryRepository.updateEntry(entryId: entryId, entry: updated)
+                entry = updated
+                isEditingFields = false
+                isSavingFields = false
+            } catch {
+                isSavingFields = false
+                fieldSaveError = error.localizedDescription
+            }
+        }
+    }
+
+    func dismissFieldSaveError() {
+        fieldSaveError = nil
     }
 
     func addAttachment(fileURL: URL, fileName: String, contentType: String) {
