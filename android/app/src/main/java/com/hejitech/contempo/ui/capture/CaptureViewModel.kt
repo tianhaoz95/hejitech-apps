@@ -586,6 +586,46 @@ class CaptureViewModel : ViewModel() {
         _uiState.value = _uiState.value.copy(timerMessage = null)
     }
 
+    /** Pause/resume the open work timer — see TimerEntryCoordinator.handlePause/handleResume. */
+    fun pauseWork() {
+        viewModelScope.launch { timerEntryCoordinator.handlePause(Timestamp.now()) }
+    }
+
+    fun resumeWork() {
+        viewModelScope.launch { timerEntryCoordinator.handleResume(Timestamp.now()) }
+    }
+
+    /**
+     * Pause/resume the open trip. A GPS trip's distance is accumulated
+     * locally inside MileageTrackingService (see its locationCallback), so
+     * pausing must go through the service itself rather than the coordinator
+     * directly — otherwise the service keeps summing distance covered while
+     * "paused" and re-writes it on the next fix, silently undoing the pause.
+     * An odometer trip has no running service to relay through, so it's safe
+     * to call the coordinator directly there.
+     */
+    fun pauseTrip() {
+        viewModelScope.launch {
+            val open = entryRepository.findOpenEntry(isTrip = true) ?: return@launch
+            if (open.mileageCaptureMethod == "gps") {
+                MileageTrackingService.pause(ServiceLocator.appContext)
+            } else {
+                mileageTripCoordinator.handlePauseTrip(Timestamp.now())
+            }
+        }
+    }
+
+    fun resumeTrip() {
+        viewModelScope.launch {
+            val open = entryRepository.findOpenEntry(isTrip = true) ?: return@launch
+            if (open.mileageCaptureMethod == "gps") {
+                MileageTrackingService.resume(ServiceLocator.appContext)
+            } else {
+                mileageTripCoordinator.handleResumeTrip(Timestamp.now())
+            }
+        }
+    }
+
     /**
      * A just-taken odometer photo. Start vs. end is auto-detected the same
      * way as the voice timer's start/stop: no open trip -> this reading is

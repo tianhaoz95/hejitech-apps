@@ -20,7 +20,7 @@ settings:
   base:
     SWIFT_VERSION: "5.10"
     MARKETING_VERSION: "2.9"
-    CURRENT_PROJECT_VERSION: "12"
+    CURRENT_PROJECT_VERSION: "13"
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: 68CTFST8W2
   configs:
@@ -154,6 +154,14 @@ targets:
       # comment on why this isn't listed there too (it's already covered by
       # `Contempo/Sources`'s recursive folder reference).
       - path: Contempo/Sources/Shared
+      # Interactive Live Activity buttons (LiveActivityIntent) — kept in a
+      # separate subfolder from Shared/LiveActivity above (rather than
+      # relying on that already-shared path) because these import
+      # Firebase/Firestore, which "Contempo Watch App" (which also pulls in
+      # Shared/LiveActivity, for ContempoActivityAttributes) doesn't link and
+      # doesn't build Firestore for watchOS at all — see its dependencies
+      # comment.
+      - path: Contempo/Sources/Shared/LiveActivityIntents
     info:
       path: ContempoWidgets/Info.plist
       properties:
@@ -180,6 +188,18 @@ targets:
     dependencies:
       - package: ContempoCore
         product: ContempoCore
+      # For PauseResumeIntents.swift (Shared/LiveActivityIntents above) —
+      # LiveActivityIntent perform() runs in-app-process but still needs to
+      # be *compiled* into this extension target for Button(intent:) to
+      # reference the type at all.
+      - package: ContempoCore
+        product: ContempoFirestore
+      - package: firebase-ios-sdk
+        product: FirebaseAuth
+      - package: firebase-ios-sdk
+        product: FirebaseFirestore
+      - package: firebase-ios-sdk
+        product: FirebaseStorage
 
   "Contempo Watch App":
     type: application

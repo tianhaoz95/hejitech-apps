@@ -10,6 +10,8 @@ import kotlin.math.roundToInt
 sealed class TripEventResult {
     data class Started(val entryId: String) : TripEventResult()
     data class Ended(val entryId: String, val miles: Double) : TripEventResult()
+    data class Paused(val entryId: String) : TripEventResult()
+    data class Resumed(val entryId: String) : TripEventResult()
 }
 
 /**
@@ -101,7 +103,42 @@ class MileageTripCoordinator(private val entryRepository: EntryRepository) {
      */
     suspend fun updateTripDistance(miles: Double) {
         val open = entryRepository.findOpenEntry(isTrip = true) ?: return
+        // Frozen while paused — the location callback may keep firing, but a
+        // paused trip shouldn't accumulate distance until resumed.
+        if (open.isPaused) return
         entryRepository.updateEntry(open.id, open.copy(miles = miles))
+    }
+
+    /**
+     * Pauses the open trip, if any. No-op (returns null) if nothing is open
+     * or it's already paused.
+     */
+    suspend fun handlePauseTrip(pausedAt: Timestamp): TripEventResult.Paused? {
+        val open = entryRepository.findOpenEntry(isTrip = true) ?: return null
+        if (open.isPaused) return null
+        entryRepository.updateEntry(open.id, open.copy(isPaused = true, pausedAt = pausedAt))
+        return TripEventResult.Paused(open.id)
+    }
+
+    /**
+     * Resumes a paused trip, folding the just-finished pause span into
+     * [Entry.pausedDurationSeconds] (unused for trip duration today, but kept
+     * for audit-trail consistency with the work timer). Returns null if
+     * nothing is open or it isn't currently paused.
+     */
+    suspend fun handleResumeTrip(resumedAt: Timestamp): TripEventResult.Resumed? {
+        val open = entryRepository.findOpenEntry(isTrip = true) ?: return null
+        val pausedSince = open.pausedAt ?: return null
+        val pauseSpanSeconds = (resumedAt.seconds - pausedSince.seconds).coerceAtLeast(0).toInt()
+        entryRepository.updateEntry(
+            open.id,
+            open.copy(
+                isPaused = false,
+                pausedAt = null,
+                pausedDurationSeconds = open.pausedDurationSeconds + pauseSpanSeconds,
+            ),
+        )
+        return TripEventResult.Resumed(open.id)
     }
 
     private suspend fun closeTrip(
@@ -127,6 +164,10 @@ class MileageTripCoordinator(private val entryRepository: EntryRepository) {
             open.id,
             open.copy(
                 inProgress = false,
+                isPaused = false,
+                pausedAt = null,
+                pausedDurationSeconds = open.pausedDurationSeconds +
+                    (open.pausedAt?.let { (endedAt.seconds - it.seconds).coerceAtLeast(0).toInt() } ?: 0),
                 miles = miles,
                 mileageCaptureMethod = captureMethod,
                 odometerEnd = odometerEnd,

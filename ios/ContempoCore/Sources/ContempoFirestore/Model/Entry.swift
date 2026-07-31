@@ -31,6 +31,16 @@ public struct Entry: Codable, Identifiable, Equatable, Sendable {
     public var photoUrls: [String]
     /// True while this entry is an open start/stop timer with no end yet — see TimerEntryCoordinator.
     public var inProgress: Bool
+    /// True while an in-progress entry is paused — see TimerEntryCoordinator.handlePause/handleResume.
+    /// Optional (not defaulted) for the same reason `roleId`/`roleName` are: Swift's Codable synthesis
+    /// doesn't fall back to a default for a missing key, and this field doesn't exist on entries written
+    /// before pause/resume shipped.
+    public var isPaused: Bool?
+    /// Set when a pause begins, cleared on resume. Nil whenever `isPaused` isn't true.
+    public var pausedAt: Timestamp?
+    /// Running total of all completed pause spans for this entry, subtracted from elapsed time when
+    /// computing `durationMinutes`.
+    public var pausedDurationSeconds: Int?
     /// Marks this entry as (also) a mileage trip — orthogonal to inProgress/hours,
     /// not a replacement: a work timer and a driving trip can be open at the same
     /// time, so `findOpenEntry` is scoped by this flag rather than there being one
@@ -92,6 +102,9 @@ public struct Entry: Codable, Identifiable, Equatable, Sendable {
         riskReasons: [String] = [],
         photoUrls: [String] = [],
         inProgress: Bool = false,
+        isPaused: Bool? = nil,
+        pausedAt: Timestamp? = nil,
+        pausedDurationSeconds: Int? = nil,
         isTrip: Bool = false,
         mileageCaptureMethod: String = "",
         miles: Double = 0.0,
@@ -128,6 +141,9 @@ public struct Entry: Codable, Identifiable, Equatable, Sendable {
         self.riskReasons = riskReasons
         self.photoUrls = photoUrls
         self.inProgress = inProgress
+        self.isPaused = isPaused
+        self.pausedAt = pausedAt
+        self.pausedDurationSeconds = pausedDurationSeconds
         self.isTrip = isTrip
         self.mileageCaptureMethod = mileageCaptureMethod
         self.miles = miles

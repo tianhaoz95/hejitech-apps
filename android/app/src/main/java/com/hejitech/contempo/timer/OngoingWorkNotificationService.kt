@@ -35,6 +35,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 private const val CHANNEL_ID = "ongoing_work"
 private const val NOTIFICATION_ID = 1003
 private const val ACTION_MARK_DONE = "com.hejitech.contempo.timer.ACTION_MARK_DONE"
+private const val ACTION_PAUSE = "com.hejitech.contempo.timer.ACTION_PAUSE"
+private const val ACTION_RESUME = "com.hejitech.contempo.timer.ACTION_RESUME"
 
 /** Same best-effort budget as CaptureViewModel/WearCaptureViewModel's own captureLocation — never worth delaying "done" for. */
 private const val LOCATION_TIMEOUT_MS = 1_500L
@@ -83,8 +85,8 @@ class OngoingWorkNotificationService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_MARK_DONE) {
-            scope.launch {
+        when (intent?.action) {
+            ACTION_MARK_DONE -> scope.launch {
                 val stopLocation = captureLocation()
                 // No property/task to fill in from here (unlike a voice
                 // "stop" utterance) — same as the in-app "Tap to complete"
@@ -95,6 +97,8 @@ class OngoingWorkNotificationService : Service() {
                 // by one code path regardless of what triggered the close.
                 timerEntryCoordinator.handleStop(null, null, Timestamp.now(), stopLocation?.first, stopLocation?.second)
             }
+            ACTION_PAUSE -> scope.launch { timerEntryCoordinator.handlePause(Timestamp.now()) }
+            ACTION_RESUME -> scope.launch { timerEntryCoordinator.handleResume(Timestamp.now()) }
         }
         return START_NOT_STICKY
     }
@@ -153,22 +157,58 @@ class OngoingWorkNotificationService : Service() {
         val markDoneIntent = PendingIntent.getForegroundService(
             this, 0, Intent(this, OngoingWorkNotificationService::class.java).setAction(ACTION_MARK_DONE), PendingIntent.FLAG_IMMUTABLE,
         )
+        val pauseResumeIntent = PendingIntent.getForegroundService(
+            this, 0,
+            Intent(this, OngoingWorkNotificationService::class.java)
+                .setAction(if (entry?.isPaused == true) ACTION_RESUME else ACTION_PAUSE),
+            PendingIntent.FLAG_IMMUTABLE,
+        )
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentTitle(title)
-            .setContentText(getString(R.string.ongoing_work_notification_text))
             .setContentIntent(contentIntent)
             .addAction(0, getString(R.string.ongoing_work_notification_action), markDoneIntent)
         if (entry != null) {
+            builder.addAction(
+                0,
+                getString(
+                    if (entry.isPaused) R.string.ongoing_work_notification_action_resume
+                    else R.string.ongoing_work_notification_action_pause,
+                ),
+                pauseResumeIntent,
+            )
+        }
+        if (entry != null && entry.isPaused) {
+            // Frozen while paused — no chronometer, since a ticking clock
+            // would misleadingly suggest time is still accruing.
+            val activeElapsedSeconds = (
+                (entry.pausedAt?.seconds ?: Timestamp.now().seconds) -
+                    entry.activityDate.seconds - entry.pausedDurationSeconds
+                ).coerceAtLeast(0)
+            builder.setContentText(getString(R.string.ongoing_work_notification_paused_text, formatElapsedSeconds(activeElapsedSeconds)))
+        } else {
+            builder.setContentText(getString(R.string.ongoing_work_notification_text))
+        }
+        if (entry != null && !entry.isPaused) {
             // Renders and ticks the live "MM:SS"/"H:MM:SS" elapsed time
             // itself — no repeated notification posts needed to keep it
             // live, unlike the amount-based mileage notification above,
-            // which only updates on each new location fix.
-            builder.setUsesChronometer(true).setWhen(entry.activityDate.toDate().time)
+            // which only updates on each new location fix. setWhen is offset
+            // back by any already-accumulated paused time so the chronometer
+            // reads correct active elapsed time, not wall-clock-since-start.
+            builder.setUsesChronometer(true)
+                .setWhen(entry.activityDate.toDate().time + entry.pausedDurationSeconds * 1000L)
         }
         return builder.build()
+    }
+
+    private fun formatElapsedSeconds(totalSeconds: Long): String {
+        val hours = totalSeconds / 3600
+        val minutes = (totalSeconds % 3600) / 60
+        val seconds = totalSeconds % 60
+        return if (hours > 0) "%d:%02d:%02d".format(hours, minutes, seconds) else "%d:%02d".format(minutes, seconds)
     }
 
     companion object {

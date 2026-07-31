@@ -36,6 +36,8 @@ import kotlin.math.roundToInt
 private const val CHANNEL_ID = "mileage_trip"
 private const val NOTIFICATION_ID = 1002
 private const val ACTION_STOP_TRIP = "com.hejitech.contempo.mileage.ACTION_STOP_TRIP"
+private const val ACTION_PAUSE_TRIP = "com.hejitech.contempo.mileage.ACTION_PAUSE_TRIP"
+private const val ACTION_RESUME_TRIP = "com.hejitech.contempo.mileage.ACTION_RESUME_TRIP"
 
 /** Roughly every 10s, plus a minimum-displacement filter — cuts GPS jitter noise without needing a dedicated smoothing pass. */
 private const val UPDATE_INTERVAL_MS = 10_000L
@@ -74,10 +76,18 @@ class MileageTrackingService : Service() {
 
     private var lastLocation: Location? = null
     private var accumulatedMeters = 0.0
+    private var isPaused = false
 
     private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
             val location = result.lastLocation ?: return
+            if (isPaused) {
+                // Keep the reference point current so resuming doesn't
+                // retroactively count distance covered while paused as if
+                // it happened right after resume.
+                lastLocation = location
+                return
+            }
             lastLocation?.let { previous -> accumulatedMeters += previous.distanceTo(location) }
             lastLocation = location
             val miles = metersToMiles(accumulatedMeters)
@@ -108,8 +118,18 @@ class MileageTrackingService : Service() {
         // updates, writes the final accumulated distance via
         // mileageTripCoordinator.handleEndTrip), same as a manual
         // MileageTrackingService.stop() call from the Capture screen.
-        if (intent?.action == ACTION_STOP_TRIP) {
-            stopSelf()
+        when (intent?.action) {
+            ACTION_STOP_TRIP -> stopSelf()
+            ACTION_PAUSE_TRIP -> {
+                isPaused = true
+                notificationManager.notify(NOTIFICATION_ID, buildTrackingNotification(metersToMiles(accumulatedMeters)))
+                scope.launch { mileageTripCoordinator.handlePauseTrip(Timestamp.now()) }
+            }
+            ACTION_RESUME_TRIP -> {
+                isPaused = false
+                notificationManager.notify(NOTIFICATION_ID, buildTrackingNotification(metersToMiles(accumulatedMeters)))
+                scope.launch { mileageTripCoordinator.handleResumeTrip(Timestamp.now()) }
+            }
         }
         return START_STICKY
     }
@@ -160,14 +180,31 @@ class MileageTrackingService : Service() {
         val stopIntent = PendingIntent.getForegroundService(
             this, 0, Intent(this, MileageTrackingService::class.java).setAction(ACTION_STOP_TRIP), PendingIntent.FLAG_IMMUTABLE,
         )
+        val pauseResumeIntent = PendingIntent.getForegroundService(
+            this, 0,
+            Intent(this, MileageTrackingService::class.java)
+                .setAction(if (isPaused) ACTION_RESUME_TRIP else ACTION_PAUSE_TRIP),
+            PendingIntent.FLAG_IMMUTABLE,
+        )
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentTitle(getString(R.string.mileage_tracking_notification_title))
-            .setContentText(getString(R.string.mileage_tracking_notification_text, "%.2f".format(miles)))
+            .setContentText(
+                if (isPaused) getString(R.string.mileage_tracking_notification_paused_text)
+                else getString(R.string.mileage_tracking_notification_text, "%.2f".format(miles)),
+            )
             .setContentIntent(contentIntent)
             .addAction(0, getString(R.string.mileage_tracking_notification_action), stopIntent)
+            .addAction(
+                0,
+                getString(
+                    if (isPaused) R.string.mileage_tracking_notification_action_resume
+                    else R.string.mileage_tracking_notification_action_pause,
+                ),
+                pauseResumeIntent,
+            )
             .build()
     }
 
@@ -178,6 +215,15 @@ class MileageTrackingService : Service() {
 
         fun stop(context: Context) {
             context.stopService(Intent(context, MileageTrackingService::class.java))
+        }
+
+        /** Sent to the already-running service — see [ACTION_PAUSE_TRIP]'s onStartCommand handling. */
+        fun pause(context: Context) {
+            context.startService(Intent(context, MileageTrackingService::class.java).setAction(ACTION_PAUSE_TRIP))
+        }
+
+        fun resume(context: Context) {
+            context.startService(Intent(context, MileageTrackingService::class.java).setAction(ACTION_RESUME_TRIP))
         }
     }
 }

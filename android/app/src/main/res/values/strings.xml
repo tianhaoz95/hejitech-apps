@@ -10,10 +10,16 @@
 
     <string name="mileage_tracking_notification_title">Tracking trip</string>
     <string name="mileage_tracking_notification_text">%1$s mi so far — tap to stop when you arrive</string>
+    <string name="mileage_tracking_notification_paused_text">Paused — tap Resume to keep tracking</string>
     <string name="mileage_tracking_notification_action">Stop trip</string>
+    <string name="mileage_tracking_notification_action_pause">Pause</string>
+    <string name="mileage_tracking_notification_action_resume">Resume</string>
 
     <string name="ongoing_work_notification_text">Tap \"Mark done\" when you\'re finished</string>
+    <string name="ongoing_work_notification_paused_text">Paused — %1$s so far</string>
     <string name="ongoing_work_notification_action">Mark done</string>
+    <string name="ongoing_work_notification_action_pause">Pause</string>
+    <string name="ongoing_work_notification_action_resume">Resume</string>
 
     <string name="signin_eyebrow">Material participation, logged as it happens</string>
     <string name="signin_subtitle">Sign in to start logging your hours.</string>
@@ -56,10 +62,14 @@
     <string name="capture_quick_capture_stage_saving">Saving…</string>
     <string name="capture_quick_capture_process_now_content_description">Process quick capture backlog now</string>
     <string name="capture_back_to_voice_content_description">Back to voice capture</string>
+    <string name="capture_type_instead_title">Type what you did</string>
     <string name="capture_hint">Say or type what you did…</string>
     <string name="capture_ongoing_work_title">In progress — %1$s</string>
     <string name="capture_ongoing_work_untitled">work</string>
     <string name="capture_ongoing_work_tap_hint">Tap to complete</string>
+    <string name="capture_ongoing_paused_label">Paused</string>
+    <string name="capture_pause_content_description">Pause</string>
+    <string name="capture_resume_content_description">Resume</string>
     <string name="capture_ongoing_trip_title">Trip in progress</string>
     <string name="capture_ongoing_trip_distance">%1$s mi so far</string>
     <string name="capture_ongoing_trip_tap_hint_gps">Tap to stop</string>

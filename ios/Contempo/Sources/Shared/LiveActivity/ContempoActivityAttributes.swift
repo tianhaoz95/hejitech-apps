@@ -10,6 +10,11 @@ import Foundation
 struct TimerActivityAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {
         var subjectName: String
+        /// Mirrors `Entry.isPaused`/`pausedAt`/`pausedDurationSeconds` — see
+        /// TimerLiveActivity's rendering of the frozen-vs-ticking display.
+        var isPaused: Bool = false
+        var pausedAt: Date? = nil
+        var pausedDurationSeconds: Double = 0
     }
 
     /// The moment the timer started — rendered via `Text(startedAt, style: .timer)`,
@@ -26,6 +31,7 @@ struct TimerActivityAttributes: ActivityAttributes {
 struct TripActivityAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {
         var miles: Double
+        var isPaused: Bool = false
     }
 }
 #endif

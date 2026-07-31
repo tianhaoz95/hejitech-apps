@@ -42,6 +42,12 @@ data class Entry(
     val photoUrls: List<String> = emptyList(),
     /** True while this entry is an open start/stop timer with no end yet — see TimerEntryCoordinator. */
     val inProgress: Boolean = false,
+    /** True while an in-progress entry is paused — see TimerEntryCoordinator.handlePause/handleResume. */
+    val isPaused: Boolean = false,
+    /** Set when a pause begins, cleared on resume. Null whenever [isPaused] is false. */
+    val pausedAt: Timestamp? = null,
+    /** Running total of all completed pause spans for this entry, subtracted from elapsed time when computing [durationMinutes]. */
+    val pausedDurationSeconds: Int = 0,
     /**
      * Marks this entry as (also) a mileage trip — orthogonal to inProgress/
      * hours, not a replacement: a work timer and a driving trip can be open

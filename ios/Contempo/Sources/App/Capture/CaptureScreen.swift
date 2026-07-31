@@ -32,87 +32,112 @@ struct CaptureScreen: View {
                 }
 
                 if let tripEntry = viewModel.openTripEntry {
-                    OngoingTripBanner(entry: tripEntry, isGps: viewModel.gpsTripOpen) {
-                        viewModel.toggleGpsTrip()
-                    }
+                    OngoingTripBanner(
+                        entry: tripEntry,
+                        isGps: viewModel.gpsTripOpen,
+                        onTap: { viewModel.toggleGpsTrip() },
+                        onPauseToggle: {
+                            if tripEntry.isPaused == true { viewModel.resumeTrip() } else { viewModel.pauseTrip() }
+                        }
+                    )
                 }
 
                 if let timerEntry = viewModel.openTimerEntry {
-                    OngoingWorkBanner(entry: timerEntry) {
-                        viewModel.completeOpenTimer()
-                    }
+                    OngoingWorkBanner(
+                        entry: timerEntry,
+                        onTapToComplete: { viewModel.completeOpenTimer() },
+                        onPauseToggle: {
+                            if timerEntry.isPaused == true { viewModel.resumeWork() } else { viewModel.pauseWork() }
+                        }
+                    )
                 }
 
                 if typeExpanded {
-                    // Typed Mode Escape Hatch
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Button {
-                                typeExpanded = false
-                            } label: {
-                                Image(systemName: "arrow.left")
-                                    .font(.title3)
-                                    .foregroundStyle(palette.inkSoft)
+                    // Typed Mode Escape Hatch — ContempoCard rather than
+                    // hand-rolled background/clipShape/overlay, so this stays
+                    // in sync with every other card on the app automatically.
+                    ContempoCard {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Button {
+                                    typeExpanded = false
+                                } label: {
+                                    Image(systemName: "arrow.left")
+                                        .font(.title3)
+                                        .foregroundStyle(palette.inkSoft)
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(busy)
+
+                                Text("Type what you did")
+                                    .font(ContempoFont.titleMedium())
+                                    .foregroundStyle(palette.ink)
+                                Spacer()
                             }
-                            .buttonStyle(.plain)
-                            .disabled(busy)
 
-                            Text("Type what you did")
-                                .font(ContempoFont.titleMedium())
-                                .foregroundStyle(palette.ink)
-                            Spacer()
-                        }
-
-                        TextEditor(text: $viewModel.inputText)
-                            .frame(minHeight: 120)
-                            .padding(8)
-                            .background(palette.paperRaised)
+                            ZStack(alignment: .topLeading) {
+                                // TextEditor has no built-in placeholder —
+                                // overlay one manually, matching Android's
+                                // capture_hint copy/behavior.
+                                if viewModel.inputText.isEmpty {
+                                    Text("Say or type what you did…")
+                                        .font(ContempoFont.bodyLarge())
+                                        .foregroundStyle(palette.inkFaint)
+                                        .padding(.horizontal, 13)
+                                        .padding(.vertical, 16)
+                                        .allowsHitTesting(false)
+                                }
+                                TextEditor(text: $viewModel.inputText)
+                                    .font(ContempoFont.bodyLarge())
+                                    .frame(minHeight: 120)
+                                    .padding(8)
+                                    .scrollContentBackground(.hidden)
+                            }
+                            // A recessed tone (paper, not paperRaised) so the
+                            // field reads as inset within the card rather than
+                            // blending into it.
+                            .background(palette.paper)
                             .clipShape(RoundedRectangle(cornerRadius: ContempoRadius.medium))
                             .overlay(
                                 RoundedRectangle(cornerRadius: ContempoRadius.medium)
                                     .stroke(palette.hairline, lineWidth: 1)
                             )
 
-                        if viewModel.isParsing {
-                            HStack(spacing: 8) {
-                                ProgressView()
-                                Text(stageLabel(viewModel.parsingStage))
-                                    .font(ContempoFont.labelSmall())
-                                    .foregroundStyle(palette.inkFaint)
+                            if viewModel.isParsing {
+                                HStack(spacing: 8) {
+                                    ProgressView()
+                                    Text(stageLabel(viewModel.parsingStage))
+                                        .font(ContempoFont.labelSmall())
+                                        .foregroundStyle(palette.inkFaint)
+                                }
+                            }
+
+                            if let errorMessage = viewModel.errorMessage {
+                                Text(errorMessage).foregroundStyle(palette.danger).font(ContempoFont.labelSmall())
+                            }
+
+                            HStack {
+                                Button("Enter manually") {
+                                    typeExpanded = false
+                                    viewModel.manualEntry(onDrafted: onDrafted)
+                                }
+                                .buttonStyle(.bordered)
+
+                                Spacer()
+
+                                Button {
+                                    typeExpanded = false
+                                    viewModel.submit(onDrafted: onDrafted)
+                                } label: {
+                                    Text("Parse & Continue").bold()
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .tint(palette.pine)
+                                .disabled(viewModel.isParsing || viewModel.inputText.trimmingCharacters(in: .whitespaces).isEmpty)
                             }
                         }
-
-                        if let errorMessage = viewModel.errorMessage {
-                            Text(errorMessage).foregroundStyle(palette.danger).font(ContempoFont.labelSmall())
-                        }
-
-                        HStack {
-                            Button("Enter manually") {
-                                typeExpanded = false
-                                viewModel.manualEntry(onDrafted: onDrafted)
-                            }
-                            .buttonStyle(.bordered)
-
-                            Spacer()
-
-                            Button {
-                                typeExpanded = false
-                                viewModel.submit(onDrafted: onDrafted)
-                            } label: {
-                                Text("Parse & Continue").bold()
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(palette.pine)
-                            .disabled(viewModel.isParsing || viewModel.inputText.trimmingCharacters(in: .whitespaces).isEmpty)
-                        }
+                        .padding(20)
                     }
-                    .padding(20)
-                    .background(palette.paperRaised)
-                    .clipShape(RoundedRectangle(cornerRadius: ContempoRadius.large))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: ContempoRadius.large)
-                            .stroke(palette.hairline, lineWidth: 1)
-                    )
                 } else {
                     // Voice Primary Mode
                     VStack(spacing: 20) {
@@ -456,6 +481,12 @@ private struct QuickActionButton: View {
 
     var body: some View {
         Button(action: action) {
+            // Fixed width (rather than sizing to the label's own text) so all
+            // three buttons in the row line up as a uniform, centered group
+            // regardless of label length — "Type instead" is wider than
+            // "Start Work"/"Start Trip", so without this the icon circles
+            // read as unevenly placed even though the HStack itself is
+            // already centered in its parent.
             VStack(spacing: 6) {
                 ZStack {
                     Circle()
@@ -468,7 +499,10 @@ private struct QuickActionButton: View {
                 Text(label)
                     .font(ContempoFont.labelSmall())
                     .foregroundStyle(palette.inkSoft)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
             }
+            .frame(width: 84)
         }
         .buttonStyle(.plain)
     }
@@ -530,70 +564,125 @@ private struct ThinkingIndicator: View {
 private struct OngoingWorkBanner: View {
     let entry: Entry
     let onTapToComplete: () -> Void
+    let onPauseToggle: () -> Void
     @Environment(\.contempoPalette) private var palette
 
+    private var isPaused: Bool { entry.isPaused == true }
+
     var body: some View {
-        Button(action: onTapToComplete) {
-            HStack(spacing: 12) {
-                Image(systemName: "timer")
-                    .font(.title2)
+        // A plain container with `.onTapGesture` (rather than wrapping the
+        // whole thing in a `Button`, as before) so the trailing pause/resume
+        // `Button` can be a normal sibling control — nesting a real `Button`
+        // inside another `Button`'s label is unsupported/flaky in SwiftUI.
+        HStack(spacing: 12) {
+            Image(systemName: "timer")
+                .font(.title2)
+                .foregroundStyle(palette.pine)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(entry.task.isEmpty ? (entry.propertyName.isEmpty ? "Work in progress" : entry.propertyName) : entry.task)
+                    .font(ContempoFont.labelLarge())
+                    .foregroundStyle(palette.ink)
+                elapsedText
+                    .font(ContempoFont.labelSmall())
+                    .foregroundStyle(palette.inkFaint)
+            }
+            Spacer()
+            if isPaused {
+                Text("Paused")
+                    .font(ContempoFont.labelSmall())
                     .foregroundStyle(palette.pine)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(entry.task.isEmpty ? (entry.propertyName.isEmpty ? "Work in progress" : entry.propertyName) : entry.task)
-                        .font(ContempoFont.labelLarge())
-                        .foregroundStyle(palette.ink)
-                    Text(entry.activityDate.dateValue(), style: .timer)
-                        .font(ContempoFont.labelSmall())
-                        .foregroundStyle(palette.inkFaint)
-                }
-                Spacer()
+            } else {
                 Text("Tap to complete")
                     .font(ContempoFont.labelSmall())
                     .foregroundStyle(palette.pine)
             }
-            .padding()
-            .background(palette.pineTint)
-            .clipShape(RoundedRectangle(cornerRadius: ContempoRadius.medium))
-            .overlay(
-                RoundedRectangle(cornerRadius: ContempoRadius.medium)
-                    .stroke(palette.pine.opacity(0.3), lineWidth: 1)
-            )
+            Button(action: onPauseToggle) {
+                Image(systemName: isPaused ? "play.fill" : "pause.fill")
+                    .foregroundStyle(palette.pine)
+            }
+            .buttonStyle(.plain)
         }
-        .buttonStyle(.plain)
+        .padding()
+        .background(palette.pineTint)
+        .clipShape(RoundedRectangle(cornerRadius: ContempoRadius.medium))
+        .overlay(
+            RoundedRectangle(cornerRadius: ContempoRadius.medium)
+                .stroke(palette.pine.opacity(0.3), lineWidth: 1)
+        )
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onTapToComplete)
     }
+
+    /// Ticks live via `Text(date, style: .timer)` when running (the anchor is
+    /// shifted forward by the accumulated paused duration so it reads correct
+    /// *active* elapsed time). Frozen as static text while paused, mirroring
+    /// TimerLiveActivity's same calculation.
+    @ViewBuilder
+    private var elapsedText: some View {
+        let pausedDurationSeconds = Double(entry.pausedDurationSeconds ?? 0)
+        if isPaused, let pausedAt = entry.pausedAt?.dateValue() {
+            let frozen = max(0, pausedAt.timeIntervalSince(entry.activityDate.dateValue()) - pausedDurationSeconds)
+            Text(formatElapsedDuration(frozen))
+        } else {
+            Text(entry.activityDate.dateValue().addingTimeInterval(pausedDurationSeconds), style: .timer)
+        }
+    }
+}
+
+private func formatElapsedDuration(_ seconds: TimeInterval) -> String {
+    let total = Int(seconds)
+    let hours = total / 3600
+    let minutes = (total % 3600) / 60
+    let secs = total % 60
+    return hours > 0 ? String(format: "%d:%02d:%02d", hours, minutes, secs) : String(format: "%d:%02d", minutes, secs)
 }
 
 private struct OngoingTripBanner: View {
     let entry: Entry
     let isGps: Bool
     let onTap: () -> Void
+    let onPauseToggle: () -> Void
     @Environment(\.contempoPalette) private var palette
 
+    private var isPaused: Bool { entry.isPaused == true }
+
     var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 12) {
-                Image(systemName: "location.fill")
-                    .font(.title2)
+        // Same restructuring as OngoingWorkBanner — a plain container with
+        // `.onTapGesture` plus a sibling pause/resume `Button`, not a Button
+        // wrapping everything.
+        HStack(spacing: 12) {
+            Image(systemName: "location.fill")
+                .font(.title2)
+                .foregroundStyle(palette.pine)
+            Text(String(format: "Trip in progress — %.2f mi", entry.miles))
+                .font(ContempoFont.labelLarge())
+                .foregroundStyle(palette.ink)
+            Spacer()
+            if isPaused {
+                Text("Paused")
+                    .font(ContempoFont.labelSmall())
                     .foregroundStyle(palette.pine)
-                Text(String(format: "Trip in progress — %.2f mi", entry.miles))
-                    .font(ContempoFont.labelLarge())
-                    .foregroundStyle(palette.ink)
-                Spacer()
-                if isGps {
-                    Text("Tap to stop")
-                        .font(ContempoFont.labelSmall())
-                        .foregroundStyle(palette.pine)
-                }
+            } else if isGps {
+                Text("Tap to stop")
+                    .font(ContempoFont.labelSmall())
+                    .foregroundStyle(palette.pine)
             }
-            .padding()
-            .background(palette.pineTint)
-            .clipShape(RoundedRectangle(cornerRadius: ContempoRadius.medium))
-            .overlay(
-                RoundedRectangle(cornerRadius: ContempoRadius.medium)
-                    .stroke(palette.pine.opacity(0.3), lineWidth: 1)
-            )
+            Button(action: onPauseToggle) {
+                Image(systemName: isPaused ? "play.fill" : "pause.fill")
+                    .foregroundStyle(palette.pine)
+            }
+            .buttonStyle(.plain)
         }
-        .buttonStyle(.plain)
-        .disabled(!isGps)
+        .padding()
+        .background(palette.pineTint)
+        .clipShape(RoundedRectangle(cornerRadius: ContempoRadius.medium))
+        .overlay(
+            RoundedRectangle(cornerRadius: ContempoRadius.medium)
+                .stroke(palette.pine.opacity(0.3), lineWidth: 1)
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if isGps { onTap() }
+        }
     }
 }

@@ -70,6 +70,10 @@ service cloud.firestore {
         d.riskReasons is list && d.riskReasons.size() <= 20 &&
         d.photoUrls is list && d.photoUrls.size() <= 30 &&
         d.inProgress is bool &&
+        // Absent on docs written before pause/resume shipped — same policy as rawTranscript below.
+        (!('isPaused' in d) || d.isPaused is bool) &&
+        optionalType(d, 'pausedAt', 'timestamp') &&
+        (!('pausedDurationSeconds' in d) || (d.pausedDurationSeconds is int && d.pausedDurationSeconds >= 0 && d.pausedDurationSeconds <= 86400)) &&
         d.isTrip is bool &&
         d.mileageCaptureMethod is string && d.mileageCaptureMethod.size() <= 20 &&
         d.miles is number && d.miles >= 0 && d.miles <= 100000 &&

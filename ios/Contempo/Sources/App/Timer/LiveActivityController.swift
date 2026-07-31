@@ -24,6 +24,30 @@ enum LiveActivityController {
         Task { await activity.end(nil, dismissalPolicy: .immediate) }
     }
 
+    /// Called from the in-app pause button (the Live Activity's own
+    /// interactive buttons — see `PauseWorkIntent`/`ResumeWorkIntent` — update
+    /// the activity directly via `Activity<TimerActivityAttributes>.activities`
+    /// instead, since a `LiveActivityIntent` runs in-process but doesn't have
+    /// access to this enum's private `timerActivity` reference from the
+    /// widget-extension-compiled copy of this file).
+    static func pauseTimer(pausedAt: Date, pausedDurationSeconds: Double) {
+        guard let activity = timerActivity else { return }
+        var state = activity.content.state
+        state.isPaused = true
+        state.pausedAt = pausedAt
+        state.pausedDurationSeconds = pausedDurationSeconds
+        Task { await activity.update(ActivityContent(state: state, staleDate: nil)) }
+    }
+
+    static func resumeTimer(pausedDurationSeconds: Double) {
+        guard let activity = timerActivity else { return }
+        var state = activity.content.state
+        state.isPaused = false
+        state.pausedAt = nil
+        state.pausedDurationSeconds = pausedDurationSeconds
+        Task { await activity.update(ActivityContent(state: state, staleDate: nil)) }
+    }
+
     static func startTrip(miles: Double) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         let content = ActivityContent(state: TripActivityAttributes.ContentState(miles: miles), staleDate: nil)
@@ -39,5 +63,19 @@ enum LiveActivityController {
         guard let activity = tripActivity else { return }
         tripActivity = nil
         await activity.end(nil, dismissalPolicy: .immediate)
+    }
+
+    static func pauseTrip() {
+        guard let activity = tripActivity else { return }
+        var state = activity.content.state
+        state.isPaused = true
+        Task { await activity.update(ActivityContent(state: state, staleDate: nil)) }
+    }
+
+    static func resumeTrip() {
+        guard let activity = tripActivity else { return }
+        var state = activity.content.state
+        state.isPaused = false
+        Task { await activity.update(ActivityContent(state: state, staleDate: nil)) }
     }
 }

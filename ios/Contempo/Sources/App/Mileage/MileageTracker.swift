@@ -27,9 +27,12 @@ final class MileageTracker: NSObject, CLLocationManagerDelegate {
 
     private(set) var isTracking = false
     private(set) var accumulatedMiles: Double = 0
+    private(set) var isPaused = false
 
     private var lastLocation: CLLocation?
     private var accumulatedMeters = 0.0
+    private var pausedAt: Date?
+    private var pausedDurationSeconds: Double = 0
 
     override init() {
         super.init()
@@ -47,6 +50,9 @@ final class MileageTracker: NSObject, CLLocationManagerDelegate {
         lastLocation = nil
         accumulatedMeters = 0
         accumulatedMiles = 0
+        isPaused = false
+        pausedAt = nil
+        pausedDurationSeconds = 0
         isTracking = true
         manager.delegate = self
         manager.startUpdatingLocation()
@@ -71,10 +77,36 @@ final class MileageTracker: NSObject, CLLocationManagerDelegate {
         await LiveActivityController.endTrip()
     }
 
+    /// Pauses distance accumulation without stopping location updates — the
+    /// reference point (`lastLocation`) is kept current so resuming doesn't
+    /// retroactively count distance covered while paused (mirrors Android's
+    /// `MileageTrackingService.locationCallback`).
+    func pause() async {
+        guard isTracking, !isPaused else { return }
+        let now = Date()
+        isPaused = true
+        pausedAt = now
+        _ = try? await mileageTripCoordinator.handlePauseTrip(pausedAt: Timestamp(date: now))
+        LiveActivityController.pauseTrip()
+    }
+
+    func resume() async {
+        guard isTracking, isPaused, let pausedAt else { return }
+        pausedDurationSeconds += Date().timeIntervalSince(pausedAt)
+        isPaused = false
+        self.pausedAt = nil
+        _ = try? await mileageTripCoordinator.handleResumeTrip(resumedAt: Timestamp(date: Date()))
+        LiveActivityController.resumeTrip()
+    }
+
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
         Task { @MainActor [weak self] in
             guard let self, self.isTracking else { return }
+            if self.isPaused {
+                self.lastLocation = location
+                return
+            }
             if let previous = self.lastLocation {
                 self.accumulatedMeters += previous.distance(from: location)
             }

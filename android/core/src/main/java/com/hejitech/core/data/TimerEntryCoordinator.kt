@@ -9,6 +9,8 @@ import com.hejitech.core.model.EntryStatus
 sealed class TimerEventResult {
     data class Started(val entryId: String) : TimerEventResult()
     data class Stopped(val entryId: String, val durationMinutes: Int) : TimerEventResult()
+    data class Paused(val entryId: String) : TimerEventResult()
+    data class Resumed(val entryId: String) : TimerEventResult()
 }
 
 /**
@@ -80,6 +82,39 @@ class TimerEntryCoordinator(private val entryRepository: EntryRepository) {
         return TimerEventResult.Stopped(open.id, duration)
     }
 
+    /**
+     * Pauses the open timer, if any. No-op (returns null) if nothing is open
+     * or it's already paused — mirrors [handleStop]'s "null means nothing to
+     * do" contract.
+     */
+    suspend fun handlePause(pausedAt: Timestamp): TimerEventResult.Paused? {
+        val open = entryRepository.findOpenEntry(isTrip = false) ?: return null
+        if (open.isPaused) return null
+        entryRepository.updateEntry(open.id, open.copy(isPaused = true, pausedAt = pausedAt))
+        return TimerEventResult.Paused(open.id)
+    }
+
+    /**
+     * Resumes a paused timer, folding the just-finished pause span into
+     * [Entry.pausedDurationSeconds] so [closeEntry]'s elapsed-time math can
+     * subtract it back out later. Returns null if nothing is open or it
+     * isn't currently paused.
+     */
+    suspend fun handleResume(resumedAt: Timestamp): TimerEventResult.Resumed? {
+        val open = entryRepository.findOpenEntry(isTrip = false) ?: return null
+        val pausedSince = open.pausedAt ?: return null
+        val pauseSpanSeconds = (resumedAt.seconds - pausedSince.seconds).coerceAtLeast(0).toInt()
+        entryRepository.updateEntry(
+            open.id,
+            open.copy(
+                isPaused = false,
+                pausedAt = null,
+                pausedDurationSeconds = open.pausedDurationSeconds + pauseSpanSeconds,
+            ),
+        )
+        return TimerEventResult.Resumed(open.id)
+    }
+
     private suspend fun closeEntry(
         open: Entry,
         closedAt: Timestamp,
@@ -88,7 +123,12 @@ class TimerEntryCoordinator(private val entryRepository: EntryRepository) {
         stopLat: Double? = null,
         stopLng: Double? = null,
     ): Int {
-        val elapsedMinutes = ((closedAt.seconds - open.activityDate.seconds) / 60).toInt().coerceAtLeast(0)
+        // Fold in whatever pause span was still active at stop time, so
+        // stopping mid-pause doesn't lose that span from the subtraction below.
+        val finalPausedDurationSeconds = open.pausedDurationSeconds +
+            (open.pausedAt?.let { (closedAt.seconds - it.seconds).coerceAtLeast(0).toInt() } ?: 0)
+        val elapsedMinutes = (((closedAt.seconds - open.activityDate.seconds) - finalPausedDurationSeconds) / 60)
+            .toInt().coerceAtLeast(0)
         val isStale = elapsedMinutes > MAX_OPEN_TIMER_MINUTES
         val duration = if (isStale) MAX_OPEN_TIMER_MINUTES else elapsedMinutes
 
@@ -105,6 +145,9 @@ class TimerEntryCoordinator(private val entryRepository: EntryRepository) {
                 task = resolvedTask,
                 durationMinutes = duration,
                 inProgress = false,
+                isPaused = false,
+                pausedAt = null,
+                pausedDurationSeconds = finalPausedDurationSeconds,
                 status = (if (isComplete) EntryStatus.CONFIRMED else EntryStatus.PENDING_REVIEW).firestoreValue,
                 confirmedAt = if (isComplete) Timestamp.now() else null,
                 isVague = open.isVague || isStale,

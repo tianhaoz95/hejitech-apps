@@ -5,6 +5,8 @@ import Foundation
 public enum TripEventResult: Sendable, Equatable {
     case started(entryId: String)
     case ended(entryId: String, miles: Double)
+    case paused(entryId: String)
+    case resumed(entryId: String)
 }
 
 /// Orchestrates the two mileage-capture methods that have a real start/end
@@ -93,9 +95,40 @@ public final class MileageTripCoordinator: Sendable {
     /// the time a queued update lands.
     public func updateTripDistance(miles: Double) async throws {
         guard let open = try await entryRepository.findOpenEntry(isTrip: true), let entryId = open.id else { return }
+        // Frozen while paused — the location callback may keep firing, but a
+        // paused trip shouldn't accumulate distance until resumed.
+        if open.isPaused == true { return }
         var updated = open
         updated.miles = miles
         try await entryRepository.updateEntry(entryId: entryId, entry: updated)
+    }
+
+    /// Pauses the open trip, if any. Returns nil if nothing is open or it's
+    /// already paused.
+    public func handlePauseTrip(pausedAt: Timestamp) async throws -> TripEventResult? {
+        guard let open = try await entryRepository.findOpenEntry(isTrip: true), let entryId = open.id else { return nil }
+        if open.isPaused == true { return nil }
+        var updated = open
+        updated.isPaused = true
+        updated.pausedAt = pausedAt
+        try await entryRepository.updateEntry(entryId: entryId, entry: updated)
+        return .paused(entryId: entryId)
+    }
+
+    /// Resumes a paused trip, folding the just-finished pause span into
+    /// `Entry.pausedDurationSeconds` (unused for trip duration today, but
+    /// kept for audit-trail consistency with the work timer). Returns nil if
+    /// nothing is open or it isn't currently paused.
+    public func handleResumeTrip(resumedAt: Timestamp) async throws -> TripEventResult? {
+        guard let open = try await entryRepository.findOpenEntry(isTrip: true), let entryId = open.id,
+              let pausedSince = open.pausedAt else { return nil }
+        let pauseSpanSeconds = max(0, resumedAt.seconds - pausedSince.seconds)
+        var updated = open
+        updated.isPaused = false
+        updated.pausedAt = nil
+        updated.pausedDurationSeconds = Int((open.pausedDurationSeconds ?? 0)) + Int(pauseSpanSeconds)
+        try await entryRepository.updateEntry(entryId: entryId, entry: updated)
+        return .resumed(entryId: entryId)
     }
 
     @discardableResult
@@ -123,6 +156,10 @@ public final class MileageTripCoordinator: Sendable {
 
         var updated = open
         updated.inProgress = false
+        updated.isPaused = false
+        updated.pausedAt = nil
+        updated.pausedDurationSeconds = Int((open.pausedDurationSeconds ?? 0)) +
+            Int(open.pausedAt.map { max(0, endedAt.seconds - $0.seconds) } ?? 0)
         updated.miles = miles
         updated.mileageCaptureMethod = captureMethod
         updated.odometerEnd = odometerEnd

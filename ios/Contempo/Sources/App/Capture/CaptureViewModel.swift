@@ -20,6 +20,7 @@ final class CaptureViewModel {
     private let audioRecorder = ServiceLocator.audioRecorder
     private let whisperTranscriber = ServiceLocator.whisperTranscriber
     private let timerEntryCoordinator = ServiceLocator.timerEntryCoordinator
+    private let mileageTripCoordinator = ServiceLocator.mileageTripCoordinator
     private let mileageTracker = ServiceLocator.mileageTracker
     private let captureLanguageStore = ServiceLocator.captureLanguageStore
 
@@ -132,6 +133,52 @@ final class CaptureViewModel {
             let stopped = try? await timerEntryCoordinator.handleStop(property: nil, task: nil, stoppedAt: Timestamp(date: Date()))
             if stopped != nil {
                 LiveActivityController.endTimer()
+            }
+        }
+    }
+
+    /// Pause/resume the open work timer.
+    func pauseWork() {
+        Task {
+            let pausedAt = Date()
+            _ = try? await timerEntryCoordinator.handlePause(pausedAt: Timestamp(date: pausedAt))
+            LiveActivityController.pauseTimer(pausedAt: pausedAt, pausedDurationSeconds: Double(openTimerEntry?.pausedDurationSeconds ?? 0))
+        }
+    }
+
+    func resumeWork() {
+        Task {
+            guard let pausedSince = openTimerEntry?.pausedAt?.dateValue() else { return }
+            let resumedAt = Date()
+            let newPausedDurationSeconds = Double(openTimerEntry?.pausedDurationSeconds ?? 0) + resumedAt.timeIntervalSince(pausedSince)
+            _ = try? await timerEntryCoordinator.handleResume(resumedAt: Timestamp(date: resumedAt))
+            LiveActivityController.resumeTimer(pausedDurationSeconds: newPausedDurationSeconds)
+        }
+    }
+
+    /// Pause/resume the open trip. A GPS trip's distance/pause state is owned
+    /// locally by `MileageTracker` (mirrors Android's
+    /// `MileageTrackingService`), so pausing must go through it rather than
+    /// the coordinator directly — otherwise the tracker keeps summing
+    /// distance covered while "paused" and re-writes it on the next fix,
+    /// silently undoing the pause. An odometer trip has no tracker running,
+    /// so it's safe to call the coordinator directly there.
+    func pauseTrip() {
+        Task {
+            if gpsTripOpen {
+                await mileageTracker.pause()
+            } else {
+                _ = try? await mileageTripCoordinator.handlePauseTrip(pausedAt: Timestamp(date: Date()))
+            }
+        }
+    }
+
+    func resumeTrip() {
+        Task {
+            if gpsTripOpen {
+                await mileageTracker.resume()
+            } else {
+                _ = try? await mileageTripCoordinator.handleResumeTrip(resumedAt: Timestamp(date: Date()))
             }
         }
     }

@@ -37,7 +37,9 @@ import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.AlertDialog
@@ -50,6 +52,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -74,6 +77,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hejitech.contempo.R
@@ -217,63 +221,84 @@ fun CaptureScreen(
         // typing is an escape hatch from voice, not a permanently-visible
         // second option competing with it.
         if (typeExpanded) {
-            IconButton(onClick = { typeExpanded = false }, enabled = !busy) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.capture_back_to_voice_content_description))
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = uiState.inputText,
-                onValueChange = viewModel::onInputChanged,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !busy,
-                placeholder = { Text(stringResource(R.string.capture_hint)) },
-            )
-
-            Spacer(Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TextButton(
-                    onClick = {
-                        typeExpanded = false
-                        viewModel.manualEntry { result -> onDraftReady(result) }
-                    },
-                    enabled = !busy,
+            ContempoCard(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Text(stringResource(R.string.capture_manual_button))
-                }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { typeExpanded = false }, enabled = !busy) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.capture_back_to_voice_content_description))
+                        }
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            stringResource(R.string.capture_type_instead_title),
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                    }
 
-                Button(
-                    onClick = {
-                        typeExpanded = false
-                        viewModel.submit { result -> onDraftReady(result) }
-                    },
-                    enabled = uiState.inputText.isNotBlank() && !uiState.isParsing && !busy &&
-                        uiState.aiAvailability is AiAvailability.Ready,
-                    shape = MaterialTheme.shapes.small,
-                ) {
+                    OutlinedTextField(
+                        value = uiState.inputText,
+                        onValueChange = viewModel::onInputChanged,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !busy,
+                        minLines = 5,
+                        placeholder = { Text(stringResource(R.string.capture_hint)) },
+                        shape = MaterialTheme.shapes.medium,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        ),
+                    )
+
                     if (uiState.isParsing) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp).padding(end = 8.dp), strokeWidth = 2.dp)
-                        Text(stringResource(R.string.capture_parsing))
-                    } else {
-                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                        Text(stringResource(R.string.capture_send_button))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                parsingStageLabel(uiState.parsingStage),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        TextButton(
+                            onClick = {
+                                typeExpanded = false
+                                viewModel.manualEntry { result -> onDraftReady(result) }
+                            },
+                            enabled = !busy,
+                        ) {
+                            Text(stringResource(R.string.capture_manual_button))
+                        }
+
+                        Button(
+                            onClick = {
+                                typeExpanded = false
+                                viewModel.submit { result -> onDraftReady(result) }
+                            },
+                            enabled = uiState.inputText.isNotBlank() && !uiState.isParsing && !busy &&
+                                uiState.aiAvailability is AiAvailability.Ready,
+                            shape = MaterialTheme.shapes.medium,
+                        ) {
+                            if (uiState.isParsing) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp).padding(end = 8.dp), strokeWidth = 2.dp)
+                                Text(stringResource(R.string.capture_parsing))
+                            } else {
+                                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                                Text(stringResource(R.string.capture_send_button))
+                            }
+                        }
                     }
                 }
-            }
-
-            if (uiState.isParsing) {
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    parsingStageLabel(uiState.parsingStage),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
         } else {
             openTripEntry?.let { tripEntry ->
@@ -284,6 +309,9 @@ fun CaptureScreen(
                     onTap = {
                         if (gpsTripOpen) MileageTrackingService.stop(context) else odometerCameraCapture.launch()
                     },
+                    onPauseToggle = {
+                        if (tripEntry.isPaused) viewModel.resumeTrip() else viewModel.pauseTrip()
+                    },
                 )
                 Spacer(Modifier.height(24.dp))
             }
@@ -293,6 +321,9 @@ fun CaptureScreen(
                     entry = timerEntry,
                     enabled = !busy,
                     onTapToComplete = viewModel::completeOpenTimer,
+                    onPauseToggle = {
+                        if (timerEntry.isPaused) viewModel.resumeWork() else viewModel.pauseWork()
+                    },
                 )
                 Spacer(Modifier.height(24.dp))
             }
@@ -701,7 +732,15 @@ private fun QuickActionButton(
     containerColor: Color = MaterialTheme.colorScheme.primaryContainer,
     contentColor: Color = MaterialTheme.colorScheme.primary,
 ) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    // Fixed width (rather than sizing to the label's own text) so all three
+    // buttons in the row line up as a uniform, centered group regardless of
+    // label length — "Type instead" is wider than "Start Work"/"Start Trip",
+    // so without this the icon circles read as unevenly placed even though
+    // the row's own arrangement is already centered.
+    Column(
+        modifier = Modifier.width(84.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         Box(
             modifier = Modifier
                 .size(64.dp)
@@ -719,7 +758,13 @@ private fun QuickActionButton(
             )
         }
         Spacer(Modifier.height(6.dp))
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+        )
     }
 }
 
@@ -928,11 +973,14 @@ private fun OngoingWorkBanner(
     entry: com.hejitech.core.model.Entry,
     enabled: Boolean,
     onTapToComplete: () -> Unit,
+    onPauseToggle: () -> Unit,
 ) {
     // Ticks once a second so the banner itself reads as a live running clock —
     // this is now the only "tracking" feedback in Capture (see
     // CaptureViewModel.handleTimerStart/startNewWork, which no longer set a
-    // separate bottom confirmation message).
+    // separate bottom confirmation message). Frozen (uses pausedAt instead of
+    // the ticking clock) while paused, so it reads as genuinely stopped
+    // rather than still counting.
     var nowSeconds by remember(entry.activityDate) { mutableStateOf(System.currentTimeMillis() / 1000) }
     LaunchedEffect(entry.activityDate) {
         while (true) {
@@ -940,7 +988,10 @@ private fun OngoingWorkBanner(
             delay(1000)
         }
     }
-    val elapsedSeconds = (nowSeconds - entry.activityDate.seconds).coerceAtLeast(0)
+    val elapsedSeconds = (
+        (if (entry.isPaused) entry.pausedAt?.seconds ?: nowSeconds else nowSeconds) -
+            entry.activityDate.seconds - entry.pausedDurationSeconds
+        ).coerceAtLeast(0)
 
     ContempoCard(
         modifier = Modifier
@@ -971,9 +1022,22 @@ private fun OngoingWorkBanner(
                     color = MaterialTheme.colorScheme.primary,
                 )
                 Text(
-                    stringResource(R.string.capture_ongoing_work_tap_hint),
+                    stringResource(
+                        if (entry.isPaused) R.string.capture_ongoing_paused_label
+                        else R.string.capture_ongoing_work_tap_hint,
+                    ),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            IconButton(onClick = onPauseToggle, enabled = enabled) {
+                Icon(
+                    if (entry.isPaused) Icons.Filled.PlayArrow else Icons.Filled.Pause,
+                    contentDescription = stringResource(
+                        if (entry.isPaused) R.string.capture_resume_content_description
+                        else R.string.capture_pause_content_description,
+                    ),
+                    tint = MaterialTheme.colorScheme.primary,
                 )
             }
         }
@@ -995,6 +1059,7 @@ private fun OngoingTripBanner(
     isGps: Boolean,
     enabled: Boolean,
     onTap: () -> Unit,
+    onPauseToggle: () -> Unit,
 ) {
     var nowSeconds by remember(entry.activityDate) { mutableStateOf(System.currentTimeMillis() / 1000) }
     LaunchedEffect(entry.activityDate) {
@@ -1003,7 +1068,10 @@ private fun OngoingTripBanner(
             delay(1000)
         }
     }
-    val elapsedSeconds = (nowSeconds - entry.activityDate.seconds).coerceAtLeast(0)
+    val elapsedSeconds = (
+        (if (entry.isPaused) entry.pausedAt?.seconds ?: nowSeconds else nowSeconds) -
+            entry.activityDate.seconds - entry.pausedDurationSeconds
+        ).coerceAtLeast(0)
 
     ContempoCard(
         modifier = Modifier
@@ -1042,11 +1110,24 @@ private fun OngoingTripBanner(
                 }
                 Text(
                     stringResource(
-                        if (isGps) R.string.capture_ongoing_trip_tap_hint_gps
-                        else R.string.capture_ongoing_trip_tap_hint_odometer
+                        when {
+                            entry.isPaused -> R.string.capture_ongoing_paused_label
+                            isGps -> R.string.capture_ongoing_trip_tap_hint_gps
+                            else -> R.string.capture_ongoing_trip_tap_hint_odometer
+                        },
                     ),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            IconButton(onClick = onPauseToggle, enabled = enabled) {
+                Icon(
+                    if (entry.isPaused) Icons.Filled.PlayArrow else Icons.Filled.Pause,
+                    contentDescription = stringResource(
+                        if (entry.isPaused) R.string.capture_resume_content_description
+                        else R.string.capture_pause_content_description,
+                    ),
+                    tint = MaterialTheme.colorScheme.primary,
                 )
             }
         }

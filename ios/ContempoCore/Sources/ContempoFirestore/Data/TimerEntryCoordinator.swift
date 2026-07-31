@@ -5,6 +5,8 @@ import Foundation
 public enum TimerEventResult: Sendable, Equatable {
     case started(entryId: String)
     case stopped(entryId: String, durationMinutes: Int)
+    case paused(entryId: String)
+    case resumed(entryId: String)
 }
 
 /// Orchestrates the "start work" / "finished work" voice-timer feature: at
@@ -76,6 +78,35 @@ public final class TimerEntryCoordinator: Sendable {
         return .stopped(entryId: open.id ?? "", durationMinutes: duration)
     }
 
+    /// Pauses the open timer, if any. Returns nil if nothing is open or it's
+    /// already paused — mirrors `handleStop`'s "nil means nothing to do"
+    /// contract.
+    public func handlePause(pausedAt: Timestamp) async throws -> TimerEventResult? {
+        guard let open = try await entryRepository.findOpenEntry(isTrip: false), let entryId = open.id else { return nil }
+        if open.isPaused == true { return nil }
+        var updated = open
+        updated.isPaused = true
+        updated.pausedAt = pausedAt
+        try await entryRepository.updateEntry(entryId: entryId, entry: updated)
+        return .paused(entryId: entryId)
+    }
+
+    /// Resumes a paused timer, folding the just-finished pause span into
+    /// `Entry.pausedDurationSeconds` so `closeEntry`'s elapsed-time math can
+    /// subtract it back out later. Returns nil if nothing is open or it isn't
+    /// currently paused.
+    public func handleResume(resumedAt: Timestamp) async throws -> TimerEventResult? {
+        guard let open = try await entryRepository.findOpenEntry(isTrip: false), let entryId = open.id,
+              let pausedSince = open.pausedAt else { return nil }
+        let pauseSpanSeconds = max(0, resumedAt.seconds - pausedSince.seconds)
+        var updated = open
+        updated.isPaused = false
+        updated.pausedAt = nil
+        updated.pausedDurationSeconds = Int((open.pausedDurationSeconds ?? 0)) + Int(pauseSpanSeconds)
+        try await entryRepository.updateEntry(entryId: entryId, entry: updated)
+        return .resumed(entryId: entryId)
+    }
+
     @discardableResult
     private func closeEntry(
         _ open: Entry,
@@ -85,7 +116,11 @@ public final class TimerEntryCoordinator: Sendable {
         stopLat: Double? = nil,
         stopLng: Double? = nil
     ) async throws -> Int {
-        let elapsedMinutes = max(0, Int((closedAt.seconds - open.activityDate.seconds) / 60))
+        // Fold in whatever pause span was still active at stop time, so
+        // stopping mid-pause doesn't lose that span from the subtraction below.
+        let finalPausedDurationSeconds = Int64(open.pausedDurationSeconds ?? 0) +
+            (open.pausedAt.map { max(0, closedAt.seconds - $0.seconds) } ?? 0)
+        let elapsedMinutes = max(0, Int((closedAt.seconds - open.activityDate.seconds - finalPausedDurationSeconds) / 60))
         let isStale = elapsedMinutes > Self.maxOpenTimerMinutes
         let duration = isStale ? Self.maxOpenTimerMinutes : elapsedMinutes
 
@@ -100,6 +135,9 @@ public final class TimerEntryCoordinator: Sendable {
         updated.task = resolvedTask
         updated.durationMinutes = duration
         updated.inProgress = false
+        updated.isPaused = false
+        updated.pausedAt = nil
+        updated.pausedDurationSeconds = Int(finalPausedDurationSeconds)
         updated.status = (isComplete ? EntryStatus.confirmed : EntryStatus.pendingReview).firestoreValue
         updated.confirmedAt = isComplete ? Timestamp(date: Date()) : nil
         updated.isVague = open.isVague || isStale
