@@ -48,7 +48,11 @@ struct SettingsScreen: View {
                     .disabled(isDisabled(option))
                 }
 
-                if !viewModel.cloudAiEnabled {
+                if !viewModel.hasProEntitlement {
+                    Text("Free accounts always process on-device. This is a Contempo Pro feature — your plan is managed from your Contempo account on the web.")
+                        .font(ContempoFont.labelSmall())
+                        .foregroundStyle(palette.brass)
+                } else if !viewModel.cloudAiEnabled {
                     Text("Cloud AI is temporarily unavailable — only on-device processing works right now.")
                         .font(ContempoFont.labelSmall())
                         .foregroundStyle(palette.brass)
@@ -210,13 +214,17 @@ struct SettingsScreen: View {
     private func label(for option: InferencePreference) -> String {
         switch option {
         case .onDeviceOnly: return "On-device only"
-        case .preferOnDevice: return "Prefer on-device (recommended)"
-        case .cloudOnly: return "Cloud only"
+        case .preferOnDevice: return "Prefer on-device (Contempo Pro)"
+        case .cloudOnly: return "Cloud only (Contempo Pro)"
         }
     }
 
     private func isDisabled(_ option: InferencePreference) -> Bool {
-        option == .cloudOnly && !viewModel.cloudAiEnabled
+        switch option {
+        case .onDeviceOnly: return false
+        case .preferOnDevice: return !viewModel.hasProEntitlement
+        case .cloudOnly: return !viewModel.hasProEntitlement || !viewModel.cloudAiEnabled
+        }
     }
 
     @ViewBuilder

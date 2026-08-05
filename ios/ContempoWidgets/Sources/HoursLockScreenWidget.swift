@@ -8,7 +8,12 @@ struct HoursLockScreenEntry: TimelineEntry {
 }
 
 struct HoursLockScreenProvider: TimelineProvider {
-    private let store = HoursProgressStore(appGroupId: "group.com.hejitech.contempoapp")
+    // Computed, not stored-and-eagerly-initialized — see the identical
+    // comment on HoursComplicationProvider in
+    // "Contempo Watch Widgets/Sources/HoursComplication.swift" for why:
+    // this provider is constructed inline inside HoursLockScreenWidget.body,
+    // which WidgetKit evaluates synchronously to discover widget metadata.
+    private var store: HoursProgressStore { HoursProgressStore(appGroupId: "group.com.hejitech.contempoapp") }
 
     func placeholder(in context: Context) -> HoursLockScreenEntry {
         HoursLockScreenEntry(date: Date(), confirmedHours: 35.0)

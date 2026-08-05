@@ -44,6 +44,16 @@ class SettingsViewModel : ViewModel() {
     /** See RemoteConfigStore's kdoc — "Cloud only" shouldn't be selectable (or read as available) while this is false. */
     val cloudAiEnabled: StateFlow<Boolean> = remoteConfigStore.cloudAiEnabled
 
+    /**
+     * Backed by users/{uid}/billing/subscription via ServiceLocator's
+     * SubscriptionRepository (synced by the stripeWebhook Cloud Function).
+     * Per reports/pricing-proposal-v0.html §3.2, Free accounts are
+     * hard-locked to ON_DEVICE_ONLY — "Prefer on-device" and "Cloud only"
+     * both have real recurring cloud-LLM cost and must require Pro before
+     * they're selectable.
+     */
+    val hasProEntitlement: StateFlow<Boolean> = ServiceLocator.hasProEntitlement
+
     val roles: StateFlow<List<Role>> = entryRepository.observeRoles()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 

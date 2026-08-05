@@ -169,8 +169,23 @@ service cloud.firestore {
       allow read, update, delete: if false;
     }
 
+    // Stripe customer ID -> uid lookup, written only by createCheckoutSession
+    // and read only by stripeWebhook (both via the Admin SDK, which bypasses
+    // these rules) — no client ever needs this, so it's fully closed.
+    match /stripeCustomers/{customerId} {
+      allow read, write: if false;
+    }
+
     match /users/{uid} {
       allow read, write: if isOwner(uid);
+
+      // Synced only by the stripeWebhook Cloud Function (Admin SDK, bypasses
+      // these rules) — never client-writable, or a user could grant
+      // themselves Pro by editing their own doc. See backend/functions/src/billing.ts.
+      match /billing/{docId} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
 
       match /properties/{propertyId} {
         allow read: if isOwner(uid);

@@ -25,9 +25,9 @@ class AiSettingsStore(context: Context) {
     }
 
     private fun readStoredPreference(): InferencePreference {
-        val stored = prefs.getString(KEY, null) ?: return InferencePreference.PREFER_ON_DEVICE
+        val stored = prefs.getString(KEY, null) ?: return InferencePreference.ON_DEVICE_ONLY
         return runCatching { InferencePreference.valueOf(stored) }
-            .getOrDefault(InferencePreference.PREFER_ON_DEVICE)
+            .getOrDefault(InferencePreference.ON_DEVICE_ONLY)
     }
 
     private companion object {

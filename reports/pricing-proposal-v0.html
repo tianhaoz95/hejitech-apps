@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pricing Proposal v0 — AI-Native STR Material Participation Tracker</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="dot"></span> STR Tracker Reports</div>
+    <nav>
+      <a href="index.html">All reports</a>
+    </nav>
+  </header>
+
+  <div class="report-shell">
+    <aside class="toc-col">
+      <div class="toc-title">On this page</div>
+      <ul id="toc-list"></ul>
+    </aside>
+
+    <main class="report-main">
+      <div class="report-header">
+        <div class="eyebrow">Pricing Study &amp; Proposal &middot; v0 &middot; Draft</div>
+        <h1>Pricing &amp; Tier Proposal</h1>
+        <p class="subtitle">
+          A market study of the four direct competitors, a re-check of their live
+          pricing as of July 2026, and a permanent <strong>two-tier</strong>
+          structure — one free, one paid — priced below the category's premium
+          anchor because on-device AI genuinely makes this product cheaper to
+          run than any competitor's cloud-only pipeline.
+        </p>
+        <div class="doc-meta">
+          <span><strong>Status:</strong> Draft — for decision</span>
+          <span><strong>Version:</strong> v0</span>
+          <span><strong>Date:</strong> July 31, 2026</span>
+          <span><strong>Owner:</strong> Jackson Zhou</span>
+          <span><strong>Scope:</strong> Monetization strategy, pre-Stripe-integration</span>
+        </div>
+      </div>
+
+      <article class="report-content">
+
+        <h2>1. Recommendation, up front</h2>
+        <div class="callout">
+          <span class="callout-label">Bottom line</span>
+          Two tiers, permanently — not a launch-phase stopgap: <strong>Free</strong>
+          (1 property, full capture, core dashboard, CSV export) and a single
+          <strong>Pro</strong> tier at <strong>$9.99/mo or $99/yr</strong>
+          (unlimited properties, the legal copilot, CPA-ready export). No third
+          tier is planned even once household/team logging ships — those
+          features fold into the same Pro price rather than spawning a new SKU.
+          The price sits below Field Ledger's $19 anchor on purpose: on-device
+          parsing and deterministic risk-flagging cost Contempo close to
+          nothing per user, unlike competitors who likely run every entry
+          through a cloud LLM call. That's a real structural cost advantage,
+          not just a growth-hack discount, so it's sustainable rather than a
+          promotional price that has to climb back up later.
+        </div>
+
+        <h2>2. Market landscape (re-verified July 2026)</h2>
+        <p>
+          <code>reports/prd-v0.html</code> §2.1 and §12 already captured solid
+          competitor research. Re-checking each competitor's live pricing today
+          turned up one correction and one real market shift worth acting on:
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Current pricing</th>
+                <th>Change vs. original PRD research</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Field Ledger</strong></td>
+                <td>Owner $19/mo ($190/yr) &middot; Operator $39/mo ($390/yr) &middot;
+                  Portfolio $79/mo ($790/yr); 7-day free trial, no card required</td>
+                <td>Unchanged. The PRD's "714-day free trial" was a scrape error —
+                  it's 7 days. This is the most stable, most direct comparable in
+                  the category; treat it as the pricing anchor.</td>
+              </tr>
+              <tr>
+                <td><strong>HourProof</strong></td>
+                <td>Pro $9.99/mo ($49.99/yr) &middot; Premium ~$12.99/mo (~$99.99/yr)</td>
+                <td>Premium looks to have come down from $14.99/$149.99 — a
+                  competitor moving pricing <em>down</em>, another reason not to
+                  chase the low end.</td>
+              </tr>
+              <tr>
+                <td><strong>REPSLog</strong></td>
+                <td>Free download, monetized via in-app purchase (exact IAP price
+                  not published)</td>
+                <td><strong>Real shift.</strong> Originally a flat $149.99&ndash;
+                  199.99/yr purchase; now free-to-download with paid unlock. The
+                  whole category is drifting toward "free app, paid depth" as the
+                  default shape, not flat annual licenses.</td>
+              </tr>
+              <tr>
+                <td><strong>STR Loophole family</strong> (strhours.com, plus
+                  newer sibling apps: STR Tax Loophole Tracker, REPS Time)</td>
+                <td>Free with in-app purchase, ~30-day free trial</td>
+                <td>Confirms the free-tier/freemium floor is real and multi-app —
+                  this operator now runs several apps on the same free-download
+                  model rather than one flat-priced product.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          Net read: the market has two clusters — a <strong>$9.99&ndash;15/mo
+          commodity band</strong> (HourProof, and REPSLog/STR Loophole's paid
+          unlocks likely land here) and a <strong>$19&ndash;79/mo
+          professional band</strong> occupied almost solely by Field Ledger.
+          Nobody in the commodity band has Field Ledger's feature depth
+          (unlimited properties, a real copilot) — landing Contempo Pro at the
+          <strong>top of the commodity band</strong> instead of at Field
+          Ledger's price lets it undercut the one competitor with comparable
+          depth while still out-featuring everyone at its own price point.
+        </p>
+
+        <h2>3. Why Contempo can price below Field Ledger and still hold margin</h2>
+        <p>
+          This only works because the AI cost structure isn't uniform across
+          features — it's concentrated in exactly one place:
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Capability</th>
+                <th>Marginal cost per use</th>
+                <th>Why</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Entry parsing / transcription</td>
+                <td>~$0</td>
+                <td>Runs on-device via Firebase AI Logic's hybrid on-device/cloud
+                  path (<code>android/agent/AgentClient.kt</code>) — no cloud
+                  inference call for the common case</td>
+              </tr>
+              <tr>
+                <td>Contemporaneity/vagueness risk scoring (<code>flagRisk</code>)</td>
+                <td>$0</td>
+                <td>Deterministic rules, not an LLM call at all</td>
+              </tr>
+              <tr>
+                <td>Legal-grounding copilot (<code>askAgent</code>)</td>
+                <td>Real, recurring</td>
+                <td>The one function that always calls cloud Gemini Flash —
+                  already cost-gated centrally via the <code>cloud_ai_enabled</code>
+                  Remote Config kill switch</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          Competitors almost certainly route every AI-assisted entry through a
+          cloud model call — HourProof's "AI-assisted logging," REPSLog's
+          "AI autofill," STR Loophole's parsing all read as cloud-side features
+          in their marketing copy, with no on-device story. Contempo pays that
+          cloud-cost tax on exactly one feature (the copilot), not on every
+          entry a user logs. That's the structural reason $9.99/mo is
+          sustainable here in a way it might not be for a cloud-only
+          competitor — it's not a subsidized growth-hack price.
+        </p>
+
+        <h3>3.1 The AI story doesn't cover the whole bill — storage is a separate, compounding cost</h3>
+        <div class="callout warn">
+          <span class="callout-label">A real gap in the reasoning above</span>
+          On-device inference and a deterministic risk-flagger make the
+          <em>compute</em> side of Free genuinely near-zero. But every entry —
+          even a plain text one — is a Firestore document, and every photo or
+          odometer capture is a Cloud Storage object, and neither of those
+          costs anything to do with AI. Unlike the copilot's cloud-LLM cost,
+          which is a bounded, per-request charge, storage cost has a different
+          shape: it <strong>accumulates forever per user</strong>, because §4
+          already rules out a time-limited trial or any data expiry on Free —
+          that was the right call for trust, but it means a Free user's
+          storage footprint only ever grows, year over year, with no reset.
+          At small scale this is genuinely cheap (Firestore is roughly
+          $0.18/100k reads or writes and ~$0.026/GiB-month; Cloud Storage is
+          similar per-GB) — a single free user logging text entries for years
+          costs fractions of a cent. But it compounds across every free
+          account ever created, indefinitely, which is a different risk
+          profile than a per-transaction AI cost that resets with usage.
+        </div>
+        <p>
+          The fix isn't to meter entry <em>count</em> or add retention limits —
+          both would recreate the exact trust problem §4 already argues
+          against (a host mid-tax-year suddenly finding old records
+          inaccessible or new ones blocked). The actual cost driver is
+          <strong>attachment bytes</strong>, not entry count: a timestamped
+          text entry is a few hundred bytes in Firestore regardless of volume,
+          while a photo or odometer image is one to several megabytes in Cloud
+          Storage. So the lever should be on <strong>photo/attachment volume
+          specifically</strong>, not on how many hours or entries a Free user
+          logs:
+        </p>
+        <ul>
+          <li><strong>Keep entries themselves fully unlimited on Free</strong> —
+            manual, voice, timers, mileage trips, all of it, indefinitely. This
+            is what makes the free tier a real product and not a crippled
+            demo, and it costs Contempo almost nothing regardless of volume.</li>
+          <li><strong>Meter stored photo/odometer attachments on Free</strong> —
+            e.g., a capped number of stored images (illustratively ~50&ndash;100
+            lifetime, or per year) or a storage-size cap (e.g., ~250MB), with
+            Pro removing the cap. The exact number needs real usage data before
+            it's fixed (see §8) — this proposal sets the mechanism, not the
+            final number.</li>
+          <li><strong>Compress/downsample images on upload for every tier</strong>,
+            not just Free — this shrinks the baseline liability across the
+            whole user base and is good practice independent of pricing.</li>
+        </ul>
+        <p>
+          One more mitigating factor worth naming: Free is already capped at 1
+          property, which caps the worst-case blast radius somewhat — a Free
+          user can only accumulate one property's worth of photos, not an
+          unlimited portfolio's. Multi-property users who'd actually generate
+          meaningful storage volume are already paying for Pro.
+        </p>
+
+        <h3>3.2 A bigger gap than storage: entry parsing isn't guaranteed to be free either</h3>
+        <div class="callout warn">
+          <span class="callout-label">This one undercuts §3's core argument, not just adds a footnote to it</span>
+          §3 treated "entry parsing / transcription: ~$0" as a flat fact. It
+          isn't — it's the <em>default behavior</em>, not a guarantee.
+          <code>AgentClient.kt</code> reads entry parsing through a
+          user-controlled <code>InferencePreference</code>
+          (<code>ON_DEVICE_ONLY</code> / <code>PREFER_ON_DEVICE</code> /
+          <code>CLOUD_ONLY</code>, exposed directly in Settings, default
+          <code>PREFER_ON_DEVICE</code>). Two real cost leaks follow from that:
+        </div>
+        <ul>
+          <li><strong>Silent cloud fallback on the default setting</strong> —
+            <code>PREFER_ON_DEVICE</code> tries the on-device model (Gemma via
+            LiteRT-LM) and falls back to a cloud Genkit call whenever that
+            model is unavailable on the device. On-device inference needs
+            specific hardware/OS support, so an unknown but nonzero share of
+            free users — plausibly skewed toward older/budget devices, which
+            are also the price-sensitive users most likely to pick Free — will
+            silently hit the cloud path on <em>every single entry</em>, not
+            occasionally.</li>
+          <li><strong>No entitlement gating exists on this at all</strong> —
+            <code>SettingsScreen.kt</code> lets any user, on any tier, select
+            <code>CLOUD_ONLY</code> today, which routes every parse and every
+            copilot question to cloud Gemini with no usage cap or tier check
+            anywhere in the code. That's expected pre-Stripe (there's no
+            entitlement system yet to check against) but it means the
+            "copilot is Pro-only, parsing is basically free" split this
+            proposal relies on isn't actually enforced anywhere yet.</li>
+        </ul>
+        <p>
+          Net effect: unlike photo storage (small, predictable, just needs a
+          quota), this is a genuine <strong>unbounded liability</strong> on
+          Free today — a Free user in <code>CLOUD_ONLY</code> mode, or simply
+          on a device without on-device model support, logging entries daily
+          for a year, generates real recurring cloud-LLM cost with nothing
+          currently stopping it. This needs to be closed before Free launches
+          at scale, not just monitored: recommend that once entitlement
+          checking exists, <code>CLOUD_ONLY</code> requires Pro, and
+          <code>PREFER_ON_DEVICE</code>'s cloud-fallback path on Free carries
+          its own modest monthly quota (graceful degradation to "try again on
+          Wi-Fi/a newer device, or enter manually" past the quota, not a hard
+          failure that loses the entry) — the same honesty-over-silent-fallback
+          principle <code>AgentClient.kt</code>'s own code comments already
+          apply to <code>ON_DEVICE_ONLY</code> mode.
+        </p>
+
+        <h3>3.3 Free-tier cost inventory, in one place</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Free capability</th>
+                <th>Real cost?</th>
+                <th>Verdict</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Manual/voice/timer/mileage entry (text only)</td>
+                <td>Firestore writes only — negligible regardless of volume</td>
+                <td>Safe unlimited</td>
+              </tr>
+              <tr>
+                <td>On-device text cleanup (<code>cleanupEntryText</code>)</td>
+                <td>$0 — deliberately always on-device, never cloud, by design</td>
+                <td>Safe unlimited</td>
+              </tr>
+              <tr>
+                <td>Entry parsing (freeform text &rarr; structured entry)</td>
+                <td>Real and uncapped when the device lacks on-device support,
+                  or the user sets <code>CLOUD_ONLY</code> — see §3.2</td>
+                <td><strong>Needs a cap/gate before launch</strong></td>
+              </tr>
+              <tr>
+                <td>AI photo/odometer drafting</td>
+                <td>$0 today — on-device only, no cloud vision fallback built
+                  yet (fails gracefully instead of costing money)</td>
+                <td>Safe today; revisit if/when cloud vision fallback ships</td>
+              </tr>
+              <tr>
+                <td>Photo/odometer image storage</td>
+                <td>Real, compounds forever per account — see §3.1</td>
+                <td>Needs a metered cap</td>
+              </tr>
+              <tr>
+                <td>Contemporaneity/vagueness scoring (<code>flagRisk</code>)</td>
+                <td>Deterministic Cloud Function; tiny invocation cost, no LLM</td>
+                <td>Safe unlimited</td>
+              </tr>
+              <tr>
+                <td>CSV export</td>
+                <td>$0 — generated on-device, shared via the OS share sheet</td>
+                <td>Safe unlimited</td>
+              </tr>
+              <tr>
+                <td>Dashboard/entry-list Firestore listeners</td>
+                <td>Small per-read/write cost, scales with session frequency
+                  rather than entry count — cheap at today's scale</td>
+                <td>Monitor, not a launch blocker</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>4. Other pricing principles worth stating explicitly</h2>
+        <div class="callout warn">
+          <span class="callout-label">Reject: pricing tied to estimated tax savings</span>
+          The PRD (§11) left "value-based pricing anchored to estimated tax
+          savings" as an open question. Recommend closing it as <strong>no</strong>.
+          Computing "how much we saved you" requires the user's full return
+          (income, marginal rate, passive-loss carryovers) — data this product
+          doesn't and shouldn't collect — and billing a percentage of a tax
+          outcome reads as tax advice, which is a materially different (and
+          riskier) business than a documentation tool. STR Loophole's savings
+          calculator is the right pattern: use it as <strong>marketing/onboarding
+          framing</strong> ("hosts like you typically document $X in
+          deductions"), never as the billing mechanism. Flat subscription stays.
+        </div>
+        <div class="callout">
+          <span class="callout-label">A second, less obvious call: no time-limited trial</span>
+          Every competitor here (Field Ledger, STR Loophole, REPSLog) sells on a
+          free trial that expires. That's a bad fit <em>for this specific
+          product's promise</em>: the entire pitch is continuous, contemporaneous
+          records that survive an audit years later. A trial that lapses
+          mid-tax-year and locks a host out of their own log — right when the
+          IRS test cares about unbroken documentation — undermines the trust
+          story this product is selling. A <strong>metered free tier</strong>
+          (capped by property count, not by time) never puts a user's existing
+          records at risk and costs nothing to keep running. Recommend leading
+          with metering over trials, unlike every direct competitor.
+        </div>
+
+        <h2>5. The proposed tier — one free, one paid, permanently</h2>
+        <p>
+          No phasing, no third SKU. When household/team logging or passive
+          signal sync eventually ship, they land inside the same Pro price —
+          the whole point of collapsing to one paid tier is that it stays true
+          regardless of what gets built next, not just at launch.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Tier</th>
+                <th>Price</th>
+                <th>Includes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Free</strong></td>
+                <td>$0</td>
+                <td>1 property &middot; <strong>unlimited</strong> manual/voice
+                  entries, timers &amp; mileage trips (with pause/resume) &middot;
+                  photo/odometer capture up to a metered cap (illustratively
+                  ~50&ndash;100 stored images; exact number TBD, see §8) &middot;
+                  participant-role tagging for the 100-/500-hour tests &middot;
+                  core hours-vs-threshold dashboard with inline risk flags
+                  &middot; CSV export</td>
+              </tr>
+              <tr>
+                <td><strong>Pro</strong></td>
+                <td>$9.99/mo or $99/yr</td>
+                <td>Everything in Free, plus: <strong>unlimited properties</strong>
+                  &middot; <strong>unlimited photo/odometer storage</strong>
+                  (removes the Free attachment cap) &middot; the
+                  legal-grounding copilot (freeform Q&amp;A against real
+                  IRS/Tax Court guidance — the one feature with real cloud
+                  cost) &middot; a polished CPA-ready export package (formatted
+                  PDF with risk annotations, not just raw CSV) &middot; Wear OS /
+                  watchOS capture and complications &middot; <em>whatever ships
+                  later</em> — household/team logging, PMS/calendar sync,
+                  geofencing all fold in here rather than becoming a new tier</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          The pitch this makes possible: <strong>more than Field Ledger's
+          $19/mo Owner tier (which caps at 1 property, 2 users, no AI) for
+          about half the price</strong>, and more capability than HourProof or
+          REPSLog's paid unlocks at roughly the same price those charge today.
+          That combination — beat the premium competitor on price, beat the
+          budget competitors on features — is only credible because of the
+          cost structure in §3; without the on-device-parsing advantage this
+          would just be underpricing.
+        </p>
+        <div class="callout warn">
+          <span class="callout-label">Household/team logging isn't built yet — that doesn't block this pricing decision</span>
+          Per <code>reports/prd-status-v0.html</code> §5, real-time household
+          constraint checking and multi-participant accounts are explicitly
+          <strong>not started</strong>, and the Firestore data model is still
+          single-owner only. That's fine under a single-tier structure: it
+          just means Pro subscribers get a feature added to their existing
+          plan once it ships, with no new pricing decision required at that
+          point. The failure mode this avoids is the one from the three-tier
+          version of this proposal — a "Portfolio" tier priced around a feature
+          that doesn't exist yet.
+        </div>
+
+        <h3>5.1 Concierge audit-defense: an add-on, not a tier feature</h3>
+        <p>
+          The PRD (§9.1) floats a concierge audit-defense package — human CPA
+          review and support if a user is actually audited — as a premium
+          differentiator. Recommend keeping this <strong>decoupled from Pro
+          entirely</strong>: it's a staffed service with real marginal cost per
+          claim, not software, and doesn't fit "on-device AI keeps costs low"
+          the way everything else in Pro does. Sell it as a standalone annual
+          add-on (illustratively ~$99&ndash;199/yr) once there's a paying base
+          large enough to justify the operational lift of actually staffing it
+          — bundling an unstaffed service into the subscription price is a
+          promise the business can't yet keep.
+        </p>
+
+        <h2>6. Feature-to-tier mapping, traced to what's actually built</h2>
+        <p>
+          Cross-checked against <code>reports/mvp-implementation-v0.html</code>
+          and <code>reports/prd-status-v0.html</code> rather than the landing
+          page's illustrative copy, since those two drift out of date fastest.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th>Status</th>
+                <th>Tier</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Manual/voice entry, timers &amp; mileage trips</td>
+                <td>Built (Android + iOS parity)</td>
+                <td>Free, unlimited</td>
+              </tr>
+              <tr>
+                <td>Photo/odometer image capture &amp; storage</td>
+                <td>Built — capture is free, but a per-account storage cap
+                  isn't enforced anywhere yet (needs a Cloud Storage quota
+                  check, see §8)</td>
+                <td>Free up to a metered cap; unlimited on Pro</td>
+              </tr>
+              <tr>
+                <td>Participant-role tagging (100-/500-hour tests)</td>
+                <td>Built</td>
+                <td>Free</td>
+              </tr>
+              <tr>
+                <td>Dashboard vs. threshold, inline risk flags, CSV export</td>
+                <td>Built</td>
+                <td>Free</td>
+              </tr>
+              <tr>
+                <td>Unlimited properties</td>
+                <td>Buildable now — needs a property-count check added to
+                  Firestore rules + client gate; no rule exists today</td>
+                <td>Pro</td>
+              </tr>
+              <tr>
+                <td>Legal-grounding copilot (<code>askAgent</code>)</td>
+                <td>Built (Cloud Function, cloud Gemini)</td>
+                <td>Pro</td>
+              </tr>
+              <tr>
+                <td>Contemporaneity/vagueness scoring (<code>flagRisk</code>)</td>
+                <td>Built, deterministic</td>
+                <td>Pro (surfaced); computed for all tiers internally</td>
+              </tr>
+              <tr>
+                <td>CPA-ready formatted export (vs. raw CSV)</td>
+                <td>Not built — CSV export exists, a formatted PDF package
+                  doesn't yet</td>
+                <td>Pro (needs building before launch)</td>
+              </tr>
+              <tr>
+                <td>Household/team multi-participant accounts + constraint checks</td>
+                <td>Not started, deferred by design</td>
+                <td>Pro (once built — no new tier)</td>
+              </tr>
+              <tr>
+                <td>PMS/calendar sync, geofencing, bank signals</td>
+                <td>Explicitly out of MVP scope</td>
+                <td>Pro (once built — no new tier)</td>
+              </tr>
+              <tr>
+                <td>Concierge audit-defense</td>
+                <td>Not built — a staffing/ops question, not code</td>
+                <td>Standalone add-on, not a tier</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>7. What this changes vs. today's placeholder</h2>
+        <p>
+          The landing page and <code>web/src/pages/BillingPage</code> currently
+          show a Starter/Pro/Portfolio mockup at $0/$19/$49. This proposal
+          replaces it with a two-card layout and a lower Pro price:
+        </p>
+        <ul>
+          <li>Drop the Portfolio card entirely rather than mark it "coming
+            soon" — a single visible paid tier is the point, not a temporary
+            launch state.</li>
+          <li>Change Pro's price from $19/mo to <strong>$9.99/mo ($99/yr)</strong>
+            and its copy to lead with the on-device/cost-advantage framing from
+            §3, not just a feature list — the lower price needs the "why" or it
+            just reads as a discount.</li>
+          <li>Reassign "unlimited properties" from an unqualified Pro perk to
+            one that needs a small enforcement change first (property-count
+            limit isn't currently enforced anywhere for the Free tier) — flagged
+            in §6 as build work, not just a pricing decision.</li>
+          <li>Stop advertising Free's photo/odometer capture as unqualified
+            "unlimited" — per §3.1, entries stay unlimited but attachment
+            storage should carry a metered cap, with Pro removing it.</li>
+          <li>Stop describing entry parsing as simply "free/on-device" in any
+            marketing copy — per §3.2 it's only the default, not a guarantee,
+            until entitlement gating actually exists.</li>
+        </ul>
+
+        <h2>8. Open items before this can go live</h2>
+        <ul>
+          <li>Wire Stripe via the Firebase Extension (<code>web/src/billing/subscription.ts</code>
+            TODO) — the actual checkout/webhook/entitlement-sync work.</li>
+          <li>Add a property-count limit to <code>firestore.rules</code> and a
+            client-side gate for Free-tier accounts at 1 property.</li>
+          <li>Instrument actual Firestore/Cloud Storage cost per active Free
+            account (reads/writes/GB, not just guesswork) before fixing the
+            attachment cap number in §3.1/§5 — the ~50&ndash;100-image figure is
+            illustrative, not measured.</li>
+          <li>Add a photo/odometer attachment quota to Cloud Storage rules +
+            client gate for Free accounts, and add image compression/downscaling
+            on upload for both tiers.</li>
+          <li><strong>Gate <code>InferencePreference</code> by entitlement once
+            Stripe sync exists</strong> (§3.2) — <code>CLOUD_ONLY</code> should
+            require Pro, and Free's <code>PREFER_ON_DEVICE</code> cloud-fallback
+            path needs its own monthly quota with graceful degradation, not a
+            silent uncapped cost today. This is arguably higher-priority than
+            the storage cap, since it's a genuinely unbounded liability rather
+            than a small predictable one.</li>
+          <li>Instrument what share of real devices actually run the on-device
+            model vs. silently fall back to cloud under
+            <code>PREFER_ON_DEVICE</code> — the whole §3 pricing argument
+            assumes this is the common case, and that's currently an
+            assumption, not a measured fact.</li>
+          <li>Build the formatted CPA-ready export (PDF with risk annotations) —
+            currently only raw CSV exists.</li>
+          <li>Decide annual-discount mechanics in Stripe (this proposal assumes
+            $99/yr on Pro, a ~17% discount vs. $9.99&times;12, matching Field
+            Ledger's own annual-discount rate even though the base price is
+            lower).</li>
+          <li>Update <code>branding/landing_v0/site</code>'s pricing section and
+            <code>i18n.js</code> (both <code>en</code> and <code>zh</code> —
+            parity required) to drop the Portfolio card and the $19 price once
+            this is decided.</li>
+        </ul>
+
+      </article>
+
+      <a class="back-to-top" href="#top">&uarr; Back to top</a>
+    </main>
+  </div>
+
+  <script src="assets/toc.js"></script>
+</body>
+</html>

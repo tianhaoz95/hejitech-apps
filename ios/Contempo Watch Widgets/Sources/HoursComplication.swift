@@ -18,8 +18,21 @@ struct HoursComplicationEntry: TimelineEntry {
 }
 
 struct HoursComplicationProvider: TimelineProvider {
-    private let store = HoursProgressStore(appGroupId: "group.com.hejitech.contempoapp")
-    private let timerStore = WatchWorkTimerStore(appGroupId: "group.com.hejitech.contempoapp")
+    // Deliberately computed, not stored-and-eagerly-initialized: this
+    // provider is constructed inline as an argument to StaticConfiguration
+    // inside HoursComplication.body, which WidgetKit evaluates synchronously
+    // just to discover the widget's metadata (kind, display name, supported
+    // families) — e.g. when the watch face editor lists available
+    // complications. If UserDefaults(suiteName:) ever traps instead of
+    // returning nil on-device (observed in production crash reports; not
+    // reproducible in the simulator), doing that work at init time takes
+    // down body's evaluation entirely, which kills every widget in this
+    // bundle's registration, not just this one. Deferring the app-group
+    // touch to actual timeline fetches (getSnapshot/getTimeline, called
+    // lazily, well after registration) keeps a bad app-group read from ever
+    // being able to prevent the complication from existing as an option.
+    private var store: HoursProgressStore { HoursProgressStore(appGroupId: "group.com.hejitech.contempoapp") }
+    private var timerStore: WatchWorkTimerStore { WatchWorkTimerStore(appGroupId: "group.com.hejitech.contempoapp") }
 
     func placeholder(in context: Context) -> HoursComplicationEntry {
         HoursComplicationEntry(

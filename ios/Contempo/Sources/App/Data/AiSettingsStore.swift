@@ -17,7 +17,7 @@ final class AiSettingsStore {
         if let stored = defaults.string(forKey: Self.key), let value = InferencePreference(rawValue: stored) {
             preference = value
         } else {
-            preference = .preferOnDevice
+            preference = .onDeviceOnly
         }
     }
 

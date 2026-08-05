@@ -22,6 +22,12 @@ final class SettingsViewModel {
 
     var inferencePreference: InferencePreference { aiSettingsStore.preference }
     var cloudAiEnabled: Bool { remoteConfigStore.cloudAiEnabled }
+    /// Backed by users/{uid}/billing/subscription via ServiceLocator's
+    /// SubscriptionStore (synced by the stripeWebhook Cloud Function). Per
+    /// reports/pricing-proposal-v0.html §3.2, Free accounts are hard-locked
+    /// to onDeviceOnly — preferOnDevice and cloudOnly both have real
+    /// recurring cloud-LLM cost and must require Pro before they're selectable.
+    var hasProEntitlement: Bool { ServiceLocator.subscriptionStore.hasProEntitlement }
     var onDeviceStatus: OnDeviceModelUiStatus { onDeviceLlm.status }
     var asrAvailable: Bool { whisperTranscriber.isAvailable }
 

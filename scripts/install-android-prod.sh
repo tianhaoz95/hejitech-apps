@@ -286,7 +286,7 @@ fi
 
 if [[ "$INSTALL_ANDROID" == "true" ]]; then
   log "Launching Contempo..."
-  "$ADB" -s "$DEVICE_SERIAL" shell am start -n com.hejitech.contempo/com.hejitech.contempo.MainActivity >/dev/null
+  "$ADB" -s "$DEVICE_SERIAL" shell am start -n com.hejitech.contempoapp/com.hejitech.contempo.MainActivity >/dev/null
 fi
 
 log "Done."

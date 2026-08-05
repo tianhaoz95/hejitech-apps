@@ -14,6 +14,7 @@ import com.hejitech.core.data.AudioCaptureQueue
 import com.hejitech.core.data.EntryRepository
 import com.hejitech.core.data.FirestoreEntryRepository
 import com.hejitech.core.data.MileageTripCoordinator
+import com.hejitech.core.data.SubscriptionRepository
 import com.hejitech.core.data.TimerEntryCoordinator
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
@@ -23,6 +24,10 @@ import com.google.firebase.storage.storage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 /**
  * Manual service locator instead of Hilt/Dagger — deliberate for MVP:
@@ -71,11 +76,23 @@ object ServiceLocator {
         private set
     lateinit var captureLanguageSelectorVisibilityStore: CaptureLanguageSelectorVisibilityStore
         private set
+    lateinit var subscriptionRepository: SubscriptionRepository
+        private set
 
     // Process-lifetime scope for cross-screen background work (currently
     // just OnDeviceLlm's status/download tracking) — same lifetime as the
     // other singletons here, never cancelled short of process death.
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    /**
+     * Backs the InferencePreference downgrade below and SettingsViewModel's
+     * UI gate — see reports/pricing-proposal-v0.html §3.2. Fails closed
+     * (starts false) until the first Firestore snapshot arrives, and again on
+     * any listener error, rather than risk unlocking cloud AI for a Free
+     * account.
+     */
+    private val _hasProEntitlement = MutableStateFlow(false)
+    val hasProEntitlement: StateFlow<Boolean> = _hasProEntitlement.asStateFlow()
 
     fun initialize(context: Context) {
         appContext = context.applicationContext
@@ -91,6 +108,10 @@ object ServiceLocator {
         captureLanguageSelectorVisibilityStore = CaptureLanguageSelectorVisibilityStore(context)
         aiSettingsStore = AiSettingsStore(context)
         remoteConfigStore = RemoteConfigStore()
+        subscriptionRepository = SubscriptionRepository(Firebase.firestore, auth)
+        appScope.launch {
+            subscriptionRepository.observeHasProEntitlement().collect { _hasProEntitlement.value = it }
+        }
         // LiteRtLlm (Gemma 4 E2B via LiteRT-LM) is the active OnDeviceLlm —
         // see OnDeviceLlm's kdoc for why this replaced Gemini Nano/AICore
         // (GeminiNanoLlm, kept but unused). Swapping back, or to a future
@@ -99,18 +120,17 @@ object ServiceLocator {
         agentClient = AgentClient(
             onDeviceLlm = onDeviceLlm,
             functions = Firebase.functions,
-            // Remotely disabling cloud AI (RemoteConfigStore's kill switch)
-            // overrides the user's own stored preference, not just adds a
-            // separate check — a user who picked CLOUD_ONLY or
-            // PREFER_ON_DEVICE before the switch flipped shouldn't need to
-            // change their setting for the override to take effect.
+            // Remotely disabling cloud AI (RemoteConfigStore's kill switch), or
+            // not currently holding a Pro entitlement (reports/pricing-proposal-v0.html
+            // §3.2), overrides the user's own stored preference rather than
+            // just gating it in Settings — a user who picked CLOUD_ONLY or
+            // PREFER_ON_DEVICE while on Pro, then downgrades to Free, shouldn't
+            // need to touch Settings for the downgrade to actually take effect.
             inferencePreference = {
                 val stored = aiSettingsStore.preference.value
-                if (!remoteConfigStore.cloudAiEnabled.value && stored != InferencePreference.ON_DEVICE_ONLY) {
-                    InferencePreference.ON_DEVICE_ONLY
-                } else {
-                    stored
-                }
+                val allowedByEntitlement = hasProEntitlement.value || stored == InferencePreference.ON_DEVICE_ONLY
+                val allowedByRemoteConfig = remoteConfigStore.cloudAiEnabled.value || stored == InferencePreference.ON_DEVICE_ONLY
+                if (allowedByEntitlement && allowedByRemoteConfig) stored else InferencePreference.ON_DEVICE_ONLY
             },
         )
         authManager = AuthManager(context.applicationContext)

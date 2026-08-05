@@ -267,9 +267,10 @@
     <string name="settings_ai_section">AI model</string>
     <string name="settings_ai_section_hint">Controls whether entries and questions are parsed on-device (free, no network) or in the cloud.</string>
     <string name="settings_ai_on_device_only">On-device only</string>
-    <string name="settings_ai_prefer_on_device">Prefer on-device (recommended)</string>
-    <string name="settings_ai_cloud_only">Cloud only</string>
+    <string name="settings_ai_prefer_on_device">Prefer on-device (Contempo Pro)</string>
+    <string name="settings_ai_cloud_only">Cloud only (Contempo Pro)</string>
     <string name="settings_ai_cloud_disabled_notice">Cloud AI is temporarily unavailable — only on-device processing works right now.</string>
+    <string name="settings_ai_pro_required_notice">Free accounts always process on-device. This is a Contempo Pro feature — your plan is managed from your Contempo account on the web.</string>
 
     <string name="settings_capture_section">Capture</string>
     <string name="settings_show_language_selector_label">Show language selector</string>

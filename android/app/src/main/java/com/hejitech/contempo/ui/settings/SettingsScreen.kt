@@ -70,6 +70,7 @@ fun SettingsScreen(
     val account = viewModel.currentAccount()
     val preference by viewModel.inferencePreference.collectAsState()
     val cloudAiEnabled by viewModel.cloudAiEnabled.collectAsState()
+    val hasProEntitlement by viewModel.hasProEntitlement.collectAsState()
     val onDeviceStatus by viewModel.onDeviceModelStatus.collectAsState()
     val showLanguageSelector by viewModel.showLanguageSelector.collectAsState()
     val exportState by exportViewModel.uiState.collectAsState()
@@ -142,17 +143,25 @@ fun SettingsScreen(
                 InferenceOptionRow(
                     label = stringResource(R.string.settings_ai_prefer_on_device),
                     selected = preference == InferencePreference.PREFER_ON_DEVICE,
+                    enabled = hasProEntitlement,
                     onClick = { viewModel.setInferencePreference(InferencePreference.PREFER_ON_DEVICE) },
                 )
                 InferenceOptionRow(
                     label = stringResource(R.string.settings_ai_cloud_only),
                     selected = preference == InferencePreference.CLOUD_ONLY,
-                    enabled = cloudAiEnabled,
+                    enabled = hasProEntitlement && cloudAiEnabled,
                     onClick = { viewModel.setInferencePreference(InferencePreference.CLOUD_ONLY) },
                 )
             }
 
-            if (!cloudAiEnabled) {
+            if (!hasProEntitlement) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    stringResource(R.string.settings_ai_pro_required_notice),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else if (!cloudAiEnabled) {
                 Spacer(Modifier.height(4.dp))
                 Text(
                     stringResource(R.string.settings_ai_cloud_disabled_notice),
