@@ -64,6 +64,19 @@ public enum OdometerReadOutcome: Sendable {
     case failure(message: String)
 }
 
+/// Which of the two photo-capture paths a just-taken photo belongs to — see `AgentClient.classifyPhotoIntent`.
+public enum PhotoIntent: Sendable {
+    case odometer, work
+}
+
+/// Result of `AgentClient.classifyPhotoIntent` — a fast odometer-vs-work read
+/// that decides which of `readOdometerFromPhoto`/`draftEntryFromPhoto` to run
+/// next, not the extracted content itself.
+public enum PhotoIntentOutcome: Sendable {
+    case success(intent: PhotoIntent, source: ParseSource)
+    case failure(message: String)
+}
+
 /// Bundles everything Capture hands off to Confirm: the drafted fields,
 /// where the parse ran (for the "parsed on-device"/"parsed via cloud"
 /// caption), how the capture itself started (for the audit-trail source

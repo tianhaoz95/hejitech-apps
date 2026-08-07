@@ -22,6 +22,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -42,7 +44,6 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PlayArrow
@@ -50,10 +51,7 @@ import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -106,13 +104,15 @@ import kotlinx.coroutines.delay
  * Voice is the product's actual differentiator (hands-free, contemporaneous
  * capture) and the target user is a real-estate host, not a technical one —
  * so this screen leads with one big, unmistakable mic button and nothing
- * else competing with it at first glance. Photo/odometer/GPS-trip capture
- * are real but secondary paths, collapsed behind a single "Other" toggle
- * (same expand-in-place pattern as "Type instead" below it) rather than
- * three full-width buttons sitting at equal visual weight right under the
- * mic. See the AskUserQuestion decision in conversation history for the
- * original layout options considered.
+ * else competing with it at first glance. Photo/GPS-trip/manual-timer
+ * capture are real but secondary paths, demoted to a compact quick-action
+ * row below the mic rather than full-width buttons at equal visual weight.
+ * Photo capture is a single unified action — the vision model classifies
+ * odometer-reading vs. work evidence after the photo is taken (see
+ * CaptureViewModel.processCapturedPhoto) rather than the host picking
+ * between two separate photo buttons up front.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CaptureScreen(
     onDraftReady: (CaptureResult) -> Unit,
@@ -125,7 +125,6 @@ fun CaptureScreen(
     var pendingRecordAfterPermission by remember { mutableStateOf(false) }
     var micPermissionDenied by remember { mutableStateOf(false) }
     var typeExpanded by rememberSaveable { mutableStateOf(false) }
-    var otherMenuExpanded by remember { mutableStateOf(false) }
     var showQuickCaptureExplanation by remember { mutableStateOf(false) }
     var showHelpWalkthrough by remember { mutableStateOf(false) }
     var showCancelWorkDialog by remember { mutableStateOf(false) }
@@ -142,10 +141,7 @@ fun CaptureScreen(
     }
 
     val cameraCapture = rememberCameraCapture { bitmap, photoUri ->
-        viewModel.processPhoto(bitmap, photoUri) { result -> onDraftReady(result) }
-    }
-    val odometerCameraCapture = rememberCameraCapture { bitmap, _ ->
-        viewModel.logOdometerPhoto(bitmap)
+        viewModel.processCapturedPhoto(bitmap, photoUri) { result -> onDraftReady(result) }
     }
     val openTripEntry by viewModel.openTripEntry.collectAsState()
     // Only a GPS-started trip toggles off via this button — an odometer-
@@ -171,7 +167,7 @@ fun CaptureScreen(
         }
     }
 
-    val busy = uiState.isRecording || uiState.isTranscribing || uiState.isDraftingFromPhoto ||
+    val busy = uiState.isRecording || uiState.isTranscribing || uiState.isProcessingPhoto ||
         uiState.isParsing || uiState.finalizedTranscript != null
 
     fun onMicTap() {
@@ -180,7 +176,7 @@ fun CaptureScreen(
             uiState.isRecording -> viewModel.stopRecordingAndProcess { result -> onDraftReady(result) }
             // ignore taps mid-processing — recording stopped, transcript
             // finalized, or already drafting/parsing
-            uiState.isTranscribing || uiState.isDraftingFromPhoto || uiState.isParsing ||
+            uiState.isTranscribing || uiState.isProcessingPhoto || uiState.isParsing ||
                 uiState.finalizedTranscript != null -> Unit
             hasPermission(context, Manifest.permission.RECORD_AUDIO) -> viewModel.startRecording()
             else -> {
@@ -328,7 +324,7 @@ fun CaptureScreen(
                             isGps = gpsTripOpen,
                             enabled = !busy,
                             onTap = {
-                                if (gpsTripOpen) MileageTrackingService.stop(context) else odometerCameraCapture.launch()
+                                if (gpsTripOpen) MileageTrackingService.stop(context) else cameraCapture.launch()
                             },
                             onPauseToggle = {
                                 if (tripEntry.isPaused) viewModel.resumeTrip() else viewModel.pauseTrip()
@@ -392,18 +388,30 @@ fun CaptureScreen(
                     )
                 }
 
-                // Quick actions for the two other primary capture modes —
-                // promoted out of the "Other" menu so they're discoverable
-                // without an extra tap, but sized well below the hero
-                // VoiceButton so voice stays visually primary. Each hides
-                // once its own ongoing-session banner is showing above,
-                // since the banner already owns that mode's stop/complete
-                // affordance.
+                // Quick actions for the other primary capture modes —
+                // promoted out of the old "Other" overflow menu so they're
+                // discoverable without an extra tap, but sized well below
+                // the hero VoiceButton so voice stays visually primary. Each
+                // hides once its own ongoing-session banner is showing
+                // above, since the banner already owns that mode's stop/
+                // complete affordance. Photo capture has no such banner (a
+                // photo is a one-shot action, not an ongoing session) so it
+                // always shows.
+                //
+                // FlowRow, not Row — with all four buttons visible (no
+                // timer/trip in progress) this doesn't fit a ~360dp-wide
+                // phone at a comfortable tap size, and a plain Row neither
+                // wraps nor scrolls, so the overflowing button (whichever
+                // landed last — "Type instead" with all four shown) was
+                // pushed off-screen and effectively disappeared. Wrapping
+                // to a second line keeps every action visible and reachable
+                // regardless of screen width, instead of relying on a
+                // scroll gesture the user has no visual hint exists.
                 Spacer(Modifier.height(16.dp))
-                Row(
+                FlowRow(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterHorizontally),
-                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterHorizontally),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     if (openTimerEntry == null) {
                         QuickActionButton(
@@ -422,6 +430,18 @@ fun CaptureScreen(
                         )
                     }
 
+                    // The unified photo-capture entry point — the model
+                    // decides odometer-reading vs. work evidence once the
+                    // photo is taken (see CaptureViewModel.processCapturedPhoto)
+                    // rather than the host having to pick the right button
+                    // first, so there's just one photo action here.
+                    QuickActionButton(
+                        icon = Icons.Filled.PhotoCamera,
+                        label = stringResource(R.string.capture_photo_button),
+                        enabled = !busy,
+                        onClick = { cameraCapture.launch() },
+                    )
+
                     // Same size/shape as the buttons above so it reads as
                     // part of the same row, but left in its original neutral
                     // tint rather than the primary accent — this is an
@@ -434,6 +454,18 @@ fun CaptureScreen(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant,
                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         onClick = { typeExpanded = true },
+                    )
+                }
+
+                if (uiState.isProcessingPhoto) {
+                    Spacer(Modifier.height(8.dp))
+                    BusyLabel(stringResource(R.string.capture_drafting_from_photo))
+                } else if (cameraCapture.permissionDenied) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        stringResource(R.string.capture_camera_permission_needed),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
 
@@ -452,8 +484,6 @@ fun CaptureScreen(
 
                 Spacer(Modifier.height(56.dp))
 
-                val odometerBusy = busy || uiState.isProcessingOdometerPhoto
-                val otherContentDescription = stringResource(R.string.capture_other_button)
                 val quickCaptureToggleDescription = stringResource(R.string.capture_quick_capture_toggle_content_description)
 
                 // No label above this — a language picker reads as itself
@@ -539,75 +569,6 @@ fun CaptureScreen(
 
                 Spacer(Modifier.height(20.dp))
 
-                Box {
-                    // A labeled button rather than a bare "..." icon — an
-                    // unlabeled overflow glyph didn't read as discoverable.
-                    // Start work/trip are promoted to their own top-level
-                    // QuickActionButtons above; this menu now only holds the
-                    // remaining photo-based capture paths.
-                    TextButton(
-                        onClick = { otherMenuExpanded = true },
-                        enabled = !busy,
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        ),
-                        modifier = Modifier.semantics { contentDescription = otherContentDescription },
-                    ) {
-                        Icon(Icons.Filled.MoreHoriz, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text(stringResource(R.string.capture_other_button_label))
-                    }
-                    DropdownMenu(expanded = otherMenuExpanded, onDismissRequest = { otherMenuExpanded = false }) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.capture_photo_button)) },
-                            leadingIcon = { Icon(Icons.Filled.PhotoCamera, contentDescription = null) },
-                            enabled = !busy,
-                            onClick = { otherMenuExpanded = false; cameraCapture.launch() },
-                        )
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    stringResource(
-                                        if (openTripEntry != null) R.string.capture_odometer_end_button
-                                        else R.string.capture_odometer_start_button
-                                    )
-                                )
-                            },
-                            leadingIcon = { Icon(Icons.Filled.PhotoCamera, contentDescription = null) },
-                            enabled = !odometerBusy,
-                            onClick = { otherMenuExpanded = false; odometerCameraCapture.launch() },
-                        )
-                    }
-                }
-
-                // Status/permission text stays anchored here regardless of
-                // whether the "Other" menu itself is still open — an
-                // in-progress photo read or a denied permission is worth
-                // surfacing even after the picker that triggered it has closed.
-                if (uiState.isDraftingFromPhoto) {
-                    Spacer(Modifier.height(8.dp))
-                    BusyLabel(stringResource(R.string.capture_drafting_from_photo))
-                } else if (cameraCapture.permissionDenied) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        stringResource(R.string.capture_camera_permission_needed),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-
-                if (uiState.isProcessingOdometerPhoto) {
-                    Spacer(Modifier.height(8.dp))
-                    BusyLabel(stringResource(R.string.capture_reading_odometer))
-                } else if (odometerCameraCapture.permissionDenied) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        stringResource(R.string.capture_camera_permission_needed),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-
                 if (locationPermissionDenied) {
                     Spacer(Modifier.height(8.dp))
                     Text(
@@ -651,9 +612,11 @@ fun CaptureScreen(
         }
     }
 
-    // Odometer-photo start/end also writes straight to Firestore (see
-    // CaptureViewModel.logOdometerPhoto) — same transient-confirmation
-    // pattern as the timer message above.
+    // Voice-triggered GPS trip start/stop also writes straight to Firestore
+    // (see CaptureViewModel.parseAndProceed's TripIntentClassifier branch) —
+    // same transient-confirmation pattern as the timer message above. Photo-
+    // based trip capture no longer uses this; it always resolves to Confirm
+    // instead (see CaptureViewModel.processCapturedPhoto).
     LaunchedEffect(uiState.tripMessage) {
         if (uiState.tripMessage != null) {
             delay(TIMER_MESSAGE_HOLD_MS)

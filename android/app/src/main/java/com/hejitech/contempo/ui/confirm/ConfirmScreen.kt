@@ -31,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -52,6 +53,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hejitech.contempo.R
 import com.hejitech.contempo.ui.theme.Eyebrow
 import com.hejitech.contempo.util.PhotoUtils
+import com.hejitech.core.model.CaptureSource
 import com.hejitech.core.model.EntryCategory
 
 private const val PHOTO_PREVIEW_MAX_DIMENSION_PX = 512
@@ -78,11 +80,22 @@ fun ConfirmScreen(
     /** Best-effort "captured from here" location — see CaptureViewModel.captureLocation. */
     captureLat: Double? = null,
     captureLng: Double? = null,
+    /**
+     * Set only when a fresh photo capture was classified as an odometer
+     * reading (see CaptureViewModel.handleOdometerPhoto / CaptureResult) —
+     * never set on the EntryDetail edit path. Swaps the usual work-entry
+     * fields for a single odometer-reading field, user-correctable via the
+     * toggle below the photo preview.
+     */
+    isTripCapture: Boolean = false,
+    /** Display-only — which button label to show; the actual open/close branch is re-derived at save time. */
+    tripIsEndingExistingTrip: Boolean = false,
+    odometerReading: Double? = null,
     onConfirmed: () -> Unit,
     viewModel: ConfirmViewModel = viewModel(
         factory = ConfirmViewModel.Factory(
             property, task, durationMinutes, category, captureSource, miles, resolvedActivityDateIso,
-            photoUri, entryId, captureLat, captureLng,
+            photoUri, entryId, captureLat, captureLng, isTripCapture, odometerReading,
         )
     ),
 ) {
@@ -93,6 +106,9 @@ fun ConfirmScreen(
     val photoPreview = remember(photoUri) {
         photoUri?.let { uri -> runCatching { PhotoUtils.decodeSampledBitmap(context, uri.toUri(), PHOTO_PREVIEW_MAX_DIMENSION_PX) }.getOrNull() }
     }
+    // Only a photo capture can be re-classified — voice/text/manual entries
+    // never show the odometer-vs-work toggle at all.
+    val isPhotoCapture = captureSource == CaptureSource.PHOTO.name
 
     Column(
         modifier = Modifier
@@ -133,7 +149,69 @@ fun ConfirmScreen(
                 contentScale = ContentScale.Crop,
             )
         }
+
+        // Only a photo capture ever shows this — the vision model's
+        // odometer-vs-work classification (see
+        // CaptureViewModel.processCapturedPhoto) is a one-tap-correctable
+        // suggestion, not a silent hard commit. Flipping it re-runs the
+        // *other* AgentClient photo call against the same held photo (see
+        // ConfirmViewModel.onTripModeToggled).
+        if (isPhotoCapture) {
+            Spacer(Modifier.height(16.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.confirm_photo_intent_toggle_label),
+                    style = MaterialTheme.typography.labelLarge,
+                )
+                Spacer(Modifier.width(8.dp))
+                if (uiState.isReclassifying) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                } else {
+                    Switch(checked = uiState.isTripMode, onCheckedChange = viewModel::onTripModeToggled)
+                }
+            }
+        }
+
         Spacer(Modifier.height(20.dp))
+
+        if (uiState.isTripMode) {
+            // A trip has no property/task/duration/category/date to review
+            // here — MileageTripCoordinator.handleStartTrip/handleEndTrip
+            // owns those (property/task stay blank, activityDate is
+            // "now"), and the odometer reading is the only thing this
+            // screen lets the user correct before it's committed.
+            OutlinedTextField(
+                value = uiState.odometerReading,
+                onValueChange = viewModel::onOdometerReadingChanged,
+                label = { Text(stringResource(R.string.confirm_odometer_reading_label)) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(24.dp))
+
+            Button(
+                onClick = { viewModel.confirm(onConfirmed) },
+                enabled = !uiState.isSaving,
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.small,
+            ) {
+                if (uiState.isSaving) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else {
+                    Text(
+                        stringResource(
+                            if (tripIsEndingExistingTrip) R.string.confirm_end_trip_button
+                            else R.string.confirm_start_trip_button
+                        )
+                    )
+                }
+            }
+
+            uiState.errorMessage?.let { error ->
+                Spacer(Modifier.height(12.dp))
+                Text(error, color = MaterialTheme.colorScheme.error)
+            }
+            return@Column
+        }
 
         if (uiState.isAddingNewProperty) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -373,4 +451,3 @@ private fun RequiredFieldLabel(text: String, missing: Boolean) {
         color = if (missing) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
-

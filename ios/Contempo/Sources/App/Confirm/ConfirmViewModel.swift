@@ -9,10 +9,20 @@ import Observation
 /// stay true forever with no way for the user to retry.
 private let saveTimeoutSeconds: UInt64 = 10
 
+/// Thrown by `saveTrip` when `handleEndTrip` unexpectedly finds nothing open
+/// — surfaced via `error.localizedDescription` in `confirm`'s catch block,
+/// same as every other save failure.
+private struct ConfirmSaveError: LocalizedError {
+    let message: String
+    var errorDescription: String? { message }
+}
+
 @Observable
 @MainActor
 final class ConfirmViewModel {
     private let entryRepository = ServiceLocator.entryRepository
+    private let mileageTripCoordinator = ServiceLocator.mileageTripCoordinator
+    private let agentClient = ServiceLocator.agentClient
     private let photoData: Data?
     private let captureSource: CaptureSource
 
@@ -23,6 +33,8 @@ final class ConfirmViewModel {
     private let aiOriginalDurationMinutes: Int
     private let aiOriginalMiles: Double
     private let aiOriginalActivityDate: Date?
+    private let aiOriginalIsTripMode: Bool
+    private let aiOriginalOdometerReading: Double?
 
     private var existingEntryTask: Task<Entry?, Never>!
     private let resolvedEntryId: String
@@ -59,6 +71,17 @@ final class ConfirmViewModel {
     var savedSuccessfully = false
     var errorMessage: String?
 
+    /// Whether this photo was classified (or, after a toggle, corrected) as
+    /// an odometer reading rather than work evidence — see
+    /// `CaptureViewModel.processCapturedPhoto` and `onTripModeToggled`.
+    /// Swaps ConfirmScreen's usual work-entry fields for a single
+    /// odometer-reading field and routes `confirm` through `saveTrip`
+    /// instead of the normal entry save.
+    var isTripMode: Bool
+    var odometerReading = ""
+    /// True while a toggle is re-running the other AgentClient photo call against the held photo — see `onTripModeToggled`.
+    var isReclassifying = false
+
     /// Which required fields are still unset — see EntryFieldValidation.
     var missingFields: [String] {
         EntryFieldValidation.missingFields(property: property, task: task, durationMinutes: Int(durationMinutes) ?? 0)
@@ -74,6 +97,8 @@ final class ConfirmViewModel {
         aiOriginalDurationMinutes = params.durationMinutes
         aiOriginalMiles = params.miles
         aiOriginalActivityDate = Self.resolveValidatedDate(params.resolvedActivityDateIso)
+        aiOriginalIsTripMode = params.isTripCapture
+        aiOriginalOdometerReading = params.odometerReading
 
         property = params.property
         task = params.task
@@ -81,6 +106,8 @@ final class ConfirmViewModel {
         category = EntryCategory(firestoreValue: params.category)
         miles = params.miles > 0 ? Self.cleanString(params.miles) : ""
         activityDate = aiOriginalActivityDate ?? Date()
+        isTripMode = params.isTripCapture
+        odometerReading = params.odometerReading.map { Self.cleanString($0) } ?? ""
 
         let entryId = params.entryId
         resolvedEntryId = entryId.isEmpty ? entryRepository.newEntryId() : entryId
@@ -192,7 +219,68 @@ final class ConfirmViewModel {
         }
     }
 
+    /// Flips between the two photo-capture shapes when the vision model's
+    /// classification (see `AgentClient.classifyPhotoIntent`) looks wrong to
+    /// the user — a one-tap fix instead of forcing a retake. Re-runs the
+    /// *other* existing AgentClient photo method against the already-held
+    /// photo (no new prompt) so the just-toggled-to fields are populated,
+    /// not left blank.
+    func onTripModeToggled(_ newValue: Bool) {
+        guard newValue != isTripMode else { return }
+        isTripMode = newValue
+        isReclassifying = true
+        Task {
+            guard let photoData else {
+                // No photo to re-run against — shouldn't happen (a photo
+                // capture always carries photoData), but leave the
+                // just-toggled-to fields blank/editable rather than getting stuck.
+                isReclassifying = false
+                return
+            }
+            if newValue {
+                if case .success(let miles, _) = await agentClient.readOdometerFromPhoto(imageData: photoData) {
+                    odometerReading = Self.cleanString(miles)
+                }
+            } else {
+                if case .success(let result) = await agentClient.draftEntryFromPhoto(imageData: photoData, knownProperties: properties.map(\.name)) {
+                    property = result.draft.property ?? ""
+                    task = result.draft.task ?? ""
+                    durationMinutes = result.draft.durationMinutes.map(String.init) ?? ""
+                    category = result.draft.category.map { EntryCategory(firestoreValue: $0) } ?? .other
+                }
+            }
+            isReclassifying = false
+        }
+    }
+
     func confirm(onSaved: @escaping () -> Void) {
+        if isTripMode {
+            guard let reading = Double(odometerReading), reading > 0 else {
+                errorMessage = "Enter the odometer reading before continuing."
+                return
+            }
+            isSaving = true
+            errorMessage = nil
+            Task {
+                do {
+                    try await withTimeout(seconds: saveTimeoutSeconds) { [self] in
+                        try await saveTrip(reading: reading)
+                    }
+                    isSaving = false
+                    savedSuccessfully = true
+                    onSaved()
+                } catch is TimeoutError {
+                    await resetFirestoreConnection()
+                    isSaving = false
+                    errorMessage = "Taking too long to save — check your connection and try again."
+                } catch {
+                    isSaving = false
+                    errorMessage = error.localizedDescription
+                }
+            }
+            return
+        }
+
         let duration = Int(durationMinutes) ?? 0
         guard !property.trimmingCharacters(in: .whitespaces).isEmpty,
               !task.trimmingCharacters(in: .whitespaces).isEmpty,
@@ -332,6 +420,61 @@ final class ConfirmViewModel {
                 fieldName: "activityDate",
                 aiValue: formatter.string(from: aiOriginalActivityDate),
                 finalValue: formatter.string(from: activityDate)
+            )
+        }
+    }
+
+    /// Saves a photo-classified trip start/end — see `confirm`'s isTripMode
+    /// branch. Re-derives open/close authoritatively at save time via
+    /// `findOpenEntry` (not any state captured back when Confirm first
+    /// opened, which may now be stale), same reasoning as the old
+    /// `CaptureViewModel.logOdometerPhoto` had. `handleStartTrip` is safe to
+    /// call even if a trip unexpectedly turns out to already be open — it
+    /// auto-abandons the previous one rather than erroring.
+    private func saveTrip(reading: Double) async throws {
+        let openTrip = try await entryRepository.findOpenEntry(isTrip: true)
+        let savedEntryId: String
+        if openTrip == nil {
+            let result = try await mileageTripCoordinator.handleStartTrip(
+                property: nil,
+                task: nil,
+                category: nil,
+                source: captureSource,
+                startedAt: Timestamp(date: Date()),
+                captureMethod: "photo",
+                odometerStart: reading
+            )
+            guard case .started(let entryId) = result else {
+                throw ConfirmSaveError(message: "Couldn't start the trip — try again.")
+            }
+            savedEntryId = entryId
+        } else {
+            guard let result = try await mileageTripCoordinator.handleEndTrip(
+                endedAt: Timestamp(date: Date()),
+                captureMethod: "photo",
+                odometerEnd: reading
+            ), case .ended(let entryId, _) = result else {
+                throw ConfirmSaveError(message: "Couldn't close the trip — try again.")
+            }
+            savedEntryId = entryId
+        }
+
+        // Best-effort, same reasoning as save() below — the audit record is
+        // the odometer reading itself, the photo is supporting evidence on
+        // top of it.
+        if let photoData {
+            _ = try? await entryRepository.attachPhoto(entryId: savedEntryId, imageData: photoData)
+        }
+
+        if let aiOriginalOdometerReading, aiOriginalOdometerReading != reading {
+            try? await entryRepository.recordCorrection(entryId: savedEntryId, fieldName: "odometerReading", aiValue: String(aiOriginalOdometerReading), finalValue: String(reading))
+        }
+        if aiOriginalIsTripMode != isTripMode {
+            try? await entryRepository.recordCorrection(
+                entryId: savedEntryId,
+                fieldName: "photoIntent",
+                aiValue: aiOriginalIsTripMode ? "odometer" : "work",
+                finalValue: isTripMode ? "odometer" : "work"
             )
         }
     }

@@ -78,6 +78,19 @@ sealed interface OdometerReadOutcome {
     data class Failure(val message: String) : OdometerReadOutcome
 }
 
+/** Which of the two photo-capture paths a just-taken photo belongs to — see AgentClient.classifyPhotoIntent. */
+enum class PhotoIntent { ODOMETER, WORK }
+
+/**
+ * Result of AgentClient.classifyPhotoIntent — a fast odometer-vs-work read
+ * that decides which of readOdometerFromPhoto/draftEntryFromPhoto to run
+ * next, not the extracted content itself.
+ */
+sealed interface PhotoIntentOutcome {
+    data class Success(val intent: PhotoIntent, val source: ParseSource) : PhotoIntentOutcome
+    data class Failure(val message: String) : PhotoIntentOutcome
+}
+
 /**
  * Bundles everything CaptureScreen hands off to the Confirm screen: the
  * drafted fields, where the parse ran (for the "parsed on-device"/"parsed
@@ -87,6 +100,11 @@ sealed interface OdometerReadOutcome {
  * best-effort "said from here" location — see CaptureViewModel's
  * captureLocation(), same non-blocking cached-location approach the watch's
  * capture path already uses.
+ *
+ * isTripCapture/tripIsEndingExistingTrip/odometerReading are only set when a
+ * photo was classified as an odometer reading (see
+ * CaptureViewModel.handleOdometerPhoto) — Confirm renders its trip-mode UI
+ * instead of the usual work-entry fields when isTripCapture is true.
  */
 data class CaptureResult(
     val draft: EntryDraft,
@@ -95,4 +113,7 @@ data class CaptureResult(
     val photoUri: String? = null,
     val captureLat: Double? = null,
     val captureLng: Double? = null,
+    val isTripCapture: Boolean = false,
+    val tripIsEndingExistingTrip: Boolean = false,
+    val odometerReading: Double? = null,
 )

@@ -19,7 +19,17 @@ final class ChatViewModel {
     private let onDeviceLlm = ServiceLocator.onDeviceLlm
 
     var messages: [ChatMessage] = []
-    var inputText = ""
+    /// Typing "@" opens the same entry picker the attach menu's "Attach
+    /// entry" item does — detected as "@" newly appearing as the single
+    /// just-typed character (length grew by exactly one and it wasn't the
+    /// last character a moment ago), so pasting a longer string containing
+    /// "@" mid-text or backspacing into one doesn't retrigger it.
+    var inputText = "" {
+        didSet {
+            guard inputText.count == oldValue.count + 1, inputText.hasSuffix("@"), !oldValue.hasSuffix("@") else { return }
+            openEntryPicker(triggeredByAtSymbol: true)
+        }
+    }
     var isRecording = false
     var isTranscribing = false
     var isSending = false
@@ -31,6 +41,12 @@ final class ChatViewModel {
     var pendingEntries: [Entry] = []
     var showEntryPicker = false
     var availableEntries: [Entry] = []
+    /// True when showEntryPicker was opened by typing "@" rather than
+    /// tapping the attach menu's "Attach entry" item — only then does
+    /// attachEntry strip the trailing "@" back out of inputText, so a
+    /// deliberately-typed "@" left untouched (picker dismissed without
+    /// picking) isn't silently eaten.
+    private var entryPickerTriggeredByAtSymbol = false
     var errorMessage: String?
 
     var recordingAmplitude: Float { audioRecorder.amplitude }
@@ -51,21 +67,30 @@ final class ChatViewModel {
     }
 
     /// Loads the host's entries fresh each time so a just-logged entry is selectable immediately.
-    func openEntryPicker() {
+    func openEntryPicker(triggeredByAtSymbol: Bool = false) {
         showEntryPicker = true
+        entryPickerTriggeredByAtSymbol = triggeredByAtSymbol
         Task {
             availableEntries = (try? await entryRepository.observeEntries().first { _ in true }) ?? []
         }
     }
 
     func dismissEntryPicker() {
+        // Deliberately leaves inputText untouched — a typed "@" only gets
+        // stripped on a successful attach (see attachEntry), not on dismiss,
+        // so backing out of the picker never silently eats what was typed.
         showEntryPicker = false
+        entryPickerTriggeredByAtSymbol = false
     }
 
     func attachEntry(_ entry: Entry) {
+        if entryPickerTriggeredByAtSymbol, inputText.hasSuffix("@") {
+            inputText.removeLast()
+        }
+        entryPickerTriggeredByAtSymbol = false
+        showEntryPicker = false
         guard !pendingEntries.contains(where: { $0.id == entry.id }) else { return }
         pendingEntries.append(entry)
-        showEntryPicker = false
     }
 
     func removeAttachedEntry(_ entry: Entry) {

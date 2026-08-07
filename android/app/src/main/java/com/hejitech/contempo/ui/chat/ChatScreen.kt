@@ -27,6 +27,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AlternateEmail
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
@@ -41,6 +42,8 @@ import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -57,10 +60,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -101,6 +108,7 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
 
     var pendingRecordAfterPermission by remember { mutableStateOf(false) }
     var micPermissionDenied by remember { mutableStateOf(false) }
+    var attachMenuExpanded by remember { mutableStateOf(false) }
     val micPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
     ) { granted ->
@@ -251,42 +259,63 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
             }
         }
 
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        // Compact 40dp circular toolbar buttons (not the default 48dp
+        // IconButton touch target) so up to four of them plus the text
+        // field still fit on a narrow phone width — a plain fillMaxWidth
+        // Row of full-size IconButtons left almost no room for the field on
+        // a ~360dp-wide screen, squeezing it into a multi-line wrap that
+        // read as "too tall." Mirrors iOS's ChatScreen input bar, which
+        // already solves this with 38dp circular buttons + a line-capped
+        // field — same fix, same reasoning, just ported.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             if (uiState.isRecording) {
                 // Recording is already underway — skip straight to the stop
                 // affordance (a menu tap-through would just add friction to
                 // ending a recording that's already running).
-                IconButton(onClick = ::onMicTap, enabled = !uiState.isTranscribing) {
-                    Icon(
-                        Icons.Filled.Mic,
-                        contentDescription = stringResource(R.string.capture_voice_stop),
-                        tint = MaterialTheme.colorScheme.error,
-                    )
-                }
+                ChatToolbarButton(
+                    icon = Icons.Filled.Mic,
+                    contentDescription = stringResource(R.string.capture_voice_stop),
+                    enabled = !uiState.isTranscribing,
+                    tint = MaterialTheme.colorScheme.error,
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    onClick = ::onMicTap,
+                )
             } else {
-                // Three direct buttons (attach entry, photo, mic) rather than
-                // a "+" dropdown — matches iOS's input bar, where every
-                // action is one tap away.
-                IconButton(onClick = viewModel::openEntryPicker, enabled = !uiState.isTranscribing) {
-                    Icon(
-                        Icons.Filled.AlternateEmail,
-                        contentDescription = stringResource(R.string.chat_attach_entry_button),
-                        tint = MaterialTheme.colorScheme.primary,
+                // One grouped button (rather than three always-visible ones)
+                // that expands into a popup menu on tap — same reasoning as
+                // the compact toolbar sizing above: three separate buttons
+                // plus the field plus send left too little room on a narrow
+                // screen. "@" typed directly in the field (see
+                // ChatViewModel.onInputChanged) is the faster path to the
+                // same attach-entry action for anyone who discovers it.
+                Box {
+                    ChatToolbarButton(
+                        icon = Icons.Filled.Add,
+                        contentDescription = stringResource(R.string.chat_attach_button),
+                        enabled = !uiState.isTranscribing,
+                        onClick = { attachMenuExpanded = true },
                     )
-                }
-                IconButton(onClick = cameraCapture::launch, enabled = !uiState.isTranscribing) {
-                    Icon(
-                        Icons.Filled.PhotoCamera,
-                        contentDescription = stringResource(R.string.chat_attach_photo_button),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                }
-                IconButton(onClick = ::onMicTap, enabled = !uiState.isTranscribing) {
-                    Icon(
-                        Icons.Filled.Mic,
-                        contentDescription = stringResource(R.string.capture_voice_start),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
+                    DropdownMenu(expanded = attachMenuExpanded, onDismissRequest = { attachMenuExpanded = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.chat_attach_entry_button)) },
+                            leadingIcon = { Icon(Icons.Filled.AlternateEmail, contentDescription = null) },
+                            onClick = { attachMenuExpanded = false; viewModel.openEntryPicker() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.chat_attach_photo_button)) },
+                            leadingIcon = { Icon(Icons.Filled.PhotoCamera, contentDescription = null) },
+                            onClick = { attachMenuExpanded = false; cameraCapture.launch() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.capture_voice_start)) },
+                            leadingIcon = { Icon(Icons.Filled.Mic, contentDescription = null) },
+                            onClick = { attachMenuExpanded = false; onMicTap() },
+                        )
+                    }
                 }
             }
             OutlinedTextField(
@@ -294,16 +323,28 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
                 onValueChange = viewModel::onInputChanged,
                 modifier = Modifier.weight(1f),
                 enabled = !uiState.isRecording && !uiState.isTranscribing,
-                placeholder = { Text(stringResource(if (uiState.isRecording) R.string.capture_listening else R.string.chat_input_hint)) },
+                placeholder = {
+                    Text(
+                        stringResource(if (uiState.isRecording) R.string.capture_listening else R.string.chat_input_hint),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
+                // Capped rather than unbounded — without this, a long
+                // message (or a squeezed width forcing early wraps) grew the
+                // field indefinitely tall. Beyond 5 lines it scrolls
+                // internally instead, same as iOS's lineLimit(1...5).
+                maxLines = 5,
             )
-            IconButton(
-                onClick = viewModel::send,
+            ChatToolbarButton(
+                icon = Icons.AutoMirrored.Filled.Send,
+                contentDescription = stringResource(R.string.capture_send_button),
                 enabled = (uiState.inputText.isNotBlank() || uiState.pendingImage != null || uiState.pendingEntries.isNotEmpty()) &&
                     !uiState.isSending && !uiState.isRecording && !uiState.isTranscribing &&
                     uiState.aiAvailability is AiAvailability.Ready,
-            ) {
-                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.capture_send_button))
-            }
+                filled = true,
+                onClick = viewModel::send,
+            )
         }
 
         // Matches iOS's footer disclaimer — this screen answers tax/legal
@@ -335,10 +376,11 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
 
 /**
  * Lets the host attach one or more specific logged entries as context for
- * an entry-specific question — the "@" affordance next to photo/mic.
- * Selecting an entry closes the dialog (ChatViewModel.attachEntry), same
- * one-tap-and-done feel as picking a role/property elsewhere in the app;
- * tap the "@" button again to attach another.
+ * an entry-specific question — reachable both from the attach menu's
+ * "Attach entry" item and by typing "@" directly in the input (see
+ * ChatViewModel.onInputChanged). Selecting an entry closes the dialog
+ * (ChatViewModel.attachEntry), same one-tap-and-done feel as picking a
+ * role/property elsewhere in the app; open it again to attach another.
  */
 @Composable
 private fun EntryPickerDialog(entries: List<Entry>, onDismiss: () -> Unit, onSelect: (Entry) -> Unit) {
@@ -377,6 +419,51 @@ private fun EntryPickerDialog(entries: List<Entry>, onDismiss: () -> Unit, onSel
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.confirm_cancel_button)) }
         },
     )
+}
+
+/**
+ * Compact circular icon button for the chat input bar — deliberately not a
+ * default Material `IconButton` (48dp minimum touch target), since up to
+ * four of these sit in the same row as the text field on screens as narrow
+ * as ~360dp; at the default size there was no room left for the field
+ * before it started wrapping. 40dp keeps this comfortably tappable while
+ * matching iOS's equivalent 38dp circular toolbar buttons.
+ */
+@Composable
+private fun ChatToolbarButton(
+    icon: ImageVector,
+    contentDescription: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    tint: Color = MaterialTheme.colorScheme.primary,
+    containerColor: Color = MaterialTheme.colorScheme.primaryContainer,
+    // Send uses a solid-filled circle so the primary action still reads as
+    // visually distinct from the three neutral attach/photo/mic actions,
+    // same emphasis iOS's arrow.up send button has.
+    filled: Boolean = false,
+) {
+    val background = when {
+        filled && enabled -> MaterialTheme.colorScheme.primary
+        filled -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+        enabled -> containerColor
+        else -> containerColor.copy(alpha = 0.5f)
+    }
+    val iconTint = when {
+        filled -> MaterialTheme.colorScheme.onPrimary
+        enabled -> tint
+        else -> tint.copy(alpha = 0.5f)
+    }
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(background)
+            .clickable(onClick = onClick, enabled = enabled)
+            .semantics { this.contentDescription = contentDescription },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
+    }
 }
 
 /** Small "AI Online"/"Checking AI…" capsule — mirrors iOS's top-bar status pill so availability is glanceable, not just an error once blocked. */

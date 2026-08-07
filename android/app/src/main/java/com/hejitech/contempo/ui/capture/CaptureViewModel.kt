@@ -16,6 +16,8 @@ import com.hejitech.contempo.agent.EntryDraft
 import com.hejitech.contempo.agent.OdometerReadOutcome
 import com.hejitech.contempo.agent.ParseOutcome
 import com.hejitech.contempo.agent.ParseSource
+import com.hejitech.contempo.agent.PhotoIntent
+import com.hejitech.contempo.agent.PhotoIntentOutcome
 import com.hejitech.contempo.agent.ParsingStage
 import com.hejitech.contempo.agent.TimerIntent
 import com.hejitech.contempo.agent.TimerIntentClassifier
@@ -80,7 +82,11 @@ data class CaptureUiState(
     val isRecording: Boolean = false,
     val isTranscribing: Boolean = false,
     val isParsing: Boolean = false,
-    val isDraftingFromPhoto: Boolean = false,
+    // Covers the whole classify -> dispatch sequence for a just-taken photo
+    // (see processCapturedPhoto) — one busy state for one camera launch,
+    // regardless of which of the two downstream paths (odometer/work) the
+    // classifier picks.
+    val isProcessingPhoto: Boolean = false,
     val errorMessage: String? = null,
     val aiAvailability: AiAvailability = AiAvailability.Ready,
     // Set when photo drafting fails, so the photo is still attached as
@@ -92,11 +98,12 @@ data class CaptureUiState(
     val finalizedTranscript: String? = null,
     val parsingStage: ParsingStage = ParsingStage.IDLE,
     // Transient "started/stopped tracking" confirmation shown after a
-    // start/stop timer utterance — these write straight to Firestore and
-    // skip Confirm entirely (see parseAndProceed/handleTimerEvent), so this
-    // is the only feedback the user gets.
+    // start/stop timer utterance, or a voice-triggered GPS trip start/stop
+    // (see parseAndProceed/handleTimerEvent) — these write straight to
+    // Firestore and skip Confirm entirely, so this is the only feedback the
+    // user gets. Photo-based capture no longer uses this (see
+    // processCapturedPhoto) — it always resolves to Confirm instead.
     val timerMessage: String? = null,
-    val isProcessingOdometerPhoto: Boolean = false,
     val tripMessage: String? = null,
     // Persisted (see QuickCaptureSettingsStore) — when on, stopping a
     // recording skips transcribe/parse/Confirm entirely: audio + location +
@@ -337,44 +344,99 @@ class CaptureViewModel : ViewModel() {
     }
 
     /**
-     * A just-taken photo, drafted via the on-device model's vision input
-     * (see AgentClient.draftEntryFromPhoto). Unlike text/voice this doesn't
-     * check aiAvailability up front — draftEntryFromPhoto already produces
+     * A just-taken photo — the single entry point for both photo-capture
+     * paths. Classifies the photo (see AgentClient.classifyPhotoIntent) and
+     * dispatches to whichever of the two existing, unchanged AgentClient
+     * methods applies, so the host no longer has to pick "Photo" vs.
+     * "Odometer" before taking the picture. Unlike text/voice this doesn't
+     * check aiAvailability up front — each downstream call already produces
      * an honest per-preference failure message on its own, and the photo is
-     * still worth keeping as evidence even when drafting isn't available
-     * (photoUri survives into the manual-clarification path below).
+     * still worth keeping as evidence even when understanding isn't
+     * available.
      */
-    fun processPhoto(bitmap: Bitmap, photoUri: String, onDraftReady: (CaptureResult) -> Unit) {
+    fun processCapturedPhoto(bitmap: Bitmap, photoUri: String, onDraftReady: (CaptureResult) -> Unit) {
         _uiState.value = _uiState.value.copy(
-            isDraftingFromPhoto = true,
+            isProcessingPhoto = true,
             errorMessage = null,
             pendingPhotoUri = photoUri,
         )
 
         viewModelScope.launch {
-            val knownProperties = runCatching {
-                entryRepository.observeProperties().first().map { it.name }
-            }.getOrDefault(emptyList())
-
-            when (val outcome = agentClient.draftEntryFromPhoto(bitmap, knownProperties)) {
-                is ParseOutcome.Success -> {
-                    val draft = outcome.result.draft
-                    val source = if (outcome.result.source == ParseSource.ON_DEVICE) "on_device" else "cloud"
-                    val location = captureLocation()
-                    _uiState.value = CaptureUiState()
-                    onDraftReady(CaptureResult(draft, source, CaptureSource.PHOTO, photoUri, location?.first, location?.second))
+            when (val outcome = agentClient.classifyPhotoIntent(bitmap)) {
+                is PhotoIntentOutcome.Success -> when (outcome.intent) {
+                    PhotoIntent.ODOMETER -> handleOdometerPhoto(bitmap, photoUri, onDraftReady)
+                    PhotoIntent.WORK -> handleWorkPhoto(bitmap, photoUri, onDraftReady)
                 }
-                is ParseOutcome.Failure -> {
-                    // pendingPhotoUri (set above) stays, so the photo is
-                    // still attached as evidence if the user falls back to
-                    // typing/voice (see parseAndProceed) or manual entry.
-                    _uiState.value = _uiState.value.copy(
-                        isDraftingFromPhoto = false,
-                        errorMessage = outcome.message,
-                    )
-                }
+                // Classification itself failed (model unavailable/unclear) —
+                // fall back to the general work-entry draft path rather than
+                // stranding the user; that path already has a robust
+                // "couldn't draft, still attached as evidence, fill in
+                // manually" story.
+                is PhotoIntentOutcome.Failure -> handleWorkPhoto(bitmap, photoUri, onDraftReady)
             }
         }
+    }
+
+    private suspend fun handleWorkPhoto(bitmap: Bitmap, photoUri: String, onDraftReady: (CaptureResult) -> Unit) {
+        val knownProperties = runCatching {
+            entryRepository.observeProperties().first().map { it.name }
+        }.getOrDefault(emptyList())
+
+        when (val outcome = agentClient.draftEntryFromPhoto(bitmap, knownProperties)) {
+            is ParseOutcome.Success -> {
+                val draft = outcome.result.draft
+                val source = if (outcome.result.source == ParseSource.ON_DEVICE) "on_device" else "cloud"
+                val location = captureLocation()
+                _uiState.value = CaptureUiState()
+                onDraftReady(CaptureResult(draft, source, CaptureSource.PHOTO, photoUri, location?.first, location?.second))
+            }
+            is ParseOutcome.Failure -> {
+                // pendingPhotoUri (set by processCapturedPhoto) stays, so the
+                // photo is still attached as evidence if the user falls back
+                // to typing/voice (see parseAndProceed) or manual entry.
+                _uiState.value = _uiState.value.copy(
+                    isProcessingPhoto = false,
+                    errorMessage = outcome.message,
+                )
+            }
+        }
+    }
+
+    /**
+     * A photo classified as an odometer reading. Unlike the old
+     * logOdometerPhoto, this never writes to Firestore directly — it always
+     * routes to Confirm (in trip mode) so a wrong classification is
+     * correctable there instead of a silent hard commit. Start vs. end is
+     * still auto-detected the same way as before: no open trip -> this
+     * reading is the start; one already open -> this reading closes it.
+     * Checks findOpenEntry directly (authoritative) rather than the cached
+     * openTripEntry StateFlow, so a stale snapshot can't misclassify which
+     * side of the trip this photo is on — Confirm's saveTrip() re-derives
+     * this again at save time regardless, since time may have passed while
+     * the user was reviewing.
+     */
+    private suspend fun handleOdometerPhoto(bitmap: Bitmap, photoUri: String, onDraftReady: (CaptureResult) -> Unit) {
+        val openTrip = entryRepository.findOpenEntry(isTrip = true)
+        val readOutcome = agentClient.readOdometerFromPhoto(bitmap)
+        val reading = (readOutcome as? OdometerReadOutcome.Success)?.miles
+        // OCR failing doesn't dead-end here (unlike the old direct-write
+        // path's error toast) — the classifier still said "odometer," so
+        // Confirm opens in trip mode with a blank, manually-fillable reading.
+        val location = captureLocation()
+        _uiState.value = CaptureUiState()
+        onDraftReady(
+            CaptureResult(
+                draft = EntryDraft(),
+                parseSource = "on_device",
+                captureSource = CaptureSource.PHOTO,
+                photoUri = photoUri,
+                captureLat = location?.first,
+                captureLng = location?.second,
+                isTripCapture = true,
+                tripIsEndingExistingTrip = openTrip != null,
+                odometerReading = reading,
+            )
+        )
     }
 
     fun manualEntry(onDraftReady: (CaptureResult) -> Unit) {
@@ -655,57 +717,6 @@ class CaptureViewModel : ViewModel() {
                 MileageTrackingService.cancel(ServiceLocator.appContext)
             } else {
                 mileageTripCoordinator.handleCancelTrip()
-            }
-        }
-    }
-
-    /**
-     * A just-taken odometer photo. Start vs. end is auto-detected the same
-     * way as the voice timer's start/stop: no open trip -> this reading is
-     * the start; one already open -> this reading closes it. Checks
-     * findOpenEntry directly (authoritative) rather than the cached
-     * openTripEntry StateFlow, so a stale snapshot can't misclassify which
-     * side of the trip this photo is on.
-     */
-    fun logOdometerPhoto(bitmap: Bitmap) {
-        _uiState.value = _uiState.value.copy(isProcessingOdometerPhoto = true, errorMessage = null)
-        viewModelScope.launch {
-            when (val outcome = agentClient.readOdometerFromPhoto(bitmap)) {
-                is OdometerReadOutcome.Success -> {
-                    val openTrip = entryRepository.findOpenEntry(isTrip = true)
-                    if (openTrip == null) {
-                        mileageTripCoordinator.handleStartTrip(
-                            property = null,
-                            task = null,
-                            category = null,
-                            source = CaptureSource.PHOTO,
-                            startedAt = Timestamp.now(),
-                            captureMethod = "photo",
-                            odometerStart = outcome.miles,
-                        )
-                        _uiState.value = _uiState.value.copy(
-                            isProcessingOdometerPhoto = false,
-                            tripMessage = "Trip started — odometer ${outcome.miles}",
-                        )
-                    } else {
-                        val result = mileageTripCoordinator.handleEndTrip(
-                            endedAt = Timestamp.now(),
-                            captureMethod = "photo",
-                            odometerEnd = outcome.miles,
-                        )
-                        _uiState.value = _uiState.value.copy(
-                            isProcessingOdometerPhoto = false,
-                            tripMessage = result?.let { "Trip ended — logged ${it.miles} mi" }
-                                ?: "Couldn't close the trip — try again.",
-                        )
-                    }
-                }
-                is OdometerReadOutcome.Failure -> {
-                    _uiState.value = _uiState.value.copy(
-                        isProcessingOdometerPhoto = false,
-                        errorMessage = outcome.message,
-                    )
-                }
             }
         }
     }

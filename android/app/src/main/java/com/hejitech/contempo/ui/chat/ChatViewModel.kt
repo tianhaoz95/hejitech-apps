@@ -38,6 +38,14 @@ data class ChatUiState(
     /** Backs the entry picker sheet — the host's full entry list to search/select from. */
     val showEntryPicker: Boolean = false,
     val availableEntries: List<Entry> = emptyList(),
+    /**
+     * True when showEntryPicker was opened by typing "@" (see onInputChanged)
+     * rather than tapping the attach-entry menu item — only then does
+     * attachEntry strip the trailing "@" back out of inputText, so a
+     * deliberately-typed "@" left untouched (picker dismissed without
+     * picking) isn't silently eaten.
+     */
+    val entryPickerTriggeredByAtSymbol: Boolean = false,
 )
 
 /**
@@ -70,8 +78,19 @@ class ChatViewModel : ViewModel() {
         state.copy(aiAvailability = aiAvailability(preference, modelStatus))
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ChatUiState())
 
+    /**
+     * Typing "@" opens the same entry picker the dedicated attach-entry menu
+     * item does — detected as "@" newly appearing as the single just-typed
+     * character (length grew by exactly one and it wasn't the last character
+     * a moment ago), so pasting a longer string containing "@" mid-text or
+     * backspacing into one doesn't retrigger it.
+     */
     fun onInputChanged(text: String) {
+        val previous = _uiState.value.inputText
         _uiState.value = _uiState.value.copy(inputText = text, errorMessage = null)
+        if (text.length == previous.length + 1 && text.endsWith("@") && !previous.endsWith("@")) {
+            openEntryPicker(triggeredByAtSymbol = true)
+        }
     }
 
     fun hasRecordAudioPermission(): Boolean = audioRecorder.hasPermission()
@@ -120,8 +139,8 @@ class ChatViewModel : ViewModel() {
     }
 
     /** Opens the entry picker sheet, loading the host's entries fresh each time so a just-logged entry is selectable immediately. */
-    fun openEntryPicker() {
-        _uiState.value = _uiState.value.copy(showEntryPicker = true)
+    fun openEntryPicker(triggeredByAtSymbol: Boolean = false) {
+        _uiState.value = _uiState.value.copy(showEntryPicker = true, entryPickerTriggeredByAtSymbol = triggeredByAtSymbol)
         viewModelScope.launch {
             val entries = runCatching { entryRepository.observeEntries().first() }.getOrDefault(emptyList())
             _uiState.value = _uiState.value.copy(availableEntries = entries)
@@ -129,13 +148,29 @@ class ChatViewModel : ViewModel() {
     }
 
     fun dismissEntryPicker() {
-        _uiState.value = _uiState.value.copy(showEntryPicker = false)
+        // Deliberately leaves inputText untouched — a typed "@" only gets
+        // stripped on a successful attach (see attachEntry), not on dismiss,
+        // so backing out of the picker never silently eats what was typed.
+        _uiState.value = _uiState.value.copy(showEntryPicker = false, entryPickerTriggeredByAtSymbol = false)
     }
 
     fun attachEntry(entry: Entry) {
-        val current = _uiState.value.pendingEntries
-        if (current.any { it.id == entry.id }) return
-        _uiState.value = _uiState.value.copy(pendingEntries = current + entry, showEntryPicker = false)
+        val state = _uiState.value
+        val strippedInput = if (state.entryPickerTriggeredByAtSymbol && state.inputText.endsWith("@")) {
+            state.inputText.dropLast(1)
+        } else {
+            state.inputText
+        }
+        if (state.pendingEntries.any { it.id == entry.id }) {
+            _uiState.value = state.copy(showEntryPicker = false, entryPickerTriggeredByAtSymbol = false, inputText = strippedInput)
+            return
+        }
+        _uiState.value = state.copy(
+            pendingEntries = state.pendingEntries + entry,
+            showEntryPicker = false,
+            entryPickerTriggeredByAtSymbol = false,
+            inputText = strippedInput,
+        )
     }
 
     fun removeAttachedEntry(entry: Entry) {

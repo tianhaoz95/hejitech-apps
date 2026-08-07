@@ -132,6 +132,31 @@ class AgentClient(
     }
 
     /**
+     * Classifies a just-taken photo as an odometer reading or general work
+     * evidence — a fast, single-word-response call that decides which of
+     * readOdometerFromPhoto/draftEntryFromPhoto to run next (see
+     * CaptureViewModel.processCapturedPhoto), so the host no longer has to
+     * pick the right capture button before taking the photo. Same
+     * CLOUD_ONLY/ON_DEVICE_ONLY/PREFER_ON_DEVICE honesty policy as the other
+     * two photo methods — no cloud vision fallback yet.
+     */
+    suspend fun classifyPhotoIntent(bitmap: Bitmap): PhotoIntentOutcome {
+        val prompt = buildPhotoIntentPrompt()
+        return when (inferencePreference()) {
+            InferencePreference.CLOUD_ONLY ->
+                PhotoIntentOutcome.Failure("Photo capture isn't available in Cloud-only mode yet — switch to On-device only or Prefer on-device in Settings, or fill in the entry manually.")
+
+            InferencePreference.ON_DEVICE_ONLY ->
+                onDeviceClassifyPhotoIntent(bitmap, prompt)
+                    ?: PhotoIntentOutcome.Failure("On-device model unavailable for photo capture — no cloud fallback (On-device only is selected in Settings).")
+
+            InferencePreference.PREFER_ON_DEVICE ->
+                onDeviceClassifyPhotoIntent(bitmap, prompt)
+                    ?: PhotoIntentOutcome.Failure("This device's on-device model isn't ready for photo understanding yet — fill in the entry manually; the photo is still attached as evidence.")
+        }
+    }
+
+    /**
      * Text-only variant of askQuestion that reports live generation progress
      * via [onEvent] on the on-device path (see OnDeviceLlm.generateTextStream)
      * — no image param, since photo questions don't have a verified streaming
@@ -250,6 +275,28 @@ class AgentClient(
             } else {
                 OdometerReadOutcome.Failure("Couldn't read a number from that photo — make sure the odometer digits are clearly visible and try again.")
             }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Null return means "the model itself didn't run" — same contract as
+     * onDeviceReadOdometer. An ambiguous/unparseable reply is a distinct,
+     * non-fatal Failure rather than null, so classifyPhotoIntent's caller
+     * gets an actionable message instead of the generic "model unavailable"
+     * one.
+     */
+    private suspend fun onDeviceClassifyPhotoIntent(bitmap: Bitmap, prompt: String): PhotoIntentOutcome? {
+        return try {
+            val text = onDeviceLlm.generateFromImage(bitmap, prompt) ?: return null
+            val intent = when {
+                text.contains("odometer", ignoreCase = true) -> PhotoIntent.ODOMETER
+                text.contains("work", ignoreCase = true) -> PhotoIntent.WORK
+                else -> null
+            }
+            intent?.let { PhotoIntentOutcome.Success(it, ParseSource.ON_DEVICE) }
+                ?: PhotoIntentOutcome.Failure("Couldn't tell what that photo shows — try retaking it, or use manual entry.")
         } catch (e: Exception) {
             null
         }
@@ -397,6 +444,12 @@ class AgentClient(
         "category" to category,
         "activityDate" to activityDate.toDate().toInstant().toString(),
     )
+
+    private fun buildPhotoIntentPrompt(): String = buildString {
+        appendLine("You are looking at a photo a short-term-rental host just took while logging work.")
+        appendLine("Decide whether this is a close-up of a car's odometer / trip-mileage display (a dashboard gauge cluster showing a mileage number), or something else related to work performed (cleaning, a repair, a receipt, supplies, etc.).")
+        appendLine("Respond with ONLY one word: odometer or work. No punctuation, no commentary.")
+    }
 
     private fun buildOdometerPrompt(): String = buildString {
         appendLine("You are reading a car odometer or trip-mileage display from a photo.")

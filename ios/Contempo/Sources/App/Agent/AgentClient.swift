@@ -83,6 +83,27 @@ final class AgentClient {
         }
     }
 
+    /// Classifies a just-taken photo as an odometer reading or general work
+    /// evidence — a fast, single-word-response call that decides which of
+    /// `readOdometerFromPhoto`/`draftEntryFromPhoto` to run next (see
+    /// `CaptureViewModel.processCapturedPhoto`), so the host no longer has to
+    /// pick the right capture button before taking the photo. Same
+    /// cloudOnly/onDeviceOnly/preferOnDevice honesty policy as the other two
+    /// photo methods — no cloud vision fallback yet.
+    func classifyPhotoIntent(imageData: Data) async -> PhotoIntentOutcome {
+        let prompt = Self.buildPhotoIntentPrompt()
+        switch inferencePreference() {
+        case .cloudOnly:
+            return .failure(message: "Photo capture isn't available in Cloud-only mode yet — switch to On-device only or Prefer on-device in Settings, or fill in the entry manually.")
+        case .onDeviceOnly:
+            if let result = await onDeviceClassifyPhotoIntent(imageData: imageData, prompt: prompt) { return result }
+            return .failure(message: "On-device model unavailable for photo capture — no cloud fallback (On-device only is selected in Settings).")
+        case .preferOnDevice:
+            if let result = await onDeviceClassifyPhotoIntent(imageData: imageData, prompt: prompt) { return result }
+            return .failure(message: "This device's on-device model isn't ready for photo understanding yet — fill in the entry manually; the photo is still attached as evidence.")
+        }
+    }
+
     func askQuestionStream(
         history: [ChatMessage],
         question: String,
@@ -168,6 +189,19 @@ final class AgentClient {
             return .failure(message: "Couldn't read a number from that photo — make sure the odometer digits are clearly visible and try again.")
         }
         return .success(miles: miles, source: .onDevice)
+    }
+
+    /// Nil return means "the model itself didn't run" — same contract as
+    /// `onDeviceReadOdometer`. An ambiguous/unparseable reply is a distinct,
+    /// non-fatal `.failure` rather than nil, so `classifyPhotoIntent`'s
+    /// caller gets an actionable message instead of the generic
+    /// "model unavailable" one.
+    private func onDeviceClassifyPhotoIntent(imageData: Data, prompt: String) async -> PhotoIntentOutcome? {
+        guard let text = await onDeviceLlm.generateFromImage(imageData, prompt: prompt) else { return nil }
+        let lowered = text.lowercased()
+        if lowered.contains("odometer") { return .success(intent: .odometer, source: .onDevice) }
+        if lowered.contains("work") { return .success(intent: .work, source: .onDevice) }
+        return .failure(message: "Couldn't tell what that photo shows — try retaking it, or use manual entry.")
     }
 
     private func onDeviceDraftFromPhoto(imageData: Data, prompt: String) async -> ParseOutcome? {
@@ -262,6 +296,14 @@ final class AgentClient {
         lines.append("Host: \(question)")
         lines.append("Respond with plain text only — no markdown, no JSON.")
         return lines.joined(separator: "\n")
+    }
+
+    private static func buildPhotoIntentPrompt() -> String {
+        """
+        You are looking at a photo a short-term-rental host just took while logging work.
+        Decide whether this is a close-up of a car's odometer / trip-mileage display (a dashboard gauge cluster showing a mileage number), or something else related to work performed (cleaning, a repair, a receipt, supplies, etc.).
+        Respond with ONLY one word: odometer or work. No punctuation, no commentary.
+        """
     }
 
     private static func buildOdometerPrompt() -> String {

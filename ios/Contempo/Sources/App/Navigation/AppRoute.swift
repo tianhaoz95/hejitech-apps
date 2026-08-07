@@ -17,6 +17,15 @@ struct ConfirmParams: Hashable {
     var entryId: String = ""
     var captureLat: Double?
     var captureLng: Double?
+    /// Set only when a fresh photo capture was classified as an odometer
+    /// reading (see `CaptureViewModel.handleOdometerPhoto`) — never set on
+    /// the EntryDetail edit path. Confirm swaps its usual work-entry fields
+    /// for a single odometer-reading field when this is true.
+    var isTripCapture: Bool = false
+    /// Display-only — which button label Confirm shows; the actual
+    /// open/close branch is re-derived at save time.
+    var tripIsEndingExistingTrip: Bool = false
+    var odometerReading: Double?
 }
 
 enum LegalDoc: String, Hashable {

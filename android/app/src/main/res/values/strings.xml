@@ -94,13 +94,8 @@
     <string name="capture_photo_button">Take a photo</string>
     <string name="capture_drafting_from_photo">Looking at your photo…</string>
     <string name="capture_camera_permission_needed">Camera access is needed for photo capture — tap the camera again to grant it.</string>
-    <string name="capture_odometer_start_button">Log odometer photo (start trip)</string>
-    <string name="capture_odometer_end_button">Log odometer photo (end trip)</string>
-    <string name="capture_reading_odometer">Reading odometer…</string>
     <string name="capture_quick_action_trip">Start Trip</string>
     <string name="capture_location_permission_needed">Location access is needed to track a trip — tap again to grant it.</string>
-    <string name="capture_other_button">Other (photo, odometer)</string>
-    <string name="capture_other_button_label">More ways to capture</string>
     <string name="capture_voice_button_label">Tap to speak</string>
     <string name="capture_type_instead">Type instead</string>
     <string name="capture_finalized_heading">Here\'s what we heard</string>
@@ -141,6 +136,10 @@
     <string name="confirm_cancel_button">Cancel</string>
     <string name="confirm_required_field_format">%1$s · required</string>
     <string name="confirm_complete_later_button">Complete later</string>
+    <string name="confirm_photo_intent_toggle_label">This is an odometer reading</string>
+    <string name="confirm_odometer_reading_label">Odometer reading</string>
+    <string name="confirm_start_trip_button">Start Trip</string>
+    <string name="confirm_end_trip_button">End Trip</string>
 
     <string name="dashboard_eyebrow">Your paper trail</string>
     <string name="dashboard_title">Your progress</string>
@@ -225,6 +224,7 @@
 
     <string name="chat_eyebrow">Ask your logbook</string>
     <string name="chat_input_hint">Ask about STR tax rules or hours…</string>
+    <string name="chat_attach_button">Attach</string>
     <string name="chat_attach_photo_button">Attach a photo</string>
     <string name="chat_remove_photo_button">Remove photo</string>
     <string name="chat_pending_photo_description">Photo to send with your question</string>

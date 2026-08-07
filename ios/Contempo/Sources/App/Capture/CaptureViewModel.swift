@@ -4,12 +4,15 @@ import FirebaseFirestore
 import Foundation
 import Observation
 
-/// Typed-entry, voice-capture, and photo/odometer capture paths, plus manual
-/// timer/GPS-trip toggles. Quick Capture (background WAV queue bypassing
-/// transcribe/parse) and timer/trip voice-intent classification (starting/
-/// stopping a timer by saying "starting work on X" / "stop") are deferred to
-/// a later pass — only the manual "More ways to capture" menu equivalents
-/// are wired here.
+/// Typed-entry, voice-capture, and unified photo capture paths, plus manual
+/// timer/GPS-trip toggles. Photo capture is a single entry point — the
+/// vision model classifies odometer-reading vs. work evidence after the
+/// photo is taken (see `processCapturedPhoto`) rather than the host picking
+/// between two separate photo actions up front. Quick Capture (background
+/// WAV queue bypassing transcribe/parse) and timer/trip voice-intent
+/// classification (starting/stopping a timer by saying "starting work on X"
+/// / "stop") are deferred to a later pass — only the manual quick-action
+/// equivalents are wired here.
 @Observable
 @MainActor
 final class CaptureViewModel {
@@ -55,12 +58,11 @@ final class CaptureViewModel {
     /// non-nil only while waiting for the user's manual tap-to-continue.
     var finalizedTranscript: String?
 
-    var isDraftingFromPhoto = false
-    var isProcessingOdometerPhoto = false
-    /// Transient status for the odometer capture path (no Confirm screen to
-    /// land on — it starts/ends a trip directly) — mirrors Android's
-    /// `CaptureUiState.tripMessage`.
-    var tripMessage: String?
+    /// Covers the whole classify -> dispatch sequence for a just-taken photo
+    /// (see `processCapturedPhoto`) — one busy state for one camera launch,
+    /// regardless of which of the two downstream paths (odometer/work) the
+    /// classifier picks.
+    var isProcessingPhoto = false
 
     /// The one open start/stop timer, if any — own stream from Dashboard's
     /// (rather than sharing it), same as Android's `CaptureViewModel` keeps
@@ -306,13 +308,6 @@ final class CaptureViewModel {
         inputText = ""
     }
 
-    /// Odometer start/end writes straight to Firestore and never reaches
-    /// Confirm — this transient banner is the only feedback, so it
-    /// self-clears rather than lingering (see CaptureScreen's `.task(id:)`).
-    func dismissTripMessage() {
-        tripMessage = nil
-    }
-
     func submit(onDrafted: @escaping (ConfirmParams) -> Void) {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
@@ -347,74 +342,84 @@ final class CaptureViewModel {
         onDrafted(ConfirmParams(captureSource: .manual))
     }
 
-    /// A just-taken photo meant to become a whole entry (vs. [logOdometerPhoto]'s
-    /// single-number read) — mirrors Android's `CaptureViewModel.processPhoto`.
-    /// The photo is carried through to Confirm as evidence regardless of how
-    /// well the draft parsed, same as the text/voice paths never drop what
-    /// the user captured just because parsing came back thin.
-    func processPhoto(imageData: Data, onDrafted: @escaping (ConfirmParams) -> Void) {
-        isDraftingFromPhoto = true
+    /// A just-taken photo — the single entry point for both photo-capture
+    /// paths. Classifies the photo (see `AgentClient.classifyPhotoIntent`)
+    /// and dispatches to whichever of the two existing, unchanged
+    /// AgentClient methods applies, so the host no longer has to pick
+    /// "Photo" vs. "Odometer" before taking the picture.
+    func processCapturedPhoto(imageData: Data, onDrafted: @escaping (ConfirmParams) -> Void) {
+        isProcessingPhoto = true
         errorMessage = nil
         Task {
-            let outcome = await agentClient.draftEntryFromPhoto(imageData: imageData, knownProperties: knownProperties)
-            isDraftingFromPhoto = false
-            switch outcome {
-            case .success(let result):
-                onDrafted(ConfirmParams(
-                    property: result.draft.property ?? "",
-                    task: result.draft.task ?? "",
-                    durationMinutes: result.draft.durationMinutes ?? 0,
-                    category: result.draft.category ?? EntryCategory.other.firestoreValue,
-                    captureSource: .photo,
-                    miles: result.draft.miles ?? 0,
-                    resolvedActivityDateIso: result.draft.resolvedActivityDateIso,
-                    photoData: imageData
-                ))
-            case .failure(let message):
-                errorMessage = message
+            switch await agentClient.classifyPhotoIntent(imageData: imageData) {
+            case .success(let intent, _):
+                switch intent {
+                case .odometer: await handleOdometerPhoto(imageData: imageData, onDrafted: onDrafted)
+                case .work: await handleWorkPhoto(imageData: imageData, onDrafted: onDrafted)
+                }
+            case .failure:
+                // Classification itself failed (model unavailable/unclear) —
+                // fall back to the general work-entry draft path rather than
+                // stranding the user; that path already has a robust
+                // "couldn't draft, still attached as evidence, fill in
+                // manually" story.
+                await handleWorkPhoto(imageData: imageData, onDrafted: onDrafted)
             }
         }
     }
 
-    /// A photo of an odometer reading — auto-detected the same way as the
-    /// voice timer's start/stop: no open trip means this reading starts one,
-    /// one already open means this reading closes it. Mirrors Android's
-    /// `CaptureViewModel.logOdometerPhoto`.
-    func logOdometerPhoto(imageData: Data) {
-        isProcessingOdometerPhoto = true
-        errorMessage = nil
-        Task {
-            let outcome = await agentClient.readOdometerFromPhoto(imageData: imageData)
-            isProcessingOdometerPhoto = false
-            switch outcome {
-            case .success(let miles, _):
-                if openTripEntry == nil {
-                    _ = try? await mileageTripCoordinator.handleStartTrip(
-                        property: nil,
-                        task: nil,
-                        category: nil,
-                        source: .photo,
-                        startedAt: Timestamp(date: Date()),
-                        captureMethod: "photo",
-                        odometerStart: miles
-                    )
-                    tripMessage = "Trip started — odometer \(miles)"
-                } else {
-                    let result = try? await mileageTripCoordinator.handleEndTrip(
-                        endedAt: Timestamp(date: Date()),
-                        captureMethod: "photo",
-                        odometerEnd: miles
-                    )
-                    if case .ended(_, let endMiles) = result {
-                        tripMessage = "Trip ended — logged \(endMiles) mi"
-                    } else {
-                        tripMessage = "Couldn't close the trip — try again."
-                    }
-                }
-            case .failure(let message):
-                errorMessage = message
-            }
+    /// The photo is carried through to Confirm as evidence regardless of how
+    /// well the draft parsed, same as the text/voice paths never drop what
+    /// the user captured just because parsing came back thin.
+    private func handleWorkPhoto(imageData: Data, onDrafted: @escaping (ConfirmParams) -> Void) async {
+        let outcome = await agentClient.draftEntryFromPhoto(imageData: imageData, knownProperties: knownProperties)
+        isProcessingPhoto = false
+        switch outcome {
+        case .success(let result):
+            onDrafted(ConfirmParams(
+                property: result.draft.property ?? "",
+                task: result.draft.task ?? "",
+                durationMinutes: result.draft.durationMinutes ?? 0,
+                category: result.draft.category ?? EntryCategory.other.firestoreValue,
+                captureSource: .photo,
+                miles: result.draft.miles ?? 0,
+                resolvedActivityDateIso: result.draft.resolvedActivityDateIso,
+                photoData: imageData
+            ))
+        case .failure(let message):
+            errorMessage = message
         }
+    }
+
+    /// A photo classified as an odometer reading. Unlike the old
+    /// `logOdometerPhoto`, this never writes to Firestore directly — it
+    /// always routes to Confirm (in trip mode) so a wrong classification is
+    /// correctable there instead of a silent hard commit. Start vs. end is
+    /// still auto-detected the same way as before: no open trip means this
+    /// reading starts one, one already open means this reading closes it —
+    /// Confirm's `saveTrip` re-derives this again at save time regardless,
+    /// since time may have passed while the user was reviewing.
+    private func handleOdometerPhoto(imageData: Data, onDrafted: @escaping (ConfirmParams) -> Void) async {
+        let tripIsEndingExistingTrip = openTripEntry != nil
+        let readOutcome = await agentClient.readOdometerFromPhoto(imageData: imageData)
+        let reading: Double?
+        if case .success(let miles, _) = readOutcome {
+            reading = miles
+        } else {
+            // OCR failing doesn't dead-end here (unlike the old direct-write
+            // path's error message) — the classifier still said "odometer,"
+            // so Confirm opens in trip mode with a blank, manually-fillable
+            // reading.
+            reading = nil
+        }
+        isProcessingPhoto = false
+        onDrafted(ConfirmParams(
+            captureSource: .photo,
+            photoData: imageData,
+            isTripCapture: true,
+            tripIsEndingExistingTrip: tripIsEndingExistingTrip,
+            odometerReading: reading
+        ))
     }
 
     private func parseAndHold(_ text: String, captureSource: CaptureSource) async {

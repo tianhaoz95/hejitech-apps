@@ -9,14 +9,13 @@ struct CaptureScreen: View {
     @State private var showQuickCaptureExplanation = false
     @State private var showHelpWalkthrough = false
     @State private var photoCamera = CameraCaptureState()
-    @State private var odometerCamera = CameraCaptureState()
     @State private var showCancelWorkDialog = false
     @State private var showCancelTripDialog = false
     @Environment(\.contempoPalette) private var palette
 
     private var busy: Bool {
         viewModel.isRecording || viewModel.isTranscribing || viewModel.isParsing || viewModel.finalizedTranscript != nil ||
-            viewModel.isDraftingFromPhoto
+            viewModel.isProcessingPhoto
     }
 
     var body: some View {
@@ -181,40 +180,43 @@ struct CaptureScreen: View {
                                 .foregroundStyle(palette.inkSoft)
                         }
 
-                        // Quick actions for the two other primary capture modes
-                        // — promoted out of the "Other options" menu so they're
-                        // discoverable without an extra tap, but sized well
-                        // below the hero VoiceButton so voice stays visually
-                        // primary. Each hides once its own ongoing-session
-                        // banner is showing above, since the banner already
-                        // owns that mode's stop/complete affordance.
-                        HStack(spacing: 24) {
-                            if viewModel.openTimerEntry == nil {
-                                QuickActionButton(icon: "timer", label: "Start Timer") {
-                                    viewModel.startNewWork()
-                                }
-                                .disabled(viewModel.isTranscribing || viewModel.isParsing)
+                        // Quick actions for the other primary capture modes —
+                        // promoted out of the old "More ways to capture" menu
+                        // so they're discoverable without an extra tap, but
+                        // sized well below the hero VoiceButton so voice
+                        // stays visually primary. Each session-based one
+                        // hides once its own ongoing-session banner is
+                        // showing above, since the banner already owns that
+                        // mode's stop/complete affordance. Photo capture has
+                        // no such banner (a photo is a one-shot action, not
+                        // an ongoing session) so it always shows.
+                        //
+                        // ViewThatFits, not a plain HStack — with all four
+                        // buttons visible (no timer/trip in progress) this
+                        // doesn't fit a narrow iPhone (SE-class) at a
+                        // comfortable tap size, and a plain HStack neither
+                        // wraps nor scrolls, so the overflowing button
+                        // (whichever landed last — "Type instead" with all
+                        // four shown) was pushed off-screen and effectively
+                        // disappeared, same bug Android's Capture tab had.
+                        // Wrapping to a second line keeps every action
+                        // visible and reachable regardless of screen width.
+                        let quickActions = buildQuickActions()
+                        ViewThatFits(in: .horizontal) {
+                            quickActionsRow(quickActions)
+                            VStack(spacing: 12) {
+                                let half = (quickActions.count + 1) / 2
+                                quickActionsRow(Array(quickActions.prefix(half)))
+                                quickActionsRow(Array(quickActions.suffix(quickActions.count - half)))
                             }
-                            if viewModel.openTripEntry == nil {
-                                QuickActionButton(icon: "location.fill", label: "Start Trip") {
-                                    viewModel.toggleGpsTrip()
-                                }
-                                .disabled(viewModel.isTranscribing || viewModel.isParsing)
-                            }
+                        }
 
-                            // Same size/shape as the buttons above so it
-                            // reads as part of the same row, but left in its
-                            // original neutral tint rather than the pine
-                            // accent — this is an escape hatch out of voice
-                            // capture, not another primary capture mode.
-                            QuickActionButton(
-                                icon: "keyboard",
-                                label: "Type instead",
-                                tint: palette.inkSoft,
-                                tintBackground: palette.paperRaised
-                            ) {
-                                typeExpanded = true
-                            }
+                        if viewModel.isProcessingPhoto {
+                            ThinkingIndicator("Looking at your photo…")
+                        } else if photoCamera.permissionDenied {
+                            Text("Camera access is needed to attach a photo — tap again to grant it.")
+                                .font(ContempoFont.labelSmall())
+                                .foregroundStyle(palette.inkFaint)
                         }
 
                         if let finalizedTranscript = viewModel.finalizedTranscript {
@@ -299,66 +301,6 @@ struct CaptureScreen: View {
                             RoundedRectangle(cornerRadius: ContempoRadius.medium)
                                 .stroke(palette.hairline, lineWidth: 1)
                         )
-
-                        // Remaining photo-based capture paths — Start Work/
-                        // Start Trip/Type instead are promoted to their own
-                        // QuickActionButtons above, so this menu only holds
-                        // the photo-drafted entry and odometer-photo trip
-                        // capture, mirroring Android's "More ways to
-                        // capture" ("Other") menu.
-                        Menu {
-                            Button {
-                                photoCamera.launch()
-                            } label: {
-                                Label("Take a photo", systemImage: "camera.fill")
-                            }
-                            .disabled(busy)
-
-                            Button {
-                                odometerCamera.launch()
-                            } label: {
-                                Label(
-                                    viewModel.openTripEntry != nil ? "Log odometer photo (end trip)" : "Log odometer photo (start trip)",
-                                    systemImage: "camera.fill"
-                                )
-                            }
-                            .disabled(busy || viewModel.isProcessingOdometerPhoto)
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "ellipsis.circle")
-                                    .font(.system(size: 16))
-                                Text("More ways to capture")
-                                    .font(ContempoFont.labelLarge())
-                            }
-                            .foregroundStyle(palette.inkSoft)
-                        }
-                        .disabled(busy)
-
-                        if viewModel.isDraftingFromPhoto {
-                            ThinkingIndicator("Looking at your photo…")
-                        } else if photoCamera.permissionDenied {
-                            Text("Camera access is needed to attach a photo — tap again to grant it.")
-                                .font(ContempoFont.labelSmall())
-                                .foregroundStyle(palette.inkFaint)
-                        }
-
-                        if viewModel.isProcessingOdometerPhoto {
-                            ThinkingIndicator("Reading odometer…")
-                        } else if odometerCamera.permissionDenied {
-                            Text("Camera access is needed to read an odometer photo — tap again to grant it.")
-                                .font(ContempoFont.labelSmall())
-                                .foregroundStyle(palette.inkFaint)
-                        }
-
-                        if let tripMessage = viewModel.tripMessage {
-                            Text(tripMessage)
-                                .font(ContempoFont.bodyMedium())
-                                .foregroundStyle(palette.pine)
-                                .task(id: tripMessage) {
-                                    try? await Task.sleep(for: .seconds(3))
-                                    viewModel.dismissTripMessage()
-                                }
-                        }
                     }
                 }
 
@@ -383,13 +325,7 @@ struct CaptureScreen: View {
         }
         .fullScreenCover(isPresented: $photoCamera.isPresented) {
             CameraPicker { data in
-                viewModel.processPhoto(imageData: data, onDrafted: onDrafted)
-            }
-            .ignoresSafeArea()
-        }
-        .fullScreenCover(isPresented: $odometerCamera.isPresented) {
-            CameraPicker { data in
-                viewModel.logOdometerPhoto(imageData: data)
+                viewModel.processCapturedPhoto(imageData: data, onDrafted: onDrafted)
             }
             .ignoresSafeArea()
         }
@@ -424,6 +360,67 @@ struct CaptureScreen: View {
         case .structuring: return "Structuring…"
         }
     }
+
+    /// Built fresh each render so it reflects current openTimerEntry/
+    /// openTripEntry/busy state — see the ViewThatFits call site in body.
+    private func buildQuickActions() -> [QuickAction] {
+        var actions: [QuickAction] = []
+        if viewModel.openTimerEntry == nil {
+            actions.append(QuickAction(id: "timer", icon: "timer", label: "Start Timer", disabled: viewModel.isTranscribing || viewModel.isParsing) {
+                viewModel.startNewWork()
+            })
+        }
+        if viewModel.openTripEntry == nil {
+            actions.append(QuickAction(id: "trip", icon: "location.fill", label: "Start Trip", disabled: viewModel.isTranscribing || viewModel.isParsing) {
+                viewModel.toggleGpsTrip()
+            })
+        }
+        // The unified photo-capture entry point — the model decides
+        // odometer-reading vs. work evidence once the photo is taken (see
+        // CaptureViewModel.processCapturedPhoto) rather than the host
+        // having to pick the right button first, so there's just one photo
+        // action here.
+        actions.append(QuickAction(id: "photo", icon: "camera.fill", label: "Take a photo", disabled: busy) {
+            photoCamera.launch()
+        })
+        // Same size/shape as the buttons above so it reads as part of the
+        // same row, but left in its original neutral tint rather than the
+        // pine accent — this is an escape hatch out of voice capture, not
+        // another primary capture mode.
+        actions.append(QuickAction(
+            id: "type",
+            icon: "keyboard",
+            label: "Type instead",
+            tint: palette.inkSoft,
+            tintBackground: palette.paperRaised
+        ) {
+            typeExpanded = true
+        })
+        return actions
+    }
+
+    @ViewBuilder
+    private func quickActionsRow(_ actions: [QuickAction]) -> some View {
+        HStack(spacing: 20) {
+            ForEach(actions) { action in
+                QuickActionButton(icon: action.icon, label: action.label, tint: action.tint, tintBackground: action.tintBackground) {
+                    action.action()
+                }
+                .disabled(action.disabled)
+            }
+        }
+    }
+}
+
+/// One entry in the Capture quick-action row — see CaptureScreen.buildQuickActions/quickActionsRow.
+private struct QuickAction: Identifiable {
+    let id: String
+    let icon: String
+    let label: String
+    var tint: Color?
+    var tintBackground: Color?
+    var disabled: Bool = false
+    let action: () -> Void
 }
 
 private struct QuickCaptureStatusRow: View {

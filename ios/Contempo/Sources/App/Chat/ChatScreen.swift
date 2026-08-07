@@ -8,6 +8,7 @@ struct ChatScreen: View {
     @Environment(\.contempoPalette) private var palette
     @State private var showClearConfirm = false
     @State private var photoPickerItem: PhotosPickerItem?
+    @State private var showPhotoPicker = false
     @State private var copiedMessageId: UUID?
 
     var body: some View {
@@ -272,33 +273,37 @@ struct ChatScreen: View {
 
             // Input Bar Container
             HStack(spacing: 10) {
-                Button {
-                    viewModel.openEntryPicker()
+                // One grouped button (rather than three always-visible ones)
+                // that expands into a popup menu on tap — three separate
+                // 38pt circular buttons plus the field plus send left too
+                // little room on a narrow screen. "@" typed directly in the
+                // field (see ChatViewModel.inputText's didSet) is the
+                // faster path to the same attach-entry action for anyone
+                // who discovers it.
+                Menu {
+                    Button {
+                        viewModel.openEntryPicker()
+                    } label: {
+                        Label("Attach an entry", systemImage: "at")
+                    }
+                    Button {
+                        showPhotoPicker = true
+                    } label: {
+                        Label("Attach a photo", systemImage: "photo.on.rectangle.angled")
+                    }
+                    Button {
+                        Task { await viewModel.startRecording() }
+                    } label: {
+                        Label("Start voice capture", systemImage: "mic.fill")
+                    }
                 } label: {
-                    Image(systemName: "at")
+                    Image(systemName: "plus")
                         .font(.system(size: 18))
                         .foregroundStyle(palette.pine)
                         .frame(width: 38, height: 38)
                         .background(palette.pineTint, in: Circle())
                 }
-
-                PhotosPicker(selection: $photoPickerItem, matching: .images) {
-                    Image(systemName: "photo.on.rectangle.angled")
-                        .font(.system(size: 18))
-                        .foregroundStyle(palette.pine)
-                        .frame(width: 38, height: 38)
-                        .background(palette.pineTint, in: Circle())
-                }
-
-                Button {
-                    Task { await viewModel.startRecording() }
-                } label: {
-                    Image(systemName: "mic.fill")
-                        .font(.system(size: 18))
-                        .foregroundStyle(palette.pine)
-                        .frame(width: 38, height: 38)
-                        .background(palette.pineTint, in: Circle())
-                }
+                .photosPicker(isPresented: $showPhotoPicker, selection: $photoPickerItem, matching: .images)
 
                 TextField("Ask about STR tax rules or hours…", text: $viewModel.inputText, axis: .vertical)
                     .font(ContempoFont.bodyLarge())
@@ -532,10 +537,11 @@ private struct HeroEmptyStateView: View {
 // MARK: - Entry Picker Sheet
 
 /// Lets the host attach one or more specific logged entries as context for
-/// an entry-specific question — the "@" affordance next to photo/mic.
-/// Selecting an entry dismisses the sheet (ChatViewModel.attachEntry), same
-/// one-tap-and-done feel as picking a role/property elsewhere in the app;
-/// tap "@" again to attach another.
+/// an entry-specific question — reachable both from the attach menu's
+/// "Attach an entry" item and by typing "@" directly in the input (see
+/// ChatViewModel.inputText's didSet). Selecting an entry dismisses the sheet
+/// (ChatViewModel.attachEntry), same one-tap-and-done feel as picking a
+/// role/property elsewhere in the app; open it again to attach another.
 private struct EntryPickerSheet: View {
     let entries: [Entry]
     let onSelect: (Entry) -> Void

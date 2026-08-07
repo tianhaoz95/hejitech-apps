@@ -112,7 +112,9 @@ object ConfirmRoute {
     const val PATTERN = "confirm?property={property}&task={task}&durationMinutes={durationMinutes}" +
         "&category={category}&isVague={isVague}&isBackfilled={isBackfilled}&daysLate={daysLate}" +
         "&source={source}&captureSource={captureSource}&miles={miles}&photoUri={photoUri}&entryId={entryId}" +
-        "&captureLat={captureLat}&captureLng={captureLng}&resolvedActivityDateIso={resolvedActivityDateIso}"
+        "&captureLat={captureLat}&captureLng={captureLng}&resolvedActivityDateIso={resolvedActivityDateIso}" +
+        "&isTripCapture={isTripCapture}&tripIsEndingExistingTrip={tripIsEndingExistingTrip}" +
+        "&odometerReading={odometerReading}"
 
     fun build(
         property: String,
@@ -133,6 +135,16 @@ object ConfirmRoute {
         captureLng: Double? = null,
         /** AI-resolved activity time from the parse draft, if any — see EntryDraft.resolvedActivityDateIso. */
         resolvedActivityDateIso: String? = null,
+        /**
+         * Set only from a fresh photo capture classified as an odometer
+         * reading (see CaptureViewModel.handleOdometerPhoto /
+         * CaptureResult.isTripCapture) — never from the EntryDetail edit
+         * path, which keeps editing an already-closed trip on the normal
+         * work-entry-shaped fields (miles included) exactly as before.
+         */
+        isTripCapture: Boolean = false,
+        tripIsEndingExistingTrip: Boolean = false,
+        odometerReading: Double? = null,
     ) = "confirm?property=$property&task=$task&durationMinutes=$durationMinutes" +
         "&category=$category&isVague=$isVague&isBackfilled=$isBackfilled&daysLate=$daysLate" +
         "&source=$source&captureSource=$captureSource&miles=$miles" +
@@ -143,7 +155,9 @@ object ConfirmRoute {
         "&entryId=$entryId" +
         "&captureLat=${captureLat ?: ""}&captureLng=${captureLng ?: ""}" +
         // Also encoded — an ISO-8601 timestamp contains ':' characters, unsafe raw in a query string.
-        "&resolvedActivityDateIso=${resolvedActivityDateIso?.let { java.net.URLEncoder.encode(it, "UTF-8") } ?: ""}"
+        "&resolvedActivityDateIso=${resolvedActivityDateIso?.let { java.net.URLEncoder.encode(it, "UTF-8") } ?: ""}" +
+        "&isTripCapture=$isTripCapture&tripIsEndingExistingTrip=$tripIsEndingExistingTrip" +
+        "&odometerReading=${odometerReading ?: ""}"
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -192,6 +206,9 @@ fun ContempoNavHost() {
                                 captureLat = result.captureLat,
                                 captureLng = result.captureLng,
                                 resolvedActivityDateIso = result.draft.resolvedActivityDateIso,
+                                isTripCapture = result.isTripCapture,
+                                tripIsEndingExistingTrip = result.tripIsEndingExistingTrip,
+                                odometerReading = result.odometerReading,
                             )
                         )
                     }
@@ -223,6 +240,10 @@ fun ContempoNavHost() {
                     // URL-encoded, same reasoning as photoUri — an ISO-8601
                     // timestamp contains ':' characters unsafe raw in a query string.
                     navArgument("resolvedActivityDateIso") { type = NavType.StringType; defaultValue = "" },
+                    navArgument("isTripCapture") { type = NavType.BoolType; defaultValue = false },
+                    navArgument("tripIsEndingExistingTrip") { type = NavType.BoolType; defaultValue = false },
+                    // String-carried, same reasoning as miles/captureLat.
+                    navArgument("odometerReading") { type = NavType.StringType; defaultValue = "" },
                 ),
                 // A subtle slide-up + fade "settling into the structured
                 // record UI" — the visual bridge from Capture's finalized-
@@ -248,6 +269,9 @@ fun ContempoNavHost() {
                     captureLng = backStackEntry.arguments?.getString("captureLng")?.toDoubleOrNull(),
                     resolvedActivityDateIso = encodedResolvedActivityDateIso.takeIf { it.isNotEmpty() }
                         ?.let { java.net.URLDecoder.decode(it, "UTF-8") },
+                    isTripCapture = backStackEntry.arguments?.getBoolean("isTripCapture") ?: false,
+                    tripIsEndingExistingTrip = backStackEntry.arguments?.getBoolean("tripIsEndingExistingTrip") ?: false,
+                    odometerReading = backStackEntry.arguments?.getString("odometerReading")?.toDoubleOrNull(),
                     onConfirmed = {
                         navController.navigate(TopLevelDestination.Dashboard.route) {
                             popUpTo(TopLevelDestination.Capture.route)
@@ -321,6 +345,14 @@ fun ContempoNavHost() {
                                 // pending entry's photoUrls (if any) are
                                 // already remote and preserved by
                                 // ConfirmViewModel's resume path.
+                                //
+                                // isTripCapture is deliberately left at its
+                                // default (false) here — an already-saved
+                                // trip is always closed by the time it's
+                                // editable from EntryDetail, so it keeps
+                                // using the normal work-entry-shaped fields
+                                // (miles included), not the fresh-capture
+                                // trip-mode UI. See ConfirmScreen's isTripMode.
                             )
                         )
                     },

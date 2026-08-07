@@ -343,6 +343,12 @@ struct EntryDetailScreen: View {
         if entry.inProgress {
             durationMinutes = max(0, Int(Date().timeIntervalSince(entry.activityDate.dateValue()) / 60))
         }
+        // isTripCapture/tripIsEndingExistingTrip/odometerReading are
+        // deliberately left at their defaults (false/false/nil) here — an
+        // already-saved trip is always closed by the time it's editable
+        // from EntryDetail, so it keeps using the normal work-entry-shaped
+        // fields (miles included), not the fresh-capture trip-mode UI. See
+        // ConfirmScreen's isTripMode.
         let params = ConfirmParams(
             property: entry.propertyName,
             task: entry.task,

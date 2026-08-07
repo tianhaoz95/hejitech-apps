@@ -1,13 +1,17 @@
 package com.hejitech.contempo.ui.confirm
 
 import android.net.Uri
+import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.hejitech.contempo.agent.CategoryClassifier
+import com.hejitech.contempo.agent.OdometerReadOutcome
+import com.hejitech.contempo.agent.ParseOutcome
 import com.hejitech.contempo.data.ServiceLocator
 import com.hejitech.contempo.data.recoverFromAuthRaceOrSignOut
 import com.hejitech.contempo.data.traced
+import com.hejitech.contempo.util.PhotoUtils
 import com.hejitech.core.model.CaptureSource
 import com.hejitech.core.model.Entry
 import com.hejitech.core.model.EntryCategory
@@ -25,12 +29,16 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeout
 import java.util.Date
+
+/** Higher fidelity than Confirm's small photo preview — worth it since this feeds the vision model, not just a thumbnail. */
+private const val RECLASSIFY_PHOTO_MAX_DIMENSION_PX = 1024
 
 // A stalled Firestore stream (e.g. a gRPC reconnect after the emulator/network
 // drops the channel, or a real mobile-network hiccup — reproduced live on a
@@ -69,6 +77,18 @@ data class ConfirmUiState(
     val isSavingForLater: Boolean = false,
     val savedSuccessfully: Boolean = false,
     val errorMessage: String? = null,
+    /**
+     * Whether this photo was classified (or, after a toggle, corrected) as
+     * an odometer reading rather than work evidence — see
+     * CaptureViewModel.processCapturedPhoto and [onTripModeToggled]. Swaps
+     * ConfirmScreen's usual work-entry fields for a single odometer-reading
+     * field and routes [confirm] through [saveTrip] instead of the normal
+     * entry save.
+     */
+    val isTripMode: Boolean = false,
+    val odometerReading: String = "",
+    /** True while a toggle is re-running the other AgentClient photo call against the held photo — see [onTripModeToggled]. */
+    val isReclassifying: Boolean = false,
 ) {
     /** Which required fields are still unset — see EntryFieldValidation. */
     val missingFields: List<String>
@@ -91,8 +111,12 @@ class ConfirmViewModel(
     private val entryId: String,
     private val initialCaptureLat: Double?,
     private val initialCaptureLng: Double?,
+    initialIsTripCapture: Boolean,
+    initialOdometerReading: Double?,
 ) : ViewModel() {
     private val entryRepository = ServiceLocator.entryRepository
+    private val mileageTripCoordinator = ServiceLocator.mileageTripCoordinator
+    private val agentClient = ServiceLocator.agentClient
 
     // Falls back to inferring MANUAL vs VOICE from whether AI text was
     // present — only relevant for captureSource values from before this
@@ -105,6 +129,8 @@ class ConfirmViewModel(
     // reports/mvp-scope-v0.html Section 8.
     private val aiOriginal = Triple(initialProperty, initialTask, initialDurationMinutes)
     private val aiOriginalMiles = initialMiles
+    private val aiOriginalIsTripMode = initialIsTripCapture
+    private val aiOriginalOdometerReading = initialOdometerReading
 
     // Null genuinely means "the AI proposed nothing" (no time reference in the
     // utterance) — distinct from any concrete millis value, so this can't
@@ -138,6 +164,8 @@ class ConfirmViewModel(
             category = EntryCategory.fromFirestoreValue(initialCategory),
             miles = if (initialMiles > 0) initialMiles.toCleanString() else "",
             activityDateMillis = aiOriginalActivityDateMillis ?: System.currentTimeMillis(),
+            isTripMode = initialIsTripCapture,
+            odometerReading = initialOdometerReading?.toCleanString() ?: "",
         )
     )
     val uiState: StateFlow<ConfirmUiState> = _uiState.asStateFlow()
@@ -262,8 +290,88 @@ class ConfirmViewModel(
         }
     }
 
+    /**
+     * Flips between the two photo-capture shapes when the vision model's
+     * classification (see AgentClient.classifyPhotoIntent) looks wrong to
+     * the user — a one-tap fix instead of forcing a retake. Re-runs the
+     * *other* existing AgentClient photo method against the already-held
+     * photo (no new prompt) so the just-toggled-to fields are populated,
+     * not left blank.
+     */
+    fun onTripModeToggled(newValue: Boolean) {
+        if (newValue == _uiState.value.isTripMode) return
+        _uiState.value = _uiState.value.copy(isTripMode = newValue, isReclassifying = true)
+        viewModelScope.launch {
+            val bitmap = photoUri?.let { uri ->
+                runCatching {
+                    PhotoUtils.decodeSampledBitmap(ServiceLocator.appContext, uri.toUri(), RECLASSIFY_PHOTO_MAX_DIMENSION_PX)
+                }.getOrNull()
+            }
+            if (bitmap == null) {
+                // No photo to re-run against — shouldn't happen (a photo
+                // capture always carries photoUri), but leave the
+                // just-toggled-to fields blank/editable rather than getting stuck.
+                _uiState.value = _uiState.value.copy(isReclassifying = false)
+                return@launch
+            }
+            if (newValue) {
+                when (val outcome = agentClient.readOdometerFromPhoto(bitmap)) {
+                    is OdometerReadOutcome.Success ->
+                        _uiState.value = _uiState.value.copy(odometerReading = outcome.miles.toCleanString(), isReclassifying = false)
+                    is OdometerReadOutcome.Failure ->
+                        _uiState.value = _uiState.value.copy(isReclassifying = false)
+                }
+            } else {
+                val knownProperties = runCatching {
+                    entryRepository.observeProperties().first().map { it.name }
+                }.getOrDefault(emptyList())
+                when (val outcome = agentClient.draftEntryFromPhoto(bitmap, knownProperties)) {
+                    is ParseOutcome.Success -> {
+                        val draft = outcome.result.draft
+                        _uiState.value = _uiState.value.copy(
+                            property = draft.property.orEmpty(),
+                            task = draft.task.orEmpty(),
+                            durationMinutes = draft.durationMinutes?.takeIf { it > 0 }?.toString() ?: "",
+                            category = draft.category?.let { EntryCategory.fromFirestoreValue(it) } ?: EntryCategory.OTHER,
+                            isReclassifying = false,
+                        )
+                    }
+                    is ParseOutcome.Failure -> _uiState.value = _uiState.value.copy(isReclassifying = false)
+                }
+            }
+        }
+    }
+
+    fun onOdometerReadingChanged(value: String) {
+        if (value.isEmpty() || value.matches(Regex("""\d*\.?\d*"""))) {
+            _uiState.value = _uiState.value.copy(odometerReading = value)
+        }
+    }
+
     fun confirm(onSaved: () -> Unit) {
         val state = _uiState.value
+        if (state.isTripMode) {
+            val reading = state.odometerReading.toDoubleOrNull()
+            if (reading == null || reading <= 0) {
+                _uiState.value = state.copy(errorMessage = "Enter the odometer reading before continuing.")
+                return
+            }
+            _uiState.value = state.copy(isSaving = true, errorMessage = null)
+            viewModelScope.launch {
+                try {
+                    withTimeout(SAVE_TIMEOUT_MS) { saveTrip(reading) }
+                    _uiState.value = _uiState.value.copy(isSaving = false, savedSuccessfully = true)
+                    onSaved()
+                } catch (e: TimeoutCancellationException) {
+                    resetFirestoreConnection()
+                    _uiState.value = _uiState.value.copy(isSaving = false, errorMessage = "Taking too long to save — check your connection and try again.")
+                } catch (e: Exception) {
+                    _uiState.value = _uiState.value.copy(isSaving = false, errorMessage = e.message ?: "Couldn't save — try again.")
+                }
+            }
+            return
+        }
+
         val duration = state.durationMinutes.toIntOrNull()
         if (state.property.isBlank() || state.task.isBlank() || duration == null || duration <= 0) {
             _uiState.value = state.copy(errorMessage = "Fill in property, task, and a duration greater than zero.")
@@ -438,6 +546,57 @@ class ConfirmViewModel(
         }
     }
 
+    /**
+     * Saves a photo-classified trip start/end — see [confirm]'s isTripMode
+     * branch. Re-derives open/close authoritatively at save time via
+     * findOpenEntry (not any state captured back when Confirm first opened,
+     * which may now be stale), same reasoning as the old
+     * CaptureViewModel.logOdometerPhoto had. handleStartTrip is safe to call
+     * even if a trip unexpectedly turns out to already be open — it
+     * auto-abandons the previous one rather than erroring.
+     */
+    private suspend fun saveTrip(reading: Double) {
+        val openTrip = entryRepository.findOpenEntry(isTrip = true)
+        val savedEntryId = if (openTrip == null) {
+            mileageTripCoordinator.handleStartTrip(
+                property = null,
+                task = null,
+                category = null,
+                source = captureSource,
+                startedAt = Timestamp.now(),
+                captureMethod = "photo",
+                odometerStart = reading,
+            ).entryId
+        } else {
+            (
+                mileageTripCoordinator.handleEndTrip(
+                    endedAt = Timestamp.now(),
+                    captureMethod = "photo",
+                    odometerEnd = reading,
+                ) ?: throw IllegalStateException("Couldn't close the trip — try again.")
+                ).entryId
+        }
+
+        // Best-effort, same reasoning as the work-entry save() below — the
+        // audit record is the odometer reading itself, the photo is
+        // supporting evidence on top of it.
+        photoUri?.let { uri ->
+            runCatching { entryRepository.attachPhoto(savedEntryId, Uri.parse(uri)) }
+        }
+
+        if (aiOriginalOdometerReading != null && aiOriginalOdometerReading != reading) {
+            entryRepository.recordCorrection(savedEntryId, "odometerReading", aiOriginalOdometerReading.toString(), reading.toString())
+        }
+        if (aiOriginalIsTripMode != _uiState.value.isTripMode) {
+            entryRepository.recordCorrection(
+                savedEntryId,
+                "photoIntent",
+                if (aiOriginalIsTripMode) "odometer" else "work",
+                if (_uiState.value.isTripMode) "odometer" else "work",
+            )
+        }
+    }
+
     class Factory(
         private val property: String,
         private val task: String,
@@ -450,12 +609,14 @@ class ConfirmViewModel(
         private val entryId: String = "",
         private val captureLat: Double? = null,
         private val captureLng: Double? = null,
+        private val isTripCapture: Boolean = false,
+        private val odometerReading: Double? = null,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             return ConfirmViewModel(
                 property, task, durationMinutes, category, captureSource, miles, resolvedActivityDateIso,
-                photoUri, entryId, captureLat, captureLng,
+                photoUri, entryId, captureLat, captureLng, isTripCapture, odometerReading,
             ) as T
         }
     }
