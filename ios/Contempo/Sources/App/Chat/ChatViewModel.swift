@@ -27,6 +27,10 @@ final class ChatViewModel {
     var streamingText: String?
     var streamingChunkCount = 0
     var pendingImageData: Data?
+    /// Entries the host attached via the "@ Attach entry" picker to ask an entry-specific question — cleared after send, same as pendingImageData.
+    var pendingEntries: [Entry] = []
+    var showEntryPicker = false
+    var availableEntries: [Entry] = []
     var errorMessage: String?
 
     var recordingAmplitude: Float { audioRecorder.amplitude }
@@ -34,7 +38,7 @@ final class ChatViewModel {
         aiAvailability(preference: aiSettingsStore.preference, onDeviceStatus: onDeviceLlm.status)
     }
     var canSend: Bool {
-        (!inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || pendingImageData != nil)
+        (!inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || pendingImageData != nil || !pendingEntries.isEmpty)
             && !isSending && !isRecording && !isTranscribing && currentAiAvailability == .ready
     }
 
@@ -44,6 +48,28 @@ final class ChatViewModel {
 
     func removeAttachedImage() {
         pendingImageData = nil
+    }
+
+    /// Loads the host's entries fresh each time so a just-logged entry is selectable immediately.
+    func openEntryPicker() {
+        showEntryPicker = true
+        Task {
+            availableEntries = (try? await entryRepository.observeEntries().first { _ in true }) ?? []
+        }
+    }
+
+    func dismissEntryPicker() {
+        showEntryPicker = false
+    }
+
+    func attachEntry(_ entry: Entry) {
+        guard !pendingEntries.contains(where: { $0.id == entry.id }) else { return }
+        pendingEntries.append(entry)
+        showEntryPicker = false
+    }
+
+    func removeAttachedEntry(_ entry: Entry) {
+        pendingEntries.removeAll { $0.id == entry.id }
     }
 
     func startRecording() async {
@@ -82,11 +108,20 @@ final class ChatViewModel {
 
     func send() {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty || pendingImageData != nil else { return }
+        guard !text.isEmpty || pendingImageData != nil || !pendingEntries.isEmpty else { return }
         let imageData = pendingImageData
-        messages.append(ChatMessage(role: .user, text: text, imageData: imageData))
+        let attachedEntries = pendingEntries
+        // A photo/attached-entries-only send with no typed question is still
+        // valid (e.g. "what's this?" implied by the photo, or "how many
+        // hours is this?" implied by the attached entry) — give the model
+        // something to answer.
+        let effectiveText = text.isEmpty && !attachedEntries.isEmpty
+            ? "Tell me about the attached entr\(attachedEntries.count == 1 ? "y" : "ies")."
+            : text
+        messages.append(ChatMessage(role: .user, text: effectiveText, imageData: imageData))
         inputText = ""
         pendingImageData = nil
+        pendingEntries = []
         isSending = true
         errorMessage = nil
 
@@ -94,7 +129,7 @@ final class ChatViewModel {
             let stats = await currentStats()
             let history = messages
             if let imageData {
-                let outcome = await agentClient.askQuestion(history: history, question: text, stats: stats, imageData: imageData)
+                let outcome = await agentClient.askQuestion(history: history, question: effectiveText, stats: stats, imageData: imageData, attachedEntries: attachedEntries)
                 apply(outcome)
                 return
             }
@@ -103,7 +138,7 @@ final class ChatViewModel {
             // returns rather than growing token by token.
             streamingText = ""
             streamingChunkCount = 0
-            let outcome = await agentClient.askQuestionStream(history: history, question: text, stats: stats) { [weak self] event in
+            let outcome = await agentClient.askQuestionStream(history: history, question: effectiveText, stats: stats, attachedEntries: attachedEntries) { [weak self] event in
                 guard let self else { return }
                 switch event {
                 case .prefilling:

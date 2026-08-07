@@ -36,6 +36,7 @@ import kotlin.math.roundToInt
 private const val CHANNEL_ID = "mileage_trip"
 private const val NOTIFICATION_ID = 1002
 private const val ACTION_STOP_TRIP = "com.hejitech.contempo.mileage.ACTION_STOP_TRIP"
+private const val ACTION_CANCEL_TRIP = "com.hejitech.contempo.mileage.ACTION_CANCEL_TRIP"
 private const val ACTION_PAUSE_TRIP = "com.hejitech.contempo.mileage.ACTION_PAUSE_TRIP"
 private const val ACTION_RESUME_TRIP = "com.hejitech.contempo.mileage.ACTION_RESUME_TRIP"
 
@@ -77,6 +78,9 @@ class MileageTrackingService : Service() {
     private var lastLocation: Location? = null
     private var accumulatedMeters = 0.0
     private var isPaused = false
+
+    /** Set by ACTION_CANCEL_TRIP — tells onDestroy to discard the open trip instead of finalizing it. */
+    private var isCancelled = false
 
     private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
@@ -120,6 +124,13 @@ class MileageTrackingService : Service() {
         // MileageTrackingService.stop() call from the Capture screen.
         when (intent?.action) {
             ACTION_STOP_TRIP -> stopSelf()
+            // Same stopSelf()->onDestroy() teardown as ACTION_STOP_TRIP, but
+            // isCancelled tells onDestroy to delete the open trip instead of
+            // writing a finalized entry for it — see handleCancelTrip.
+            ACTION_CANCEL_TRIP -> {
+                isCancelled = true
+                stopSelf()
+            }
             ACTION_PAUSE_TRIP -> {
                 isPaused = true
                 notificationManager.notify(NOTIFICATION_ID, buildTrackingNotification(metersToMiles(accumulatedMeters)))
@@ -143,7 +154,11 @@ class MileageTrackingService : Service() {
         // Not scoped to `scope` — that gets cancelled on the next line, and
         // this final write needs to survive past onDestroy returning.
         CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
-            mileageTripCoordinator.handleEndTrip(endedAt = Timestamp.now(), captureMethod = "gps", directMiles = finalMiles)
+            if (isCancelled) {
+                mileageTripCoordinator.handleCancelTrip()
+            } else {
+                mileageTripCoordinator.handleEndTrip(endedAt = Timestamp.now(), captureMethod = "gps", directMiles = finalMiles)
+            }
         }
         scope.cancel()
     }
@@ -215,6 +230,11 @@ class MileageTrackingService : Service() {
 
         fun stop(context: Context) {
             context.stopService(Intent(context, MileageTrackingService::class.java))
+        }
+
+        /** Discards the trip in progress — see [ACTION_CANCEL_TRIP]'s onStartCommand handling. */
+        fun cancel(context: Context) {
+            context.startService(Intent(context, MileageTrackingService::class.java).setAction(ACTION_CANCEL_TRIP))
         }
 
         /** Sent to the already-running service — see [ACTION_PAUSE_TRIP]'s onStartCommand handling. */

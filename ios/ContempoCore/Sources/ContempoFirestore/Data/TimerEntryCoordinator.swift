@@ -107,6 +107,19 @@ public final class TimerEntryCoordinator: Sendable {
         return .resumed(entryId: entryId)
     }
 
+    /// Discards the open timer outright — deletes the Entry rather than
+    /// closing it, for a "started by mistake" / changed-my-mind cancel.
+    /// Unlike `handleStop`, nothing is finalized: no duration, no status
+    /// flip, just gone. Returns the deleted entry's id, or nil if nothing
+    /// was open. Safe to call unconditionally; the caller's confirmation UI
+    /// is what actually gates this being destructive.
+    @discardableResult
+    public func handleCancel() async throws -> String? {
+        guard let open = try await entryRepository.findOpenEntry(isTrip: false), let entryId = open.id else { return nil }
+        try await entryRepository.deleteEntry(entryId: entryId)
+        return entryId
+    }
+
     @discardableResult
     private func closeEntry(
         _ open: Entry,

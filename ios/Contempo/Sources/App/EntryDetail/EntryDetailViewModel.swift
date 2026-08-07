@@ -1,5 +1,6 @@
 import ContempoCore
 import ContempoFirestore
+import FirebaseFirestore
 import Foundation
 import Observation
 
@@ -30,6 +31,7 @@ final class EntryDetailViewModel {
     var editProperty = ""
     var editTask = ""
     var editDurationMinutes = ""
+    var editActivityDate = Date()
     var isSavingFields = false
     var fieldSaveError: String?
 
@@ -68,6 +70,7 @@ final class EntryDetailViewModel {
         editProperty = entry.propertyName
         editTask = entry.task
         editDurationMinutes = entry.durationMinutes > 0 ? String(entry.durationMinutes) : ""
+        editActivityDate = entry.activityDate.dateValue()
         fieldSaveError = nil
         isEditingFields = true
     }
@@ -92,6 +95,7 @@ final class EntryDetailViewModel {
         updated.propertyName = editProperty
         updated.task = editTask
         updated.durationMinutes = duration
+        updated.activityDate = Timestamp(date: editActivityDate)
         Task {
             do {
                 try await entryRepository.updateEntry(entryId: entryId, entry: updated)

@@ -11,6 +11,7 @@ import com.hejitech.contempo.agent.GenerationEvent
 import com.hejitech.contempo.agent.UserStats
 import com.hejitech.contempo.agent.aiAvailability
 import com.hejitech.contempo.data.ServiceLocator
+import com.hejitech.core.model.Entry
 import com.hejitech.core.model.EntryStatus
 import com.hejitech.core.model.MaterialParticipationTest
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +26,8 @@ data class ChatUiState(
     val messages: List<ChatMessage> = emptyList(),
     val inputText: String = "",
     val pendingImage: Bitmap? = null,
+    /** Entries the host attached via the "@ Attach entry" picker to ask an entry-specific question — cleared after send, same as pendingImage. */
+    val pendingEntries: List<Entry> = emptyList(),
     val isSending: Boolean = false,
     val isRecording: Boolean = false,
     val isTranscribing: Boolean = false,
@@ -32,6 +35,9 @@ data class ChatUiState(
     val aiAvailability: AiAvailability = AiAvailability.Ready,
     /** Live on-device generation progress while isSending — see AgentClient.askQuestionStream. Null outside a streamed send (not sending, or a cloud/image answer that never emits events). */
     val streamingStatus: GenerationEvent? = null,
+    /** Backs the entry picker sheet — the host's full entry list to search/select from. */
+    val showEntryPicker: Boolean = false,
+    val availableEntries: List<Entry> = emptyList(),
 )
 
 /**
@@ -113,6 +119,29 @@ class ChatViewModel : ViewModel() {
         _uiState.value = _uiState.value.copy(pendingImage = null)
     }
 
+    /** Opens the entry picker sheet, loading the host's entries fresh each time so a just-logged entry is selectable immediately. */
+    fun openEntryPicker() {
+        _uiState.value = _uiState.value.copy(showEntryPicker = true)
+        viewModelScope.launch {
+            val entries = runCatching { entryRepository.observeEntries().first() }.getOrDefault(emptyList())
+            _uiState.value = _uiState.value.copy(availableEntries = entries)
+        }
+    }
+
+    fun dismissEntryPicker() {
+        _uiState.value = _uiState.value.copy(showEntryPicker = false)
+    }
+
+    fun attachEntry(entry: Entry) {
+        val current = _uiState.value.pendingEntries
+        if (current.any { it.id == entry.id }) return
+        _uiState.value = _uiState.value.copy(pendingEntries = current + entry, showEntryPicker = false)
+    }
+
+    fun removeAttachedEntry(entry: Entry) {
+        _uiState.value = _uiState.value.copy(pendingEntries = _uiState.value.pendingEntries.filterNot { it.id == entry.id })
+    }
+
     fun clearHistory() {
         _uiState.value = _uiState.value.copy(messages = emptyList(), errorMessage = null)
     }
@@ -120,25 +149,31 @@ class ChatViewModel : ViewModel() {
     fun send() {
         val question = _uiState.value.inputText.trim()
         val image = _uiState.value.pendingImage
-        if ((question.isEmpty() && image == null) || uiState.value.aiAvailability != AiAvailability.Ready) return
-        // A photo with no typed question is a valid send (e.g. "what's this?"
-        // implied by the photo itself) — give the model something to answer.
-        val effectiveQuestion = question.ifEmpty { "What do you see in this photo?" }
-        sendQuestion(effectiveQuestion, image)
+        val attachedEntries = _uiState.value.pendingEntries
+        if ((question.isEmpty() && image == null && attachedEntries.isEmpty()) || uiState.value.aiAvailability != AiAvailability.Ready) return
+        // A photo/attached-entries-only send with no typed question is still
+        // valid (e.g. "what's this?" implied by the photo, or "how many
+        // hours is this?" implied by the attached entry) — give the model
+        // something to answer.
+        val effectiveQuestion = question.ifEmpty {
+            if (attachedEntries.isNotEmpty()) "Tell me about the attached entr${if (attachedEntries.size == 1) "y" else "ies"}." else "What do you see in this photo?"
+        }
+        sendQuestion(effectiveQuestion, image, attachedEntries)
     }
 
     /** One-tap send for a starter-prompt card (see ChatScreen's empty-state hero) — same path as typing the question and tapping send. */
     fun sendPrompt(prompt: String) {
         if (uiState.value.aiAvailability != AiAvailability.Ready) return
-        sendQuestion(prompt, _uiState.value.pendingImage)
+        sendQuestion(prompt, _uiState.value.pendingImage, _uiState.value.pendingEntries)
     }
 
-    private fun sendQuestion(effectiveQuestion: String, image: Bitmap?) {
+    private fun sendQuestion(effectiveQuestion: String, image: Bitmap?, attachedEntries: List<Entry> = emptyList()) {
         val history = _uiState.value.messages
         _uiState.value = _uiState.value.copy(
             messages = history + ChatMessage(ChatRole.USER, effectiveQuestion, image),
             inputText = "",
             pendingImage = null,
+            pendingEntries = emptyList(),
             isSending = true,
             streamingStatus = null,
             errorMessage = null,
@@ -163,9 +198,9 @@ class ChatViewModel : ViewModel() {
             // (see askQuestionStream's kdoc) — a photo question falls back to
             // the plain non-streaming askQuestion, same as before this feature.
             val outcome = if (image != null) {
-                agentClient.askQuestion(history, effectiveQuestion, stats, image)
+                agentClient.askQuestion(history, effectiveQuestion, stats, image, attachedEntries)
             } else {
-                agentClient.askQuestionStream(history, effectiveQuestion, stats) { event ->
+                agentClient.askQuestionStream(history, effectiveQuestion, stats, attachedEntries) { event ->
                     _uiState.value = _uiState.value.copy(streamingStatus = event)
                 }
             }

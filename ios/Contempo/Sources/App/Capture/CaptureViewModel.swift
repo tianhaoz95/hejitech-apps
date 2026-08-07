@@ -142,6 +142,16 @@ final class CaptureViewModel {
         }
     }
 
+    /// Discards the open work timer entirely — for a "started by mistake" /
+    /// changed-my-mind cancel, distinct from `completeOpenTimer` which
+    /// always finalizes an entry.
+    func cancelWork() {
+        Task {
+            _ = try? await timerEntryCoordinator.handleCancel()
+            LiveActivityController.endTimer()
+        }
+    }
+
     /// Pause/resume the open work timer.
     func pauseWork() {
         Task {
@@ -184,6 +194,22 @@ final class CaptureViewModel {
                 await mileageTracker.resume()
             } else {
                 _ = try? await mileageTripCoordinator.handleResumeTrip(resumedAt: Timestamp(date: Date()))
+            }
+        }
+    }
+
+    /// Discards the open trip entirely — a GPS trip must route through
+    /// `MileageTracker.cancel()` so it stops location updates and skips
+    /// writing a finalized entry (see `pauseTrip`'s doc comment for why GPS
+    /// trips can't be mutated directly while the tracker owns them); an
+    /// odometer trip has no running tracker, so the coordinator is called
+    /// directly.
+    func cancelTrip() {
+        Task {
+            if gpsTripOpen {
+                await mileageTracker.cancel()
+            } else {
+                _ = try? await mileageTripCoordinator.handleCancelTrip()
             }
         }
     }

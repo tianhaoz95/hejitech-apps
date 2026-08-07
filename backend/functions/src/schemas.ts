@@ -116,12 +116,28 @@ export const ChatMessageSchema = z.object({
 });
 export type ChatMessage = z.infer<typeof ChatMessageSchema>;
 
+/**
+ * A host-selected entry attached as context for an entry-specific question
+ * (see ChatScreen/ChatScreen.swift's "@" / attach-entry picker) — a plain
+ * summary, not the full Entry document (no ids, photo/audio URLs, etc.),
+ * since this only needs to ground the model's answer, not round-trip.
+ */
+export const AttachedEntrySchema = z.object({
+  propertyName: z.string(),
+  task: z.string(),
+  durationMinutes: z.number(),
+  category: z.string(),
+  activityDate: z.string().describe("ISO 8601"),
+});
+export type AttachedEntry = z.infer<typeof AttachedEntrySchema>;
+
 export const AskAgentInputSchema = z.object({
   history: z.array(ChatMessageSchema).describe("Prior turns in this conversation, oldest first"),
   question: z.string().min(1),
   confirmedHours: z.number().describe("Hours the host has confirmed so far, for grounding answers in their actual progress"),
   thresholdHours: z.number().describe("Hours required for the test they're tracking toward"),
   testName: z.string().describe("Name of the material-participation test, e.g. 'STR'"),
+  attachedEntries: z.array(AttachedEntrySchema).optional().describe("Entries the host explicitly attached to ask an entry-specific question"),
 });
 export type AskAgentInput = z.infer<typeof AskAgentInputSchema>;
 

@@ -2,6 +2,7 @@ package com.hejitech.contempo.agent
 
 import android.graphics.Bitmap
 import com.hejitech.contempo.data.traced
+import com.hejitech.core.model.Entry
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.FirebaseFunctionsException
 import kotlinx.coroutines.tasks.await
@@ -142,24 +143,31 @@ class AgentClient(
         history: List<ChatMessage>,
         question: String,
         stats: UserStats,
+        attachedEntries: List<Entry> = emptyList(),
         onEvent: (GenerationEvent) -> Unit,
     ): AskOutcome {
-        val prompt = buildChatPrompt(history, question, stats)
+        val prompt = buildChatPrompt(history, question, stats, attachedEntries)
         return when (inferencePreference()) {
             InferencePreference.CLOUD_ONLY ->
-                cloudAskQuestion(history, question, stats)
+                cloudAskQuestion(history, question, stats, attachedEntries)
 
             InferencePreference.ON_DEVICE_ONLY ->
                 onDeviceAskQuestionStream(prompt, onEvent)
                     ?: AskOutcome.Failure("On-device model unavailable — no cloud fallback (On-device only is selected in Settings).")
 
             InferencePreference.PREFER_ON_DEVICE ->
-                onDeviceAskQuestionStream(prompt, onEvent) ?: cloudAskQuestion(history, question, stats)
+                onDeviceAskQuestionStream(prompt, onEvent) ?: cloudAskQuestion(history, question, stats, attachedEntries)
         }
     }
 
-    suspend fun askQuestion(history: List<ChatMessage>, question: String, stats: UserStats, image: Bitmap? = null): AskOutcome {
-        val prompt = buildChatPrompt(history, question, stats)
+    suspend fun askQuestion(
+        history: List<ChatMessage>,
+        question: String,
+        stats: UserStats,
+        image: Bitmap? = null,
+        attachedEntries: List<Entry> = emptyList(),
+    ): AskOutcome {
+        val prompt = buildChatPrompt(history, question, stats, attachedEntries)
         if (image != null) {
             // Same honesty policy as draftEntryFromPhoto: no cloud vision
             // fallback yet, so CLOUD_ONLY and a failed on-device attempt both
@@ -180,7 +188,7 @@ class AgentClient(
         }
         return when (inferencePreference()) {
             InferencePreference.CLOUD_ONLY ->
-                cloudAskQuestion(history, question, stats)
+                cloudAskQuestion(history, question, stats, attachedEntries)
 
             InferencePreference.ON_DEVICE_ONLY ->
                 onDeviceAskQuestion(prompt)
@@ -188,7 +196,7 @@ class AgentClient(
 
             InferencePreference.PREFER_ON_DEVICE ->
                 onDeviceAskQuestion(prompt)
-                    ?: cloudAskQuestion(history, question, stats)
+                    ?: cloudAskQuestion(history, question, stats, attachedEntries)
         }
     }
 
@@ -293,7 +301,12 @@ class AgentClient(
         }
     }
 
-    private suspend fun cloudAskQuestion(history: List<ChatMessage>, question: String, stats: UserStats): AskOutcome {
+    private suspend fun cloudAskQuestion(
+        history: List<ChatMessage>,
+        question: String,
+        stats: UserStats,
+        attachedEntries: List<Entry> = emptyList(),
+    ): AskOutcome {
         return try {
             val payload = hashMapOf(
                 "history" to history.map {
@@ -303,6 +316,7 @@ class AgentClient(
                 "confirmedHours" to stats.confirmedHours,
                 "thresholdHours" to stats.thresholdHours,
                 "testName" to stats.testName,
+                "attachedEntries" to attachedEntries.map { it.toChatContextMap() },
             )
             val result = functions.getHttpsCallable("askAgent").call(payload).await()
             @Suppress("UNCHECKED_CAST")
@@ -344,7 +358,12 @@ class AgentClient(
         appendLine("A photo alone often won't show duration or which property, and that's fine — fill in whatever you can determine (task/category are usually inferable from what's visible) and leave the rest null. Never withhold the draft to ask a question; the host reviews and fills in gaps themselves afterward.")
     }
 
-    private fun buildChatPrompt(history: List<ChatMessage>, question: String, stats: UserStats): String = buildString {
+    private fun buildChatPrompt(
+        history: List<ChatMessage>,
+        question: String,
+        stats: UserStats,
+        attachedEntries: List<Entry> = emptyList(),
+    ): String = buildString {
         appendLine(
             "You are the in-app copilot for an app that helps short-term-rental hosts log hours " +
                 "toward IRS material-participation tests (IRS Pub 925 / §1.469-5T). " +
@@ -353,6 +372,16 @@ class AgentClient(
                 "Do not fabricate case law, IRS rulings, or numbers you weren't given."
         )
         appendLine("This host is tracking toward the ${stats.testName} test: ${stats.confirmedHours} of ${stats.thresholdHours} hours confirmed so far.")
+        if (attachedEntries.isNotEmpty()) {
+            appendLine("The host attached these specific logged entries to ask about — ground your answer in them, don't ask which entry they mean:")
+            attachedEntries.forEachIndexed { index, entry ->
+                appendLine(
+                    "${index + 1}. ${entry.propertyName.ifBlank { "(no property)" }} — " +
+                        "${entry.task.ifBlank { "(no task)" }} (${entry.durationMinutes} min, ${entry.category}, " +
+                        "${entry.activityDate.toDate().toInstant()})"
+                )
+            }
+        }
         history.forEach { message ->
             val speaker = if (message.role == ChatRole.USER) "Host" else "You"
             appendLine("$speaker: ${message.text}")
@@ -360,6 +389,14 @@ class AgentClient(
         appendLine("Host: $question")
         appendLine("Respond with plain text only — no markdown, no JSON.")
     }
+
+    private fun Entry.toChatContextMap(): Map<String, Any?> = hashMapOf(
+        "propertyName" to propertyName,
+        "task" to task,
+        "durationMinutes" to durationMinutes,
+        "category" to category,
+        "activityDate" to activityDate.toDate().toInstant().toString(),
+    )
 
     private fun buildOdometerPrompt(): String = buildString {
         appendLine("You are reading a car odometer or trip-mileage display from a photo.")

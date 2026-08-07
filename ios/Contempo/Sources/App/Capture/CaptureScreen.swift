@@ -10,6 +10,8 @@ struct CaptureScreen: View {
     @State private var showHelpWalkthrough = false
     @State private var photoCamera = CameraCaptureState()
     @State private var odometerCamera = CameraCaptureState()
+    @State private var showCancelWorkDialog = false
+    @State private var showCancelTripDialog = false
     @Environment(\.contempoPalette) private var palette
 
     private var busy: Bool {
@@ -41,8 +43,10 @@ struct CaptureScreen: View {
                         onTap: { viewModel.toggleGpsTrip() },
                         onPauseToggle: {
                             if tripEntry.isPaused == true { viewModel.resumeTrip() } else { viewModel.pauseTrip() }
-                        }
+                        },
+                        onCancel: { showCancelTripDialog = true }
                     )
+                    .transition(.move(edge: .top).combined(with: .opacity))
                 }
 
                 if let timerEntry = viewModel.openTimerEntry {
@@ -51,8 +55,10 @@ struct CaptureScreen: View {
                         onTapToComplete: { viewModel.completeOpenTimer() },
                         onPauseToggle: {
                             if timerEntry.isPaused == true { viewModel.resumeWork() } else { viewModel.pauseWork() }
-                        }
+                        },
+                        onCancel: { showCancelWorkDialog = true }
                     )
+                    .transition(.move(edge: .top).combined(with: .opacity))
                 }
 
                 if typeExpanded {
@@ -184,7 +190,7 @@ struct CaptureScreen: View {
                         // owns that mode's stop/complete affordance.
                         HStack(spacing: 24) {
                             if viewModel.openTimerEntry == nil {
-                                QuickActionButton(icon: "timer", label: "Start Work") {
+                                QuickActionButton(icon: "timer", label: "Start Timer") {
                                     viewModel.startNewWork()
                                 }
                                 .disabled(viewModel.isTranscribing || viewModel.isParsing)
@@ -365,6 +371,8 @@ struct CaptureScreen: View {
                 Spacer()
             }
             .padding(20)
+            .animation(.easeInOut(duration: 0.3), value: viewModel.openTripEntry?.id)
+            .animation(.easeInOut(duration: 0.3), value: viewModel.openTimerEntry?.id)
         }
         .navigationTitle("Capture")
         .sheet(isPresented: $showQuickCaptureExplanation) {
@@ -384,6 +392,26 @@ struct CaptureScreen: View {
                 viewModel.logOdometerPhoto(imageData: data)
             }
             .ignoresSafeArea()
+        }
+        .confirmationDialog(
+            "Discard this work session?",
+            isPresented: $showCancelWorkDialog,
+            titleVisibility: .visible
+        ) {
+            Button("Discard", role: .destructive) { viewModel.cancelWork() }
+            Button("Keep going", role: .cancel) {}
+        } message: {
+            Text("This deletes the timer and everything logged so far. This can't be undone.")
+        }
+        .confirmationDialog(
+            "Discard this trip?",
+            isPresented: $showCancelTripDialog,
+            titleVisibility: .visible
+        ) {
+            Button("Discard", role: .destructive) { viewModel.cancelTrip() }
+            Button("Keep going", role: .cancel) {}
+        } message: {
+            Text("This deletes the trip and everything tracked so far. This can't be undone.")
         }
     }
 
@@ -640,6 +668,7 @@ private struct OngoingWorkBanner: View {
     let entry: Entry
     let onTapToComplete: () -> Void
     let onPauseToggle: () -> Void
+    let onCancel: () -> Void
     @Environment(\.contempoPalette) private var palette
 
     private var isPaused: Bool { entry.isPaused == true }
@@ -676,6 +705,12 @@ private struct OngoingWorkBanner: View {
                     .foregroundStyle(palette.pine)
             }
             .buttonStyle(.plain)
+            Button(action: onCancel) {
+                Image(systemName: "xmark")
+                    .foregroundStyle(palette.danger)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Discard work session")
         }
         .padding()
         .background(palette.pineTint)
@@ -717,6 +752,7 @@ private struct OngoingTripBanner: View {
     let isGps: Bool
     let onTap: () -> Void
     let onPauseToggle: () -> Void
+    let onCancel: () -> Void
     @Environment(\.contempoPalette) private var palette
 
     private var isPaused: Bool { entry.isPaused == true }
@@ -747,6 +783,12 @@ private struct OngoingTripBanner: View {
                     .foregroundStyle(palette.pine)
             }
             .buttonStyle(.plain)
+            Button(action: onCancel) {
+                Image(systemName: "xmark")
+                    .foregroundStyle(palette.danger)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Discard trip")
         }
         .padding()
         .background(palette.pineTint)

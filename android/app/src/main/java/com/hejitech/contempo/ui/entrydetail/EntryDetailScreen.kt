@@ -76,6 +76,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import coil3.compose.AsyncImage
 import com.hejitech.contempo.R
+import com.hejitech.contempo.ui.components.ActivityDateTimeField
 import com.hejitech.contempo.ui.export.openFileExternally
 import com.hejitech.contempo.ui.export.shareFile
 import com.hejitech.contempo.ui.theme.BulletAwareText
@@ -228,13 +229,13 @@ private fun EntryDetailContent(
             stringResource(R.string.confirm_duration_label),
             if (entry.inProgress) "$elapsedMinutes min so far" else "${entry.durationMinutes} min",
         )
+        DetailRow(stringResource(R.string.entry_detail_activity_date_label), dateFormatter.format(entry.activityDate.toDate()))
         if (canEditFieldsInline && entry.missingFields.isNotEmpty()) {
             MissingFieldsText(entry.missingFields)
         }
     }
     DetailRow(stringResource(R.string.confirm_role_label), entry.roleName.ifEmpty { stringResource(R.string.confirm_role_me) })
     DetailRow(stringResource(R.string.confirm_category_label), entry.categoryEnum.name.lowercase().replace('_', ' '))
-    DetailRow(stringResource(R.string.entry_detail_activity_date_label), dateFormatter.format(entry.activityDate.toDate()))
     DetailRow(stringResource(R.string.entry_detail_logged_date_label), dateFormatter.format(entry.loggedAt.toDate()))
     entry.confirmedAt?.let {
         DetailRow(stringResource(R.string.entry_detail_confirmed_date_label), dateFormatter.format(it.toDate()))
@@ -329,6 +330,8 @@ private fun InlineFieldEditor(uiState: EntryDetailUiState, viewModel: EntryDetai
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
         )
+        Spacer(Modifier.height(12.dp))
+        ActivityDateTimeField(millis = uiState.editActivityDateMillis, onChanged = viewModel::onEditActivityDateTimeChanged)
         uiState.fieldSaveError?.let {
             Spacer(Modifier.height(8.dp))
             Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)

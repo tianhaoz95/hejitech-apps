@@ -24,8 +24,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.AlternateEmail
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -34,6 +36,8 @@ import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -58,6 +62,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hejitech.contempo.R
@@ -69,6 +74,7 @@ import com.hejitech.contempo.ui.rememberCameraCapture
 import com.hejitech.contempo.ui.theme.BulletAwareText
 import com.hejitech.contempo.ui.theme.ContempoCard
 import com.hejitech.contempo.ui.theme.Eyebrow
+import com.hejitech.core.model.Entry
 
 @Composable
 fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
@@ -217,6 +223,34 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
             }
         }
 
+        if (uiState.pendingEntries.isNotEmpty()) {
+            LazyRow(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                items(uiState.pendingEntries) { entry ->
+                    AssistChip(
+                        onClick = { viewModel.removeAttachedEntry(entry) },
+                        label = {
+                            Text(
+                                entry.propertyName.ifBlank { entry.task.ifBlank { stringResource(R.string.capture_ongoing_work_untitled) } },
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        },
+                        trailingIcon = {
+                            Icon(
+                                Icons.Filled.Close,
+                                contentDescription = stringResource(R.string.chat_remove_attached_entry_button),
+                                modifier = Modifier.size(16.dp),
+                            )
+                        },
+                        colors = AssistChipDefaults.assistChipColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                    )
+                }
+            }
+        }
+
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             if (uiState.isRecording) {
                 // Recording is already underway — skip straight to the stop
@@ -230,8 +264,16 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
                     )
                 }
             } else {
-                // Two direct buttons (photo, mic) rather than a "+" dropdown —
-                // matches iOS's input bar, where both actions are one tap away.
+                // Three direct buttons (attach entry, photo, mic) rather than
+                // a "+" dropdown — matches iOS's input bar, where every
+                // action is one tap away.
+                IconButton(onClick = viewModel::openEntryPicker, enabled = !uiState.isTranscribing) {
+                    Icon(
+                        Icons.Filled.AlternateEmail,
+                        contentDescription = stringResource(R.string.chat_attach_entry_button),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
                 IconButton(onClick = cameraCapture::launch, enabled = !uiState.isTranscribing) {
                     Icon(
                         Icons.Filled.PhotoCamera,
@@ -256,7 +298,7 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
             )
             IconButton(
                 onClick = viewModel::send,
-                enabled = (uiState.inputText.isNotBlank() || uiState.pendingImage != null) &&
+                enabled = (uiState.inputText.isNotBlank() || uiState.pendingImage != null || uiState.pendingEntries.isNotEmpty()) &&
                     !uiState.isSending && !uiState.isRecording && !uiState.isTranscribing &&
                     uiState.aiAvailability is AiAvailability.Ready,
             ) {
@@ -281,6 +323,60 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
             onConfirm = { showClearHistoryDialog = false; viewModel.clearHistory() },
         )
     }
+
+    if (uiState.showEntryPicker) {
+        EntryPickerDialog(
+            entries = uiState.availableEntries,
+            onDismiss = viewModel::dismissEntryPicker,
+            onSelect = viewModel::attachEntry,
+        )
+    }
+}
+
+/**
+ * Lets the host attach one or more specific logged entries as context for
+ * an entry-specific question — the "@" affordance next to photo/mic.
+ * Selecting an entry closes the dialog (ChatViewModel.attachEntry), same
+ * one-tap-and-done feel as picking a role/property elsewhere in the app;
+ * tap the "@" button again to attach another.
+ */
+@Composable
+private fun EntryPickerDialog(entries: List<Entry>, onDismiss: () -> Unit, onSelect: (Entry) -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.chat_attach_entry_dialog_title)) },
+        text = {
+            if (entries.isEmpty()) {
+                Text(stringResource(R.string.chat_attach_entry_dialog_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                LazyColumn(modifier = Modifier.height(360.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    items(entries) { entry ->
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onSelect(entry) }
+                                .padding(vertical = 10.dp),
+                        ) {
+                            Text(
+                                entry.propertyName.ifBlank { stringResource(R.string.capture_ongoing_work_untitled) },
+                                style = MaterialTheme.typography.labelLarge,
+                            )
+                            Text(
+                                entry.task.ifBlank { "—" },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.confirm_cancel_button)) }
+        },
+    )
 }
 
 /** Small "AI Online"/"Checking AI…" capsule — mirrors iOS's top-bar status pill so availability is glanceable, not just an error once blocked. */

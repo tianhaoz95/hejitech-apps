@@ -141,6 +141,20 @@ class MileageTripCoordinator(private val entryRepository: EntryRepository) {
         return TripEventResult.Resumed(open.id)
     }
 
+    /**
+     * Discards the open trip outright — deletes the Entry rather than
+     * closing it, mirroring [TimerEntryCoordinator.handleCancel]. For a
+     * GPS trip, callers must also stop MileageTrackingService's location
+     * updates (see MileageTrackingService's ACTION_CANCEL_TRIP) — this
+     * only handles the Firestore side. Returns the deleted entry's id, or
+     * null if nothing was open.
+     */
+    suspend fun handleCancelTrip(): String? {
+        val open = entryRepository.findOpenEntry(isTrip = true) ?: return null
+        entryRepository.deleteEntry(open.id)
+        return open.id
+    }
+
     private suspend fun closeTrip(
         open: Entry,
         endedAt: Timestamp,

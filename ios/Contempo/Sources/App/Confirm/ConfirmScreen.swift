@@ -53,16 +53,30 @@ struct ConfirmScreen: View {
             }
 
             Section("Role") {
-                Picker("Role", selection: Binding(
-                    get: { viewModel.selectedRoleId },
-                    set: { viewModel.onRoleSelected($0) }
-                )) {
-                    Text("Me").tag(String?.none)
-                    ForEach(viewModel.roles) { role in
-                        Text(role.name).tag(role.id)
+                if viewModel.isAddingNewRole {
+                    VStack(alignment: .leading, spacing: 8) {
+                        TextField("Role name", text: $viewModel.newRoleName)
+                        HStack {
+                            Spacer()
+                            Button("Cancel") { viewModel.onCancelAddNewRole() }
+                                .buttonStyle(.bordered)
+                            Button("Add") { viewModel.onConfirmNewRole() }
+                                .buttonStyle(.borderedProminent)
+                        }
                     }
+                } else {
+                    Picker("Role", selection: Binding(
+                        get: { viewModel.selectedRoleId },
+                        set: { viewModel.onRoleSelected($0) }
+                    )) {
+                        Text("Me").tag(String?.none)
+                        ForEach(viewModel.roles) { role in
+                            Text(role.name).tag(role.id)
+                        }
+                    }
+                    Button("+ New role") { viewModel.onAddNewRoleClicked() }
                 }
-                Text("Only your own hours (Me) count toward the 100-hour/500-hour progress on the Dashboard. Manage roles in Settings.")
+                Text("Only your own hours (Me) count toward the 100-hour/500-hour progress on the Dashboard. Rename or delete roles in Settings.")
                     .font(ContempoFont.labelSmall())
                     .foregroundStyle(palette.inkFaint)
             }
@@ -85,12 +99,15 @@ struct ConfirmScreen: View {
             }
 
             Section("When") {
-                DatePicker("Activity date", selection: $viewModel.activityDate)
+                DatePicker("Activity date & time", selection: $viewModel.activityDate)
                     .datePickerStyle(.compact)
             }
 
             Section("Category") {
-                Picker("Category", selection: $viewModel.category) {
+                Picker("Category", selection: Binding(
+                    get: { viewModel.category },
+                    set: { viewModel.onCategoryChanged($0) }
+                )) {
                     ForEach(EntryCategory.allCases, id: \.self) { category in
                         Text(category.firestoreValue.replacingOccurrences(of: "_", with: " ").capitalized)
                             .tag(category)

@@ -144,7 +144,7 @@ struct WatchCaptureScreen: View {
                         } label: {
                             HStack(spacing: 4) {
                                 Image(systemName: "play.circle.fill")
-                                Text("Work")
+                                Text("Timer")
                             }
                             .font(ContempoFont.labelSmall())
                             .bold()

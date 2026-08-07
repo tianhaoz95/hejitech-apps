@@ -28,9 +28,22 @@ final class ConfirmViewModel {
     private let resolvedEntryId: String
 
     var property = ""
-    var task = ""
+    /// Re-runs `CategoryClassifier` on every edit when nothing has
+    /// classified this entry yet (still `.other`, and the user hasn't
+    /// manually picked a category) — see `CategoryClassifier`'s doc comment
+    /// for why this only fills the gap for capture paths that skip the LLM
+    /// rather than ever overriding a real LLM-inferred category.
+    var task = "" {
+        didSet {
+            guard !categoryManuallySet, category == .other else { return }
+            if let suggested = CategoryClassifier.classify(task) {
+                category = suggested
+            }
+        }
+    }
     var durationMinutes = ""
     var category: EntryCategory = .other
+    var categoryManuallySet = false
     var miles = ""
     var activityDate: Date
     var properties: [Property] = []
@@ -39,6 +52,8 @@ final class ConfirmViewModel {
     var roles: [ParticipantRole] = []
     /// nil = "Me" (the owner) — the implicit default for every entry.
     var selectedRoleId: String?
+    var isAddingNewRole = false
+    var newRoleName = ""
     var isSaving = false
     var isSavingForLater = false
     var savedSuccessfully = false
@@ -122,6 +137,11 @@ final class ConfirmViewModel {
         selectedRoleId = roleId
     }
 
+    func onCategoryChanged(_ value: EntryCategory) {
+        category = value
+        categoryManuallySet = true
+    }
+
     func onPropertySelected(_ property: Property) {
         self.property = property.name
         isAddingNewProperty = false
@@ -145,6 +165,30 @@ final class ConfirmViewModel {
             property = created?.name ?? name
             isAddingNewProperty = false
             newPropertyName = ""
+        }
+    }
+
+    /// Lets a role be created without leaving Confirm for Settings — mirrors
+    /// `onAddNewPropertyClicked`/`onConfirmNewProperty` above. Renaming/
+    /// deleting a role still only happens in Settings; this is create-only.
+    func onAddNewRoleClicked() {
+        isAddingNewRole = true
+        newRoleName = ""
+    }
+
+    func onCancelAddNewRole() {
+        isAddingNewRole = false
+        newRoleName = ""
+    }
+
+    func onConfirmNewRole() {
+        let name = newRoleName.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+        Task {
+            let created = try? await entryRepository.createRole(name: name)
+            selectedRoleId = created?.id ?? selectedRoleId
+            isAddingNewRole = false
+            newRoleName = ""
         }
     }
 

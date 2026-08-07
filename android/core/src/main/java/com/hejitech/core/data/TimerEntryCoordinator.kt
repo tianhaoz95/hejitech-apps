@@ -115,6 +115,20 @@ class TimerEntryCoordinator(private val entryRepository: EntryRepository) {
         return TimerEventResult.Resumed(open.id)
     }
 
+    /**
+     * Discards the open timer outright — deletes the Entry rather than
+     * closing it, for a "started by mistake" / "changed my mind" cancel.
+     * Unlike [handleStop], nothing is finalized: no duration, no status
+     * flip, just gone. Returns the deleted entry's id, or null if nothing
+     * was open. Safe to call unconditionally; the caller's confirmation UI
+     * is what actually gates this being destructive.
+     */
+    suspend fun handleCancel(): String? {
+        val open = entryRepository.findOpenEntry(isTrip = false) ?: return null
+        entryRepository.deleteEntry(open.id)
+        return open.id
+    }
+
     private suspend fun closeEntry(
         open: Entry,
         closedAt: Timestamp,

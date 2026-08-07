@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.hejitech.contempo.agent.CategoryClassifier
 import com.hejitech.contempo.data.ServiceLocator
 import com.hejitech.contempo.data.recoverFromAuthRaceOrSignOut
 import com.hejitech.contempo.data.traced
@@ -45,6 +46,8 @@ data class ConfirmUiState(
     val task: String = "",
     val durationMinutes: String = "",
     val category: EntryCategory = EntryCategory.OTHER,
+    /** True once the user has explicitly picked a category — stops CategoryClassifier's auto-suggestion from overriding it. */
+    val categoryManuallySet: Boolean = false,
     /** Business miles driven — always optional, unlike duration, since most entries have none. */
     val miles: String = "",
     /**
@@ -60,6 +63,8 @@ data class ConfirmUiState(
     val roles: List<Role> = emptyList(),
     /** null = "Me" (the owner) — the implicit default for every entry. */
     val selectedRoleId: String? = null,
+    val isAddingNewRole: Boolean = false,
+    val newRoleName: String = "",
     val isSaving: Boolean = false,
     val isSavingForLater: Boolean = false,
     val savedSuccessfully: Boolean = false,
@@ -166,11 +171,31 @@ class ConfirmViewModel(
     }
 
     fun onPropertyChanged(value: String) { _uiState.value = _uiState.value.copy(property = value) }
-    fun onTaskChanged(value: String) { _uiState.value = _uiState.value.copy(task = value) }
+
+    /**
+     * Auto-suggests a category from the task text via CategoryClassifier
+     * when nothing has classified this entry yet (still OTHER, and the user
+     * hasn't manually picked one) — see CategoryClassifier's kdoc for why
+     * this only fills the gap for capture paths that skip the LLM (Manual
+     * Entry, a manually-started timer) rather than ever overriding a real
+     * LLM-inferred category.
+     */
+    fun onTaskChanged(value: String) {
+        val state = _uiState.value
+        val suggestedCategory = if (!state.categoryManuallySet && state.category == EntryCategory.OTHER) {
+            CategoryClassifier.classify(value) ?: state.category
+        } else {
+            state.category
+        }
+        _uiState.value = state.copy(task = value, category = suggestedCategory)
+    }
+
     fun onDurationChanged(value: String) {
         if (value.all { it.isDigit() }) _uiState.value = _uiState.value.copy(durationMinutes = value)
     }
-    fun onCategoryChanged(value: EntryCategory) { _uiState.value = _uiState.value.copy(category = value) }
+    fun onCategoryChanged(value: EntryCategory) {
+        _uiState.value = _uiState.value.copy(category = value, categoryManuallySet = true)
+    }
     fun onMilesChanged(value: String) {
         if (value.isEmpty() || value.matches(Regex("""\d*\.?\d*"""))) {
             _uiState.value = _uiState.value.copy(miles = value)
@@ -203,6 +228,36 @@ class ConfirmViewModel(
                 property = created?.name ?: name,
                 isAddingNewProperty = false,
                 newPropertyName = "",
+            )
+        }
+    }
+
+    /**
+     * Lets a role be created without leaving Confirm for Settings — mirrors
+     * [onAddNewPropertyClicked]/[onConfirmNewProperty] above. Renaming/
+     * deleting a role still only happens in Settings; this is create-only.
+     */
+    fun onAddNewRoleClicked() {
+        _uiState.value = _uiState.value.copy(isAddingNewRole = true, newRoleName = "")
+    }
+
+    fun onCancelAddNewRole() {
+        _uiState.value = _uiState.value.copy(isAddingNewRole = false, newRoleName = "")
+    }
+
+    fun onNewRoleNameChanged(value: String) {
+        _uiState.value = _uiState.value.copy(newRoleName = value)
+    }
+
+    fun onConfirmNewRole() {
+        val name = _uiState.value.newRoleName.trim()
+        if (name.isEmpty()) return
+        viewModelScope.launch {
+            val created = runCatching { entryRepository.createRole(name) }.getOrNull()
+            _uiState.value = _uiState.value.copy(
+                selectedRoleId = created?.id ?: _uiState.value.selectedRoleId,
+                isAddingNewRole = false,
+                newRoleName = "",
             )
         }
     }

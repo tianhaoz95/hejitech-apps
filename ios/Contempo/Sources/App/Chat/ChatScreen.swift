@@ -1,4 +1,5 @@
 import ContempoCore
+import ContempoFirestore
 import PhotosUI
 import SwiftUI
 
@@ -241,8 +242,46 @@ struct ChatScreen: View {
                 .padding(.bottom, 6)
             }
 
+            // Attached Entries Row
+            if !viewModel.pendingEntries.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(viewModel.pendingEntries) { entry in
+                            HStack(spacing: 6) {
+                                Text(entry.propertyName.isEmpty ? (entry.task.isEmpty ? "Untitled" : entry.task) : entry.propertyName)
+                                    .font(ContempoFont.labelSmall())
+                                    .foregroundStyle(palette.ink)
+                                    .lineLimit(1)
+                                Button {
+                                    viewModel.removeAttachedEntry(entry)
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.system(size: 13))
+                                        .foregroundStyle(palette.inkFaint)
+                                }
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(palette.pineTint, in: Capsule())
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                }
+                .padding(.bottom, 6)
+            }
+
             // Input Bar Container
             HStack(spacing: 10) {
+                Button {
+                    viewModel.openEntryPicker()
+                } label: {
+                    Image(systemName: "at")
+                        .font(.system(size: 18))
+                        .foregroundStyle(palette.pine)
+                        .frame(width: 38, height: 38)
+                        .background(palette.pineTint, in: Circle())
+                }
+
                 PhotosPicker(selection: $photoPickerItem, matching: .images) {
                     Image(systemName: "photo.on.rectangle.angled")
                         .font(.system(size: 18))
@@ -334,6 +373,11 @@ struct ChatScreen: View {
                     viewModel.attachImage(data)
                 }
                 photoPickerItem = nil
+            }
+        }
+        .sheet(isPresented: $viewModel.showEntryPicker) {
+            EntryPickerSheet(entries: viewModel.availableEntries) { entry in
+                viewModel.attachEntry(entry)
             }
         }
     }
@@ -482,6 +526,57 @@ private struct HeroEmptyStateView: View {
             }
         }
         .padding(.horizontal, 16)
+    }
+}
+
+// MARK: - Entry Picker Sheet
+
+/// Lets the host attach one or more specific logged entries as context for
+/// an entry-specific question — the "@" affordance next to photo/mic.
+/// Selecting an entry dismisses the sheet (ChatViewModel.attachEntry), same
+/// one-tap-and-done feel as picking a role/property elsewhere in the app;
+/// tap "@" again to attach another.
+private struct EntryPickerSheet: View {
+    let entries: [Entry]
+    let onSelect: (Entry) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.contempoPalette) private var palette
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if entries.isEmpty {
+                    Text("No entries yet.")
+                        .font(ContempoFont.bodyMedium())
+                        .foregroundStyle(palette.inkFaint)
+                } else {
+                    List(entries) { entry in
+                        Button {
+                            onSelect(entry)
+                            dismiss()
+                        } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(entry.propertyName.isEmpty ? "Untitled" : entry.propertyName)
+                                    .font(ContempoFont.labelLarge())
+                                    .foregroundStyle(palette.ink)
+                                Text(entry.task.isEmpty ? "—" : entry.task)
+                                    .font(ContempoFont.bodySmall())
+                                    .foregroundStyle(palette.inkFaint)
+                                    .lineLimit(1)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .navigationTitle("Attach an entry")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
     }
 }
 

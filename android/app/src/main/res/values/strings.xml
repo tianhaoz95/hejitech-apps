@@ -70,6 +70,14 @@
     <string name="capture_ongoing_paused_label">Paused</string>
     <string name="capture_pause_content_description">Pause</string>
     <string name="capture_resume_content_description">Resume</string>
+    <string name="capture_cancel_work_content_description">Discard work session</string>
+    <string name="capture_cancel_work_dialog_title">Discard this work session?</string>
+    <string name="capture_cancel_work_dialog_text">This deletes the timer and everything logged so far. This can\'t be undone.</string>
+    <string name="capture_cancel_trip_content_description">Discard trip</string>
+    <string name="capture_cancel_trip_dialog_title">Discard this trip?</string>
+    <string name="capture_cancel_trip_dialog_text">This deletes the trip and everything tracked so far. This can\'t be undone.</string>
+    <string name="capture_cancel_dialog_confirm">Discard</string>
+    <string name="capture_cancel_dialog_dismiss">Keep going</string>
     <string name="capture_ongoing_trip_title">Trip in progress</string>
     <string name="capture_ongoing_trip_distance">%1$s mi so far</string>
     <string name="capture_ongoing_trip_tap_hint_gps">Tap to stop</string>
@@ -82,7 +90,7 @@
     <string name="capture_send_button">Send</string>
     <string name="capture_manual_button">Enter manually instead</string>
     <string name="capture_parsing">Parsing…</string>
-    <string name="capture_quick_action_work">Start Work</string>
+    <string name="capture_quick_action_work">Start Timer</string>
     <string name="capture_photo_button">Take a photo</string>
     <string name="capture_drafting_from_photo">Looking at your photo…</string>
     <string name="capture_camera_permission_needed">Camera access is needed for photo capture — tap the camera again to grant it.</string>
@@ -108,7 +116,7 @@
     <string name="confirm_property_label">Property</string>
     <string name="confirm_task_label">What you did</string>
     <string name="confirm_duration_label">Duration (minutes)</string>
-    <string name="confirm_activity_date_label">When did this happen?</string>
+    <string name="confirm_activity_date_label">Activity date &amp; time</string>
     <string name="confirm_date_picker_next">Next</string>
     <string name="confirm_time_picker_title">Set time</string>
     <string name="confirm_miles_label">Miles driven (optional)</string>
@@ -116,7 +124,10 @@
     <string name="confirm_category_label">Category</string>
     <string name="confirm_role_label">Role</string>
     <string name="confirm_role_me">Me</string>
-    <string name="confirm_role_hint">Only your own hours (Me) count toward the 100-hour/500-hour progress on the Dashboard. Manage roles in Settings.</string>
+    <string name="confirm_role_hint">Only your own hours (Me) count toward the 100-hour/500-hour progress on the Dashboard. Rename or delete roles in Settings.</string>
+    <string name="confirm_add_new_role_item">Add new role…</string>
+    <string name="confirm_new_role_label">Role name</string>
+    <string name="confirm_add_role_button">Add</string>
     <string name="confirm_button">Confirm</string>
     <string name="confirm_edit_hint">Edit any field — it carries the same weight either way.</string>
     <string name="confirm_risk_vague">This description is a little thin — consider adding one more detail.</string>
@@ -165,7 +176,7 @@
     <string name="entry_detail_not_found">This entry couldn\'t be found — it may have been deleted.</string>
     <string name="entry_detail_status_confirmed">Confirmed</string>
     <string name="entry_detail_status_pending">Pending review</string>
-    <string name="entry_detail_activity_date_label">When it happened</string>
+    <string name="entry_detail_activity_date_label">Activity date &amp; time</string>
     <string name="entry_detail_logged_date_label">When it was logged</string>
     <string name="entry_detail_confirmed_date_label">When it was confirmed</string>
     <string name="entry_detail_photos_label">Photos</string>
@@ -217,6 +228,10 @@
     <string name="chat_attach_photo_button">Attach a photo</string>
     <string name="chat_remove_photo_button">Remove photo</string>
     <string name="chat_pending_photo_description">Photo to send with your question</string>
+    <string name="chat_attach_entry_button">Attach an entry</string>
+    <string name="chat_remove_attached_entry_button">Remove attached entry</string>
+    <string name="chat_attach_entry_dialog_title">Attach an entry</string>
+    <string name="chat_attach_entry_dialog_empty">No entries yet.</string>
     <string name="chat_message_photo_description">Photo attached to this message</string>
     <string name="chat_camera_permission_needed">Camera access is needed to attach a photo — tap the camera again to grant it.</string>
     <string name="chat_mic_permission_needed">Microphone access is needed for voice input — tap the mic again to grant it.</string>

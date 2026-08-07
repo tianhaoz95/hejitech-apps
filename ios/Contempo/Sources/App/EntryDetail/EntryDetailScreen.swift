@@ -62,7 +62,7 @@ struct EntryDetailScreen: View {
                             LabeledContent("Role", value: (entry.roleName?.isEmpty ?? true) ? "Me" : entry.roleName!)
                             LabeledContent("Category", value: entry.categoryEnum.firestoreValue.replacingOccurrences(of: "_", with: " ").capitalized)
                             LabeledContent("Duration", value: "\(entry.durationMinutes) min")
-                            LabeledContent("Activity date", value: entry.activityDate.dateValue().formatted())
+                            LabeledContent("Activity date & time", value: entry.activityDate.dateValue().formatted())
                             LabeledContent("Logged", value: entry.loggedAt.dateValue().formatted())
                             if let confirmedAt = entry.confirmedAt {
                                 LabeledContent("Confirmed", value: confirmedAt.dateValue().formatted())
@@ -192,6 +192,8 @@ struct EntryDetailScreen: View {
             TextField("Task", text: $viewModel.editTask, axis: .vertical)
             TextField("Duration (minutes)", text: $viewModel.editDurationMinutes)
                 .keyboardType(.numberPad)
+            DatePicker("Activity date & time", selection: $viewModel.editActivityDate)
+                .datePickerStyle(.compact)
             if let fieldSaveError = viewModel.fieldSaveError {
                 Text(fieldSaveError)
                     .font(ContempoFont.labelSmall())

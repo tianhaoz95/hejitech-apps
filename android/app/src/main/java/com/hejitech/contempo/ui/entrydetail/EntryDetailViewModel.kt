@@ -6,6 +6,7 @@ import android.provider.OpenableColumns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.Timestamp
 import com.hejitech.contempo.data.ServiceLocator
 import com.hejitech.core.model.Attachment
 import com.hejitech.core.model.Entry
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
+import java.util.Date
 import java.util.UUID
 
 /** A not-yet-finished upload shown as a progress row — see [EntryDetailViewModel.addAttachment]. */
@@ -36,6 +38,7 @@ data class EntryDetailUiState(
     val editProperty: String = "",
     val editTask: String = "",
     val editDurationMinutes: String = "",
+    val editActivityDateMillis: Long = 0L,
     val isSavingFields: Boolean = false,
     val fieldSaveError: String? = null,
 )
@@ -78,6 +81,7 @@ class EntryDetailViewModel(private val entryId: String) : ViewModel() {
             editProperty = entry.propertyName,
             editTask = entry.task,
             editDurationMinutes = if (entry.durationMinutes > 0) entry.durationMinutes.toString() else "",
+            editActivityDateMillis = entry.activityDate.toDate().time,
             fieldSaveError = null,
         )
     }
@@ -87,6 +91,7 @@ class EntryDetailViewModel(private val entryId: String) : ViewModel() {
     fun onEditDurationChanged(value: String) {
         if (value.all { it.isDigit() }) _uiState.value = _uiState.value.copy(editDurationMinutes = value)
     }
+    fun onEditActivityDateTimeChanged(millis: Long) { _uiState.value = _uiState.value.copy(editActivityDateMillis = millis) }
 
     fun cancelEditingFields() {
         _uiState.value = _uiState.value.copy(isEditingFields = false, fieldSaveError = null)
@@ -111,6 +116,7 @@ class EntryDetailViewModel(private val entryId: String) : ViewModel() {
                     propertyName = state.editProperty,
                     task = state.editTask,
                     durationMinutes = duration,
+                    activityDate = Timestamp(Date(state.editActivityDateMillis)),
                 )
                 entryRepository.updateEntry(entryId, updated)
                 _uiState.value = _uiState.value.copy(entry = updated, isEditingFields = false, isSavingFields = false)

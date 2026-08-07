@@ -183,7 +183,7 @@ fun WearCaptureScreen(
                     Chip(
                         modifier = Modifier.weight(1f),
                         onClick = onStartWorkTimer,
-                        label = { Text("Work", style = MaterialTheme.typography.caption2, maxLines = 1) },
+                        label = { Text("Timer", style = MaterialTheme.typography.caption2, maxLines = 1) },
                         colors = ChipDefaults.secondaryChipColors(),
                     )
                     Chip(

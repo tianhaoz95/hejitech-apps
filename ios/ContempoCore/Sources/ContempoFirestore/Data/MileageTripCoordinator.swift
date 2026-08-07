@@ -131,6 +131,18 @@ public final class MileageTripCoordinator: Sendable {
         return .resumed(entryId: entryId)
     }
 
+    /// Discards the open trip outright — deletes the Entry rather than
+    /// closing it, mirroring `TimerEntryCoordinator.handleCancel`. For a
+    /// GPS trip, callers must also stop the location tracker/Live Activity
+    /// (see CaptureViewModel.cancelTrip) — this only handles the Firestore
+    /// side. Returns the deleted entry's id, or nil if nothing was open.
+    @discardableResult
+    public func handleCancelTrip() async throws -> String? {
+        guard let open = try await entryRepository.findOpenEntry(isTrip: true), let entryId = open.id else { return nil }
+        try await entryRepository.deleteEntry(entryId: entryId)
+        return entryId
+    }
+
     @discardableResult
     private func closeTrip(
         _ open: Entry,

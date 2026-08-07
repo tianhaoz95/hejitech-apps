@@ -586,6 +586,21 @@ class CaptureViewModel : ViewModel() {
         _uiState.value = _uiState.value.copy(timerMessage = null)
     }
 
+    /**
+     * Discards the open work timer entirely — for a "started by mistake" /
+     * changed-my-mind cancel, distinct from [completeOpenTimer] which always
+     * finalizes an entry. OngoingWorkNotificationService's own Firestore
+     * listener picks up the entry disappearing and tears itself down the
+     * same way it does on a normal completion, so no separate service call
+     * is needed here.
+     */
+    fun cancelWork() {
+        viewModelScope.launch {
+            timerEntryCoordinator.handleCancel()
+            _uiState.value = CaptureUiState()
+        }
+    }
+
     /** Pause/resume the open work timer — see TimerEntryCoordinator.handlePause/handleResume. */
     fun pauseWork() {
         viewModelScope.launch { timerEntryCoordinator.handlePause(Timestamp.now()) }
@@ -622,6 +637,24 @@ class CaptureViewModel : ViewModel() {
                 MileageTrackingService.resume(ServiceLocator.appContext)
             } else {
                 mileageTripCoordinator.handleResumeTrip(Timestamp.now())
+            }
+        }
+    }
+
+    /**
+     * Discards the open trip entirely — a GPS trip must route through
+     * MileageTrackingService.cancel() so its onDestroy skips writing a
+     * finalized entry (see [pauseTrip]'s kdoc for why GPS trips can't be
+     * mutated directly while the service owns them); an odometer trip has
+     * no running service, so the coordinator is called directly.
+     */
+    fun cancelTrip() {
+        viewModelScope.launch {
+            val open = entryRepository.findOpenEntry(isTrip = true) ?: return@launch
+            if (open.mileageCaptureMethod == "gps") {
+                MileageTrackingService.cancel(ServiceLocator.appContext)
+            } else {
+                mileageTripCoordinator.handleCancelTrip()
             }
         }
     }

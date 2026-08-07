@@ -77,6 +77,18 @@ final class MileageTracker: NSObject, CLLocationManagerDelegate {
         await LiveActivityController.endTrip()
     }
 
+    /// Discards the trip in progress — stops location updates and deletes
+    /// the Entry instead of finalizing it (see
+    /// `MileageTripCoordinator.handleCancelTrip`), for a "started by
+    /// mistake" / changed-my-mind cancel.
+    func cancel() async {
+        guard isTracking else { return }
+        manager.stopUpdatingLocation()
+        isTracking = false
+        _ = try? await mileageTripCoordinator.handleCancelTrip()
+        await LiveActivityController.endTrip()
+    }
+
     /// Pauses distance accumulation without stopping location updates — the
     /// reference point (`lastLocation`) is kept current so resuming doesn't
     /// retroactively count distance covered while paused (mirrors Android's

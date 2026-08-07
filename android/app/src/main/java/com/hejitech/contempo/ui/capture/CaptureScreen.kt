@@ -3,6 +3,7 @@ package com.hejitech.contempo.ui.capture
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -10,6 +11,10 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
@@ -31,6 +36,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Keyboard
@@ -87,6 +93,7 @@ import com.hejitech.contempo.agent.ParsingStage
 import com.hejitech.contempo.mileage.MileageTrackingService
 import com.hejitech.contempo.wear.AudioProcessingStage
 import com.hejitech.core.model.CaptureLanguage
+import com.hejitech.core.model.Entry
 import com.hejitech.contempo.ui.aiAvailabilityMessage
 import com.hejitech.contempo.ui.rememberCameraCapture
 import com.hejitech.contempo.ui.theme.BulletAwareText
@@ -121,6 +128,8 @@ fun CaptureScreen(
     var otherMenuExpanded by remember { mutableStateOf(false) }
     var showQuickCaptureExplanation by remember { mutableStateOf(false) }
     var showHelpWalkthrough by remember { mutableStateOf(false) }
+    var showCancelWorkDialog by remember { mutableStateOf(false) }
+    var showCancelTripDialog by remember { mutableStateOf(false) }
 
     val micPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -301,31 +310,57 @@ fun CaptureScreen(
                 }
             }
         } else {
-            openTripEntry?.let { tripEntry ->
-                OngoingTripBanner(
-                    entry = tripEntry,
-                    isGps = gpsTripOpen,
-                    enabled = !busy,
-                    onTap = {
-                        if (gpsTripOpen) MileageTrackingService.stop(context) else odometerCameraCapture.launch()
-                    },
-                    onPauseToggle = {
-                        if (tripEntry.isPaused) viewModel.resumeTrip() else viewModel.pauseTrip()
-                    },
-                )
-                Spacer(Modifier.height(24.dp))
+            // Last-known entry is remembered so the exit animation below has
+            // something non-null to render while collapsing, even though
+            // openTripEntry/openTimerEntry themselves already flipped to
+            // null by the time that animation starts.
+            var lastTripEntry by remember { mutableStateOf<Entry?>(null) }
+            LaunchedEffect(openTripEntry) { openTripEntry?.let { lastTripEntry = it } }
+            AnimatedVisibility(
+                visible = openTripEntry != null,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut(),
+            ) {
+                lastTripEntry?.let { tripEntry ->
+                    Column {
+                        OngoingTripBanner(
+                            entry = tripEntry,
+                            isGps = gpsTripOpen,
+                            enabled = !busy,
+                            onTap = {
+                                if (gpsTripOpen) MileageTrackingService.stop(context) else odometerCameraCapture.launch()
+                            },
+                            onPauseToggle = {
+                                if (tripEntry.isPaused) viewModel.resumeTrip() else viewModel.pauseTrip()
+                            },
+                            onCancel = { showCancelTripDialog = true },
+                        )
+                        Spacer(Modifier.height(24.dp))
+                    }
+                }
             }
 
-            openTimerEntry?.let { timerEntry ->
-                OngoingWorkBanner(
-                    entry = timerEntry,
-                    enabled = !busy,
-                    onTapToComplete = viewModel::completeOpenTimer,
-                    onPauseToggle = {
-                        if (timerEntry.isPaused) viewModel.resumeWork() else viewModel.pauseWork()
-                    },
-                )
-                Spacer(Modifier.height(24.dp))
+            var lastTimerEntry by remember { mutableStateOf<Entry?>(null) }
+            LaunchedEffect(openTimerEntry) { openTimerEntry?.let { lastTimerEntry = it } }
+            AnimatedVisibility(
+                visible = openTimerEntry != null,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut(),
+            ) {
+                lastTimerEntry?.let { timerEntry ->
+                    Column {
+                        OngoingWorkBanner(
+                            entry = timerEntry,
+                            enabled = !busy,
+                            onTapToComplete = viewModel::completeOpenTimer,
+                            onPauseToggle = {
+                                if (timerEntry.isPaused) viewModel.resumeWork() else viewModel.pauseWork()
+                            },
+                            onCancel = { showCancelWorkDialog = true },
+                        )
+                        Spacer(Modifier.height(24.dp))
+                    }
+                }
             }
 
             Column(
@@ -642,6 +677,54 @@ fun CaptureScreen(
     if (showHelpWalkthrough) {
         HelpWalkthroughDialog(onDismiss = { showHelpWalkthrough = false })
     }
+
+    if (showCancelWorkDialog) {
+        DiscardInProgressDialog(
+            title = stringResource(R.string.capture_cancel_work_dialog_title),
+            text = stringResource(R.string.capture_cancel_work_dialog_text),
+            onDismiss = { showCancelWorkDialog = false },
+            onConfirm = {
+                showCancelWorkDialog = false
+                viewModel.cancelWork()
+            },
+        )
+    }
+
+    if (showCancelTripDialog) {
+        DiscardInProgressDialog(
+            title = stringResource(R.string.capture_cancel_trip_dialog_title),
+            text = stringResource(R.string.capture_cancel_trip_dialog_text),
+            onDismiss = { showCancelTripDialog = false },
+            onConfirm = {
+                showCancelTripDialog = false
+                viewModel.cancelTrip()
+            },
+        )
+    }
+}
+
+@Composable
+private fun DiscardInProgressDialog(
+    title: String,
+    text: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = { Text(text) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(stringResource(R.string.capture_cancel_dialog_confirm), color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.capture_cancel_dialog_dismiss))
+            }
+        },
+    )
 }
 
 private const val TIMER_MESSAGE_HOLD_MS = 3000L
@@ -974,6 +1057,7 @@ private fun OngoingWorkBanner(
     enabled: Boolean,
     onTapToComplete: () -> Unit,
     onPauseToggle: () -> Unit,
+    onCancel: () -> Unit,
 ) {
     // Ticks once a second so the banner itself reads as a live running clock —
     // this is now the only "tracking" feedback in Capture (see
@@ -1040,6 +1124,13 @@ private fun OngoingWorkBanner(
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
+            IconButton(onClick = onCancel, enabled = enabled) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = stringResource(R.string.capture_cancel_work_content_description),
+                    tint = MaterialTheme.colorScheme.error,
+                )
+            }
         }
     }
 }
@@ -1060,6 +1151,7 @@ private fun OngoingTripBanner(
     enabled: Boolean,
     onTap: () -> Unit,
     onPauseToggle: () -> Unit,
+    onCancel: () -> Unit,
 ) {
     var nowSeconds by remember(entry.activityDate) { mutableStateOf(System.currentTimeMillis() / 1000) }
     LaunchedEffect(entry.activityDate) {
@@ -1128,6 +1220,13 @@ private fun OngoingTripBanner(
                         else R.string.capture_pause_content_description,
                     ),
                     tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+            IconButton(onClick = onCancel, enabled = enabled) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = stringResource(R.string.capture_cancel_trip_content_description),
+                    tint = MaterialTheme.colorScheme.error,
                 )
             }
         }
