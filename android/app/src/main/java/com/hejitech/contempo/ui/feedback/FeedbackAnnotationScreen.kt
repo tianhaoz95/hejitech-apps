@@ -40,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -55,15 +56,25 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hejitech.contempo.R
 import com.hejitech.core.model.FeedbackRegion
 import java.io.File
-import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sqrt
+
+private enum class Corner { TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT }
+
+private sealed interface DragMode {
+    data object Idle : DragMode
+    data object Creating : DragMode
+    data object Moving : DragMode
+    data class Resizing(val corner: Corner) : DragMode
+}
 
 /**
  * Full-screen overlay shown after a shake capture — box-select (NOT
  * freehand drawing, per product requirement) an area of interest on the
- * screenshot, add a description, submit. Rendered from MainActivity on top
- * of the nav host whenever PendingFeedbackCaptureStore is non-null.
+ * screenshot, edit it (drag to move, drag a corner to resize), add a
+ * description, submit. Rendered from MainActivity on top of the nav host
+ * whenever PendingFeedbackCaptureStore is non-null.
  */
 @Composable
 fun FeedbackAnnotationScreen(
@@ -76,9 +87,22 @@ fun FeedbackAnnotationScreen(
         BitmapFactory.decodeFile(imageFile.absolutePath)?.asImageBitmap()
     }
     var description by remember { mutableStateOf("") }
-    var dragStart by remember { mutableStateOf<Offset?>(null) }
-    var dragEnd by remember { mutableStateOf<Offset?>(null) }
     var containerSize by remember { mutableStateOf(Offset.Zero) }
+    val imageSize = remember(bitmap) { bitmap?.let { Offset(it.width.toFloat(), it.height.toFloat()) } ?: Offset.Zero }
+
+    // The single source of truth for the drawn box — normalized (0..1)
+    // fractions of the *displayed image* (not the container), exactly the
+    // shape submitted to Firestore (see FeedbackRegion / firestore.rules'
+    // isValidFeedbackRegion). Storing it normalized, not in raw pixel
+    // coordinates, is what lets the box survive the image resizing (e.g.
+    // collapsing the input panel, see isInputExpanded below) without being
+    // cleared or drifting out of place — it's simply re-denormalized
+    // against whatever containerSize currently is.
+    var boxNormalized by remember { mutableStateOf<FeedbackRegion?>(null) }
+    var dragMode by remember { mutableStateOf<DragMode>(DragMode.Idle) }
+    var boxAtDragStart by remember { mutableStateOf<FeedbackRegion?>(null) }
+    var dragStartLocation by remember { mutableStateOf(Offset.Zero) }
+
     // The bottom controls' own height at rest (keyboard closed, expanded) —
     // captured once from its first measurement, which always happens before
     // the keyboard can possibly be open (this screen only ever appears right
@@ -90,21 +114,19 @@ fun FeedbackAnnotationScreen(
     var restingControlsHeightPx by remember { mutableStateOf(0f) }
     val density = LocalDensity.current
     val focusManager = LocalFocusManager.current
+    // A generous touch target (Material recommends >=48dp) for grabbing a
+    // resize handle — the handle itself is drawn much smaller (see the
+    // Canvas below), this is just the hit-test radius around it.
+    val handleHitRadiusPx = with(density) { 32.dp.toPx() }
 
     // Lets the user shrink the description/buttons panel down to a small
     // FAB to see the screenshot underneath it (see collapsedReserve below)
-    // — this is a deliberate, discrete resize of the image area, unlike
-    // the keyboard case above, so any drawn box is cleared on toggle
-    // instead of trying to rescale it: the box is drawn relative to a
-    // *specific* image size, and there's no cheap way to keep it correctly
-    // positioned across an arbitrary resize without re-deriving it, so
-    // clearing it (the user can just redraw in a couple seconds) is the
-    // simplest correct choice.
+    // — a deliberate, discrete resize of the image area. The box (stored
+    // normalized, see above) survives this resize correctly, so there's no
+    // need to clear it.
     var isInputExpanded by remember { mutableStateOf(true) }
     val collapsedReserve = 88.dp
     fun toggleInputExpanded() {
-        dragStart = null
-        dragEnd = null
         focusManager.clearFocus()
         isInputExpanded = !isInputExpanded
     }
@@ -141,7 +163,13 @@ fun FeedbackAnnotationScreen(
                 modifier = Modifier.padding(16.dp),
             )
             Text(
-                stringResource(R.string.feedback_annotation_hint),
+                stringResource(
+                    if (boxNormalized == null) {
+                        R.string.feedback_annotation_hint
+                    } else {
+                        R.string.feedback_annotation_hint_editing
+                    },
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp),
@@ -156,10 +184,66 @@ fun FeedbackAnnotationScreen(
                     .pointerInput(Unit) {
                         detectDragGestures(
                             onDragStart = { offset ->
-                                dragStart = offset
-                                dragEnd = offset
+                                val currentBox = boxNormalized?.let { pixelRect(it, containerSize, imageSize) }
+                                val handle = currentBox?.let { hitTestHandle(offset, it, handleHitRadiusPx) }
+                                dragMode = when {
+                                    handle != null -> DragMode.Resizing(handle)
+                                    currentBox != null && grow(currentBox, handleHitRadiusPx).contains(offset) -> DragMode.Moving
+                                    else -> DragMode.Creating
+                                }
+                                boxAtDragStart = boxNormalized
+                                dragStartLocation = offset
                             },
-                            onDrag = { change, _ -> dragEnd = change.position },
+                            onDrag = { change, _ ->
+                                val position = change.position
+                                when (val mode = dragMode) {
+                                    is DragMode.Creating -> {
+                                        val rect = Rect(
+                                            left = min(dragStartLocation.x, position.x),
+                                            top = min(dragStartLocation.y, position.y),
+                                            right = max(dragStartLocation.x, position.x),
+                                            bottom = max(dragStartLocation.y, position.y),
+                                        )
+                                        boxNormalized = normalize(rect, containerSize, imageSize)
+                                    }
+                                    is DragMode.Moving -> {
+                                        val startBox = boxAtDragStart
+                                        if (startBox != null) {
+                                            val startPixel = pixelRect(startBox, containerSize, imageSize)
+                                            val dx = position.x - dragStartLocation.x
+                                            val dy = position.y - dragStartLocation.y
+                                            val moved = Rect(
+                                                startPixel.left + dx,
+                                                startPixel.top + dy,
+                                                startPixel.right + dx,
+                                                startPixel.bottom + dy,
+                                            )
+                                            boxNormalized = normalize(
+                                                clampRect(moved, displayRect(containerSize, imageSize)),
+                                                containerSize,
+                                                imageSize,
+                                            )
+                                        }
+                                    }
+                                    is DragMode.Resizing -> {
+                                        val startBox = boxAtDragStart
+                                        if (startBox != null) {
+                                            val startPixel = pixelRect(startBox, containerSize, imageSize)
+                                            val resized = resizedRect(startPixel, mode.corner, position)
+                                            boxNormalized = normalize(
+                                                clampRect(resized, displayRect(containerSize, imageSize)),
+                                                containerSize,
+                                                imageSize,
+                                            )
+                                        }
+                                    }
+                                    DragMode.Idle -> Unit
+                                }
+                            },
+                            onDragEnd = {
+                                dragMode = DragMode.Idle
+                                boxAtDragStart = null
+                            },
                         )
                     },
             ) {
@@ -171,14 +255,13 @@ fun FeedbackAnnotationScreen(
                         contentScale = ContentScale.Fit,
                     )
                 }
+                val displayBox = boxNormalized?.let { pixelRect(it, containerSize, imageSize) }
                 Canvas(modifier = Modifier.fillMaxSize()) {
-                    val start = dragStart
-                    val end = dragEnd
-                    if (start != null && end != null) {
-                        val left = min(start.x, end.x)
-                        val top = min(start.y, end.y)
-                        val right = max(start.x, end.x)
-                        val bottom = max(start.y, end.y)
+                    if (displayBox != null) {
+                        val left = displayBox.left
+                        val top = displayBox.top
+                        val right = displayBox.right
+                        val bottom = displayBox.bottom
                         val scrim = Color.Black.copy(alpha = 0.5f)
                         // Four strips around the box rather than a punch-hole
                         // clear — correct without needing an offscreen
@@ -193,6 +276,13 @@ fun FeedbackAnnotationScreen(
                             size = Size(right - left, bottom - top),
                             style = Stroke(width = 3f),
                         )
+                        // Corner handles — draggable to resize (see
+                        // hitTestHandle above).
+                        val handleRadiusPx = 10.dp.toPx()
+                        for (corner in listOf(Offset(left, top), Offset(right, top), Offset(left, bottom), Offset(right, bottom))) {
+                            drawCircle(color = Color.White, radius = handleRadiusPx, center = corner)
+                            drawCircle(color = Color(0xFF1F5C46), radius = handleRadiusPx - 3f, center = corner)
+                        }
                     }
                 }
             }
@@ -242,12 +332,7 @@ fun FeedbackAnnotationScreen(
                     }
                     Spacer(Modifier.width(12.dp))
                     Button(
-                        onClick = {
-                            val region = bitmap?.let {
-                                normalizedRegion(dragStart, dragEnd, containerSize, Offset(it.width.toFloat(), it.height.toFloat()))
-                            }
-                            viewModel.submit(imageFile, region, description)
-                        },
+                        onClick = { viewModel.submit(imageFile, boxNormalized, description) },
                         enabled = !uiState.isSubmitting,
                     ) {
                         if (uiState.isSubmitting) {
@@ -279,39 +364,104 @@ fun FeedbackAnnotationScreen(
 }
 
 /**
- * A drag under 8px in both axes reads as a tap, not an intentional box —
- * treated as "no region." Normalizes against the image's actual displayed
- * bounds within [containerSize], not the container itself — ContentScale.Fit
- * letterboxes/pillarboxes whenever the container's aspect ratio doesn't
- * exactly match the screenshot's (it never does here: the container is
- * narrower than the full device screen since the title/hint text and the
- * description field above/below it eat into the available height), so
- * normalizing against the raw container would silently shift the stored
- * region away from what the user actually boxed on the image.
+ * The displayed image's bounds within [containerSize] — ContentScale.Fit
+ * letterboxes/pillarboxes whenever [containerSize]'s aspect ratio doesn't
+ * exactly match [imageSize]'s, so this is almost never just the full
+ * container.
  */
-private fun normalizedRegion(start: Offset?, end: Offset?, containerSize: Offset, imageSize: Offset): FeedbackRegion? {
-    if (start == null || end == null || containerSize.x <= 0f || containerSize.y <= 0f) return null
-    if (imageSize.x <= 0f || imageSize.y <= 0f) return null
-    if (abs(end.x - start.x) < 8f && abs(end.y - start.y) < 8f) return null
-
+private fun displayRect(containerSize: Offset, imageSize: Offset): Rect {
+    if (containerSize.x <= 0f || containerSize.y <= 0f || imageSize.x <= 0f || imageSize.y <= 0f) return Rect.Zero
     val scale = min(containerSize.x / imageSize.x, containerSize.y / imageSize.y)
     val displayedWidth = imageSize.x * scale
     val displayedHeight = imageSize.y * scale
     val offsetX = (containerSize.x - displayedWidth) / 2f
     val offsetY = (containerSize.y - displayedHeight) / 2f
+    return Rect(offsetX, offsetY, offsetX + displayedWidth, offsetY + displayedHeight)
+}
 
-    val left = ((min(start.x, end.x) - offsetX) / displayedWidth)
-    val top = ((min(start.y, end.y) - offsetY) / displayedHeight)
-    val right = ((max(start.x, end.x) - offsetX) / displayedWidth)
-    val bottom = ((max(start.y, end.y) - offsetY) / displayedHeight)
-    val clampedLeft = left.coerceIn(0f, 1f)
-    val clampedTop = top.coerceIn(0f, 1f)
-    val clampedRight = right.coerceIn(0f, 1f)
-    val clampedBottom = bottom.coerceIn(0f, 1f)
-    return FeedbackRegion(
-        x = clampedLeft.toDouble(),
-        y = clampedTop.toDouble(),
-        w = (clampedRight - clampedLeft).toDouble(),
-        h = (clampedBottom - clampedTop).toDouble(),
+/** Denormalizes a 0..1 region into pixel coordinates within the current displayed image bounds. */
+private fun pixelRect(region: FeedbackRegion, containerSize: Offset, imageSize: Offset): Rect {
+    val display = displayRect(containerSize, imageSize)
+    val x = region.x.toFloat()
+    val y = region.y.toFloat()
+    val w = region.w.toFloat()
+    val h = region.h.toFloat()
+    return Rect(
+        left = display.left + x * display.width,
+        top = display.top + y * display.height,
+        right = display.left + (x + w) * display.width,
+        bottom = display.top + (y + h) * display.height,
     )
+}
+
+/** Normalizes a pixel rect into a 0..1 region, matching firestore.rules' isValidFeedbackRegion. */
+private fun normalize(rect: Rect, containerSize: Offset, imageSize: Offset): FeedbackRegion? {
+    val display = displayRect(containerSize, imageSize)
+    if (display.width <= 0f || display.height <= 0f) return null
+    val left = ((rect.left - display.left) / display.width).coerceIn(0f, 1f)
+    val top = ((rect.top - display.top) / display.height).coerceIn(0f, 1f)
+    val right = ((rect.right - display.left) / display.width).coerceIn(0f, 1f)
+    val bottom = ((rect.bottom - display.top) / display.height).coerceIn(0f, 1f)
+    return FeedbackRegion(
+        x = left.toDouble(),
+        y = top.toDouble(),
+        w = (right - left).toDouble(),
+        h = (bottom - top).toDouble(),
+    )
+}
+
+private fun grow(rect: Rect, amount: Float): Rect =
+    Rect(rect.left - amount, rect.top - amount, rect.right + amount, rect.bottom + amount)
+
+private fun cornerPoint(corner: Corner, rect: Rect): Offset = when (corner) {
+    Corner.TOP_LEFT -> Offset(rect.left, rect.top)
+    Corner.TOP_RIGHT -> Offset(rect.right, rect.top)
+    Corner.BOTTOM_LEFT -> Offset(rect.left, rect.bottom)
+    Corner.BOTTOM_RIGHT -> Offset(rect.right, rect.bottom)
+}
+
+private fun hitTestHandle(point: Offset, box: Rect, radius: Float): Corner? {
+    for (corner in Corner.entries) {
+        val cornerOffset = cornerPoint(corner, box)
+        val dx = point.x - cornerOffset.x
+        val dy = point.y - cornerOffset.y
+        if (sqrt(dx * dx + dy * dy) <= radius) return corner
+    }
+    return null
+}
+
+private fun resizedRect(rect: Rect, corner: Corner, point: Offset, minSize: Float = 24f): Rect = when (corner) {
+    Corner.TOP_LEFT -> Rect(
+        left = min(point.x, rect.right - minSize),
+        top = min(point.y, rect.bottom - minSize),
+        right = rect.right,
+        bottom = rect.bottom,
+    )
+    Corner.TOP_RIGHT -> Rect(
+        left = rect.left,
+        top = min(point.y, rect.bottom - minSize),
+        right = max(point.x, rect.left + minSize),
+        bottom = rect.bottom,
+    )
+    Corner.BOTTOM_LEFT -> Rect(
+        left = min(point.x, rect.right - minSize),
+        top = rect.top,
+        right = rect.right,
+        bottom = max(point.y, rect.top + minSize),
+    )
+    Corner.BOTTOM_RIGHT -> Rect(
+        left = rect.left,
+        top = rect.top,
+        right = max(point.x, rect.left + minSize),
+        bottom = max(point.y, rect.top + minSize),
+    )
+}
+
+private fun clampRect(rect: Rect, bounds: Rect): Rect {
+    if (bounds.width <= 0f || bounds.height <= 0f) return rect
+    val width = min(rect.width, bounds.width)
+    val height = min(rect.height, bounds.height)
+    val left = rect.left.coerceIn(bounds.left, bounds.right - width)
+    val top = rect.top.coerceIn(bounds.top, bounds.bottom - height)
+    return Rect(left, top, left + width, top + height)
 }

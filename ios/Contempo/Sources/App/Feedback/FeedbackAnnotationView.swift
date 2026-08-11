@@ -5,8 +5,9 @@ import UIKit
 
 /// Full-screen "shake to report" flow: shows the captured screenshot, lets
 /// the user drag out a single box around the area of interest (box-select
-/// only — explicitly not freehand drawing, per product requirement), takes
-/// a short description, then submits both via `FeedbackViewModel`.
+/// only — explicitly not freehand drawing, per product requirement), edit
+/// it (drag to move, drag a corner to resize), takes a short description,
+/// then submits both via `FeedbackViewModel`.
 struct FeedbackAnnotationView: View {
     let image: UIImage
     let onDismiss: () -> Void
@@ -14,8 +15,20 @@ struct FeedbackAnnotationView: View {
     @State private var viewModel = FeedbackViewModel()
     @Environment(\.contempoPalette) private var palette
 
+    /// The single source of truth for the drawn box — normalized (0..1)
+    /// fractions of the *displayed image* (not the container), exactly the
+    /// shape submitted to Firestore (see `FeedbackRegion`/firestore.rules'
+    /// isValidFeedbackRegion). Storing it normalized, not in raw view
+    /// coordinates, is what lets the box survive the image resizing (e.g.
+    /// collapsing the input panel, see isInputExpanded below) without
+    /// having to be cleared or drifting out of place — it's simply
+    /// re-denormalized against whatever `imageFrameSize` currently is.
+    @State private var boxNormalized: FeedbackRegion?
+    @State private var dragMode: DragMode = .idle
+    @State private var boxAtDragStart: FeedbackRegion?
+    @State private var dragStartLocation: CGPoint = .zero
     @State private var dragStart: CGPoint?
-    @State private var boxRect: CGRect?
+
     @State private var imageFrameSize: CGSize = .zero
     @FocusState private var isDescriptionFocused: Bool
     @State private var keyboardHeight: CGFloat = 0
@@ -30,18 +43,34 @@ struct FeedbackAnnotationView: View {
 
     // Lets the user shrink the description/buttons panel down to a small
     // button to see the screenshot underneath it — a deliberate, discrete
-    // resize of the image area, unlike the keyboard case, so any drawn box
-    // is cleared on toggle instead of trying to rescale it: the box is
-    // drawn relative to a *specific* image size, and there's no cheap way
-    // to keep it correctly positioned across an arbitrary resize without
-    // re-deriving it, so clearing it (the user can just redraw in a couple
-    // seconds) is the simplest correct choice.
+    // resize of the image area. The box (stored normalized, see above)
+    // survives this resize correctly, so there's no need to clear it.
     @State private var isInputExpanded = true
     private let collapsedReserve: CGFloat = 88
 
+    private enum Corner: CaseIterable {
+        case topLeft, topRight, bottomLeft, bottomRight
+    }
+
+    private enum DragMode: Equatable {
+        case idle
+        case creating
+        case moving
+        case resizing(Corner)
+
+        static func == (lhs: DragMode, rhs: DragMode) -> Bool {
+            switch (lhs, rhs) {
+            case (.idle, .idle), (.creating, .creating), (.moving, .moving):
+                return true
+            case let (.resizing(l), .resizing(r)):
+                return l == r
+            default:
+                return false
+            }
+        }
+    }
+
     private func toggleInputExpanded() {
-        dragStart = nil
-        boxRect = nil
         isDescriptionFocused = false
         isInputExpanded.toggle()
     }
@@ -60,37 +89,83 @@ struct FeedbackAnnotationView: View {
         // box never drifts regardless of keyboard state.
         ZStack {
             GeometryReader { geo in
+                let displayBox = boxNormalized.map { pixelRect(for: $0, in: geo.size) }
+
                 ZStack {
                     Image(uiImage: image)
                         .resizable()
                         .scaledToFit()
                         .frame(width: geo.size.width, height: geo.size.height)
 
-                    if let boxRect {
-                        HoleOverlay(hole: boxRect)
+                    if let displayBox {
+                        HoleOverlay(hole: displayBox)
                             .fill(Color.black.opacity(0.5), style: FillStyle(eoFill: true))
                             .allowsHitTesting(false)
                         Rectangle()
                             .stroke(palette.pine, lineWidth: 2)
-                            .frame(width: boxRect.width, height: boxRect.height)
-                            .position(x: boxRect.midX, y: boxRect.midY)
+                            .frame(width: displayBox.width, height: displayBox.height)
+                            .position(x: displayBox.midX, y: displayBox.midY)
                             .allowsHitTesting(false)
+                        ForEach(Corner.allCases, id: \.self) { corner in
+                            Circle()
+                                .fill(palette.pine)
+                                .overlay(Circle().stroke(.white, lineWidth: 2))
+                                .frame(width: 20, height: 20)
+                                .position(point(for: corner, of: displayBox))
+                                .allowsHitTesting(false)
+                        }
                     }
                 }
                 .contentShape(Rectangle())
                 .gesture(
                     DragGesture(minimumDistance: 2)
                         .onChanged { value in
-                            if dragStart == nil { dragStart = value.startLocation }
-                            guard let start = dragStart else { return }
-                            boxRect = CGRect(
-                                x: min(start.x, value.location.x),
-                                y: min(start.y, value.location.y),
-                                width: abs(value.location.x - start.x),
-                                height: abs(value.location.y - start.y)
-                            )
+                            if dragMode == .idle {
+                                let currentBox = boxNormalized.map { pixelRect(for: $0, in: geo.size) }
+                                if let currentBox, let corner = hitTestHandle(at: value.startLocation, box: currentBox) {
+                                    dragMode = .resizing(corner)
+                                } else if let currentBox, currentBox.insetBy(dx: -20, dy: -20).contains(value.startLocation) {
+                                    dragMode = .moving
+                                } else {
+                                    dragMode = .creating
+                                    dragStart = value.startLocation
+                                }
+                                boxAtDragStart = boxNormalized
+                                dragStartLocation = value.startLocation
+                            }
+
+                            switch dragMode {
+                            case .creating:
+                                guard let start = dragStart else { return }
+                                let rect = CGRect(
+                                    x: min(start.x, value.location.x),
+                                    y: min(start.y, value.location.y),
+                                    width: abs(value.location.x - start.x),
+                                    height: abs(value.location.y - start.y)
+                                )
+                                boxNormalized = normalize(pixelRect: rect, in: geo.size)
+                            case .moving:
+                                guard let startBox = boxAtDragStart else { return }
+                                let startPixel = pixelRect(for: startBox, in: geo.size)
+                                let moved = startPixel.offsetBy(
+                                    dx: value.location.x - dragStartLocation.x,
+                                    dy: value.location.y - dragStartLocation.y
+                                )
+                                boxNormalized = normalize(pixelRect: clamp(moved, to: displayRect(in: geo.size)), in: geo.size)
+                            case .resizing(let corner):
+                                guard let startBox = boxAtDragStart else { return }
+                                let startPixel = pixelRect(for: startBox, in: geo.size)
+                                let resized = resizedRect(startPixel, corner: corner, to: value.location)
+                                boxNormalized = normalize(pixelRect: clamp(resized, to: displayRect(in: geo.size)), in: geo.size)
+                            case .idle:
+                                break
+                            }
                         }
-                        .onEnded { _ in dragStart = nil }
+                        .onEnded { _ in
+                            dragMode = .idle
+                            dragStart = nil
+                            boxAtDragStart = nil
+                        }
                 )
                 .onAppear { imageFrameSize = geo.size }
                 .onChange(of: geo.size) { _, newValue in imageFrameSize = newValue }
@@ -100,9 +175,9 @@ struct FeedbackAnnotationView: View {
             // panel so the image doesn't sit behind them in the normal
             // case — see restingHeaderHeight/restingPanelHeight above.
             // Only the bottom reserve reacts to isInputExpanded
-            // (deliberately, see toggleInputExpanded's kdoc); neither
-            // reacts to the keyboard, which is what keeps the drawn box
-            // from drifting while typing.
+            // (deliberately, see its comment above); neither reacts to
+            // the keyboard, which is what keeps the drawn box from
+            // drifting while typing.
             .padding(.top, restingHeaderHeight)
             .padding(.bottom, isInputExpanded ? restingPanelHeight : collapsedReserve)
             .onTapGesture { isDescriptionFocused = false }
@@ -144,7 +219,7 @@ struct FeedbackAnnotationView: View {
                             }
                         }
 
-                        Text(boxRect == nil ? "Drag on the screenshot to box the area you're reporting (optional)." : "Area boxed. Drag again to redraw.")
+                        Text(boxNormalized == nil ? "Drag on the screenshot to box the area you're reporting (optional)." : "Drag the corners to resize, drag inside to move, or drag elsewhere to redraw.")
                             .font(ContempoFont.labelSmall())
                             .foregroundStyle(palette.inkFaint)
 
@@ -166,7 +241,7 @@ struct FeedbackAnnotationView: View {
                         }
 
                         Button {
-                            viewModel.submit(image: image, region: normalizedRegion(), onFinished: onDismiss)
+                            viewModel.submit(image: image, region: boxNormalized, onFinished: onDismiss)
                         } label: {
                             if viewModel.isSubmitting {
                                 ProgressView()
@@ -218,38 +293,105 @@ struct FeedbackAnnotationView: View {
         }
     }
 
-    /// Converts the on-screen box (view coordinates within the
-    /// `GeometryReader`) into a 0..1 fraction of the displayed image size —
-    /// resolution-independent, matches `firestore.rules`' `isValidFeedbackRegion`.
-    ///
-    /// Normalizes against the image's actual displayed bounds within
-    /// `imageFrameSize`, not the frame itself: `.scaledToFit()` letterboxes/
-    /// pillarboxes whenever the frame's aspect ratio doesn't exactly match
-    /// the screenshot's (it never does here — this GeometryReader is a
-    /// partial-height section, not the full screen the screenshot was taken
-    /// from), so normalizing against the raw frame would silently shift the
-    /// stored region away from what the user actually boxed on the image.
-    private func normalizedRegion() -> FeedbackRegion? {
-        guard let boxRect, imageFrameSize.width > 0, imageFrameSize.height > 0,
-              image.size.width > 0, image.size.height > 0 else { return nil }
-
+    /// The displayed image's bounds within `frameSize` — `.scaledToFit()`
+    /// letterboxes/pillarboxes whenever `frameSize`'s aspect ratio doesn't
+    /// exactly match the screenshot's, so this is almost never just
+    /// `(0, 0, frameSize.width, frameSize.height)`.
+    private func displayRect(in frameSize: CGSize) -> CGRect {
+        guard frameSize.width > 0, frameSize.height > 0, image.size.width > 0, image.size.height > 0 else {
+            return .zero
+        }
         let imageAspect = image.size.width / image.size.height
-        let frameAspect = imageFrameSize.width / imageFrameSize.height
+        let frameAspect = frameSize.width / frameSize.height
         let displayedSize: CGSize
         if imageAspect > frameAspect {
-            displayedSize = CGSize(width: imageFrameSize.width, height: imageFrameSize.width / imageAspect)
+            displayedSize = CGSize(width: frameSize.width, height: frameSize.width / imageAspect)
         } else {
-            displayedSize = CGSize(width: imageFrameSize.height * imageAspect, height: imageFrameSize.height)
+            displayedSize = CGSize(width: frameSize.height * imageAspect, height: frameSize.height)
         }
-        let offsetX = (imageFrameSize.width - displayedSize.width) / 2
-        let offsetY = (imageFrameSize.height - displayedSize.height) / 2
+        let offsetX = (frameSize.width - displayedSize.width) / 2
+        let offsetY = (frameSize.height - displayedSize.height) / 2
+        return CGRect(origin: CGPoint(x: offsetX, y: offsetY), size: displayedSize)
+    }
 
-        return FeedbackRegion(
-            x: max(0, min(1, (boxRect.minX - offsetX) / displayedSize.width)),
-            y: max(0, min(1, (boxRect.minY - offsetY) / displayedSize.height)),
-            w: max(0, min(1, boxRect.width / displayedSize.width)),
-            h: max(0, min(1, boxRect.height / displayedSize.height))
+    /// Denormalizes a 0..1 region into pixel/view coordinates within
+    /// `frameSize`'s current displayed image bounds.
+    private func pixelRect(for region: FeedbackRegion, in frameSize: CGSize) -> CGRect {
+        let display = displayRect(in: frameSize)
+        return CGRect(
+            x: display.minX + region.x * display.width,
+            y: display.minY + region.y * display.height,
+            width: region.w * display.width,
+            height: region.h * display.height
         )
+    }
+
+    /// Normalizes a pixel/view rect (within `frameSize`) into a 0..1
+    /// region, matching `firestore.rules`' `isValidFeedbackRegion`.
+    private func normalize(pixelRect: CGRect, in frameSize: CGSize) -> FeedbackRegion? {
+        let display = displayRect(in: frameSize)
+        guard display.width > 0, display.height > 0 else { return nil }
+        return FeedbackRegion(
+            x: max(0, min(1, (pixelRect.minX - display.minX) / display.width)),
+            y: max(0, min(1, (pixelRect.minY - display.minY) / display.height)),
+            w: max(0, min(1, pixelRect.width / display.width)),
+            h: max(0, min(1, pixelRect.height / display.height))
+        )
+    }
+
+    private func point(for corner: Corner, of rect: CGRect) -> CGPoint {
+        switch corner {
+        case .topLeft: return CGPoint(x: rect.minX, y: rect.minY)
+        case .topRight: return CGPoint(x: rect.maxX, y: rect.minY)
+        case .bottomLeft: return CGPoint(x: rect.minX, y: rect.maxY)
+        case .bottomRight: return CGPoint(x: rect.maxX, y: rect.maxY)
+        }
+    }
+
+    private func hitTestHandle(at point: CGPoint, box: CGRect, radius: CGFloat = 22) -> Corner? {
+        for corner in Corner.allCases {
+            let cornerPoint = self.point(for: corner, of: box)
+            let dx = point.x - cornerPoint.x
+            let dy = point.y - cornerPoint.y
+            if (dx * dx + dy * dy).squareRoot() <= radius { return corner }
+        }
+        return nil
+    }
+
+    /// A drag under 8px in both axes reads as a tap, not an intentional
+    /// resize/move — callers guard against this via `minimumDistance` on
+    /// the gesture itself, so no separate check is needed here.
+    private func resizedRect(_ rect: CGRect, corner: Corner, to point: CGPoint, minSize: CGFloat = 24) -> CGRect {
+        var newRect = rect
+        switch corner {
+        case .topLeft:
+            newRect.origin.x = min(point.x, rect.maxX - minSize)
+            newRect.origin.y = min(point.y, rect.maxY - minSize)
+            newRect.size.width = rect.maxX - newRect.origin.x
+            newRect.size.height = rect.maxY - newRect.origin.y
+        case .topRight:
+            newRect.origin.y = min(point.y, rect.maxY - minSize)
+            newRect.size.width = max(minSize, point.x - rect.minX)
+            newRect.size.height = rect.maxY - newRect.origin.y
+        case .bottomLeft:
+            newRect.origin.x = min(point.x, rect.maxX - minSize)
+            newRect.size.width = rect.maxX - newRect.origin.x
+            newRect.size.height = max(minSize, point.y - rect.minY)
+        case .bottomRight:
+            newRect.size.width = max(minSize, point.x - rect.minX)
+            newRect.size.height = max(minSize, point.y - rect.minY)
+        }
+        return newRect
+    }
+
+    private func clamp(_ rect: CGRect, to bounds: CGRect) -> CGRect {
+        guard bounds.width > 0, bounds.height > 0 else { return rect }
+        var r = rect
+        r.size.width = min(r.width, bounds.width)
+        r.size.height = min(r.height, bounds.height)
+        r.origin.x = max(bounds.minX, min(r.origin.x, bounds.maxX - r.width))
+        r.origin.y = max(bounds.minY, min(r.origin.y, bounds.maxY - r.height))
+        return r
     }
 }
 

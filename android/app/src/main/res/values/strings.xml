@@ -325,6 +325,7 @@
 
     <string name="feedback_annotation_title">Report an issue</string>
     <string name="feedback_annotation_hint">Drag to box the area you\'re reporting (optional), then describe what\'s wrong or what could be better.</string>
+    <string name="feedback_annotation_hint_editing">Drag the corners to resize, drag inside to move, or drag elsewhere to redraw.</string>
     <string name="feedback_description_placeholder">What happened, or what would help?</string>
     <string name="feedback_cancel_button">Cancel</string>
     <string name="feedback_submit_button">Submit</string>
