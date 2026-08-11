@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
@@ -28,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -73,75 +76,94 @@ fun FeedbackAnnotationScreen(
         return
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .systemBarsPadding(),
-    ) {
-        Text(
-            stringResource(R.string.feedback_annotation_title),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(16.dp),
-        )
-        Text(
-            stringResource(R.string.feedback_annotation_hint),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp),
-        )
-        Spacer(Modifier.height(8.dp))
-
-        Box(
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        // Header + image layer. Nothing in this subtree reacts to the
+        // keyboard (imePadding lives only on the overlay below), so this
+        // Box's measured size — and therefore the drawn box's position
+        // relative to the image — never changes while this screen is up,
+        // regardless of whether the keyboard is showing.
+        Column(
             modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .onSizeChanged { containerSize = Offset(it.width.toFloat(), it.height.toFloat()) }
-                .pointerInput(Unit) {
-                    detectDragGestures(
-                        onDragStart = { offset ->
-                            dragStart = offset
-                            dragEnd = offset
-                        },
-                        onDrag = { change, _ -> dragEnd = change.position },
-                    )
-                },
+                .fillMaxSize()
+                .systemBarsPadding(),
         ) {
-            bitmap?.let {
-                Image(
-                    bitmap = it,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit,
-                )
-            }
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val start = dragStart
-                val end = dragEnd
-                if (start != null && end != null) {
-                    val left = min(start.x, end.x)
-                    val top = min(start.y, end.y)
-                    val right = max(start.x, end.x)
-                    val bottom = max(start.y, end.y)
-                    val scrim = Color.Black.copy(alpha = 0.5f)
-                    // Four strips around the box rather than a punch-hole
-                    // clear — correct without needing an offscreen
-                    // compositing layer.
-                    drawRect(color = scrim, topLeft = Offset(0f, 0f), size = Size(size.width, top))
-                    drawRect(color = scrim, topLeft = Offset(0f, bottom), size = Size(size.width, size.height - bottom))
-                    drawRect(color = scrim, topLeft = Offset(0f, top), size = Size(left, bottom - top))
-                    drawRect(color = scrim, topLeft = Offset(right, top), size = Size(size.width - right, bottom - top))
-                    drawRect(
-                        color = Color.White,
-                        topLeft = Offset(left, top),
-                        size = Size(right - left, bottom - top),
-                        style = Stroke(width = 3f),
+            Text(
+                stringResource(R.string.feedback_annotation_title),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(16.dp),
+            )
+            Text(
+                stringResource(R.string.feedback_annotation_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
+            Spacer(Modifier.height(8.dp))
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .onSizeChanged { containerSize = Offset(it.width.toFloat(), it.height.toFloat()) }
+                    .pointerInput(Unit) {
+                        detectDragGestures(
+                            onDragStart = { offset ->
+                                dragStart = offset
+                                dragEnd = offset
+                            },
+                            onDrag = { change, _ -> dragEnd = change.position },
+                        )
+                    },
+            ) {
+                bitmap?.let {
+                    Image(
+                        bitmap = it,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit,
                     )
+                }
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val start = dragStart
+                    val end = dragEnd
+                    if (start != null && end != null) {
+                        val left = min(start.x, end.x)
+                        val top = min(start.y, end.y)
+                        val right = max(start.x, end.x)
+                        val bottom = max(start.y, end.y)
+                        val scrim = Color.Black.copy(alpha = 0.5f)
+                        // Four strips around the box rather than a punch-hole
+                        // clear — correct without needing an offscreen
+                        // compositing layer.
+                        drawRect(color = scrim, topLeft = Offset(0f, 0f), size = Size(size.width, top))
+                        drawRect(color = scrim, topLeft = Offset(0f, bottom), size = Size(size.width, size.height - bottom))
+                        drawRect(color = scrim, topLeft = Offset(0f, top), size = Size(left, bottom - top))
+                        drawRect(color = scrim, topLeft = Offset(right, top), size = Size(size.width - right, bottom - top))
+                        drawRect(
+                            color = Color.White,
+                            topLeft = Offset(left, top),
+                            size = Size(right - left, bottom - top),
+                            style = Stroke(width = 3f),
+                        )
+                    }
                 }
             }
         }
 
-        Column(modifier = Modifier.padding(16.dp)) {
+        // Description + buttons, overlaid on top of the image layer and
+        // anchored to the bottom edge. imePadding here (and only here) is
+        // what slides this section above the keyboard when the text field
+        // is focused, independent of the image layer above — see the
+        // comment on the outer Box.
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.background)
+                .navigationBarsPadding()
+                .imePadding()
+                .padding(16.dp),
+        ) {
             OutlinedTextField(
                 value = description,
                 onValueChange = { description = it },

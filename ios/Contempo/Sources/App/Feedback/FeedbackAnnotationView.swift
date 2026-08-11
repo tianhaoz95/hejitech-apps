@@ -18,6 +18,7 @@ struct FeedbackAnnotationView: View {
     @State private var boxRect: CGRect?
     @State private var imageFrameSize: CGSize = .zero
     @FocusState private var isDescriptionFocused: Bool
+    @State private var keyboardHeight: CGFloat = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -111,6 +112,16 @@ struct FeedbackAnnotationView: View {
                 .disabled(viewModel.isSubmitting || viewModel.description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
             .padding()
+            // Compensates for .ignoresSafeArea(.keyboard) below: that
+            // modifier stops the *whole* screen (crucially, the
+            // GeometryReader above) from reflowing when the keyboard
+            // appears, which is what keeps the box from drifting — but
+            // it also means nothing pushes this section above the
+            // keyboard automatically anymore. Shifting just this section
+            // up by the tracked keyboard height gets the text field
+            // visible again without touching the image area's size at all.
+            .padding(.bottom, keyboardHeight)
+            .animation(.easeOut(duration: 0.25), value: keyboardHeight)
         }
         .background(palette.paper)
         .onTapGesture { isDescriptionFocused = false }
@@ -124,6 +135,14 @@ struct FeedbackAnnotationView: View {
         // the drift) entirely, rather than trying to rescale boxRect
         // after the fact.
         .ignoresSafeArea(.keyboard, edges: .bottom)
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
+            if let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
+                keyboardHeight = frame.height
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            keyboardHeight = 0
+        }
     }
 
     /// Converts the on-screen box (view coordinates within the
