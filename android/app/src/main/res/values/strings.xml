@@ -328,6 +328,8 @@
     <string name="feedback_description_placeholder">What happened, or what would help?</string>
     <string name="feedback_cancel_button">Cancel</string>
     <string name="feedback_submit_button">Submit</string>
+    <string name="feedback_minimize_input_content_description">Minimize to see the screenshot</string>
+    <string name="feedback_expand_input_content_description">Expand feedback input</string>
 
     <string name="settings_roles_section">Roles</string>
     <string name="settings_roles_section_hint">Tag entries under a role (Property Manager, Co-host, Cleaner, a contractor, ...) when someone other than you did the work. Only your own hours (no role) count toward the 100-hour/500-hour progress on the Dashboard — the IRS tests require your participation to exceed everyone else\'s.</string>

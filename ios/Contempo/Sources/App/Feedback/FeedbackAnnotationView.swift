@@ -20,6 +20,32 @@ struct FeedbackAnnotationView: View {
     @FocusState private var isDescriptionFocused: Bool
     @State private var keyboardHeight: CGFloat = 0
 
+    // The header's and the description panel's own heights at rest
+    // (keyboard closed, panel expanded) — captured once from their first
+    // measurement, mirroring Android's restingControlsHeightPx. Reserving
+    // this much space at the top/bottom of the image keeps it from
+    // overlapping either overlay in the normal case.
+    @State private var restingHeaderHeight: CGFloat = 0
+    @State private var restingPanelHeight: CGFloat = 0
+
+    // Lets the user shrink the description/buttons panel down to a small
+    // button to see the screenshot underneath it — a deliberate, discrete
+    // resize of the image area, unlike the keyboard case, so any drawn box
+    // is cleared on toggle instead of trying to rescale it: the box is
+    // drawn relative to a *specific* image size, and there's no cheap way
+    // to keep it correctly positioned across an arbitrary resize without
+    // re-deriving it, so clearing it (the user can just redraw in a couple
+    // seconds) is the simplest correct choice.
+    @State private var isInputExpanded = true
+    private let collapsedReserve: CGFloat = 88
+
+    private func toggleInputExpanded() {
+        dragStart = nil
+        boxRect = nil
+        isDescriptionFocused = false
+        isInputExpanded.toggle()
+    }
+
     var body: some View {
         // A ZStack, not a VStack: the image/box-select layer and the
         // header+controls overlay are independent siblings here, each
@@ -70,6 +96,15 @@ struct FeedbackAnnotationView: View {
                 .onChange(of: geo.size) { _, newValue in imageFrameSize = newValue }
             }
             .ignoresSafeArea()
+            // Reserves space at top/bottom for the header and description
+            // panel so the image doesn't sit behind them in the normal
+            // case — see restingHeaderHeight/restingPanelHeight above.
+            // Only the bottom reserve reacts to isInputExpanded
+            // (deliberately, see toggleInputExpanded's kdoc); neither
+            // reacts to the keyboard, which is what keeps the drawn box
+            // from drifting while typing.
+            .padding(.top, restingHeaderHeight)
+            .padding(.bottom, isInputExpanded ? restingPanelHeight : collapsedReserve)
             .onTapGesture { isDescriptionFocused = false }
 
             VStack(spacing: 0) {
@@ -86,51 +121,90 @@ struct FeedbackAnnotationView: View {
                         .accessibilityHidden(true)
                 }
                 .padding()
+                .background(
+                    GeometryReader { geo in
+                        Color.clear.onAppear {
+                            if restingHeaderHeight == 0 { restingHeaderHeight = geo.size.height }
+                        }
+                    }
+                )
                 .background(palette.paper)
 
                 Spacer(minLength: 0)
 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(boxRect == nil ? "Drag on the screenshot to box the area you're reporting (optional)." : "Area boxed. Drag again to redraw.")
-                        .font(ContempoFont.labelSmall())
-                        .foregroundStyle(palette.inkFaint)
-
-                    TextField("What's wrong, or what should be better?", text: $viewModel.description, axis: .vertical)
-                        .lineLimit(3...6)
-                        .textFieldStyle(.roundedBorder)
-                        .focused($isDescriptionFocused)
-                        .toolbar {
-                            ToolbarItemGroup(placement: .keyboard) {
-                                Spacer()
-                                Button("Done") { isDescriptionFocused = false }
+                if isInputExpanded {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Spacer()
+                            Button {
+                                toggleInputExpanded()
+                            } label: {
+                                Image(systemName: "chevron.down.circle.fill")
+                                    .foregroundStyle(palette.inkFaint)
                             }
                         }
 
-                    if let submitError = viewModel.submitError {
-                        Text(submitError)
+                        Text(boxRect == nil ? "Drag on the screenshot to box the area you're reporting (optional)." : "Area boxed. Drag again to redraw.")
                             .font(ContempoFont.labelSmall())
-                            .foregroundStyle(palette.danger)
-                    }
+                            .foregroundStyle(palette.inkFaint)
 
-                    Button {
-                        viewModel.submit(image: image, region: normalizedRegion(), onFinished: onDismiss)
-                    } label: {
-                        if viewModel.isSubmitting {
-                            ProgressView()
-                                .frame(maxWidth: .infinity)
-                        } else {
-                            Text("Submit")
-                                .frame(maxWidth: .infinity)
+                        TextField("What's wrong, or what should be better?", text: $viewModel.description, axis: .vertical)
+                            .lineLimit(3...6)
+                            .textFieldStyle(.roundedBorder)
+                            .focused($isDescriptionFocused)
+                            .toolbar {
+                                ToolbarItemGroup(placement: .keyboard) {
+                                    Spacer()
+                                    Button("Done") { isDescriptionFocused = false }
+                                }
+                            }
+
+                        if let submitError = viewModel.submitError {
+                            Text(submitError)
+                                .font(ContempoFont.labelSmall())
+                                .foregroundStyle(palette.danger)
                         }
+
+                        Button {
+                            viewModel.submit(image: image, region: normalizedRegion(), onFinished: onDismiss)
+                        } label: {
+                            if viewModel.isSubmitting {
+                                ProgressView()
+                                    .frame(maxWidth: .infinity)
+                            } else {
+                                Text("Submit")
+                                    .frame(maxWidth: .infinity)
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(palette.pine)
+                        .disabled(viewModel.isSubmitting || viewModel.description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(palette.pine)
-                    .disabled(viewModel.isSubmitting || viewModel.description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .padding()
+                    .background(
+                        GeometryReader { geo in
+                            Color.clear.onAppear {
+                                if restingPanelHeight == 0 { restingPanelHeight = geo.size.height }
+                            }
+                        }
+                    )
+                    .background(palette.paper)
+                    .padding(.bottom, keyboardHeight)
+                    .animation(.easeOut(duration: 0.25), value: keyboardHeight)
+                } else {
+                    HStack {
+                        Spacer()
+                        Button {
+                            toggleInputExpanded()
+                        } label: {
+                            Image(systemName: "chevron.up.circle.fill")
+                                .font(.system(size: 44))
+                                .foregroundStyle(palette.pine)
+                                .background(Circle().fill(.white))
+                        }
+                        .padding()
+                    }
                 }
-                .padding()
-                .background(palette.paper)
-                .padding(.bottom, keyboardHeight)
-                .animation(.easeOut(duration: 0.25), value: keyboardHeight)
             }
             .ignoresSafeArea(.keyboard, edges: .bottom)
         }
