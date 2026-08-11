@@ -48,6 +48,13 @@ struct RootView: View {
             FeedbackAnnotationView(image: screenshot.image) {
                 pendingFeedbackScreenshot = nil
             }
+            // fullScreenCover content is a separate presentation context —
+            // re-resolving \.contempoPalette here (rather than trusting it
+            // to inherit from the .contempoTheme() applied to this same
+            // Group above) is what actually makes this screen follow dark
+            // mode; without it, FeedbackAnnotationView silently fell back
+            // to ContempoPaletteKey's light defaultValue.
+            .contempoTheme()
         }
     }
 
