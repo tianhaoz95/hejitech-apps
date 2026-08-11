@@ -17,6 +17,7 @@ import com.hejitech.core.model.EntryStatus
 import com.google.firebase.Firebase
 import com.google.firebase.Timestamp
 import com.google.firebase.storage.storage
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -150,7 +151,7 @@ object AudioCaptureProcessor {
             ServiceLocator.entryRepository.observeProperties().first().map { it.name }
         }.getOrDefault(emptyList())
 
-        val outcome = ServiceLocator.agentClient.parseEntry(rawText, knownProperties)
+        val outcome = parseWithRetry(rawText, knownProperties)
 
         _currentlyProcessing.value = AudioProcessingStage.SAVING
         onStageChange?.invoke(AudioProcessingStage.SAVING)
@@ -177,7 +178,7 @@ object AudioCaptureProcessor {
             ServiceLocator.entryRepository.observeProperties().first().map { it.name }
         }.getOrDefault(emptyList())
 
-        val outcome = ServiceLocator.agentClient.parseEntry(rawText, knownProperties)
+        val outcome = parseWithRetry(rawText, knownProperties)
 
         _currentlyProcessing.value = AudioProcessingStage.SAVING
         when (outcome) {
@@ -189,6 +190,25 @@ object AudioCaptureProcessor {
             )
         }
         removeFromTextQueue(capture.id)
+    }
+
+    /**
+     * One bounded retry on top of [AgentClient.parseEntry] — background
+     * Quick Capture processing has no user watching a spinner, so it's
+     * worth spending a couple extra seconds to avoid permanently writing a
+     * degraded fallback entry (task = raw text, no duration) over a
+     * transient failure (a cloud call made moments after app launch can be
+     * rejected before Firebase Auth/App Check finish initializing, or the
+     * on-device model can still be warming up) — most likely to hit typed
+     * Quick Capture, which reaches this call almost instantly, versus
+     * voice's slower upload/transcribe pipeline incidentally giving those
+     * systems time to be ready.
+     */
+    private suspend fun parseWithRetry(rawText: String, knownProperties: List<String>): ParseOutcome {
+        val first = ServiceLocator.agentClient.parseEntry(rawText, knownProperties)
+        if (first !is ParseOutcome.Failure) return first
+        delay(2_000)
+        return ServiceLocator.agentClient.parseEntry(rawText, knownProperties)
     }
 
     /**

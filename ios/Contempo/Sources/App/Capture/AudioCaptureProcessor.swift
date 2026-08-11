@@ -69,7 +69,7 @@ public final class AudioCaptureProcessor {
         let audioUrl = (try? await storageRef.downloadURL())?.absoluteString ?? ""
         let knownProperties = (try? await ServiceLocator.entryRepository.observeProperties().first(where: { _ in true }))?.map { $0.name } ?? []
 
-        let outcome = await ServiceLocator.agentClient.parseEntry(rawText: rawText, knownProperties: knownProperties)
+        let outcome = await parseWithRetry(rawText: rawText, knownProperties: knownProperties)
 
         self.currentlyProcessingStage = .saving
         onStageChange?(.saving)
@@ -152,6 +152,26 @@ public final class AudioCaptureProcessor {
         ServiceLocator.quickCaptureStatsStore.recordCompleted()
     }
 
+    /// One bounded retry on top of `AgentClient.parseEntry` — background
+    /// Quick Capture processing has no user watching a spinner, so it's
+    /// worth spending a couple extra seconds to avoid permanently writing a
+    /// degraded fallback entry (task = raw text, no duration) over a
+    /// transient failure. Two real transient windows this closes: the
+    /// on-device `Conversation.sendMessage()` call has been observed to
+    /// wedge with no exception on some devices (see `LiteRtLlm`'s
+    /// `onDeviceResponseTimeoutSeconds` comment), and a cloud call made
+    /// moments after app launch can be rejected before Firebase
+    /// Auth/App Check finish initializing — both far more likely to hit
+    /// this call right after typing (near-instant, no natural warm-up
+    /// delay) than after voice capture's slower upload/transcribe pipeline
+    /// incidentally gives those systems time to be ready.
+    private func parseWithRetry(rawText: String, knownProperties: [String]) async -> ParseOutcome {
+        let first = await ServiceLocator.agentClient.parseEntry(rawText: rawText, knownProperties: knownProperties)
+        guard case .failure = first else { return first }
+        try? await Task.sleep(nanoseconds: 2_000_000_000)
+        return await ServiceLocator.agentClient.parseEntry(rawText: rawText, knownProperties: knownProperties)
+    }
+
     // MARK: - Typed-text Quick Capture
 
     /// Drains `TextCaptureQueue` — Quick Capture's typed-text counterpart to
@@ -182,7 +202,7 @@ public final class AudioCaptureProcessor {
         self.currentlyProcessingStage = .parsing
         let knownProperties = (try? await ServiceLocator.entryRepository.observeProperties().first(where: { _ in true }))?.map { $0.name } ?? []
 
-        let outcome = await ServiceLocator.agentClient.parseEntry(rawText: capture.rawText, knownProperties: knownProperties)
+        let outcome = await parseWithRetry(rawText: capture.rawText, knownProperties: knownProperties)
 
         self.currentlyProcessingStage = .saving
         switch outcome {

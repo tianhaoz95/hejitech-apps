@@ -8,6 +8,13 @@ import Observation
 /// would hang Capture forever.
 private let onDeviceResponseTimeoutSeconds: UInt64 = 45
 
+/// Plain reference-type box so `LiteRtLlm.serialized(_:)` can hand a result
+/// back out of a `Task` closure without `async`'s value-capture rules
+/// fighting a `var` declared outside it.
+private final class ResultBox<T> {
+    var value: T?
+}
+
 /// LiteRT-LM implementation of `OnDeviceLlm`, running a downloaded Gemma 4
 /// E2B model — see that protocol's doc comment for why this replaced the
 /// `NoOpOnDeviceLlm` placeholder. The model itself isn't bundled in the app
@@ -35,6 +42,30 @@ final class LiteRtLlm: OnDeviceLlm {
     private var engineLoadFailed = false
 
     private(set) var lastCallTokenUsage: TokenUsage?
+
+    // There's only one physical on-device model, so there's no legitimate
+    // reason for two generation calls to run concurrently — and a real
+    // reason not to: `extractEntryDraft`'s tool-call result flows through
+    // `EntryDraftCapture.shared`, a single global slot with no per-call
+    // isolation, so two overlapping `extractEntryDraft` calls (e.g. a
+    // still-processing voice capture and a freshly-submitted text capture)
+    // could each grab the other's captured draft, or find the slot already
+    // cleared by the time they read it. Chaining every call through this
+    // tail Task means each one waits for the previous to fully finish
+    // before it starts.
+    private var generationTail: Task<Void, Never> = Task {}
+
+    private func serialized<T>(_ work: @escaping () async -> T) async -> T {
+        let previous = generationTail
+        let box = ResultBox<T>()
+        let task = Task {
+            _ = await previous.value
+            box.value = await work()
+        }
+        generationTail = task
+        await task.value
+        return box.value!
+    }
 
     /// `conversation.getBenchmarkInfo()` reports lastPrefillTokenCount
     /// (input)/lastDecodeTokenCount (output) for whatever call just ran on
@@ -160,55 +191,63 @@ final class LiteRtLlm: OnDeviceLlm {
     }
 
     func generateText(_ prompt: String) async -> String? {
-        guard let engine = await ensureEngine() else { return nil }
-        return try? await withTimeout(seconds: onDeviceResponseTimeoutSeconds) {
-            let conversation = try await engine.createConversation()
-            let response = try await conversation.sendMessage(Message(prompt))
-            await self.recordTokenUsage(conversation)
-            return response.toString.isEmpty ? nil : response.toString
+        await serialized {
+            guard let engine = await self.ensureEngine() else { return nil }
+            return try? await withTimeout(seconds: onDeviceResponseTimeoutSeconds) {
+                let conversation = try await engine.createConversation()
+                let response = try await conversation.sendMessage(Message(prompt))
+                await self.recordTokenUsage(conversation)
+                return response.toString.isEmpty ? nil : response.toString
+            }
         }
     }
 
     func generateFromImage(_ imageData: Data, prompt: String) async -> String? {
-        guard let engine = await ensureEngine() else { return nil }
-        return try? await withTimeout(seconds: onDeviceResponseTimeoutSeconds) {
-            let conversation = try await engine.createConversation()
-            let response = try await conversation.sendMessage(Message(of: .imageData(imageData), .text(prompt)))
-            await self.recordTokenUsage(conversation)
-            return response.toString.isEmpty ? nil : response.toString
+        await serialized {
+            guard let engine = await self.ensureEngine() else { return nil }
+            return try? await withTimeout(seconds: onDeviceResponseTimeoutSeconds) {
+                let conversation = try await engine.createConversation()
+                let response = try await conversation.sendMessage(Message(of: .imageData(imageData), .text(prompt)))
+                await self.recordTokenUsage(conversation)
+                return response.toString.isEmpty ? nil : response.toString
+            }
         }
     }
 
     func generateTextStream(_ prompt: String, onEvent: @escaping (GenerationEvent) -> Void) async -> String? {
         guard let engine = await ensureEngine() else { return nil }
         onEvent(.prefilling)
-        return try? await withTimeout(seconds: onDeviceResponseTimeoutSeconds) {
-            let conversation = try await engine.createConversation()
-            var accumulated = ""
-            var chunkCount = 0
-            for try await chunk in conversation.sendMessageStream(Message(prompt)) {
-                accumulated += chunk.toString
-                chunkCount += 1
-                onEvent(.streaming(textSoFar: accumulated, chunkCount: chunkCount))
+        return await serialized {
+            try? await withTimeout(seconds: onDeviceResponseTimeoutSeconds) {
+                let conversation = try await engine.createConversation()
+                var accumulated = ""
+                var chunkCount = 0
+                for try await chunk in conversation.sendMessageStream(Message(prompt)) {
+                    accumulated += chunk.toString
+                    chunkCount += 1
+                    onEvent(.streaming(textSoFar: accumulated, chunkCount: chunkCount))
+                }
+                await self.recordTokenUsage(conversation)
+                return accumulated.isEmpty ? nil : accumulated
             }
-            await self.recordTokenUsage(conversation)
-            return accumulated.isEmpty ? nil : accumulated
         }
     }
 
     func extractEntryDraft(rawText: String, knownProperties: [String]) async -> EntryDraft? {
-        guard let engine = await ensureEngine() else { return nil }
-        return try? await withTimeout(seconds: onDeviceResponseTimeoutSeconds) {
-            // No `automaticToolCalling` param on this vendored API version —
-            // tool execution is always automatic (see Conversation.sendMessage).
-            let config = ConversationConfig(
-                systemMessage: Message(EntryTools.buildSystemPrompt(knownProperties: knownProperties), role: .system),
-                tools: EntryTools.all()
-            )
-            let conversation = try await engine.createConversation(with: config)
-            _ = try await conversation.sendMessage(Message(rawText))
-            await self.recordTokenUsage(conversation)
-            return await EntryDraftCapture.shared.takeCaptured()
+        await serialized {
+            guard let engine = await self.ensureEngine() else { return nil }
+            return try? await withTimeout(seconds: onDeviceResponseTimeoutSeconds) {
+                // No `automaticToolCalling` param on this vendored API version —
+                // tool execution is always automatic (see Conversation.sendMessage).
+                let config = ConversationConfig(
+                    systemMessage: Message(EntryTools.buildSystemPrompt(knownProperties: knownProperties), role: .system),
+                    tools: EntryTools.all()
+                )
+                let conversation = try await engine.createConversation(with: config)
+                _ = try await conversation.sendMessage(Message(rawText))
+                await self.recordTokenUsage(conversation)
+                return await EntryDraftCapture.shared.takeCaptured()
+            }
         }
     }
 }
