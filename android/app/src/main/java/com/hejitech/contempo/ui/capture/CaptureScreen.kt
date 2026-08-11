@@ -282,9 +282,16 @@ fun CaptureScreen(
                 // automatically if a new trip starts before this delay
                 // elapses, since that changes openTripEntry and this whole
                 // LaunchedEffect block reruns.
+                // Deliberately not reset to false here before clearing
+                // lastTripEntry: with both in the same recomposition pass,
+                // there'd otherwise be a frame where the card is still
+                // visible but isCompleted has already flipped back to
+                // false, flashing the in-progress treatment right before
+                // the card disappears. Leaving it true until the card is
+                // actually gone avoids that — the next trip start already
+                // resets it explicitly (see the branch above).
                 tripJustCompleted = true
                 delay(RECENTLY_COMPLETED_DISPLAY_MS)
-                tripJustCompleted = false
                 lastTripEntry = null
             }
         }
@@ -328,9 +335,10 @@ fun CaptureScreen(
             } else if (lastTimerEntry != null) {
                 // See the trip block above for why this stays up briefly
                 // instead of collapsing the instant openTimerEntry goes null.
+                // See the trip block above for why this isn't reset to
+                // false before clearing lastTimerEntry.
                 timerJustCompleted = true
                 delay(RECENTLY_COMPLETED_DISPLAY_MS)
-                timerJustCompleted = false
                 lastTimerEntry = null
             }
         }

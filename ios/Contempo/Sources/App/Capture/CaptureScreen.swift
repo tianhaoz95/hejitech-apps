@@ -330,10 +330,17 @@ struct CaptureScreen: View {
                     // Cancelled/restarted automatically if a new trip starts
                     // before this Task finishes, since that reruns this
                     // onChange with a non-nil newValue first.
+                    // Deliberately not reset to false before clearing
+                    // lastTripEntry: doing both would leave a frame where
+                    // the card is still visible but isCompleted has
+                    // already flipped back, flashing the in-progress
+                    // treatment right before the card disappears. Leaving
+                    // it true until the card is actually gone avoids
+                    // that — a new trip starting already resets it
+                    // explicitly (see the branch above).
                     tripJustCompleted = true
                     Task {
                         try? await Task.sleep(nanoseconds: UInt64(recentlyCompletedDisplaySeconds * 1_000_000_000))
-                        tripJustCompleted = false
                         withAnimation(.easeInOut(duration: 0.3)) { lastTripEntry = nil }
                     }
                 }
@@ -350,10 +357,11 @@ struct CaptureScreen: View {
                 } else if lastTimerEntry != nil {
                     // See the trip case above for why this stays up briefly
                     // instead of disappearing the instant openTimerEntry goes nil.
+                    // See the trip case above for why this isn't reset to
+                    // false before clearing lastTimerEntry.
                     timerJustCompleted = true
                     Task {
                         try? await Task.sleep(nanoseconds: UInt64(recentlyCompletedDisplaySeconds * 1_000_000_000))
-                        timerJustCompleted = false
                         withAnimation(.easeInOut(duration: 0.3)) { lastTimerEntry = nil }
                     }
                 }
