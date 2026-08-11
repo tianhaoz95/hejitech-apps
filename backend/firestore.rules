@@ -265,6 +265,21 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Admin-only collection-group access to appFeedback, ADDITIONAL to the
+    // nested rule further down inside match /users/{uid}. Confirmed live
+    // against production with a real admin-claimed token: a plain nested
+    // rule (allow read: if isOwner(uid) || isAdmin();) is enough for a
+    // direct get() on a known users/{uid}/appFeedback/{id} path, but
+    // Firestore does NOT consult it for a collectionGroup('appFeedback')
+    // list query (which is how the admin/ site's Feedback tab reads across
+    // every user) — collection-group list operations are only authorized by
+    // a rule declared with this recursive-wildcard match. Read-only and
+    // admin-only here; the owner's own direct-path read/write/update still
+    // goes through the nested rule below, unaffected by this one.
+    match /{path=**}/appFeedback/{feedbackId} {
+      allow read: if isAdmin();
+    }
+
     // Stripe customer ID -> uid lookup, written only by createCheckoutSession
     // and read only by stripeWebhook (both via the Admin SDK, which bypasses
     // these rules) — no client ever needs this, so it's fully closed.
@@ -361,10 +376,15 @@ service cloud.firestore {
       }
 
       // Shake-to-report bug/improvement reports — see isValidAppFeedback
-      // above. Append-only from the owner; an admin can additionally read
-      // every user's reports (the whole point of the admin/ site's Feedback
-      // tab) and flip status via isValidAdminStatusUpdate, same as the
-      // triage-feedback skill's fetch script already does via the Admin SDK.
+      // above. Append-only from the owner. The admin/ site's Feedback tab
+      // (a collectionGroup query across every user) is authorized by the
+      // separate /{path=**}/appFeedback/{feedbackId} rule above instead —
+      // this nested rule's `|| isAdmin()` only matters for a direct get()
+      // on a known path, which nothing currently does but costs nothing to
+      // keep consistent. Status transitions (pending -> triaged/resolved,
+      // a direct-path update, not a collection-group operation) go through
+      // isValidAdminStatusUpdate here, same as the triage-feedback skill's
+      // fetch script does via the Admin SDK.
       match /appFeedback/{feedbackId} {
         allow read: if isOwner(uid) || isAdmin();
         allow create: if isOwner(uid) && isValidAppFeedback(request.resource.data);

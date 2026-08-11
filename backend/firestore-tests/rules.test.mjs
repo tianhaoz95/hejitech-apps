@@ -19,7 +19,7 @@ import {
   assertSucceeds,
   assertFails,
 } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, Timestamp, collectionGroup, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 
 const OWNER_UID = 'owner-user';
 const OTHER_UID = 'other-user';
@@ -347,5 +347,37 @@ describe('admin access (isAdmin / isValidAdminStatusUpdate)', () => {
       doc(ownerDb, `users/${OWNER_UID}/appFeedback/report-1`),
       { status: 'triaged' },
     ));
+  });
+
+  /**
+   * Regression test for a real production bug: a rule nested inside
+   * `match /users/{uid} { match /appFeedback/{feedbackId} { ... } }`
+   * authorizes a direct get() on a known path (covered by the tests
+   * above), but Firestore does NOT consult it for a
+   * collectionGroup('appFeedback') LIST query — confirmed live against
+   * production with a real admin-claimed token: the direct-path tests
+   * above all passed while this exact query shape returned
+   * permission-denied. The admin/ site's Feedback tab uses exactly this
+   * collectionGroup query shape, so this needs its own coverage; a plain
+   * getDoc() test can't catch a list-query-specific authorization gap.
+   * Fixed by adding a separate /{path=**}/appFeedback/{feedbackId} rule.
+   */
+  it('an admin\'s collectionGroup LIST query (not just getDoc) succeeds', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), `users/${OWNER_UID}/appFeedback/report-1`), validAppFeedbackFields());
+    });
+    const adminDb = testEnv.authenticatedContext(ADMIN_UID, { admin: true }).firestore();
+    const q = query(collectionGroup(adminDb, 'appFeedback'), where('status', '==', 'pending'), orderBy('createdAt', 'desc'), limit(100));
+    const snap = await assertSucceeds(getDocs(q));
+    assert.equal(snap.size, 1);
+  });
+
+  it('a non-admin\'s collectionGroup LIST query still fails', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), `users/${OWNER_UID}/appFeedback/report-1`), validAppFeedbackFields());
+    });
+    const otherDb = testEnv.authenticatedContext(OTHER_UID).firestore();
+    const q = query(collectionGroup(otherDb, 'appFeedback'), where('status', '==', 'pending'), orderBy('createdAt', 'desc'), limit(100));
+    await assertFails(getDocs(q));
   });
 });
