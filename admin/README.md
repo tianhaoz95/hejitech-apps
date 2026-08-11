@@ -13,9 +13,24 @@ Firebase project/Auth/Firestore, but its own Firebase Web App registration
 
 ## Access control
 
-- **Authentication**: the same Google Sign-In as the rest of the app (same
-  Firebase project, so the same Google account works everywhere) — see
-  `src/auth/AuthContext.tsx`.
+- **Authentication**: the same Google account as the rest of the app (same
+  Firebase project), but signed in via Google Identity Services
+  (`src/pages/SignInPage.tsx`, `window.google.accounts.id`) rather than
+  Firebase Auth's `signInWithPopup` — that helper opens accounts.google.com
+  in a popup and falls back to relaying the result through a GAPI
+  cross-window iframe (apis.google.com) when it decides direct postMessage
+  isn't reliable, and that relay's own `window.close()` call was getting
+  blocked by the popup's Cross-Origin-Opener-Policy in production (confirmed
+  live — no header on our own domain fixes it, since we don't control
+  apis.google.com's/accounts.google.com's headers). GIS issues a signed ID
+  token directly with no popup-closing handshake; `AuthContext.tsx`'s
+  `signInWithGoogleCredential` just exchanges that token for a Firebase
+  session via `signInWithCredential`. Needs `VITE_ADMIN_GOOGLE_CLIENT_ID`
+  (see `.env.example`) and that origin listed under the OAuth client's
+  **Authorized JavaScript origins** in
+  [Cloud Console](https://console.cloud.google.com/apis/credentials?project=contempo-platform)
+  — a Console-only setting with no Firebase CLI/API equivalent, so a new
+  Hosting domain using this pattern needs that added by hand once.
 - **Authorization**: a signed-in user additionally needs the `admin: true`
   custom claim on their Firebase Auth token. There's no UI to grant this —
   it's set out-of-band via the Admin SDK:

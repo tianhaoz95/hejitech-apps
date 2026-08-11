@@ -1,7 +1,7 @@
 import {
   GoogleAuthProvider,
   onAuthStateChanged,
-  signInWithPopup,
+  signInWithCredential,
   signOut,
   type User,
 } from "firebase/auth";
@@ -21,7 +21,9 @@ interface AuthContextValue {
   // tell "still loading" from "access denied."
   isAdmin: boolean | null;
   loading: boolean;
-  signInWithGoogle: () => Promise<void>;
+  // Exchanges a Google Identity Services ID token for a Firebase session —
+  // see SignInPage.tsx for where the token actually comes from.
+  signInWithGoogleCredential: (idToken: string) => Promise<void>;
   signOutUser: () => Promise<void>;
 }
 
@@ -59,14 +61,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const signInWithGoogle = async () => {
-    await signInWithPopup(auth, new GoogleAuthProvider());
+  // Deliberately NOT firebase/auth's signInWithPopup: that helper opens
+  // accounts.google.com in a popup and relays the result back through a
+  // GAPI cross-window iframe (apis.google.com) when it decides direct
+  // postMessage isn't reliable — confirmed live (in this exact deployment)
+  // that this relay's own window.close() call gets blocked by the popup's
+  // Cross-Origin-Opener-Policy, which we can't override since we don't
+  // control apis.google.com's/accounts.google.com's response headers, only
+  // our own. Google Identity Services (window.google.accounts.id, loaded in
+  // index.html) issues a signed ID token directly with no popup-closing
+  // handshake at all — signInWithCredential just exchanges that token for a
+  // Firebase session, no popup/redirect machinery involved on our side.
+  const signInWithGoogleCredential = async (idToken: string) => {
+    const credential = GoogleAuthProvider.credential(idToken);
+    await signInWithCredential(auth, credential);
   };
 
   const signOutUser = () => signOut(auth);
 
   return (
-    <AuthContext.Provider value={{ user, isAdmin, loading, signInWithGoogle, signOutUser }}>
+    <AuthContext.Provider value={{ user, isAdmin, loading, signInWithGoogleCredential, signOutUser }}>
       {children}
     </AuthContext.Provider>
   );
