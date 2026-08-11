@@ -57,7 +57,7 @@ android {
         applicationId = "com.hejitech.contempoapp"
         minSdk = 26
         targetSdk = 36
-        versionCode = 41
+        versionCode = 42
         versionName = "0.1.0-mvp"
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
         // Default for every build type except debug (which overrides to
@@ -111,6 +111,20 @@ android {
             // emulator without needing real attestation — see backend/README.md.
             buildConfigField("boolean", "USE_FIREBASE_EMULATOR", "true")
         }
+    }
+    lint {
+        // NonNullableMutableLiveDataDetector (pulled in transitively via
+        // androidx.lifecycle) crashes lintVitalAnalyzeRelease outright on
+        // this AGP/Kotlin toolchain combo ("Found class
+        // KaCallableMemberCall, but interface was expected" — a Kotlin
+        // Analysis API version mismatch inside the detector itself, not a
+        // finding about our code). This app has zero LiveData usage
+        // (StateFlow throughout, see CLAUDE.md), so the check has nothing
+        // to say here anyway — disabling it is the fix lint's own crash
+        // message suggests, and unblocks `./gradlew :app:assembleRelease`/
+        // `installRelease`, which otherwise fail before packaging even
+        // starts.
+        disable += "NullSafeMutableLiveData"
     }
     buildFeatures {
         compose = true

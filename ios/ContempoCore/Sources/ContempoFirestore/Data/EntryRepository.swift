@@ -100,4 +100,20 @@ public protocol EntryRepository: Sendable {
     /// Updates just the `note` field on an already-uploaded attachment —
     /// the one field on that doc that isn't immutable, see `Attachment.note`.
     func updateAttachmentNote(entryId: String, attachmentId: String, note: String) async throws
+
+    /// Uploads a "shake to report" screenshot to Storage under
+    /// `users/{uid}/appFeedback/{feedbackId}/` and records it in Firestore
+    /// — same upload-then-write-doc sequence as `uploadAttachment`, just not
+    /// nested under an entry. See `AppFeedback`.
+    func submitFeedback(
+        imageData: Data,
+        region: FeedbackRegion?,
+        description: String,
+        screenName: String,
+        appVersion: String,
+        buildNumber: String,
+        osVersion: String,
+        deviceModel: String,
+        locale: String
+    ) async throws -> AppFeedback
 }

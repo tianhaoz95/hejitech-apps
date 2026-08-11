@@ -177,6 +177,44 @@ service cloud.firestore {
         (!('language' in d) || d.language in ['en', 'zh', 'auto']);
     }
 
+    // Optional single box the user drew on the screenshot to point at the
+    // area of interest — absent entirely if they skipped boxing. Normalized
+    // 0..1 fractions of image width/height, not pixels, so it stays valid
+    // regardless of device screen resolution.
+    function isValidFeedbackRegion(d) {
+      return !('region' in d) || d.region == null || (
+        d.region is map &&
+        d.region.x is number && d.region.x >= 0 && d.region.x <= 1 &&
+        d.region.y is number && d.region.y >= 0 && d.region.y <= 1 &&
+        d.region.w is number && d.region.w >= 0 && d.region.w <= 1 &&
+        d.region.h is number && d.region.h >= 0 && d.region.h <= 1
+      );
+    }
+
+    // "Shake to report" feedback — in-app, from a signed-in owner, unlike
+    // the anonymous login-free feedback/{feedbackId} collection above (that
+    // one has no owner at all; this one is nested per-user like entries).
+    // Client-writable on create only — status transitions (pending ->
+    // triaged/resolved) are made by the triage-feedback skill's fetch
+    // script via the Admin SDK, which bypasses these rules entirely, same
+    // append-only-from-the-client posture as isValidCorrection above.
+    function isValidAppFeedback(d) {
+      return d.description is string && d.description.size() <= 5000 &&
+        d.screenshotPath is string && d.screenshotPath.size() > 0 && d.screenshotPath.size() <= 500 &&
+        optionalType(d, 'downloadURL', 'string') &&
+        isValidFeedbackRegion(d) &&
+        d.appVersion is string && d.appVersion.size() <= 50 &&
+        d.buildNumber is string && d.buildNumber.size() <= 50 &&
+        d.osVersion is string && d.osVersion.size() <= 100 &&
+        d.deviceModel is string && d.deviceModel.size() <= 100 &&
+        d.screenName is string && d.screenName.size() <= 200 &&
+        d.locale is string && d.locale.size() <= 50 &&
+        d.status == 'pending' &&
+        d.createdAt == request.time &&
+        optionalType(d, 'triagedAt', 'timestamp') &&
+        optionalType(d, 'resolvedAt', 'timestamp');
+    }
+
     // No owner (submitted from the login-free feedback/ site) — server-set
     // createdAt (== request.time, not just `is timestamp`) so a submitter
     // can't backdate it, same idea as corrections' append-only rule below.
@@ -279,6 +317,15 @@ service cloud.firestore {
         allow read: if isOwner(uid);
         allow create, update: if isOwner(uid) && isValidAudioCapture(request.resource.data);
         allow delete: if isOwner(uid);
+      }
+
+      // Shake-to-report bug/improvement reports — see isValidAppFeedback
+      // above. Append-only from the client; the triage-feedback skill's
+      // fetch script flips status via the Admin SDK.
+      match /appFeedback/{feedbackId} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid) && isValidAppFeedback(request.resource.data);
+        allow update, delete: if false;
       }
     }
   }

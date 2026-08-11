@@ -1,9 +1,11 @@
 package com.hejitech.core.data
 
 import android.net.Uri
+import com.hejitech.core.model.AppFeedback
 import com.hejitech.core.model.Attachment
 import com.hejitech.core.model.Category
 import com.hejitech.core.model.Entry
+import com.hejitech.core.model.FeedbackRegion
 import com.hejitech.core.model.Property
 import com.hejitech.core.model.Role
 import com.hejitech.core.model.TokenUsageWeek
@@ -155,4 +157,22 @@ interface EntryRepository {
      * attachment — the one field on that doc that isn't immutable.
      */
     suspend fun updateAttachmentNote(entryId: String, attachmentId: String, note: String)
+
+    /**
+     * Uploads a shake-to-report screenshot to
+     * `users/{uid}/appFeedback/{feedbackId}/screenshot.jpg` and writes the
+     * matching Firestore doc (`status = "pending"`) — see
+     * firestore.rules' isValidAppFeedback for the exact shape.
+     */
+    suspend fun submitFeedback(
+        imageFile: File,
+        region: FeedbackRegion?,
+        description: String,
+        screenName: String,
+        appVersion: String,
+        buildNumber: String,
+        osVersion: String,
+        deviceModel: String,
+        locale: String,
+    ): AppFeedback
 }

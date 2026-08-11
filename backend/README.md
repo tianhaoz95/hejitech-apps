@@ -44,6 +44,11 @@ backend/
 ├── firestore.rules
 ├── firestore.indexes.json
 ├── storage.rules
+├── scripts/
+│   └── fetch-feedback.js  — Admin SDK script the triage-feedback Claude Code
+│                             skill (.claude/skills/triage-feedback/) runs to
+│                             pull pending in-app feedback reports; see its
+│                             own header comment for auth/usage
 └── functions/
     ├── package.json
     ├── tsconfig.json
@@ -72,6 +77,12 @@ users/{uid}/corrections/{correctionId}   — the correction-feedback pipeline;
                                             append-only in spirit (see Section 8
                                             of the MVP report on why this gets
                                             captured from day one even unused)
+users/{uid}/appFeedback/{feedbackId}     — shake-to-report bug/improvement
+                                            reports (screenshot + boxed region
+                                            + description + device/app state),
+                                            append-only from the client; see
+                                            scripts/fetch-feedback.js and
+                                            .claude/skills/triage-feedback/
 ```
 
 ## Known gaps, on purpose

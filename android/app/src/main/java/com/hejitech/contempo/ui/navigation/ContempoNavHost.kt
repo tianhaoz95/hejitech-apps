@@ -25,6 +25,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -167,6 +168,18 @@ fun ContempoNavHost() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val isTopLevelScreen = topLevelDestinations.any { it.route == currentRoute }
+
+    // Feeds CurrentScreenTracker — see its kdoc. Routes carrying query args
+    // (confirm?...) or path args (entryDetail/{id}, legal/{doc}) are
+    // collapsed to their bare screen name.
+    val trackedScreenName = when {
+        currentRoute == null -> TopLevelDestination.Capture.route
+        currentRoute.startsWith("confirm") -> "confirm"
+        currentRoute.startsWith("entryDetail") -> "entryDetail"
+        currentRoute.startsWith("legal") -> "legal"
+        else -> currentRoute
+    }
+    LaunchedEffect(trackedScreenName) { CurrentScreenTracker.update(trackedScreenName) }
     // Scaffold still reserves the bottom bar's height in innerPadding even
     // once the keyboard visually covers that same screen area — nothing
     // shrinks it just because it's now hidden. Hiding the bar outright

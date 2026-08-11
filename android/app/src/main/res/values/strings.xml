@@ -317,6 +317,18 @@
     <string name="settings_capture_default_mode_label">Default capture mode</string>
     <string name="settings_capture_default_mode_hint">Which mode the Capture tab opens in. You can still switch modes for the current session from the toggle at the top of Capture.</string>
 
+    <string name="settings_feedback_section">Feedback</string>
+    <string name="settings_shake_to_report_label">Shake to report</string>
+    <string name="settings_shake_to_report_caption">Shake your device to capture a screenshot and report a bug or suggest an improvement.</string>
+    <string name="settings_shake_to_report_toggle_content_description">Shake to report toggle</string>
+    <string name="settings_shake_to_report_info_content_description">What is shake to report?</string>
+
+    <string name="feedback_annotation_title">Report an issue</string>
+    <string name="feedback_annotation_hint">Drag to box the area you\'re reporting (optional), then describe what\'s wrong or what could be better.</string>
+    <string name="feedback_description_placeholder">What happened, or what would help?</string>
+    <string name="feedback_cancel_button">Cancel</string>
+    <string name="feedback_submit_button">Submit</string>
+
     <string name="settings_roles_section">Roles</string>
     <string name="settings_roles_section_hint">Tag entries under a role (Property Manager, Co-host, Cleaner, a contractor, ...) when someone other than you did the work. Only your own hours (no role) count toward the 100-hour/500-hour progress on the Dashboard — the IRS tests require your participation to exceed everyone else\'s.</string>
     <string name="settings_roles_add_button">Add Role</string>

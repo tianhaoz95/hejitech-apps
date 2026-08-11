@@ -68,6 +68,8 @@ object ServiceLocator {
         private set
     lateinit var quickCaptureSettingsStore: QuickCaptureSettingsStore
         private set
+    lateinit var shakeToReportSettingsStore: ShakeToReportSettingsStore
+        private set
     lateinit var pendingCaptureStore: PendingCaptureStore
         private set
     lateinit var quickCaptureStatsStore: QuickCaptureStatsStore
@@ -102,6 +104,7 @@ object ServiceLocator {
         mileageTripCoordinator = MileageTripCoordinator(entryRepository)
         audioCaptureQueue = AudioCaptureQueue(Firebase.firestore, auth)
         quickCaptureSettingsStore = QuickCaptureSettingsStore(context)
+        shakeToReportSettingsStore = ShakeToReportSettingsStore(context)
         pendingCaptureStore = PendingCaptureStore(context)
         quickCaptureStatsStore = QuickCaptureStatsStore(context)
         captureLanguageStore = CaptureLanguageStore(context)

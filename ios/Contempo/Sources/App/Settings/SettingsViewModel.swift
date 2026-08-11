@@ -17,6 +17,7 @@ final class SettingsViewModel {
     private let captureLanguageStore = ServiceLocator.captureLanguageStore
     private let quickCaptureSettingsStore = ServiceLocator.quickCaptureSettingsStore
     private let captureModeStore = ServiceLocator.captureModeStore
+    private let shakeToReportSettingsStore = ServiceLocator.shakeToReportSettingsStore
     private let entryRepository = ServiceLocator.entryRepository
 
     var displayName: String { Auth.auth().currentUser?.displayName ?? "Signed in" }
@@ -38,6 +39,7 @@ final class SettingsViewModel {
     var quickCaptureEnabled: Bool { quickCaptureSettingsStore.enabled }
     /// Which mode a *fresh* Capture-tab visit opens into — see CaptureViewModel.captureMode's doc comment.
     var defaultCaptureMode: CaptureMode { captureModeStore.defaultMode }
+    var shakeToReportEnabled: Bool { shakeToReportSettingsStore.enabled }
 
     var isDeletingAccount = false
     var deleteAccountError: String?
@@ -116,6 +118,10 @@ final class SettingsViewModel {
 
     func setDefaultCaptureMode(_ mode: CaptureMode) {
         captureModeStore.setDefaultMode(mode)
+    }
+
+    func setShakeToReportEnabled(_ value: Bool) {
+        shakeToReportSettingsStore.setEnabled(value)
     }
 
     func retryOnDeviceModelCheck() {

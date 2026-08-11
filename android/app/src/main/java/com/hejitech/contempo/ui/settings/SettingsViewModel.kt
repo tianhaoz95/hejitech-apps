@@ -38,6 +38,7 @@ class SettingsViewModel : ViewModel() {
     private val onDeviceLlm = ServiceLocator.onDeviceLlm
     private val captureLanguageStore = ServiceLocator.captureLanguageStore
     private val quickCaptureSettingsStore = ServiceLocator.quickCaptureSettingsStore
+    private val shakeToReportSettingsStore = ServiceLocator.shakeToReportSettingsStore
     private val captureModeStore = ServiceLocator.captureModeStore
     private val remoteConfigStore = ServiceLocator.remoteConfigStore
     private val entryRepository = ServiceLocator.entryRepository
@@ -47,6 +48,7 @@ class SettingsViewModel : ViewModel() {
     val asrModelAvailable: StateFlow<Boolean> = MutableStateFlow(ServiceLocator.whisperTranscriber.isAvailable).asStateFlow()
     /** App-level now, not per-capture-session — see CaptureScreen's kdoc on why this moved here. */
     val quickCaptureEnabled: StateFlow<Boolean> = quickCaptureSettingsStore.enabled
+    val shakeToReportEnabled: StateFlow<Boolean> = shakeToReportSettingsStore.enabled
     val captureLanguage: StateFlow<CaptureLanguage> = captureLanguageStore.selected
     /** Which mode a *fresh* Capture-tab visit opens into — see CaptureViewModel.captureMode's kdoc. */
     val defaultCaptureMode: StateFlow<CaptureMode> = captureModeStore.defaultMode
@@ -118,6 +120,10 @@ class SettingsViewModel : ViewModel() {
 
     fun setQuickCaptureEnabled(value: Boolean) {
         quickCaptureSettingsStore.setEnabled(value)
+    }
+
+    fun setShakeToReportEnabled(value: Boolean) {
+        shakeToReportSettingsStore.setEnabled(value)
     }
 
     fun setCaptureLanguage(value: CaptureLanguage) {

@@ -1,9 +1,11 @@
 package com.hejitech.core.data
 
 import android.net.Uri
+import com.hejitech.core.model.AppFeedback
 import com.hejitech.core.model.Attachment
 import com.hejitech.core.model.Category
 import com.hejitech.core.model.Entry
+import com.hejitech.core.model.FeedbackRegion
 import com.hejitech.core.model.Property
 import com.hejitech.core.model.Role
 import com.hejitech.core.model.TokenUsageWeek
@@ -41,6 +43,7 @@ class FirestoreEntryRepository(
     private fun cloudTokenUsageCollection() = userDoc().collection("cloudTokenUsage")
     private fun correctionsCollection() = userDoc().collection("corrections")
     private fun attachmentsCollection(entryId: String) = entriesCollection().document(entryId).collection("attachments")
+    private fun appFeedbackCollection() = userDoc().collection("appFeedback")
 
     // Storage path components (and cached local filenames, see
     // downloadAttachment) can't safely reuse an arbitrary original filename
@@ -324,5 +327,57 @@ class FirestoreEntryRepository(
         }
         downloadTask.await()
         return destination
+    }
+
+    override suspend fun submitFeedback(
+        imageFile: File,
+        region: FeedbackRegion?,
+        description: String,
+        screenName: String,
+        appVersion: String,
+        buildNumber: String,
+        osVersion: String,
+        deviceModel: String,
+        locale: String,
+    ): AppFeedback {
+        val feedbackRef = appFeedbackCollection().document()
+        val storagePath = "users/$uid/appFeedback/${feedbackRef.id}/screenshot.jpg"
+        val screenshotRef = storage.reference.child(storagePath)
+        val metadata = storageMetadata { contentType = "image/jpeg" }
+        screenshotRef.putFile(Uri.fromFile(imageFile), metadata).await()
+        val downloadUrl = screenshotRef.downloadUrl.await().toString()
+
+        val doc = mutableMapOf<String, Any>(
+            "description" to description,
+            "screenshotPath" to storagePath,
+            "downloadURL" to downloadUrl,
+            "appVersion" to appVersion,
+            "buildNumber" to buildNumber,
+            "osVersion" to osVersion,
+            "deviceModel" to deviceModel,
+            "screenName" to screenName,
+            "locale" to locale,
+            "status" to "pending",
+            "createdAt" to FieldValue.serverTimestamp(),
+        )
+        if (region != null) {
+            doc["region"] = mapOf("x" to region.x, "y" to region.y, "w" to region.w, "h" to region.h)
+        }
+        feedbackRef.set(doc).await()
+
+        return AppFeedback(
+            id = feedbackRef.id,
+            description = description,
+            screenshotPath = storagePath,
+            downloadURL = downloadUrl,
+            region = region,
+            appVersion = appVersion,
+            buildNumber = buildNumber,
+            osVersion = osVersion,
+            deviceModel = deviceModel,
+            screenName = screenName,
+            locale = locale,
+            status = "pending",
+        )
     }
 }

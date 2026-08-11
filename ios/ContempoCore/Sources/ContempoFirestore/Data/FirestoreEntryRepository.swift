@@ -34,6 +34,7 @@ public final class FirestoreEntryRepository: EntryRepository, @unchecked Sendabl
     private func attachmentsCollection(entryId: String) -> CollectionReference {
         entriesCollection().document(entryId).collection("attachments")
     }
+    private func appFeedbackCollection() -> CollectionReference { userDoc().collection("appFeedback") }
 
     public func observeEntries() -> AsyncThrowingStream<[Entry], Error> {
         observeDecodedArray(
@@ -222,6 +223,59 @@ public final class FirestoreEntryRepository: EntryRepository, @unchecked Sendabl
 
     public func updateAttachmentNote(entryId: String, attachmentId: String, note: String) async throws {
         try await attachmentsCollection(entryId: entryId).document(attachmentId).updateData(["note": note])
+    }
+
+    public func submitFeedback(
+        imageData: Data,
+        region: FeedbackRegion?,
+        description: String,
+        screenName: String,
+        appVersion: String,
+        buildNumber: String,
+        osVersion: String,
+        deviceModel: String,
+        locale: String
+    ) async throws -> AppFeedback {
+        let ref = appFeedbackCollection().document()
+        let storagePath = "users/\(uid)/appFeedback/\(ref.documentID)/screenshot.jpg"
+        let screenshotRef = storage.reference(withPath: storagePath)
+        let metadata = StorageMetadata()
+        metadata.contentType = "image/jpeg"
+        _ = try await screenshotRef.putDataAsync(imageData, metadata: metadata)
+        let downloadURL = try await screenshotRef.downloadURL()
+
+        var data: [String: Any] = [
+            "description": description,
+            "screenshotPath": storagePath,
+            "downloadURL": downloadURL.absoluteString,
+            "appVersion": appVersion,
+            "buildNumber": buildNumber,
+            "osVersion": osVersion,
+            "deviceModel": deviceModel,
+            "screenName": screenName,
+            "locale": locale,
+            "status": "pending",
+            "createdAt": FieldValue.serverTimestamp(),
+        ]
+        if let region {
+            data["region"] = ["x": region.x, "y": region.y, "w": region.w, "h": region.h]
+        }
+        try await ref.setData(data)
+
+        return AppFeedback(
+            id: ref.documentID,
+            description: description,
+            screenshotPath: storagePath,
+            downloadURL: downloadURL.absoluteString,
+            region: region,
+            appVersion: appVersion,
+            buildNumber: buildNumber,
+            osVersion: osVersion,
+            deviceModel: deviceModel,
+            screenName: screenName,
+            locale: locale,
+            status: "pending"
+        )
     }
 
     public func deleteAttachment(entryId: String, attachment: Attachment) async throws {

@@ -7,6 +7,14 @@
         { "fieldPath": "propertyId", "order": "ASCENDING" },
         { "fieldPath": "activityDate", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "appFeedback",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

@@ -13,6 +13,7 @@ struct SettingsScreen: View {
     @State private var renamingRole: ParticipantRole?
     @State private var renameRoleText = ""
     @State private var showQuickCaptureExplanation = false
+    @State private var showShakeToReportExplanation = false
 
     var body: some View {
         List {
@@ -161,6 +162,30 @@ struct SettingsScreen: View {
                 Text("Roles")
             }
 
+            Section {
+                HStack {
+                    Text("Shake to report")
+                    Spacer()
+                    Button {
+                        showShakeToReportExplanation = true
+                    } label: {
+                        Image(systemName: "info.circle")
+                            .foregroundStyle(palette.inkSoft)
+                    }
+                    .buttonStyle(.plain)
+                    Toggle("", isOn: Binding(
+                        get: { viewModel.shakeToReportEnabled },
+                        set: { viewModel.setShakeToReportEnabled($0) }
+                    ))
+                    .labelsHidden()
+                    .tint(palette.pine)
+                }
+            } header: {
+                Text("Feedback")
+            } footer: {
+                Text("Shake your device to report a bug or suggest an improvement — captures a screenshot you can box and describe.")
+            }
+
             Section("Watch capture") {
                 Text("Start a voice capture from your Apple Watch — it records locally, then syncs to your phone and uploads automatically once your watch and phone are both reachable. Signing in on your watch is a one-time step handed off automatically from your phone.")
                     .font(ContempoFont.labelSmall())
@@ -208,6 +233,9 @@ struct SettingsScreen: View {
         }
         .sheet(isPresented: $showQuickCaptureExplanation) {
             QuickCaptureExplanationSheet()
+        }
+        .sheet(isPresented: $showShakeToReportExplanation) {
+            ShakeToReportExplanationSheet()
         }
         .navigationTitle("Settings")
         .confirmationDialog(
@@ -555,6 +583,53 @@ private struct QuickCaptureExplanationSheet: View {
                 Label("Recorded notes are saved locally to disk instantly.", systemImage: "bolt.fill")
                 Label("Notes are uploaded in the background to your queue.", systemImage: "arrow.clockwise.icloud")
                 Label("On-device AI transcribes and converts notes into entries asynchronously.", systemImage: "sparkles")
+            }
+            .font(ContempoFont.bodySmall())
+            .foregroundStyle(palette.inkSoft)
+
+            Spacer()
+
+            Button("Got it") {
+                dismiss()
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(palette.pine)
+            .frame(maxWidth: .infinity)
+        }
+        .padding(24)
+        .background(palette.paper)
+    }
+}
+
+private struct ShakeToReportExplanationSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.contempoPalette) private var palette
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("About Shake to report")
+                    .font(ContempoFont.titleLarge())
+                    .foregroundStyle(palette.ink)
+                Spacer()
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(palette.inkSoft)
+                }
+                .buttonStyle(.plain)
+            }
+
+            Text("When this is on, shaking your device anywhere in the app captures a screenshot of what you're looking at.")
+                .font(ContempoFont.bodyMedium())
+                .foregroundStyle(palette.ink)
+
+            VStack(alignment: .leading, spacing: 12) {
+                Label("Box the part of the screen you're reporting on.", systemImage: "rectangle.dashed")
+                Label("Add a short note about the bug or improvement.", systemImage: "text.bubble")
+                Label("Sent straight to us — no need to describe your device or app version, we capture that automatically.", systemImage: "paperplane.fill")
             }
             .font(ContempoFont.bodySmall())
             .foregroundStyle(palette.inkSoft)

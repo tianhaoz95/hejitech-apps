@@ -78,6 +78,7 @@ fun SettingsScreen(
     val hasProEntitlement by viewModel.hasProEntitlement.collectAsState()
     val onDeviceStatus by viewModel.onDeviceModelStatus.collectAsState()
     val quickCaptureEnabled by viewModel.quickCaptureEnabled.collectAsState()
+    val shakeToReportEnabled by viewModel.shakeToReportEnabled.collectAsState()
     val captureLanguage by viewModel.captureLanguage.collectAsState()
     val defaultCaptureMode by viewModel.defaultCaptureMode.collectAsState()
     val exportState by exportViewModel.uiState.collectAsState()
@@ -85,6 +86,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     var showWearExplanation by remember { mutableStateOf(false) }
     var showQuickCaptureExplanation by remember { mutableStateOf(false) }
+    var showShakeToReportExplanation by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var showDeleteModelConfirmation by remember { mutableStateOf(false) }
 
@@ -283,6 +285,33 @@ fun SettingsScreen(
             HorizontalDivider()
             Spacer(Modifier.height(24.dp))
 
+            Text(stringResource(R.string.settings_feedback_section), style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(8.dp))
+            val shakeToReportToggleDescription = stringResource(R.string.settings_shake_to_report_toggle_content_description)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.settings_shake_to_report_label),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f),
+                )
+                Switch(
+                    checked = shakeToReportEnabled,
+                    onCheckedChange = viewModel::setShakeToReportEnabled,
+                    modifier = Modifier.semantics { contentDescription = shakeToReportToggleDescription },
+                )
+                IconButton(onClick = { showShakeToReportExplanation = true }) {
+                    Icon(
+                        Icons.Filled.Info,
+                        contentDescription = stringResource(R.string.settings_shake_to_report_info_content_description),
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(32.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(24.dp))
+
             Text(stringResource(R.string.settings_roles_section), style = MaterialTheme.typography.titleMedium)
             Text(
                 stringResource(R.string.settings_roles_section_hint),
@@ -451,6 +480,19 @@ fun SettingsScreen(
             text = { Text(stringResource(R.string.capture_quick_capture_caption)) },
             confirmButton = {
                 TextButton(onClick = { showQuickCaptureExplanation = false }) {
+                    Text(stringResource(android.R.string.ok))
+                }
+            },
+        )
+    }
+
+    if (showShakeToReportExplanation) {
+        AlertDialog(
+            onDismissRequest = { showShakeToReportExplanation = false },
+            title = { Text(stringResource(R.string.settings_shake_to_report_label)) },
+            text = { Text(stringResource(R.string.settings_shake_to_report_caption)) },
+            confirmButton = {
+                TextButton(onClick = { showShakeToReportExplanation = false }) {
                     Text(stringResource(android.R.string.ok))
                 }
             },

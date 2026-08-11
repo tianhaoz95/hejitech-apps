@@ -1,17 +1,45 @@
 import ContempoCore
 import SwiftUI
 
+/// Screen tags exist solely to let `CurrentScreenTracker` record which tab
+/// is visible (for "shake to report" — see Feedback/CurrentScreenTracker.swift);
+/// they don't otherwise change the native `TabView` chrome or behavior.
+private enum MainTab: Hashable {
+    case capture, dashboard, chat, settings
+}
+
 struct MainTabView: View {
+    @State private var selectedTab: MainTab = .capture
+
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             CaptureTabView()
                 .tabItem { Label("Capture", systemImage: "mic.circle") }
+                .tag(MainTab.capture)
             RoutedNavigationStack { DashboardScreen() }
                 .tabItem { Label("Dashboard", systemImage: "chart.line.uptrend.xyaxis") }
+                .tag(MainTab.dashboard)
             RoutedNavigationStack { ChatScreen() }
                 .tabItem { Label("Chat", systemImage: "sparkles") }
+                .tag(MainTab.chat)
             RoutedNavigationStack { SettingsScreen() }
                 .tabItem { Label("Settings", systemImage: "gearshape") }
+                .tag(MainTab.settings)
+        }
+        .onChange(of: selectedTab) { _, newValue in
+            ServiceLocator.currentScreenTracker.screenName = screenName(for: newValue)
+        }
+        .onAppear {
+            ServiceLocator.currentScreenTracker.screenName = screenName(for: selectedTab)
+        }
+    }
+
+    private func screenName(for tab: MainTab) -> String {
+        switch tab {
+        case .capture: return "Capture"
+        case .dashboard: return "Dashboard"
+        case .chat: return "Chat"
+        case .settings: return "Settings"
         }
     }
 }

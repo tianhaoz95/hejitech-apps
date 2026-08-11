@@ -38,6 +38,8 @@ enum ServiceLocator {
     static let quickCaptureSettingsStore = QuickCaptureSettingsStore()
     static let quickCaptureStatsStore = QuickCaptureStatsStore()
     static let pendingCaptureStore = PendingCaptureStore()
+    static let shakeToReportSettingsStore = ShakeToReportSettingsStore()
+    static let currentScreenTracker = CurrentScreenTracker()
     static let agentClient = AgentClient(
         onDeviceLlm: onDeviceLlm,
         functions: Functions.functions(),
