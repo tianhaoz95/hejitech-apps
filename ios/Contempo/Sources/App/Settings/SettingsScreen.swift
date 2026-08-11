@@ -24,9 +24,6 @@ struct SettingsScreen: View {
                         Text(viewModel.email).font(ContempoFont.bodyLarge()).foregroundStyle(palette.inkFaint)
                     }
                 }
-                Button("Sign out", role: .none) { viewModel.signOut() }
-                Button("Delete account", role: .destructive) { showDeleteConfirm = true }
-                    .disabled(viewModel.isDeletingAccount)
             }
 
             Section {
@@ -226,6 +223,23 @@ struct SettingsScreen: View {
             Section("Legal") {
                 NavigationLink("Privacy Policy", value: AppRoute.legal(.privacy))
                 NavigationLink("Terms of Service", value: AppRoute.legal(.terms))
+            }
+
+            // Deliberately last on the screen — sign-out and delete-account
+            // used to sit at the very top (right under Account), where a
+            // mistap was one scroll-position away from every other
+            // settings row. Isolating them at the bottom behind a
+            // clearly-labeled "danger zone" means reaching them takes a
+            // deliberate scroll past everything else, not a stray tap.
+            Section {
+                Button("Sign out", role: .none) { viewModel.signOut() }
+                Button("Delete account", role: .destructive) { showDeleteConfirm = true }
+                    .disabled(viewModel.isDeletingAccount)
+            } header: {
+                Text("Danger zone")
+                    .foregroundStyle(palette.danger)
+            } footer: {
+                Text("These actions are permanent or hard to undo.")
             }
         }
         .sheet(isPresented: $showWalkthrough) {

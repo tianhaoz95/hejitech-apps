@@ -38,7 +38,9 @@ public final class TimerEntryCoordinator: Sendable {
         task: String?,
         category: String?,
         source: CaptureSource,
-        startedAt: Timestamp
+        startedAt: Timestamp,
+        captureLat: Double? = nil,
+        captureLng: Double? = nil
     ) async throws -> TimerEventResult {
         if let previous = try await entryRepository.findOpenEntry(isTrip: false) {
             _ = try await closeEntry(previous, closedAt: startedAt)
@@ -53,7 +55,9 @@ public final class TimerEntryCoordinator: Sendable {
             source: source.firestoreValue,
             activityDate: startedAt,
             loggedAt: Timestamp(date: Date()),
-            inProgress: true
+            inProgress: true,
+            captureLat: captureLat,
+            captureLng: captureLng
         )
         let entryId = try await entryRepository.createEntry(entry)
         return .started(entryId: entryId)

@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings as AndroidSettings
 import android.text.format.Formatter
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -105,32 +106,6 @@ fun SettingsScreen(
             Spacer(Modifier.height(8.dp))
             Text(account.displayName ?: stringResource(R.string.settings_no_name), style = MaterialTheme.typography.bodyLarge)
             account.email?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            Spacer(Modifier.height(12.dp))
-            OutlinedButton(onClick = viewModel::signOut, shape = MaterialTheme.shapes.small) {
-                Text(stringResource(R.string.settings_sign_out))
-            }
-
-            Spacer(Modifier.height(12.dp))
-            TextButton(
-                onClick = { showDeleteConfirmation = true },
-                enabled = !deleteAccountState.isDeleting,
-            ) {
-                if (deleteAccountState.isDeleting) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.padding(end = 8.dp).size(16.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
-                Text(
-                    stringResource(R.string.settings_delete_account),
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
-            deleteAccountState.errorMessage?.let { error ->
-                Spacer(Modifier.height(4.dp))
-                Text(error, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-            }
 
             Spacer(Modifier.height(32.dp))
             HorizontalDivider()
@@ -456,6 +431,60 @@ fun SettingsScreen(
             }
             TextButton(onClick = { onOpenLegalDoc(LegalDoc.TERMS) }) {
                 Text(stringResource(R.string.settings_terms_of_service))
+            }
+        }
+
+        // Deliberately last on the screen, in its own bordered/error-toned
+        // block — sign-out and delete-account used to sit at the very top
+        // (right under Account), where a mistap was one scroll-position
+        // away from every other settings row. Isolating them at the bottom
+        // behind a clearly-labeled "danger zone" means reaching them takes
+        // a deliberate scroll past everything else, not a stray tap.
+        Spacer(Modifier.height(32.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.error.copy(alpha = 0.4f))
+        Spacer(Modifier.height(24.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.4f), MaterialTheme.shapes.medium)
+                .padding(16.dp),
+        ) {
+            Text(
+                stringResource(R.string.settings_danger_zone_section),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                stringResource(R.string.settings_danger_zone_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(16.dp))
+            OutlinedButton(onClick = viewModel::signOut, shape = MaterialTheme.shapes.small) {
+                Text(stringResource(R.string.settings_sign_out))
+            }
+
+            Spacer(Modifier.height(12.dp))
+            TextButton(
+                onClick = { showDeleteConfirmation = true },
+                enabled = !deleteAccountState.isDeleting,
+            ) {
+                if (deleteAccountState.isDeleting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.padding(end = 8.dp).size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                Text(
+                    stringResource(R.string.settings_delete_account),
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+            deleteAccountState.errorMessage?.let { error ->
+                Spacer(Modifier.height(4.dp))
+                Text(error, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
         }
     }

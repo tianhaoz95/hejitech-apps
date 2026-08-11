@@ -296,11 +296,22 @@ struct CaptureScreen: View {
                 Spacer()
             }
             .padding(20)
-            .animation(.easeInOut(duration: 0.3), value: viewModel.openTripEntry?.id)
-            .animation(.easeInOut(duration: 0.3), value: viewModel.openTimerEntry?.id)
+            // Every lastTripEntry/lastTimerEntry mutation below is wrapped
+            // in its own withAnimation rather than relying on an
+            // .animation(value:) modifier here — a prior version bound
+            // .animation to viewModel.openTripEntry?.id/openTimerEntry?.id,
+            // but the card's actual visibility (the `if let
+            // lastTripEntry`/`lastTimerEntry` + .transition() above) is
+            // driven by lastTripEntry/lastTimerEntry, a *different*
+            // property, and the cancel/completed-timeout paths below set
+            // those well after (or via a delayed Task, not even in the
+            // same run loop turn as) the openTripEntry/openTimerEntry
+            // change the old modifier was actually watching. That mismatch
+            // is why cancelling a trip/timer made the card vanish
+            // instantly instead of animating away.
             .onChange(of: viewModel.openTripEntry) { _, newValue in
                 if let newValue {
-                    lastTripEntry = newValue
+                    withAnimation(.easeInOut(duration: 0.3)) { lastTripEntry = newValue }
                     tripJustCompleted = false
                 } else if tripWasCancelled {
                     // Cancelled, not completed — the entry no longer
@@ -308,7 +319,7 @@ struct CaptureScreen: View {
                     // Collapse right away instead of running the "just
                     // completed" treatment below.
                     tripWasCancelled = false
-                    lastTripEntry = nil
+                    withAnimation(.easeInOut(duration: 0.3)) { lastTripEntry = nil }
                 } else if lastTripEntry != nil {
                     // The trip just closed (openTripEntry went from set to
                     // nil) — keep the card up a few seconds longer in a
@@ -323,19 +334,19 @@ struct CaptureScreen: View {
                     Task {
                         try? await Task.sleep(nanoseconds: UInt64(recentlyCompletedDisplaySeconds * 1_000_000_000))
                         tripJustCompleted = false
-                        lastTripEntry = nil
+                        withAnimation(.easeInOut(duration: 0.3)) { lastTripEntry = nil }
                     }
                 }
             }
             .onChange(of: viewModel.openTimerEntry) { _, newValue in
                 if let newValue {
-                    lastTimerEntry = newValue
+                    withAnimation(.easeInOut(duration: 0.3)) { lastTimerEntry = newValue }
                     timerJustCompleted = false
                 } else if workWasCancelled {
                     // See the trip case above for why a cancel skips the
                     // "just completed" treatment entirely.
                     workWasCancelled = false
-                    lastTimerEntry = nil
+                    withAnimation(.easeInOut(duration: 0.3)) { lastTimerEntry = nil }
                 } else if lastTimerEntry != nil {
                     // See the trip case above for why this stays up briefly
                     // instead of disappearing the instant openTimerEntry goes nil.
@@ -343,7 +354,7 @@ struct CaptureScreen: View {
                     Task {
                         try? await Task.sleep(nanoseconds: UInt64(recentlyCompletedDisplaySeconds * 1_000_000_000))
                         timerJustCompleted = false
-                        lastTimerEntry = nil
+                        withAnimation(.easeInOut(duration: 0.3)) { lastTimerEntry = nil }
                     }
                 }
             }

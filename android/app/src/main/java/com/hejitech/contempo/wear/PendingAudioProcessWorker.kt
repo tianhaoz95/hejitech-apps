@@ -16,6 +16,11 @@ import androidx.work.WorkerParameters
 class PendingAudioProcessWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         AudioCaptureProcessor.processPendingCaptures()
+        // Quick Capture's typed-text queue rides along on the same
+        // periodic/app-start schedule — it's the same "drain whatever's
+        // backlogged" job, just a different queue. See
+        // AudioCaptureProcessor's kdoc.
+        AudioCaptureProcessor.processPendingTextCaptures()
         return Result.success()
     }
 }

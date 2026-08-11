@@ -276,10 +276,12 @@ class CaptureViewModel : ViewModel() {
     val quickCaptureStatus: StateFlow<QuickCaptureStatusUiState> = combine(
         ServiceLocator.pendingCaptureStore.pendingTodayCount,
         ServiceLocator.audioCaptureQueue.observePending(),
+        ServiceLocator.textCaptureQueue.observePending(),
         AudioCaptureProcessor.currentlyProcessing,
         ServiceLocator.quickCaptureStatsStore.completedToday,
-    ) { localPendingToday, queuedCaptures, processingStage, completedToday ->
-        val queuedTodayCount = queuedCaptures.count { isToday(it.capturedAt) }
+    ) { localPendingToday, queuedCaptures, queuedTextCaptures, processingStage, completedToday ->
+        val queuedTodayCount = queuedCaptures.count { isToday(it.capturedAt) } +
+            queuedTextCaptures.count { isToday(it.capturedAt) }
         // The one item currently being processed (if any) is still present
         // in queuedCaptures until it's fully done — subtract it out of
         // "pending" so it isn't counted in both buckets at once.
@@ -409,7 +411,32 @@ class CaptureViewModel : ViewModel() {
     fun submit(onDraftReady: (CaptureResult) -> Unit) {
         val text = _uiState.value.inputText.trim()
         if (text.isEmpty() || uiState.value.aiAvailability != AiAvailability.Ready) return
+        if (_uiState.value.quickCaptureEnabled) {
+            stopQuickCaptureAndSaveText(text)
+            return
+        }
         viewModelScope.launch { parseAndProceed(text, CaptureSource.TEXT, onDraftReady) }
+    }
+
+    /**
+     * Quick Capture's typed-text counterpart to stopQuickCaptureAndSave —
+     * same "save now, parse later in the background" treatment: the raw
+     * text + location are queued immediately (see TextCaptureQueue) and the
+     * input clears right away, with no navigation to Confirm — there's no
+     * draft to confirm yet. Unlike audio there's no Storage upload stage in
+     * the way, so the background parse is kicked off directly rather than
+     * via a WorkManager request (it'll also get picked up by the periodic
+     * PendingAudioProcessWorker/manual "process now" button either way, as
+     * a fallback if this direct attempt doesn't finish, e.g. the app gets
+     * backgrounded mid-parse).
+     */
+    private fun stopQuickCaptureAndSaveText(text: String) {
+        _uiState.value = _uiState.value.copy(inputText = "", errorMessage = null)
+        viewModelScope.launch {
+            val location = captureLocation()
+            ServiceLocator.textCaptureQueue.enqueue(text, Timestamp.now(), location?.first, location?.second)
+            AudioCaptureProcessor.processPendingTextCaptures()
+        }
     }
 
     /**
@@ -650,12 +677,15 @@ class CaptureViewModel : ViewModel() {
      * to fall through to the normal Confirm flow rather than short-circuit.
      */
     private suspend fun handleTimerStart(draft: EntryDraft) {
+        val location = captureLocation()
         timerEntryCoordinator.handleStart(
             property = draft.property,
             task = draft.task,
             category = draft.category,
             source = CaptureSource.VOICE,
             startedAt = Timestamp.now(),
+            captureLat = location?.first,
+            captureLng = location?.second,
         )
         // Persistent notification so the timer can be marked done without
         // reopening the app — see OngoingWorkNotificationService's kdoc.
@@ -679,12 +709,15 @@ class CaptureViewModel : ViewModel() {
      */
     fun startNewWork() {
         viewModelScope.launch {
+            val location = captureLocation()
             timerEntryCoordinator.handleStart(
                 property = null,
                 task = null,
                 category = null,
                 source = CaptureSource.MANUAL,
                 startedAt = Timestamp.now(),
+                captureLat = location?.first,
+                captureLng = location?.second,
             )
             runCatching { OngoingWorkNotificationService.start(ServiceLocator.appContext) }
             // Same reasoning as handleTimerStart above — the top banner is

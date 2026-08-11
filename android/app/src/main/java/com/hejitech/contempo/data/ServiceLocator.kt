@@ -15,6 +15,7 @@ import com.hejitech.core.data.EntryRepository
 import com.hejitech.core.data.FirestoreEntryRepository
 import com.hejitech.core.data.MileageTripCoordinator
 import com.hejitech.core.data.SubscriptionRepository
+import com.hejitech.core.data.TextCaptureQueue
 import com.hejitech.core.data.TimerEntryCoordinator
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
@@ -66,6 +67,8 @@ object ServiceLocator {
         private set
     lateinit var audioCaptureQueue: AudioCaptureQueue
         private set
+    lateinit var textCaptureQueue: TextCaptureQueue
+        private set
     lateinit var quickCaptureSettingsStore: QuickCaptureSettingsStore
         private set
     lateinit var shakeToReportSettingsStore: ShakeToReportSettingsStore
@@ -103,6 +106,7 @@ object ServiceLocator {
         timerEntryCoordinator = TimerEntryCoordinator(entryRepository)
         mileageTripCoordinator = MileageTripCoordinator(entryRepository)
         audioCaptureQueue = AudioCaptureQueue(Firebase.firestore, auth)
+        textCaptureQueue = TextCaptureQueue(Firebase.firestore, auth)
         quickCaptureSettingsStore = QuickCaptureSettingsStore(context)
         shakeToReportSettingsStore = ShakeToReportSettingsStore(context)
         pendingCaptureStore = PendingCaptureStore(context)

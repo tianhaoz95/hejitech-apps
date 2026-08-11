@@ -20,6 +20,7 @@ enum ServiceLocator {
         storage: Storage.storage()
     )
     static let audioCaptureQueue = AudioCaptureQueue(firestore: Firestore.firestore(), auth: Auth.auth())
+    static let textCaptureQueue = TextCaptureQueue(firestore: Firestore.firestore(), auth: Auth.auth())
     static let timerEntryCoordinator = TimerEntryCoordinator(entryRepository: entryRepository)
     static let mileageTripCoordinator = MileageTripCoordinator(entryRepository: entryRepository)
     static let mileageTracker = MileageTracker()

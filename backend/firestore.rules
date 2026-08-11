@@ -177,6 +177,16 @@ service cloud.firestore {
         (!('language' in d) || d.language in ['en', 'zh', 'auto']);
     }
 
+    // Quick Capture's typed-text counterpart to isValidAudioCapture above —
+    // same "immediate local save, background parse" shape, but since text
+    // is small there's no Storage upload step and therefore no
+    // storagePath; the raw text lives directly on this doc instead.
+    function isValidTextCapture(d) {
+      return d.rawText is string && d.rawText.size() > 0 && d.rawText.size() <= 5000 &&
+        d.capturedAt is timestamp &&
+        isLatLng(d, 'lat', 'lng');
+    }
+
     // Optional single box the user drew on the screenshot to point at the
     // area of interest — absent entirely if they skipped boxing. Normalized
     // 0..1 fractions of image width/height, not pixels, so it stays valid
@@ -316,6 +326,15 @@ service cloud.firestore {
       match /audioCaptures/{captureId} {
         allow read: if isOwner(uid);
         allow create, update: if isOwner(uid) && isValidAudioCapture(request.resource.data);
+        allow delete: if isOwner(uid);
+      }
+
+      // Quick Capture's typed-text queue — see isValidTextCapture above and
+      // audioCaptures' comment for the shared "immediate local save,
+      // background parse" design this mirrors.
+      match /textCaptures/{captureId} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && isValidTextCapture(request.resource.data);
         allow delete: if isOwner(uid);
       }
 

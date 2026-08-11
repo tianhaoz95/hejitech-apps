@@ -35,6 +35,13 @@ final class ConfirmViewModel {
     private let aiOriginalActivityDate: Date?
     private let aiOriginalIsTripMode: Bool
     private let aiOriginalOdometerReading: Double?
+    /// "Where the user was when they captured this," threaded in from
+    /// `CaptureViewModel`'s freshly-captured location (nil for a photo/text/
+    /// voice capture that couldn't get a fix, or when resuming an existing
+    /// entry via EntryDetail rather than a fresh capture). `save()` prefers
+    /// this over the existing entry's own value — see there for why.
+    private let initialCaptureLat: Double?
+    private let initialCaptureLng: Double?
 
     private var existingEntryTask: Task<Entry?, Never>!
     private let resolvedEntryId: String
@@ -115,6 +122,8 @@ final class ConfirmViewModel {
         aiOriginalActivityDate = Self.resolveValidatedDate(params.resolvedActivityDateIso)
         aiOriginalIsTripMode = params.isTripCapture
         aiOriginalOdometerReading = params.odometerReading
+        initialCaptureLat = params.captureLat
+        initialCaptureLng = params.captureLng
 
         property = params.property
         task = params.task
@@ -463,8 +472,8 @@ final class ConfirmViewModel {
             tripStartLng: existing?.tripStartLng,
             tripEndLat: existing?.tripEndLat,
             tripEndLng: existing?.tripEndLng,
-            captureLat: existing?.captureLat,
-            captureLng: existing?.captureLng,
+            captureLat: initialCaptureLat ?? existing?.captureLat,
+            captureLng: initialCaptureLng ?? existing?.captureLng,
             audioUrl: existing?.audioUrl ?? "",
             rawTranscript: existing?.rawTranscript ?? "",
             roleId: selectedRoleId,

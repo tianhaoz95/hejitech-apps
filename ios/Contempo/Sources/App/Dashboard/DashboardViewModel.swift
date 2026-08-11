@@ -119,7 +119,8 @@ final class DashboardViewModel {
 
         let localPending = ServiceLocator.pendingCaptureStore.listPending()
         let cloudPending = (try? await ServiceLocator.audioCaptureQueue.listPending()) ?? []
-        let total = localPending.count + cloudPending.count
+        let textPending = (try? await ServiceLocator.textCaptureQueue.listPending()) ?? []
+        let total = localPending.count + cloudPending.count + textPending.count
 
         if total == 0 {
             syncStatusMessage = "Checking for pending voice entries..."
@@ -151,12 +152,20 @@ final class DashboardViewModel {
             self.syncProgressFraction = Double(step) / Double(total + 1)
         }
 
+        // Phase 3: Parsing queued typed-text Quick Captures — no upload
+        // step needed (see TextCaptureQueue's doc comment), so this goes
+        // straight from "queued" to "parsed."
+        if !textPending.isEmpty {
+            syncStatusMessage = "Structuring \(textPending.count) typed \(textPending.count == 1 ? "entry" : "entries")..."
+        }
+        let processedTextCount = await AudioCaptureProcessor.shared.processPendingTextCaptures()
+
         syncProgressFraction = 1.0
         syncStatusMessage = "Sync complete"
         isSyncing = false
-        if processedCount > 0 || localPending.count > 0 {
-            let totalDone = max(processedCount, localPending.count)
-            syncNotice = "Successfully processed \(totalDone) pending voice \(totalDone == 1 ? "entry" : "entries")"
+        let totalProcessed = max(processedCount, localPending.count) + processedTextCount
+        if totalProcessed > 0 {
+            syncNotice = "Successfully processed \(totalProcessed) pending \(totalProcessed == 1 ? "entry" : "entries")"
         } else {
             syncNotice = "Dashboard refreshed"
         }

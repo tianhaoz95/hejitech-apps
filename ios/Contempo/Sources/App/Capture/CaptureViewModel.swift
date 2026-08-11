@@ -1,5 +1,6 @@
 import ContempoCore
 import ContempoFirestore
+import CoreLocation
 import FirebaseFirestore
 import Foundation
 import Observation
@@ -29,6 +30,7 @@ final class CaptureViewModel {
     private let quickCaptureSettingsStore = ServiceLocator.quickCaptureSettingsStore
     private let quickCaptureStatsStore = ServiceLocator.quickCaptureStatsStore
     private let pendingCaptureStore = ServiceLocator.pendingCaptureStore
+    private let textCaptureQueue = ServiceLocator.textCaptureQueue
 
     // App-level now, not a per-capture-session toggle — set from Settings
     // only (see CaptureScreen's doc comment on why this moved off Capture).
@@ -36,9 +38,15 @@ final class CaptureViewModel {
     // stopQuickCaptureAndSave below need it at the moment a recording stops.
     var quickCaptureEnabled: Bool { quickCaptureSettingsStore.enabled }
 
+    /// `textCaptureQueue` has no local staging step the way voice does (see
+    /// `TextCaptureQueue`'s doc comment), so unlike `pendingCaptureStore`'s
+    /// `pendingTodayCount` there's no locally-recomputed count to read —
+    /// this is kept live by a Firestore listener subscribed in `init` below.
+    private var textCapturePendingCount = 0
+
     var quickCaptureStatus: QuickCaptureStatusUiState {
         QuickCaptureStatusUiState(
-            pendingCount: pendingCaptureStore.pendingTodayCount,
+            pendingCount: pendingCaptureStore.pendingTodayCount + textCapturePendingCount,
             completedTodayCount: quickCaptureStatsStore.completedTodayCount,
             processingStage: AudioCaptureProcessor.shared.currentlyProcessingStage
         )
@@ -158,6 +166,22 @@ final class CaptureViewModel {
                 // Stream ended with a non-auth error — nothing else to do here.
             }
         }
+        Task { [weak self] in
+            let queue = ServiceLocator.textCaptureQueue
+            let stream = AuthAwareStream.make(
+                fallback: { [] },
+                onAuthFailure: { try? await ServiceLocator.authManager.signOut() },
+                factory: { queue.observePending() }
+            )
+            do {
+                for try await pending in stream {
+                    guard let self else { return }
+                    self.textCapturePendingCount = pending.count
+                }
+            } catch {
+                // Stream ended with a non-auth error — nothing else to do here.
+            }
+        }
     }
 
     /// Manual "Start new work" from the "Other" menu — the tap-triggered
@@ -168,8 +192,10 @@ final class CaptureViewModel {
     /// unconditionally even if one happens to already be running.
     func startNewWork() {
         Task {
+            let location = captureLocation()
             _ = try? await timerEntryCoordinator.handleStart(
-                property: nil, task: nil, category: nil, source: .manual, startedAt: Timestamp(date: Date())
+                property: nil, task: nil, category: nil, source: .manual, startedAt: Timestamp(date: Date()),
+                captureLat: location?.lat, captureLng: location?.lng
             )
             LiveActivityController.startTimer(subjectName: "Work in progress", startedAt: Date())
         }
@@ -179,11 +205,30 @@ final class CaptureViewModel {
     /// equivalent of saying "stop."
     func completeOpenTimer() {
         Task {
-            let stopped = try? await timerEntryCoordinator.handleStop(property: nil, task: nil, stoppedAt: Timestamp(date: Date()))
+            let location = captureLocation()
+            let stopped = try? await timerEntryCoordinator.handleStop(
+                property: nil, task: nil, stoppedAt: Timestamp(date: Date()),
+                stopLat: location?.lat, stopLng: location?.lng
+            )
             if stopped != nil {
                 LiveActivityController.endTimer()
             }
         }
+    }
+
+    /// General "captured from here" evidence for non-trip entries, distinct
+    /// from the continuous GPS session `MileageTracker` owns for trips — a
+    /// quick cached-location read (`CLLocationManager.location`, the most
+    /// recently retrieved fix, not a fresh request), so a missing/stale fix
+    /// never delays capture. Mirrors Android's
+    /// `CaptureViewModel.captureLocation()`.
+    private func captureLocation() -> (lat: Double, lng: Double)? {
+        let manager = CLLocationManager()
+        guard manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways else {
+            return nil
+        }
+        guard let location = manager.location else { return nil }
+        return (location.coordinate.latitude, location.coordinate.longitude)
     }
 
     /// Discards the open work timer entirely — for a "started by mistake" /
@@ -315,9 +360,12 @@ final class CaptureViewModel {
         isRecording = false
         let samples = audioRecorder.stop()
         let wavData = WavAudio.encode(samples: samples, sampleRateHz: WhisperTranscriber.sampleRateHz)
+        let location = captureLocation()
 
         pendingCaptureStore.save(
             wavData: wavData,
+            lat: location?.lat,
+            lng: location?.lng,
             language: captureLanguageStore.selected
         )
 
@@ -331,6 +379,7 @@ final class CaptureViewModel {
         Task {
             await PendingCaptureSyncer.syncAll()
             await AudioCaptureProcessor.shared.processPendingCaptures()
+            await AudioCaptureProcessor.shared.processPendingTextCaptures()
         }
     }
 
@@ -353,8 +402,26 @@ final class CaptureViewModel {
     func submit(onDrafted: @escaping (ConfirmParams) -> Void) {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
-        isParsing = true
         errorMessage = nil
+        let location = captureLocation()
+
+        // Quick Capture's "save now, parse in the background" treatment
+        // applies to typed text the same way it already does to voice —
+        // the text is just treated as though it were a transcript (see
+        // AudioCaptureProcessor.processPendingTextCaptures, which reuses
+        // the exact same parse -> save pipeline voice captures go through).
+        // No Confirm navigation here, same as stopQuickCaptureAndSave: the
+        // Entry doesn't exist yet, only a queued capture does.
+        if quickCaptureEnabled {
+            inputText = ""
+            Task {
+                try? await textCaptureQueue.enqueue(rawText: text, lat: location?.lat, lng: location?.lng)
+                await AudioCaptureProcessor.shared.processPendingTextCaptures()
+            }
+            return
+        }
+
+        isParsing = true
         Task {
             let outcome = await agentClient.parseEntry(rawText: text, knownProperties: knownProperties) { [weak self] stage in
                 self?.parsingStage = stage
@@ -371,7 +438,9 @@ final class CaptureViewModel {
                     category: result.draft.category ?? EntryCategory.other.firestoreValue,
                     captureSource: .text,
                     miles: result.draft.miles ?? 0,
-                    resolvedActivityDateIso: result.draft.resolvedActivityDateIso
+                    resolvedActivityDateIso: result.draft.resolvedActivityDateIso,
+                    captureLat: location?.lat,
+                    captureLng: location?.lng
                 ))
             case .failure(let message):
                 errorMessage = message
@@ -381,7 +450,8 @@ final class CaptureViewModel {
 
     /// Bypasses parsing entirely — the user typing every field by hand.
     func manualEntry(onDrafted: @escaping (ConfirmParams) -> Void) {
-        onDrafted(ConfirmParams(captureSource: .manual))
+        let location = captureLocation()
+        onDrafted(ConfirmParams(captureSource: .manual, captureLat: location?.lat, captureLng: location?.lng))
     }
 
     /// A just-taken photo — the single entry point for both photo-capture
@@ -414,6 +484,7 @@ final class CaptureViewModel {
     /// well the draft parsed, same as the text/voice paths never drop what
     /// the user captured just because parsing came back thin.
     private func handleWorkPhoto(imageData: Data, onDrafted: @escaping (ConfirmParams) -> Void) async {
+        let location = captureLocation()
         let outcome = await agentClient.draftEntryFromPhoto(imageData: imageData, knownProperties: knownProperties)
         isProcessingPhoto = false
         switch outcome {
@@ -426,7 +497,9 @@ final class CaptureViewModel {
                 captureSource: .photo,
                 miles: result.draft.miles ?? 0,
                 resolvedActivityDateIso: result.draft.resolvedActivityDateIso,
-                photoData: imageData
+                photoData: imageData,
+                captureLat: location?.lat,
+                captureLng: location?.lng
             ))
         case .failure(let message):
             errorMessage = message
@@ -442,6 +515,7 @@ final class CaptureViewModel {
     /// Confirm's `saveTrip` re-derives this again at save time regardless,
     /// since time may have passed while the user was reviewing.
     private func handleOdometerPhoto(imageData: Data, onDrafted: @escaping (ConfirmParams) -> Void) async {
+        let location = captureLocation()
         let tripIsEndingExistingTrip = openTripEntry != nil
         let readOutcome = await agentClient.readOdometerFromPhoto(imageData: imageData)
         let reading: Double?
@@ -458,6 +532,8 @@ final class CaptureViewModel {
         onDrafted(ConfirmParams(
             captureSource: .photo,
             photoData: imageData,
+            captureLat: location?.lat,
+            captureLng: location?.lng,
             isTripCapture: true,
             tripIsEndingExistingTrip: tripIsEndingExistingTrip,
             odometerReading: reading
@@ -467,6 +543,7 @@ final class CaptureViewModel {
     private func parseAndHold(_ text: String, captureSource: CaptureSource) async {
         isParsing = true
         errorMessage = nil
+        let location = captureLocation()
         let outcome = await agentClient.parseEntry(rawText: text, knownProperties: knownProperties) { [weak self] stage in
             self?.parsingStage = stage
         }
@@ -481,7 +558,9 @@ final class CaptureViewModel {
                 category: result.draft.category ?? EntryCategory.other.firestoreValue,
                 captureSource: captureSource,
                 miles: result.draft.miles ?? 0,
-                resolvedActivityDateIso: result.draft.resolvedActivityDateIso
+                resolvedActivityDateIso: result.draft.resolvedActivityDateIso,
+                captureLat: location?.lat,
+                captureLng: location?.lng
             )
             pendingResult = params
             finalizedTranscript = (result.draft.task?.isEmpty == false) ? result.draft.task : text

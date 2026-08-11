@@ -11,19 +11,12 @@ data class LegalSection(val heading: String, val paragraphs: List<String>)
 data class LegalDocument(
     val title: String,
     val effectiveDateNotice: String,
-    val draftNotice: String,
     val sections: List<LegalSection>,
 )
 
-private const val DOCUMENT_NOTICE =
-    "This document is written directly from Contempo's actual current implementation — not a " +
-        "generic template — so it accurately describes what the app does and how your " +
-        "information is handled."
-
 val PrivacyPolicy = LegalDocument(
     title = "Privacy Policy",
-    effectiveDateNotice = "Effective date: July 31, 2026.",
-    draftNotice = DOCUMENT_NOTICE,
+    effectiveDateNotice = "Effective date: August 11, 2026.",
     sections = listOf(
         LegalSection(
             "Who we are",
@@ -47,8 +40,13 @@ val PrivacyPolicy = LegalDocument(
                     "category, activity date), property names, photos attached as evidence, voice " +
                     "recordings and their transcripts, and mileage/trip data (distance, odometer " +
                     "photos, GPS coordinates for trip start/end). When location is available at the " +
-                    "moment you capture an entry or stop a work timer, we also store that " +
-                    "capture/stop location.",
+                    "moment you capture an entry, start a work timer, or stop a work timer, we " +
+                    "also store that capture/start/stop location.",
+                "In-app feedback: if you turn on \"Shake to report\" in Settings, shaking your " +
+                    "device captures a screenshot of what you're looking at. We store that " +
+                    "screenshot, the area you box on it (if any), the description you write, and " +
+                    "structured device/app state (app version, OS version, device model, which " +
+                    "screen you were on, and locale) so we can find and fix the issue faster.",
                 "Role names: if you tag an entry as done by someone else who works on your " +
                     "property (a co-host, cleaner, or contractor, for example), we store the name " +
                     "you give that role. That's content you choose to enter about a third party, " +
@@ -81,10 +79,12 @@ val PrivacyPolicy = LegalDocument(
                 "On-device processing (voice transcription and language-model parsing) happens " +
                     "entirely on your phone — that audio or text is never sent anywhere for this " +
                     "step.",
-                "Cloud processing sends the entry's text or audio to Google's Gemini API (via " +
-                    "Firebase) so it can be parsed there. If you choose \"On-device only\" and " +
-                    "on-device processing isn't available on your phone, parsing falls back to " +
-                    "manual entry rather than silently using the cloud.",
+                "Cloud processing sends the entry's text (never audio — voice is always " +
+                    "transcribed to text on-device first, even when cloud parsing is used for the " +
+                    "text itself) to Google's Gemini API (via Firebase) so it can be parsed there. " +
+                    "If you choose \"On-device only\" and on-device processing isn't available on " +
+                    "your phone, parsing falls back to manual entry rather than silently using the " +
+                    "cloud.",
             ),
         ),
         LegalSection(
@@ -171,8 +171,7 @@ val PrivacyPolicy = LegalDocument(
 
 val TermsOfService = LegalDocument(
     title = "Terms of Service",
-    effectiveDateNotice = "Effective date: July 31, 2026.",
-    draftNotice = DOCUMENT_NOTICE,
+    effectiveDateNotice = "Effective date: August 11, 2026.",
     sections = listOf(
         LegalSection(
             "Acceptance of terms",

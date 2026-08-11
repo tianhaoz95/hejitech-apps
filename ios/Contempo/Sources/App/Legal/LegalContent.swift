@@ -12,17 +12,13 @@ struct LegalSection {
 struct LegalDocument {
     let title: String
     let effectiveDateNotice: String
-    let draftNotice: String
     let sections: [LegalSection]
 }
 
 enum LegalContent {
-    static let draftNotice = "This document is written directly from Contempo's actual current implementation — not a generic template — so it accurately describes what the app does and how your information is handled."
-
     static let privacy = LegalDocument(
         title: "Privacy Policy",
-        effectiveDateNotice: "Effective date: July 31, 2026.",
-        draftNotice: draftNotice,
+        effectiveDateNotice: "Effective date: August 11, 2026.",
         sections: [
             LegalSection(heading: "Who we are", paragraphs: [
                 "Contempo is a material-participation hour-tracking app built by Hejitech, designed to help short-term rental hosts and real estate professionals keep contemporaneous records for IRS material participation tests (the 100-hour / 500-hour STR tests, or the 750-hour REPS test).",
@@ -30,7 +26,8 @@ enum LegalContent {
             ]),
             LegalSection(heading: "Information we collect", paragraphs: [
                 "Account information: when you sign in with Google, we receive your name, email address, and profile photo from your Google account. We don't offer any other sign-in method.",
-                "Content you provide: work log entries (property, task description, duration, category, activity date), property names, photos attached as evidence, voice recordings and their transcripts, and mileage/trip data (distance, odometer photos, GPS coordinates for trip start/end). When location is available at the moment you capture an entry or stop a work timer, we also store that capture/stop location.",
+                "Content you provide: work log entries (property, task description, duration, category, activity date), property names, photos attached as evidence, voice recordings and their transcripts, and mileage/trip data (distance, odometer photos, GPS coordinates for trip start/end). When location is available at the moment you capture an entry, start a work timer, or stop a work timer, we also store that capture/start/stop location.",
+                "In-app feedback: if you turn on \"Shake to report\" in Settings, shaking your device captures a screenshot of what you're looking at. We store that screenshot, the area you box on it (if any), the description you write, and structured device/app state (app version, OS version, device model, which screen you were on, and locale) so we can find and fix the issue faster.",
                 "Role names: if you tag an entry as done by someone else who works on your property (a co-host, cleaner, or contractor, for example), we store the name you give that role. That's content you choose to enter about a third party, not something we collect independently.",
                 "AI correction data: when you edit a field the AI drafted before confirming it, we log both the AI's original value and your corrected value. This is training signal we may use later to improve parsing accuracy — it isn't shared outside Contempo/Hejitech.",
             ]),
@@ -43,7 +40,7 @@ enum LegalContent {
             LegalSection(heading: "On-device vs. cloud AI processing", paragraphs: [
                 "The Android and iOS apps' Settings screens let you choose how entries get parsed: On-device only, Prefer on-device, or Cloud only.",
                 "On-device processing (voice transcription and language-model parsing) happens entirely on your phone — that audio or text is never sent anywhere for this step.",
-                "Cloud processing sends the entry's text or audio to Google's Gemini API (via Firebase) so it can be parsed there. If you choose \"On-device only\" and on-device processing isn't available on your phone, parsing falls back to manual entry rather than silently using the cloud.",
+                "Cloud processing sends the entry's text (never audio — voice is always transcribed to text on-device first, even when cloud parsing is used for the text itself) to Google's Gemini API (via Firebase) so it can be parsed there. If you choose \"On-device only\" and on-device processing isn't available on your phone, parsing falls back to manual entry rather than silently using the cloud.",
             ]),
             LegalSection(heading: "How we store and protect your information", paragraphs: [
                 "Your data is stored in Google Firebase / Google Cloud (Firestore database and Firebase Storage, both in a United States region), under a per-account storage path that only your signed-in Google account can access.",
@@ -81,8 +78,7 @@ enum LegalContent {
 
     static let terms = LegalDocument(
         title: "Terms of Service",
-        effectiveDateNotice: "Effective date: July 31, 2026.",
-        draftNotice: draftNotice,
+        effectiveDateNotice: "Effective date: August 11, 2026.",
         sections: [
             LegalSection(heading: "Acceptance of terms", paragraphs: [
                 "By using Contempo (the Android app, the iOS app, or the web app), you agree to these Terms of Service. If you don't agree, please don't use the app.",

@@ -92,7 +92,9 @@ public final class AudioCaptureProcessor {
                 task: draft.task,
                 category: draft.category,
                 source: .voice,
-                startedAt: capture.capturedAt
+                startedAt: capture.capturedAt,
+                captureLat: capture.lat,
+                captureLng: capture.lng
             )
             return
         }
@@ -148,5 +150,111 @@ public final class AudioCaptureProcessor {
     private func removeFromQueue(captureId: String) async throws {
         try await ServiceLocator.audioCaptureQueue.remove(captureId: captureId)
         ServiceLocator.quickCaptureStatsStore.recordCompleted()
+    }
+
+    // MARK: - Typed-text Quick Capture
+
+    /// Drains `TextCaptureQueue` — Quick Capture's typed-text counterpart to
+    /// `processPendingCaptures()` above. Same parse -> save tail
+    /// (`saveFromDraftText`/`saveFallbackText` below mirror
+    /// `saveFromDraft`/`saveFallback` field-for-field, just without the
+    /// audio-transcription steps or `audioUrl`), so a typed Quick Capture
+    /// entry is indistinguishable in shape from a voice one except for
+    /// `source` and the absence of `audioUrl`.
+    @discardableResult
+    public func processPendingTextCaptures() async -> Int {
+        guard let pending = try? await ServiceLocator.textCaptureQueue.listPending() else { return 0 }
+        var processedCount = 0
+
+        for capture in pending {
+            do {
+                try await processOneText(capture)
+                processedCount += 1
+            } catch {
+                // Log and continue to next item in queue
+            }
+            self.currentlyProcessingStage = nil
+        }
+        return processedCount
+    }
+
+    private func processOneText(_ capture: PendingTextCapture) async throws {
+        self.currentlyProcessingStage = .parsing
+        let knownProperties = (try? await ServiceLocator.entryRepository.observeProperties().first(where: { _ in true }))?.map { $0.name } ?? []
+
+        let outcome = await ServiceLocator.agentClient.parseEntry(rawText: capture.rawText, knownProperties: knownProperties)
+
+        self.currentlyProcessingStage = .saving
+        switch outcome {
+        case .success(let result):
+            await saveFromDraftText(result.draft, rawText: capture.rawText, capture: capture)
+        case .failure:
+            await saveFallbackText(rawText: capture.rawText, capture: capture)
+        }
+
+        try await ServiceLocator.textCaptureQueue.remove(captureId: capture.id)
+        ServiceLocator.quickCaptureStatsStore.recordCompleted()
+    }
+
+    private func saveFromDraftText(_ draft: EntryDraft, rawText: String, capture: PendingTextCapture) async {
+        let intent = TimerIntentClassifier.classify(rawText) ?? (draft.eventType == "start" ? .start : (draft.eventType == "stop" ? .stop : nil))
+
+        if intent == .start {
+            _ = try? await ServiceLocator.timerEntryCoordinator.handleStart(
+                property: draft.property,
+                task: draft.task,
+                category: draft.category,
+                source: .text,
+                startedAt: capture.capturedAt,
+                captureLat: capture.lat,
+                captureLng: capture.lng
+            )
+            return
+        }
+
+        if intent == .stop {
+            let stopped = try? await ServiceLocator.timerEntryCoordinator.handleStop(
+                property: draft.property,
+                task: draft.task,
+                stoppedAt: capture.capturedAt,
+                stopLat: capture.lat,
+                stopLng: capture.lng
+            )
+            if stopped != nil { return }
+        }
+
+        let duration = draft.durationMinutes ?? 0
+        let isComplete = !(draft.property?.isEmpty ?? true) && !(draft.task?.isEmpty ?? true) && duration > 0
+
+        let entry = Entry(
+            propertyName: draft.property ?? "",
+            task: (draft.task?.isEmpty == false) ? draft.task! : rawText,
+            durationMinutes: duration,
+            category: draft.category.map { EntryCategory(firestoreValue: $0).firestoreValue } ?? EntryCategory.other.firestoreValue,
+            status: isComplete ? EntryStatus.confirmed.firestoreValue : EntryStatus.pendingReview.firestoreValue,
+            source: CaptureSource.text.firestoreValue,
+            activityDate: capture.capturedAt,
+            loggedAt: Timestamp(),
+            confirmedAt: isComplete ? Timestamp() : nil,
+            miles: draft.miles ?? 0.0,
+            captureLat: capture.lat,
+            captureLng: capture.lng,
+            rawTranscript: rawText
+        )
+        try? await ServiceLocator.entryRepository.createEntry(entry)
+    }
+
+    private func saveFallbackText(rawText: String, capture: PendingTextCapture) async {
+        let entry = Entry(
+            task: rawText,
+            status: EntryStatus.pendingReview.firestoreValue,
+            source: CaptureSource.text.firestoreValue,
+            activityDate: capture.capturedAt,
+            loggedAt: Timestamp(),
+            captureLat: capture.lat,
+            captureLng: capture.lng,
+            rawTranscript: rawText
+        )
+        try? await ServiceLocator.entryRepository.createEntry(entry)
     }
 }

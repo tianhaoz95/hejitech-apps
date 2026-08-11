@@ -1,6 +1,13 @@
 package com.hejitech.contempo.ui.feedback
 
 import android.graphics.BitmapFactory
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -43,6 +50,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
@@ -292,72 +300,86 @@ fun FeedbackAnnotationScreen(
         // anchored to the bottom edge. imePadding here (and only here) is
         // what slides this section above the keyboard when the text field
         // is focused, independent of the image layer above — see the
-        // comment on the outer Box.
-        if (isInputExpanded) {
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.background)
-                    .navigationBarsPadding()
-                    .imePadding()
-                    .padding(16.dp)
-                    .onSizeChanged {
-                        if (restingControlsHeightPx == 0f) restingControlsHeightPx = it.height.toFloat()
-                    },
-            ) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    IconButton(onClick = { toggleInputExpanded() }) {
-                        Icon(
-                            Icons.Filled.KeyboardArrowDown,
-                            contentDescription = stringResource(R.string.feedback_minimize_input_content_description),
-                        )
-                    }
-                }
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text(stringResource(R.string.feedback_description_placeholder)) },
-                    minLines = 3,
-                )
-                uiState.errorMessage?.let { error ->
-                    Spacer(Modifier.height(8.dp))
-                    Text(error, color = MaterialTheme.colorScheme.error)
-                }
-                Spacer(Modifier.height(12.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    OutlinedButton(onClick = { viewModel.cancel(); onDismiss() }, enabled = !uiState.isSubmitting) {
-                        Text(stringResource(R.string.feedback_cancel_button))
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Button(
-                        onClick = { viewModel.submit(imageFile, boxNormalized, description) },
-                        enabled = !uiState.isSubmitting,
-                    ) {
-                        if (uiState.isSubmitting) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.padding(end = 8.dp).width(16.dp).height(16.dp),
-                                strokeWidth = 2.dp,
+        // comment on the outer Box. AnimatedContent (rather than a plain
+        // if/else) scales+fades between the FAB and the panel anchored at
+        // the bottom-end corner (TransformOrigin(1f, 1f), where the FAB
+        // sits) and cross-fades their sizes, so the panel visibly grows
+        // out of the FAB's corner on expand and shrinks back into it on
+        // collapse, instead of the two just hard-swapping.
+        AnimatedContent(
+            targetState = isInputExpanded,
+            modifier = Modifier.align(Alignment.BottomEnd),
+            transitionSpec = {
+                (scaleIn(transformOrigin = TransformOrigin(1f, 1f)) + fadeIn())
+                    .togetherWith(scaleOut(transformOrigin = TransformOrigin(1f, 1f)) + fadeOut())
+                    .using(SizeTransform(clip = false))
+            },
+            label = "feedback_input_expand_collapse",
+        ) { expanded ->
+            if (expanded) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.background)
+                        .navigationBarsPadding()
+                        .imePadding()
+                        .padding(16.dp)
+                        .onSizeChanged {
+                            if (restingControlsHeightPx == 0f) restingControlsHeightPx = it.height.toFloat()
+                        },
+                ) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        IconButton(onClick = { toggleInputExpanded() }) {
+                            Icon(
+                                Icons.Filled.KeyboardArrowDown,
+                                contentDescription = stringResource(R.string.feedback_minimize_input_content_description),
                             )
                         }
-                        Text(stringResource(R.string.feedback_submit_button))
+                    }
+                    OutlinedTextField(
+                        value = description,
+                        onValueChange = { description = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text(stringResource(R.string.feedback_description_placeholder)) },
+                        minLines = 3,
+                    )
+                    uiState.errorMessage?.let { error ->
+                        Spacer(Modifier.height(8.dp))
+                        Text(error, color = MaterialTheme.colorScheme.error)
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        OutlinedButton(onClick = { viewModel.cancel(); onDismiss() }, enabled = !uiState.isSubmitting) {
+                            Text(stringResource(R.string.feedback_cancel_button))
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Button(
+                            onClick = { viewModel.submit(imageFile, boxNormalized, description) },
+                            enabled = !uiState.isSubmitting,
+                        ) {
+                            if (uiState.isSubmitting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.padding(end = 8.dp).width(16.dp).height(16.dp),
+                                    strokeWidth = 2.dp,
+                                )
+                            }
+                            Text(stringResource(R.string.feedback_submit_button))
+                        }
                     }
                 }
-            }
-        } else {
-            FloatingActionButton(
-                onClick = { toggleInputExpanded() },
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .navigationBarsPadding()
-                    .padding(16.dp)
-                    .size(56.dp),
-            ) {
-                Icon(
-                    Icons.Filled.KeyboardArrowUp,
-                    contentDescription = stringResource(R.string.feedback_expand_input_content_description),
-                )
+            } else {
+                FloatingActionButton(
+                    onClick = { toggleInputExpanded() },
+                    modifier = Modifier
+                        .navigationBarsPadding()
+                        .padding(16.dp)
+                        .size(56.dp),
+                ) {
+                    Icon(
+                        Icons.Filled.KeyboardArrowUp,
+                        contentDescription = stringResource(R.string.feedback_expand_input_content_description),
+                    )
+                }
             }
         }
     }

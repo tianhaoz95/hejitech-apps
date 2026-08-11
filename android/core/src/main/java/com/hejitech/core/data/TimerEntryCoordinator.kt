@@ -42,6 +42,8 @@ class TimerEntryCoordinator(private val entryRepository: EntryRepository) {
         category: String?,
         source: CaptureSource,
         startedAt: Timestamp,
+        captureLat: Double? = null,
+        captureLng: Double? = null,
     ): TimerEventResult.Started {
         entryRepository.findOpenEntry(isTrip = false)?.let { previous -> closeEntry(previous, closedAt = startedAt) }
 
@@ -56,6 +58,8 @@ class TimerEntryCoordinator(private val entryRepository: EntryRepository) {
             activityDate = startedAt,
             loggedAt = Timestamp.now(),
             inProgress = true,
+            captureLat = captureLat,
+            captureLng = captureLng,
         )
         return TimerEventResult.Started(entryRepository.createEntry(entry))
     }

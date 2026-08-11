@@ -19,13 +19,6 @@ struct LegalScreen: View {
                     .font(ContempoFont.labelSmall())
                     .foregroundStyle(palette.inkFaint)
 
-                Text(document.draftNotice)
-                    .font(ContempoFont.bodyLarge())
-                    .foregroundStyle(palette.brass)
-                    .padding()
-                    .background(palette.paperRaised)
-                    .clipShape(RoundedRectangle(cornerRadius: ContempoRadius.medium))
-
                 ForEach(document.sections, id: \.heading) { section in
                     VStack(alignment: .leading, spacing: 8) {
                         Text(section.heading)

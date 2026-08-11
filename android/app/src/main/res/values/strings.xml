@@ -352,6 +352,8 @@
     <string name="settings_legal_section">Legal</string>
     <string name="settings_privacy_policy">Privacy Policy</string>
     <string name="settings_terms_of_service">Terms of Service</string>
+    <string name="settings_danger_zone_section">Danger zone</string>
+    <string name="settings_danger_zone_hint">These actions are permanent or hard to undo.</string>
 
     <string name="on_device_status_checking">Checking on-device model…</string>
     <string name="on_device_status_not_downloaded">On-device language model not downloaded.</string>

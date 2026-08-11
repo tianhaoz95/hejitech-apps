@@ -9,6 +9,7 @@ import com.hejitech.contempo.data.ServiceLocator
 import com.hejitech.contempo.timer.OngoingWorkNotificationService
 import com.hejitech.core.audio.WavAudio
 import com.hejitech.core.data.PendingAudioCapture
+import com.hejitech.core.data.PendingTextCapture
 import com.hejitech.core.model.CaptureSource
 import com.hejitech.core.model.Entry
 import com.hejitech.core.model.EntryCategory
@@ -56,6 +57,13 @@ enum class AudioProcessingStage { DOWNLOADING, TRANSCRIBING, PARSING, SAVING }
  * Invoked on phone app start and periodically (see MainActivity's
  * resumed-loop and PendingAudioProcessWorker) — there's no live connection
  * to wait on anymore, so this just drains whatever's currently queued.
+ *
+ * Also drains TextCaptureQueue via [processPendingTextCaptures] — Quick
+ * Capture's typed-text counterpart to the phone's own voice quick capture
+ * (see CaptureViewModel.submit's quickCaptureEnabled branch). It shares the
+ * same parse → saveFromDraft/saveFallback → createEntry tail as audio,
+ * just without the download/transcribe stages, since the raw text is
+ * already sitting on the queue doc.
  */
 object AudioCaptureProcessor {
     // Which capture (if any) is actively mid-pipeline right now, and at what
@@ -76,6 +84,29 @@ object AudioCaptureProcessor {
                 processOne(capture) { stage ->
                     onProgress?.invoke(index + 1, total, stage)
                 }
+                processedCount++
+            } finally {
+                _currentlyProcessing.value = null
+            }
+        }
+        return processedCount
+    }
+
+    /**
+     * Typed-text counterpart to [processPendingCaptures] — Quick Capture's
+     * "immediate save, parse later in the background" treatment extended to
+     * typed input (see CaptureViewModel.submit's quickCaptureEnabled
+     * branch). No download/transcribe stages needed since the raw text is
+     * already sitting on the queue doc; goes straight to parse+save via the
+     * same [saveFromDraft]/[saveFallback] tail audio uses.
+     */
+    suspend fun processPendingTextCaptures(): Int {
+        val pending = runCatching { ServiceLocator.textCaptureQueue.listPending() }
+            .getOrElse { e -> Log.e(TAG, "failed to list pending text captures", e); return 0 }
+        var processedCount = 0
+        pending.forEach { capture ->
+            try {
+                processOneText(capture)
                 processedCount++
             } finally {
                 _currentlyProcessing.value = null
@@ -108,7 +139,7 @@ object AudioCaptureProcessor {
             // for a blank transcription. The audio itself stays in Storage
             // forever regardless; only the queue bookkeeping is done here.
             Log.d(TAG, "blank transcription for ${capture.id}")
-            removeFromQueue(capture.id)
+            removeFromAudioQueue(capture.id)
             return
         }
 
@@ -124,10 +155,40 @@ object AudioCaptureProcessor {
         _currentlyProcessing.value = AudioProcessingStage.SAVING
         onStageChange?.invoke(AudioProcessingStage.SAVING)
         when (outcome) {
-            is ParseOutcome.Success -> saveFromDraft(outcome.result.draft, rawText, capture, audioUrl)
-            is ParseOutcome.Failure -> saveFallback(rawText, capture, audioUrl)
+            is ParseOutcome.Success -> saveFromDraft(
+                outcome.result.draft, rawText, capture.capturedAt, capture.lat, capture.lng, CaptureSource.VOICE, audioUrl,
+            )
+            is ParseOutcome.Failure -> saveFallback(
+                rawText, capture.capturedAt, capture.lat, capture.lng, CaptureSource.VOICE, audioUrl,
+            )
         }
-        removeFromQueue(capture.id)
+        removeFromAudioQueue(capture.id)
+    }
+
+    private suspend fun processOneText(capture: PendingTextCapture) {
+        val rawText = capture.rawText
+        if (rawText.isBlank()) {
+            removeFromTextQueue(capture.id)
+            return
+        }
+
+        _currentlyProcessing.value = AudioProcessingStage.PARSING
+        val knownProperties = runCatching {
+            ServiceLocator.entryRepository.observeProperties().first().map { it.name }
+        }.getOrDefault(emptyList())
+
+        val outcome = ServiceLocator.agentClient.parseEntry(rawText, knownProperties)
+
+        _currentlyProcessing.value = AudioProcessingStage.SAVING
+        when (outcome) {
+            is ParseOutcome.Success -> saveFromDraft(
+                outcome.result.draft, rawText, capture.capturedAt, capture.lat, capture.lng, CaptureSource.TEXT, audioUrl = "",
+            )
+            is ParseOutcome.Failure -> saveFallback(
+                rawText, capture.capturedAt, capture.lat, capture.lng, CaptureSource.TEXT, audioUrl = "",
+            )
+        }
+        removeFromTextQueue(capture.id)
     }
 
     /**
@@ -144,7 +205,21 @@ object AudioCaptureProcessor {
         return Timestamp(clamped.epochSecond, clamped.nano)
     }
 
-    private suspend fun saveFromDraft(draft: EntryDraft, rawText: String, capture: PendingAudioCapture, audioUrl: String) {
+    /**
+     * Shared by both the audio queue ([processOne]) and the typed-text queue
+     * ([processOneText]) — [source]/[audioUrl] are the only things that
+     * differ between the two callers ([audioUrl] is `""` for text, there's
+     * nothing to link to).
+     */
+    private suspend fun saveFromDraft(
+        draft: EntryDraft,
+        rawText: String,
+        capturedAt: Timestamp,
+        lat: Double?,
+        lng: Double?,
+        source: CaptureSource,
+        audioUrl: String,
+    ) {
         // Same deterministic-first, LLM-eventType-fallback resolution as the
         // phone's own CaptureViewModel.parseAndProceed — see
         // TimerIntentClassifier's kdoc for why.
@@ -158,8 +233,10 @@ object AudioCaptureProcessor {
                 property = draft.property,
                 task = draft.task,
                 category = draft.category,
-                source = CaptureSource.VOICE,
-                startedAt = capture.capturedAt,
+                source = source,
+                startedAt = capturedAt,
+                captureLat = lat,
+                captureLng = lng,
             )
             // Best-effort — this runs from a plain (non-expedited) periodic
             // WorkManager job when the app isn't foregrounded, where
@@ -170,7 +247,7 @@ object AudioCaptureProcessor {
         }
         if (intent == TimerIntent.STOP) {
             val stopped = ServiceLocator.timerEntryCoordinator.handleStop(
-                draft.property, draft.task, capture.capturedAt, capture.lat, capture.lng,
+                draft.property, draft.task, capturedAt, lat, lng,
             )
             if (stopped != null) return
             // Nothing was open to close — fall through and save as a normal entry below.
@@ -185,29 +262,36 @@ object AudioCaptureProcessor {
             category = draft.category?.let { EntryCategory.fromFirestoreValue(it).firestoreValue }
                 ?: EntryCategory.OTHER.firestoreValue,
             status = (if (isComplete) EntryStatus.CONFIRMED else EntryStatus.PENDING_REVIEW).firestoreValue,
-            source = CaptureSource.VOICE.firestoreValue,
-            activityDate = resolveActivityDate(draft.resolvedActivityDateIso, fallback = capture.capturedAt),
+            source = source.firestoreValue,
+            activityDate = resolveActivityDate(draft.resolvedActivityDateIso, fallback = capturedAt),
             loggedAt = Timestamp.now(),
             confirmedAt = if (isComplete) Timestamp.now() else null,
             miles = draft.miles ?: 0.0,
-            captureLat = capture.lat,
-            captureLng = capture.lng,
+            captureLat = lat,
+            captureLng = lng,
             audioUrl = audioUrl,
             rawTranscript = rawText,
         )
         ServiceLocator.entryRepository.createEntry(entry)
     }
 
-    /** Transcription worked but structuring didn't — still worth saving as pending_review rather than losing what was said. */
-    private suspend fun saveFallback(rawText: String, capture: PendingAudioCapture, audioUrl: String) {
+    /** Transcription/text worked but structuring didn't — still worth saving as pending_review rather than losing what was said. */
+    private suspend fun saveFallback(
+        rawText: String,
+        capturedAt: Timestamp,
+        lat: Double?,
+        lng: Double?,
+        source: CaptureSource,
+        audioUrl: String,
+    ) {
         val entry = Entry(
             task = rawText,
             status = EntryStatus.PENDING_REVIEW.firestoreValue,
-            source = CaptureSource.VOICE.firestoreValue,
-            activityDate = capture.capturedAt,
+            source = source.firestoreValue,
+            activityDate = capturedAt,
             loggedAt = Timestamp.now(),
-            captureLat = capture.lat,
-            captureLng = capture.lng,
+            captureLat = lat,
+            captureLng = lng,
             audioUrl = audioUrl,
             rawTranscript = rawText,
         )
@@ -221,9 +305,16 @@ object AudioCaptureProcessor {
      * Capture tab's "completed today" count gets incremented, rather than
      * duplicating that bookkeeping at each individual call site.
      */
-    private suspend fun removeFromQueue(captureId: String) {
+    private suspend fun removeFromAudioQueue(captureId: String) {
         runCatching { ServiceLocator.audioCaptureQueue.remove(captureId) }
             .onFailure { e -> Log.e(TAG, "failed to remove queue doc $captureId", e) }
+            .onSuccess { ServiceLocator.quickCaptureStatsStore.recordCompleted() }
+    }
+
+    /** Text counterpart to [removeFromAudioQueue] — same completed-count bookkeeping. */
+    private suspend fun removeFromTextQueue(captureId: String) {
+        runCatching { ServiceLocator.textCaptureQueue.remove(captureId) }
+            .onFailure { e -> Log.e(TAG, "failed to remove text queue doc $captureId", e) }
             .onSuccess { ServiceLocator.quickCaptureStatsStore.recordCompleted() }
     }
 }

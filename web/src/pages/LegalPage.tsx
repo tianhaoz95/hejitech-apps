@@ -36,22 +36,9 @@ export function LegalPage({ doc }: LegalPageProps) {
 
       <main style={{ maxWidth: 720, margin: "0 auto", padding: "2rem 1.5rem 4rem" }}>
         <h1 style={{ fontSize: "1.9rem", marginBottom: "0.25rem" }}>{document.title}</h1>
-        <p style={{ color: "var(--ink-faint)", fontSize: "0.85rem", marginBottom: "1.5rem" }}>
+        <p style={{ color: "var(--ink-faint)", fontSize: "0.85rem", marginBottom: "2rem" }}>
           {document.effectiveDateNotice}
         </p>
-
-        <div
-          style={{
-            background: "var(--brass-tint, rgba(166,124,52,0.1))",
-            border: "1px solid var(--hairline-strong)",
-            borderRadius: "var(--radius-md)",
-            padding: "1rem 1.25rem",
-            fontSize: "0.9rem",
-            marginBottom: "2rem",
-          }}
-        >
-          {document.draftNotice}
-        </div>
 
         {document.sections.map((section) => (
           <section key={section.heading} style={{ marginBottom: "1.75rem" }}>

@@ -72,7 +72,15 @@ struct FeedbackAnnotationView: View {
 
     private func toggleInputExpanded() {
         isDescriptionFocused = false
-        isInputExpanded.toggle()
+        // withAnimation (rather than relying on an implicit .animation
+        // modifier) is what makes the panel/FAB swap below actually
+        // animate — combined with the .transition on each branch, this
+        // reads as the panel growing out of the FAB's corner on expand
+        // and shrinking back into it on collapse, instead of an instant
+        // swap.
+        withAnimation(.easeInOut(duration: 0.3)) {
+            isInputExpanded.toggle()
+        }
     }
 
     var body: some View {
@@ -266,6 +274,11 @@ struct FeedbackAnnotationView: View {
                     .background(palette.paper)
                     .padding(.bottom, keyboardHeight)
                     .animation(.easeOut(duration: 0.25), value: keyboardHeight)
+                    // Anchored at the same corner the FAB sits in below,
+                    // so this visibly grows out of it on expand and
+                    // shrinks back into it on collapse — see
+                    // toggleInputExpanded's withAnimation.
+                    .transition(.scale(scale: 0.05, anchor: .bottomTrailing).combined(with: .opacity))
                 } else {
                     HStack {
                         Spacer()
@@ -279,6 +292,7 @@ struct FeedbackAnnotationView: View {
                         }
                         .padding()
                     }
+                    .transition(.scale(scale: 0.05, anchor: .bottomTrailing).combined(with: .opacity))
                 }
             }
             .ignoresSafeArea(.keyboard, edges: .bottom)
