@@ -62,7 +62,9 @@ final class AgentClient {
 
         case .preferOnDevice:
             onStage(.tryingOnDevice)
-            if let result = await onDeviceExtractEntry(rawText: rawText, knownProperties: knownProperties) {
+            if let result = await onDeviceExtractEntry(rawText: rawText, knownProperties: knownProperties),
+               case .success(let parseResult) = result,
+               !parseResult.draft.isEffectivelyEmpty {
                 return result
             }
             onStage(.fallingBackToCloud)

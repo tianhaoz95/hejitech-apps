@@ -44,6 +44,17 @@ public struct EntryDraft: Codable, Equatable, Sendable {
         self.miles = miles
         self.resolvedActivityDateIso = resolvedActivityDateIso
     }
+
+    /// True when the model produced essentially nothing usable — no
+    /// property, task, duration, event type, or miles. Distinguishes "the
+    /// model ran but drew a blank on this phrasing" from a normal partial
+    /// extraction (expected and fine — see this type's doc comment), so
+    /// `AgentClient.parseEntry` can treat a blank on-device draft the same
+    /// as an outright on-device failure and fall back to cloud instead of
+    /// silently accepting nothing.
+    public var isEffectivelyEmpty: Bool {
+        (property?.isEmpty ?? true) && (task?.isEmpty ?? true) && durationMinutes == nil && eventType == nil && miles == nil
+    }
 }
 
 public enum ParseSource: Sendable { case onDevice, cloud }

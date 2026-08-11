@@ -59,7 +59,19 @@ data class EntryDraft(
      * for the server-side mirror.
      */
     val resolvedActivityDateIso: String? = null,
-)
+) {
+    /**
+     * True when the model produced essentially nothing usable — no
+     * property, task, duration, event type, or miles. Distinguishes "the
+     * model ran but drew a blank on this phrasing" from a normal partial
+     * extraction (expected and fine — see this type's doc comment), so
+     * AgentClient.parseEntry can treat a blank on-device draft the same as
+     * an outright on-device failure and fall back to cloud instead of
+     * silently accepting nothing.
+     */
+    val isEffectivelyEmpty: Boolean
+        get() = property.isNullOrEmpty() && task.isNullOrEmpty() && durationMinutes == null && eventType == null && miles == null
+}
 
 enum class ParseSource { ON_DEVICE, CLOUD }
 

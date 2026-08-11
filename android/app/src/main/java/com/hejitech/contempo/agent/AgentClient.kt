@@ -85,7 +85,9 @@ class AgentClient(
 
             InferencePreference.PREFER_ON_DEVICE -> {
                 onStage(ParsingStage.TRYING_ON_DEVICE)
-                onDeviceExtractEntry(rawText, knownProperties)?.also { putAttribute("path_taken", "on_device") } ?: run {
+                val onDeviceResult = onDeviceExtractEntry(rawText, knownProperties)
+                    ?.takeUnless { (it as? ParseOutcome.Success)?.result?.draft?.isEffectivelyEmpty == true }
+                onDeviceResult?.also { putAttribute("path_taken", "on_device") } ?: run {
                     onStage(ParsingStage.FALLING_BACK_TO_CLOUD)
                     putAttribute("path_taken", "cloud_fallback")
                     cloudParseEntry(rawText, knownProperties)
