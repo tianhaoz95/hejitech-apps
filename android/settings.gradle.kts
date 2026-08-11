@@ -18,3 +18,4 @@ rootProject.name = "contempo"
 include(":app")
 include(":core")
 include(":wear")
+include(":whisper_models")

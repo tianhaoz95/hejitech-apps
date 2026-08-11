@@ -40,6 +40,13 @@ public enum GenerationEvent: Sendable {
 public protocol OnDeviceLlm: AnyObject, Sendable {
     @MainActor var status: OnDeviceModelUiStatus { get }
 
+    /// Token counts (prefill/decode) from the most recently completed
+    /// generate call — nil if this runtime doesn't expose usage, or no call
+    /// has completed yet. `AgentClient` reads this immediately after each
+    /// on-device call it makes, so it always reflects that same call, not a
+    /// stale one — see `AgentClient.recordOnDeviceUsageIfAvailable`.
+    @MainActor var lastCallTokenUsage: TokenUsage? { get }
+
     /// Re-checks readiness and (re)starts a stalled/failed download. User-triggered from Settings.
     func retry()
 
@@ -74,6 +81,7 @@ public final class NoOpOnDeviceLlm: OnDeviceLlm {
     public init() {}
 
     @MainActor public var status: OnDeviceModelUiStatus { .unavailable }
+    @MainActor public var lastCallTokenUsage: TokenUsage? { nil }
     public func retry() {}
     public func deleteDownloadedModel() {}
     public func generateText(_ prompt: String) async -> String? { nil }

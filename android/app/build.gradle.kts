@@ -57,7 +57,7 @@ android {
         applicationId = "com.hejitech.contempoapp"
         minSdk = 26
         targetSdk = 36
-        versionCode = 9
+        versionCode = 41
         versionName = "0.1.0-mvp"
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
         // Default for every build type except debug (which overrides to
@@ -78,14 +78,12 @@ android {
         }
     }
 
-    // The Whisper tiny.en model (~99MB, see assets/sherpa-onnx-whisper-tiny.en)
-    // is already int8-quantized/compressed; letting AAPT recompress it as a
-    // resource on install would waste time for no size benefit, and .onnx
-    // isn't an asset type AAPT would treat specially anyway — noExtract
-    // avoids any doubt.
-    androidResources {
-        noCompress += listOf("onnx")
-    }
+    // The two Whisper ASR models live in the :whisper_models install-time
+    // Play Asset Delivery pack (see whisper_models/build.gradle.kts), not
+    // app/src/main/assets/ — moved out so routine app updates that don't
+    // touch these ~99MB-each, essentially-static files don't re-transfer
+    // them. Still delivered with the very first install, same as before.
+    assetPacks += listOf(":whisper_models")
 
     signingConfigs {
         create("release") {

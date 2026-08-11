@@ -2,7 +2,9 @@ package com.hejitech.contempo.agent
 
 import android.graphics.Bitmap
 import com.hejitech.contempo.data.traced
+import com.hejitech.core.data.EntryRepository
 import com.hejitech.core.model.Entry
+import com.hejitech.core.model.EntryCategory
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.FirebaseFunctionsException
 import kotlinx.coroutines.tasks.await
@@ -37,9 +39,24 @@ import java.time.Instant
 class AgentClient(
     private val onDeviceLlm: OnDeviceLlm,
     private val functions: FirebaseFunctions,
+    private val entryRepository: EntryRepository,
     private val inferencePreference: () -> InferencePreference,
 ) {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
+
+    /**
+     * Writes whatever [OnDeviceLlm.lastCallTokenUsage] holds right now to
+     * this account's weekly on-device counters — called at the end of every
+     * private onDevice* wrapper below, right after a successful (non-null)
+     * result, so it always reflects the call that just happened. Cloud
+     * usage needs no client-side equivalent — see EntryRepository.
+     * observeCloudTokenUsage's kdoc — it's written server-side instead.
+     */
+    private suspend fun recordOnDeviceUsageIfAvailable() {
+        onDeviceLlm.lastCallTokenUsage.value?.let {
+            runCatching { entryRepository.recordOnDeviceTokenUsage(it.inputTokens, it.outputTokens) }
+        }
+    }
 
     /**
      * [onStage] is a best-effort progress signal for the caller to render
@@ -236,7 +253,36 @@ class AgentClient(
      */
     suspend fun cleanupTranscript(rawText: String): String {
         if (rawText.isBlank()) return rawText
-        return onDeviceLlm.generateText(buildCleanupPrompt(rawText)) ?: rawText
+        val cleaned = onDeviceLlm.generateText(buildCleanupPrompt(rawText)) ?: return rawText
+        recordOnDeviceUsageIfAvailable()
+        return cleaned
+    }
+
+    /**
+     * Suggests a category for the entry-detail screen's auto-detect button,
+     * from just the property/task text already on the entry — deliberately
+     * on-device only regardless of the user's InferencePreference, same
+     * reasoning as cleanupTranscript: this is a quality-of-life assist the
+     * host can freely skip, edit, or override via the category dropdown
+     * right next to it, not core parsing functionality that needs a cloud
+     * fallback story.
+     */
+    suspend fun suggestCategory(propertyName: String, task: String): CategoryOutcome {
+        val text = onDeviceLlm.generateText(buildCategoryPrompt(propertyName, task))
+            ?: return CategoryOutcome.Failure("On-device model unavailable — try again in a moment.")
+        recordOnDeviceUsageIfAvailable()
+        val normalized = text.trim().lowercase().replace(' ', '_')
+        val category = EntryCategory.entries.find { normalized.contains(it.firestoreValue) }
+        return category?.let { CategoryOutcome.Success(it, ParseSource.ON_DEVICE) }
+            ?: CategoryOutcome.Failure("Couldn't determine a category from this entry — try filling in more detail first.")
+    }
+
+    private fun buildCategoryPrompt(propertyName: String, task: String): String = buildString {
+        appendLine("You classify a short-term-rental host's logged work into exactly one category.")
+        appendLine("Categories: maintenance (repairs, upkeep), turnover (cleaning/prepping between guests), guest_communication (messaging/calls with guests), supply_run (buying/restocking supplies), admin (bookkeeping, scheduling, paperwork), other (anything else).")
+        if (propertyName.isNotBlank()) appendLine("Property: $propertyName")
+        appendLine("Task performed: ${task.ifBlank { "(not described)" }}")
+        appendLine("Respond with ONLY one word: maintenance, turnover, guest_communication, supply_run, admin, or other. No punctuation, no commentary.")
     }
 
     private fun buildCleanupPrompt(rawText: String): String = buildString {
@@ -254,6 +300,7 @@ class AgentClient(
         // had. In ON_DEVICE_ONLY this null is what turns into the loud
         // failure above instead.
         val draft = onDeviceLlm.extractEntryDraft(rawText, knownProperties) ?: return null
+        recordOnDeviceUsageIfAvailable()
         return ParseOutcome.Success(ParseResult(draft, ParseSource.ON_DEVICE))
     }
 
@@ -269,6 +316,7 @@ class AgentClient(
     private suspend fun onDeviceReadOdometer(bitmap: Bitmap, prompt: String): OdometerReadOutcome? {
         return try {
             val text = onDeviceLlm.generateFromImage(bitmap, prompt) ?: return null
+            recordOnDeviceUsageIfAvailable()
             val miles = extractNumber(text)
             if (miles != null) {
                 OdometerReadOutcome.Success(miles, ParseSource.ON_DEVICE)
@@ -290,6 +338,7 @@ class AgentClient(
     private suspend fun onDeviceClassifyPhotoIntent(bitmap: Bitmap, prompt: String): PhotoIntentOutcome? {
         return try {
             val text = onDeviceLlm.generateFromImage(bitmap, prompt) ?: return null
+            recordOnDeviceUsageIfAvailable()
             val intent = when {
                 text.contains("odometer", ignoreCase = true) -> PhotoIntent.ODOMETER
                 text.contains("work", ignoreCase = true) -> PhotoIntent.WORK
@@ -305,6 +354,7 @@ class AgentClient(
     private suspend fun onDeviceDraftFromPhoto(bitmap: Bitmap, prompt: String): ParseOutcome? {
         return try {
             val text = onDeviceLlm.generateFromImage(bitmap, prompt) ?: return null
+            recordOnDeviceUsageIfAvailable()
             val draft = json.decodeFromString<EntryDraft>(extractJsonObject(text))
             ParseOutcome.Success(ParseResult(draft, ParseSource.ON_DEVICE))
         } catch (e: Exception) {
@@ -314,16 +364,19 @@ class AgentClient(
 
     private suspend fun onDeviceAskQuestion(prompt: String): AskOutcome? {
         val text = onDeviceLlm.generateText(prompt) ?: return null
+        recordOnDeviceUsageIfAvailable()
         return AskOutcome.Success(text, ParseSource.ON_DEVICE)
     }
 
     private suspend fun onDeviceAskQuestionStream(prompt: String, onEvent: (GenerationEvent) -> Unit): AskOutcome? {
         val text = onDeviceLlm.generateTextStream(prompt, onEvent) ?: return null
+        recordOnDeviceUsageIfAvailable()
         return AskOutcome.Success(text, ParseSource.ON_DEVICE)
     }
 
     private suspend fun onDeviceAskQuestionWithImage(bitmap: Bitmap, prompt: String): AskOutcome? {
         val text = onDeviceLlm.generateFromImage(bitmap, prompt) ?: return null
+        recordOnDeviceUsageIfAvailable()
         return AskOutcome.Success(text, ParseSource.ON_DEVICE)
     }
 

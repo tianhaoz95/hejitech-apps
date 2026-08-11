@@ -7,12 +7,19 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
+import com.hejitech.contempo.agent.CategoryOutcome
 import com.hejitech.contempo.data.ServiceLocator
+import com.hejitech.contempo.data.recoverFromAuthRaceOrSignOut
 import com.hejitech.core.model.Attachment
+import com.hejitech.core.model.Category
 import com.hejitech.core.model.Entry
+import com.hejitech.core.model.EntryCategory
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.Date
@@ -39,22 +46,50 @@ data class EntryDetailUiState(
     val editTask: String = "",
     val editDurationMinutes: String = "",
     val editActivityDateMillis: Long = 0L,
+    /** See ConfirmUiState.category's kdoc — same "raw value, built-in or custom" shape, same [EntryCategory.displayName] rendering. */
+    val editCategory: String = EntryCategory.OTHER.firestoreValue,
     val isSavingFields: Boolean = false,
     val fieldSaveError: String? = null,
+    /** See [EntryDetailViewModel.detectCategory]. */
+    val isDetectingCategory: Boolean = false,
+    val categoryDetectError: String? = null,
+    val categories: List<Category> = emptyList(),
+    val isAddingNewCategory: Boolean = false,
+    val newCategoryName: String = "",
 )
 
 class EntryDetailViewModel(private val entryId: String) : ViewModel() {
     private val entryRepository = ServiceLocator.entryRepository
+    private val agentClient = ServiceLocator.agentClient
 
     private val _uiState = MutableStateFlow(EntryDetailUiState())
     val uiState: StateFlow<EntryDetailUiState> = _uiState.asStateFlow()
 
     init {
+        // Live, not a one-shot getEntry() — this screen is reached right
+        // back from Confirm after completing/editing this same entry (see
+        // ContempoNavHost's onEditEntry), and with a one-shot fetch the
+        // already-alive ViewModel behind that popped-back destination never
+        // re-reads, so "Complete" would show the entry as still pending
+        // until the whole screen was torn down and recreated (navigate away
+        // and back). A live listener picks up that write immediately, same
+        // "own StateFlow so it can't go stale" reasoning as CaptureViewModel's
+        // openTripEntry/openTimerEntry.
+        entryRepository.observeEntries()
+            .map { entries -> entries.find { it.id == entryId } }
+            .recoverFromAuthRaceOrSignOut { null }
+            .onEach { entry -> _uiState.value = _uiState.value.copy(entry = entry, isLoading = false) }
+            .launchIn(viewModelScope)
+
         viewModelScope.launch {
-            val entry = runCatching { entryRepository.getEntry(entryId) }.getOrNull()
             val attachments = runCatching { entryRepository.listAttachments(entryId) }.getOrDefault(emptyList())
-            _uiState.value = EntryDetailUiState(entry = entry, isLoading = false, attachments = attachments)
+            _uiState.value = _uiState.value.copy(attachments = attachments)
         }
+
+        entryRepository.observeCategories()
+            .recoverFromAuthRaceOrSignOut { emptyList() }
+            .onEach { categories -> _uiState.value = _uiState.value.copy(categories = categories) }
+            .launchIn(viewModelScope)
     }
 
     fun delete(onDeleted: () -> Unit) {
@@ -82,7 +117,9 @@ class EntryDetailViewModel(private val entryId: String) : ViewModel() {
             editTask = entry.task,
             editDurationMinutes = if (entry.durationMinutes > 0) entry.durationMinutes.toString() else "",
             editActivityDateMillis = entry.activityDate.toDate().time,
+            editCategory = entry.category,
             fieldSaveError = null,
+            categoryDetectError = null,
         )
     }
 
@@ -92,18 +129,71 @@ class EntryDetailViewModel(private val entryId: String) : ViewModel() {
         if (value.all { it.isDigit() }) _uiState.value = _uiState.value.copy(editDurationMinutes = value)
     }
     fun onEditActivityDateTimeChanged(millis: Long) { _uiState.value = _uiState.value.copy(editActivityDateMillis = millis) }
+    fun onEditCategoryChanged(value: String) { _uiState.value = _uiState.value.copy(editCategory = value) }
 
     fun cancelEditingFields() {
         _uiState.value = _uiState.value.copy(isEditingFields = false, fieldSaveError = null)
+    }
+
+    /** Lets a category be created in place here too — mirrors ConfirmViewModel.onAddNewCategoryClicked exactly. */
+    fun onAddNewCategoryClicked() {
+        _uiState.value = _uiState.value.copy(isAddingNewCategory = true, newCategoryName = "")
+    }
+
+    fun onCancelAddNewCategory() {
+        _uiState.value = _uiState.value.copy(isAddingNewCategory = false, newCategoryName = "")
+    }
+
+    fun onNewCategoryNameChanged(value: String) {
+        _uiState.value = _uiState.value.copy(newCategoryName = value)
+    }
+
+    fun onConfirmNewCategory() {
+        val name = _uiState.value.newCategoryName.trim()
+        if (name.isEmpty()) return
+        viewModelScope.launch {
+            val created = runCatching { entryRepository.createCategory(name) }.getOrNull()
+            _uiState.value = _uiState.value.copy(
+                editCategory = created?.name ?: name,
+                isAddingNewCategory = false,
+                newCategoryName = "",
+            )
+        }
+    }
+
+    /**
+     * On-device auto-detect for the category dropdown — a correctable
+     * suggestion, not a silent commit: the result just overwrites
+     * [EntryDetailUiState.editCategory], which stays a normal editable
+     * dropdown the host can freely change afterward, same "AI fills it in,
+     * user can still edit" pattern as Confirm's photo-intent reclassify
+     * toggle (see ConfirmViewModel.onTripModeToggled).
+     */
+    fun detectCategory() {
+        val state = _uiState.value
+        _uiState.value = state.copy(isDetectingCategory = true, categoryDetectError = null)
+        viewModelScope.launch {
+            when (val outcome = agentClient.suggestCategory(state.editProperty, state.editTask)) {
+                is CategoryOutcome.Success -> _uiState.value = _uiState.value.copy(
+                    isDetectingCategory = false,
+                    editCategory = outcome.category.firestoreValue,
+                )
+                is CategoryOutcome.Failure -> _uiState.value = _uiState.value.copy(
+                    isDetectingCategory = false,
+                    categoryDetectError = outcome.message,
+                )
+            }
+        }
     }
 
     /**
      * No validation — same "save whatever's currently filled" policy as
      * ConfirmViewModel.saveForLater, just without leaving this screen. Status
      * is left untouched (confirming an entry stays an explicit action via the
-     * Confirm screen's "Complete" button) — this only updates the three
-     * fields, so a still-blank one keeps the entry's missingFields (computed
-     * from these same fields, see Entry.missingFields) non-empty.
+     * Confirm screen's "Complete" button) — property/task/duration are the
+     * only fields missingFields tracks, so a still-blank one there keeps the
+     * entry's missingFields (see Entry.missingFields) non-empty; category is
+     * saved alongside them but isn't part of that check.
      */
     fun saveFields() {
         val state = _uiState.value
@@ -117,6 +207,7 @@ class EntryDetailViewModel(private val entryId: String) : ViewModel() {
                     task = state.editTask,
                     durationMinutes = duration,
                     activityDate = Timestamp(Date(state.editActivityDateMillis)),
+                    category = state.editCategory,
                 )
                 entryRepository.updateEntry(entryId, updated)
                 _uiState.value = _uiState.value.copy(entry = updated, isEditingFields = false, isSavingFields = false)

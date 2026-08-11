@@ -60,7 +60,7 @@ struct EntryDetailScreen: View {
                         Section("Details") {
                             LabeledContent("Property", value: entry.propertyName.isEmpty ? "—" : entry.propertyName)
                             LabeledContent("Role", value: (entry.roleName?.isEmpty ?? true) ? "Me" : entry.roleName!)
-                            LabeledContent("Category", value: entry.categoryEnum.firestoreValue.replacingOccurrences(of: "_", with: " ").capitalized)
+                            LabeledContent("Category", value: EntryCategory.displayName(for: entry.category))
                             LabeledContent("Duration", value: "\(entry.durationMinutes) min")
                             LabeledContent("Activity date & time", value: entry.activityDate.dateValue().formatted())
                             LabeledContent("Logged", value: entry.loggedAt.dateValue().formatted())
@@ -90,16 +90,21 @@ struct EntryDetailScreen: View {
                         }
                     }
                 }
-                .safeAreaInset(edge: .bottom) {
+                // Was a full-width `.safeAreaInset(edge: .bottom)` button —
+                // took up a full row's worth of space pinned at the screen's
+                // bottom. A small floating button instead sits in the
+                // corner over the content, taking up far less room.
+                .overlay(alignment: .bottomTrailing) {
                     NavigationLink(value: confirmRoute(for: entry)) {
-                        Text(actionLabel(for: entry)).bold()
-                            .frame(maxWidth: .infinity)
-                            .padding()
+                        Image(systemName: actionIcon(for: entry))
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 44, height: 44)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(palette.pine)
-                    .padding()
-                    .background(Color(.systemGroupedBackground))
+                    .background(palette.pine, in: Circle())
+                    .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
+                    .accessibilityLabel(actionLabel(for: entry))
+                    .padding(20)
                 }
             } else if viewModel.isLoading {
                 ProgressView()
@@ -117,6 +122,17 @@ struct EntryDetailScreen: View {
                         .foregroundStyle(palette.danger)
                 }
                 .disabled(viewModel.isDeleting)
+            }
+            // The List's default interactive dismiss-on-scroll covers most
+            // of the inline editor, but the numeric-keypad Duration field
+            // has no Return/Done key of its own — this Done key is always
+            // reachable regardless of how tall the list is. hideKeyboard()
+            // (not a single @FocusState) since the editor has several
+            // independent fields, not one to track.
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done", action: hideKeyboard)
+                    .font(ContempoFont.labelLarge().weight(.semibold))
             }
         }
         .alert("Couldn't delete", isPresented: Binding(
@@ -188,12 +204,73 @@ struct EntryDetailScreen: View {
     @ViewBuilder
     private var inlineFieldEditorContent: some View {
         Section("Edit") {
-            TextField("Property", text: $viewModel.editProperty)
-            TextField("Task", text: $viewModel.editTask, axis: .vertical)
+            // Same dictate shortcut as Capture's typing hero — see
+            // DictationButton's doc comment for why property/task get this
+            // here too, not just on Capture.
+            HStack {
+                TextField("Property", text: $viewModel.editProperty)
+                DictationButton(text: $viewModel.editProperty, language: ServiceLocator.captureLanguageStore.selected)
+            }
+            HStack {
+                TextField("Task", text: $viewModel.editTask, axis: .vertical)
+                DictationButton(text: $viewModel.editTask, language: ServiceLocator.captureLanguageStore.selected)
+            }
             TextField("Duration (minutes)", text: $viewModel.editDurationMinutes)
                 .keyboardType(.numberPad)
             DatePicker("Activity date & time", selection: $viewModel.editActivityDate)
                 .datePickerStyle(.compact)
+
+            // Category picker + on-device auto-detect button side by side —
+            // the button is a correctable suggestion, not a silent commit:
+            // it just fills the picker, which stays fully editable
+            // afterward (see EntryDetailViewModel.detectCategory's doc
+            // comment).
+            if viewModel.isAddingNewCategory {
+                VStack(alignment: .leading, spacing: 8) {
+                    TextField("Category name", text: $viewModel.newCategoryName)
+                    HStack {
+                        Spacer()
+                        Button("Cancel") { viewModel.onCancelAddNewCategory() }
+                            .buttonStyle(.bordered)
+                        Button("Add") { viewModel.onConfirmNewCategory() }
+                            .buttonStyle(.borderedProminent)
+                    }
+                }
+            } else {
+                HStack {
+                    Picker("Category", selection: Binding(
+                        get: { viewModel.editCategory },
+                        set: { viewModel.editCategory = $0 }
+                    )) {
+                        ForEach(EntryCategory.allCases, id: \.self) { category in
+                            Text(category.firestoreValue.replacingOccurrences(of: "_", with: " ").capitalized)
+                                .tag(category.firestoreValue)
+                        }
+                        ForEach(viewModel.categories) { category in
+                            Text(category.name).tag(category.name)
+                        }
+                    }
+                    if viewModel.isDetectingCategory {
+                        ProgressView()
+                    } else {
+                        Button {
+                            viewModel.detectCategory()
+                        } label: {
+                            Image(systemName: "sparkles")
+                        }
+                        .buttonStyle(.plain)
+                        .tint(palette.pine)
+                        .accessibilityLabel("Auto-detect category with on-device AI")
+                    }
+                }
+                Button("+ New category") { viewModel.onAddNewCategoryClicked() }
+                if let categoryDetectError = viewModel.categoryDetectError {
+                    Text(categoryDetectError)
+                        .font(ContempoFont.labelSmall())
+                        .foregroundStyle(palette.danger)
+                }
+            }
+
             if let fieldSaveError = viewModel.fieldSaveError {
                 Text(fieldSaveError)
                     .font(ContempoFont.labelSmall())
@@ -336,6 +413,12 @@ struct EntryDetailScreen: View {
         if entry.inProgress { return "Stop timer" }
         if entry.statusEnum == .pendingReview { return "Complete" }
         return "Edit"
+    }
+
+    /// Icon for the floating action button above — see its doc comment.
+    private func actionIcon(for entry: Entry) -> String {
+        if entry.statusEnum == .confirmed { return "pencil" }
+        return "checkmark"
     }
 
     private func confirmRoute(for entry: Entry) -> AppRoute {
@@ -591,6 +674,11 @@ private struct AttachmentNoteEditor: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.contempoPalette) private var palette
     @State private var noteText: String
+    // This sheet's content is short and never scrolls, so there's no
+    // swipe-to-dismiss to fall back on the way a List/Form gets for free —
+    // the tap-outside gesture and keyboard toolbar Done button below are the
+    // only way to get rid of the keyboard without Cancel/Save.
+    @FocusState private var isNoteFocused: Bool
 
     init(attachment: Attachment, onSave: @escaping (String) -> Void) {
         self.attachment = attachment
@@ -608,15 +696,26 @@ private struct AttachmentNoteEditor: View {
                 TextEditor(text: $noteText)
                     .frame(minHeight: 160)
                     .padding(8)
+                    .padding(.trailing, 36)
                     .background(palette.paperRaised)
                     .clipShape(RoundedRectangle(cornerRadius: ContempoRadius.medium))
                     .overlay(
                         RoundedRectangle(cornerRadius: ContempoRadius.medium)
                             .stroke(palette.hairline, lineWidth: 1)
                     )
+                    // Same dictate shortcut as Capture's typing hero and the
+                    // property/task fields above — see DictationButton's doc
+                    // comment.
+                    .overlay(alignment: .bottomTrailing) {
+                        DictationButton(text: $noteText, language: ServiceLocator.captureLanguageStore.selected)
+                            .padding(10)
+                    }
+                    .focused($isNoteFocused)
                 Spacer()
             }
             .padding(20)
+            .contentShape(Rectangle())
+            .onTapGesture { isNoteFocused = false }
             .navigationTitle("Note")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -628,6 +727,11 @@ private struct AttachmentNoteEditor: View {
                         onSave(noteText.trimmingCharacters(in: .whitespacesAndNewlines))
                         dismiss()
                     }
+                }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { isNoteFocused = false }
+                        .font(ContempoFont.labelLarge().weight(.semibold))
                 }
             }
         }

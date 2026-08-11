@@ -6,8 +6,6 @@ import com.hejitech.contempo.data.ServiceLocator
 import com.hejitech.contempo.timer.OngoingWorkNotificationService
 import com.hejitech.contempo.wear.PendingAudioProcessWorker
 import com.google.firebase.Firebase
-import com.google.firebase.appcheck.appCheck
-import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
 import com.google.firebase.auth.auth
 import com.google.firebase.crashlytics.crashlytics
 import com.google.firebase.perf.performance
@@ -44,9 +42,7 @@ class ContempoApp : Application() {
 
         // Off for local/emulator dev builds so that dev-machine crashes and
         // the known emulator-only flakiness (see AuthAwareFlow.kt's kdoc)
-        // don't pollute the real crash console — same "only the real path
-        // talks to real backend services" split as the App Check branch
-        // right below.
+        // don't pollute the real crash console.
         Firebase.crashlytics.setCrashlyticsCollectionEnabled(!BuildConfig.USE_FIREBASE_EMULATOR)
         // Same reasoning — dev-loop traces (against a local emulator, on
         // whatever machine happens to be running it) aren't representative
@@ -56,21 +52,35 @@ class ContempoApp : Application() {
 
         if (BuildConfig.USE_FIREBASE_EMULATOR) {
             connectToEmulators()
-            // No App Check provider installed here at all — Firestore/Auth
-            // enforcement for App Check isn't turned on for this single-pilot
-            // MVP yet, and DebugAppCheckProviderFactory still round-trips to
-            // the real App Check backend for a debug token exchange even
-            // when Firestore itself is pointed at the emulator. That
-            // round-trip has caused multi-second stalls in the middle of
-            // unrelated Firestore writes (e.g. the Confirm-screen "hangs
-            // then times out" bug) whenever it overlapped with an Auth
-            // token refresh. Revisit once App Check enforcement actually
-            // matters and is deliberately being tested.
-        } else {
-            Firebase.appCheck.installAppCheckProviderFactory(
-                PlayIntegrityAppCheckProviderFactory.getInstance()
-            )
         }
+        // No App Check provider installed at all, in either build variant —
+        // App Check enforcement isn't turned on anywhere yet (every Cloud
+        // Function in backend/functions/src/index.ts sets
+        // enforceAppCheck: false, and firestore.rules/storage.rules make no
+        // mention of App Check either), so a provider buys zero
+        // verification benefit today. There IS a real cost on the release
+        // side: this used to unconditionally install
+        // PlayIntegrityAppCheckProviderFactory here, and that provider's
+        // network round-trip to Play Integrity's attestation service before
+        // the SDK would attach a token — stalling or outright failing,
+        // e.g. from an internal-testing-track install not satisfying
+        // attestation — was the actual root cause of the Confirm-screen
+        // "Save hangs then times out" bug on real Android devices
+        // (SAVE_TIMEOUT_MS/resetFirestoreConnection in ConfirmViewModel.kt
+        // were only ever treating the symptom): every write first waited on
+        // a Play Integrity token that could take longer than
+        // SAVE_TIMEOUT_MS to resolve, even though Firestore would have
+        // accepted the write with no token at all. This is the exact same
+        // failure mode already documented above for
+        // DebugAppCheckProviderFactory against the emulator — it just
+        // wasn't also applied to the release path until now. iOS has never
+        // installed an App Check provider in any build variant (see
+        // FirebaseBootstrap.swift) and has never hit this, which is the
+        // other half of the evidence this is an App Check problem and not a
+        // general connectivity one. Revisit once App Check enforcement
+        // actually matters and is deliberately turned on and tested
+        // end-to-end (both the backend enforceAppCheck flags and Play
+        // Integrity's Play Console/Google Cloud project setup).
 
         ServiceLocator.initialize(this)
         // No anonymous sign-in here anymore — auth.currentUser stays null
@@ -151,7 +161,6 @@ class ContempoApp : Application() {
 
     private fun connectToEmulators() {
         val host = EMULATOR_HOST
-        com.google.firebase.firestore.FirebaseFirestore.setLoggingEnabled(true) // TEMP: diagnosing save-timeout bug
         Firebase.auth.useEmulator(host, 9099)
         Firebase.firestore.useEmulator(host, 8080)
         // Disk-persisted local cache would otherwise survive across app

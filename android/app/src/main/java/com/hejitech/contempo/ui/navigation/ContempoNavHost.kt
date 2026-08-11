@@ -211,7 +211,8 @@ fun ContempoNavHost() {
                                 odometerReading = result.odometerReading,
                             )
                         )
-                    }
+                    },
+                    onEntryClick = { entryId -> navController.navigate(EntryDetailRoute.build(entryId)) }
                 )
             }
             composable(

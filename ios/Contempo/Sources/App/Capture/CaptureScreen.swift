@@ -2,16 +2,41 @@ import ContempoCore
 import ContempoFirestore
 import SwiftUI
 
+/// How long the ongoing-work/trip banners linger in their "completed" state — see the two `.onChange` blocks in CaptureScreen's body.
+private let recentlyCompletedDisplaySeconds: Double = 5
+
 struct CaptureScreen: View {
     let onDrafted: (ConfirmParams) -> Void
+    var onEntryClick: (String) -> Void = { _ in }
     @State private var viewModel = CaptureViewModel()
-    @State private var typeExpanded = false
-    @State private var showQuickCaptureExplanation = false
     @State private var showHelpWalkthrough = false
     @State private var photoCamera = CameraCaptureState()
     @State private var showCancelWorkDialog = false
     @State private var showCancelTripDialog = false
+    // Snapshot of the most recently open trip/timer entry plus a "still in
+    // its post-completion grace window" flag — see the two `.onChange`
+    // blocks below and OngoingWorkBanner/OngoingTripBanner's `isCompleted`
+    // doc comment for why this exists (mirrors Android's `lastTripEntry`/
+    // `tripJustCompleted` locals in CaptureScreen.kt).
+    @State private var lastTripEntry: Entry?
+    @State private var tripJustCompleted = false
+    @State private var lastTimerEntry: Entry?
+    @State private var timerJustCompleted = false
+    // Distinguishes a cancel from a real completion for the two `.onChange`
+    // blocks below — both transitions clear the open entry the same way,
+    // but only a real completion should get the "recently completed, tap
+    // to edit" banner treatment; a cancelled entry no longer exists, so
+    // there's nothing to edit. Set true right when the cancel confirmation
+    // is tapped, consumed (reset to false) by the `.onChange` the moment it
+    // reacts.
+    @State private var tripWasCancelled = false
+    @State private var workWasCancelled = false
     @Environment(\.contempoPalette) private var palette
+    // Drives TypedCaptureHero's TextEditor focus — hoisted up here (rather
+    // than local to that private struct) so this screen's own tap-outside/
+    // scrollDismissesKeyboard/keyboard-toolbar wiring below can all resign
+    // it, same reasoning as ChatScreen's isInputFocused.
+    @FocusState private var isTypingFocused: Bool
 
     private var busy: Bool {
         viewModel.isRecording || viewModel.isTranscribing || viewModel.isParsing || viewModel.finalizedTranscript != nil ||
@@ -35,265 +60,223 @@ struct CaptureScreen: View {
                     .accessibilityLabel("Help & walkthrough")
                 }
 
-                if let tripEntry = viewModel.openTripEntry {
+                TitleWordmark(confirmedHours: viewModel.confirmedHours)
+
+                if let tripEntry = lastTripEntry {
+                    // isGps is read off this entry snapshot, not
+                    // viewModel.gpsTripOpen (openTripEntry?.mileageCaptureMethod
+                    // == "gps") — that goes stale (always false) the instant
+                    // openTripEntry flips nil, which is exactly the moment
+                    // this needs to still know what kind of trip just closed.
+                    let isGps = tripEntry.mileageCaptureMethod == "gps"
                     OngoingTripBanner(
                         entry: tripEntry,
-                        isGps: viewModel.gpsTripOpen,
-                        onTap: { viewModel.toggleGpsTrip() },
+                        isGps: isGps,
+                        isCompleted: tripJustCompleted,
+                        onComplete: {
+                            if isGps { viewModel.toggleGpsTrip() } else { photoCamera.launch() }
+                        },
                         onPauseToggle: {
                             if tripEntry.isPaused == true { viewModel.resumeTrip() } else { viewModel.pauseTrip() }
                         },
-                        onCancel: { showCancelTripDialog = true }
+                        onCancel: { showCancelTripDialog = true },
+                        onTapCompleted: { onEntryClick(tripEntry.id ?? "") }
                     )
                     .transition(.move(edge: .top).combined(with: .opacity))
                 }
 
-                if let timerEntry = viewModel.openTimerEntry {
+                if let timerEntry = lastTimerEntry {
                     OngoingWorkBanner(
                         entry: timerEntry,
-                        onTapToComplete: { viewModel.completeOpenTimer() },
+                        isCompleted: timerJustCompleted,
+                        onComplete: { viewModel.completeOpenTimer() },
                         onPauseToggle: {
                             if timerEntry.isPaused == true { viewModel.resumeWork() } else { viewModel.pauseWork() }
                         },
-                        onCancel: { showCancelWorkDialog = true }
+                        onCancel: { showCancelWorkDialog = true },
+                        onTapCompleted: { onEntryClick(timerEntry.id ?? "") }
                     )
                     .transition(.move(edge: .top).combined(with: .opacity))
                 }
 
-                if typeExpanded {
-                    // Typed Mode Escape Hatch — ContempoCard rather than
-                    // hand-rolled background/clipShape/overlay, so this stays
-                    // in sync with every other card on the app automatically.
-                    ContempoCard {
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack {
-                                Button {
-                                    typeExpanded = false
-                                } label: {
-                                    Image(systemName: "arrow.left")
-                                        .font(.title3)
+                // Session-only choice between the two hero widgets below —
+                // separate from Settings' persisted default, which only
+                // seeds which one a *fresh* Capture visit opens into (see
+                // CaptureViewModel.captureMode's doc comment: this toggle
+                // never writes the persisted default back). Everything else
+                // on this screen — quick-action row, photo/transcript
+                // feedback, Quick Capture — renders unconditionally
+                // regardless of mode; only the hero itself is mode-driven.
+                VStack(spacing: 20) {
+                    CaptureModeToggle(selected: viewModel.captureMode, order: viewModel.captureModeOrder, onSelect: viewModel.setCaptureMode)
+
+                    // Asymmetric slide+fade, direction fixed per branch
+                    // (typing always enters/exits via the trailing edge,
+                    // voice always via the leading edge) so it reads as a
+                    // left/right swap in either direction without having to
+                    // compute a "forward"/"reverse" flag — see Android's
+                    // CaptureScreen.kt AnimatedContent for the equivalent.
+                    //
+                    // `minHeight` + `.top` alignment reserves enough room for
+                    // both variants' typical (non-parsing) height so the
+                    // quick-action row below never shifts when switching
+                    // modes — mirrors Android's `heightIn(min = 260.dp)` +
+                    // `Alignment.TopCenter` on its equivalent Box.
+                    //
+                    // `simultaneousGesture` (not `.gesture`) so this swipe
+                    // detector runs *alongside* TypedCaptureHero's TextEditor
+                    // rather than stealing its touches — a plain `.gesture`
+                    // on an ancestor can block a child's own text-selection
+                    // drag in SwiftUI. The high distance + mostly-horizontal
+                    // thresholds below exist for the same reason: a real
+                    // text-selection drag is short/diagonal, a page swipe is
+                    // long and flat, so this only fires for the latter.
+                    Group {
+                        if viewModel.captureMode == .typing {
+                            TypedCaptureHero(viewModel: viewModel, onDrafted: onDrafted, isFocused: $isTypingFocused)
+                                .transition(.asymmetric(
+                                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                                    removal: .move(edge: .leading).combined(with: .opacity)
+                                ))
+                        } else {
+                            VStack(spacing: 16) {
+                                VoiceButton(
+                                    isRecording: viewModel.isRecording,
+                                    isThinking: viewModel.isTranscribing || viewModel.isParsing,
+                                    amplitude: viewModel.recordingAmplitude
+                                ) {
+                                    Task {
+                                        if viewModel.isRecording {
+                                            if viewModel.quickCaptureEnabled {
+                                                viewModel.stopQuickCaptureAndSave()
+                                            } else {
+                                                await viewModel.stopRecordingAndProcess()
+                                            }
+                                        } else {
+                                            await viewModel.startRecording()
+                                        }
+                                    }
+                                }
+                                .disabled(viewModel.isTranscribing || viewModel.isParsing)
+
+                                if viewModel.isRecording {
+                                    RecordingIndicator("Listening…")
+                                } else if viewModel.isTranscribing {
+                                    ThinkingIndicator("Transcribing…")
+                                } else if viewModel.isParsing {
+                                    ThinkingIndicator(stageLabel(viewModel.parsingStage))
+                                } else {
+                                    Text("Tap to speak")
+                                        .font(ContempoFont.titleMedium())
                                         .foregroundStyle(palette.inkSoft)
                                 }
-                                .buttonStyle(.plain)
-                                .disabled(busy)
-
-                                Text("Type what you did")
-                                    .font(ContempoFont.titleMedium())
-                                    .foregroundStyle(palette.ink)
-                                Spacer()
                             }
-
-                            ZStack(alignment: .topLeading) {
-                                // TextEditor has no built-in placeholder —
-                                // overlay one manually, matching Android's
-                                // capture_hint copy/behavior.
-                                if viewModel.inputText.isEmpty {
-                                    Text("Say or type what you did…")
-                                        .font(ContempoFont.bodyLarge())
-                                        .foregroundStyle(palette.inkFaint)
-                                        .padding(.horizontal, 13)
-                                        .padding(.vertical, 16)
-                                        .allowsHitTesting(false)
-                                }
-                                TextEditor(text: $viewModel.inputText)
-                                    .font(ContempoFont.bodyLarge())
-                                    .frame(minHeight: 120)
-                                    .padding(8)
-                                    .scrollContentBackground(.hidden)
-                            }
-                            // A recessed tone (paper, not paperRaised) so the
-                            // field reads as inset within the card rather than
-                            // blending into it.
-                            .background(palette.paper)
-                            .clipShape(RoundedRectangle(cornerRadius: ContempoRadius.medium))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: ContempoRadius.medium)
-                                    .stroke(palette.hairline, lineWidth: 1)
-                            )
-
-                            if viewModel.isParsing {
-                                HStack(spacing: 8) {
-                                    ProgressView()
-                                    Text(stageLabel(viewModel.parsingStage))
-                                        .font(ContempoFont.labelSmall())
-                                        .foregroundStyle(palette.inkFaint)
+                            .transition(.asymmetric(
+                                insertion: .move(edge: .leading).combined(with: .opacity),
+                                removal: .move(edge: .trailing).combined(with: .opacity)
+                            ))
+                        }
+                    }
+                    .frame(minHeight: 250, alignment: .top)
+                    .animation(.easeInOut(duration: 0.25), value: viewModel.captureMode)
+                    .simultaneousGesture(
+                        DragGesture(minimumDistance: 24)
+                            .onEnded { value in
+                                guard !busy else { return }
+                                let horizontal = value.translation.width
+                                let vertical = value.translation.height
+                                guard abs(horizontal) > 100, abs(horizontal) > abs(vertical) * 2 else { return }
+                                if horizontal < 0, viewModel.captureMode == .audioFirst {
+                                    viewModel.setCaptureMode(.typing)
+                                } else if horizontal > 0, viewModel.captureMode == .typing {
+                                    viewModel.setCaptureMode(.audioFirst)
                                 }
                             }
+                    )
 
-                            if let errorMessage = viewModel.errorMessage {
-                                Text(errorMessage).foregroundStyle(palette.danger).font(ContempoFont.labelSmall())
-                            }
+                    // Quick actions for the other primary capture modes —
+                    // promoted out of the old "More ways to capture" menu
+                    // so they're discoverable without an extra tap, but
+                    // sized well below the hero VoiceButton so voice
+                    // stays visually primary. Each session-based one
+                    // hides once its own ongoing-session banner is
+                    // showing above, since the banner already owns that
+                    // mode's stop/complete affordance. Photo capture has
+                    // no such banner (a photo is a one-shot action, not
+                    // an ongoing session) so it always shows. "Type
+                    // instead" was removed once CaptureModeToggle above
+                    // became the only entry point into Typing mode worth
+                    // keeping — down to 3 buttons max now, spaced out a bit
+                    // more than before to use the room that freed up.
+                    //
+                    // Still ViewThatFits, not a plain HStack — 3 buttons
+                    // comfortably fit a single line on typical phone widths
+                    // at this spacing, but ViewThatFits costs nothing when
+                    // it doesn't need to fall back and keeps the same
+                    // overflow safety net (see git history for the bug this
+                    // originally fixed when there were 4 buttons) for
+                    // narrower screens or larger accessibility text.
+                    let quickActions = buildQuickActions()
+                    ViewThatFits(in: .horizontal) {
+                        quickActionsRow(quickActions)
+                        VStack(spacing: 12) {
+                            let half = (quickActions.count + 1) / 2
+                            quickActionsRow(Array(quickActions.prefix(half)))
+                            quickActionsRow(Array(quickActions.suffix(quickActions.count - half)))
+                        }
+                    }
+
+                    if viewModel.isProcessingPhoto {
+                        ThinkingIndicator("Looking at your photo…")
+                    } else if photoCamera.permissionDenied {
+                        Text("Camera access is needed to attach a photo — tap again to grant it.")
+                            .font(ContempoFont.labelSmall())
+                            .foregroundStyle(palette.inkFaint)
+                    }
+
+                    if let finalizedTranscript = viewModel.finalizedTranscript {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Here's what we heard")
+                                .font(ContempoFont.titleMedium())
+                            Text(finalizedTranscript)
+                                .font(ContempoFont.bodyLarge())
 
                             HStack {
-                                Button("Enter manually") {
-                                    typeExpanded = false
-                                    viewModel.manualEntry(onDrafted: onDrafted)
-                                }
-                                .buttonStyle(.bordered)
-
+                                Button("Try again") { viewModel.discardTranscript() }
+                                    .buttonStyle(.bordered)
                                 Spacer()
-
-                                Button {
-                                    typeExpanded = false
-                                    viewModel.submit(onDrafted: onDrafted)
-                                } label: {
-                                    Text("Parse & Continue").bold()
+                                Button("Looks good — continue") {
+                                    viewModel.confirmTranscript(onDrafted: onDrafted)
                                 }
                                 .buttonStyle(.borderedProminent)
                                 .tint(palette.pine)
-                                .disabled(viewModel.isParsing || viewModel.inputText.trimmingCharacters(in: .whitespaces).isEmpty)
+                                .disabled(viewModel.isParsing)
                             }
                         }
-                        .padding(20)
+                        .padding()
+                        .background(palette.paperRaised)
+                        .clipShape(RoundedRectangle(cornerRadius: ContempoRadius.large))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: ContempoRadius.large)
+                                .stroke(palette.hairline, lineWidth: 1)
+                        )
                     }
-                } else {
-                    // Voice Primary Mode
-                    VStack(spacing: 20) {
-                        VoiceButton(
-                            isRecording: viewModel.isRecording,
-                            isThinking: viewModel.isTranscribing || viewModel.isParsing,
-                            amplitude: viewModel.recordingAmplitude
-                        ) {
-                            Task {
-                                if viewModel.isRecording {
-                                    if viewModel.quickCaptureEnabled {
-                                        viewModel.stopQuickCaptureAndSave()
-                                    } else {
-                                        await viewModel.stopRecordingAndProcess()
-                                    }
-                                } else {
-                                    await viewModel.startRecording()
-                                }
-                            }
-                        }
-                        .disabled(viewModel.isTranscribing || viewModel.isParsing)
 
-                        if viewModel.isRecording {
-                            RecordingIndicator("Listening…")
-                        } else if viewModel.isTranscribing {
-                            ThinkingIndicator("Transcribing…")
-                        } else if viewModel.isParsing {
-                            ThinkingIndicator(stageLabel(viewModel.parsingStage))
-                        } else {
-                            Text("Tap to speak")
-                                .font(ContempoFont.titleMedium())
-                                .foregroundStyle(palette.inkSoft)
-                        }
-
-                        // Quick actions for the other primary capture modes —
-                        // promoted out of the old "More ways to capture" menu
-                        // so they're discoverable without an extra tap, but
-                        // sized well below the hero VoiceButton so voice
-                        // stays visually primary. Each session-based one
-                        // hides once its own ongoing-session banner is
-                        // showing above, since the banner already owns that
-                        // mode's stop/complete affordance. Photo capture has
-                        // no such banner (a photo is a one-shot action, not
-                        // an ongoing session) so it always shows.
-                        //
-                        // ViewThatFits, not a plain HStack — with all four
-                        // buttons visible (no timer/trip in progress) this
-                        // doesn't fit a narrow iPhone (SE-class) at a
-                        // comfortable tap size, and a plain HStack neither
-                        // wraps nor scrolls, so the overflowing button
-                        // (whichever landed last — "Type instead" with all
-                        // four shown) was pushed off-screen and effectively
-                        // disappeared, same bug Android's Capture tab had.
-                        // Wrapping to a second line keeps every action
-                        // visible and reachable regardless of screen width.
-                        let quickActions = buildQuickActions()
-                        ViewThatFits(in: .horizontal) {
-                            quickActionsRow(quickActions)
-                            VStack(spacing: 12) {
-                                let half = (quickActions.count + 1) / 2
-                                quickActionsRow(Array(quickActions.prefix(half)))
-                                quickActionsRow(Array(quickActions.suffix(quickActions.count - half)))
-                            }
-                        }
-
-                        if viewModel.isProcessingPhoto {
-                            ThinkingIndicator("Looking at your photo…")
-                        } else if photoCamera.permissionDenied {
-                            Text("Camera access is needed to attach a photo — tap again to grant it.")
-                                .font(ContempoFont.labelSmall())
-                                .foregroundStyle(palette.inkFaint)
-                        }
-
-                        if let finalizedTranscript = viewModel.finalizedTranscript {
-                            VStack(alignment: .leading, spacing: 10) {
-                                Text("Here's what we heard")
-                                    .font(ContempoFont.titleMedium())
-                                Text(finalizedTranscript)
-                                    .font(ContempoFont.bodyLarge())
-
-                                HStack {
-                                    Button("Try again") { viewModel.discardTranscript() }
-                                        .buttonStyle(.bordered)
-                                    Spacer()
-                                    Button("Looks good — continue") {
-                                        viewModel.confirmTranscript(onDrafted: onDrafted)
-                                    }
-                                    .buttonStyle(.borderedProminent)
-                                    .tint(palette.pine)
-                                    .disabled(viewModel.isParsing)
-                                }
-                            }
-                            .padding()
-                            .background(palette.paperRaised)
-                            .clipShape(RoundedRectangle(cornerRadius: ContempoRadius.large))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: ContempoRadius.large)
-                                    .stroke(palette.hairline, lineWidth: 1)
-                            )
-                        }
-
-                        if viewModel.showLanguageSelector {
-                            Picker("Language", selection: Binding(
-                                get: { viewModel.selectedCaptureLanguage },
-                                set: { viewModel.selectedCaptureLanguage = $0 }
-                            )) {
-                                Text("English").tag(CaptureLanguage.english)
-                                Text("中文").tag(CaptureLanguage.chinese)
-                                Text("Auto").tag(CaptureLanguage.auto)
-                            }
-                            .pickerStyle(.segmented)
-                            .padding(.horizontal)
-                        }
-
-                        // Controls Bar
-                        VStack(spacing: 14) {
-                            HStack {
-                                HStack(spacing: 6) {
-                                    Text("Quick Capture")
-                                        .font(ContempoFont.labelLarge())
-                                        .foregroundStyle(palette.ink)
-
-                                    Button {
-                                        showQuickCaptureExplanation = true
-                                    } label: {
-                                        Image(systemName: "info.circle")
-                                            .foregroundStyle(palette.inkSoft)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-
-                                Spacer()
-
-                                Toggle("", isOn: Binding(
-                                    get: { viewModel.quickCaptureEnabled },
-                                    set: { viewModel.quickCaptureEnabled = $0 }
-                                ))
-                                .labelsHidden()
-                                .tint(palette.pine)
-                            }
-
-                            if viewModel.quickCaptureEnabled || viewModel.quickCaptureStatus.hasAnything {
-                                QuickCaptureStatusRow(
-                                    status: viewModel.quickCaptureStatus,
-                                    onProcessNow: { viewModel.processQuickCaptureBacklogNow() }
-                                )
-                            }
-                        }
+                    // Quick Capture's on/off toggle lives in Settings now
+                    // (an app-level preference, not a per-capture-session
+                    // choice — see SettingsScreen), so this screen only ever
+                    // shows its live status: visible whenever Quick Capture
+                    // is on (so it reads as "here's what's happening" even
+                    // at zero backlog) or whenever there's still a backlog
+                    // left over from earlier even after the Settings toggle
+                    // was turned back off — hidden entirely otherwise so a
+                    // host who's never touched this feature sees nothing
+                    // extra.
+                    if viewModel.quickCaptureEnabled || viewModel.quickCaptureStatus.hasAnything {
+                        QuickCaptureStatusRow(
+                            status: viewModel.quickCaptureStatus,
+                            onProcessNow: { viewModel.processQuickCaptureBacklogNow() }
+                        )
                         .padding()
                         .background(palette.paperRaised)
                         .clipShape(RoundedRectangle(cornerRadius: ContempoRadius.medium))
@@ -315,11 +298,70 @@ struct CaptureScreen: View {
             .padding(20)
             .animation(.easeInOut(duration: 0.3), value: viewModel.openTripEntry?.id)
             .animation(.easeInOut(duration: 0.3), value: viewModel.openTimerEntry?.id)
+            .onChange(of: viewModel.openTripEntry) { _, newValue in
+                if let newValue {
+                    lastTripEntry = newValue
+                    tripJustCompleted = false
+                } else if tripWasCancelled {
+                    // Cancelled, not completed — the entry no longer
+                    // exists, so there's nothing to tap into and edit.
+                    // Collapse right away instead of running the "just
+                    // completed" treatment below.
+                    tripWasCancelled = false
+                    lastTripEntry = nil
+                } else if lastTripEntry != nil {
+                    // The trip just closed (openTripEntry went from set to
+                    // nil) — keep the card up a few seconds longer in a
+                    // "completed" state instead of collapsing instantly, so
+                    // there's a window to tap straight into EntryDetail and
+                    // fill in anything still missing rather than having to
+                    // go find it later from Dashboard's pending list.
+                    // Cancelled/restarted automatically if a new trip starts
+                    // before this Task finishes, since that reruns this
+                    // onChange with a non-nil newValue first.
+                    tripJustCompleted = true
+                    Task {
+                        try? await Task.sleep(nanoseconds: UInt64(recentlyCompletedDisplaySeconds * 1_000_000_000))
+                        tripJustCompleted = false
+                        lastTripEntry = nil
+                    }
+                }
+            }
+            .onChange(of: viewModel.openTimerEntry) { _, newValue in
+                if let newValue {
+                    lastTimerEntry = newValue
+                    timerJustCompleted = false
+                } else if workWasCancelled {
+                    // See the trip case above for why a cancel skips the
+                    // "just completed" treatment entirely.
+                    workWasCancelled = false
+                    lastTimerEntry = nil
+                } else if lastTimerEntry != nil {
+                    // See the trip case above for why this stays up briefly
+                    // instead of disappearing the instant openTimerEntry goes nil.
+                    timerJustCompleted = true
+                    Task {
+                        try? await Task.sleep(nanoseconds: UInt64(recentlyCompletedDisplaySeconds * 1_000_000_000))
+                        timerJustCompleted = false
+                        lastTimerEntry = nil
+                    }
+                }
+            }
+        }
+        // Typing mode's TextEditor otherwise had no way to dismiss the
+        // keyboard — same fix as ChatScreen's isInputFocused: interactive
+        // dismiss-on-scroll, tap anywhere else to dismiss, and an explicit
+        // Done key on the keyboard itself.
+        .scrollDismissesKeyboard(.interactively)
+        .onTapGesture { isTypingFocused = false }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { isTypingFocused = false }
+                    .font(ContempoFont.labelLarge().weight(.semibold))
+            }
         }
         .navigationTitle("Capture")
-        .sheet(isPresented: $showQuickCaptureExplanation) {
-            QuickCaptureExplanationSheet()
-        }
         .sheet(isPresented: $showHelpWalkthrough) {
             HelpWalkthroughSheet()
         }
@@ -334,7 +376,10 @@ struct CaptureScreen: View {
             isPresented: $showCancelWorkDialog,
             titleVisibility: .visible
         ) {
-            Button("Discard", role: .destructive) { viewModel.cancelWork() }
+            Button("Discard", role: .destructive) {
+                workWasCancelled = true
+                viewModel.cancelWork()
+            }
             Button("Keep going", role: .cancel) {}
         } message: {
             Text("This deletes the timer and everything logged so far. This can't be undone.")
@@ -344,20 +389,13 @@ struct CaptureScreen: View {
             isPresented: $showCancelTripDialog,
             titleVisibility: .visible
         ) {
-            Button("Discard", role: .destructive) { viewModel.cancelTrip() }
+            Button("Discard", role: .destructive) {
+                tripWasCancelled = true
+                viewModel.cancelTrip()
+            }
             Button("Keep going", role: .cancel) {}
         } message: {
             Text("This deletes the trip and everything tracked so far. This can't be undone.")
-        }
-    }
-
-    private func stageLabel(_ stage: ParsingStage) -> String {
-        switch stage {
-        case .idle: return ""
-        case .reading: return "Reading…"
-        case .tryingOnDevice: return "Trying on-device…"
-        case .fallingBackToCloud: return "Falling back to cloud…"
-        case .structuring: return "Structuring…"
         }
     }
 
@@ -383,31 +421,109 @@ struct CaptureScreen: View {
         actions.append(QuickAction(id: "photo", icon: "camera.fill", label: "Take a photo", disabled: busy) {
             photoCamera.launch()
         })
-        // Same size/shape as the buttons above so it reads as part of the
-        // same row, but left in its original neutral tint rather than the
-        // pine accent — this is an escape hatch out of voice capture, not
-        // another primary capture mode.
-        actions.append(QuickAction(
-            id: "type",
-            icon: "keyboard",
-            label: "Type instead",
-            tint: palette.inkSoft,
-            tintBackground: palette.paperRaised
-        ) {
-            typeExpanded = true
-        })
         return actions
     }
 
     @ViewBuilder
     private func quickActionsRow(_ actions: [QuickAction]) -> some View {
-        HStack(spacing: 20) {
+        HStack(spacing: 28) {
             ForEach(actions) { action in
                 QuickActionButton(icon: action.icon, label: action.label, tint: action.tint, tintBackground: action.tintBackground) {
                     action.action()
                 }
                 .disabled(action.disabled)
             }
+        }
+    }
+}
+
+/// The screen's title, doubling as a passive progress visualizer: letters
+/// render brand-colored up through the fraction of the word matching
+/// progress toward `MaterialParticipationTest.thresholdHours`, muted past
+/// it. The "X / 100 hrs" caption underneath keeps the exact number visible
+/// too — the fill alone reads at a glance but isn't precise, and doesn't
+/// duplicate Dashboard's own "X / 100 hrs toward the Y test" callout since
+/// this one omits the test name and sits in a much smaller space (see
+/// CaptureViewModel.confirmedHours's doc comment for where the figure comes
+/// from). Both the fill and the number animate off one shared
+/// `animatedHours` value (raw hours, not the 0-1 fraction) so they're
+/// always in lockstep — eases in from empty on first appearance and eases
+/// to a new value whenever `confirmedHours` changes (e.g. right after
+/// confirming an entry) instead of snapping, so the sweep and the count-up
+/// both read as motion — see Android's TitleWordmark in CaptureScreen.kt
+/// for the equivalent. A continuous brass shimmer loops through the filled
+/// portion on top of that two-tone gradient — the gradient alone reads as
+/// static styling once it stops moving, so the shimmer is what actually
+/// keeps the letters legible as a *live* indicator rather than a one-time
+/// paint job.
+private struct TitleWordmark: View {
+    let confirmedHours: Double
+    private let thresholdHours = MaterialParticipationTest.thresholdHours
+
+    @State private var animatedHours: Double = 0
+    @State private var shimmerT: CGFloat = -0.6
+    @Environment(\.contempoPalette) private var palette
+
+    private var progress: Double {
+        min(1, max(0, animatedHours / Double(thresholdHours)))
+    }
+
+    private var stops: [Gradient.Stop] {
+        let p = progress
+        let feather = 0.06
+        return [
+            Gradient.Stop(color: palette.pine, location: 0),
+            Gradient.Stop(color: palette.pine, location: min(1, max(0, p - feather))),
+            Gradient.Stop(color: palette.inkFaint, location: min(1, max(0, p + feather))),
+            Gradient.Stop(color: palette.inkFaint, location: 1),
+        ]
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Contempo")
+                .font(ContempoFont.headlineMedium())
+                .foregroundStyle(LinearGradient(stops: stops, startPoint: .leading, endPoint: .trailing))
+                .overlay(alignment: .leading) {
+                    // Confined to the filled fraction via the HStack below
+                    // (filled-width rect + a Color.clear remainder, so the
+                    // overlay always spans the full wordmark width the way
+                    // `.overlay` expects), then clipped to just the glyph
+                    // pixels via `.mask` so the sweep only ever tints
+                    // already-earned letters, never the surrounding padding
+                    // or the muted portion.
+                    GeometryReader { proxy in
+                        HStack(spacing: 0) {
+                            Rectangle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [.clear, palette.brass, .clear],
+                                        startPoint: UnitPoint(x: shimmerT - 0.25, y: 0.5),
+                                        endPoint: UnitPoint(x: shimmerT + 0.25, y: 0.5)
+                                    )
+                                )
+                                .frame(width: proxy.size.width * progress)
+                            Color.clear
+                        }
+                    }
+                    .mask {
+                        Text("Contempo")
+                            .font(ContempoFont.headlineMedium())
+                    }
+                    .allowsHitTesting(false)
+                }
+            Text("\(Int(animatedHours)) / \(thresholdHours) hrs")
+                .font(ContempoFont.labelSmall())
+                .foregroundStyle(palette.inkSoft)
+        }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.9)) { animatedHours = confirmedHours }
+            withAnimation(.linear(duration: 2.2).repeatForever(autoreverses: false)) {
+                shimmerT = 1.6
+            }
+        }
+        .onChange(of: confirmedHours) { _, newValue in
+            withAnimation(.easeInOut(duration: 0.9)) { animatedHours = newValue }
         }
     }
 }
@@ -421,6 +537,149 @@ private struct QuickAction: Identifiable {
     var tintBackground: Color?
     var disabled: Bool = false
     let action: () -> Void
+}
+
+private func stageLabel(_ stage: ParsingStage) -> String {
+    switch stage {
+    case .idle: return ""
+    case .reading: return "Reading…"
+    case .tryingOnDevice: return "Trying on-device…"
+    case .fallingBackToCloud: return "Falling back to cloud…"
+    case .structuring: return "Structuring…"
+    }
+}
+
+/// Switches which hero widget CaptureScreen shows below it — the big
+/// VoiceButton for `.audioFirst`, or `TypedCaptureHero` for `.typing`.
+/// Segmented, same visual language as the language picker in Settings.
+/// Session-only: see CaptureViewModel.captureMode's doc comment for why
+/// this never writes back to Settings' persisted default. `order` puts the
+/// user's chosen default on the left — see
+/// CaptureViewModel.captureModeOrder's doc comment for why it's a fixed
+/// snapshot, not re-derived from `selected` on every recomposition (that
+/// would reorder the control itself every time the user taps the other
+/// segment).
+private struct CaptureModeToggle: View {
+    let selected: CaptureMode
+    let order: [CaptureMode]
+    let onSelect: (CaptureMode) -> Void
+
+    private func label(for mode: CaptureMode) -> String {
+        switch mode {
+        case .audioFirst: return "Audio-first"
+        case .typing: return "Typing"
+        }
+    }
+
+    var body: some View {
+        Picker("Capture mode", selection: Binding(get: { selected }, set: onSelect)) {
+            ForEach(order, id: \.self) { mode in
+                Text(label(for: mode)).tag(mode)
+            }
+        }
+        .pickerStyle(.segmented)
+        .padding(.horizontal)
+    }
+}
+
+/// The Typing hero — same text field/parsing-row/button-row content as the
+/// old "Type instead" card, minus its ContempoCard wrapper and back-arrow:
+/// typing is a primary capture mode now (see CaptureModeToggle above), not a
+/// dismissible overlay on top of voice capture, so there's nothing to "go
+/// back" from.
+private struct TypedCaptureHero: View {
+    let viewModel: CaptureViewModel
+    let onDrafted: (ConfirmParams) -> Void
+    var isFocused: FocusState<Bool>.Binding
+
+    @Environment(\.contempoPalette) private var palette
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ZStack(alignment: .topLeading) {
+                // TextEditor has no built-in placeholder — overlay one
+                // manually, matching Android's capture_hint copy/behavior.
+                if viewModel.inputText.isEmpty {
+                    Text("Say or type what you did…")
+                        .font(ContempoFont.bodyLarge())
+                        .foregroundStyle(palette.inkFaint)
+                        .padding(.horizontal, 13)
+                        .padding(.vertical, 16)
+                        .allowsHitTesting(false)
+                }
+                TextEditor(text: Binding(
+                    get: { viewModel.inputText },
+                    set: { viewModel.inputText = $0 }
+                ))
+                    .font(ContempoFont.bodyLarge())
+                    .frame(minHeight: 120)
+                    .padding(8)
+                    .padding(.trailing, 36)
+                    .scrollContentBackground(.hidden)
+                    .focused(isFocused)
+            }
+            // Lets a "mostly typing, sometimes voice to save time" host drop
+            // into the same field they're already typing in rather than
+            // switching back to Audio-first mode — see DictationButton's
+            // doc comment for why this is a separate mechanism from the main
+            // VoiceButton flow (raw transcript only, no LLM parse).
+            .overlay(alignment: .bottomTrailing) {
+                DictationButton(
+                    text: Binding(
+                        get: { viewModel.inputText },
+                        set: { viewModel.inputText = $0 }
+                    ),
+                    language: ServiceLocator.captureLanguageStore.selected,
+                    enabled: !viewModel.isParsing
+                )
+                .padding(10)
+            }
+            .background(palette.paper)
+            .clipShape(RoundedRectangle(cornerRadius: ContempoRadius.medium))
+            .overlay(
+                RoundedRectangle(cornerRadius: ContempoRadius.medium)
+                    .stroke(palette.hairline, lineWidth: 1)
+            )
+
+            if viewModel.isParsing {
+                HStack(spacing: 8) {
+                    ProgressView()
+                    Text(stageLabel(viewModel.parsingStage))
+                        .font(ContempoFont.labelSmall())
+                        .foregroundStyle(palette.inkFaint)
+                }
+            }
+
+            // Equal-width, icon+text buttons — same treatment as
+            // OngoingActionButtonRow (see its doc comment): an untinted
+            // `.bordered` button next to a pine `.borderedProminent` one
+            // rendered as a plain-blue secondary button beside a
+            // brand-colored primary one, which is what actually read as
+            // "inconsistent," not just the left/Spacer/right layout.
+            HStack(spacing: 8) {
+                Button {
+                    viewModel.manualEntry(onDrafted: onDrafted)
+                } label: {
+                    Label("Enter manually", systemImage: "square.and.pencil")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .tint(palette.inkSoft)
+
+                Button {
+                    viewModel.submit(onDrafted: onDrafted)
+                } label: {
+                    Label("Parse & Continue", systemImage: "sparkles")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(palette.pine)
+                .disabled(viewModel.isParsing || viewModel.inputText.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+            .labelStyle(.titleAndIcon)
+            .font(ContempoFont.labelLarge())
+        }
+    }
 }
 
 private struct QuickCaptureStatusRow: View {
@@ -474,52 +733,6 @@ private struct QuickCaptureStatusRow: View {
     }
 }
 
-private struct QuickCaptureExplanationSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.contempoPalette) private var palette
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("About Quick Capture")
-                    .font(ContempoFont.titleLarge())
-                    .foregroundStyle(palette.ink)
-                Spacer()
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(palette.inkSoft)
-                }
-                .buttonStyle(.plain)
-            }
-
-            Text("Quick Capture lets you record multiple voice notes in rapid succession without waiting for on-device transcription or AI structuring.")
-                .font(ContempoFont.bodyMedium())
-                .foregroundStyle(palette.ink)
-
-            VStack(alignment: .leading, spacing: 12) {
-                Label("Recorded notes are saved locally to disk instantly.", systemImage: "bolt.fill")
-                Label("Notes are uploaded in the background to your queue.", systemImage: "arrow.clockwise.icloud")
-                Label("On-device AI transcribes and converts notes into entries asynchronously.", systemImage: "sparkles")
-            }
-            .font(ContempoFont.bodySmall())
-            .foregroundStyle(palette.inkSoft)
-
-            Spacer()
-
-            Button("Got it") {
-                dismiss()
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(palette.pine)
-            .frame(maxWidth: .infinity)
-        }
-        .padding(24)
-        .background(palette.paper)
-    }
-}
 
 /// Hero VoiceButton: fixed 180pt circular button with animated volume bars during recording
 private struct VoiceButton: View {
@@ -582,9 +795,8 @@ private struct QuickActionButton: View {
     var body: some View {
         Button(action: action) {
             // Fixed width (rather than sizing to the label's own text) so all
-            // three buttons in the row line up as a uniform, centered group
-            // regardless of label length — "Type instead" is wider than
-            // "Start Work"/"Start Trip", so without this the icon circles
+            // buttons in the row line up as a uniform, centered group
+            // regardless of label length, so without this the icon circles
             // read as unevenly placed even though the HStack itself is
             // already centered in its parent.
             VStack(spacing: 6) {
@@ -661,53 +873,67 @@ private struct ThinkingIndicator: View {
     }
 }
 
+/// Surfaces a work timer left open by an earlier "start work" voice
+/// utterance — without this, the only way to close it was another voice
+/// utterance ("finished"), so a user who forgot the phrasing (or just
+/// prefers a tap) had no visible way back into a capture already in
+/// progress. `onComplete` is a dedicated button now (Pause/Complete/Cancel,
+/// leading to trailing) rather than a whole-card tap gesture — the previous
+/// "tap the card to finish" affordance had no visible cue and was reported
+/// confusing. Once `isCompleted` (a brief window right after completing,
+/// before this banner is torn down entirely — see CaptureScreen's
+/// `timerJustCompleted`), the controls give way to a single "tap to add
+/// details" affordance that opens EntryDetail for the entry that was just
+/// closed, since its property/task/duration may still need filling in
+/// (it's saved as pending review, not confirmed).
 private struct OngoingWorkBanner: View {
     let entry: Entry
-    let onTapToComplete: () -> Void
+    let isCompleted: Bool
+    let onComplete: () -> Void
     let onPauseToggle: () -> Void
     let onCancel: () -> Void
+    let onTapCompleted: () -> Void
     @Environment(\.contempoPalette) private var palette
 
     private var isPaused: Bool { entry.isPaused == true }
 
     var body: some View {
-        // A plain container with `.onTapGesture` (rather than wrapping the
-        // whole thing in a `Button`, as before) so the trailing pause/resume
-        // `Button` can be a normal sibling control — nesting a real `Button`
-        // inside another `Button`'s label is unsupported/flaky in SwiftUI.
-        HStack(spacing: 12) {
-            Image(systemName: "timer")
-                .font(.title2)
-                .foregroundStyle(palette.pine)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(entry.task.isEmpty ? (entry.propertyName.isEmpty ? "Work in progress" : entry.propertyName) : entry.task)
-                    .font(ContempoFont.labelLarge())
-                    .foregroundStyle(palette.ink)
-                elapsedText
-                    .font(ContempoFont.labelSmall())
-                    .foregroundStyle(palette.inkFaint)
-            }
-            Spacer()
-            if isPaused {
-                Text("Paused")
-                    .font(ContempoFont.labelSmall())
+        VStack(alignment: .leading, spacing: 12) {
+            // A plain container with `.onTapGesture` (rather than wrapping
+            // the whole thing in a `Button`, as before) so the pause/
+            // complete/cancel row below can hold normal sibling `Button`s —
+            // nesting a real `Button` inside another `Button`'s label is
+            // unsupported/flaky in SwiftUI.
+            HStack(spacing: 12) {
+                Image(systemName: isCompleted ? "checkmark" : "timer")
+                    .font(.title2)
                     .foregroundStyle(palette.pine)
-            } else {
-                Text("Tap to complete")
-                    .font(ContempoFont.labelSmall())
-                    .foregroundStyle(palette.pine)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(entry.task.isEmpty ? (entry.propertyName.isEmpty ? "Work in progress" : entry.propertyName) : entry.task)
+                        .font(ContempoFont.labelLarge())
+                        .foregroundStyle(palette.ink)
+                    elapsedText
+                        .font(ContempoFont.labelSmall())
+                        .foregroundStyle(palette.inkFaint)
+                }
+                Spacer()
+                if isCompleted {
+                    Text("Tap to add details")
+                        .font(ContempoFont.labelSmall())
+                        .foregroundStyle(palette.pine)
+                } else if isPaused {
+                    Text("Paused")
+                        .font(ContempoFont.labelSmall())
+                        .foregroundStyle(palette.pine)
+                } else {
+                    Text("In progress")
+                        .font(ContempoFont.labelSmall())
+                        .foregroundStyle(palette.pine)
+                }
             }
-            Button(action: onPauseToggle) {
-                Image(systemName: isPaused ? "play.fill" : "pause.fill")
-                    .foregroundStyle(palette.pine)
+            if !isCompleted {
+                OngoingActionButtonRow(isPaused: isPaused, onPauseToggle: onPauseToggle, onComplete: onComplete, onCancel: onCancel)
             }
-            .buttonStyle(.plain)
-            Button(action: onCancel) {
-                Image(systemName: "xmark")
-                    .foregroundStyle(palette.danger)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Discard work session")
         }
         .padding()
         .background(palette.pineTint)
@@ -717,22 +943,79 @@ private struct OngoingWorkBanner: View {
                 .stroke(palette.pine.opacity(0.3), lineWidth: 1)
         )
         .contentShape(Rectangle())
-        .onTapGesture(perform: onTapToComplete)
+        .onTapGesture {
+            if isCompleted { onTapCompleted() }
+        }
     }
 
     /// Ticks live via `Text(date, style: .timer)` when running (the anchor is
     /// shifted forward by the accumulated paused duration so it reads correct
     /// *active* elapsed time). Frozen as static text while paused, mirroring
-    /// TimerLiveActivity's same calculation.
+    /// TimerLiveActivity's same calculation. Once `isCompleted`, the entry's
+    /// own activityDate/pausedDurationSeconds no longer change, so this reads
+    /// the now-final `entry.durationMinutes` instead of ticking off a clock.
     @ViewBuilder
     private var elapsedText: some View {
-        let pausedDurationSeconds = Double(entry.pausedDurationSeconds ?? 0)
-        if isPaused, let pausedAt = entry.pausedAt?.dateValue() {
-            let frozen = max(0, pausedAt.timeIntervalSince(entry.activityDate.dateValue()) - pausedDurationSeconds)
-            Text(formatElapsedDuration(frozen))
+        if isCompleted {
+            Text(formatElapsedDuration(Double(entry.durationMinutes) * 60))
         } else {
-            Text(entry.activityDate.dateValue().addingTimeInterval(pausedDurationSeconds), style: .timer)
+            let pausedDurationSeconds = Double(entry.pausedDurationSeconds ?? 0)
+            if isPaused, let pausedAt = entry.pausedAt?.dateValue() {
+                let frozen = max(0, pausedAt.timeIntervalSince(entry.activityDate.dateValue()) - pausedDurationSeconds)
+                Text(formatElapsedDuration(frozen))
+            } else {
+                Text(entry.activityDate.dateValue().addingTimeInterval(pausedDurationSeconds), style: .timer)
+            }
         }
+    }
+}
+
+/// The Pause/Complete/Cancel row shared by `OngoingWorkBanner` and
+/// `OngoingTripBanner` — icon-only now to save on-screen space, but still a
+/// real full-width `HStack` of standard, bounded `Button`s below the info
+/// line, not three bare `Image`-only buttons with no `.frame()` at all
+/// crammed into the same row as the title/elapsed-time/status text (that
+/// gave each button a tap target no bigger than its rendered SF Symbol
+/// glyph — well under Apple's 44x44pt minimum recommended target — and no
+/// visible boundary showing where one tap target ended and the next
+/// began). Standard `.bordered`/`.borderedProminent` styles still meet the
+/// 44pt minimum and each button still gets roughly a third of the card's
+/// width via `.frame(maxWidth: .infinity)`; only the visible text label is
+/// gone — `.labelStyle(.iconOnly)` hides it on-screen while SwiftUI still
+/// exposes each `Label`'s title text as its accessibility label
+/// automatically, so VoiceOver users lose nothing.
+private struct OngoingActionButtonRow: View {
+    let isPaused: Bool
+    let onPauseToggle: () -> Void
+    let onComplete: () -> Void
+    let onCancel: () -> Void
+    @Environment(\.contempoPalette) private var palette
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Button(action: onPauseToggle) {
+                Label(isPaused ? "Resume" : "Pause", systemImage: isPaused ? "play.fill" : "pause.fill")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .tint(palette.pine)
+
+            Button(action: onComplete) {
+                Label("Complete", systemImage: "checkmark")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(palette.pine)
+
+            Button(action: onCancel) {
+                Label("Cancel", systemImage: "xmark")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .tint(palette.danger)
+        }
+        .labelStyle(.iconOnly)
+        .font(ContempoFont.labelLarge())
     }
 }
 
@@ -744,48 +1027,63 @@ private func formatElapsedDuration(_ seconds: TimeInterval) -> String {
     return hours > 0 ? String(format: "%d:%02d:%02d", hours, minutes, secs) : String(format: "%d:%02d", minutes, secs)
 }
 
+/// Mirrors OngoingWorkBanner above for a running mileage trip. `onComplete`
+/// is a dedicated button now, same reasoning as OngoingWorkBanner's
+/// `isCompleted` doc comment — GPS trips stop tracking immediately;
+/// odometer trips instead launch the ending odometer photo capture, since
+/// that's how that capture method actually closes a trip (see `isGps`), so
+/// tapping Complete there doesn't itself trigger `isCompleted` until that
+/// photo flow finishes closing the entry.
 private struct OngoingTripBanner: View {
     let entry: Entry
     let isGps: Bool
-    let onTap: () -> Void
+    let isCompleted: Bool
+    let onComplete: () -> Void
     let onPauseToggle: () -> Void
     let onCancel: () -> Void
+    let onTapCompleted: () -> Void
     @Environment(\.contempoPalette) private var palette
 
     private var isPaused: Bool { entry.isPaused == true }
 
     var body: some View {
         // Same restructuring as OngoingWorkBanner — a plain container with
-        // `.onTapGesture` plus a sibling pause/resume `Button`, not a Button
-        // wrapping everything.
-        HStack(spacing: 12) {
-            Image(systemName: "location.fill")
-                .font(.title2)
-                .foregroundStyle(palette.pine)
-            Text(String(format: "Trip in progress — %.2f mi", entry.miles))
-                .font(ContempoFont.labelLarge())
-                .foregroundStyle(palette.ink)
-            Spacer()
-            if isPaused {
-                Text("Paused")
-                    .font(ContempoFont.labelSmall())
+        // `.onTapGesture`, and the pause/complete/cancel row (now standard
+        // sibling `Button`s in `OngoingActionButtonRow`, not a Button
+        // wrapping everything) below the info line instead of squeezed into
+        // the same row.
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Image(systemName: isCompleted ? "checkmark" : "location.fill")
+                    .font(.title2)
                     .foregroundStyle(palette.pine)
-            } else if isGps {
-                Text("Tap to stop")
-                    .font(ContempoFont.labelSmall())
-                    .foregroundStyle(palette.pine)
+                Text(isCompleted
+                    ? String(format: "Trip — %.2f mi", entry.miles)
+                    : String(format: "Trip in progress — %.2f mi", entry.miles))
+                    .font(ContempoFont.labelLarge())
+                    .foregroundStyle(palette.ink)
+                Spacer()
+                if isCompleted {
+                    Text("Tap to add details")
+                        .font(ContempoFont.labelSmall())
+                        .foregroundStyle(palette.pine)
+                } else if isPaused {
+                    Text("Paused")
+                        .font(ContempoFont.labelSmall())
+                        .foregroundStyle(palette.pine)
+                } else if isGps {
+                    Text("GPS tracking")
+                        .font(ContempoFont.labelSmall())
+                        .foregroundStyle(palette.pine)
+                } else {
+                    Text("Ends with an odometer photo")
+                        .font(ContempoFont.labelSmall())
+                        .foregroundStyle(palette.pine)
+                }
             }
-            Button(action: onPauseToggle) {
-                Image(systemName: isPaused ? "play.fill" : "pause.fill")
-                    .foregroundStyle(palette.pine)
+            if !isCompleted {
+                OngoingActionButtonRow(isPaused: isPaused, onPauseToggle: onPauseToggle, onComplete: onComplete, onCancel: onCancel)
             }
-            .buttonStyle(.plain)
-            Button(action: onCancel) {
-                Image(systemName: "xmark")
-                    .foregroundStyle(palette.danger)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Discard trip")
         }
         .padding()
         .background(palette.pineTint)
@@ -796,7 +1094,7 @@ private struct OngoingTripBanner: View {
         )
         .contentShape(Rectangle())
         .onTapGesture {
-            if isGps { onTap() }
+            if isCompleted { onTapCompleted() }
         }
     }
 }

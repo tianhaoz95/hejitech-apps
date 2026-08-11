@@ -7,8 +7,6 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.google.firebase.Firebase
-import com.google.firebase.appcheck.appCheck
-import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
 import com.google.firebase.firestore.firestoreSettings
@@ -32,13 +30,13 @@ class WearApp : Application() {
 
         if (BuildConfig.USE_FIREBASE_EMULATOR) {
             connectToEmulators()
-            // See ContempoApp.kt's onCreate for why no App Check provider is
-            // installed in debug builds.
-        } else {
-            Firebase.appCheck.installAppCheckProviderFactory(
-                PlayIntegrityAppCheckProviderFactory.getInstance()
-            )
         }
+        // No App Check provider installed in either build variant — see
+        // ContempoApp.kt's onCreate for the full reasoning (in short: App
+        // Check enforcement isn't on anywhere yet, and the Play Integrity
+        // provider that used to be installed here for release builds was
+        // the actual root cause of a Firestore-write-hangs-then-times-out
+        // bug on real devices).
 
         WearServiceLocator.initialize(this)
         schedulePendingCaptureSync()

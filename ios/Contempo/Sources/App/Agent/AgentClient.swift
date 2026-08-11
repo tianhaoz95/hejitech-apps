@@ -1,3 +1,4 @@
+import ContempoCore
 import ContempoFirestore
 import FirebaseFunctions
 import Foundation
@@ -18,12 +19,30 @@ import Foundation
 final class AgentClient {
     private let onDeviceLlm: OnDeviceLlm
     private let functions: Functions
+    private let entryRepository: EntryRepository
     private let inferencePreference: () -> InferencePreference
 
-    init(onDeviceLlm: OnDeviceLlm, functions: Functions, inferencePreference: @escaping () -> InferencePreference) {
+    init(
+        onDeviceLlm: OnDeviceLlm,
+        functions: Functions,
+        entryRepository: EntryRepository,
+        inferencePreference: @escaping () -> InferencePreference
+    ) {
         self.onDeviceLlm = onDeviceLlm
         self.functions = functions
+        self.entryRepository = entryRepository
         self.inferencePreference = inferencePreference
+    }
+
+    /// Writes whatever `OnDeviceLlm.lastCallTokenUsage` holds right now to
+    /// this account's weekly on-device counters — called right after every
+    /// successful (non-nil) on-device call below, so it always reflects the
+    /// call that just happened. Cloud usage needs no client-side equivalent
+    /// — see `EntryRepository.observeCloudTokenUsage`'s doc comment — it's
+    /// written server-side instead.
+    private func recordOnDeviceUsageIfAvailable() async {
+        guard let usage = onDeviceLlm.lastCallTokenUsage else { return }
+        try? await entryRepository.recordOnDeviceTokenUsage(inputTokens: usage.inputTokens, outputTokens: usage.outputTokens)
     }
 
     /// `onStage` is a best-effort progress signal for the caller to render
@@ -117,11 +136,13 @@ final class AgentClient {
             return await cloudAskQuestion(history: history, question: question, stats: stats, attachedEntries: attachedEntries)
         case .onDeviceOnly:
             if let text = await onDeviceLlm.generateTextStream(prompt, onEvent: onEvent) {
+                await recordOnDeviceUsageIfAvailable()
                 return .success(answer: text, source: .onDevice)
             }
             return .failure(message: "On-device model unavailable — no cloud fallback (On-device only is selected in Settings).")
         case .preferOnDevice:
             if let text = await onDeviceLlm.generateTextStream(prompt, onEvent: onEvent) {
+                await recordOnDeviceUsageIfAvailable()
                 return .success(answer: text, source: .onDevice)
             }
             return await cloudAskQuestion(history: history, question: question, stats: stats, attachedEntries: attachedEntries)
@@ -142,11 +163,13 @@ final class AgentClient {
                 return .failure(message: "Photo questions aren't available in Cloud-only mode yet — switch to On-device only or Prefer on-device in Settings.")
             case .onDeviceOnly:
                 if let text = await onDeviceLlm.generateFromImage(imageData, prompt: prompt) {
+                    await recordOnDeviceUsageIfAvailable()
                     return .success(answer: text, source: .onDevice)
                 }
                 return .failure(message: "On-device model unavailable for photo questions — no cloud fallback (On-device only is selected in Settings).")
             case .preferOnDevice:
                 if let text = await onDeviceLlm.generateFromImage(imageData, prompt: prompt) {
+                    await recordOnDeviceUsageIfAvailable()
                     return .success(answer: text, source: .onDevice)
                 }
                 return .failure(message: "This device's on-device model isn't ready for photo questions yet, and cloud photo questions aren't built yet.")
@@ -157,11 +180,13 @@ final class AgentClient {
             return await cloudAskQuestion(history: history, question: question, stats: stats, attachedEntries: attachedEntries)
         case .onDeviceOnly:
             if let text = await onDeviceLlm.generateText(prompt) {
+                await recordOnDeviceUsageIfAvailable()
                 return .success(answer: text, source: .onDevice)
             }
             return .failure(message: "On-device model unavailable — no cloud fallback (On-device only is selected in Settings).")
         case .preferOnDevice:
             if let text = await onDeviceLlm.generateText(prompt) {
+                await recordOnDeviceUsageIfAvailable()
                 return .success(answer: text, source: .onDevice)
             }
             return await cloudAskQuestion(history: history, question: question, stats: stats, attachedEntries: attachedEntries)
@@ -175,16 +200,49 @@ final class AgentClient {
     /// honest behavior is "skip it, use the raw transcript as-is."
     func cleanupTranscript(_ rawText: String) async -> String {
         guard !rawText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return rawText }
-        return await onDeviceLlm.generateText(Self.buildCleanupPrompt(rawText: rawText)) ?? rawText
+        guard let cleaned = await onDeviceLlm.generateText(Self.buildCleanupPrompt(rawText: rawText)) else { return rawText }
+        await recordOnDeviceUsageIfAvailable()
+        return cleaned
+    }
+
+    /// Suggests a category for the entry-detail screen's auto-detect button,
+    /// from just the property/task text already on the entry — deliberately
+    /// on-device only regardless of the user's inference preference, same
+    /// reasoning as `cleanupTranscript`: this is a quality-of-life assist the
+    /// host can freely skip, edit, or override via the category picker right
+    /// next to it, not core parsing functionality that needs a cloud
+    /// fallback story.
+    func suggestCategory(propertyName: String, task: String) async -> CategoryOutcome {
+        guard let text = await onDeviceLlm.generateText(Self.buildCategoryPrompt(propertyName: propertyName, task: task)) else {
+            return .failure(message: "On-device model unavailable — try again in a moment.")
+        }
+        await recordOnDeviceUsageIfAvailable()
+        let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased().replacingOccurrences(of: " ", with: "_")
+        guard let category = EntryCategory.allCases.first(where: { normalized.contains($0.firestoreValue) }) else {
+            return .failure(message: "Couldn't determine a category from this entry — try filling in more detail first.")
+        }
+        return .success(category: category, source: .onDevice)
+    }
+
+    private static func buildCategoryPrompt(propertyName: String, task: String) -> String {
+        """
+        You classify a short-term-rental host's logged work into exactly one category.
+        Categories: maintenance (repairs, upkeep), turnover (cleaning/prepping between guests), guest_communication (messaging/calls with guests), supply_run (buying/restocking supplies), admin (bookkeeping, scheduling, paperwork), other (anything else).
+        \(propertyName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "" : "Property: \(propertyName)")
+        Task performed: \(task.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "(not described)" : task)
+        Respond with ONLY one word: maintenance, turnover, guest_communication, supply_run, admin, or other. No punctuation, no commentary.
+        """
     }
 
     private func onDeviceExtractEntry(rawText: String, knownProperties: [String]) async -> ParseOutcome? {
         guard let draft = await onDeviceLlm.extractEntryDraft(rawText: rawText, knownProperties: knownProperties) else { return nil }
+        await recordOnDeviceUsageIfAvailable()
         return .success(ParseResult(draft: draft, source: .onDevice))
     }
 
     private func onDeviceReadOdometer(imageData: Data, prompt: String) async -> OdometerReadOutcome? {
         guard let text = await onDeviceLlm.generateFromImage(imageData, prompt: prompt) else { return nil }
+        await recordOnDeviceUsageIfAvailable()
         guard let miles = Self.extractNumber(text) else {
             return .failure(message: "Couldn't read a number from that photo — make sure the odometer digits are clearly visible and try again.")
         }
@@ -198,6 +256,7 @@ final class AgentClient {
     /// "model unavailable" one.
     private func onDeviceClassifyPhotoIntent(imageData: Data, prompt: String) async -> PhotoIntentOutcome? {
         guard let text = await onDeviceLlm.generateFromImage(imageData, prompt: prompt) else { return nil }
+        await recordOnDeviceUsageIfAvailable()
         let lowered = text.lowercased()
         if lowered.contains("odometer") { return .success(intent: .odometer, source: .onDevice) }
         if lowered.contains("work") { return .success(intent: .work, source: .onDevice) }
@@ -206,6 +265,7 @@ final class AgentClient {
 
     private func onDeviceDraftFromPhoto(imageData: Data, prompt: String) async -> ParseOutcome? {
         guard let text = await onDeviceLlm.generateFromImage(imageData, prompt: prompt) else { return nil }
+        await recordOnDeviceUsageIfAvailable()
         guard let draft = try? JSONDecoder().decode(EntryDraft.self, from: Data(Self.extractJsonObject(text).utf8)) else { return nil }
         return .success(ParseResult(draft: draft, source: .onDevice))
     }

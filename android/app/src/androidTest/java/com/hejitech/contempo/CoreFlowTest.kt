@@ -9,6 +9,7 @@ import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -185,12 +186,18 @@ class CoreFlowTest {
         saveScreenshot("export")
     }
 
-    /** Regression test for QuickCaptureSettingsStore's SharedPreferences persistence — see CaptureViewModel.setQuickCaptureEnabled. */
+    /** Regression test for QuickCaptureSettingsStore's SharedPreferences persistence — see SettingsViewModel.setQuickCaptureEnabled. */
     @Test
     fun test3_quickCaptureToggle_persistsAcrossActivityRecreate() {
         signIn()
 
         val toggle = "Quick capture toggle"
+        // App-level now (moved off Capture to keep that screen lean — see
+        // CaptureScreen's kdoc), so this lives in Settings instead of the
+        // default (Capture) tab signIn() lands on.
+        composeTestRule.onNodeWithText("Settings").performClick()
+        composeTestRule.waitForIdle()
+
         // Doesn't assume a starting state: SharedPreferences (unlike
         // Firestore, which @Before clears) persist across installs and any
         // other manual testing done on this real device, so a hardcoded
@@ -206,6 +213,8 @@ class CoreFlowTest {
         composeTestRule.waitUntil(timeoutMillis = 15_000) {
             composeTestRule.onAllNodesWithText("Tap to speak").fetchSemanticsNodes().isNotEmpty()
         }
+        composeTestRule.onNodeWithText("Settings").performClick()
+        composeTestRule.waitForIdle()
         assertToggleState(toggle, on = !wasOnAtStart)
 
         composeTestRule.onNodeWithContentDescription(toggle).performClick()
@@ -251,9 +260,17 @@ class CoreFlowTest {
         composeTestRule.onNodeWithText("No entries yet. Capture your first one to get started.").assertExists()
     }
 
-    /** Regression test for this session's "ongoing work" indicator + tap-to-complete, including the completion time/location it now records. */
+    /**
+     * Regression test for the "ongoing work" indicator's dedicated Complete
+     * button (see CaptureScreen.kt's OngoingWorkBanner — completing used to
+     * require tapping the whole card, which had no visible affordance and
+     * was reported confusing; now it's a full-width, labeled Pause/Complete/
+     * Cancel button row, easier to tap accurately than the original bare
+     * IconButtons — see OngoingActionButtonRow's kdoc), including the
+     * completion time/location it still records the same way.
+     */
     @Test
-    fun test5_ongoingWorkBanner_tapToComplete_closesTimerEntryWithStopLocation() {
+    fun test5_ongoingWorkBanner_completeButton_closesTimerEntryWithStopLocation() {
         signIn()
 
         val entryId = runBlocking {
@@ -267,20 +284,25 @@ class CoreFlowTest {
         }
 
         composeTestRule.waitUntil(timeoutMillis = 10_000) {
-            composeTestRule.onAllNodesWithText("Tap to complete").fetchSemanticsNodes().isNotEmpty()
+            composeTestRule.onAllNodesWithText("Complete").fetchSemanticsNodes().isNotEmpty()
         }
         composeTestRule.onNodeWithText("In progress — Ongoing Work Property").assertExists()
 
-        composeTestRule.onNodeWithText("Tap to complete").performClick()
+        composeTestRule.onNodeWithText("Complete").performClick()
 
+        // The Complete/Pause/Cancel buttons give way to a "tap to add
+        // details" completed state as soon as isCompleted flips true (see
+        // OngoingWorkBanner) — well before the few-second grace period the
+        // whole banner then lingers for, so this is a fast, reliable signal
+        // that the tap actually closed the entry.
         composeTestRule.waitUntil(timeoutMillis = 10_000) {
-            composeTestRule.onAllNodesWithText("Tap to complete").fetchSemanticsNodes().isEmpty()
+            composeTestRule.onAllNodesWithText("Complete").fetchSemanticsNodes().isEmpty()
         }
 
         val closed = runBlocking { ServiceLocator.entryRepository.getEntry(entryId) }
         assertNotNull(closed)
-        assertFalse("timer entry should no longer be in progress after tap-to-complete", closed!!.inProgress)
-        assertNotNull("stoppedAt should be recorded by tap-to-complete", closed.stoppedAt)
+        assertFalse("timer entry should no longer be in progress after tapping Complete", closed!!.inProgress)
+        assertNotNull("stoppedAt should be recorded by Complete", closed.stoppedAt)
     }
 
     /**

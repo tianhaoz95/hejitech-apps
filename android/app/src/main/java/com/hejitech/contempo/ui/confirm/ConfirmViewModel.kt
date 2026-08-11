@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.hejitech.contempo.agent.CategoryClassifier
+import com.hejitech.contempo.agent.CategoryOutcome
 import com.hejitech.contempo.agent.OdometerReadOutcome
 import com.hejitech.contempo.agent.ParseOutcome
 import com.hejitech.contempo.data.ServiceLocator
@@ -13,6 +14,7 @@ import com.hejitech.contempo.data.recoverFromAuthRaceOrSignOut
 import com.hejitech.contempo.data.traced
 import com.hejitech.contempo.util.PhotoUtils
 import com.hejitech.core.model.CaptureSource
+import com.hejitech.core.model.Category
 import com.hejitech.core.model.Entry
 import com.hejitech.core.model.EntryCategory
 import com.hejitech.core.model.EntryFieldValidation
@@ -53,9 +55,25 @@ data class ConfirmUiState(
     val property: String = "",
     val task: String = "",
     val durationMinutes: String = "",
-    val category: EntryCategory = EntryCategory.OTHER,
+    /**
+     * A raw category value — either one of [EntryCategory]'s built-in
+     * [EntryCategory.firestoreValue]s, or a free-form name from the user's
+     * own `users/{uid}/categories` roster (see [Category], added in place
+     * the same way [Role]s are — [onAddNewCategoryClicked]/
+     * [onConfirmNewCategory] below). Not typed as [EntryCategory] itself
+     * since that enum can't represent a custom value without silently
+     * collapsing it to OTHER (see [EntryCategory.fromFirestoreValue]) — use
+     * [EntryCategory.displayName] to render this for display.
+     */
+    val category: String = EntryCategory.OTHER.firestoreValue,
     /** True once the user has explicitly picked a category — stops CategoryClassifier's auto-suggestion from overriding it. */
     val categoryManuallySet: Boolean = false,
+    /** See [ConfirmViewModel.detectCategory] — on-device auto-detect, available regardless of whether a category is already set (editing an existing entry always has one). */
+    val isDetectingCategory: Boolean = false,
+    val categoryDetectError: String? = null,
+    val categories: List<Category> = emptyList(),
+    val isAddingNewCategory: Boolean = false,
+    val newCategoryName: String = "",
     /** Business miles driven — always optional, unlike duration, since most entries have none. */
     val miles: String = "",
     /**
@@ -161,7 +179,7 @@ class ConfirmViewModel(
             property = initialProperty,
             task = initialTask,
             durationMinutes = if (initialDurationMinutes > 0) initialDurationMinutes.toString() else "",
-            category = EntryCategory.fromFirestoreValue(initialCategory),
+            category = initialCategory.ifBlank { EntryCategory.OTHER.firestoreValue },
             miles = if (initialMiles > 0) initialMiles.toCleanString() else "",
             activityDateMillis = aiOriginalActivityDateMillis ?: System.currentTimeMillis(),
             isTripMode = initialIsTripCapture,
@@ -181,6 +199,11 @@ class ConfirmViewModel(
         entryRepository.observeRoles()
             .recoverFromAuthRaceOrSignOut { emptyList() }
             .onEach { roles -> _uiState.value = _uiState.value.copy(roles = roles) }
+            .launchIn(viewModelScope)
+
+        entryRepository.observeCategories()
+            .recoverFromAuthRaceOrSignOut { emptyList() }
+            .onEach { categories -> _uiState.value = _uiState.value.copy(categories = categories) }
             .launchIn(viewModelScope)
 
         // Resuming an existing (e.g. pending) entry should reflect its
@@ -210,8 +233,8 @@ class ConfirmViewModel(
      */
     fun onTaskChanged(value: String) {
         val state = _uiState.value
-        val suggestedCategory = if (!state.categoryManuallySet && state.category == EntryCategory.OTHER) {
-            CategoryClassifier.classify(value) ?: state.category
+        val suggestedCategory = if (!state.categoryManuallySet && state.category == EntryCategory.OTHER.firestoreValue) {
+            CategoryClassifier.classify(value)?.firestoreValue ?: state.category
         } else {
             state.category
         }
@@ -221,8 +244,36 @@ class ConfirmViewModel(
     fun onDurationChanged(value: String) {
         if (value.all { it.isDigit() }) _uiState.value = _uiState.value.copy(durationMinutes = value)
     }
-    fun onCategoryChanged(value: EntryCategory) {
+    fun onCategoryChanged(value: String) {
         _uiState.value = _uiState.value.copy(category = value, categoryManuallySet = true)
+    }
+
+    /**
+     * On-device auto-detect for the category dropdown — deliberately
+     * available regardless of what's already selected there (including when
+     * editing an already-confirmed entry, which always arrives with a real
+     * category, not just fresh captures) since it's a correctable
+     * suggestion, not a silent commit: the result just overwrites
+     * [ConfirmUiState.category] the same way [onCategoryChanged] would,
+     * marking it manually set so CategoryClassifier's task-text auto-suggest
+     * in [onTaskChanged] won't later stomp on it.
+     */
+    fun detectCategory() {
+        val state = _uiState.value
+        _uiState.value = state.copy(isDetectingCategory = true, categoryDetectError = null)
+        viewModelScope.launch {
+            when (val outcome = agentClient.suggestCategory(state.property, state.task)) {
+                is CategoryOutcome.Success -> _uiState.value = _uiState.value.copy(
+                    isDetectingCategory = false,
+                    category = outcome.category.firestoreValue,
+                    categoryManuallySet = true,
+                )
+                is CategoryOutcome.Failure -> _uiState.value = _uiState.value.copy(
+                    isDetectingCategory = false,
+                    categoryDetectError = outcome.message,
+                )
+            }
+        }
     }
     fun onMilesChanged(value: String) {
         if (value.isEmpty() || value.matches(Regex("""\d*\.?\d*"""))) {
@@ -291,6 +342,39 @@ class ConfirmViewModel(
     }
 
     /**
+     * Lets a category be created without leaving Confirm — mirrors
+     * [onAddNewRoleClicked]/[onConfirmNewRole] above exactly. Create-only,
+     * same as roles; there's no rename/delete UI for a category roster
+     * (only the "built-in" [EntryCategory] entries are more than a name,
+     * and even those aren't renameable).
+     */
+    fun onAddNewCategoryClicked() {
+        _uiState.value = _uiState.value.copy(isAddingNewCategory = true, newCategoryName = "")
+    }
+
+    fun onCancelAddNewCategory() {
+        _uiState.value = _uiState.value.copy(isAddingNewCategory = false, newCategoryName = "")
+    }
+
+    fun onNewCategoryNameChanged(value: String) {
+        _uiState.value = _uiState.value.copy(newCategoryName = value)
+    }
+
+    fun onConfirmNewCategory() {
+        val name = _uiState.value.newCategoryName.trim()
+        if (name.isEmpty()) return
+        viewModelScope.launch {
+            val created = runCatching { entryRepository.createCategory(name) }.getOrNull()
+            _uiState.value = _uiState.value.copy(
+                category = created?.name ?: name,
+                categoryManuallySet = true,
+                isAddingNewCategory = false,
+                newCategoryName = "",
+            )
+        }
+    }
+
+    /**
      * Flips between the two photo-capture shapes when the vision model's
      * classification (see AgentClient.classifyPhotoIntent) looks wrong to
      * the user — a one-tap fix instead of forcing a retake. Re-runs the
@@ -332,7 +416,7 @@ class ConfirmViewModel(
                             property = draft.property.orEmpty(),
                             task = draft.task.orEmpty(),
                             durationMinutes = draft.durationMinutes?.takeIf { it > 0 }?.toString() ?: "",
-                            category = draft.category?.let { EntryCategory.fromFirestoreValue(it) } ?: EntryCategory.OTHER,
+                            category = draft.category ?: EntryCategory.OTHER.firestoreValue,
                             isReclassifying = false,
                         )
                     }
@@ -462,7 +546,7 @@ class ConfirmViewModel(
             propertyName = state.property,
             task = state.task,
             durationMinutes = duration,
-            category = state.category.firestoreValue,
+            category = state.category,
             status = status.firestoreValue,
             source = captureSource.firestoreValue,
             // Resuming a pending entry preserves its original

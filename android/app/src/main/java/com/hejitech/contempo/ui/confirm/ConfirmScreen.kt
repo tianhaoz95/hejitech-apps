@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
@@ -27,6 +28,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
@@ -301,33 +303,95 @@ fun ConfirmScreen(
         )
         Spacer(Modifier.height(12.dp))
 
-        ExposedDropdownMenuBox(
-            expanded = categoryMenuExpanded,
-            onExpandedChange = { categoryMenuExpanded = it },
-        ) {
-            OutlinedTextField(
-                value = uiState.category.name.lowercase().replace('_', ' '),
-                onValueChange = {},
-                readOnly = true,
-                label = { Text(stringResource(R.string.confirm_category_label)) },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryMenuExpanded) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor(MenuAnchorType.PrimaryNotEditable),
-            )
-            ExposedDropdownMenu(
-                expanded = categoryMenuExpanded,
-                onDismissRequest = { categoryMenuExpanded = false },
-            ) {
-                EntryCategory.entries.forEach { option ->
-                    DropdownMenuItem(
-                        text = { Text(option.name.lowercase().replace('_', ' ')) },
-                        onClick = {
-                            viewModel.onCategoryChanged(option)
-                            categoryMenuExpanded = false
-                        },
-                    )
+        // Category dropdown + on-device auto-detect button side by side —
+        // available regardless of whether a category is already set (an
+        // already-confirmed entry reaching this screen for editing always
+        // arrives with a real one, not just fresh captures). The button is
+        // a correctable suggestion, not a silent commit: it just fills the
+        // dropdown, which stays fully editable afterward (see
+        // ConfirmViewModel.detectCategory's kdoc). "Add new category" swaps
+        // this whole row for an inline text field, mirroring the role
+        // picker below exactly (see ConfirmViewModel.onAddNewCategoryClicked's
+        // kdoc for why this is create-only, same as roles).
+        if (uiState.isAddingNewCategory) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = uiState.newCategoryName,
+                    onValueChange = viewModel::onNewCategoryNameChanged,
+                    label = { Text(stringResource(R.string.confirm_new_category_label)) },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                )
+                TextButton(onClick = viewModel::onConfirmNewCategory) {
+                    Text(stringResource(R.string.confirm_add_category_button))
                 }
+                TextButton(onClick = viewModel::onCancelAddNewCategory) {
+                    Text(stringResource(R.string.confirm_cancel_button))
+                }
+            }
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ExposedDropdownMenuBox(
+                    expanded = categoryMenuExpanded,
+                    onExpandedChange = { categoryMenuExpanded = it },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    OutlinedTextField(
+                        value = EntryCategory.displayName(uiState.category),
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text(stringResource(R.string.confirm_category_label)) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryMenuExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = categoryMenuExpanded,
+                        onDismissRequest = { categoryMenuExpanded = false },
+                    ) {
+                        EntryCategory.entries.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option.name.lowercase().replace('_', ' ')) },
+                                onClick = {
+                                    viewModel.onCategoryChanged(option.firestoreValue)
+                                    categoryMenuExpanded = false
+                                },
+                            )
+                        }
+                        uiState.categories.forEach { category ->
+                            DropdownMenuItem(
+                                text = { Text(category.name) },
+                                onClick = {
+                                    viewModel.onCategoryChanged(category.name)
+                                    categoryMenuExpanded = false
+                                },
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.confirm_add_new_category_item)) },
+                            leadingIcon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                            onClick = {
+                                categoryMenuExpanded = false
+                                viewModel.onAddNewCategoryClicked()
+                            },
+                        )
+                    }
+                }
+                if (uiState.isDetectingCategory) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                } else {
+                    IconButton(onClick = viewModel::detectCategory) {
+                        Icon(
+                            Icons.Filled.AutoAwesome,
+                            contentDescription = stringResource(R.string.entry_detail_detect_category_content_description),
+                        )
+                    }
+                }
+            }
+            uiState.categoryDetectError?.let {
+                Spacer(Modifier.height(4.dp))
+                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
         }
         Spacer(Modifier.height(12.dp))

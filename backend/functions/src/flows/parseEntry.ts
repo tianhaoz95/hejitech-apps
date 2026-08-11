@@ -4,6 +4,7 @@ import {
   ParseEntryInputSchema,
   type EntryDraft,
 } from "../schemas";
+import { recordCloudTokenUsage } from "../tokenUsage";
 
 /**
  * Cloud fallback for entry parsing. This is the SERVER-SIDE half of the
@@ -26,7 +27,7 @@ export const parseEntryFlow = ai.defineFlow(
     outputSchema: EntryDraftSchema,
   },
   async ({ rawText, knownProperties, nowIso }) => {
-    const { output } = await ai.generate({
+    const response = await ai.generate({
       model: flashModel,
       prompt: [
         "You extract short-term-rental work-log entries from a host's own words.",
@@ -46,9 +47,18 @@ export const parseEntryFlow = ai.defineFlow(
       output: { schema: EntryDraftSchema },
     });
 
+    const { output, usage } = response;
     if (output == null) {
       throw new Error("parseEntryFlow: model response didn't satisfy EntryDraftSchema");
     }
+
+    // See askAgentFlow's identical block — best-effort, never blocks the
+    // actual parsed entry the host is waiting on.
+    const uid = ai.currentContext()?.auth?.uid as string | undefined;
+    if (uid) {
+      await recordCloudTokenUsage(uid, usage.inputTokens ?? 0, usage.outputTokens ?? 0);
+    }
+
     return output as EntryDraft;
   }
 );

@@ -34,12 +34,14 @@ enum ServiceLocator {
     static let audioRecorder = AudioRecorder()
     static let whisperTranscriber = WhisperTranscriber()
     static let captureLanguageStore = CaptureLanguageStore()
+    static let captureModeStore = CaptureModeStore()
     static let quickCaptureSettingsStore = QuickCaptureSettingsStore()
     static let quickCaptureStatsStore = QuickCaptureStatsStore()
     static let pendingCaptureStore = PendingCaptureStore()
     static let agentClient = AgentClient(
         onDeviceLlm: onDeviceLlm,
         functions: Functions.functions(),
+        entryRepository: entryRepository,
         // Remotely disabling cloud AI, or not currently holding a Pro
         // entitlement (reports/pricing-proposal-v0.html §3.2), overrides the
         // user's own stored preference rather than just gating it in

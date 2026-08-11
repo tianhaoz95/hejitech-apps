@@ -32,6 +32,16 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSBundleResourceRequestInitialInstallTags</key>
+	<array>
+		<string>whisper-tiny-en</string>
+		<string>whisper-tiny-multilingual</string>
+	</array>
+	<key>NSBundleResourceRequestTags</key>
+	<array>
+		<string>whisper-tiny-en</string>
+		<string>whisper-tiny-multilingual</string>
+	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Contempo uses your camera to attach a photo, or read an odometer, to a work-log entry.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>

@@ -178,13 +178,57 @@ struct ConfirmScreen: View {
                 }
 
                 Section("Category") {
-                    Picker("Category", selection: Binding(
-                        get: { viewModel.category },
-                        set: { viewModel.onCategoryChanged($0) }
-                    )) {
-                        ForEach(EntryCategory.allCases, id: \.self) { category in
-                            Text(category.firestoreValue.replacingOccurrences(of: "_", with: " ").capitalized)
-                                .tag(category)
+                    if viewModel.isAddingNewCategory {
+                        VStack(alignment: .leading, spacing: 8) {
+                            TextField("Category name", text: $viewModel.newCategoryName)
+                            HStack {
+                                Spacer()
+                                Button("Cancel") { viewModel.onCancelAddNewCategory() }
+                                    .buttonStyle(.bordered)
+                                Button("Add") { viewModel.onConfirmNewCategory() }
+                                    .buttonStyle(.borderedProminent)
+                            }
+                        }
+                    } else {
+                        // Picker + on-device auto-detect button side by side —
+                        // available regardless of whether a category is already
+                        // set (an already-confirmed entry reaching this screen
+                        // for editing always arrives with a real one, not just
+                        // fresh captures). The button is a correctable
+                        // suggestion, not a silent commit: it just fills the
+                        // picker, which stays fully editable afterward (see
+                        // ConfirmViewModel.detectCategory's doc comment).
+                        HStack {
+                            Picker("Category", selection: Binding(
+                                get: { viewModel.category },
+                                set: { viewModel.onCategoryChanged($0) }
+                            )) {
+                                ForEach(EntryCategory.allCases, id: \.self) { category in
+                                    Text(category.firestoreValue.replacingOccurrences(of: "_", with: " ").capitalized)
+                                        .tag(category.firestoreValue)
+                                }
+                                ForEach(viewModel.categories) { category in
+                                    Text(category.name).tag(category.name)
+                                }
+                            }
+                            if viewModel.isDetectingCategory {
+                                ProgressView()
+                            } else {
+                                Button {
+                                    viewModel.detectCategory()
+                                } label: {
+                                    Image(systemName: "sparkles")
+                                }
+                                .buttonStyle(.plain)
+                                .tint(palette.pine)
+                                .accessibilityLabel("Auto-detect category with on-device AI")
+                            }
+                        }
+                        Button("+ New category") { viewModel.onAddNewCategoryClicked() }
+                        if let categoryDetectError = viewModel.categoryDetectError {
+                            Text(categoryDetectError)
+                                .font(ContempoFont.labelSmall())
+                                .foregroundStyle(palette.danger)
                         }
                     }
                 }
@@ -236,6 +280,20 @@ struct ConfirmScreen: View {
                     }
                     .disabled(viewModel.isSaving || viewModel.isSavingForLater)
                 }
+            }
+        }
+        // The Form's default interactive dismiss-on-scroll is enough for
+        // most of this screen, but the numeric-keypad fields (Duration,
+        // Miles, Odometer reading) have no Return/Done key of their own,
+        // and the trip/odometer branch is short enough that there may not
+        // be anything to scroll — this Done key is always reachable
+        // regardless. hideKeyboard() (not a single @FocusState) since this
+        // screen has many independent fields, not one to track.
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done", action: hideKeyboard)
+                    .font(ContempoFont.labelLarge().weight(.semibold))
             }
         }
         .navigationTitle("Confirm Entry")

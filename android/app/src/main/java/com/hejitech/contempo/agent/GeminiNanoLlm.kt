@@ -40,6 +40,13 @@ class GeminiNanoLlm(
     private val _status = MutableStateFlow<OnDeviceModelUiStatus>(OnDeviceModelUiStatus.Checking)
     override val status: StateFlow<OnDeviceModelUiStatus> = _status.asStateFlow()
 
+    // Not wired up for real — this class isn't registered in ServiceLocator
+    // (see the class kdoc), and it's unverified whether AICore's on-device
+    // inference mode even populates GenerateContentResponse.usageMetadata.
+    // Not worth the risk of silently reporting wrong numbers on a dead code
+    // path.
+    override val lastCallTokenUsage: StateFlow<TokenUsage?> = MutableStateFlow(null)
+
     init {
         // Re-check (and start tracking a download, if needed) whenever the
         // user picks a preference that can use on-device at all — not just

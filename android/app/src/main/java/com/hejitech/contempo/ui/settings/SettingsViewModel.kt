@@ -5,7 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.hejitech.contempo.agent.InferencePreference
 import com.hejitech.contempo.agent.OnDeviceModelUiStatus
 import com.hejitech.contempo.data.ServiceLocator
+import com.hejitech.contempo.ui.capture.CaptureMode
+import com.hejitech.core.model.CaptureLanguage
 import com.hejitech.core.model.Role
+import com.hejitech.core.model.TokenUsageWeek
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.functions.FirebaseFunctionsException
@@ -33,14 +36,20 @@ class SettingsViewModel : ViewModel() {
     private val aiSettingsStore = ServiceLocator.aiSettingsStore
     private val authManager = ServiceLocator.authManager
     private val onDeviceLlm = ServiceLocator.onDeviceLlm
-    private val captureLanguageSelectorVisibilityStore = ServiceLocator.captureLanguageSelectorVisibilityStore
+    private val captureLanguageStore = ServiceLocator.captureLanguageStore
+    private val quickCaptureSettingsStore = ServiceLocator.quickCaptureSettingsStore
+    private val captureModeStore = ServiceLocator.captureModeStore
     private val remoteConfigStore = ServiceLocator.remoteConfigStore
     private val entryRepository = ServiceLocator.entryRepository
 
     val inferencePreference: StateFlow<InferencePreference> = aiSettingsStore.preference
     val onDeviceModelStatus: StateFlow<OnDeviceModelUiStatus> = onDeviceLlm.status
     val asrModelAvailable: StateFlow<Boolean> = MutableStateFlow(ServiceLocator.whisperTranscriber.isAvailable).asStateFlow()
-    val showLanguageSelector: StateFlow<Boolean> = captureLanguageSelectorVisibilityStore.visible
+    /** App-level now, not per-capture-session — see CaptureScreen's kdoc on why this moved here. */
+    val quickCaptureEnabled: StateFlow<Boolean> = quickCaptureSettingsStore.enabled
+    val captureLanguage: StateFlow<CaptureLanguage> = captureLanguageStore.selected
+    /** Which mode a *fresh* Capture-tab visit opens into — see CaptureViewModel.captureMode's kdoc. */
+    val defaultCaptureMode: StateFlow<CaptureMode> = captureModeStore.defaultMode
     /** See RemoteConfigStore's kdoc — "Cloud only" shouldn't be selectable (or read as available) while this is false. */
     val cloudAiEnabled: StateFlow<Boolean> = remoteConfigStore.cloudAiEnabled
 
@@ -56,6 +65,12 @@ class SettingsViewModel : ViewModel() {
 
     val roles: StateFlow<List<Role>> = entryRepository.observeRoles()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** This week's on-device/cloud LLM usage — see EntryRepository's observeDeviceTokenUsage/observeCloudTokenUsage kdocs. */
+    val deviceTokenUsage: StateFlow<TokenUsageWeek?> = entryRepository.observeDeviceTokenUsage()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    val cloudTokenUsage: StateFlow<TokenUsageWeek?> = entryRepository.observeCloudTokenUsage()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     private val _roleError = MutableStateFlow<String?>(null)
     val roleError: StateFlow<String?> = _roleError.asStateFlow()
@@ -101,8 +116,16 @@ class SettingsViewModel : ViewModel() {
         aiSettingsStore.setPreference(preference)
     }
 
-    fun setShowLanguageSelector(value: Boolean) {
-        captureLanguageSelectorVisibilityStore.setVisible(value)
+    fun setQuickCaptureEnabled(value: Boolean) {
+        quickCaptureSettingsStore.setEnabled(value)
+    }
+
+    fun setCaptureLanguage(value: CaptureLanguage) {
+        captureLanguageStore.setSelected(value)
+    }
+
+    fun setDefaultCaptureMode(mode: CaptureMode) {
+        captureModeStore.setDefaultMode(mode)
     }
 
     fun retryOnDeviceModelCheck() {

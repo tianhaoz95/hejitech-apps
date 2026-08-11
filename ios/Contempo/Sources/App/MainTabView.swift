@@ -25,9 +25,14 @@ private struct CaptureTabView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            CaptureScreen { params in
-                path.append(AppRoute.confirm(params))
-            }
+            CaptureScreen(
+                onDrafted: { params in
+                    path.append(AppRoute.confirm(params))
+                },
+                onEntryClick: { entryId in
+                    path.append(AppRoute.entryDetail(entryId))
+                }
+            )
             .navigationDestination(for: AppRoute.self) { route in
                 AppRouteDestination(route: route)
             }
@@ -67,4 +72,3 @@ private struct AppRouteDestination: View {
         }
     }
 }
-

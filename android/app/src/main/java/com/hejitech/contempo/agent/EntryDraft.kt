@@ -1,6 +1,7 @@
 package com.hejitech.contempo.agent
 
 import com.hejitech.core.model.CaptureSource
+import com.hejitech.core.model.EntryCategory
 import kotlinx.serialization.Serializable
 
 /**
@@ -89,6 +90,12 @@ enum class PhotoIntent { ODOMETER, WORK }
 sealed interface PhotoIntentOutcome {
     data class Success(val intent: PhotoIntent, val source: ParseSource) : PhotoIntentOutcome
     data class Failure(val message: String) : PhotoIntentOutcome
+}
+
+/** Result of AgentClient.suggestCategory — an on-device-only category guess for the entry-detail auto-detect button. */
+sealed interface CategoryOutcome {
+    data class Success(val category: EntryCategory, val source: ParseSource) : CategoryOutcome
+    data class Failure(val message: String) : CategoryOutcome
 }
 
 /**

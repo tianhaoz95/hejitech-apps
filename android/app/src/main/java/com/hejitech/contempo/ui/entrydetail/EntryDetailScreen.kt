@@ -31,8 +31,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Movie
@@ -43,12 +46,19 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -76,13 +86,17 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import coil3.compose.AsyncImage
 import com.hejitech.contempo.R
+import com.hejitech.contempo.data.ServiceLocator
+import com.hejitech.contempo.ui.capture.DictationButton
 import com.hejitech.contempo.ui.components.ActivityDateTimeField
 import com.hejitech.contempo.ui.export.openFileExternally
 import com.hejitech.contempo.ui.export.shareFile
 import com.hejitech.contempo.ui.theme.BulletAwareText
 import com.hejitech.contempo.ui.theme.Eyebrow
 import com.hejitech.core.model.Attachment
+import com.hejitech.core.model.CaptureLanguage
 import com.hejitech.core.model.Entry
+import com.hejitech.core.model.EntryCategory
 import com.hejitech.core.model.EntryFieldValidation
 import com.hejitech.core.model.EntryStatus
 import com.google.firebase.Timestamp
@@ -102,39 +116,53 @@ fun EntryDetailScreen(
     val uiState by viewModel.uiState.collectAsState()
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(24.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+    Scaffold(
+        // Was a full-width Button/OutlinedButton pinned inline at the end of
+        // the scrollable content — took up a full row's worth of horizontal
+        // space and required scrolling past everything else to reach. A
+        // small FAB instead stays fixed in the corner regardless of scroll
+        // position and takes up far less room (see EntryDetailFab below).
+        floatingActionButton = {
+            uiState.entry?.let { entry -> EntryDetailFab(entry = entry, onEditEntry = onEditEntry) }
+        },
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
+                .padding(24.dp),
         ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.nav_back))
-            }
-            if (uiState.entry != null) {
-                IconButton(onClick = { showDeleteDialog = true }) {
-                    Icon(
-                        Icons.Filled.Delete,
-                        contentDescription = stringResource(R.string.entry_detail_delete_content_description),
-                        tint = MaterialTheme.colorScheme.error,
-                    )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.nav_back))
+                }
+                if (uiState.entry != null) {
+                    IconButton(onClick = { showDeleteDialog = true }) {
+                        Icon(
+                            Icons.Filled.Delete,
+                            contentDescription = stringResource(R.string.entry_detail_delete_content_description),
+                            tint = MaterialTheme.colorScheme.error,
+                        )
+                    }
                 }
             }
-        }
-        Spacer(Modifier.height(4.dp))
-        Eyebrow(stringResource(R.string.entry_detail_eyebrow))
-        Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(4.dp))
+            Eyebrow(stringResource(R.string.entry_detail_eyebrow))
+            Spacer(Modifier.height(20.dp))
 
-        val entry = uiState.entry
-        when {
-            uiState.isLoading -> CircularProgressIndicator()
-            entry == null -> Text(stringResource(R.string.entry_detail_not_found))
-            else -> EntryDetailContent(entry, onEditEntry, uiState, viewModel)
+            val entry = uiState.entry
+            when {
+                uiState.isLoading -> CircularProgressIndicator()
+                entry == null -> Text(stringResource(R.string.entry_detail_not_found))
+                else -> EntryDetailContent(entry, uiState, viewModel)
+            }
+            // Room for the FAB so it never overlaps the last field/section.
+            Spacer(Modifier.height(72.dp))
         }
     }
 
@@ -186,7 +214,6 @@ private fun DeleteEntryDialog(
 @Composable
 private fun EntryDetailContent(
     entry: Entry,
-    onEditEntry: (Entry) -> Unit,
     uiState: EntryDetailUiState,
     viewModel: EntryDetailViewModel,
 ) {
@@ -235,7 +262,7 @@ private fun EntryDetailContent(
         }
     }
     DetailRow(stringResource(R.string.confirm_role_label), entry.roleName.ifEmpty { stringResource(R.string.confirm_role_me) })
-    DetailRow(stringResource(R.string.confirm_category_label), entry.categoryEnum.name.lowercase().replace('_', ' '))
+    DetailRow(stringResource(R.string.confirm_category_label), EntryCategory.displayName(entry.category))
     DetailRow(stringResource(R.string.entry_detail_logged_date_label), dateFormatter.format(entry.loggedAt.toDate()))
     entry.confirmedAt?.let {
         DetailRow(stringResource(R.string.entry_detail_confirmed_date_label), dateFormatter.format(it.toDate()))
@@ -260,40 +287,47 @@ private fun EntryDetailContent(
         }
     }
 
-    if (entry.inProgress) {
-        Spacer(Modifier.height(24.dp))
-        Button(
+}
+
+/**
+ * The "Stop timer" / "Complete" / "Edit" action, now a small floating action
+ * button (see EntryDetailScreen's Scaffold) instead of a full-width Button
+ * pinned inline at the end of the scrollable content — same three nav
+ * targets and same [onEditEntry] contract as before, just relocated and
+ * icon-only to reclaim the screen space a full-width button/text label used
+ * to take.
+ */
+@Composable
+private fun EntryDetailFab(entry: Entry, onEditEntry: (Entry) -> Unit) {
+    val isPending = entry.statusEnum == EntryStatus.PENDING_REVIEW
+    // Elapsed-so-far for an open timer — see EntryDetailContent's identical
+    // calculation for why this is display/prefill only, not a real field.
+    val elapsedMinutes = ((Timestamp.now().seconds - entry.activityDate.seconds) / 60).toInt().coerceAtLeast(0)
+
+    when {
+        entry.inProgress -> {
             // Manual fallback for when voice-based "finished" detection
             // misses — prefills Confirm's duration with elapsed-so-far
             // (editable), same nav path as completing any other pending
             // entry (see ContempoNavHost's onEditEntry).
-            onClick = { onEditEntry(entry.copy(durationMinutes = elapsedMinutes)) },
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.small,
-        ) {
-            Text(stringResource(R.string.entry_detail_stop_timer_button))
+            SmallFloatingActionButton(onClick = { onEditEntry(entry.copy(durationMinutes = elapsedMinutes)) }) {
+                Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.entry_detail_stop_timer_button))
+            }
         }
-    } else if (isPending) {
-        Spacer(Modifier.height(24.dp))
-        Button(
-            onClick = { onEditEntry(entry) },
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.small,
-        ) {
-            Text(stringResource(R.string.entry_detail_complete_button))
+        isPending -> {
+            SmallFloatingActionButton(onClick = { onEditEntry(entry) }) {
+                Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.entry_detail_complete_button))
+            }
         }
-    } else {
-        // Already confirmed — the one status with no action today. Reuses
-        // the exact same Confirm-screen edit path as the pending/in-progress
-        // buttons above (entryId set → ConfirmViewModel.save() updates this
-        // same document instead of creating a new one).
-        Spacer(Modifier.height(24.dp))
-        OutlinedButton(
-            onClick = { onEditEntry(entry) },
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.small,
-        ) {
-            Text(stringResource(R.string.entry_detail_edit_button))
+        else -> {
+            // Already confirmed — the one status with no action today.
+            // Reuses the exact same Confirm-screen edit path as the
+            // pending/in-progress cases above (entryId set →
+            // ConfirmViewModel.save() updates this same document instead of
+            // creating a new one).
+            SmallFloatingActionButton(onClick = { onEditEntry(entry) }) {
+                Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.entry_detail_edit_button))
+            }
         }
     }
 }
@@ -305,8 +339,15 @@ private fun EntryDetailContent(
  * entry's (computed) missingFields non-empty; finishing the entry for real
  * stays a separate, explicit action via the "Complete this entry" button.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun InlineFieldEditor(uiState: EntryDetailUiState, viewModel: EntryDetailViewModel) {
+    var categoryMenuExpanded by remember { mutableStateOf(false) }
+    // Same app-level preference Capture's typing hero reads — see
+    // DictationButton's kdoc for why property/task get a dictate shortcut
+    // here too, not just on Capture.
+    val captureLanguage by ServiceLocator.captureLanguageStore.selected.collectAsState()
+
     Column {
         OutlinedTextField(
             value = uiState.editProperty,
@@ -314,6 +355,13 @@ private fun InlineFieldEditor(uiState: EntryDetailUiState, viewModel: EntryDetai
             label = { Text(stringResource(R.string.confirm_property_label)) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
+            trailingIcon = {
+                DictationButton(
+                    currentText = uiState.editProperty,
+                    onTextChanged = viewModel::onEditPropertyChanged,
+                    language = captureLanguage,
+                )
+            },
         )
         Spacer(Modifier.height(12.dp))
         OutlinedTextField(
@@ -321,6 +369,13 @@ private fun InlineFieldEditor(uiState: EntryDetailUiState, viewModel: EntryDetai
             onValueChange = viewModel::onEditTaskChanged,
             label = { Text(stringResource(R.string.confirm_task_label)) },
             modifier = Modifier.fillMaxWidth(),
+            trailingIcon = {
+                DictationButton(
+                    currentText = uiState.editTask,
+                    onTextChanged = viewModel::onEditTaskChanged,
+                    language = captureLanguage,
+                )
+            },
         )
         Spacer(Modifier.height(12.dp))
         OutlinedTextField(
@@ -332,6 +387,96 @@ private fun InlineFieldEditor(uiState: EntryDetailUiState, viewModel: EntryDetai
         )
         Spacer(Modifier.height(12.dp))
         ActivityDateTimeField(millis = uiState.editActivityDateMillis, onChanged = viewModel::onEditActivityDateTimeChanged)
+        Spacer(Modifier.height(12.dp))
+
+        // Category dropdown + on-device auto-detect button side by side — the
+        // button is a correctable suggestion, not a silent commit: it just
+        // fills the dropdown, which stays fully editable afterward (see
+        // EntryDetailViewModel.detectCategory's kdoc). "Add new category"
+        // swaps this whole row for an inline text field — see
+        // ConfirmScreen.kt's identical block for the reference pattern.
+        if (uiState.isAddingNewCategory) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = uiState.newCategoryName,
+                    onValueChange = viewModel::onNewCategoryNameChanged,
+                    label = { Text(stringResource(R.string.confirm_new_category_label)) },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                )
+                TextButton(onClick = viewModel::onConfirmNewCategory) {
+                    Text(stringResource(R.string.confirm_add_category_button))
+                }
+                TextButton(onClick = viewModel::onCancelAddNewCategory) {
+                    Text(stringResource(R.string.confirm_cancel_button))
+                }
+            }
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ExposedDropdownMenuBox(
+                    expanded = categoryMenuExpanded,
+                    onExpandedChange = { categoryMenuExpanded = it },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    OutlinedTextField(
+                        value = EntryCategory.displayName(uiState.editCategory),
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text(stringResource(R.string.confirm_category_label)) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryMenuExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = categoryMenuExpanded,
+                        onDismissRequest = { categoryMenuExpanded = false },
+                    ) {
+                        EntryCategory.entries.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option.name.lowercase().replace('_', ' ')) },
+                                onClick = {
+                                    viewModel.onEditCategoryChanged(option.firestoreValue)
+                                    categoryMenuExpanded = false
+                                },
+                            )
+                        }
+                        uiState.categories.forEach { category ->
+                            DropdownMenuItem(
+                                text = { Text(category.name) },
+                                onClick = {
+                                    viewModel.onEditCategoryChanged(category.name)
+                                    categoryMenuExpanded = false
+                                },
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.confirm_add_new_category_item)) },
+                            leadingIcon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                            onClick = {
+                                categoryMenuExpanded = false
+                                viewModel.onAddNewCategoryClicked()
+                            },
+                        )
+                    }
+                }
+                if (uiState.isDetectingCategory) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                } else {
+                    IconButton(onClick = viewModel::detectCategory) {
+                        Icon(
+                            Icons.Filled.AutoAwesome,
+                            contentDescription = stringResource(R.string.entry_detail_detect_category_content_description),
+                        )
+                    }
+                }
+            }
+            uiState.categoryDetectError?.let {
+                Spacer(Modifier.height(4.dp))
+                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+
         uiState.fieldSaveError?.let {
             Spacer(Modifier.height(8.dp))
             Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
@@ -724,6 +869,7 @@ private fun AttachmentRow(
 @Composable
 private fun AttachmentNoteDialog(attachment: Attachment, onDismiss: () -> Unit, onSave: (String) -> Unit) {
     var noteText by remember(attachment.id) { mutableStateOf(attachment.note) }
+    val captureLanguage by ServiceLocator.captureLanguageStore.selected.collectAsState()
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.entry_detail_attachment_note_dialog_title)) },
@@ -742,6 +888,13 @@ private fun AttachmentNoteDialog(attachment: Attachment, onDismiss: () -> Unit, 
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 3,
                     placeholder = { Text(stringResource(R.string.entry_detail_attachment_note_placeholder)) },
+                    trailingIcon = {
+                        DictationButton(
+                            currentText = noteText,
+                            onTextChanged = { noteText = it },
+                            language = captureLanguage,
+                        )
+                    },
                 )
             }
         },

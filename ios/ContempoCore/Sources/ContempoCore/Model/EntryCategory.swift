@@ -13,6 +13,19 @@ public enum EntryCategory: String, Codable, CaseIterable, Sendable, Hashable {
     }
 
     public var firestoreValue: String { rawValue }
+
+    /// Pretty label for a raw category value that might be one of this
+    /// enum's built-in `firestoreValue`s OR a free-form custom category
+    /// name from the user's own `users/{uid}/categories` roster (see
+    /// `Category`) — unlike `init(firestoreValue:)`, this never silently
+    /// collapses an unrecognized value down to "Other"; a custom name is
+    /// already human-typed, so it's returned as-is.
+    public static func displayName(for value: String) -> String {
+        if let known = EntryCategory(rawValue: value) {
+            return known.firestoreValue.replacingOccurrences(of: "_", with: " ").capitalized
+        }
+        return value
+    }
 }
 
 /// How an entry was captured — kept even after confirmation, for the correction-feedback pipeline.

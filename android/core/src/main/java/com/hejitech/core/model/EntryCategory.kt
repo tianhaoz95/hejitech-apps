@@ -16,5 +16,16 @@ enum class EntryCategory(val firestoreValue: String) {
     companion object {
         fun fromFirestoreValue(value: String): EntryCategory =
             entries.find { it.firestoreValue == value } ?: OTHER
+
+        /**
+         * Pretty label for a raw category value that might be one of this
+         * enum's built-in [firestoreValue]s OR a free-form custom category
+         * name from the user's own `users/{uid}/categories` roster (see
+         * [Category]) — unlike [fromFirestoreValue], this never silently
+         * collapses an unrecognized value down to "Other"; a custom name is
+         * already human-typed, so it's returned as-is.
+         */
+        fun displayName(value: String): String =
+            entries.find { it.firestoreValue == value }?.name?.lowercase()?.replace('_', ' ') ?: value
     }
 }

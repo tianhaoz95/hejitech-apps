@@ -15,6 +15,8 @@ final class SettingsViewModel {
     private let onDeviceLlm = ServiceLocator.onDeviceLlm
     private let whisperTranscriber = ServiceLocator.whisperTranscriber
     private let captureLanguageStore = ServiceLocator.captureLanguageStore
+    private let quickCaptureSettingsStore = ServiceLocator.quickCaptureSettingsStore
+    private let captureModeStore = ServiceLocator.captureModeStore
     private let entryRepository = ServiceLocator.entryRepository
 
     var displayName: String { Auth.auth().currentUser?.displayName ?? "Signed in" }
@@ -29,10 +31,13 @@ final class SettingsViewModel {
     /// recurring cloud-LLM cost and must require Pro before they're selectable.
     var hasProEntitlement: Bool { ServiceLocator.subscriptionStore.hasProEntitlement }
     var onDeviceStatus: OnDeviceModelUiStatus { onDeviceLlm.status }
-    var asrAvailable: Bool { whisperTranscriber.isAvailable }
+    var asrStatus: OnDeviceModelUiStatus { whisperTranscriber.status }
 
-    var showLanguageSelector: Bool { captureLanguageStore.showLanguageSelector }
     var selectedCaptureLanguage: CaptureLanguage { captureLanguageStore.selected }
+    /// App-level now, not a per-capture-session toggle — see CaptureScreen's doc comment on why this moved here.
+    var quickCaptureEnabled: Bool { quickCaptureSettingsStore.enabled }
+    /// Which mode a *fresh* Capture-tab visit opens into — see CaptureViewModel.captureMode's doc comment.
+    var defaultCaptureMode: CaptureMode { captureModeStore.defaultMode }
 
     var isDeletingAccount = false
     var deleteAccountError: String?
@@ -42,6 +47,11 @@ final class SettingsViewModel {
 
     var roles: [ParticipantRole] = []
     var roleError: String?
+
+    /// This week's on-device/cloud LLM usage — see EntryRepository's
+    /// observeDeviceTokenUsage/observeCloudTokenUsage doc comments.
+    var deviceTokenUsage: TokenUsageWeek?
+    var cloudTokenUsage: TokenUsageWeek?
 
     init() {
         let repository = entryRepository
@@ -60,22 +70,60 @@ final class SettingsViewModel {
                 // Stream ended with a non-auth error — nothing else to do here.
             }
         }
+        Task { [weak self] in
+            let stream = AuthAwareStream.make(
+                fallback: { nil },
+                onAuthFailure: { try? await ServiceLocator.authManager.signOut() },
+                factory: { repository.observeDeviceTokenUsage() }
+            )
+            do {
+                for try await usage in stream {
+                    guard let self else { return }
+                    self.deviceTokenUsage = usage
+                }
+            } catch {
+                // Stream ended with a non-auth error — nothing else to do here.
+            }
+        }
+        Task { [weak self] in
+            let stream = AuthAwareStream.make(
+                fallback: { nil },
+                onAuthFailure: { try? await ServiceLocator.authManager.signOut() },
+                factory: { repository.observeCloudTokenUsage() }
+            )
+            do {
+                for try await usage in stream {
+                    guard let self else { return }
+                    self.cloudTokenUsage = usage
+                }
+            } catch {
+                // Stream ended with a non-auth error — nothing else to do here.
+            }
+        }
     }
 
     func setInferencePreference(_ value: InferencePreference) {
         aiSettingsStore.setPreference(value)
     }
 
-    func setShowLanguageSelector(_ value: Bool) {
-        captureLanguageStore.setShowLanguageSelector(value)
+    func setQuickCaptureEnabled(_ value: Bool) {
+        quickCaptureSettingsStore.setEnabled(value)
     }
 
     func setCaptureLanguage(_ value: CaptureLanguage) {
         captureLanguageStore.setSelected(value)
     }
 
+    func setDefaultCaptureMode(_ mode: CaptureMode) {
+        captureModeStore.setDefaultMode(mode)
+    }
+
     func retryOnDeviceModelCheck() {
         onDeviceLlm.retry()
+    }
+
+    func retryAsrModelCheck() {
+        whisperTranscriber.retry()
     }
 
     /// Confirmation is the caller's job (see `SettingsScreen`'s confirmation

@@ -48,15 +48,20 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hejitech.contempo.R
 import com.hejitech.contempo.agent.InferencePreference
 import com.hejitech.contempo.agent.OnDeviceModelUiStatus
+import com.hejitech.contempo.ui.capture.CaptureMode
 import com.hejitech.contempo.ui.export.ExportViewModel
 import com.hejitech.contempo.ui.export.shareCsv
 import com.hejitech.contempo.ui.legal.LegalDoc
 import com.hejitech.contempo.ui.theme.Eyebrow
+import com.hejitech.core.model.CaptureLanguage
+import com.hejitech.core.model.TokenUsageWeek
 // Aliased — this file already imports androidx.compose.ui.semantics.Role
 // (used for e.g. `role = Role.RadioButton`) which would otherwise collide.
 import com.hejitech.core.model.Role as ParticipantRole
@@ -72,11 +77,14 @@ fun SettingsScreen(
     val cloudAiEnabled by viewModel.cloudAiEnabled.collectAsState()
     val hasProEntitlement by viewModel.hasProEntitlement.collectAsState()
     val onDeviceStatus by viewModel.onDeviceModelStatus.collectAsState()
-    val showLanguageSelector by viewModel.showLanguageSelector.collectAsState()
+    val quickCaptureEnabled by viewModel.quickCaptureEnabled.collectAsState()
+    val captureLanguage by viewModel.captureLanguage.collectAsState()
+    val defaultCaptureMode by viewModel.defaultCaptureMode.collectAsState()
     val exportState by exportViewModel.uiState.collectAsState()
     val deleteAccountState by viewModel.deleteAccountState.collectAsState()
     val context = LocalContext.current
     var showWearExplanation by remember { mutableStateOf(false) }
+    var showQuickCaptureExplanation by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var showDeleteModelConfirmation by remember { mutableStateOf(false) }
 
@@ -182,25 +190,94 @@ fun SettingsScreen(
                 )
             }
 
+            val deviceTokenUsage by viewModel.deviceTokenUsage.collectAsState()
+            val cloudTokenUsage by viewModel.cloudTokenUsage.collectAsState()
+            val hasProEntitlementForUsage by viewModel.hasProEntitlement.collectAsState()
+            Spacer(Modifier.height(16.dp))
+            TokenUsageSection(
+                deviceUsage = deviceTokenUsage,
+                cloudUsage = cloudTokenUsage,
+                showCloud = hasProEntitlementForUsage,
+            )
+
             Spacer(Modifier.height(32.dp))
             HorizontalDivider()
             Spacer(Modifier.height(24.dp))
 
             Text(stringResource(R.string.settings_capture_section), style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
+
+            // App-level now, not a per-capture-session toggle — moved off
+            // the Capture tab entirely to keep that screen lean (see
+            // CaptureScreen's kdoc). Same label/switch/info-button shape the
+            // old Capture-tab row used, just relocated.
+            val quickCaptureToggleDescription = stringResource(R.string.capture_quick_capture_toggle_content_description)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    stringResource(R.string.settings_show_language_selector_label),
+                    stringResource(R.string.capture_quick_capture_label),
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.weight(1f),
                 )
-                Switch(checked = showLanguageSelector, onCheckedChange = viewModel::setShowLanguageSelector)
+                Switch(
+                    checked = quickCaptureEnabled,
+                    onCheckedChange = viewModel::setQuickCaptureEnabled,
+                    modifier = Modifier.semantics { contentDescription = quickCaptureToggleDescription },
+                )
+                IconButton(onClick = { showQuickCaptureExplanation = true }) {
+                    Icon(
+                        Icons.Filled.Info,
+                        contentDescription = stringResource(R.string.capture_quick_capture_info_content_description),
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
             }
+
+            Spacer(Modifier.height(20.dp))
+            Text(stringResource(R.string.settings_capture_language_label), style = MaterialTheme.typography.bodyLarge)
             Text(
-                stringResource(R.string.settings_show_language_selector_hint),
+                stringResource(R.string.settings_capture_language_hint),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Spacer(Modifier.height(8.dp))
+            Column(Modifier.selectableGroup()) {
+                InferenceOptionRow(
+                    label = stringResource(R.string.capture_language_english),
+                    selected = captureLanguage == CaptureLanguage.ENGLISH,
+                    onClick = { viewModel.setCaptureLanguage(CaptureLanguage.ENGLISH) },
+                )
+                InferenceOptionRow(
+                    label = stringResource(R.string.capture_language_chinese),
+                    selected = captureLanguage == CaptureLanguage.CHINESE,
+                    onClick = { viewModel.setCaptureLanguage(CaptureLanguage.CHINESE) },
+                )
+                InferenceOptionRow(
+                    label = stringResource(R.string.capture_language_auto),
+                    selected = captureLanguage == CaptureLanguage.AUTO,
+                    onClick = { viewModel.setCaptureLanguage(CaptureLanguage.AUTO) },
+                )
+            }
+
+            Spacer(Modifier.height(20.dp))
+            Text(stringResource(R.string.settings_capture_default_mode_label), style = MaterialTheme.typography.bodyLarge)
+            Text(
+                stringResource(R.string.settings_capture_default_mode_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(8.dp))
+            Column(Modifier.selectableGroup()) {
+                InferenceOptionRow(
+                    label = stringResource(R.string.capture_mode_audio_first),
+                    selected = defaultCaptureMode == CaptureMode.AUDIO_FIRST,
+                    onClick = { viewModel.setDefaultCaptureMode(CaptureMode.AUDIO_FIRST) },
+                )
+                InferenceOptionRow(
+                    label = stringResource(R.string.capture_mode_typing),
+                    selected = defaultCaptureMode == CaptureMode.TYPING,
+                    onClick = { viewModel.setDefaultCaptureMode(CaptureMode.TYPING) },
+                )
+            }
 
             Spacer(Modifier.height(32.dp))
             HorizontalDivider()
@@ -367,6 +444,19 @@ fun SettingsScreen(
         )
     }
 
+    if (showQuickCaptureExplanation) {
+        AlertDialog(
+            onDismissRequest = { showQuickCaptureExplanation = false },
+            title = { Text(stringResource(R.string.capture_quick_capture_label)) },
+            text = { Text(stringResource(R.string.capture_quick_capture_caption)) },
+            confirmButton = {
+                TextButton(onClick = { showQuickCaptureExplanation = false }) {
+                    Text(stringResource(android.R.string.ok))
+                }
+            },
+        )
+    }
+
     if (showDeleteConfirmation) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmation = false },
@@ -418,6 +508,113 @@ fun SettingsScreen(
             },
         )
     }
+}
+
+/**
+ * On-device counters are client-written (see EntryRepository.
+ * recordOnDeviceTokenUsage) and refresh live as this device runs
+ * inference; cloud counters are server-written (askAgentFlow/parseEntryFlow)
+ * and refresh live once Firestore syncs the write down — either way this
+ * is a live listener, not a one-shot fetch, so it updates in place as usage
+ * happens. Both reset automatically at the next ISO week boundary (a new
+ * week is simply a new, still-empty document).
+ */
+// On-device inference costs us nothing marginally (it runs on the user's own
+// hardware), so this reference value is purely a progress-bar scale, never
+// an enforced cap — every user, free or Pro, is really unlimited. It exists
+// so the bar has *something* to measure fullness against; real usage sits
+// far below it, which is the point (visibly tons of headroom). Cloud's 20 is
+// a real quota — cloud tokens cost real money (see the cloud_ai_enabled
+// Remote Config kill switch) — and is Pro-only, so the row is hidden
+// entirely for free accounts rather than shown locked/empty.
+private const val ON_DEVICE_CREDIT_REFERENCE = 10_000.0
+private const val CLOUD_CREDIT_QUOTA = 20.0
+
+@Composable
+private fun TokenUsageSection(deviceUsage: TokenUsageWeek?, cloudUsage: TokenUsageWeek?, showCloud: Boolean) {
+    Column {
+        Text(
+            stringResource(R.string.settings_token_usage_title),
+            style = MaterialTheme.typography.titleSmall,
+        )
+        Spacer(Modifier.height(8.dp))
+        TokenUsageProgressRow(
+            label = stringResource(R.string.settings_token_usage_on_device),
+            usage = deviceUsage,
+            quota = ON_DEVICE_CREDIT_REFERENCE,
+            quotaLabel = { credits -> stringResource(R.string.settings_token_usage_credits_unlimited, credits) },
+            color = MaterialTheme.colorScheme.tertiary,
+        )
+        if (showCloud) {
+            Spacer(Modifier.height(12.dp))
+            TokenUsageProgressRow(
+                label = stringResource(R.string.settings_token_usage_cloud),
+                usage = cloudUsage,
+                quota = CLOUD_CREDIT_QUOTA,
+                quotaLabel = { credits ->
+                    stringResource(R.string.settings_token_usage_credits_quota, credits, CLOUD_CREDIT_QUOTA.toInt())
+                },
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TokenUsageProgressRow(
+    label: String,
+    usage: TokenUsageWeek?,
+    quota: Double,
+    quotaLabel: @Composable (String) -> String,
+    color: androidx.compose.ui.graphics.Color,
+) {
+    val credits = usage?.creditsUsed ?: 0.0
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                label,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                quotaLabel(formatCredits(credits)),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        LinearProgressIndicator(
+            progress = { (credits / quota).toFloat().coerceIn(0f, 1f) },
+            modifier = Modifier.fillMaxWidth(),
+            color = color,
+        )
+        if (usage != null && usage.requestCount > 0) {
+            Spacer(Modifier.height(2.dp))
+            Text(
+                stringResource(
+                    R.string.settings_token_usage_summary,
+                    usage.inputTokens,
+                    usage.outputTokens,
+                    usage.requestCount,
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            Spacer(Modifier.height(2.dp))
+            Text(
+                stringResource(R.string.settings_token_usage_empty),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+private fun formatCredits(value: Double): String = when {
+    value <= 0.0 -> "0"
+    value < 0.01 -> "< 0.01"
+    else -> String.format("%.2f", value)
 }
 
 @Composable

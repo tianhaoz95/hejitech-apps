@@ -10,6 +10,17 @@ struct ChatScreen: View {
     @State private var photoPickerItem: PhotosPickerItem?
     @State private var showPhotoPicker = false
     @State private var copiedMessageId: UUID?
+    // The disclaimer used to be a permanent Text line pinned under the
+    // input bar — moved into a popup, reachable via this question-mark
+    // button in the top status bar, so that vertical space goes back to
+    // chat content instead. See the `.alert` at the bottom of this View's
+    // modifier chain.
+    @State private var showDisclaimer = false
+    // Nothing on this screen previously gave the keyboard anywhere to go —
+    // no submit action on the vertical-axis TextField, no scroll-to-dismiss,
+    // no tap-outside, no keyboard accessory bar. See the `.focused`/
+    // `.scrollDismissesKeyboard`/keyboard-toolbar wiring below.
+    @FocusState private var isInputFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -29,6 +40,15 @@ struct ChatScreen: View {
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
                     .background(palette.surfaceContainerHigh, in: Capsule())
+                Button {
+                    showDisclaimer = true
+                } label: {
+                    Image(systemName: "questionmark.circle")
+                        .font(.system(size: 15))
+                        .foregroundStyle(palette.inkFaint)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("About these answers")
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
@@ -133,6 +153,11 @@ struct ChatScreen: View {
                     }
                     .padding(.vertical, 16)
                 }
+                // Drag-to-dismiss while scrolling the message list, and a
+                // tap anywhere in the list area also dismisses — two more
+                // ways out besides the keyboard's own Done button below.
+                .scrollDismissesKeyboard(.interactively)
+                .onTapGesture { isInputFocused = false }
                 .onChange(of: viewModel.messages.count) {
                     if let last = viewModel.messages.last {
                         withAnimation(.easeOut(duration: 0.25)) {
@@ -318,6 +343,7 @@ struct ChatScreen: View {
                             .stroke(palette.hairline, lineWidth: 1)
                     )
                     .disabled(viewModel.isRecording || viewModel.isTranscribing)
+                    .focused($isInputFocused)
 
                 Button {
                     viewModel.send()
@@ -343,12 +369,6 @@ struct ChatScreen: View {
                 alignment: .top
             )
 
-            // Legal Disclaimer Footer
-            Text("Educational logging tool. Consult a CPA for official tax advice.")
-                .font(ContempoFont.bodySmall())
-                .foregroundStyle(palette.inkFaint)
-                .padding(.vertical, 4)
-                .padding(.horizontal, 16)
         }
         .background(palette.paper.ignoresSafeArea())
         .navigationTitle("Copilot")
@@ -365,12 +385,27 @@ struct ChatScreen: View {
                     }
                 }
             }
+            // Always-visible, always-reachable dismissal — the scroll-drag
+            // and tap-outside gestures above are conveniences, but this is
+            // the one guaranteed to be tappable regardless of where the
+            // user's thumb already is once the keyboard is up.
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { isInputFocused = false }
+                    .font(ContempoFont.labelLarge().weight(.semibold))
+                    .foregroundStyle(palette.pine)
+            }
         }
         .confirmationDialog("Clear chat history?", isPresented: $showClearConfirm, titleVisibility: .visible) {
             Button("Clear Chat History", role: .destructive) {
                 withAnimation { viewModel.clearHistory() }
             }
             Button("Cancel", role: .cancel) {}
+        }
+        .alert("About these answers", isPresented: $showDisclaimer) {
+            Button("Got it") {}
+        } message: {
+            Text("Educational logging tool. Consult a CPA for official tax advice.")
         }
         .onChange(of: photoPickerItem) { _, newValue in
             Task {
@@ -433,7 +468,7 @@ private struct HeroEmptyStateView: View {
             "Can I count travel time and property visits toward my STR material participation hours?"
         ),
         (
-            "shield.checkmark.fill",
+            "checkmark.shield.fill",
             "IRS Audit Proof & Evidence",
             "What documentation does an auditor expect to see?",
             "What proof does the IRS demand in a short-term rental material participation audit?"

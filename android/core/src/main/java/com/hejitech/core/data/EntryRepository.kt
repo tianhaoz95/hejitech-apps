@@ -2,9 +2,11 @@ package com.hejitech.core.data
 
 import android.net.Uri
 import com.hejitech.core.model.Attachment
+import com.hejitech.core.model.Category
 import com.hejitech.core.model.Entry
 import com.hejitech.core.model.Property
 import com.hejitech.core.model.Role
+import com.hejitech.core.model.TokenUsageWeek
 import kotlinx.coroutines.flow.Flow
 import java.io.File
 
@@ -24,6 +26,40 @@ interface EntryRepository {
     suspend fun renameRole(roleId: String, name: String)
 
     suspend fun deleteRole(roleId: String)
+
+    /**
+     * Live stream of the user's custom category roster — categories added
+     * in place from Confirm/EntryDetail (see [Category]), alongside the
+     * fixed built-in ones in [com.hejitech.core.model.EntryCategory].
+     */
+    fun observeCategories(): Flow<List<Category>>
+
+    suspend fun createCategory(name: String): Category
+
+    /**
+     * Live stream of this device's on-device LLM token usage for the
+     * current ISO week (resets automatically — a new week is just a new
+     * doc — see [TokenUsageWeek]). Null until the current week has any
+     * usage recorded. Client-written (see [recordOnDeviceTokenUsage]),
+     * unlike [observeCloudTokenUsage] below.
+     */
+    fun observeDeviceTokenUsage(): Flow<TokenUsageWeek?>
+
+    /**
+     * Increments this device's current-week on-device usage counters —
+     * called from AgentClient right after a successful on-device generate
+     * call. The "current week" is resolved internally (not passed in) so
+     * every call site agrees on the same week-boundary logic.
+     */
+    suspend fun recordOnDeviceTokenUsage(inputTokens: Int, outputTokens: Int)
+
+    /**
+     * Live stream of this account's cloud LLM token usage for the current
+     * ISO week — server-written only (askAgentFlow/parseEntryFlow via the
+     * Admin SDK), so unlike [observeDeviceTokenUsage] there's no
+     * corresponding client write method here.
+     */
+    fun observeCloudTokenUsage(): Flow<TokenUsageWeek?>
 
     /** Writes a new entry (typically status = pending_review) and returns its assigned id. */
     suspend fun createEntry(entry: Entry): String

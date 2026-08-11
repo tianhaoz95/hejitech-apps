@@ -12,6 +12,7 @@ struct SettingsScreen: View {
     @State private var newRoleName = ""
     @State private var renamingRole: ParticipantRole?
     @State private var renameRoleText = ""
+    @State private var showQuickCaptureExplanation = false
 
     var body: some View {
         List {
@@ -61,16 +62,67 @@ struct SettingsScreen: View {
                 if viewModel.inferencePreference != .cloudOnly {
                     onDeviceStatusPanel
                 }
+
+                tokenUsageSection
             } header: {
                 Text("AI model")
             }
 
             Section("Capture") {
-                Toggle("Show language selector", isOn: Binding(
-                    get: { viewModel.showLanguageSelector },
-                    set: { viewModel.setShowLanguageSelector($0) }
-                ))
-                Text("Adds a language switcher to the Capture tab. Off by default — capture uses English.")
+                // App-level now, not a per-capture-session toggle — moved
+                // off the Capture tab entirely to keep that screen lean
+                // (see CaptureScreen's doc comment). Same
+                // label/toggle/info-button shape the old Capture-tab row
+                // used, just relocated.
+                HStack {
+                    Text("Quick Capture")
+                    Spacer()
+                    Button {
+                        showQuickCaptureExplanation = true
+                    } label: {
+                        Image(systemName: "info.circle")
+                            .foregroundStyle(palette.inkSoft)
+                    }
+                    .buttonStyle(.plain)
+                    Toggle("", isOn: Binding(
+                        get: { viewModel.quickCaptureEnabled },
+                        set: { viewModel.setQuickCaptureEnabled($0) }
+                    ))
+                    .labelsHidden()
+                    .tint(palette.pine)
+                }
+
+                ForEach(CaptureLanguage.allCases, id: \.self) { language in
+                    Button {
+                        viewModel.setCaptureLanguage(language)
+                    } label: {
+                        HStack {
+                            Text(captureLanguageLabel(language)).foregroundStyle(palette.inkSoft)
+                            Spacer()
+                            if viewModel.selectedCaptureLanguage == language {
+                                Image(systemName: "checkmark").foregroundStyle(palette.pine)
+                            }
+                        }
+                    }
+                }
+                Text("Which Whisper checkpoint transcribes your voice captures.")
+                    .font(ContempoFont.labelSmall())
+                    .foregroundStyle(palette.inkFaint)
+
+                ForEach(CaptureMode.allCases, id: \.self) { mode in
+                    Button {
+                        viewModel.setDefaultCaptureMode(mode)
+                    } label: {
+                        HStack {
+                            Text(captureModeLabel(mode)).foregroundStyle(palette.inkSoft)
+                            Spacer()
+                            if viewModel.defaultCaptureMode == mode {
+                                Image(systemName: "checkmark").foregroundStyle(palette.pine)
+                            }
+                        }
+                    }
+                }
+                Text("Which mode the Capture tab opens in. You can still switch modes for the current session from the toggle at the top of Capture.")
                     .font(ContempoFont.labelSmall())
                     .foregroundStyle(palette.inkFaint)
             }
@@ -154,6 +206,9 @@ struct SettingsScreen: View {
         .sheet(isPresented: $showWalkthrough) {
             HelpWalkthroughSheet()
         }
+        .sheet(isPresented: $showQuickCaptureExplanation) {
+            QuickCaptureExplanationSheet()
+        }
         .navigationTitle("Settings")
         .confirmationDialog(
             "Delete your account?",
@@ -227,29 +282,143 @@ struct SettingsScreen: View {
         }
     }
 
+    private func captureModeLabel(_ mode: CaptureMode) -> String {
+        mode == .audioFirst ? "Audio-first" : "Typing"
+    }
+
+    private func captureLanguageLabel(_ language: CaptureLanguage) -> String {
+        switch language {
+        case .english: return "English"
+        case .chinese: return "中文"
+        case .auto: return "Auto"
+        }
+    }
+
+    // On-device inference costs us nothing marginally (it runs on the
+    // user's own hardware), so this reference value is purely a
+    // progress-bar scale, never an enforced cap — every user, free or Pro,
+    // is really unlimited. It exists so the bar has *something* to measure
+    // fullness against; real usage sits far below it, which is the point
+    // (visibly tons of headroom). Cloud's 20 is a real quota — cloud tokens
+    // cost real money (see the cloud_ai_enabled Remote Config kill switch)
+    // — and is Pro-only, so the row is hidden entirely for free accounts
+    // rather than shown locked/empty.
+    private static let onDeviceCreditReference = 10_000.0
+    private static let cloudCreditQuota = 20.0
+
     @ViewBuilder
+    /// On-device counters are client-written (see EntryRepository.
+    /// recordOnDeviceTokenUsage) and refresh live as this device runs
+    /// inference; cloud counters are server-written (askAgentFlow/
+    /// parseEntryFlow) and refresh live once Firestore syncs the write down
+    /// — either way this is a live listener, not a one-shot fetch, so it
+    /// updates in place as usage happens. Both reset automatically at the
+    /// next ISO week boundary (a new week is simply a new, still-empty
+    /// document).
+    private var tokenUsageSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("AI credits (this week)")
+                .font(ContempoFont.labelLarge())
+                .foregroundStyle(palette.ink)
+            tokenUsageProgressRow(
+                label: "On-device",
+                usage: viewModel.deviceTokenUsage,
+                quota: Self.onDeviceCreditReference,
+                quotaLabel: { credits in "\(credits) / Unlimited" },
+                tint: palette.pine,
+            )
+            if viewModel.hasProEntitlement {
+                tokenUsageProgressRow(
+                    label: "Cloud",
+                    usage: viewModel.cloudTokenUsage,
+                    quota: Self.cloudCreditQuota,
+                    quotaLabel: { credits in "\(credits) / \(Int(Self.cloudCreditQuota)) credits" },
+                    tint: palette.brass,
+                )
+            }
+        }
+    }
+
+    private func tokenUsageProgressRow(
+        label: String,
+        usage: TokenUsageWeek?,
+        quota: Double,
+        quotaLabel: (String) -> String,
+        tint: Color,
+    ) -> some View {
+        let credits = usage?.creditsUsed ?? 0
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(label)
+                    .font(ContempoFont.labelSmall())
+                    .foregroundStyle(palette.inkSoft)
+                Spacer()
+                Text(quotaLabel(Self.formatCredits(credits)))
+                    .font(ContempoFont.labelSmall())
+                    .foregroundStyle(palette.inkFaint)
+            }
+            ProgressView(value: min(credits / quota, 1.0))
+                .tint(tint)
+            if let usage, usage.requestCount > 0 {
+                Text("\(usage.inputTokens) in / \(usage.outputTokens) out · \(usage.requestCount) requests")
+                    .font(ContempoFont.labelSmall())
+                    .foregroundStyle(palette.inkFaint)
+            } else {
+                Text("No usage yet")
+                    .font(ContempoFont.labelSmall())
+                    .foregroundStyle(palette.inkFaint)
+            }
+        }
+    }
+
+    private static func formatCredits(_ value: Double) -> String {
+        if value <= 0 { return "0" }
+        if value < 0.01 { return "< 0.01" }
+        return String(format: "%.2f", value)
+    }
+
     private var onDeviceStatusPanel: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // Speech Recognition Model (ASR - Whisper)
+            // Speech Recognition Model (ASR - Whisper) — On-Demand
+            // Resources, Initial Install tagged (see WhisperTranscriber's
+            // kdoc), so this is normally .available almost immediately
+            // after launch; .checking/.failed are surfaced defensively
+            // rather than assumed away.
             VStack(alignment: .leading, spacing: 4) {
                 Text("Speech Recognition")
                     .font(ContempoFont.labelLarge())
                     .foregroundStyle(palette.ink)
-                if viewModel.asrAvailable {
+
+                switch viewModel.asrStatus {
+                case .checking, .notDownloaded, .downloading:
                     HStack(spacing: 6) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(palette.pine)
-                        Text("On-device speech model ready (bundled)")
+                        ProgressView().controlSize(.small)
+                        Text("Preparing on-device speech model…")
                             .font(ContempoFont.labelSmall())
-                            .foregroundStyle(palette.pine)
+                            .foregroundStyle(palette.inkFaint)
                     }
-                } else {
+                case .unavailable:
                     HStack(spacing: 6) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundStyle(palette.brass)
                         Text("On-device speech model unavailable")
                             .font(ContempoFont.labelSmall())
                             .foregroundStyle(palette.brass)
+                    }
+                case .available:
+                    HStack(spacing: 6) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(palette.pine)
+                        Text("On-device speech model ready")
+                            .font(ContempoFont.labelSmall())
+                            .foregroundStyle(palette.pine)
+                    }
+                case .failed(let message):
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Couldn't prepare the on-device speech model: \(message)")
+                            .font(ContempoFont.labelSmall())
+                            .foregroundStyle(palette.danger)
+                        Button("Retry") { viewModel.retryAsrModelCheck() }
                     }
                 }
             }
@@ -352,5 +521,54 @@ struct SettingsScreen: View {
             parts.append("about \(etaLabel) left")
         }
         return parts.isEmpty ? "Estimating speed…" : parts.joined(separator: " · ")
+    }
+}
+
+/// Moved here from CaptureScreen along with the toggle it explains — see
+/// SettingsScreen's Capture section's doc comment.
+private struct QuickCaptureExplanationSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.contempoPalette) private var palette
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("About Quick Capture")
+                    .font(ContempoFont.titleLarge())
+                    .foregroundStyle(palette.ink)
+                Spacer()
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(palette.inkSoft)
+                }
+                .buttonStyle(.plain)
+            }
+
+            Text("Quick Capture lets you record multiple voice notes in rapid succession without waiting for on-device transcription or AI structuring.")
+                .font(ContempoFont.bodyMedium())
+                .foregroundStyle(palette.ink)
+
+            VStack(alignment: .leading, spacing: 12) {
+                Label("Recorded notes are saved locally to disk instantly.", systemImage: "bolt.fill")
+                Label("Notes are uploaded in the background to your queue.", systemImage: "arrow.clockwise.icloud")
+                Label("On-device AI transcribes and converts notes into entries asynchronously.", systemImage: "sparkles")
+            }
+            .font(ContempoFont.bodySmall())
+            .foregroundStyle(palette.inkSoft)
+
+            Spacer()
+
+            Button("Got it") {
+                dismiss()
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(palette.pine)
+            .frame(maxWidth: .infinity)
+        }
+        .padding(24)
+        .background(palette.paper)
     }
 }

@@ -47,15 +47,31 @@ final class ConfirmViewModel {
     /// rather than ever overriding a real LLM-inferred category.
     var task = "" {
         didSet {
-            guard !categoryManuallySet, category == .other else { return }
+            guard !categoryManuallySet, category == EntryCategory.other.firestoreValue else { return }
             if let suggested = CategoryClassifier.classify(task) {
-                category = suggested
+                category = suggested.firestoreValue
             }
         }
     }
     var durationMinutes = ""
-    var category: EntryCategory = .other
+    /// A raw category value — either one of `EntryCategory`'s built-in
+    /// `firestoreValue`s, or a free-form name from the user's own
+    /// `users/{uid}/categories` roster (see `CustomCategory`, added in place the
+    /// same way roles are — `onAddNewCategoryClicked`/`onConfirmNewCategory`
+    /// below). Not typed as `EntryCategory` itself since that enum can't
+    /// represent a custom value without silently collapsing it to `.other`
+    /// (see `EntryCategory.init(firestoreValue:)`) — use
+    /// `EntryCategory.displayName(for:)` to render this for display.
+    var category: String = EntryCategory.other.firestoreValue
     var categoryManuallySet = false
+    var categories: [CustomCategory] = []
+    var isAddingNewCategory = false
+    var newCategoryName = ""
+    /// See `detectCategory()` — on-device auto-detect, available regardless
+    /// of whether a category is already set (editing an existing entry
+    /// always has one).
+    var isDetectingCategory = false
+    var categoryDetectError: String?
     var miles = ""
     var activityDate: Date
     var properties: [Property] = []
@@ -103,7 +119,7 @@ final class ConfirmViewModel {
         property = params.property
         task = params.task
         durationMinutes = params.durationMinutes > 0 ? String(params.durationMinutes) : ""
-        category = EntryCategory(firestoreValue: params.category)
+        category = params.category.isEmpty ? EntryCategory.other.firestoreValue : params.category
         miles = params.miles > 0 ? Self.cleanString(params.miles) : ""
         activityDate = aiOriginalActivityDate ?? Date()
         isTripMode = params.isTripCapture
@@ -150,6 +166,22 @@ final class ConfirmViewModel {
             }
         }
 
+        Task { [weak self] in
+            let stream = AuthAwareStream.make(
+                fallback: { [] },
+                onAuthFailure: { try? await ServiceLocator.authManager.signOut() },
+                factory: { repository.observeCategories() }
+            )
+            do {
+                for try await categories in stream {
+                    guard let self else { return }
+                    self.categories = categories
+                }
+            } catch {
+                // Stream ended with a non-auth error — nothing else to do here.
+            }
+        }
+
         // Resuming an existing (e.g. pending) entry should reflect its
         // actual current role, even though `params` itself carries no role
         // info — a fresh entry's `existingEntryTask` resolves to nil almost
@@ -164,9 +196,32 @@ final class ConfirmViewModel {
         selectedRoleId = roleId
     }
 
-    func onCategoryChanged(_ value: EntryCategory) {
+    func onCategoryChanged(_ value: String) {
         category = value
         categoryManuallySet = true
+    }
+
+    /// On-device auto-detect for the category picker — deliberately
+    /// available regardless of what's already selected there (including
+    /// when editing an already-confirmed entry, which always arrives with a
+    /// real category, not just fresh captures) since it's a correctable
+    /// suggestion, not a silent commit: the result just overwrites
+    /// `category` the same way `onCategoryChanged` would, marking it
+    /// manually set so `task`'s didSet auto-suggest won't later stomp on it.
+    func detectCategory() {
+        isDetectingCategory = true
+        categoryDetectError = nil
+        Task {
+            switch await agentClient.suggestCategory(propertyName: property, task: task) {
+            case .success(let detected, _):
+                isDetectingCategory = false
+                category = detected.firestoreValue
+                categoryManuallySet = true
+            case .failure(let message):
+                isDetectingCategory = false
+                categoryDetectError = message
+            }
+        }
     }
 
     func onPropertySelected(_ property: Property) {
@@ -219,6 +274,33 @@ final class ConfirmViewModel {
         }
     }
 
+    /// Lets a category be created without leaving Confirm — mirrors
+    /// `onAddNewRoleClicked`/`onConfirmNewRole` above exactly. Create-only,
+    /// same as roles; there's no rename/delete UI for a category roster
+    /// (only the "built-in" `EntryCategory` entries are more than a name,
+    /// and even those aren't renameable).
+    func onAddNewCategoryClicked() {
+        isAddingNewCategory = true
+        newCategoryName = ""
+    }
+
+    func onCancelAddNewCategory() {
+        isAddingNewCategory = false
+        newCategoryName = ""
+    }
+
+    func onConfirmNewCategory() {
+        let name = newCategoryName.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+        Task {
+            let created = try? await entryRepository.createCategory(name: name)
+            category = created?.name ?? name
+            categoryManuallySet = true
+            isAddingNewCategory = false
+            newCategoryName = ""
+        }
+    }
+
     /// Flips between the two photo-capture shapes when the vision model's
     /// classification (see `AgentClient.classifyPhotoIntent`) looks wrong to
     /// the user — a one-tap fix instead of forcing a retake. Re-runs the
@@ -246,7 +328,7 @@ final class ConfirmViewModel {
                     property = result.draft.property ?? ""
                     task = result.draft.task ?? ""
                     durationMinutes = result.draft.durationMinutes.map(String.init) ?? ""
-                    category = result.draft.category.map { EntryCategory(firestoreValue: $0) } ?? .other
+                    category = result.draft.category ?? EntryCategory.other.firestoreValue
                 }
             }
             isReclassifying = false
@@ -362,7 +444,7 @@ final class ConfirmViewModel {
             propertyName: property,
             task: task,
             durationMinutes: duration,
-            category: category.firestoreValue,
+            category: category,
             status: status.firestoreValue,
             source: captureSource.firestoreValue,
             // Resuming a pending entry preserves its original

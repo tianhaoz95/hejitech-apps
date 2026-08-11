@@ -37,6 +37,8 @@ import com.hejitech.core.audio.WavAudio
 import com.hejitech.core.model.CaptureLanguage
 import com.hejitech.core.model.CaptureSource
 import com.hejitech.core.model.Entry
+import com.hejitech.core.model.EntryStatus
+import com.hejitech.core.model.MaterialParticipationTest
 import com.google.android.gms.location.LocationServices
 import com.google.firebase.Timestamp
 import java.time.Instant
@@ -45,9 +47,12 @@ import java.time.ZoneId
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -105,23 +110,31 @@ data class CaptureUiState(
     // processCapturedPhoto) — it always resolves to Confirm instead.
     val timerMessage: String? = null,
     val tripMessage: String? = null,
-    // Persisted (see QuickCaptureSettingsStore) — when on, stopping a
-    // recording skips transcribe/parse/Confirm entirely: audio + location +
-    // time are saved and queued for later background processing, and the
-    // screen returns to idle immediately. See stopQuickCaptureAndSave.
+    // Persisted (see QuickCaptureSettingsStore), app-level from Settings —
+    // when on, stopping a recording skips transcribe/parse/Confirm entirely:
+    // audio + location + time are saved and queued for later background
+    // processing, and the screen returns to idle immediately. See
+    // stopQuickCaptureAndSave. No UI control for this on Capture itself
+    // anymore (see SettingsScreen) — simplifying the capture screen was the
+    // whole point of making this app-level instead of per-capture.
     val quickCaptureEnabled: Boolean = false,
-    // Persisted (see CaptureLanguageStore) — which Whisper checkpoint the
-    // next recording uses. Read at the moment recording stops (both the
-    // live path and Quick Capture's save-for-later path), not re-read later,
-    // so switching this before the *next* capture never changes how an
-    // already-recorded one gets transcribed.
+    // Persisted (see CaptureLanguageStore), app-level from Settings — which
+    // Whisper checkpoint the next recording uses. Read at the moment
+    // recording stops (both the live path and Quick Capture's
+    // save-for-later path), not re-read later, so switching this before the
+    // *next* capture never changes how an already-recorded one gets
+    // transcribed. No UI control for this on Capture itself anymore (see
+    // SettingsScreen), same reasoning as quickCaptureEnabled above.
     val captureLanguage: CaptureLanguage = CaptureLanguage.AUTO,
-    // Persisted (see CaptureLanguageSelectorVisibilityStore) — whether the
-    // Capture tab shows the language chips at all. Hidden by default, in
-    // which case captureLanguage above just sits at its own default
-    // (English) unused by the UI.
-    val showLanguageSelector: Boolean = false,
 )
+
+/** See CaptureViewModel.hoursProgress's kdoc. */
+data class CaptureHoursProgress(
+    val confirmedHours: Double = 0.0,
+    val thresholdHours: Int = MaterialParticipationTest.THRESHOLD_HOURS,
+) {
+    val fraction: Float get() = (confirmedHours / thresholdHours).toFloat().coerceIn(0f, 1f)
+}
 
 /** Best-effort only — never worth delaying a capture over. */
 private const val LOCATION_TIMEOUT_MS = 1_500L
@@ -137,7 +150,7 @@ class CaptureViewModel : ViewModel() {
     private val mileageTripCoordinator = ServiceLocator.mileageTripCoordinator
     private val quickCaptureSettingsStore = ServiceLocator.quickCaptureSettingsStore
     private val captureLanguageStore = ServiceLocator.captureLanguageStore
-    private val captureLanguageSelectorVisibilityStore = ServiceLocator.captureLanguageSelectorVisibilityStore
+    private val captureModeStore = ServiceLocator.captureModeStore
 
     // Set by parseAndProceed's holdForManualConfirm branch (voice path only)
     // once parsing succeeds, and released by confirmTranscript on the user's
@@ -146,27 +159,18 @@ class CaptureViewModel : ViewModel() {
 
     val recordingAmplitude = audioRecorder.amplitude
 
-    // combine() tops out at 5 flows directly — captureLanguageStore.selected
-    // and captureLanguageSelectorVisibilityStore.visible are folded into one
-    // Pair flow below so the outer combine can stay at 5 arguments.
-    private val languageState = combine(
-        captureLanguageStore.selected,
-        captureLanguageSelectorVisibilityStore.visible,
-    ) { language, showSelector -> language to showSelector }
-
     private val _uiState = MutableStateFlow(CaptureUiState())
     val uiState: StateFlow<CaptureUiState> = combine(
         _uiState,
         aiSettingsStore.preference,
         onDeviceLlm.status,
         quickCaptureSettingsStore.enabled,
-        languageState,
-    ) { state, preference, modelStatus, quickCaptureEnabled, (captureLanguage, showLanguageSelector) ->
+        captureLanguageStore.selected,
+    ) { state, preference, modelStatus, quickCaptureEnabled, captureLanguage ->
         state.copy(
             aiAvailability = aiAvailability(preference, modelStatus),
             quickCaptureEnabled = quickCaptureEnabled,
             captureLanguage = captureLanguage,
-            showLanguageSelector = showLanguageSelector,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CaptureUiState())
 
@@ -199,6 +203,75 @@ class CaptureViewModel : ViewModel() {
         .recoverFromAuthRaceOrSignOut { null }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    /**
+     * Confirmed hours + fraction toward [MaterialParticipationTest.THRESHOLD_HOURS],
+     * for the animated title on CaptureScreen (see TitleWordmark — both the
+     * fill sweep and the "X / 100 hrs" caption read off this). Same
+     * confirmed-hours math as DashboardViewModel's `confirmedHours` —
+     * owner-only (see [Entry.isOwnerHours]) confirmed minutes summed —
+     * duplicated rather than shared from there since DashboardViewModel is
+     * screen-scoped, not an app-wide singleton (matches the wear
+     * complication and iOS widgets, which independently recompute the same
+     * figure for the same reason — see their kdocs).
+     */
+    val hoursProgress: StateFlow<CaptureHoursProgress> = entryRepository.observeEntries()
+        .map { entries ->
+            val confirmedMinutes = entries
+                .filter { it.statusEnum == EntryStatus.CONFIRMED && it.isOwnerHours }
+                .sumOf { it.durationMinutes }
+            CaptureHoursProgress(confirmedHours = confirmedMinutes / 60.0)
+        }
+        .recoverFromAuthRaceOrSignOut { CaptureHoursProgress() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CaptureHoursProgress())
+
+    // The current *session's* capture mode (Audio-first vs. Typing) — live-
+    // follows captureModeStore's persisted default (so changing it in
+    // Settings takes effect immediately, no app restart needed) until the
+    // user manually toggles mode via setCaptureMode below, at which point
+    // this session's choice takes over and stops following the store for
+    // the rest of the session — see setCaptureMode. Deliberately its own
+    // StateFlow rather than a CaptureUiState field, same as openTripEntry/
+    // openTimerEntry above, so the wholesale `_uiState.value =
+    // CaptureUiState()` resets scattered through this class
+    // (confirmTranscript, manualEntry, handleWorkPhoto, handleTimerStart,
+    // etc.) can't silently snap it back to the default the moment the user
+    // submits anything. setCaptureMode never calls
+    // captureModeStore.setDefaultMode — only Settings is allowed to change
+    // the persisted default (see CaptureModeStore's kdoc).
+    private var captureModeManuallyOverridden = false
+    private val _captureMode = MutableStateFlow(captureModeStore.defaultMode.value)
+    val captureMode: StateFlow<CaptureMode> = _captureMode.asStateFlow()
+
+    /**
+     * Left-to-right order for [CaptureModeToggle] — the user's chosen
+     * default leads. Live-follows the store the same way [captureMode]
+     * does above (and freezes at the same point, once the user manually
+     * toggles), rather than continuously reordering on every
+     * [setCaptureMode] call — reordering the control while the user is
+     * actively tapping it would move it out from under their thumb.
+     */
+    private val _captureModeOrder = MutableStateFlow(captureModeOrderFor(captureModeStore.defaultMode.value))
+    val captureModeOrder: StateFlow<List<CaptureMode>> = _captureModeOrder.asStateFlow()
+
+    init {
+        captureModeStore.defaultMode
+            .onEach { default ->
+                if (!captureModeManuallyOverridden) {
+                    _captureMode.value = default
+                    _captureModeOrder.value = captureModeOrderFor(default)
+                }
+            }
+            .launchIn(viewModelScope)
+    }
+
+    fun setCaptureMode(mode: CaptureMode) {
+        captureModeManuallyOverridden = true
+        _captureMode.value = mode
+    }
+
+    private fun captureModeOrderFor(default: CaptureMode): List<CaptureMode> =
+        listOf(default) + CaptureMode.entries.filter { it != default }
+
     /** See QuickCaptureStatusUiState's kdoc. */
     val quickCaptureStatus: StateFlow<QuickCaptureStatusUiState> = combine(
         ServiceLocator.pendingCaptureStore.pendingTodayCount,
@@ -223,10 +296,6 @@ class CaptureViewModel : ViewModel() {
     }
 
     fun hasRecordAudioPermission(): Boolean = audioRecorder.hasPermission()
-
-    fun setQuickCaptureEnabled(value: Boolean) = quickCaptureSettingsStore.setEnabled(value)
-
-    fun setCaptureLanguage(value: CaptureLanguage) = captureLanguageStore.setSelected(value)
 
     /**
      * Manual "process now" for the QuickCaptureStatusRow's sync button —

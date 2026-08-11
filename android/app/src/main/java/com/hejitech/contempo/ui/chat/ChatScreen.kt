@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AlternateEmail
@@ -136,11 +137,15 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
     // systemBarsForVisualComponents, not safeDrawing), so this screen-level
     // modifier is the one thing actually reserving keyboard space here.
     var showClearHistoryDialog by remember { mutableStateOf(false) }
+    var showDisclaimerDialog by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize().imePadding().padding(16.dp)) {
         // Mirrors iOS ChatScreen's top status bar: eyebrow + a live "AI
         // Online"/"Checking AI…" pill, so availability is visible at a
-        // glance instead of only surfacing once a send is blocked.
+        // glance instead of only surfacing once a send is blocked. The
+        // disclaimer question-mark button used to be a permanent Text line
+        // pinned under the input bar — moved into a popup here instead so
+        // that space goes back to chat content (see DisclaimerDialog below).
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -149,6 +154,13 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
             Eyebrow(stringResource(R.string.chat_eyebrow), modifier = Modifier.padding(start = 8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 AiStatusPill(uiState.aiAvailability)
+                IconButton(onClick = { showDisclaimerDialog = true }) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.HelpOutline,
+                        contentDescription = stringResource(R.string.chat_disclaimer_button_content_description),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 if (uiState.messages.isNotEmpty()) {
                     IconButton(onClick = { showClearHistoryDialog = true }) {
                         Icon(
@@ -346,16 +358,6 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
                 onClick = viewModel::send,
             )
         }
-
-        // Matches iOS's footer disclaimer — this screen answers tax/legal
-        // questions, so the "not a substitute for a CPA" framing needs to
-        // stay visible on both platforms, not just one.
-        Text(
-            stringResource(R.string.chat_disclaimer),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 4.dp, start = 4.dp),
-        )
     }
 
     if (showClearHistoryDialog) {
@@ -363,6 +365,10 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
             onDismiss = { showClearHistoryDialog = false },
             onConfirm = { showClearHistoryDialog = false; viewModel.clearHistory() },
         )
+    }
+
+    if (showDisclaimerDialog) {
+        DisclaimerDialog(onDismiss = { showDisclaimerDialog = false })
     }
 
     if (uiState.showEntryPicker) {
@@ -566,6 +572,27 @@ private fun ChatHeroEmptyState(modifier: Modifier = Modifier, onSelectPrompt: (S
             }
         }
     }
+}
+
+/**
+ * Was a permanent Text line pinned under the input bar — moved into a
+ * popup, reachable via the question-mark button next to the AI-status pill,
+ * so that vertical space goes back to chat content instead. Single-button
+ * (just dismiss, no confirm/cancel pair) since this is informational, not a
+ * decision.
+ */
+@Composable
+private fun DisclaimerDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.chat_disclaimer_dialog_title)) },
+        text = { Text(stringResource(R.string.chat_disclaimer)) },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.chat_disclaimer_dialog_dismiss))
+            }
+        },
+    )
 }
 
 @Composable

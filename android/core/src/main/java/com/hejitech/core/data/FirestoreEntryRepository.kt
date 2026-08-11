@@ -2,13 +2,17 @@ package com.hejitech.core.data
 
 import android.net.Uri
 import com.hejitech.core.model.Attachment
+import com.hejitech.core.model.Category
 import com.hejitech.core.model.Entry
 import com.hejitech.core.model.Property
 import com.hejitech.core.model.Role
+import com.hejitech.core.model.TokenUsageWeek
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.storageMetadata
 import kotlinx.coroutines.channels.awaitClose
@@ -32,6 +36,9 @@ class FirestoreEntryRepository(
     private fun entriesCollection() = userDoc().collection("entries")
     private fun propertiesCollection() = userDoc().collection("properties")
     private fun rolesCollection() = userDoc().collection("roles")
+    private fun categoriesCollection() = userDoc().collection("categories")
+    private fun deviceTokenUsageCollection() = userDoc().collection("deviceTokenUsage")
+    private fun cloudTokenUsageCollection() = userDoc().collection("cloudTokenUsage")
     private fun correctionsCollection() = userDoc().collection("corrections")
     private fun attachmentsCollection(entryId: String) = entriesCollection().document(entryId).collection("attachments")
 
@@ -107,6 +114,62 @@ class FirestoreEntryRepository(
 
     override suspend fun deleteRole(roleId: String) {
         rolesCollection().document(roleId).delete().await()
+    }
+
+    override fun observeCategories(): Flow<List<Category>> = callbackFlow {
+        val registration = categoriesCollection()
+            .orderBy("createdAt", Query.Direction.ASCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                val categories = snapshot?.documents.orEmpty().mapNotNull { doc ->
+                    doc.toObject(Category::class.java)?.copy(id = doc.id)
+                }
+                trySend(categories)
+            }
+        awaitClose { registration.remove() }
+    }
+
+    override suspend fun createCategory(name: String): Category {
+        val category = Category(name = name)
+        val ref = categoriesCollection().add(category).await()
+        return category.copy(id = ref.id)
+    }
+
+    override fun observeDeviceTokenUsage(): Flow<TokenUsageWeek?> = observeTokenUsageWeek(deviceTokenUsageCollection())
+
+    override suspend fun recordOnDeviceTokenUsage(inputTokens: Int, outputTokens: Int) {
+        deviceTokenUsageCollection().document(currentIsoWeekId()).set(
+            mapOf(
+                "inputTokens" to FieldValue.increment(inputTokens.toLong()),
+                "outputTokens" to FieldValue.increment(outputTokens.toLong()),
+                "requestCount" to FieldValue.increment(1),
+                "weekStart" to currentIsoWeekStart(),
+                "updatedAt" to FieldValue.serverTimestamp(),
+            ),
+            SetOptions.merge(),
+        ).await()
+    }
+
+    override fun observeCloudTokenUsage(): Flow<TokenUsageWeek?> = observeTokenUsageWeek(cloudTokenUsageCollection())
+
+    // Re-resolves the current week's document reference each time the
+    // listener (re)attaches (e.g. WhileSubscribed re-collection after
+    // Settings is revisited) rather than once at Flow-creation time, so a
+    // long-lived process that crosses a week boundary while backgrounded
+    // still lands on the right doc the next time this is collected.
+    private fun observeTokenUsageWeek(collection: CollectionReference): Flow<TokenUsageWeek?> = callbackFlow {
+        val registration = collection.document(currentIsoWeekId())
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                trySend(snapshot?.toObject(TokenUsageWeek::class.java))
+            }
+        awaitClose { registration.remove() }
     }
 
     override suspend fun createEntry(entry: Entry): String {

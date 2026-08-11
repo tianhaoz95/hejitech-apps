@@ -24,15 +24,17 @@ final class CaptureViewModel {
     private let mileageTripCoordinator = ServiceLocator.mileageTripCoordinator
     private let mileageTracker = ServiceLocator.mileageTracker
     private let captureLanguageStore = ServiceLocator.captureLanguageStore
+    private let captureModeStore = ServiceLocator.captureModeStore
 
     private let quickCaptureSettingsStore = ServiceLocator.quickCaptureSettingsStore
     private let quickCaptureStatsStore = ServiceLocator.quickCaptureStatsStore
     private let pendingCaptureStore = ServiceLocator.pendingCaptureStore
 
-    var quickCaptureEnabled: Bool {
-        get { quickCaptureSettingsStore.enabled }
-        set { quickCaptureSettingsStore.setEnabled(newValue) }
-    }
+    // App-level now, not a per-capture-session toggle — set from Settings
+    // only (see CaptureScreen's doc comment on why this moved off Capture).
+    // Still read here (not just in Settings) since stopRecordingAndProcess/
+    // stopQuickCaptureAndSave below need it at the moment a recording stops.
+    var quickCaptureEnabled: Bool { quickCaptureSettingsStore.enabled }
 
     var quickCaptureStatus: QuickCaptureStatusUiState {
         QuickCaptureStatusUiState(
@@ -40,12 +42,6 @@ final class CaptureViewModel {
             completedTodayCount: quickCaptureStatsStore.completedTodayCount,
             processingStage: AudioCaptureProcessor.shared.currentlyProcessingStage
         )
-    }
-
-    var showLanguageSelector: Bool { captureLanguageStore.showLanguageSelector }
-    var selectedCaptureLanguage: CaptureLanguage {
-        get { captureLanguageStore.selected }
-        set { captureLanguageStore.setSelected(newValue) }
     }
 
     var inputText = ""
@@ -74,10 +70,55 @@ final class CaptureViewModel {
     var openTripEntry: Entry?
     var gpsTripOpen: Bool { openTripEntry?.mileageCaptureMethod == "gps" }
 
+    /// Confirmed hours toward `MaterialParticipationTest.thresholdHours`,
+    /// for the animated title on CaptureScreen (see TitleWordmark — both
+    /// the fill sweep and the "X / 100 hrs" caption read off this). Reuses
+    /// `DashboardMetrics.compute(from:)` — the same shared, unit-tested math
+    /// Dashboard itself uses — rather than re-deriving it, unlike Android
+    /// where the equivalent figure is duplicated (no shared struct exists
+    /// there yet; see CaptureViewModel.kt's `hoursProgress` kdoc).
+    var confirmedHours: Double = 0
+
+    /// The current *session's* capture mode (Audio-first vs. Typing). Live-
+    /// follows `captureModeStore.defaultMode` until the user manually picks
+    /// a mode via `setCaptureMode`, at which point that manual choice wins
+    /// for the rest of the session — mirrors Android's `CaptureViewModel`
+    /// (`captureModeManuallyOverridden` + a live-collected `StateFlow`).
+    /// Computed rather than stored so Swift's Observation framework
+    /// transitively tracks `captureModeStore.defaultMode` and SwiftUI
+    /// re-renders the toggle the moment Settings changes it — no app
+    /// restart required. `setCaptureMode` never calls
+    /// `captureModeStore.setDefaultMode` — only Settings is allowed to
+    /// change the persisted default (see `CaptureModeStore`'s doc comment).
+    private var manualCaptureMode: CaptureMode?
+
+    var captureMode: CaptureMode {
+        manualCaptureMode ?? captureModeStore.defaultMode
+    }
+
+    /// Left-to-right order for the mode toggle — the user's chosen default
+    /// leads. Live-follows the store the same way `captureMode` does above;
+    /// once the user manually overrides, the order freezes at whichever
+    /// default was leading at that moment, so picking a mode mid-session
+    /// doesn't reorder the control out from under the user's thumb.
+    private var manualOverrideOrderAnchor: CaptureMode?
+
+    var captureModeOrder: [CaptureMode] {
+        let leading = manualOverrideOrderAnchor ?? captureModeStore.defaultMode
+        return [leading] + CaptureMode.allCases.filter { $0 != leading }
+    }
+
     private var knownProperties: [String] = []
     private var pendingResult: ConfirmParams?
 
     var recordingAmplitude: Float { audioRecorder.amplitude }
+
+    func setCaptureMode(_ mode: CaptureMode) {
+        manualCaptureMode = mode
+        if manualOverrideOrderAnchor == nil {
+            manualOverrideOrderAnchor = captureModeStore.defaultMode
+        }
+    }
 
     init() {
         let repository = entryRepository
@@ -111,6 +152,7 @@ final class CaptureViewModel {
                     guard let self else { return }
                     self.openTimerEntry = entries.first { $0.inProgress && !$0.isTrip }
                     self.openTripEntry = entries.first { $0.inProgress && $0.isTrip }
+                    self.confirmedHours = DashboardMetrics.compute(from: entries).confirmedHours
                 }
             } catch {
                 // Stream ended with a non-auth error — nothing else to do here.

@@ -11,6 +11,8 @@ import com.google.ai.edge.litertlm.Conversation
 import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
+import com.google.ai.edge.litertlm.ExperimentalApi
+import com.google.ai.edge.litertlm.ExperimentalFlags
 import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.MessageCallback
 import com.google.ai.edge.litertlm.ToolCall
@@ -73,6 +75,25 @@ class LiteRtLlm(
 
     private val _status = MutableStateFlow<OnDeviceModelUiStatus>(OnDeviceModelUiStatus.Checking)
     override val status: StateFlow<OnDeviceModelUiStatus> = _status.asStateFlow()
+
+    private val _lastCallTokenUsage = MutableStateFlow<TokenUsage?>(null)
+    override val lastCallTokenUsage: StateFlow<TokenUsage?> = _lastCallTokenUsage.asStateFlow()
+
+    /**
+     * conversation.getBenchmarkInfo() reports lastPrefillTokenCount (input)/
+     * lastDecodeTokenCount (output) for whatever call just ran on this
+     * Conversation — every call site here creates a fresh Conversation used
+     * exactly once, so there's no cross-call contamination to worry about.
+     * Best-effort: a benchmark-info failure should never affect the actual
+     * generation result, so this is called after the real response is
+     * already in hand and any exception here is swallowed.
+     */
+    @OptIn(ExperimentalApi::class)
+    private fun recordTokenUsage(conversation: Conversation) {
+        runCatching { conversation.getBenchmarkInfo() }.getOrNull()?.let {
+            _lastCallTokenUsage.value = TokenUsage(it.lastPrefillTokenCount, it.lastDecodeTokenCount)
+        }
+    }
 
     // Loading a ~2.6GB model is expensive — built once, reused for the
     // process lifetime, guarded by a mutex since generate() calls can race
@@ -200,11 +221,18 @@ class LiteRtLlm(
         }
     }
 
+    @OptIn(ExperimentalApi::class)
     private suspend fun ensureEngine(): Engine? = engineMutex.withLock {
         engine?.let { return@withLock it }
         if (!downloader.isDownloaded()) return@withLock null
         try {
             withContext(Dispatchers.IO) {
+                // Must be set before Engine(...) below — it's baked into the
+                // engine's native settings at construction time, not read
+                // per-call, so setting it later (e.g. right before
+                // getBenchmarkInfo()) would silently do nothing and leave
+                // token usage uncaptured for this engine's whole lifetime.
+                ExperimentalFlags.enableBenchmark = true
                 val config = EngineConfig(
                     modelPath = downloader.modelFile.absolutePath,
                     backend = Backend.CPU(),
@@ -241,7 +269,7 @@ class LiteRtLlm(
             withContext(Dispatchers.Default) {
                 eng.createConversation().use { conversation ->
                     onEvent(GenerationEvent.Prefilling)
-                    conversation.sendMessageAsyncBounded(prompt, onEvent)
+                    conversation.sendMessageAsyncBounded(prompt, onEvent).also { recordTokenUsage(conversation) }
                 }
             }
         } catch (e: Exception) {
@@ -259,6 +287,7 @@ class LiteRtLlm(
         return generate(Contents.of(Content.ImageBytes(jpegBytes), Content.Text(prompt)))
     }
 
+    @OptIn(ExperimentalApi::class)
     override suspend fun extractEntryDraft(rawText: String, knownProperties: List<String>): EntryDraft? {
         val eng = ensureEngine() ?: return null
         return try {
@@ -269,11 +298,31 @@ class LiteRtLlm(
                     automaticToolCalling = false,
                 )
                 eng.createConversation(config).use { conversation ->
+                    // Summed across every sendMessageBounded round below (a
+                    // tool-calling extraction is often 2+ round trips —
+                    // get_current_time/convert_to_minutes before the terminal
+                    // record_entry call), since getBenchmarkInfo() only
+                    // reports the *last* call's tokens, not a running total —
+                    // an unsummed single read would silently undercount any
+                    // capture that needed more than one round.
+                    var totalInputTokens = 0
+                    var totalOutputTokens = 0
+                    fun accumulateTokenUsage() {
+                        runCatching { conversation.getBenchmarkInfo() }.getOrNull()?.let {
+                            totalInputTokens += it.lastPrefillTokenCount
+                            totalOutputTokens += it.lastDecodeTokenCount
+                        }
+                    }
+
                     var message = conversation.sendMessageBounded { sendMessage(rawText) }
                         ?: return@withContext null
+                    accumulateTokenUsage()
                     repeat(MAX_TOOL_LOOP_ITERATIONS) {
                         val recordCall = message.toolCalls.firstOrNull { it.name == "record_entry" }
-                        if (recordCall != null) return@withContext entryDraftFromArguments(recordCall.arguments)
+                        if (recordCall != null) {
+                            _lastCallTokenUsage.value = TokenUsage(totalInputTokens, totalOutputTokens)
+                            return@withContext entryDraftFromArguments(recordCall.arguments)
+                        }
 
                         val pending = message.toolCalls
                         // Model replied in prose instead of calling a tool — no
@@ -287,6 +336,7 @@ class LiteRtLlm(
                         message = conversation.sendMessageBounded {
                             sendMessage(Message.tool(Contents.of(*responses.toTypedArray())))
                         } ?: return@withContext null
+                        accumulateTokenUsage()
                     }
                     Log.w(TAG, "extractEntryDraft: exceeded MAX_TOOL_LOOP_ITERATIONS ($MAX_TOOL_LOOP_ITERATIONS) without a record_entry call")
                     null
@@ -368,6 +418,7 @@ class LiteRtLlm(
                 eng.createConversation().use { conversation ->
                     val response = conversation.sendMessageBounded { sendMessage(contents) }
                         ?: return@withContext null
+                    recordTokenUsage(conversation)
                     response.contents.contents
                         .filterIsInstance<Content.Text>()
                         .joinToString("") { it.text }

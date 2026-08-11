@@ -2,6 +2,11 @@
 <resources>
     <string name="app_name">Contempo</string>
 
+    <string name="dictation_start_content_description">Start voice dictation</string>
+    <string name="dictation_stop_content_description">Stop voice dictation</string>
+    <string name="dictation_empty_transcript">Didn\'t catch any words — try again.</string>
+    <string name="dictation_permission_denied">Microphone access is off — enable it in Settings to dictate.</string>
+
     <string name="wear_relay_notification_title">Ready for watch recordings</string>
     <string name="wear_relay_notification_text">Contempo can receive and process recordings from your watch in the background.</string>
     <string name="wear_relay_syncing_title">Syncing from your watch</string>
@@ -33,6 +38,7 @@
     <string name="nav_back">Back</string>
 
     <string name="capture_eyebrow">Say it once</string>
+    <string name="capture_title_hours_progress">%1$d / %2$d hrs</string>
     <string name="capture_help_content_description">Help</string>
     <string name="help_walkthrough_skip_button">Skip</string>
     <string name="help_walkthrough_back_button">Back</string>
@@ -61,18 +67,21 @@
     <string name="capture_quick_capture_stage_parsing">Structuring…</string>
     <string name="capture_quick_capture_stage_saving">Saving…</string>
     <string name="capture_quick_capture_process_now_content_description">Process quick capture backlog now</string>
-    <string name="capture_back_to_voice_content_description">Back to voice capture</string>
-    <string name="capture_type_instead_title">Type what you did</string>
     <string name="capture_hint">Say or type what you did…</string>
     <string name="capture_ongoing_work_title">In progress — %1$s</string>
     <string name="capture_ongoing_work_untitled">work</string>
-    <string name="capture_ongoing_work_tap_hint">Tap to complete</string>
+    <string name="capture_ongoing_work_tap_hint">In progress</string>
+    <string name="capture_ongoing_completed_hint">Tap to add details</string>
     <string name="capture_ongoing_paused_label">Paused</string>
     <string name="capture_pause_content_description">Pause</string>
     <string name="capture_resume_content_description">Resume</string>
+    <string name="capture_complete_work_content_description">Complete work session</string>
     <string name="capture_cancel_work_content_description">Discard work session</string>
+    <string name="capture_complete_label">Complete</string>
+    <string name="capture_cancel_label">Cancel</string>
     <string name="capture_cancel_work_dialog_title">Discard this work session?</string>
     <string name="capture_cancel_work_dialog_text">This deletes the timer and everything logged so far. This can\'t be undone.</string>
+    <string name="capture_complete_trip_content_description">Complete trip</string>
     <string name="capture_cancel_trip_content_description">Discard trip</string>
     <string name="capture_cancel_trip_dialog_title">Discard this trip?</string>
     <string name="capture_cancel_trip_dialog_text">This deletes the trip and everything tracked so far. This can\'t be undone.</string>
@@ -80,8 +89,8 @@
     <string name="capture_cancel_dialog_dismiss">Keep going</string>
     <string name="capture_ongoing_trip_title">Trip in progress</string>
     <string name="capture_ongoing_trip_distance">%1$s mi so far</string>
-    <string name="capture_ongoing_trip_tap_hint_gps">Tap to stop</string>
-    <string name="capture_ongoing_trip_tap_hint_odometer">Take an ending odometer photo to finish</string>
+    <string name="capture_ongoing_trip_tap_hint_gps">GPS tracking</string>
+    <string name="capture_ongoing_trip_tap_hint_odometer">Ends with an odometer photo</string>
     <string name="capture_voice_start">Start voice capture</string>
     <string name="capture_voice_stop">Stop and transcribe</string>
     <string name="capture_listening">Listening</string>
@@ -97,7 +106,8 @@
     <string name="capture_quick_action_trip">Start Trip</string>
     <string name="capture_location_permission_needed">Location access is needed to track a trip — tap again to grant it.</string>
     <string name="capture_voice_button_label">Tap to speak</string>
-    <string name="capture_type_instead">Type instead</string>
+    <string name="capture_mode_audio_first">Audio-first</string>
+    <string name="capture_mode_typing">Typing</string>
     <string name="capture_finalized_heading">Here\'s what we heard</string>
     <string name="capture_finalized_tap_hint">Tap to continue</string>
     <string name="capture_stage_reading">Reading your words…</string>
@@ -117,6 +127,9 @@
     <string name="confirm_miles_label">Miles driven (optional)</string>
     <string name="confirm_miles_placeholder">e.g. 12.5</string>
     <string name="confirm_category_label">Category</string>
+    <string name="confirm_add_new_category_item">Add new category…</string>
+    <string name="confirm_new_category_label">Category name</string>
+    <string name="confirm_add_category_button">Add</string>
     <string name="confirm_role_label">Role</string>
     <string name="confirm_role_me">Me</string>
     <string name="confirm_role_hint">Only your own hours (Me) count toward the 100-hour/500-hour progress on the Dashboard. Rename or delete roles in Settings.</string>
@@ -195,6 +208,7 @@
     <string name="entry_detail_stop_timer_button">Stop timer</string>
     <string name="entry_detail_edit_button">Edit entry</string>
     <string name="entry_detail_edit_fields_content_description">Edit property, task, and duration</string>
+    <string name="entry_detail_detect_category_content_description">Auto-detect category with on-device AI</string>
     <string name="entry_detail_save_fields_button">Save</string>
     <string name="entry_detail_cancel_edit_fields_button">Cancel</string>
     <string name="entry_detail_missing_fields_label">Still missing: %1$s</string>
@@ -265,6 +279,9 @@
     <string name="chat_copy_button">Copy</string>
     <string name="chat_copied_label">Copied</string>
     <string name="chat_disclaimer">Educational logging tool. Consult a CPA for official tax advice.</string>
+    <string name="chat_disclaimer_button_content_description">About these answers</string>
+    <string name="chat_disclaimer_dialog_title">About these answers</string>
+    <string name="chat_disclaimer_dialog_dismiss">Got it</string>
 
     <string name="export_eyebrow">Ready for your CPA</string>
     <string name="export_title">Export</string>
@@ -286,10 +303,19 @@
     <string name="settings_ai_cloud_only">Cloud only (Contempo Pro)</string>
     <string name="settings_ai_cloud_disabled_notice">Cloud AI is temporarily unavailable — only on-device processing works right now.</string>
     <string name="settings_ai_pro_required_notice">Free accounts always process on-device. This is a Contempo Pro feature — your plan is managed from your Contempo account on the web.</string>
+    <string name="settings_token_usage_title">AI credits (this week)</string>
+    <string name="settings_token_usage_on_device">On-device</string>
+    <string name="settings_token_usage_cloud">Cloud</string>
+    <string name="settings_token_usage_empty">No usage yet</string>
+    <string name="settings_token_usage_summary">%1$d in / %2$d out · %3$d requests</string>
+    <string name="settings_token_usage_credits_unlimited">%1$s / Unlimited</string>
+    <string name="settings_token_usage_credits_quota">%1$s / %2$d credits</string>
 
     <string name="settings_capture_section">Capture</string>
-    <string name="settings_show_language_selector_label">Show language selector</string>
-    <string name="settings_show_language_selector_hint">Adds a language switcher to the Capture tab. Off by default — capture uses English.</string>
+    <string name="settings_capture_language_label">Capture language</string>
+    <string name="settings_capture_language_hint">Which Whisper checkpoint transcribes your voice captures.</string>
+    <string name="settings_capture_default_mode_label">Default capture mode</string>
+    <string name="settings_capture_default_mode_hint">Which mode the Capture tab opens in. You can still switch modes for the current session from the toggle at the top of Capture.</string>
 
     <string name="settings_roles_section">Roles</string>
     <string name="settings_roles_section_hint">Tag entries under a role (Property Manager, Co-host, Cleaner, a contractor, ...) when someone other than you did the work. Only your own hours (no role) count toward the 100-hour/500-hour progress on the Dashboard — the IRS tests require your participation to exceed everyone else\'s.</string>

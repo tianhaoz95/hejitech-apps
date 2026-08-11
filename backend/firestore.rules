@@ -53,12 +53,38 @@ service cloud.firestore {
         d.createdAt is timestamp;
     }
 
+    // A category is either one of the app's fixed built-in values
+    // (maintenance/turnover/guest_communication/supply_run/admin/other —
+    // still mirrored in backend/functions/src/schemas.ts's EntrySchema for
+    // AI parsing) or a free-form name from the user's own
+    // `users/{uid}/categories` roster, added in place from Confirm/
+    // EntryDetail the same way roles are — see isValidRole above, same
+    // shape/lifecycle (small user-managed roster, full CRUD).
+    function isValidCategory(d) {
+      return d.name is string && d.name.size() > 0 && d.name.size() <= 100 &&
+        d.createdAt is timestamp;
+    }
+
+    // Per-ISO-week token usage counters (doc id = "GGGG-Www", e.g.
+    // "2026-W33") — deviceTokenUsage is client-written (only the device
+    // itself knows what it ran on-device), cloudTokenUsage is server-only
+    // (see the match blocks below); same field shape either way.
+    function isValidTokenUsage(d) {
+      return d.inputTokens is int && d.inputTokens >= 0 &&
+        d.outputTokens is int && d.outputTokens >= 0 &&
+        d.requestCount is int && d.requestCount >= 0 &&
+        d.weekStart is timestamp && d.updatedAt is timestamp;
+    }
+
     function isValidEntry(d) {
       return d.propertyId is string && d.propertyId.size() <= 200 &&
         d.propertyName is string && d.propertyName.size() <= 200 &&
         d.task is string && d.task.size() <= 5000 &&
         d.durationMinutes is int && d.durationMinutes >= 0 && d.durationMinutes <= 1440 &&
-        d.category in ['maintenance', 'turnover', 'guest_communication', 'supply_run', 'admin', 'other'] &&
+        // No longer a fixed enum whitelist — a custom category name (see
+        // isValidCategory above) is just as valid here as one of the
+        // built-ins; this only guards against something absurd.
+        d.category is string && d.category.size() > 0 && d.category.size() <= 100 &&
         d.status in ['pending_review', 'confirmed'] &&
         d.source in ['manual', 'voice', 'text', 'photo'] &&
         d.activityDate is timestamp &&
@@ -197,6 +223,32 @@ service cloud.firestore {
         allow read: if isOwner(uid);
         allow create, update: if isOwner(uid) && isValidRole(request.resource.data);
         allow delete: if isOwner(uid);
+      }
+
+      match /categories/{categoryId} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && isValidCategory(request.resource.data);
+        allow delete: if isOwner(uid);
+      }
+
+      // On-device LLM usage, incremented directly by the client that ran
+      // the inference (see android/.../agent/AgentClient.kt and
+      // ios/.../Agent/AgentClient.swift) — no server involved, so unlike
+      // billing/cloudTokenUsage below this can't be server-only.
+      match /deviceTokenUsage/{weekId} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && isValidTokenUsage(request.resource.data);
+        allow delete: if false;
+      }
+
+      // Cloud LLM usage — synced only by the askAgentFlow/parseEntryFlow
+      // Cloud Functions (Admin SDK, bypasses these rules), same
+      // server-authoritative posture as billing above: the client never
+      // sees real token counts for its own cloud calls, so it has nothing
+      // legitimate to write here.
+      match /cloudTokenUsage/{weekId} {
+        allow read: if isOwner(uid);
+        allow write: if false;
       }
 
       match /entries/{entryId} {

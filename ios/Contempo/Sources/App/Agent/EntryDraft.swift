@@ -77,6 +77,12 @@ public enum PhotoIntentOutcome: Sendable {
     case failure(message: String)
 }
 
+/// Result of `AgentClient.suggestCategory` — an on-device-only category guess for the entry-detail auto-detect button.
+public enum CategoryOutcome: Sendable {
+    case success(category: EntryCategory, source: ParseSource)
+    case failure(message: String)
+}
+
 /// Bundles everything Capture hands off to Confirm: the drafted fields,
 /// where the parse ran (for the "parsed on-device"/"parsed via cloud"
 /// caption), how the capture itself started (for the audit-trail source

@@ -1,5 +1,6 @@
 import { ai, flashModel } from "../genkit";
 import { AskAgentInputSchema, AskAgentOutputSchema } from "../schemas";
+import { recordCloudTokenUsage } from "../tokenUsage";
 
 /**
  * Cloud fallback for the free-form agent chat ("will this count?", "how many
@@ -32,7 +33,7 @@ export const askAgentFlow = ai.defineFlow(
             .join("\n")
         : "";
 
-    const { text } = await ai.generate({
+    const response = await ai.generate({
       model: flashModel,
       messages: [
         {
@@ -63,9 +64,19 @@ export const askAgentFlow = ai.defineFlow(
       ],
     });
 
+    const { text, usage } = response;
     if (!text) {
       throw new Error("askAgentFlow: model returned no text");
     }
+
+    // Best-effort — the uid isn't always available (e.g. a local dev/test
+    // invocation with no auth context), and a usage-tracking failure should
+    // never take down the actual answer the host is waiting on.
+    const uid = ai.currentContext()?.auth?.uid as string | undefined;
+    if (uid) {
+      await recordCloudTokenUsage(uid, usage.inputTokens ?? 0, usage.outputTokens ?? 0);
+    }
+
     return { answer: text };
   }
 );

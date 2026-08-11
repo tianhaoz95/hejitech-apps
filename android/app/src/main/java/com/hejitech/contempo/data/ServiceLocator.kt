@@ -74,7 +74,7 @@ object ServiceLocator {
         private set
     lateinit var captureLanguageStore: CaptureLanguageStore
         private set
-    lateinit var captureLanguageSelectorVisibilityStore: CaptureLanguageSelectorVisibilityStore
+    lateinit var captureModeStore: CaptureModeStore
         private set
     lateinit var subscriptionRepository: SubscriptionRepository
         private set
@@ -105,7 +105,7 @@ object ServiceLocator {
         pendingCaptureStore = PendingCaptureStore(context)
         quickCaptureStatsStore = QuickCaptureStatsStore(context)
         captureLanguageStore = CaptureLanguageStore(context)
-        captureLanguageSelectorVisibilityStore = CaptureLanguageSelectorVisibilityStore(context)
+        captureModeStore = CaptureModeStore(context)
         aiSettingsStore = AiSettingsStore(context)
         remoteConfigStore = RemoteConfigStore()
         subscriptionRepository = SubscriptionRepository(Firebase.firestore, auth)
@@ -120,6 +120,7 @@ object ServiceLocator {
         agentClient = AgentClient(
             onDeviceLlm = onDeviceLlm,
             functions = Firebase.functions,
+            entryRepository = entryRepository,
             // Remotely disabling cloud AI (RemoteConfigStore's kill switch), or
             // not currently holding a Pro entitlement (reports/pricing-proposal-v0.html
             // §3.2), overrides the user's own stored preference rather than

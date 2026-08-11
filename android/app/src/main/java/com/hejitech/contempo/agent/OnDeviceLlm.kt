@@ -26,6 +26,15 @@ import kotlinx.coroutines.flow.StateFlow
 interface OnDeviceLlm {
     val status: StateFlow<OnDeviceModelUiStatus>
 
+    /**
+     * Token counts (prefill/decode) from the most recently completed
+     * generate call — null if this runtime doesn't expose usage, or no call
+     * has completed yet. AgentClient reads this immediately after each
+     * on-device call it makes, so it always reflects that same call, not a
+     * stale one — see AgentClient.recordOnDeviceUsageIfAvailable.
+     */
+    val lastCallTokenUsage: StateFlow<TokenUsage?>
+
     /** Re-checks readiness and (re)starts a stalled/failed download. User-triggered from Settings. */
     fun retry()
 

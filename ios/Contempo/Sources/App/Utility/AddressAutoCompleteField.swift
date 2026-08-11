@@ -10,6 +10,7 @@ public struct AddressAutoCompleteField: View {
     @State private var showSuggestions: Bool = false
     @State private var isLoading: Bool = false
     @State private var searchTask: Task<Void, Never>? = nil
+    @FocusState private var isFocused: Bool
 
     public init(
         placeholder: String = "Property address",
@@ -25,23 +26,33 @@ public struct AddressAutoCompleteField: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 TextField(placeholder, text: $text)
+                    .focused($isFocused)
                     .onChange(of: text) { _, newValue in
                         searchTask?.cancel()
-                        if newValue.trimmingCharacters(in: .whitespaces).count >= 3 {
-                            isLoading = true
-                            showSuggestions = true
-                            searchTask = Task {
-                                // 3 seconds maximum rate limit throttle
-                                try? await Task.sleep(nanoseconds: 3_000_000_000)
-                                if !Task.isCancelled {
-                                    completer.query = newValue
-                                    isLoading = false
-                                    showSuggestions = !completer.results.isEmpty
-                                }
-                            }
-                        } else {
+                        // Only search while this field itself is focused —
+                        // `text` also changes when a caller assigns it from
+                        // outside (ConfirmScreen setting it to an
+                        // already-known saved property's name when a chip
+                        // is tapped), and re-running the geocoder against a
+                        // value that's already a resolved address is both
+                        // wasted API calls and an unwanted suggestions
+                        // popup. A real edit always happens through this
+                        // TextField, so it's always focused when it does.
+                        guard isFocused, newValue.trimmingCharacters(in: .whitespaces).count >= 3 else {
                             isLoading = false
                             showSuggestions = false
+                            return
+                        }
+                        isLoading = true
+                        showSuggestions = true
+                        searchTask = Task {
+                            // 3 seconds maximum rate limit throttle
+                            try? await Task.sleep(nanoseconds: 3_000_000_000)
+                            if !Task.isCancelled {
+                                completer.query = newValue
+                                isLoading = false
+                                showSuggestions = !completer.results.isEmpty
+                            }
                         }
                     }
 
@@ -69,6 +80,7 @@ public struct AddressAutoCompleteField: View {
                                 completer.resolveAddress(result) { fullAddress in
                                     text = fullAddress
                                     showSuggestions = false
+                                    isFocused = false
                                     onAddressSelected?(fullAddress)
                                 }
                             } label: {

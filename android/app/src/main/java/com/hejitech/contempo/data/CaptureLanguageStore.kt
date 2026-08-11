@@ -7,14 +7,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Persists the Capture tab's language-selector toggle across app restarts —
- * same simple SharedPreferences pattern as QuickCaptureSettingsStore, same
- * reasoning (a single small enum value doesn't need DataStore).
+ * Persists the app-level capture-language preference (set from Settings)
+ * across app restarts — same simple SharedPreferences pattern as
+ * QuickCaptureSettingsStore, same reasoning (a single small enum value
+ * doesn't need DataStore).
  *
- * This only remembers what the toggle currently shows — the language that
- * actually gets used for a given recording is stamped onto that specific
- * capture at record time (see CaptureLanguage's kdoc), not re-read from here
- * when background processing eventually runs.
+ * This only remembers the current preference — the language that actually
+ * gets used for a given recording is stamped onto that specific capture at
+ * record time (see CaptureLanguage's kdoc), not re-read from here when
+ * background processing eventually runs.
  */
 class CaptureLanguageStore(context: Context) {
     private val prefs = context.applicationContext
@@ -33,10 +34,9 @@ class CaptureLanguageStore(context: Context) {
             .getOrDefault(DEFAULT)
 
     private companion object {
-        // The selector row itself defaults to hidden (see
-        // CaptureLanguageSelectorVisibilityStore) — English is the safer
-        // silent default for hosts who never open it, vs. AUTO's per-
-        // recording language-detection overhead/uncertainty.
+        // English is the safer silent default for hosts who never open
+        // Settings, vs. AUTO's per-recording language-detection
+        // overhead/uncertainty.
         val DEFAULT = CaptureLanguage.ENGLISH
         const val KEY = "selected_language"
     }

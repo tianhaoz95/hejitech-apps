@@ -34,6 +34,24 @@ final class LiteRtLlm: OnDeviceLlm {
     private var engineLoadTask: Task<Engine?, Never>?
     private var engineLoadFailed = false
 
+    private(set) var lastCallTokenUsage: TokenUsage?
+
+    /// `conversation.getBenchmarkInfo()` reports lastPrefillTokenCount
+    /// (input)/lastDecodeTokenCount (output) for whatever call just ran on
+    /// this Conversation — every call site below creates a fresh
+    /// Conversation used exactly once, so there's no cross-call
+    /// contamination to worry about. Best-effort: a benchmark-info failure
+    /// should never affect the actual generation result, so this is called
+    /// after the real response is already in hand and any thrown error here
+    /// is swallowed. Requires `ExperimentalFlags.enableBenchmark` to have
+    /// been set to `true` before the Engine that owns `conversation` was
+    /// created (see `ensureEngine`) — it's baked into native engine
+    /// settings at construction time, not read per-call.
+    private func recordTokenUsage(_ conversation: Conversation) {
+        guard let info = try? conversation.getBenchmarkInfo() else { return }
+        lastCallTokenUsage = TokenUsage(inputTokens: info.lastPrefillTokenCount, outputTokens: info.lastDecodeTokenCount)
+    }
+
     /// Derived from `downloader.state` (an `@Observable` object of its own)
     /// rather than mirrored into a separately-set stored property, so a
     /// SwiftUI view reading this live reflects `ModelDownloader`'s
@@ -103,7 +121,26 @@ final class LiteRtLlm: OnDeviceLlm {
         let modelPath = downloader.modelFile.path
         let task = Task<Engine?, Never> {
             do {
-                let config = try EngineConfig(modelPath: modelPath, backend: .cpu())
+                // visionBackend was left at its `nil` default here, which
+                // (per EngineConfig's own doc comment) skips initializing
+                // the vision executor entirely — the engine still loaded
+                // fine and reported `.available`, but every image-input
+                // call (generateFromImage: photo drafting, odometer OCR,
+                // photo-intent classification, photo questions in Chat)
+                // silently failed inside the native call, which
+                // generateFromImage's `try?` then swallowed into a plain
+                // `nil`, surfacing as "on-device model unavailable" even
+                // though this is the same multimodal Gemma model already
+                // working fine for text. Passing the same CPU backend here
+                // loads the vision executor alongside the text one.
+                // Must be set before Engine(...) below — it's baked into the
+                // engine's native settings at construction time, not read
+                // per-call, so setting it later (e.g. right before
+                // getBenchmarkInfo()) would silently do nothing and leave
+                // token usage uncaptured for this engine's whole lifetime.
+                ExperimentalFlags.optIntoExperimentalAPIs()
+                ExperimentalFlags.enableBenchmark = true
+                let config = try EngineConfig(modelPath: modelPath, backend: .cpu(), visionBackend: .cpu())
                 let engine = Engine(engineConfig: config)
                 try await engine.initialize()
                 return engine
@@ -127,6 +164,7 @@ final class LiteRtLlm: OnDeviceLlm {
         return try? await withTimeout(seconds: onDeviceResponseTimeoutSeconds) {
             let conversation = try await engine.createConversation()
             let response = try await conversation.sendMessage(Message(prompt))
+            await self.recordTokenUsage(conversation)
             return response.toString.isEmpty ? nil : response.toString
         }
     }
@@ -136,6 +174,7 @@ final class LiteRtLlm: OnDeviceLlm {
         return try? await withTimeout(seconds: onDeviceResponseTimeoutSeconds) {
             let conversation = try await engine.createConversation()
             let response = try await conversation.sendMessage(Message(of: .imageData(imageData), .text(prompt)))
+            await self.recordTokenUsage(conversation)
             return response.toString.isEmpty ? nil : response.toString
         }
     }
@@ -152,6 +191,7 @@ final class LiteRtLlm: OnDeviceLlm {
                 chunkCount += 1
                 onEvent(.streaming(textSoFar: accumulated, chunkCount: chunkCount))
             }
+            await self.recordTokenUsage(conversation)
             return accumulated.isEmpty ? nil : accumulated
         }
     }
@@ -167,6 +207,7 @@ final class LiteRtLlm: OnDeviceLlm {
             )
             let conversation = try await engine.createConversation(with: config)
             _ = try await conversation.sendMessage(Message(rawText))
+            await self.recordTokenUsage(conversation)
             return await EntryDraftCapture.shared.takeCaptured()
         }
     }

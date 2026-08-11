@@ -27,6 +27,9 @@ public final class FirestoreEntryRepository: EntryRepository, @unchecked Sendabl
     private func entriesCollection() -> CollectionReference { userDoc().collection("entries") }
     private func propertiesCollection() -> CollectionReference { userDoc().collection("properties") }
     private func rolesCollection() -> CollectionReference { userDoc().collection("roles") }
+    private func categoriesCollection() -> CollectionReference { userDoc().collection("categories") }
+    private func deviceTokenUsageCollection() -> CollectionReference { userDoc().collection("deviceTokenUsage") }
+    private func cloudTokenUsageCollection() -> CollectionReference { userDoc().collection("cloudTokenUsage") }
     private func correctionsCollection() -> CollectionReference { userDoc().collection("corrections") }
     private func attachmentsCollection(entryId: String) -> CollectionReference {
         entriesCollection().document(entryId).collection("attachments")
@@ -71,6 +74,37 @@ public final class FirestoreEntryRepository: EntryRepository, @unchecked Sendabl
 
     public func deleteRole(roleId: String) async throws {
         try await rolesCollection().document(roleId).delete()
+    }
+
+    public func observeCategories() -> AsyncThrowingStream<[CustomCategory], Error> {
+        observeDecodedArray(
+            query: categoriesCollection().order(by: "createdAt", descending: false),
+            as: CustomCategory.self
+        )
+    }
+
+    public func createCategory(name: String) async throws -> CustomCategory {
+        let category = CustomCategory(name: name)
+        let ref = try categoriesCollection().addDocument(from: category)
+        return try await waitForPendingWrite(at: ref) { try $0.data(as: CustomCategory.self) } ?? category
+    }
+
+    public func observeDeviceTokenUsage() -> AsyncThrowingStream<TokenUsageWeek?, Error> {
+        observeDecodedDocument(deviceTokenUsageCollection().document(currentIsoWeekId()))
+    }
+
+    public func recordOnDeviceTokenUsage(inputTokens: Int, outputTokens: Int) async throws {
+        try await deviceTokenUsageCollection().document(currentIsoWeekId()).setData([
+            "inputTokens": FieldValue.increment(Int64(inputTokens)),
+            "outputTokens": FieldValue.increment(Int64(outputTokens)),
+            "requestCount": FieldValue.increment(Int64(1)),
+            "weekStart": currentIsoWeekStart(),
+            "updatedAt": FieldValue.serverTimestamp(),
+        ], merge: true)
+    }
+
+    public func observeCloudTokenUsage() -> AsyncThrowingStream<TokenUsageWeek?, Error> {
+        observeDecodedDocument(cloudTokenUsageCollection().document(currentIsoWeekId()))
     }
 
     public func createEntry(_ entry: Entry) async throws -> String {
@@ -260,6 +294,21 @@ public final class FirestoreEntryRepository: EntryRepository, @unchecked Sendabl
                 }
                 let values = (snapshot?.documents ?? []).compactMap { try? $0.data(as: T.self) }
                 continuation.yield(values)
+            }
+            continuation.onTermination = { _ in registration.remove() }
+        }
+    }
+
+    private func observeDecodedDocument<T: Decodable & Sendable>(
+        _ document: DocumentReference
+    ) -> AsyncThrowingStream<T?, Error> {
+        AsyncThrowingStream { continuation in
+            let registration = document.addSnapshotListener { snapshot, error in
+                if let error {
+                    continuation.finish(throwing: error)
+                    return
+                }
+                continuation.yield(try? snapshot?.data(as: T.self))
             }
             continuation.onTermination = { _ in registration.remove() }
         }
