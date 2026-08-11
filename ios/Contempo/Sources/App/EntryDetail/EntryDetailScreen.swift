@@ -2,6 +2,7 @@ import AVFoundation
 import Combine
 import ContempoCore
 import ContempoFirestore
+import CoreLocation
 import PhotosUI
 import SwiftUI
 import UniformTypeIdentifiers
@@ -72,6 +73,13 @@ struct EntryDetailScreen: View {
                             }
                             if !entry.photoUrls.isEmpty {
                                 LabeledContent("Photos", value: "\(entry.photoUrls.count)")
+                            }
+                            if let captureLat = entry.captureLat, let captureLng = entry.captureLng {
+                                LocationLabeledContent(label: "Location", lat: captureLat, lng: captureLng)
+                            }
+                            if let stopLat = entry.stopLat, let stopLng = entry.stopLng,
+                               stopLat != entry.captureLat || stopLng != entry.captureLng {
+                                LocationLabeledContent(label: "Completed near", lat: stopLat, lng: stopLng)
                             }
                         }
                     }
@@ -446,6 +454,49 @@ struct EntryDetailScreen: View {
             captureLng: entry.captureLng
         )
         return .confirm(params)
+    }
+}
+
+// MARK: - Location
+
+/// Reverse-geocodes a captured lat/lng into a short "City, State"-style
+/// string — raw coordinates don't actually help a host remember where a
+/// work session happened, which is the entire point of capturing location
+/// in the first place (see CaptureViewModel.captureLocation). Falls back
+/// to the raw coordinates if geocoding fails (no network, no placemark
+/// found, etc.) rather than hiding the data entirely.
+private struct LocationLabeledContent: View {
+    let label: String
+    let lat: Double
+    let lng: Double
+
+    @State private var placeName: String?
+    @State private var geocodeFailed = false
+
+    var body: some View {
+        LabeledContent(label) {
+            if let placeName {
+                Text(placeName)
+            } else if geocodeFailed {
+                Text(String(format: "%.4f, %.4f", lat, lng))
+            } else {
+                Text("Looking up…").foregroundStyle(.secondary)
+            }
+        }
+        .task(id: "\(lat),\(lng)") {
+            let location = CLLocation(latitude: lat, longitude: lng)
+            do {
+                let placemarks = try await CLGeocoder().reverseGeocodeLocation(location)
+                let parts = [placemarks.first?.locality, placemarks.first?.administrativeArea].compactMap { $0 }
+                if parts.isEmpty {
+                    geocodeFailed = true
+                } else {
+                    placeName = parts.joined(separator: ", ")
+                }
+            } catch {
+                geocodeFailed = true
+            }
+        }
     }
 }
 

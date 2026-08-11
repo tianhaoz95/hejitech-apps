@@ -194,6 +194,9 @@
     <string name="entry_detail_photos_label">Photos</string>
     <string name="entry_detail_photos_count">%1$d attached</string>
     <string name="entry_detail_audio_label">Voice recording</string>
+    <string name="entry_detail_location_label">Location</string>
+    <string name="entry_detail_stop_location_label">Completed near</string>
+    <string name="entry_detail_location_loading">Looking up…</string>
     <string name="entry_detail_audio_recording">Original recording</string>
     <string name="entry_detail_audio_loading">Loading…</string>
     <string name="entry_detail_audio_playing">Playing…</string>

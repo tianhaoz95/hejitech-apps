@@ -382,10 +382,15 @@ struct CaptureScreen: View {
             }
             .ignoresSafeArea()
         }
-        .confirmationDialog(
+        // A centered .alert, not a bottom-anchored .confirmationDialog —
+        // this is a plain yes/no confirmation with no list of options to
+        // choose between, which is exactly what .alert is for; a
+        // confirmation dialog (action sheet) reads as overkill/unfamiliar
+        // for a two-button "are you sure," matching Android's use of a
+        // plain Material AlertDialog for the same prompt.
+        .alert(
             "Discard this work session?",
-            isPresented: $showCancelWorkDialog,
-            titleVisibility: .visible
+            isPresented: $showCancelWorkDialog
         ) {
             Button("Discard", role: .destructive) {
                 workWasCancelled = true
@@ -395,10 +400,9 @@ struct CaptureScreen: View {
         } message: {
             Text("This deletes the timer and everything logged so far. This can't be undone.")
         }
-        .confirmationDialog(
+        .alert(
             "Discard this trip?",
-            isPresented: $showCancelTripDialog,
-            titleVisibility: .visible
+            isPresented: $showCancelTripDialog
         ) {
             Button("Discard", role: .destructive) {
                 tripWasCancelled = true

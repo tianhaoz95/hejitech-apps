@@ -1,7 +1,9 @@
 package com.hejitech.contempo.ui.entrydetail
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.pdf.PdfRenderer
+import android.location.Geocoder
 import android.media.MediaPlayer
 import android.net.Uri
 import android.os.ParcelFileDescriptor
@@ -100,6 +102,8 @@ import com.hejitech.core.model.EntryCategory
 import com.hejitech.core.model.EntryFieldValidation
 import com.hejitech.core.model.EntryStatus
 import com.google.firebase.Timestamp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -266,6 +270,20 @@ private fun EntryDetailContent(
     DetailRow(stringResource(R.string.entry_detail_logged_date_label), dateFormatter.format(entry.loggedAt.toDate()))
     entry.confirmedAt?.let {
         DetailRow(stringResource(R.string.entry_detail_confirmed_date_label), dateFormatter.format(it.toDate()))
+    }
+    val captureLat = entry.captureLat
+    val captureLng = entry.captureLng
+    if (captureLat != null && captureLng != null) {
+        DetailRow(stringResource(R.string.entry_detail_location_label)) {
+            LocationText(captureLat, captureLng)
+        }
+    }
+    val stopLat = entry.stopLat
+    val stopLng = entry.stopLng
+    if (stopLat != null && stopLng != null && (stopLat != captureLat || stopLng != captureLng)) {
+        DetailRow(stringResource(R.string.entry_detail_stop_location_label)) {
+            LocationText(stopLat, stopLng)
+        }
     }
     if (entry.photoUrls.isNotEmpty()) {
         DetailRow(
@@ -682,6 +700,46 @@ private fun AudioPlayerRow(audioUrl: String, rawTranscript: String) {
 @Composable
 private fun DetailRow(label: String, value: String) {
     DetailRow(label) { Text(value, style = MaterialTheme.typography.bodyLarge) }
+}
+
+/**
+ * Reverse-geocodes a captured lat/lng into a short "City, State"-style
+ * string — raw coordinates don't actually help a host remember where a
+ * work session happened, which is the entire point of capturing location
+ * in the first place (see CaptureViewModel.captureLocation). Falls back to
+ * the raw coordinates if geocoding fails (no network, no geocoder service
+ * on this device, etc.) rather than hiding the data entirely.
+ */
+@Composable
+private fun LocationText(lat: Double, lng: Double) {
+    val context = LocalContext.current
+    var address by remember(lat, lng) { mutableStateOf<String?>(null) }
+    var geocodeFailed by remember(lat, lng) { mutableStateOf(false) }
+    LaunchedEffect(lat, lng) {
+        val result = withContext(Dispatchers.IO) { reverseGeocode(context, lat, lng) }
+        if (result != null) address = result else geocodeFailed = true
+    }
+    when {
+        address != null -> Text(address!!, style = MaterialTheme.typography.bodyLarge)
+        geocodeFailed -> Text(
+            String.format(Locale.getDefault(), "%.4f, %.4f", lat, lng),
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        else -> Text(
+            stringResource(R.string.entry_detail_location_loading),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Suppress("DEPRECATION") // The synchronous overload is still the simplest cross-version option at minSdk 26; the API 33+ async callback overload isn't worth the extra branching for a best-effort display string.
+private fun reverseGeocode(context: Context, lat: Double, lng: Double): String? = try {
+    Geocoder(context, Locale.getDefault()).getFromLocation(lat, lng, 1)
+        ?.firstOrNull()
+        ?.let { address -> listOfNotNull(address.locality, address.adminArea).joinToString(", ").ifBlank { null } }
+} catch (e: Exception) {
+    null
 }
 
 @Composable
