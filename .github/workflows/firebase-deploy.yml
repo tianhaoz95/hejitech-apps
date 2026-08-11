@@ -139,6 +139,7 @@ jobs:
           VITE_ADMIN_FIREBASE_MESSAGING_SENDER_ID: "646737053318"
           VITE_ADMIN_FIREBASE_APP_ID: "1:646737053318:web:8a24d7a388488b88ac3307"
           VITE_ADMIN_FIREBASE_MEASUREMENT_ID: G-4F6RMV7Z6Q
+          VITE_ADMIN_GOOGLE_CLIENT_ID: 646737053318-dauoaoeggts0rq8hmdc6md3jqp6g8ugf.apps.googleusercontent.com
         run: |
           npx -y firebase-tools@latest deploy \
             --only hosting \
