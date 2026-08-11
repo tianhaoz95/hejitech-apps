@@ -177,7 +177,7 @@ export const adminListCoupons = onCall({ secrets: [stripeSecretKey], enforceAppC
   assertAdmin(request);
   const stripe = stripeClient();
   const [promotionCodes, coupons] = await Promise.all([
-    stripe.promotionCodes.list({ limit: 100, expand: ["data.coupon"] }),
+    stripe.promotionCodes.list({ limit: 100, expand: ["data.promotion.coupon"] }),
     stripe.coupons.list({ limit: 100 }),
   ]);
   return { promotionCodes: promotionCodes.data, coupons: coupons.data };

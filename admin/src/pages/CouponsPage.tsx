@@ -54,7 +54,7 @@ export function CouponsPage() {
     try {
       const { promotionCodes: codes, coupons } = await listCoupons();
       setPromotionCodes(codes);
-      const codedCouponIds = new Set(codes.map((c) => c.coupon.id));
+      const codedCouponIds = new Set(codes.map((c) => c.promotion.coupon?.id).filter((id): id is string => !!id));
       setBareCoupons(coupons.filter((c) => !codedCouponIds.has(c.id)));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -160,11 +160,14 @@ export function CouponsPage() {
                   </td>
                 </tr>
               )}
-              {promotionCodes.map((pc) => (
+              {promotionCodes.map((pc) => {
+                const coupon = pc.promotion.coupon;
+                const isActive = pc.active && !!coupon?.valid;
+                return (
                 <tr key={pc.id}>
                   <td style={{ fontFamily: "var(--font-mono)", fontWeight: 600 }}>{pc.code}</td>
-                  <td>{formatDiscount(pc.coupon)}</td>
-                  <td>{formatDuration(pc.coupon)}</td>
+                  <td>{coupon ? formatDiscount(coupon) : "(coupon deleted)"}</td>
+                  <td>{coupon ? formatDuration(coupon) : "—"}</td>
                   <td>
                     {pc.times_redeemed}
                     {pc.max_redemptions ? ` / ${pc.max_redemptions}` : ""}
@@ -172,8 +175,8 @@ export function CouponsPage() {
                   <td>{pc.expires_at ? new Date(pc.expires_at * 1000).toLocaleDateString() : "—"}</td>
                   <td>{pc.metadata?.purpose ?? "—"}</td>
                   <td>
-                    <span className={`badge ${pc.active && pc.coupon.valid ? "badge-resolved" : "badge-inactive"}`}>
-                      {pc.active && pc.coupon.valid ? "active" : "inactive"}
+                    <span className={`badge ${isActive ? "badge-resolved" : "badge-inactive"}`}>
+                      {isActive ? "active" : "inactive"}
                     </span>
                   </td>
                   <td>
@@ -188,7 +191,8 @@ export function CouponsPage() {
                     )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

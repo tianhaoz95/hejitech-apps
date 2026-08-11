@@ -27,7 +27,13 @@ export interface StripePromotionCode {
   times_redeemed: number;
   expires_at: number | null;
   metadata: Record<string, string>;
-  coupon: StripeCoupon;
+  // Stripe nests the coupon under `promotion.coupon`, not a top-level
+  // `coupon` field (confirmed against the actual PromotionCode type in
+  // stripe/cjs/resources/PromotionCodes.d.ts — an earlier version of this
+  // file assumed the old top-level shape and crashed live on every render).
+  // Nullable because the underlying coupon can be deleted out from under an
+  // existing promotion code.
+  promotion: { type: "coupon"; coupon: StripeCoupon | null };
 }
 
 export interface CreateCouponInput {
