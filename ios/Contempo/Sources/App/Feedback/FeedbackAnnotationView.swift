@@ -17,6 +17,7 @@ struct FeedbackAnnotationView: View {
     @State private var dragStart: CGPoint?
     @State private var boxRect: CGRect?
     @State private var imageFrameSize: CGSize = .zero
+    @FocusState private var isDescriptionFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -80,6 +81,13 @@ struct FeedbackAnnotationView: View {
                 TextField("What's wrong, or what should be better?", text: $viewModel.description, axis: .vertical)
                     .lineLimit(3...6)
                     .textFieldStyle(.roundedBorder)
+                    .focused($isDescriptionFocused)
+                    .toolbar {
+                        ToolbarItemGroup(placement: .keyboard) {
+                            Spacer()
+                            Button("Done") { isDescriptionFocused = false }
+                        }
+                    }
 
                 if let submitError = viewModel.submitError {
                     Text(submitError)
@@ -105,6 +113,17 @@ struct FeedbackAnnotationView: View {
             .padding()
         }
         .background(palette.paper)
+        .onTapGesture { isDescriptionFocused = false }
+        // Without this, the keyboard's appearance reflows this VStack
+        // (standard SwiftUI keyboard avoidance), which shrinks the
+        // GeometryReader above and rescales the displayed screenshot —
+        // but `boxRect` is stored in that GeometryReader's raw view
+        // coordinates from *before* the resize, so the box visibly
+        // drifts away from where the user actually drew it. Keeping the
+        // layout fixed regardless of the keyboard avoids the resize (and
+        // the drift) entirely, rather than trying to rescale boxRect
+        // after the fact.
+        .ignoresSafeArea(.keyboard, edges: .bottom)
     }
 
     /// Converts the on-screen box (view coordinates within the
