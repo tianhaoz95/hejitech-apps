@@ -67,8 +67,11 @@ service firebase.storage {
     // above (image-only, 15MB cap), just under its own path so a feedback
     // screenshot is never mistaken for entry evidence. See
     // firestore.rules' isValidAppFeedback for the doc this pairs with.
+    // Admin read (request.auth.token.admin == true, same custom claim as
+    // firestore.rules' isAdmin()) backs the admin/ site's Feedback tab,
+    // which needs to render another user's screenshot.
     match /users/{uid}/appFeedback/{feedbackId}/{fileName} {
-      allow read: if request.auth != null && request.auth.uid == uid;
+      allow read: if request.auth != null && (request.auth.uid == uid || request.auth.token.admin == true);
       allow write: if request.auth != null && request.auth.uid == uid &&
         request.resource.contentType.matches('image/.*') &&
         request.resource.size < 15 * 1024 * 1024;

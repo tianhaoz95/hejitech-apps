@@ -65,6 +65,7 @@ backend/firestore-debug.log
 # Firebase project directory, i.e. can't point straight at ../web/dist)
 backend/web-dist/
 backend/feedback-dist/
+backend/admin-dist/
 backend/ui-debug.log
 backend/.firebase/
 

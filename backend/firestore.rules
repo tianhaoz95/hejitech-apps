@@ -21,6 +21,14 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == uid;
     }
 
+    // Custom claim set by backend/scripts/set-admin-claim.js (Admin SDK
+    // only — never client-settable). Backs the admin/ site: read access to
+    // other users' appFeedback/feedback, gated narrowly rather than opening
+    // any broader cross-user access this MVP doesn't otherwise need.
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
+
     // True whether `d[key]` is absent, explicitly null, or matches `type` —
     // the shape every nullable Kotlin field (Double?, Timestamp?) takes once
     // Firestore stores it (the SDK writes an explicit null, it doesn't drop
@@ -204,10 +212,12 @@ service cloud.firestore {
     // "Shake to report" feedback — in-app, from a signed-in owner, unlike
     // the anonymous login-free feedback/{feedbackId} collection above (that
     // one has no owner at all; this one is nested per-user like entries).
-    // Client-writable on create only — status transitions (pending ->
-    // triaged/resolved) are made by the triage-feedback skill's fetch
-    // script via the Admin SDK, which bypasses these rules entirely, same
-    // append-only-from-the-client posture as isValidCorrection above.
+    // Client-writable on create only by the owner. Status transitions
+    // (pending -> triaged/resolved) come from either the triage-feedback
+    // skill's fetch script (Admin SDK, bypasses these rules entirely) or
+    // the admin/ site (a real client, subject to isValidAdminStatusUpdate
+    // below) — same append-only-from-the-owner posture as isValidCorrection
+    // above, just with a narrow admin-only side door for triage bookkeeping.
     function isValidAppFeedback(d) {
       return d.description is string && d.description.size() <= 5000 &&
         d.screenshotPath is string && d.screenshotPath.size() > 0 && d.screenshotPath.size() <= 500 &&
@@ -225,6 +235,16 @@ service cloud.firestore {
         optionalType(d, 'resolvedAt', 'timestamp');
     }
 
+    // Lets the admin/ site flip pending -> triaged/resolved without going
+    // through the Admin SDK — only 'status'/'triagedAt'/'resolvedAt' may
+    // change (diff().affectedKeys(), same idiom as isValidNoteUpdate's
+    // append-only enforcement elsewhere in this file); every other field on
+    // the report is immutable from the client, admin included.
+    function isValidAdminStatusUpdate(before, after) {
+      return after.diff(before).affectedKeys().hasOnly(['status', 'triagedAt', 'resolvedAt']) &&
+        (after.status == 'triaged' || after.status == 'resolved');
+    }
+
     // No owner (submitted from the login-free feedback/ site) — server-set
     // createdAt (== request.time, not just `is timestamp`) so a submitter
     // can't backdate it, same idea as corrections' append-only rule below.
@@ -236,11 +256,13 @@ service cloud.firestore {
     }
 
     // Public/anonymous — see feedback/README.md and firebase.json's
-    // "contempo-feedback" hosting site. Nobody can read submissions back
-    // (including the submitter); review them via the Firestore console.
+    // "contempo-feedback" hosting site. Nobody but an admin can read
+    // submissions back (not even the submitter, who left no owner to check
+    // against anyway); review them via the admin/ site or Firestore console.
     match /feedback/{feedbackId} {
       allow create: if isValidFeedback(request.resource.data);
-      allow read, update, delete: if false;
+      allow read: if isAdmin();
+      allow update, delete: if false;
     }
 
     // Stripe customer ID -> uid lookup, written only by createCheckoutSession
@@ -339,12 +361,15 @@ service cloud.firestore {
       }
 
       // Shake-to-report bug/improvement reports — see isValidAppFeedback
-      // above. Append-only from the client; the triage-feedback skill's
-      // fetch script flips status via the Admin SDK.
+      // above. Append-only from the owner; an admin can additionally read
+      // every user's reports (the whole point of the admin/ site's Feedback
+      // tab) and flip status via isValidAdminStatusUpdate, same as the
+      // triage-feedback skill's fetch script already does via the Admin SDK.
       match /appFeedback/{feedbackId} {
-        allow read: if isOwner(uid);
+        allow read: if isOwner(uid) || isAdmin();
         allow create: if isOwner(uid) && isValidAppFeedback(request.resource.data);
-        allow update, delete: if false;
+        allow update: if isAdmin() && isValidAdminStatusUpdate(resource.data, request.resource.data);
+        allow delete: if false;
       }
     }
   }

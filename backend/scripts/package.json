@@ -5,7 +5,8 @@
   "description": "One-off Admin SDK scripts for contempo-platform, not deployed anywhere (see fetch-feedback.js).",
   "type": "commonjs",
   "scripts": {
-    "fetch-feedback": "node fetch-feedback.js"
+    "fetch-feedback": "node fetch-feedback.js",
+    "set-admin-claim": "node set-admin-claim.js"
   },
   "dependencies": {
     "firebase-admin": "^14.2.0"

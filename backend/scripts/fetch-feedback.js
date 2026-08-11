@@ -29,7 +29,16 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const admin = require("firebase-admin");
+// firebase-admin v14 dropped the old admin.credential()/admin.firestore()
+// namespaced API from the plain `require("firebase-admin")` object — it now
+// only exposes app lifecycle functions there, and each service needs its
+// own modular submodule import (same shape the client SDKs have used for a
+// while). Confirmed live: the old style threw "Cannot read properties of
+// undefined (reading 'applicationDefault')" against the version actually
+// installed here.
+const { initializeApp, applicationDefault } = require("firebase-admin/app");
+const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+const { getStorage } = require("firebase-admin/storage");
 
 const PROJECT_ID = "contempo-platform";
 const STORAGE_BUCKET = "contempo-platform.firebasestorage.app";
@@ -61,8 +70,8 @@ function parseArgs(argv) {
 }
 
 function initAdmin() {
-  admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
+  initializeApp({
+    credential: applicationDefault(),
     projectId: PROJECT_ID,
     storageBucket: STORAGE_BUCKET,
   });
@@ -78,15 +87,15 @@ function uidFromDocPath(docPath) {
 }
 
 async function markStatus(docPath, status) {
-  const db = admin.firestore();
+  const db = getFirestore();
   const update = { status };
-  update[status === "triaged" ? "triagedAt" : "resolvedAt"] = admin.firestore.FieldValue.serverTimestamp();
+  update[status === "triaged" ? "triagedAt" : "resolvedAt"] = FieldValue.serverTimestamp();
   await db.doc(docPath).update(update);
   process.stdout.write(`${docPath} -> ${status}\n`);
 }
 
 async function fetchFeedback(args) {
-  const db = admin.firestore();
+  const db = getFirestore();
   const outDir = args.out || fs.mkdtempSync(path.join(os.tmpdir(), "contempo-feedback-"));
   fs.mkdirSync(outDir, { recursive: true });
 
@@ -97,7 +106,7 @@ async function fetchFeedback(args) {
     .limit(args.limit)
     .get();
 
-  const bucket = admin.storage().bucket();
+  const bucket = getStorage().bucket();
   const manifest = [];
 
   for (const doc of snapshot.docs) {

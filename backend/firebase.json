@@ -35,6 +35,21 @@
       "public": "feedback-dist",
       "ignore": ["firebase.json", "**/.*"],
       "predeploy": ["rm -rf feedback-dist && cp -r ../feedback/public feedback-dist"]
+    },
+    {
+      "site": "contempo-admin",
+      "public": "admin-dist",
+      "ignore": ["firebase.json", "**/.*"],
+      "predeploy": [
+        "npm --prefix ../admin run build",
+        "rm -rf admin-dist && cp -r ../admin/dist admin-dist"
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ]
     }
   ],
   "functions": [

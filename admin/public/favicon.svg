@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108">
+  <!-- Same mark as web/public/favicon.svg — kept in sync by hand. -->
+  <rect width="108" height="108" fill="#1F5C46" />
+  <circle cx="54" cy="54" r="24" fill="none" stroke="#F5F6F2" stroke-width="7" />
+  <circle cx="54" cy="48" r="7" fill="#F5F6F2" />
+</svg>

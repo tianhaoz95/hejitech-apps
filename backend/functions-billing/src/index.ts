@@ -150,6 +150,143 @@ async function syncSubscription(uid: string, subscription: Stripe.Subscription):
 }
 
 /**
+ * Shared guard for every admin* function below — the admin/ site's only
+ * server-side enforcement (Firestore/Storage rules cover the rest of that
+ * site's needs, but Stripe has no rules engine of its own, so a Cloud
+ * Function is the only place a coupon-management call can actually be
+ * gated). request.auth.token.admin is the custom claim
+ * backend/scripts/set-admin-claim.js sets via the Admin SDK — never
+ * client-settable, so this can't be spoofed by a signed-in non-admin.
+ */
+function assertAdmin(request: { auth?: { token?: Record<string, unknown> } | null }): void {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Sign in before managing coupons.");
+  }
+  if (request.auth.token?.admin !== true) {
+    throw new HttpsError("permission-denied", "Admin access required.");
+  }
+}
+
+/**
+ * Lists promotion codes (the customer-facing redeemable strings, each
+ * expanded with its underlying coupon — the actual discount definition) and
+ * raw coupons (so a coupon created without a promotion code, e.g. straight
+ * from the Stripe Dashboard, still shows up). See admin/src/pages/CouponsPage.tsx.
+ */
+export const adminListCoupons = onCall({ secrets: [stripeSecretKey], enforceAppCheck: false }, async (request) => {
+  assertAdmin(request);
+  const stripe = stripeClient();
+  const [promotionCodes, coupons] = await Promise.all([
+    stripe.promotionCodes.list({ limit: 100, expand: ["data.coupon"] }),
+    stripe.coupons.list({ limit: 100 }),
+  ]);
+  return { promotionCodes: promotionCodes.data, coupons: coupons.data };
+});
+
+/**
+ * Creates a Coupon (the discount rule) and a Promotion Code on top of it
+ * (the string a host actually types at checkout) in one call — the admin/
+ * site never creates a bare coupon, since an admin always wants something
+ * redeemable to hand out. `purpose` lands in both objects' metadata (e.g.
+ * "personal_testing", "influencer_promo") purely for the admin's own later
+ * filtering/audit — Stripe doesn't interpret it.
+ */
+export const adminCreateCoupon = onCall({ secrets: [stripeSecretKey], enforceAppCheck: false }, async (request) => {
+  assertAdmin(request);
+  const {
+    name,
+    percentOff,
+    amountOff,
+    currency,
+    duration,
+    durationInMonths,
+    maxRedemptions,
+    redeemBy,
+    code,
+    purpose,
+  } = request.data as {
+    name?: string;
+    percentOff?: number;
+    amountOff?: number;
+    currency?: string;
+    duration?: "once" | "repeating" | "forever";
+    durationInMonths?: number;
+    maxRedemptions?: number;
+    redeemBy?: number; // unix seconds
+    code?: string;
+    purpose?: string;
+  };
+
+  if (!duration || !["once", "repeating", "forever"].includes(duration)) {
+    throw new HttpsError("invalid-argument", "duration must be one of once/repeating/forever.");
+  }
+  if (!percentOff && !amountOff) {
+    throw new HttpsError("invalid-argument", "Set either percentOff or amountOff.");
+  }
+  if (percentOff && (percentOff <= 0 || percentOff > 100)) {
+    throw new HttpsError("invalid-argument", "percentOff must be between 1 and 100.");
+  }
+  if (amountOff && !currency) {
+    throw new HttpsError("invalid-argument", "currency is required when amountOff is set.");
+  }
+  if (duration === "repeating" && !durationInMonths) {
+    throw new HttpsError("invalid-argument", "durationInMonths is required when duration is repeating.");
+  }
+
+  const stripe = stripeClient();
+  const metadata = purpose ? { purpose } : undefined;
+
+  const coupon = await stripe.coupons.create({
+    name: name || undefined,
+    percent_off: percentOff || undefined,
+    amount_off: amountOff || undefined,
+    currency: amountOff ? currency : undefined,
+    duration,
+    duration_in_months: duration === "repeating" ? durationInMonths : undefined,
+    max_redemptions: maxRedemptions || undefined,
+    redeem_by: redeemBy || undefined,
+    metadata,
+  });
+
+  const promotionCode = await stripe.promotionCodes.create({
+    promotion: { type: "coupon", coupon: coupon.id },
+    code: code || undefined,
+    max_redemptions: maxRedemptions || undefined,
+    expires_at: redeemBy || undefined,
+    metadata,
+  });
+
+  return { coupon, promotionCode };
+});
+
+/** Deactivates a promotion code — the code stops working at checkout, but the underlying coupon/its history is untouched. */
+export const adminDeactivatePromotionCode = onCall(
+  { secrets: [stripeSecretKey], enforceAppCheck: false },
+  async (request) => {
+    assertAdmin(request);
+    const { promotionCodeId } = request.data as { promotionCodeId?: string };
+    if (!promotionCodeId) {
+      throw new HttpsError("invalid-argument", "promotionCodeId is required.");
+    }
+    const stripe = stripeClient();
+    const promotionCode = await stripe.promotionCodes.update(promotionCodeId, { active: false });
+    return { promotionCode };
+  }
+);
+
+/** Deletes a coupon outright — permanently invalidates every promotion code built on it (Stripe's own cascade, not something this function does manually). */
+export const adminDeleteCoupon = onCall({ secrets: [stripeSecretKey], enforceAppCheck: false }, async (request) => {
+  assertAdmin(request);
+  const { couponId } = request.data as { couponId?: string };
+  if (!couponId) {
+    throw new HttpsError("invalid-argument", "couponId is required.");
+  }
+  const stripe = stripeClient();
+  const deleted = await stripe.coupons.del(couponId);
+  return { deleted };
+});
+
+/**
  * Raw HTTP endpoint hit directly by Stripe's servers — Stripe's signature
  * verification (not Firebase Auth or App Check) is the security boundary
  * here. Register this URL as a webhook endpoint in the Stripe Dashboard

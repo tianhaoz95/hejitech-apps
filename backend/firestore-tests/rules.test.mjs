@@ -51,6 +51,22 @@ function validEntryFields(overrides = {}) {
   };
 }
 
+function validAppFeedbackFields(overrides = {}) {
+  return {
+    description: 'Button overlaps the status text',
+    screenshotPath: `users/${OWNER_UID}/appFeedback/report-1/screenshot.jpg`,
+    appVersion: '1.2.3',
+    buildNumber: '64',
+    osVersion: '18.0',
+    deviceModel: 'iPhone 15',
+    screenName: 'Capture',
+    locale: 'en-US',
+    status: 'pending',
+    createdAt: Timestamp.now(),
+    ...overrides,
+  };
+}
+
 function validAttachmentFields(overrides = {}) {
   return {
     fileName: 'receipt.pdf',
@@ -258,6 +274,78 @@ describe('attachments (isValidAttachment + isValidNoteUpdate)', () => {
     await assertFails(updateDoc(
       doc(otherDb, `users/${OWNER_UID}/entries/entry-1/attachments/att-1`),
       { note: 'not yours to edit' },
+    ));
+  });
+});
+
+// Backs the admin/ site's Feedback tab — isAdmin()/isValidAdminStatusUpdate
+// in firestore.rules. ADMIN_UID's token carries the same admin:true custom
+// claim backend/scripts/set-admin-claim.js sets for real via the Admin SDK.
+describe('admin access (isAdmin / isValidAdminStatusUpdate)', () => {
+  const ADMIN_UID = 'admin-user';
+
+  it('a non-admin cannot read another user\'s appFeedback', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), `users/${OWNER_UID}/appFeedback/report-1`), validAppFeedbackFields());
+    });
+    const otherDb = testEnv.authenticatedContext(OTHER_UID).firestore();
+    await assertFails(getDoc(doc(otherDb, `users/${OWNER_UID}/appFeedback/report-1`)));
+  });
+
+  it('an admin can read another user\'s appFeedback', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), `users/${OWNER_UID}/appFeedback/report-1`), validAppFeedbackFields());
+    });
+    const adminDb = testEnv.authenticatedContext(ADMIN_UID, { admin: true }).firestore();
+    await assertSucceeds(getDoc(doc(adminDb, `users/${OWNER_UID}/appFeedback/report-1`)));
+  });
+
+  it('an admin can read the anonymous top-level feedback collection', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'feedback/fb-1'), { message: 'Please add dark mode', createdAt: Timestamp.now() });
+    });
+    const adminDb = testEnv.authenticatedContext(ADMIN_UID, { admin: true }).firestore();
+    await assertSucceeds(getDoc(doc(adminDb, 'feedback/fb-1')));
+  });
+
+  it('a non-admin still cannot read the anonymous feedback collection', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'feedback/fb-1'), { message: 'Please add dark mode', createdAt: Timestamp.now() });
+    });
+    const otherDb = testEnv.authenticatedContext(OTHER_UID).firestore();
+    await assertFails(getDoc(doc(otherDb, 'feedback/fb-1')));
+  });
+
+  it('an admin can mark an appFeedback report triaged', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), `users/${OWNER_UID}/appFeedback/report-1`), validAppFeedbackFields());
+    });
+    const adminDb = testEnv.authenticatedContext(ADMIN_UID, { admin: true }).firestore();
+    await assertSucceeds(updateDoc(
+      doc(adminDb, `users/${OWNER_UID}/appFeedback/report-1`),
+      { status: 'triaged', triagedAt: Timestamp.now() },
+    ));
+  });
+
+  it('an admin status update cannot smuggle in changes to other fields', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), `users/${OWNER_UID}/appFeedback/report-1`), validAppFeedbackFields());
+    });
+    const adminDb = testEnv.authenticatedContext(ADMIN_UID, { admin: true }).firestore();
+    await assertFails(updateDoc(
+      doc(adminDb, `users/${OWNER_UID}/appFeedback/report-1`),
+      { status: 'triaged', description: 'rewritten by admin' },
+    ));
+  });
+
+  it('the owner (non-admin) still cannot update their own appFeedback status', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), `users/${OWNER_UID}/appFeedback/report-1`), validAppFeedbackFields());
+    });
+    const ownerDb = testEnv.authenticatedContext(OWNER_UID).firestore();
+    await assertFails(updateDoc(
+      doc(ownerDb, `users/${OWNER_UID}/appFeedback/report-1`),
+      { status: 'triaged' },
     ));
   });
 });

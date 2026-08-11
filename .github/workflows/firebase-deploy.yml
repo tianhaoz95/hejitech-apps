@@ -34,6 +34,7 @@ on:
       - "backend/.firebaserc"
       - "web/**"
       - "feedback/**"
+      - "admin/**"
       - ".github/workflows/firebase-deploy.yml"
   workflow_dispatch: {}
 
@@ -88,30 +89,40 @@ jobs:
         with:
           node-version: 20
 
-      # Deploys BOTH Hosting sites together (--only hosting, not scoped to a
-      # single site) — Firebase CLI runs every hosting entry's predeploy hook
-      # whenever any hosting deploy runs, regardless of which specific site
-      # --only narrows to (confirmed live: --only hosting:contempo-feedback
-      # alone still ran the contempo site's `npm run build` hook and failed
-      # because this job hadn't installed web/'s dependencies). So there's no
-      # way to deploy one site without paying for both hooks anyway — might
-      # as well actually deploy both. feedback/'s predeploy hook is just a
-      # copy, no install needed for it.
+      # Deploys ALL THREE Hosting sites together (--only hosting, not scoped
+      # to a single site) — Firebase CLI runs every hosting entry's
+      # predeploy hook whenever any hosting deploy runs, regardless of which
+      # specific site --only narrows to (confirmed live: --only
+      # hosting:contempo-feedback alone still ran the contempo site's `npm
+      # run build` hook and failed because this job hadn't installed web/'s
+      # dependencies). So there's no way to deploy one site without paying
+      # for every hook anyway — might as well actually deploy all of them.
+      # feedback/'s predeploy hook is just a copy, no install needed for it.
       - name: Install web dependencies
         working-directory: web
         run: npm ci
 
-      # web/.env.local (real Firebase config) is gitignored and so doesn't
-      # exist in this checkout — every prior CI-built bundle baked in
-      # undefined VITE_FIREBASE_* values, which shipped a broken production
-      # site (auth/invalid-api-key at runtime, confirmed live). These values
+      - name: Install admin dependencies
+        working-directory: admin
+        run: npm ci
+
+      # web/.env.local and admin/.env.local (real Firebase config) are
+      # gitignored and so don't exist in this checkout — every prior CI-built
+      # web/ bundle baked in undefined VITE_FIREBASE_* values before this env
+      # block existed, which shipped a broken production site
+      # (auth/invalid-api-key at runtime, confirmed live). These values
       # aren't secret — see web/src/lib/firebase.ts's comment: security is
-      # enforced by Firestore/Storage rules, not by hiding this object — so
-      # hardcoding them here (rather than provisioning GitHub Secrets for
-      # non-secrets) is fine. Keep in sync with web/.env.local /
-      # web/.env.example by hand; regenerate via `firebase apps:sdkconfig
-      # WEB 1:646737053318:web:5a0e0bc35f564945ac3307 --project contempo-platform`.
-      - name: Deploy Hosting (contempo + contempo-feedback)
+      # enforced by Firestore/Storage rules (plus the admin custom claim for
+      # admin/), not by hiding this object — so hardcoding them here (rather
+      # than provisioning GitHub Secrets for non-secrets) is fine.
+      # admin/'s vars are deliberately VITE_ADMIN_FIREBASE_* rather than
+      # reusing web/'s VITE_FIREBASE_* names — both builds run from this same
+      # shell env in this one step, so identically-named vars would collide
+      # and one site would silently get the other's Firebase Web App config
+      # (see admin/.env.example). Keep both sets in sync with their
+      # respective .env.local / .env.example by hand; regenerate via
+      # `firebase apps:sdkconfig WEB <APP_ID> --project contempo-platform`.
+      - name: Deploy Hosting (contempo + contempo-feedback + contempo-admin)
         working-directory: backend
         env:
           VITE_FIREBASE_API_KEY: AIzaSyDINP38Ufl3ZO0V1ISSNbwqdAOF6RE32YA
@@ -121,6 +132,13 @@ jobs:
           VITE_FIREBASE_MESSAGING_SENDER_ID: "646737053318"
           VITE_FIREBASE_APP_ID: "1:646737053318:web:5a0e0bc35f564945ac3307"
           VITE_FIREBASE_MEASUREMENT_ID: G-14GZZYZZTP
+          VITE_ADMIN_FIREBASE_API_KEY: AIzaSyDINP38Ufl3ZO0V1ISSNbwqdAOF6RE32YA
+          VITE_ADMIN_FIREBASE_AUTH_DOMAIN: contempo-platform.firebaseapp.com
+          VITE_ADMIN_FIREBASE_PROJECT_ID: contempo-platform
+          VITE_ADMIN_FIREBASE_STORAGE_BUCKET: contempo-platform.firebasestorage.app
+          VITE_ADMIN_FIREBASE_MESSAGING_SENDER_ID: "646737053318"
+          VITE_ADMIN_FIREBASE_APP_ID: "1:646737053318:web:8a24d7a388488b88ac3307"
+          VITE_ADMIN_FIREBASE_MEASUREMENT_ID: G-4F6RMV7Z6Q
         run: |
           npx -y firebase-tools@latest deploy \
             --only hosting \
