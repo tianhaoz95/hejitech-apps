@@ -21,21 +21,18 @@ struct FeedbackAnnotationView: View {
     @State private var keyboardHeight: CGFloat = 0
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Button("Cancel") { onDismiss() }
-                    .foregroundStyle(palette.inkSoft)
-                Spacer()
-                Text("Report an issue")
-                    .font(ContempoFont.titleMedium())
-                    .foregroundStyle(palette.ink)
-                Spacer()
-                Button("Cancel") { onDismiss() }
-                    .opacity(0)
-                    .accessibilityHidden(true)
-            }
-            .padding()
-
+        // A ZStack, not a VStack: the image/box-select layer and the
+        // header+controls overlay are independent siblings here, each
+        // given the *full* screen bounds by ZStack (unlike VStack, which
+        // divides one shared height across its children). That
+        // independence is load-bearing — an earlier version of this
+        // screen used a single VStack and pushed the keyboard-avoidance
+        // padding onto the bottom section, which still shrank the
+        // GeometryReader sibling because VStack children share space
+        // sequentially. Here, moving the overlay (however far, by however
+        // much padding) can never resize the image layer, so the drawn
+        // box never drifts regardless of keyboard state.
+        ZStack {
             GeometryReader { geo in
                 ZStack {
                     Image(uiImage: image)
@@ -72,69 +69,71 @@ struct FeedbackAnnotationView: View {
                 .onAppear { imageFrameSize = geo.size }
                 .onChange(of: geo.size) { _, newValue in imageFrameSize = newValue }
             }
-            .clipped()
+            .ignoresSafeArea()
+            .onTapGesture { isDescriptionFocused = false }
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text(boxRect == nil ? "Drag on the screenshot to box the area you're reporting (optional)." : "Area boxed. Drag again to redraw.")
-                    .font(ContempoFont.labelSmall())
-                    .foregroundStyle(palette.inkFaint)
+            VStack(spacing: 0) {
+                HStack {
+                    Button("Cancel") { onDismiss() }
+                        .foregroundStyle(palette.inkSoft)
+                    Spacer()
+                    Text("Report an issue")
+                        .font(ContempoFont.titleMedium())
+                        .foregroundStyle(palette.ink)
+                    Spacer()
+                    Button("Cancel") { onDismiss() }
+                        .opacity(0)
+                        .accessibilityHidden(true)
+                }
+                .padding()
+                .background(palette.paper)
 
-                TextField("What's wrong, or what should be better?", text: $viewModel.description, axis: .vertical)
-                    .lineLimit(3...6)
-                    .textFieldStyle(.roundedBorder)
-                    .focused($isDescriptionFocused)
-                    .toolbar {
-                        ToolbarItemGroup(placement: .keyboard) {
-                            Spacer()
-                            Button("Done") { isDescriptionFocused = false }
+                Spacer(minLength: 0)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(boxRect == nil ? "Drag on the screenshot to box the area you're reporting (optional)." : "Area boxed. Drag again to redraw.")
+                        .font(ContempoFont.labelSmall())
+                        .foregroundStyle(palette.inkFaint)
+
+                    TextField("What's wrong, or what should be better?", text: $viewModel.description, axis: .vertical)
+                        .lineLimit(3...6)
+                        .textFieldStyle(.roundedBorder)
+                        .focused($isDescriptionFocused)
+                        .toolbar {
+                            ToolbarItemGroup(placement: .keyboard) {
+                                Spacer()
+                                Button("Done") { isDescriptionFocused = false }
+                            }
+                        }
+
+                    if let submitError = viewModel.submitError {
+                        Text(submitError)
+                            .font(ContempoFont.labelSmall())
+                            .foregroundStyle(palette.danger)
+                    }
+
+                    Button {
+                        viewModel.submit(image: image, region: normalizedRegion(), onFinished: onDismiss)
+                    } label: {
+                        if viewModel.isSubmitting {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            Text("Submit")
+                                .frame(maxWidth: .infinity)
                         }
                     }
-
-                if let submitError = viewModel.submitError {
-                    Text(submitError)
-                        .font(ContempoFont.labelSmall())
-                        .foregroundStyle(palette.danger)
+                    .buttonStyle(.borderedProminent)
+                    .tint(palette.pine)
+                    .disabled(viewModel.isSubmitting || viewModel.description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
-
-                Button {
-                    viewModel.submit(image: image, region: normalizedRegion(), onFinished: onDismiss)
-                } label: {
-                    if viewModel.isSubmitting {
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                    } else {
-                        Text("Submit")
-                            .frame(maxWidth: .infinity)
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(palette.pine)
-                .disabled(viewModel.isSubmitting || viewModel.description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .padding()
+                .background(palette.paper)
+                .padding(.bottom, keyboardHeight)
+                .animation(.easeOut(duration: 0.25), value: keyboardHeight)
             }
-            .padding()
-            // Compensates for .ignoresSafeArea(.keyboard) below: that
-            // modifier stops the *whole* screen (crucially, the
-            // GeometryReader above) from reflowing when the keyboard
-            // appears, which is what keeps the box from drifting — but
-            // it also means nothing pushes this section above the
-            // keyboard automatically anymore. Shifting just this section
-            // up by the tracked keyboard height gets the text field
-            // visible again without touching the image area's size at all.
-            .padding(.bottom, keyboardHeight)
-            .animation(.easeOut(duration: 0.25), value: keyboardHeight)
+            .ignoresSafeArea(.keyboard, edges: .bottom)
         }
-        .background(palette.paper)
-        .onTapGesture { isDescriptionFocused = false }
-        // Without this, the keyboard's appearance reflows this VStack
-        // (standard SwiftUI keyboard avoidance), which shrinks the
-        // GeometryReader above and rescales the displayed screenshot —
-        // but `boxRect` is stored in that GeometryReader's raw view
-        // coordinates from *before* the resize, so the box visibly
-        // drifts away from where the user actually drew it. Keeping the
-        // layout fixed regardless of the keyboard avoids the resize (and
-        // the drift) entirely, rather than trying to rescale boxRect
-        // after the fact.
-        .ignoresSafeArea(.keyboard, edges: .bottom)
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
             if let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
                 keyboardHeight = frame.height

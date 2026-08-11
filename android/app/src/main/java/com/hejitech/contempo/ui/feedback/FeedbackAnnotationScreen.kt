@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -70,6 +71,16 @@ fun FeedbackAnnotationScreen(
     var dragStart by remember { mutableStateOf<Offset?>(null) }
     var dragEnd by remember { mutableStateOf<Offset?>(null) }
     var containerSize by remember { mutableStateOf(Offset.Zero) }
+    // The bottom controls' own height at rest (keyboard closed) — captured
+    // once from its first measurement, which always happens before the
+    // keyboard can possibly be open (this screen only ever appears right
+    // after a shake capture). Reserving exactly this much space below the
+    // image keeps the two from overlapping in the normal case; only while
+    // the keyboard is actually open does the controls section float up on
+    // top of the image (see the Box below), which is unavoidable once the
+    // image itself isn't allowed to resize.
+    var restingControlsHeightPx by remember { mutableStateOf(0f) }
+    val density = LocalDensity.current
 
     if (uiState.submitted) {
         onDismiss()
@@ -85,7 +96,8 @@ fun FeedbackAnnotationScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .systemBarsPadding(),
+                .systemBarsPadding()
+                .padding(bottom = with(density) { restingControlsHeightPx.toDp() }),
         ) {
             Text(
                 stringResource(R.string.feedback_annotation_title),
@@ -162,7 +174,10 @@ fun FeedbackAnnotationScreen(
                 .background(MaterialTheme.colorScheme.background)
                 .navigationBarsPadding()
                 .imePadding()
-                .padding(16.dp),
+                .padding(16.dp)
+                .onSizeChanged {
+                    if (restingControlsHeightPx == 0f) restingControlsHeightPx = it.height.toFloat()
+                },
         ) {
             OutlinedTextField(
                 value = description,
