@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -236,18 +237,47 @@ fun DashboardScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.height(6.dp))
+                    // Bar width is relative to the largest bucket in this
+                    // breakdown (not the 100-hour threshold) — the point of
+                    // this view is comparing participants against each
+                    // other, not against the test's own progress bar above.
+                    val maxRoleHours = (uiState.roleBreakdown.maxOfOrNull { it.hours } ?: 0.0).coerceAtLeast(0.01)
                     uiState.roleBreakdown.forEach { summary ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Text(summary.name, style = MaterialTheme.typography.labelSmall)
-                            Text(
-                                stringResource(R.string.dashboard_other_role_hours, summary.hours.toInt()),
-                                style = MaterialTheme.typography.labelSmall,
-                            )
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Text(summary.name, style = MaterialTheme.typography.labelSmall)
+                                Text(
+                                    stringResource(R.string.dashboard_other_role_hours, summary.hours.toInt()),
+                                    style = MaterialTheme.typography.labelSmall,
+                                )
+                            }
+                            Spacer(Modifier.height(4.dp))
+                            val fraction = (summary.hours / maxRoleHours).toFloat().coerceIn(0f, 1f)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(fraction)
+                                        .fillMaxHeight()
+                                        .clip(RoundedCornerShape(3.dp))
+                                        .background(
+                                            // "Me" (id == "") stands out as the reference bar; other
+                                            // roles share a second color so the comparison reads at a
+                                            // glance without needing a legend.
+                                            if (summary.id.isEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary,
+                                        ),
+                                )
+                            }
                         }
-                        Spacer(Modifier.height(2.dp))
+                        Spacer(Modifier.height(8.dp))
                     }
                 }
             }

@@ -146,14 +146,37 @@ struct DashboardScreen: View {
                         Text("Only your own hours count above — the IRS tests require your participation to exceed everyone else's.")
                             .font(ContempoFont.labelSmall())
                             .foregroundStyle(palette.inkFaint)
-                        ForEach(viewModel.roleBreakdown) { summary in
-                            HStack {
-                                Text(summary.name)
-                                Spacer()
-                                Text("\(summary.hours.formatted(.number.precision(.fractionLength(1)))) hrs")
+                        // Bar width is relative to the largest bucket in
+                        // this breakdown (not the 100-hour threshold) — the
+                        // point of this view is comparing participants
+                        // against each other, not against the test's own
+                        // progress bar above.
+                        let maxRoleHours = max(viewModel.roleBreakdown.map(\.hours).max() ?? 0, 0.01)
+                        VStack(spacing: 10) {
+                            ForEach(viewModel.roleBreakdown) { summary in
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HStack {
+                                        Text(summary.name)
+                                        Spacer()
+                                        Text("\(summary.hours.formatted(.number.precision(.fractionLength(1)))) hrs")
+                                    }
+                                    .font(ContempoFont.labelSmall())
+                                    .foregroundStyle(palette.inkSoft)
+
+                                    GeometryReader { geo in
+                                        ZStack(alignment: .leading) {
+                                            Capsule().fill(palette.hairline).frame(height: 6)
+                                            Capsule()
+                                                // "Me" (id "") stands out as the reference bar; other
+                                                // roles share a second color so the comparison reads
+                                                // at a glance without needing a legend.
+                                                .fill(summary.id.isEmpty ? palette.pine : palette.brass)
+                                                .frame(width: max(4, geo.size.width * CGFloat(summary.hours / maxRoleHours)), height: 6)
+                                        }
+                                    }
+                                    .frame(height: 6)
+                                }
                             }
-                            .font(ContempoFont.labelSmall())
-                            .foregroundStyle(palette.inkSoft)
                         }
                         .transition(.opacity.combined(with: .move(edge: .top)))
                     }
