@@ -15,6 +15,9 @@ final class DashboardViewModel {
     var confirmedHours: Double = 0
     /// Other roles' confirmed hours, for audit-context comparison — see `RoleHoursSummary`.
     var otherRoleHours: [RoleHoursSummary] = []
+    /// Unified owner + other-roles breakdown for the Dashboard's
+    /// expand-to-compare UI — see `DashboardMetrics.roleBreakdown`.
+    var roleBreakdown: [RoleHoursSummary] = []
     let thresholdHours = MaterialParticipationTest.thresholdHours
     let testName = MaterialParticipationTest.name
     var entries: [Entry] = []
@@ -61,6 +64,7 @@ final class DashboardViewModel {
         let metrics = DashboardMetrics.compute(from: entries)
         confirmedHours = metrics.confirmedHours
         otherRoleHours = metrics.otherRoleHours
+        roleBreakdown = metrics.roleBreakdown
         pendingCount = metrics.pendingCount
         openTimerEntry = metrics.openTimerEntry
         openTripEntry = metrics.openTripEntry

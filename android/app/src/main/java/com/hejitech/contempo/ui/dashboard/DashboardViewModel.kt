@@ -33,6 +33,14 @@ data class DashboardUiState(
     val confirmedHours: Double = 0.0,
     /** Other roles' confirmed hours, for audit-context comparison. */
     val otherRoleHours: List<RoleHoursSummary> = emptyList(),
+    /**
+     * Unified owner + other-roles breakdown for the Dashboard's
+     * expand-to-compare UI — [confirmedHours] as a "Me" row (id = "") first,
+     * then [otherRoleHours] after it. Kept as a separate field rather than
+     * derived inline in the composable so the sort/labeling logic lives in
+     * one place. Empty whenever [otherRoleHours] is (nothing to compare).
+     */
+    val roleBreakdown: List<RoleHoursSummary> = emptyList(),
     val thresholdHours: Int = MaterialParticipationTest.THRESHOLD_HOURS,
     val testName: String = MaterialParticipationTest.NAME,
     val entries: List<Entry> = emptyList(),
@@ -85,9 +93,17 @@ class DashboardViewModel : ViewModel() {
                 }
                 .sortedByDescending { it.hours }
 
+            val ownerHours = totalMinutes / 60.0
+            val roleBreakdown = if (otherRoleHours.isEmpty()) {
+                emptyList()
+            } else {
+                listOf(RoleHoursSummary(id = "", name = "Me", hours = ownerHours)) + otherRoleHours
+            }
+
             DashboardUiState(
-                confirmedHours = totalMinutes / 60.0,
+                confirmedHours = ownerHours,
                 otherRoleHours = otherRoleHours,
+                roleBreakdown = roleBreakdown,
                 entries = entries,
                 pendingCount = entries.count { it.statusEnum == EntryStatus.PENDING_REVIEW && !it.inProgress },
                 openTimerEntry = entries.find { it.inProgress && !it.isTrip },

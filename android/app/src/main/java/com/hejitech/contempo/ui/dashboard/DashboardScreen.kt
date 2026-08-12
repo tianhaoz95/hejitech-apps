@@ -1,7 +1,13 @@
 package com.hejitech.contempo.ui.dashboard
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,6 +24,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -67,6 +75,10 @@ fun DashboardScreen(
     val uiState by viewModel.uiState.collectAsState()
     val isSelectionMode = uiState.selectedIds.isNotEmpty()
     var showDeleteDialog by remember { mutableStateOf(false) }
+    // Collapsed by default — a role-by-role comparison is audit context,
+    // not the thing most users open the app to check, so it stays hidden
+    // until tapped rather than always taking up space under the progress bar.
+    var isRoleBreakdownExpanded by remember { mutableStateOf(false) }
 
     PullToRefreshBox(
         isRefreshing = uiState.isSyncing,
@@ -190,25 +202,53 @@ fun DashboardScreen(
             )
         }
 
-        if (uiState.otherRoleHours.isNotEmpty()) {
+        if (uiState.roleBreakdown.isNotEmpty()) {
             Spacer(Modifier.height(12.dp))
             HorizontalDivider()
-            Spacer(Modifier.height(8.dp))
-            Text(
-                stringResource(R.string.dashboard_other_roles_hint),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            uiState.otherRoleHours.forEach { summary ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(summary.name, style = MaterialTheme.typography.labelSmall)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { isRoleBreakdownExpanded = !isRoleBreakdownExpanded }
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    stringResource(R.string.dashboard_role_breakdown_toggle),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Icon(
+                    imageVector = if (isRoleBreakdownExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            AnimatedVisibility(
+                visible = isRoleBreakdownExpanded,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut(),
+            ) {
+                Column {
                     Text(
-                        stringResource(R.string.dashboard_other_role_hours, summary.hours.toInt()),
+                        stringResource(R.string.dashboard_other_roles_hint),
                         style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    Spacer(Modifier.height(6.dp))
+                    uiState.roleBreakdown.forEach { summary ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(summary.name, style = MaterialTheme.typography.labelSmall)
+                            Text(
+                                stringResource(R.string.dashboard_other_role_hours, summary.hours.toInt()),
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        }
+                        Spacer(Modifier.height(2.dp))
+                    }
                 }
             }
         }

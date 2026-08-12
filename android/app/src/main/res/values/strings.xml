@@ -168,6 +168,7 @@
     <string name="dashboard_miles_total">%1$s business miles logged</string>
     <string name="dashboard_other_roles_hint">Only your own hours count above — the IRS tests require your participation to exceed everyone else\'s.</string>
     <string name="dashboard_other_role_hours">%1$d hrs</string>
+    <string name="dashboard_role_breakdown_toggle">Hours by role</string>
     <string name="dashboard_entry_miles">%1$s mi</string>
     <string name="dashboard_selection_count">%1$d selected</string>
     <string name="dashboard_select_all">Select all</string>

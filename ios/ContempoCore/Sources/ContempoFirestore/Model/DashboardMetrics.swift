@@ -29,6 +29,11 @@ public struct DashboardMetrics: Equatable, Sendable {
     public let confirmedHours: Double
     /// Other roles' confirmed hours, for audit-context comparison.
     public let otherRoleHours: [RoleHoursSummary]
+    /// Unified owner + other-roles breakdown for the Dashboard's
+    /// expand-to-compare UI — `confirmedHours` as a "Me" row (id "") first,
+    /// then `otherRoleHours` after it. Empty whenever `otherRoleHours` is
+    /// (nothing to compare against).
+    public let roleBreakdown: [RoleHoursSummary]
     /// Excludes the open timer/trip — they're "still running," not "needs completing."
     public let pendingCount: Int
     /// The one open start/stop timer, if any.
@@ -41,6 +46,7 @@ public struct DashboardMetrics: Equatable, Sendable {
     public init(
         confirmedHours: Double,
         otherRoleHours: [RoleHoursSummary],
+        roleBreakdown: [RoleHoursSummary],
         pendingCount: Int,
         openTimerEntry: Entry?,
         openTripEntry: Entry?,
@@ -48,6 +54,7 @@ public struct DashboardMetrics: Equatable, Sendable {
     ) {
         self.confirmedHours = confirmedHours
         self.otherRoleHours = otherRoleHours
+        self.roleBreakdown = roleBreakdown
         self.pendingCount = pendingCount
         self.openTimerEntry = openTimerEntry
         self.openTripEntry = openTripEntry
@@ -70,9 +77,14 @@ public struct DashboardMetrics: Equatable, Sendable {
             RoleHoursSummary(id: key, name: value.name, hours: Double(value.minutes) / 60.0)
         }.sorted { $0.hours > $1.hours }
 
+        let roleBreakdown: [RoleHoursSummary] = otherRoleHours.isEmpty
+            ? []
+            : [RoleHoursSummary(id: "", name: "Me", hours: confirmedHours)] + otherRoleHours
+
         return DashboardMetrics(
             confirmedHours: confirmedHours,
             otherRoleHours: otherRoleHours,
+            roleBreakdown: roleBreakdown,
             pendingCount: entries.filter { $0.statusEnum == .pendingReview && !$0.inProgress }.count,
             openTimerEntry: entries.first { $0.inProgress && !$0.isTrip },
             openTripEntry: entries.first { $0.inProgress && $0.isTrip },

@@ -5,6 +5,10 @@ import SwiftUI
 struct DashboardScreen: View {
     @State private var viewModel = DashboardViewModel()
     @Environment(\.contempoPalette) private var palette
+    // Collapsed by default — a role-by-role comparison is audit context,
+    // not the thing most users open the app to check, so it stays hidden
+    // until tapped rather than always taking up space under the progress bar.
+    @State private var isRoleBreakdownExpanded = false
 
     private var progress: Double {
         guard viewModel.thresholdHours > 0 else { return 0 }
@@ -118,19 +122,40 @@ struct DashboardScreen: View {
                     .foregroundStyle(palette.pine)
                 }
 
-                if !viewModel.otherRoleHours.isEmpty {
+                if !viewModel.roleBreakdown.isEmpty {
                     Divider()
-                    Text("Only your own hours count above — the IRS tests require your participation to exceed everyone else's.")
-                        .font(ContempoFont.labelSmall())
-                        .foregroundStyle(palette.inkFaint)
-                    ForEach(viewModel.otherRoleHours) { summary in
-                        HStack {
-                            Text(summary.name)
-                            Spacer()
-                            Text("\(summary.hours.formatted(.number.precision(.fractionLength(1)))) hrs")
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            isRoleBreakdownExpanded.toggle()
                         }
-                        .font(ContempoFont.labelSmall())
-                        .foregroundStyle(palette.inkSoft)
+                    } label: {
+                        HStack {
+                            Text("Hours by role")
+                                .font(ContempoFont.labelSmall())
+                                .foregroundStyle(palette.inkSoft)
+                            Spacer()
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(palette.inkSoft)
+                                .rotationEffect(.degrees(isRoleBreakdownExpanded ? 180 : 0))
+                        }
+                    }
+                    .buttonStyle(.plain)
+
+                    if isRoleBreakdownExpanded {
+                        Text("Only your own hours count above — the IRS tests require your participation to exceed everyone else's.")
+                            .font(ContempoFont.labelSmall())
+                            .foregroundStyle(palette.inkFaint)
+                        ForEach(viewModel.roleBreakdown) { summary in
+                            HStack {
+                                Text(summary.name)
+                                Spacer()
+                                Text("\(summary.hours.formatted(.number.precision(.fractionLength(1)))) hrs")
+                            }
+                            .font(ContempoFont.labelSmall())
+                            .foregroundStyle(palette.inkSoft)
+                        }
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                 }
             }

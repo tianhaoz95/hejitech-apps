@@ -8,6 +8,7 @@ final class DashboardMetricsTests: XCTestCase {
         let metrics = DashboardMetrics.compute(from: [])
         XCTAssertEqual(metrics.confirmedHours, 0)
         XCTAssertTrue(metrics.otherRoleHours.isEmpty)
+        XCTAssertTrue(metrics.roleBreakdown.isEmpty)
         XCTAssertEqual(metrics.pendingCount, 0)
         XCTAssertNil(metrics.openTimerEntry)
         XCTAssertNil(metrics.openTripEntry)
@@ -34,6 +35,41 @@ final class DashboardMetricsTests: XCTestCase {
         XCTAssertEqual(metrics.otherRoleHours.count, 1)
         XCTAssertEqual(metrics.otherRoleHours.first?.name, "Cleaner")
         XCTAssertEqual(metrics.otherRoleHours.first?.hours ?? -1, 3.0, accuracy: 0.0001)
+    }
+
+    /// roleBreakdown is the unified list the Dashboard's expand-to-compare UI
+    /// reads — the owner's own hours as a "Me" row first, then otherRoleHours
+    /// after it, so the row-by-row comparison the user actually asked for
+    /// (owner vs. each other role) doesn't require the UI to stitch two
+    /// separate fields back together itself.
+    func testRoleBreakdownPutsOwnerFirstThenOtherRoles() {
+        let ownerEntry = Entry(task: "Cleaned unit", durationMinutes: 120, status: EntryStatus.confirmed.firestoreValue)
+        let otherRoleEntry = Entry(
+            task: "Cleaner visit",
+            durationMinutes: 180,
+            status: EntryStatus.confirmed.firestoreValue,
+            roleId: "role-1",
+            roleName: "Cleaner"
+        )
+
+        let metrics = DashboardMetrics.compute(from: [ownerEntry, otherRoleEntry])
+
+        XCTAssertEqual(metrics.roleBreakdown.count, 2)
+        XCTAssertEqual(metrics.roleBreakdown.first?.name, "Me")
+        XCTAssertEqual(metrics.roleBreakdown.first?.hours ?? -1, 2.0, accuracy: 0.0001)
+        XCTAssertEqual(metrics.roleBreakdown.last?.name, "Cleaner")
+        XCTAssertEqual(metrics.roleBreakdown.last?.hours ?? -1, 3.0, accuracy: 0.0001)
+    }
+
+    /// With no other role's hours logged, there's nothing to compare against
+    /// — roleBreakdown should stay empty (not just a lone "Me" row) so the
+    /// Dashboard's expand affordance doesn't show up for nothing.
+    func testRoleBreakdownIsEmptyWhenNoOtherRoleHoursExist() {
+        let ownerEntry = Entry(task: "Cleaned unit", durationMinutes: 120, status: EntryStatus.confirmed.firestoreValue)
+
+        let metrics = DashboardMetrics.compute(from: [ownerEntry])
+
+        XCTAssertTrue(metrics.roleBreakdown.isEmpty)
     }
 
     /// Pending-review entries (even role-tagged ones) shouldn't leak into
