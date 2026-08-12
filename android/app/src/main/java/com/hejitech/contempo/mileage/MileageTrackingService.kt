@@ -31,6 +31,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.roundToInt
 
 private const val CHANNEL_ID = "mileage_trip"
@@ -44,6 +46,7 @@ private const val ACTION_RESUME_TRIP = "com.hejitech.contempo.mileage.ACTION_RES
 private const val UPDATE_INTERVAL_MS = 10_000L
 private const val MIN_DISPLACEMENT_METERS = 15f
 private const val METERS_PER_MILE = 1609.344
+private const val LOCATION_TIMEOUT_MS = 1_500L
 
 /**
  * Foreground service that continuously accumulates driving distance for a
@@ -104,6 +107,7 @@ class MileageTrackingService : Service() {
         super.onCreate()
         startForeground(NOTIFICATION_ID, buildTrackingNotification(0.0))
         scope.launch {
+            val startLocation = captureOneShotLocation()
             mileageTripCoordinator.handleStartTrip(
                 property = null,
                 task = null,
@@ -111,6 +115,8 @@ class MileageTrackingService : Service() {
                 source = CaptureSource.MANUAL,
                 startedAt = Timestamp.now(),
                 captureMethod = "gps",
+                startLat = startLocation?.first,
+                startLng = startLocation?.second,
             )
         }
         startLocationUpdates()
@@ -151,16 +157,38 @@ class MileageTrackingService : Service() {
         super.onDestroy()
         fusedLocationClient.removeLocationUpdates(locationCallback)
         val finalMiles = metersToMiles(accumulatedMeters)
+        val endLocation = lastLocation
         // Not scoped to `scope` — that gets cancelled on the next line, and
         // this final write needs to survive past onDestroy returning.
         CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
             if (isCancelled) {
                 mileageTripCoordinator.handleCancelTrip()
             } else {
-                mileageTripCoordinator.handleEndTrip(endedAt = Timestamp.now(), captureMethod = "gps", directMiles = finalMiles)
+                mileageTripCoordinator.handleEndTrip(
+                    endedAt = Timestamp.now(),
+                    captureMethod = "gps",
+                    directMiles = finalMiles,
+                    endLat = endLocation?.latitude,
+                    endLng = endLocation?.longitude,
+                )
             }
         }
         scope.cancel()
+    }
+
+    /**
+     * A quick cached-location read (not a fresh GPS fix) for the trip's
+     * start coordinate, same approach/timeout as CaptureViewModel's
+     * captureLocation() — a fresh fix can take seconds to arrive and this
+     * shouldn't delay starting the trip.
+     */
+    private suspend fun captureOneShotLocation(): Pair<Double, Double>? {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return null
+        }
+        return withTimeoutOrNull(LOCATION_TIMEOUT_MS) {
+            fusedLocationClient.lastLocation.await()?.let { it.latitude to it.longitude }
+        }
     }
 
     private fun startLocationUpdates() {

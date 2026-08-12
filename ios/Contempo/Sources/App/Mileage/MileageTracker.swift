@@ -57,13 +57,16 @@ final class MileageTracker: NSObject, CLLocationManagerDelegate {
         manager.delegate = self
         manager.startUpdatingLocation()
 
+        let startLocation = manager.location
         _ = try? await mileageTripCoordinator.handleStartTrip(
             property: nil,
             task: nil,
             category: nil,
             source: .manual,
             startedAt: Timestamp(date: Date()),
-            captureMethod: "gps"
+            captureMethod: "gps",
+            startLat: startLocation?.coordinate.latitude,
+            startLng: startLocation?.coordinate.longitude
         )
         LiveActivityController.startTrip(miles: 0)
     }
@@ -73,7 +76,14 @@ final class MileageTracker: NSObject, CLLocationManagerDelegate {
         manager.stopUpdatingLocation()
         isTracking = false
         let finalMiles = accumulatedMiles
-        _ = try? await mileageTripCoordinator.handleEndTrip(endedAt: Timestamp(date: Date()), captureMethod: "gps", directMiles: finalMiles)
+        let endLocation = lastLocation
+        _ = try? await mileageTripCoordinator.handleEndTrip(
+            endedAt: Timestamp(date: Date()),
+            captureMethod: "gps",
+            endLat: endLocation?.coordinate.latitude,
+            endLng: endLocation?.coordinate.longitude,
+            directMiles: finalMiles
+        )
         await LiveActivityController.endTrip()
     }
 

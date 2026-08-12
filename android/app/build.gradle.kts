@@ -57,7 +57,7 @@ android {
         applicationId = "com.hejitech.contempoapp"
         minSdk = 26
         targetSdk = 36
-        versionCode = 53
+        versionCode = 54
         versionName = "0.1.0-mvp"
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
         // Default for every build type except debug (which overrides to
@@ -216,6 +216,10 @@ dependencies {
     // see EntryDetailScreen.kt.
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.ui)
+
+    // Mini-map on Entry Detail (captured-location pin / trip start-end
+    // line) — OpenStreetMap tiles, no API key. See ui/entrydetail/EntryLocationMap.kt.
+    implementation(libs.osmdroid.android)
 
     // Instrumented tests — run on-device/emulator against the Firebase
     // emulator suite (see androidTest/.../CoreFlowTest.kt). Firebase/core

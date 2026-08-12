@@ -23,6 +23,8 @@ import androidx.work.WorkManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.osmdroid.config.Configuration
+import java.io.File
 import java.util.concurrent.TimeUnit
 
 /**
@@ -86,10 +88,27 @@ class ContempoApp : Application() {
         // No anonymous sign-in here anymore — auth.currentUser stays null
         // until the user actually signs in via SignInScreen/AuthManager.
 
+        configureOsmdroid()
         schedulePendingAudioProcessing()
         schedulePendingCaptureSync()
         resumeOngoingWorkNotificationIfNeeded()
         refreshRemoteConfig()
+    }
+
+    /**
+     * osmdroid defaults to a public external-storage cache dir, which needs
+     * WRITE_EXTERNAL_STORAGE on older API levels and fights scoped storage
+     * on newer ones — pointed at the app's own private cache dir instead, no
+     * extra permission needed. Also sets a real User-Agent (defaults to the
+     * bare OS UA string otherwise), required by OSM's tile usage policy to
+     * identify traffic per app rather than anonymously.
+     */
+    private fun configureOsmdroid() {
+        val config = Configuration.getInstance()
+        config.userAgentValue = packageName
+        val osmdroidDir = File(cacheDir, "osmdroid")
+        config.osmdroidBasePath = osmdroidDir
+        config.osmdroidTileCache = File(osmdroidDir, "tiles")
     }
 
     /**

@@ -3,6 +3,7 @@ import Combine
 import ContempoCore
 import ContempoFirestore
 import CoreLocation
+import MapKit
 import PhotosUI
 import SwiftUI
 import UniformTypeIdentifiers
@@ -73,6 +74,11 @@ struct EntryDetailScreen: View {
                             }
                             if !entry.photoUrls.isEmpty {
                                 LabeledContent("Photos", value: "\(entry.photoUrls.count)")
+                            }
+                            let mapData = entryMapPoints(for: entry)
+                            if !mapData.points.isEmpty {
+                                EntryLocationMapView(points: mapData.points, drawRoute: mapData.drawRoute)
+                                    .listRowInsets(EdgeInsets())
                             }
                             if let captureLat = entry.captureLat, let captureLng = entry.captureLng {
                                 LocationLabeledContent(label: "Location", lat: captureLat, lng: captureLng)
@@ -458,6 +464,88 @@ struct EntryDetailScreen: View {
 }
 
 // MARK: - Location
+
+private struct EntryMapPoint: Identifiable {
+    let id = UUID()
+    let coordinate: CLLocationCoordinate2D
+    let label: String
+}
+
+/// Trip entries show their start/end fix with a connecting line (an
+/// approximation, not the literal road driven — MileageTracker only ever
+/// persists the trip's start and end fix, not a breadcrumb trail). Every
+/// other entry falls back to its capture/stop location, as plain pins.
+private func entryMapPoints(for entry: Entry) -> (points: [EntryMapPoint], drawRoute: Bool) {
+    if entry.isTrip {
+        var tripPoints: [EntryMapPoint] = []
+        if let lat = entry.tripStartLat, let lng = entry.tripStartLng {
+            tripPoints.append(EntryMapPoint(coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng), label: "Start"))
+        }
+        if let lat = entry.tripEndLat, let lng = entry.tripEndLng {
+            tripPoints.append(EntryMapPoint(coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng), label: "End"))
+        }
+        if !tripPoints.isEmpty {
+            return (tripPoints, tripPoints.count == 2)
+        }
+    }
+    var points: [EntryMapPoint] = []
+    if let lat = entry.captureLat, let lng = entry.captureLng {
+        points.append(EntryMapPoint(coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng), label: "Location"))
+    }
+    if let lat = entry.stopLat, let lng = entry.stopLng, lat != entry.captureLat || lng != entry.captureLng {
+        points.append(EntryMapPoint(coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng), label: "Completed near"))
+    }
+    return (points, false)
+}
+
+/// Non-interactive MapKit thumbnail — free, no API key, native to iOS.
+/// `interactionModes: []` keeps it a static preview so a finger landing on
+/// it doesn't fight this screen's own List scroll.
+private struct EntryLocationMapView: View {
+    let points: [EntryMapPoint]
+    let drawRoute: Bool
+    @State private var cameraPosition: MapCameraPosition
+
+    init(points: [EntryMapPoint], drawRoute: Bool) {
+        self.points = points
+        self.drawRoute = drawRoute
+        _cameraPosition = State(initialValue: Self.initialCamera(for: points))
+    }
+
+    private static func initialCamera(for points: [EntryMapPoint]) -> MapCameraPosition {
+        guard let first = points.first else { return .automatic }
+        guard points.count > 1 else {
+            return .region(MKCoordinateRegion(center: first.coordinate, latitudinalMeters: 800, longitudinalMeters: 800))
+        }
+        let lats = points.map(\.coordinate.latitude)
+        let lngs = points.map(\.coordinate.longitude)
+        let center = CLLocationCoordinate2D(
+            latitude: (lats.min()! + lats.max()!) / 2,
+            longitude: (lngs.min()! + lngs.max()!) / 2
+        )
+        // 1.8x padding keeps both pins clear of the frame edge; the floor
+        // keeps two very-close points from zooming in absurdly tight.
+        let span = MKCoordinateSpan(
+            latitudeDelta: max((lats.max()! - lats.min()!) * 1.8, 0.01),
+            longitudeDelta: max((lngs.max()! - lngs.min()!) * 1.8, 0.01)
+        )
+        return .region(MKCoordinateRegion(center: center, span: span))
+    }
+
+    var body: some View {
+        Map(position: $cameraPosition, interactionModes: []) {
+            ForEach(points) { point in
+                Marker(point.label, coordinate: point.coordinate)
+            }
+            if drawRoute, points.count == 2 {
+                MapPolyline(coordinates: points.map(\.coordinate))
+                    .stroke(.tint, lineWidth: 4)
+            }
+        }
+        .frame(height: 180)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+}
 
 /// Reverse-geocodes a captured lat/lng into a short "City, State"-style
 /// string — raw coordinates don't actually help a host remember where a

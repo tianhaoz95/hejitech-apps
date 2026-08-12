@@ -271,6 +271,7 @@ private fun EntryDetailContent(
     entry.confirmedAt?.let {
         DetailRow(stringResource(R.string.entry_detail_confirmed_date_label), dateFormatter.format(it.toDate()))
     }
+    EntryLocationMap(entry)
     val captureLat = entry.captureLat
     val captureLng = entry.captureLng
     if (captureLat != null && captureLng != null) {
