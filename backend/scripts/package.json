@@ -2,7 +2,7 @@
   "name": "contempo-backend-scripts",
   "version": "0.1.0",
   "private": true,
-  "description": "One-off Admin SDK scripts for contempo-platform, not deployed anywhere (see fetch-feedback.js).",
+  "description": "One-off Admin SDK scripts for contempo-str, not deployed anywhere (see fetch-feedback.js).",
   "type": "commonjs",
   "scripts": {
     "fetch-feedback": "node fetch-feedback.js",

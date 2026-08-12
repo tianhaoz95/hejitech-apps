@@ -1,0 +1,11 @@
+Contempo Wear is the Wear OS companion to Contempo, the short-term rental hour tracker built for audit-ready, contemporaneous record-keeping.
+
+Log hours the moment you finish a task — right from your wrist:
+• Tap the mic and describe what you just did. Contempo turns it into a structured, timestamped entry once it syncs to your phone.
+• A glanceable Tile shows your progress toward your material-participation hour threshold.
+• A Complication puts your logged hours right on your watch face.
+• No signal at the property? Recordings queue on the watch and sync automatically once you're back in range.
+
+Requires the Contempo phone app (search "Contempo — Hour Tracker" on Google Play) — entries are parsed and finalized there, through the same audit-ready pipeline used on mobile.
+
+Contempo is built by Hejitech for real STR hosts, starting with one pilot user — this is an early build, and the feature set will keep growing as real usage informs it.

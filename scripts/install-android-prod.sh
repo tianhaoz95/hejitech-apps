@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Builds and installs the "prod" (release build type) Android app onto a
-# connected physical device — real Firebase (contempo-platform), real Google
+# connected physical device — real Firebase (contempo-str), real Google
 # Sign-In, no emulator wiring. Unlike scripts/run-android-with-emulators.sh,
 # this never starts or touches the Firebase emulator suite.
 #
@@ -269,7 +269,7 @@ if [[ "$INSTALL_ANDROID" == "true" ]]; then
 fi
 
 if [[ -n "$WEAR_SERIAL" ]]; then
-  log "Building and installing the wear companion app (com.hejitech.wear) on $WEAR_SERIAL..."
+  log "Building and installing the wear companion app (com.hejitech.contempoappwear) on $WEAR_SERIAL..."
   ( cd "$ANDROID_DIR" && ANDROID_SERIAL="$WEAR_SERIAL" ./gradlew :wear:installRelease )
 fi
 
@@ -281,7 +281,7 @@ fi
 # --- launch ------------------------------------------------------------------
 if [[ -n "$WEAR_SERIAL" ]]; then
   log "Launching Contempo on the watch..."
-  "$ADB" -s "$WEAR_SERIAL" shell am start -n com.hejitech.wear/com.hejitech.wear.MainActivity >/dev/null
+  "$ADB" -s "$WEAR_SERIAL" shell am start -n com.hejitech.contempoappwear/com.hejitech.wear.MainActivity >/dev/null
 fi
 
 if [[ "$INSTALL_ANDROID" == "true" ]]; then

@@ -122,7 +122,16 @@ export function CouponsPage() {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "0.75rem",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "1.25rem",
+        }}
+      >
         <h1 style={{ margin: 0 }}>Coupons</h1>
         <button className="btn-primary" onClick={() => setShowForm(true)}>
           + New coupon
@@ -242,7 +251,7 @@ export function CouponsPage() {
                 <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Summer promo" />
               </label>
 
-              <div style={{ display: "flex", gap: "0.75rem" }}>
+              <div className="form-row">
                 <label style={{ flex: 1 }}>
                   Discount type
                   <select
@@ -272,7 +281,7 @@ export function CouponsPage() {
                 )}
               </div>
 
-              <div style={{ display: "flex", gap: "0.75rem" }}>
+              <div className="form-row">
                 <label style={{ flex: 1 }}>
                   Duration
                   <select
@@ -298,7 +307,7 @@ export function CouponsPage() {
                 )}
               </div>
 
-              <div style={{ display: "flex", gap: "0.75rem" }}>
+              <div className="form-row">
                 <label style={{ flex: 1 }}>
                   Max redemptions (optional)
                   <input

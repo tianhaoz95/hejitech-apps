@@ -107,7 +107,7 @@ class PendingCaptureSyncerTest {
     /** Best-effort — a failed clear (e.g. fresh/empty emulator) shouldn't fail the test. Same REST endpoint CoreFlowTest.kt/AudioCaptureQueueTest.kt already use. */
     private fun clearFirestoreEmulatorData() {
         runCatching {
-            val url = URL("http://localhost:8080/emulator/v1/projects/contempo-platform/databases/(default)/documents")
+            val url = URL("http://localhost:8080/emulator/v1/projects/contempo-str/databases/(default)/documents")
             (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "DELETE"
                 connectTimeout = 5_000

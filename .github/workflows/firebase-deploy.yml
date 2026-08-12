@@ -1,7 +1,7 @@
 name: Deploy Firebase rules & config
 
 # Deploys Firestore/Storage security rules, Firestore indexes, and the web/
-# Hosting site to the real contempo-platform project whenever those files
+# Hosting site to the real contempo-str project whenever those files
 # change on main. Authenticates via Workload Identity Federation (see
 # backend/README.md) — no service-account key is stored anywhere; GitHub's
 # own OIDC token is exchanged for short-lived Google credentials at run time,
@@ -56,9 +56,9 @@ jobs:
       - id: auth
         uses: google-github-actions/auth@v2
         with:
-          project_id: contempo-platform
-          workload_identity_provider: projects/646737053318/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider
-          service_account: firebase-ci@contempo-platform.iam.gserviceaccount.com
+          project_id: contempo-str
+          workload_identity_provider: projects/664765495548/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider
+          service_account: firebase-ci@contempo-str.iam.gserviceaccount.com
 
       - uses: actions/setup-node@v4
         with:
@@ -69,7 +69,7 @@ jobs:
         run: |
           npx -y firebase-tools@latest deploy \
             --only "firestore:rules,firestore:indexes,storage" \
-            --project contempo-platform \
+            --project contempo-str \
             --non-interactive
 
   deploy-hosting:
@@ -81,9 +81,9 @@ jobs:
       - id: auth
         uses: google-github-actions/auth@v2
         with:
-          project_id: contempo-platform
-          workload_identity_provider: projects/646737053318/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider
-          service_account: firebase-ci@contempo-platform.iam.gserviceaccount.com
+          project_id: contempo-str
+          workload_identity_provider: projects/664765495548/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider
+          service_account: firebase-ci@contempo-str.iam.gserviceaccount.com
 
       - uses: actions/setup-node@v4
         with:
@@ -93,7 +93,7 @@ jobs:
       # to a single site) — Firebase CLI runs every hosting entry's
       # predeploy hook whenever any hosting deploy runs, regardless of which
       # specific site --only narrows to (confirmed live: --only
-      # hosting:contempo-feedback alone still ran the contempo site's `npm
+      # hosting:contempo-str-feedback alone still ran the contempo site's `npm
       # run build` hook and failed because this job hadn't installed web/'s
       # dependencies). So there's no way to deploy one site without paying
       # for every hook anyway — might as well actually deploy all of them.
@@ -121,27 +121,27 @@ jobs:
       # and one site would silently get the other's Firebase Web App config
       # (see admin/.env.example). Keep both sets in sync with their
       # respective .env.local / .env.example by hand; regenerate via
-      # `firebase apps:sdkconfig WEB <APP_ID> --project contempo-platform`.
-      - name: Deploy Hosting (contempo + contempo-feedback + contempo-admin)
+      # `firebase apps:sdkconfig WEB <APP_ID> --project contempo-str`.
+      - name: Deploy Hosting (contempo-str + contempo-str-feedback + contempo-str-admin)
         working-directory: backend
         env:
-          VITE_FIREBASE_API_KEY: AIzaSyDINP38Ufl3ZO0V1ISSNbwqdAOF6RE32YA
-          VITE_FIREBASE_AUTH_DOMAIN: contempo-platform.firebaseapp.com
-          VITE_FIREBASE_PROJECT_ID: contempo-platform
-          VITE_FIREBASE_STORAGE_BUCKET: contempo-platform.firebasestorage.app
-          VITE_FIREBASE_MESSAGING_SENDER_ID: "646737053318"
-          VITE_FIREBASE_APP_ID: "1:646737053318:web:5a0e0bc35f564945ac3307"
-          VITE_FIREBASE_MEASUREMENT_ID: G-14GZZYZZTP
-          VITE_ADMIN_FIREBASE_API_KEY: AIzaSyDINP38Ufl3ZO0V1ISSNbwqdAOF6RE32YA
-          VITE_ADMIN_FIREBASE_AUTH_DOMAIN: contempo-platform.firebaseapp.com
-          VITE_ADMIN_FIREBASE_PROJECT_ID: contempo-platform
-          VITE_ADMIN_FIREBASE_STORAGE_BUCKET: contempo-platform.firebasestorage.app
-          VITE_ADMIN_FIREBASE_MESSAGING_SENDER_ID: "646737053318"
-          VITE_ADMIN_FIREBASE_APP_ID: "1:646737053318:web:8a24d7a388488b88ac3307"
-          VITE_ADMIN_FIREBASE_MEASUREMENT_ID: G-4F6RMV7Z6Q
-          VITE_ADMIN_GOOGLE_CLIENT_ID: 646737053318-dauoaoeggts0rq8hmdc6md3jqp6g8ugf.apps.googleusercontent.com
+          VITE_FIREBASE_API_KEY: AIzaSyDgbc4DCYmolfb6zKNwk6dl2Gt4mre2Ang
+          VITE_FIREBASE_AUTH_DOMAIN: contempo-str.firebaseapp.com
+          VITE_FIREBASE_PROJECT_ID: contempo-str
+          VITE_FIREBASE_STORAGE_BUCKET: contempo-str.firebasestorage.app
+          VITE_FIREBASE_MESSAGING_SENDER_ID: "664765495548"
+          VITE_FIREBASE_APP_ID: "1:664765495548:web:10eb1e6c673b5e75207f79"
+          VITE_FIREBASE_MEASUREMENT_ID: G-CNY3TW4VN2
+          VITE_ADMIN_FIREBASE_API_KEY: AIzaSyDgbc4DCYmolfb6zKNwk6dl2Gt4mre2Ang
+          VITE_ADMIN_FIREBASE_AUTH_DOMAIN: contempo-str.firebaseapp.com
+          VITE_ADMIN_FIREBASE_PROJECT_ID: contempo-str
+          VITE_ADMIN_FIREBASE_STORAGE_BUCKET: contempo-str.firebasestorage.app
+          VITE_ADMIN_FIREBASE_MESSAGING_SENDER_ID: "664765495548"
+          VITE_ADMIN_FIREBASE_APP_ID: "1:664765495548:web:6b663cd71a8215f9207f79"
+          VITE_ADMIN_FIREBASE_MEASUREMENT_ID: G-8K8N9X7W3N
+          VITE_ADMIN_GOOGLE_CLIENT_ID: 664765495548-gauqddvvrfo2tjmamvttg89e0f0n505h.apps.googleusercontent.com
         run: |
           npx -y firebase-tools@latest deploy \
             --only hosting \
-            --project contempo-platform \
+            --project contempo-str \
             --non-interactive

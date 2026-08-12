@@ -129,7 +129,7 @@ class WearCaptureViewModelTest {
 
     private fun clearFirestoreEmulatorData() {
         runCatching {
-            val url = URL("http://localhost:8080/emulator/v1/projects/contempo-platform/databases/(default)/documents")
+            val url = URL("http://localhost:8080/emulator/v1/projects/contempo-str/databases/(default)/documents")
             (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "DELETE"
                 connectTimeout = 5_000

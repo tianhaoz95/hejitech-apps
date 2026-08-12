@@ -84,8 +84,8 @@ function AppFeedbackCard({ report, onChanged, onPrompt }: {
   }
 
   return (
-    <div className="card" style={{ display: "flex", gap: "1rem" }}>
-      <div style={{ position: "relative", width: 160, flexShrink: 0 }}>
+    <div className="card feedback-card">
+      <div className="feedback-card-thumb" style={{ position: "relative" }}>
         {report.screenshotUrl ? (
           <div style={{ position: "relative", width: "100%" }}>
             <img src={report.screenshotUrl} alt="" style={{ width: "100%", borderRadius: "var(--radius-sm)", display: "block" }} />
@@ -132,7 +132,7 @@ function AppFeedbackCard({ report, onChanged, onPrompt }: {
         <p style={{ margin: 0, fontSize: "0.78rem", color: "var(--ink-faint)" }}>
           v{report.appVersion} ({report.buildNumber}) · {report.deviceModel} · {report.osVersion} · {report.locale}
         </p>
-        <div style={{ display: "flex", gap: "0.6rem", marginTop: "0.75rem" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.6rem", marginTop: "0.75rem" }}>
           <button className="btn-primary" onClick={() => onPrompt(buildAppFeedbackPrompt(report))}>
             Generate prompt
           </button>
@@ -203,9 +203,18 @@ export function FeedbackPage() {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "0.75rem",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "1.25rem",
+        }}
+      >
         <h1 style={{ margin: 0 }}>Feedback</h1>
-        <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "center" }}>
           {tab === "app" && (
             <label style={{ flexDirection: "row", alignItems: "center", gap: "0.5rem" }}>
               Status
@@ -223,7 +232,7 @@ export function FeedbackPage() {
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: "1.25rem", marginBottom: "1.25rem", borderBottom: "1px solid var(--hairline)" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "1.25rem", marginBottom: "1.25rem", borderBottom: "1px solid var(--hairline)" }}>
         <button
           className="btn-link"
           style={{

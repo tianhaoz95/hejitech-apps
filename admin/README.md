@@ -5,10 +5,10 @@ Google accounts explicitly granted admin access. Not linked from anywhere
 public; not indexed (`<meta name="robots" content="noindex, nofollow">` in
 `index.html`).
 
-Same stack as `web/` (Vite + React + TypeScript), same `contempo-platform`
+Same stack as `web/` (Vite + React + TypeScript), same `contempo-str`
 Firebase project/Auth/Firestore, but its own Firebase Web App registration
-("Contempo Admin") and its own Hosting site (`contempo-admin`,
-`https://contempo-admin.web.app`) — entirely separate from `web/`'s
+("Contempo Admin") and its own Hosting site (`contempo-str-admin`,
+`https://contempo-str-admin.web.app`) — entirely separate from `web/`'s
 `contempo` site, same pattern `feedback/` already uses for its own site.
 
 ## Access control
@@ -28,7 +28,7 @@ Firebase project/Auth/Firestore, but its own Firebase Web App registration
   session via `signInWithCredential`. Needs `VITE_ADMIN_GOOGLE_CLIENT_ID`
   (see `.env.example`) and that origin listed under the OAuth client's
   **Authorized JavaScript origins** in
-  [Cloud Console](https://console.cloud.google.com/apis/credentials?project=contempo-platform)
+  [Cloud Console](https://console.cloud.google.com/apis/credentials?project=contempo-str)
   — a Console-only setting with no Firebase CLI/API equivalent, so a new
   Hosting domain using this pattern needs that added by hand once.
 - **Authorization**: a signed-in user additionally needs the `admin: true`

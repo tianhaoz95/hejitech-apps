@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Builds and installs the "prod" (Release configuration) iOS app onto an iOS
-# simulator or connected physical device — real Firebase (contempo-platform),
+# simulator or connected physical device — real Firebase (contempo-str),
 # real Google Sign-In, no emulator wiring. Unlike
 # scripts/run-ios-with-emulators.sh, this never starts or touches the
 # Firebase emulator suite.

@@ -4,7 +4,7 @@ import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
 import { connectFunctionsEmulator, getFunctions } from "firebase/functions";
 
 // Same dual-path pattern as android/ (see AuthManager.kt's doc comment):
-// emulator mode by default in dev, real `contempo-platform` project in a
+// emulator mode by default in dev, real `contempo-str` project in a
 // production build. Override with VITE_USE_FIREBASE_EMULATOR=false/true.
 const useEmulator = import.meta.env.VITE_USE_FIREBASE_EMULATOR
   ? import.meta.env.VITE_USE_FIREBASE_EMULATOR === "true"

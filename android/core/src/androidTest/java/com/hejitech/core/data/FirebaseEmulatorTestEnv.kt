@@ -20,7 +20,7 @@ import java.net.URL
  * memory-only Firestore cache) but built by hand: this module has no
  * google-services.json of its own (only app/wear apply the google-services
  * plugin), so FirebaseOptions are constructed directly here instead of read
- * from a generated resource. Uses the same "contempo-platform" project id
+ * from a generated resource. Uses the same "contempo-str" project id
  * app/src/androidTest/CoreFlowTest.kt already assumes for its emulator REST
  * calls — the values below are never sent to a real backend (useEmulator is
  * called before any use), only used to address the local emulator suite.
@@ -30,7 +30,7 @@ import java.net.URL
  * assumption every other emulator-backed test in this repo already makes.
  */
 object FirebaseEmulatorTestEnv {
-    private const val PROJECT_ID = "contempo-platform"
+    private const val PROJECT_ID = "contempo-str"
     private const val EMULATOR_HOST = "localhost"
 
     private val app: FirebaseApp by lazy {

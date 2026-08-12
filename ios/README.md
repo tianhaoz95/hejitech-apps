@@ -7,7 +7,7 @@ The iOS and watchOS companion app implementation for Contempo, feature-matched t
 XcodeGen multi-target project (`ios/project.yml` generates `Contempo.xcodeproj`):
 
 - **`Contempo`**: The main iOS phone app (SwiftUI, iOS 17.0+ target). Features include:
-  - Google Sign-In & Firebase Auth (dual-path support: Debug local Firebase emulator vs. production `contempo-platform`).
+  - Google Sign-In & Firebase Auth (dual-path support: Debug local Firebase emulator vs. production `contempo-str`).
   - Voice, text, and photo work-log capture with on-device Whisper transcription (`SherpaOnnx`) and local LLM parsing (`LiteRtLlm`).
   - Cloud AI fallback via Firebase Genkit Cloud Functions (`parseEntryFlow` and `askAgent` legal copilot).
   - Draft entry review & editing with contemporaneous risk flag heuristics (`ConfirmScreen`).

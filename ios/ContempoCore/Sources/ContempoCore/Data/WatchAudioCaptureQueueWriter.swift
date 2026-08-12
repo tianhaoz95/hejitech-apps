@@ -47,7 +47,7 @@ public final class WatchAudioCaptureQueueWriter: Sendable {
 
     private var activeProjectId: String {
         if !projectId.isEmpty { return projectId }
-        return "contempo-platform"
+        return "contempo-str"
     }
 
     private var documentsBaseURL: String {

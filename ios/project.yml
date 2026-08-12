@@ -20,7 +20,7 @@ settings:
   base:
     SWIFT_VERSION: "5.10"
     MARKETING_VERSION: "3.0"
-    CURRENT_PROJECT_VERSION: "69"
+    CURRENT_PROJECT_VERSION: "74"
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: 68CTFST8W2
   configs:
@@ -123,6 +123,8 @@ targets:
         product: FirebaseRemoteConfig
       - package: firebase-ios-sdk
         product: FirebaseAppCheck
+      - package: firebase-ios-sdk
+        product: FirebaseCrashlytics
       - package: GoogleSignIn-iOS
         product: GoogleSignIn
       - package: GoogleSignIn-iOS
@@ -157,6 +159,23 @@ targets:
     configFiles:
       Debug: Contempo/Config/Debug.xcconfig
       Release: Contempo/Config/Release.xcconfig
+    # Uploads dSYMs (+ reads GOOGLE_APP_ID straight out of the bundled
+    # GoogleService-Info.plist) so crashes symbolicate in the Firebase
+    # console — the official Firebase SPM-install script, per
+    # https://firebase.google.com/docs/crashlytics/get-started?platform=ios.
+    # ${BUILD_DIR%/Build/*}/SourcePackages/checkouts resolves to wherever
+    # Xcode/xcodebuild actually put this run's SPM checkouts (DerivedData by
+    # default), not a fixed path, so this works the same in Xcode, `xcodebuild
+    # archive` (scripts/ship-ios-testflight.sh), and plain build/run
+    # (scripts/install-ios-prod.sh) alike.
+    postBuildScripts:
+      - name: "Upload Crashlytics dSYMs"
+        script: |
+          "${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run"
+        inputFiles:
+          - "$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)"
+          - "${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${TARGET_NAME}"
+        basedOnDependencyAnalysis: false
 
   ContempoWidgets:
     type: app-extension

@@ -56,7 +56,7 @@ enum LegalContent {
             ]),
             LegalSection(heading: "Data retention and deletion", paragraphs: [
                 "Entries and properties persist until you delete them yourself in the app.",
-                "You can permanently delete your account and all associated data at any time from Settings, on Android, on iOS, or on the web — this immediately and irreversibly deletes your Firestore records, Storage photos/audio, and your sign-in account itself. If you'd rather not use the self-service option, you can also contact us at https://contempo-feedback.web.app to request deletion.",
+                "You can permanently delete your account and all associated data at any time from Settings, on Android, on iOS, or on the web — this immediately and irreversibly deletes your Firestore records, Storage photos/audio, and your sign-in account itself. If you'd rather not use the self-service option, you can also contact us at https://contempo-str-feedback.web.app to request deletion.",
             ]),
             LegalSection(heading: "Children's privacy", paragraphs: [
                 "Contempo is intended for adult STR hosts and real estate professionals. It is not directed at children, and we do not knowingly collect information from anyone under 13.",
@@ -71,7 +71,7 @@ enum LegalContent {
                 "If we make material changes to this policy, we'll update the date above and, where appropriate, notify you in the app.",
             ]),
             LegalSection(heading: "Contact us", paragraphs: [
-                "Questions about this policy or your data: https://contempo-feedback.web.app.",
+                "Questions about this policy or your data: https://contempo-str-feedback.web.app.",
             ]),
         ]
     )
@@ -122,7 +122,7 @@ enum LegalContent {
                 "If we make material changes, we'll update the date above and, where appropriate, notify you in the app.",
             ]),
             LegalSection(heading: "Contact us", paragraphs: [
-                "Questions about these terms: https://contempo-feedback.web.app.",
+                "Questions about these terms: https://contempo-str-feedback.web.app.",
             ]),
         ]
     )

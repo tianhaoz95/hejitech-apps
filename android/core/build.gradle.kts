@@ -16,7 +16,7 @@ android {
         // src/androidTest/.../FirebaseEmulatorTestEnv.kt) — this module has
         // no google-services.json of its own (only app/wear apply that
         // plugin), so those tests build FirebaseOptions by hand and talk to
-        // a locally running emulator suite, same "contempo-platform" project
+        // a locally running emulator suite, same "contempo-str" project
         // id CoreFlowTest.kt (app module) already assumes.
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

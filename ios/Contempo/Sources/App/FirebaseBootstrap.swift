@@ -2,6 +2,7 @@ import ContempoCore
 import FirebaseAppCheck
 import FirebaseAuth
 import FirebaseCore
+import FirebaseCrashlytics
 import FirebaseFirestore
 import FirebaseFunctions
 import FirebaseStorage
@@ -20,8 +21,14 @@ enum FirebaseBootstrap {
     static func configure() {
         FirebaseApp.configure()
 
+        // Off for local/emulator dev builds so that dev-machine crashes
+        // never reach the real console — same reasoning/gate as Android's
+        // ContempoApp.onCreate() (Firebase.crashlytics.setCrashlyticsCollectionEnabled).
         #if USE_FIREBASE_EMULATOR
+        Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(false)
         connectToEmulators()
+        #else
+        Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(true)
         #endif
     }
 

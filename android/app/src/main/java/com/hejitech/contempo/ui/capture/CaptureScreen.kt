@@ -59,7 +59,7 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -236,10 +236,18 @@ fun CaptureScreen(
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Eyebrow(stringResource(R.string.capture_eyebrow))
+            Spacer(Modifier.weight(1f))
+            // Moved here (was a full-width box below the quick-action row)
+            // in response to in-app feedback — a compact badge reads better
+            // next to the help button than a large box competing with the
+            // hero mic button for attention.
+            if (uiState.quickCaptureEnabled || quickCaptureStatus.hasAnything) {
+                QuickCaptureBadge(quickCaptureStatus, onProcessNow = viewModel::processQuickCaptureBacklogNow)
+                Spacer(Modifier.width(8.dp))
+            }
             IconButton(onClick = { showHelpWalkthrough = true }) {
                 Icon(
                     Icons.Filled.HelpOutline,
@@ -517,7 +525,7 @@ fun CaptureScreen(
             Spacer(Modifier.height(16.dp))
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterHorizontally),
+                horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (openTimerEntry == null) {
@@ -581,43 +589,7 @@ fun CaptureScreen(
                 ParsingProgress(uiState.parsingStage)
             }
 
-            Spacer(Modifier.height(56.dp))
-
-            // Quick Capture's on/off toggle lives in Settings now (an
-            // app-level preference, not a per-capture-session choice — see
-            // SettingsScreen), so this screen only ever shows its live
-            // status: visible whenever Quick Capture is on (so it reads as
-            // "here's what's happening" even at zero backlog) or whenever
-            // there's still a backlog left over from earlier even after the
-            // Settings toggle was turned back off — hidden entirely
-            // otherwise so a host who's never touched this feature sees
-            // nothing extra.
-            if (uiState.quickCaptureEnabled || quickCaptureStatus.hasAnything) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    QuickCaptureStatusRow(quickCaptureStatus)
-                    IconButton(
-                        onClick = viewModel::processQuickCaptureBacklogNow,
-                        // Nothing to gain from tapping this with an empty
-                        // backlog or while the one processing slot is
-                        // already busy — WorkManager would just enqueue a
-                        // request that finds nothing to do.
-                        enabled = quickCaptureStatus.pendingCount > 0 && quickCaptureStatus.processingStage == null,
-                        modifier = Modifier.size(32.dp),
-                    ) {
-                        if (quickCaptureStatus.processingStage != null) {
-                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 1.5.dp)
-                        } else {
-                            Icon(
-                                Icons.Filled.Sync,
-                                contentDescription = stringResource(R.string.capture_quick_capture_process_now_content_description),
-                                modifier = Modifier.size(18.dp),
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(32.dp))
 
             if (locationPermissionDenied) {
                 Spacer(Modifier.height(8.dp))
@@ -1100,13 +1072,18 @@ private fun QuickActionButton(
     // buttons in the row line up as a uniform, centered group regardless of
     // label length, so without this the icon circles read as unevenly
     // placed even though the row's own arrangement is already centered.
+    // Sized down from 84/64/24dp (see git history) — at the old size, 3
+    // buttons plus FlowRow's spacing landed right at the edge of a typical
+    // ~360dp-wide phone's available width, tipping into a wrap on at least
+    // one real narrower device (reported via in-app feedback); this leaves
+    // real margin instead of relying on the wrap fallback for the common case.
     Column(
-        modifier = Modifier.width(84.dp),
+        modifier = Modifier.width(76.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
             modifier = Modifier
-                .size(64.dp)
+                .size(56.dp)
                 .clip(CircleShape)
                 .background(containerColor)
                 .clickable(onClick = onClick, enabled = enabled)
@@ -1117,7 +1094,7 @@ private fun QuickActionButton(
                 imageVector = icon,
                 contentDescription = null,
                 tint = contentColor,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(22.dp),
             )
         }
         Spacer(Modifier.height(6.dp))
@@ -1189,48 +1166,50 @@ private fun BusyLabel(text: String) {
 }
 
 /**
- * Today's Quick Capture status: how many recordings are still waiting to
- * become entries, what the one currently mid-pipeline is up to (if any —
- * see AudioCaptureProcessor, which drains strictly one at a time), and how
- * many finished today. All three numbers reset at midnight (see
- * QuickCaptureStatusUiState/CaptureViewModel.quickCaptureStatus) — this is
- * about today's backlog, not an all-time total.
+ * Compact Quick Capture status badge, next to the help button — replaced a
+ * full-width box below the quick-action row (see git history) in response
+ * to in-app feedback asking for exactly this placement. Shows one thing at
+ * a time, by priority: the in-progress stage (if the one-at-a-time pipeline
+ * — see AudioCaptureProcessor — is currently working on something), else
+ * today's still-waiting count, else today's completed count. Tapping it
+ * triggers the same "process now" action the old row's separate sync
+ * IconButton did, when there's a backlog and nothing's already mid-pipeline.
  */
 @Composable
-private fun QuickCaptureStatusRow(status: QuickCaptureStatusUiState) {
-    Column(
+private fun QuickCaptureBadge(status: QuickCaptureStatusUiState, onProcessNow: () -> Unit) {
+    val canProcessNow = status.pendingCount > 0 && status.processingStage == null
+    val statusDescription = when {
+        status.processingStage != null -> quickCaptureStageLabel(status.processingStage)
+        status.pendingCount > 0 -> stringResource(R.string.capture_quick_capture_status_pending, status.pendingCount)
+        else -> stringResource(R.string.capture_quick_capture_status_completed, status.completedTodayCount)
+    }
+    val contentDescription = if (canProcessNow) {
+        "$statusDescription. ${stringResource(R.string.capture_quick_capture_process_now_content_description)}"
+    } else {
+        statusDescription
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
         modifier = Modifier
             .clip(MaterialTheme.shapes.small)
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .then(if (canProcessNow) Modifier.clickable(onClick = onProcessNow) else Modifier)
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .semantics { this.contentDescription = contentDescription },
     ) {
-        Text(
-            stringResource(R.string.capture_quick_capture_status_today),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(2.dp))
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(
-                stringResource(R.string.capture_quick_capture_status_pending, status.pendingCount),
-                style = MaterialTheme.typography.labelMedium,
-            )
-            status.processingStage?.let { stage ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 1.5.dp, color = MaterialTheme.colorScheme.tertiary)
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        quickCaptureStageLabel(stage),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.tertiary,
-                    )
-                }
+        when {
+            status.processingStage != null -> {
+                CircularProgressIndicator(modifier = Modifier.size(10.dp), strokeWidth = 1.5.dp, color = MaterialTheme.colorScheme.tertiary)
             }
-            Text(
-                stringResource(R.string.capture_quick_capture_status_completed, status.completedTodayCount),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-            )
+            status.pendingCount > 0 -> {
+                Icon(Icons.Filled.Schedule, contentDescription = null, modifier = Modifier.size(12.dp))
+                Text(status.pendingCount.toString(), style = MaterialTheme.typography.labelSmall)
+            }
+            else -> {
+                Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.primary)
+                Text(status.completedTodayCount.toString(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+            }
         }
     }
 }

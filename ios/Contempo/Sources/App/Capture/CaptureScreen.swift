@@ -49,6 +49,17 @@ struct CaptureScreen: View {
                 HStack {
                     Eyebrow("Capture")
                     Spacer()
+                    // Moved here (was a full-width box below the quick-
+                    // action row) in response to in-app feedback — a
+                    // compact badge reads better next to the help button
+                    // than a large box competing with the hero mic button
+                    // for attention.
+                    if viewModel.quickCaptureEnabled || viewModel.quickCaptureStatus.hasAnything {
+                        QuickCaptureBadge(
+                            status: viewModel.quickCaptureStatus,
+                            onProcessNow: { viewModel.processQuickCaptureBacklogNow() }
+                        )
+                    }
                     Button {
                         showHelpWalkthrough = true
                     } label: {
@@ -261,30 +272,6 @@ struct CaptureScreen: View {
                                 .stroke(palette.hairline, lineWidth: 1)
                         )
                     }
-
-                    // Quick Capture's on/off toggle lives in Settings now
-                    // (an app-level preference, not a per-capture-session
-                    // choice — see SettingsScreen), so this screen only ever
-                    // shows its live status: visible whenever Quick Capture
-                    // is on (so it reads as "here's what's happening" even
-                    // at zero backlog) or whenever there's still a backlog
-                    // left over from earlier even after the Settings toggle
-                    // was turned back off — hidden entirely otherwise so a
-                    // host who's never touched this feature sees nothing
-                    // extra.
-                    if viewModel.quickCaptureEnabled || viewModel.quickCaptureStatus.hasAnything {
-                        QuickCaptureStatusRow(
-                            status: viewModel.quickCaptureStatus,
-                            onProcessNow: { viewModel.processQuickCaptureBacklogNow() }
-                        )
-                        .padding()
-                        .background(palette.paperRaised)
-                        .clipShape(RoundedRectangle(cornerRadius: ContempoRadius.medium))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: ContempoRadius.medium)
-                                .stroke(palette.hairline, lineWidth: 1)
-                        )
-                    }
                 }
 
                 if let errorMessage = viewModel.errorMessage {
@@ -449,7 +436,7 @@ struct CaptureScreen: View {
 
     @ViewBuilder
     private func quickActionsRow(_ actions: [QuickAction]) -> some View {
-        HStack(spacing: 28) {
+        HStack(spacing: 16) {
             ForEach(actions) { action in
                 QuickActionButton(icon: action.icon, label: action.label, tint: action.tint, tintBackground: action.tintBackground) {
                     action.action()
@@ -705,54 +692,65 @@ private struct TypedCaptureHero: View {
     }
 }
 
-private struct QuickCaptureStatusRow: View {
+/// Compact Quick Capture status badge, next to the help button — replaced a
+/// full-width box below the quick-action row (see git history) in response
+/// to in-app feedback asking for exactly this placement. Shows one thing at
+/// a time, by priority: the in-progress spinner (if the one-at-a-time
+/// pipeline — see AudioCaptureProcessor — is currently working on
+/// something), else today's still-waiting count, else today's completed
+/// count. Tapping it triggers the same "process now" action the old row's
+/// "Sync now" button did, when there's a backlog and nothing's already
+/// mid-pipeline.
+private struct QuickCaptureBadge: View {
     let status: QuickCaptureStatusUiState
     let onProcessNow: () -> Void
 
     @Environment(\.contempoPalette) private var palette
 
+    private var canProcessNow: Bool { status.pendingCount > 0 && status.processingStage == nil }
+
+    private var accessibilityText: String {
+        let statusText: String
+        if let stage = status.processingStage {
+            statusText = stage.rawValue
+        } else if status.pendingCount > 0 {
+            statusText = "\(status.pendingCount) waiting"
+        } else {
+            statusText = "\(status.completedTodayCount) done today"
+        }
+        return canProcessNow ? "\(statusText). Process quick capture backlog now." : statusText
+    }
+
     var body: some View {
-        HStack(spacing: 12) {
-            if let stage = status.processingStage {
+        Group {
+            if status.processingStage != nil {
                 ProgressView()
-                    .controlSize(.small)
-                Text(stage.rawValue)
-                    .font(ContempoFont.labelSmall())
-                    .foregroundStyle(palette.pine)
-            } else {
-                HStack(spacing: 8) {
-                    if status.pendingCount > 0 {
-                        Text("Pending: \(status.pendingCount)")
-                            .font(ContempoFont.labelSmall())
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(palette.brass.opacity(0.15))
-                            .foregroundStyle(palette.brass)
-                            .clipShape(Capsule())
-                    }
-                    if status.completedTodayCount > 0 {
-                        Text("Done today: \(status.completedTodayCount)")
-                            .font(ContempoFont.labelSmall())
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(palette.pine.opacity(0.15))
-                            .foregroundStyle(palette.pine)
-                            .clipShape(Capsule())
-                    }
+                    .controlSize(.mini)
+                    .tint(palette.pine)
+            } else if status.pendingCount > 0 {
+                HStack(spacing: 4) {
+                    Image(systemName: "clock")
+                    Text("\(status.pendingCount)")
                 }
-            }
-
-            Spacer()
-
-            if status.pendingCount > 0 && status.processingStage == nil {
-                Button("Sync now", action: onProcessNow)
-                    .font(ContempoFont.labelSmall())
-                    .foregroundStyle(palette.pine)
+                .foregroundStyle(palette.brass)
+            } else {
+                HStack(spacing: 4) {
+                    Image(systemName: "checkmark")
+                    Text("\(status.completedTodayCount)")
+                }
+                .foregroundStyle(palette.pine)
             }
         }
-        .padding(10)
+        .font(ContempoFont.labelSmall())
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
         .background(palette.paperRaised)
-        .clipShape(RoundedRectangle(cornerRadius: ContempoRadius.medium))
+        .clipShape(Capsule())
+        .contentShape(Capsule())
+        .onTapGesture { if canProcessNow { onProcessNow() } }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityText)
+        .accessibilityAddTraits(canProcessNow ? .isButton : [])
     }
 }
 
@@ -822,13 +820,19 @@ private struct QuickActionButton: View {
             // regardless of label length, so without this the icon circles
             // read as unevenly placed even though the HStack itself is
             // already centered in its parent.
+            // Sized down from 84/64/24pt (see git history, and Android's
+            // QuickActionButton for the matching change) — at the old size,
+            // 3 buttons plus the HStack's spacing left little margin against
+            // ViewThatFits's 2-row fallback on narrower phones/larger
+            // Dynamic Type, which is what an in-app feedback report caught
+            // on the Android side of this same shared design.
             VStack(spacing: 6) {
                 ZStack {
                     Circle()
                         .fill(tintBackground ?? palette.pineTint)
-                        .frame(width: 64, height: 64)
+                        .frame(width: 56, height: 56)
                     Image(systemName: icon)
-                        .font(.system(size: 24, weight: .semibold))
+                        .font(.system(size: 22, weight: .semibold))
                         .foregroundStyle(tint ?? palette.pine)
                 }
                 Text(label)
@@ -837,7 +841,7 @@ private struct QuickActionButton: View {
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
             }
-            .frame(width: 84)
+            .frame(width: 76)
         }
         .buttonStyle(.plain)
     }

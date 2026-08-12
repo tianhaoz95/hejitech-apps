@@ -16,7 +16,7 @@
   },
   "hosting": [
     {
-      "site": "contempo",
+      "site": "contempo-str",
       "public": "web-dist",
       "ignore": ["firebase.json", "**/.*"],
       "predeploy": [
@@ -40,13 +40,13 @@
       ]
     },
     {
-      "site": "contempo-feedback",
+      "site": "contempo-str-feedback",
       "public": "feedback-dist",
       "ignore": ["firebase.json", "**/.*"],
       "predeploy": ["rm -rf feedback-dist && cp -r ../feedback/public feedback-dist"]
     },
     {
-      "site": "contempo-admin",
+      "site": "contempo-str-admin",
       "public": "admin-dist",
       "ignore": ["firebase.json", "**/.*"],
       "predeploy": [

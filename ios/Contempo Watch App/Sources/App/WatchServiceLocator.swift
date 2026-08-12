@@ -24,21 +24,21 @@ enum WatchServiceLocator {
 
     static var audioCaptureQueueWriter: WatchAudioCaptureQueueWriter {
         WatchAudioCaptureQueueWriter(
-            projectId: FirebaseApp.app()?.options.projectID ?? "contempo-platform",
+            projectId: FirebaseApp.app()?.options.projectID ?? "contempo-str",
             emulatorHost: FirebaseBootstrap.emulatorHost
         )
     }
 
     static var entryStatsReader: WatchEntryStatsReader {
         WatchEntryStatsReader(
-            projectId: FirebaseApp.app()?.options.projectID ?? "contempo-platform",
+            projectId: FirebaseApp.app()?.options.projectID ?? "contempo-str",
             emulatorHost: FirebaseBootstrap.emulatorHost
         )
     }
 
     static var entryWriter: WatchEntryWriter {
         WatchEntryWriter(
-            projectId: FirebaseApp.app()?.options.projectID ?? "contempo-platform",
+            projectId: FirebaseApp.app()?.options.projectID ?? "contempo-str",
             emulatorHost: FirebaseBootstrap.emulatorHost
         )
     }

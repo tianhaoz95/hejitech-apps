@@ -13,18 +13,9 @@ export function Layout() {
 
   return (
     <div>
-      <header
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "1.5rem",
-          padding: "0.9rem 1.5rem",
-          borderBottom: "1px solid var(--hairline)",
-          background: "var(--paper-raised)",
-        }}
-      >
+      <header className="admin-header">
         <strong style={{ fontFamily: "var(--font-serif)" }}>Contempo Admin</strong>
-        <nav style={{ display: "flex", gap: "1.25rem", flex: 1 }}>
+        <nav className="admin-header-nav">
           <NavLink to="/coupons" style={navLinkStyle}>
             Coupons
           </NavLink>
@@ -32,13 +23,19 @@ export function Layout() {
             Feedback
           </NavLink>
         </nav>
-        <ThemeToggle />
-        {user && <span style={{ fontSize: "0.85rem", color: "var(--ink-soft)" }}>{user.email}</span>}
-        <button className="btn-secondary" onClick={() => void signOutUser()}>
-          Sign out
-        </button>
+        <div className="admin-header-actions">
+          <ThemeToggle />
+          {user && (
+            <span className="admin-header-user" title={user.email ?? undefined}>
+              {user.email}
+            </span>
+          )}
+          <button className="btn-secondary" onClick={() => void signOutUser()}>
+            Sign out
+          </button>
+        </div>
       </header>
-      <main style={{ maxWidth: 1120, margin: "0 auto", padding: "1.5rem" }}>
+      <main className="admin-main">
         <Outlet />
       </main>
     </div>

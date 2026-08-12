@@ -26,7 +26,7 @@ adb shell am instrument -w -r com.hejitech.contempo.test/androidx.test.runner.An
 adb pull /sdcard/Android/data/com.hejitech.contempo/files/screenshots .
 ```
 
-Requires the Firebase emulator suite running (`cd ../backend && firebase emulators:start --project contempo-platform`).
+Requires the Firebase emulator suite running (`cd ../backend && firebase emulators:start --project contempo-str`).
 Using `am instrument` directly rather than `./gradlew connectedDebugAndroidTest`
 is deliberate — the Gradle task uninstalls the app after the run, taking its
 external-files screenshots directory with it before you can pull them.

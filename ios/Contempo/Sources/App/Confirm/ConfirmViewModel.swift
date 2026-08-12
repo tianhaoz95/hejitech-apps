@@ -354,7 +354,7 @@ final class ConfirmViewModel {
             errorMessage = nil
             Task {
                 do {
-                    try await withTimeout(seconds: saveTimeoutSeconds) { [self] in
+                    try await withSaveRetry { [self] in
                         try await saveTrip(reading: reading)
                     }
                     isSaving = false
@@ -384,7 +384,7 @@ final class ConfirmViewModel {
         errorMessage = nil
         Task {
             do {
-                try await withTimeout(seconds: saveTimeoutSeconds) { [self] in
+                try await withSaveRetry { [self] in
                     try await save(status: .confirmed, confirmedAt: Timestamp(date: Date()))
                 }
                 isSaving = false
@@ -408,7 +408,7 @@ final class ConfirmViewModel {
         errorMessage = nil
         Task {
             do {
-                try await withTimeout(seconds: saveTimeoutSeconds) { [self] in
+                try await withSaveRetry { [self] in
                     try await save(status: .pendingReview, confirmedAt: nil)
                 }
                 isSavingForLater = false
@@ -433,6 +433,24 @@ final class ConfirmViewModel {
         let firestore = Firestore.firestore()
         try? await firestore.disableNetwork()
         try? await firestore.enableNetwork()
+    }
+
+    /// One bounded auto-retry after a stuck-stream timeout —
+    /// resetFirestoreConnection exists specifically to make the *next*
+    /// attempt succeed, so retrying once here recovers from the common
+    /// one-off stall transparently instead of always pushing that retry
+    /// onto the user via a re-tap of Confirm (reported live on the Android
+    /// side of this same shared design: a save that timed out and never got
+    /// retried, so the entry was simply never saved). A second timeout still
+    /// propagates to the caller's own catch, so a genuinely persistent
+    /// failure surfaces the same "try again" messaging as before.
+    private func withSaveRetry<T: Sendable>(_ block: @escaping @Sendable () async throws -> T) async throws -> T {
+        do {
+            return try await withTimeout(seconds: saveTimeoutSeconds, operation: block)
+        } catch is TimeoutError {
+            await resetFirestoreConnection()
+            return try await withTimeout(seconds: saveTimeoutSeconds, operation: block)
+        }
     }
 
     /// Validates the model's resolved-time guess: unparsable -> nil (caller

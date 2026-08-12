@@ -3,7 +3,7 @@
   "//2": "with the real google-services.json from your Firebase project",
   "//3": "(Project settings -> Your apps -> Android app), saved as",
   "//4": "android/wear/google-services.json (gitignored, see android/.gitignore).",
-  "//5": "Package name must match applicationId in wear/build.gradle.kts: com.hejitech.wear",
+  "//5": "Package name must match applicationId in wear/build.gradle.kts: com.hejitech.contempoappwear",
 
   "project_info": {
     "project_number": "000000000000",
@@ -14,7 +14,7 @@
     {
       "client_info": {
         "mobilesdk_app_id": "1:000000000000:android:0000000000000000",
-        "android_client_info": { "package_name": "com.hejitech.wear" }
+        "android_client_info": { "package_name": "com.hejitech.contempoappwear" }
       },
       "oauth_client": [],
       "api_key": [{ "current_key": "REPLACE_ME" }],

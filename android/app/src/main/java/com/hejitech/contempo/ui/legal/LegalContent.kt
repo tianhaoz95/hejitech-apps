@@ -132,7 +132,7 @@ val PrivacyPolicy = LegalDocument(
                     "from Settings, on Android, on iOS, or on the web — this immediately and " +
                     "irreversibly deletes your Firestore records, Storage photos/audio, and your " +
                     "sign-in account itself. If you'd rather not use the self-service option, you " +
-                    "can also contact us at https://contempo-feedback.web.app to request deletion.",
+                    "can also contact us at https://contempo-str-feedback.web.app to request deletion.",
             ),
         ),
         LegalSection(
@@ -164,7 +164,7 @@ val PrivacyPolicy = LegalDocument(
         ),
         LegalSection(
             "Contact us",
-            listOf("Questions about this policy or your data: https://contempo-feedback.web.app."),
+            listOf("Questions about this policy or your data: https://contempo-str-feedback.web.app."),
         ),
     ),
 )
@@ -280,7 +280,7 @@ val TermsOfService = LegalDocument(
         ),
         LegalSection(
             "Contact us",
-            listOf("Questions about these terms: https://contempo-feedback.web.app."),
+            listOf("Questions about these terms: https://contempo-str-feedback.web.app."),
         ),
     ),
 )

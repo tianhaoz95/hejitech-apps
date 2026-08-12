@@ -21,6 +21,21 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.services)
+    alias(libs.plugins.play.publisher)
+}
+
+// Same automated-publish pattern as app/build.gradle.kts — see that file's
+// play {} block for the reasoning (gradle-play-publisher, service account).
+// Track is "wear:internal", not plain "internal" — Play models Wear OS
+// releases on form-factor-prefixed tracks (wear:production, wear:internal,
+// etc). Uploading to the bare "internal" track gets rejected at commit time
+// with "requires the Wear OS system feature android.hardware.type.watch. To
+// publish this release on the current track, remove this artifact." even
+// though the bundle itself uploads fine — confirmed live.
+play {
+    serviceAccountCredentials.set(rootProject.file("../credentials/play-publisher-service-account.json"))
+    defaultToAppBundles.set(true)
+    track.set("wear:internal")
 }
 
 val localProperties = Properties().apply {
@@ -29,25 +44,55 @@ val localProperties = Properties().apply {
 }
 val googleWebClientId: String = localProperties.getProperty("GOOGLE_WEB_CLIENT_ID", "")
 
+// Dedicated release keystore for the wear app — deliberately its own
+// keystore.properties/.jks pair, not shared with app/build.gradle.kts's
+// upload-keystore.jks. Its SHA-1 needed to be freshly generated (rather than
+// derived from the debug key like app/'s original setup) because the debug
+// key's SHA-1 was already registered against this same package name on the
+// now-deleted contempo-platform project and stayed blocked (globally-unique
+// (package, SHA-1) pair) through that project's 30-day purge grace period —
+// unlike app/, wear had no live Play Console upload-key lineage yet, so
+// minting a brand-new keystore was a free fix here (see CLAUDE.md).
+val wearKeystoreProperties = Properties().apply {
+    val file = rootProject.file("wear-keystore.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+
 android {
     namespace = "com.hejitech.wear"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.hejitech.wear"
+        // Not just com.hejitech.wear — Hejitech ships more than one product,
+        // so the package name needs to disambiguate which product's Wear
+        // companion this is, same reasoning as the phone app's
+        // com.hejitech.contempoapp exception below. namespace stays
+        // com.hejitech.wear (unaffected — only governs the generated R/
+        // BuildConfig package, not the installed package name or the Play
+        // Console listing this becomes once published).
+        applicationId = "com.hejitech.contempoappwear"
         minSdk = 30 // Wear OS 3+
         targetSdk = 36
-        versionCode = 1
+        versionCode = 2
         versionName = "0.1.0-mvp"
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
         buildConfigField("boolean", "USE_FIREBASE_EMULATOR", "false")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = rootProject.file(wearKeystoreProperties.getProperty("storeFile", "wear-upload-keystore.jks"))
+            storePassword = wearKeystoreProperties.getProperty("storePassword")
+            keyAlias = wearKeystoreProperties.getProperty("keyAlias")
+            keyPassword = wearKeystoreProperties.getProperty("keyPassword")
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
         debug {
             buildConfigField("boolean", "USE_FIREBASE_EMULATOR", "true")

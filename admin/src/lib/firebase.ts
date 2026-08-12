@@ -6,7 +6,7 @@ import { connectStorageEmulator, getStorage } from "firebase/storage";
 
 // Same dual-path pattern as web/src/lib/firebase.ts and android/ (see
 // AuthManager.kt's doc comment): emulator mode by default in dev, real
-// `contempo-platform` project in a production build.
+// `contempo-str` project in a production build.
 const useEmulator = import.meta.env.VITE_USE_FIREBASE_EMULATOR
   ? import.meta.env.VITE_USE_FIREBASE_EMULATOR === "true"
   : import.meta.env.DEV;

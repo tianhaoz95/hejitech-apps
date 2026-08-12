@@ -26,8 +26,8 @@ planning/branding artifacts:
   Settings/Billing/Sign-in pages, working account deletion (calls the same
   `deleteAccount` Cloud Function as Android), and legal pages
   (`/legal/privacy`, `/legal/terms`) live and reachable signed-out (Play Store
-  review requires this). Auto-deployed to Firebase Hosting (site `contempo`,
-  `https://contempo.web.app`) via `.github/workflows/firebase-deploy.yml`'s
+  review requires this). Auto-deployed to Firebase Hosting (site `contempo-str`,
+  `https://contempo-str.web.app`) via `.github/workflows/firebase-deploy.yml`'s
   `deploy-hosting` job on every push to `main`. **Subscriptions are web-only
   by design**: neither the Android nor iOS app will ever contain a purchase
   flow or pricing mention, specifically to avoid Apple/Google's
@@ -36,27 +36,32 @@ planning/branding artifacts:
   Extension) and gate premium features accordingly. Stripe itself isn't wired
   up yet (`web/src/billing/subscription.ts` has a `TODO(stripe)`) — the
   Billing page is UI without a working purchase flow behind it yet; Auth
-  (Google Sign-In) and Firestore are wired against the real `contempo-platform`
+  (Google Sign-In) and Firestore are wired against the real `contempo-str`
   project, same as `android/`.
 - `feedback/` — a standalone, login-free feedback form (see
   `feedback/README.md`), zero-dependency static site like `reports/` and
   `branding/landing_v0/`. Writes anonymously to a top-level `feedback`
   Firestore collection via its own Firebase Web App registration ("Contempo
   Feedback", separate from `web/`'s "Contempo Web" app, though same
-  `contempo-platform` project) and its own Hosting site (`contempo-feedback`,
-  `https://contempo-feedback.web.app`) — entirely separate from the main
+  `contempo-str` project) and its own Hosting site (`contempo-str-feedback`,
+  `https://contempo-str-feedback.web.app`) — entirely separate from the main
   `contempo` Hosting site `web/` deploys to.
 
-The **real Firebase project is `contempo-platform`** (project number
-`646737053318`), backing `android/`, `backend/`, `web/`, and eventually `ios/` —
+The **real Firebase project is `contempo-str`** (project number
+`664765495548`), backing `android/`, `backend/`, `web/`, and eventually `ios/` —
 all under the **Hejitech** business entity (`com.hejitech.<app>` package/bundle
-IDs — e.g. `com.hejitech.wear` for Wear OS — not `com.contempo.*`). **Exception:**
+IDs — not `com.contempo.*`). **Exceptions:**
 the Android phone app's `applicationId` is `com.hejitech.contempoapp`, not
 `com.hejitech.contempo` — Play Console locked its listing to that package name
 from an earlier upload (package names are permanent once a Play app has its
 first release), so the Gradle project's `applicationId` was changed to match
 rather than the other way around. The Gradle `namespace` (source/R-class
-package) is still `com.hejitech.contempo`, unaffected by this. It has Firestore (standard edition,
+package) is still `com.hejitech.contempo`, unaffected by this. The Wear OS
+app's `applicationId` is `com.hejitech.contempoappwear`, not the plain
+`com.hejitech.wear` the `<app>` pattern would suggest — Hejitech ships more
+than one product, so the package name needs to say which product's Wear
+companion this is (its Gradle `namespace` similarly stays the shorter
+`com.hejitech.wear`, unaffected). It has Firestore (standard edition,
 `us-central1`, chosen over multi-region `nam5` to stay cheap pre-revenue —
 identical free-tier quota either way, but `nam5` costs more once billed and buys
 reliability this single-pilot-user MVP doesn't need yet) and Google Sign-In
@@ -88,7 +93,7 @@ cd android && ./gradlew :app:assembleDebug   # or :app:installDebug with a devic
 
 # Full local dev loop: Firebase emulators + build + install, torn down together on Ctrl+C.
 ./scripts/run-android-with-emulators.sh                    # Android against demo-contempo
-./scripts/run-android-with-emulators.sh contempo-platform  # Android against real project
+./scripts/run-android-with-emulators.sh contempo-str  # Android against real project
 ./scripts/run-ios-with-emulators.sh                        # iOS + watchOS against demo-contempo
 
 # Launch Android and Wear OS emulators (AVDs)
@@ -96,7 +101,7 @@ cd android && ./gradlew :app:assembleDebug   # or :app:installDebug with a devic
 ./scripts/launch-android-emulators.sh --phone               # Launch phone AVD only
 ./scripts/launch-android-emulators.sh --wear                # Launch Wear OS AVD only
 
-# Build & install production/release builds (real Firebase contempo-platform, no emulators):
+# Build & install production/release builds (real Firebase contempo-str, no emulators):
 ./scripts/install-android-prod.sh                           # Android + Wear OS
 ./scripts/install-ios-prod.sh                               # iOS + watchOS
 
@@ -247,7 +252,7 @@ a progress Tile and an hours Complication; see its `capture`/`tile`/
   both gitignored (real credentials) — `.example` files document the expected
   shape. Never commit the real ones. Regenerate `google-services.json` via
   `npx -y firebase-tools@latest apps:sdkconfig ANDROID <APP_ID> --project
-  contempo-platform` rather than hand-editing it.
+  contempo-str` rather than hand-editing it.
 - **Play Store publishing is automated via `gradle-play-publisher`**
   (`com.github.triplet.play`, pinned to `3.13.0` in `gradle/libs.versions.toml`
   — not the `4.0.0` latest, which requires Gradle 9.1+ and this project is on
@@ -263,18 +268,18 @@ a progress Tile and an hours Complication; see its `capture`/`tile`/
     keystore in `android/`, which is deliberately committed; this key is far
     higher blast-radius since it can push a release straight to production,
     not just sign a build) is a GCP service account key,
-    `play-store-deploy@contempo-platform.iam.gserviceaccount.com`, granted
+    `play-store-deploy@contempo-str.iam.gserviceaccount.com`, granted
     Play Console API access (Setup → API access) to the app.
   - The Google Play Android Developer API
     (`androidpublisher.googleapis.com`) must be enabled on the
-    `contempo-platform` GCP project for this to work
+    `contempo-str` GCP project for this to work
     (`gcloud services enable androidpublisher.googleapis.com --project
-    contempo-platform`) — it's not on by default even after granting the
+    contempo-str`) — it's not on by default even after granting the
     service account Play Console permissions, and the first automated publish
     attempt failed on exactly this until it was enabled.
   - The Play Console listing's package name is **`com.hejitech.contempoapp`**,
     not `com.hejitech.contempo` — see the exception noted above under "the
-    real Firebase project is contempo-platform." `applicationId` in
+    real Firebase project is contempo-str." `applicationId` in
     `app/build.gradle.kts` is set accordingly; don't "fix" it back to match
     the `com.hejitech.<app>` convention, that would break publishing.
   - The very first Play release still had to be a manual upload through the
@@ -284,7 +289,7 @@ a progress Tile and an hours Complication; see its `capture`/`tile`/
 - **Two parallel code paths, everywhere, selected by
   `BuildConfig.USE_FIREBASE_EMULATOR`** (true in debug builds): an
   emulator-mode path (fake identities/local Firestore, no real project needed)
-  and a real path against `contempo-platform`. See the doc comment on
+  and a real path against `contempo-str`. See the doc comment on
   `auth/AuthManager.kt` for the canonical example — real Google Sign-In needs
   `BuildConfig.GOOGLE_WEB_CLIENT_ID` (read from `local.properties`, *not* the
   google-services-plugin-generated resource, since that resource only exists
@@ -327,7 +332,7 @@ a progress Tile and an hours Complication; see its `capture`/`tile`/
 
 The Firebase project root — `firebase` CLI commands (prefixed
 `npx -y firebase-tools@latest`) run from here, not the repo root. Project alias
-`default` in `.firebaserc` points at the real project, `contempo-platform`.
+`default` in `.firebaserc` points at the real project, `contempo-str`.
 
 - **Firestore** (standard edition, `us-central1`): data model is deliberately
   nested under a single owner for MVP (no household/team sharing yet):
@@ -377,9 +382,9 @@ The Firebase project root — `firebase` CLI commands (prefixed
   hosting`, not scoped to one site — the Firebase CLI runs every hosting
   entry's predeploy hook regardless of which site `--only` narrows to, so
   there's no cost saved by deploying them separately). `contempo` serves
-  `web/` (`https://contempo.web.app`); `contempo-feedback` serves
-  `feedback/`'s static site (`https://contempo-feedback.web.app`), entirely
-  separate registrations/apps despite sharing the `contempo-platform`
+  `web/` (`https://contempo-str.web.app`); `contempo-feedback` serves
+  `feedback/`'s static site (`https://contempo-str-feedback.web.app`), entirely
+  separate registrations/apps despite sharing the `contempo-str`
   project.
 - **Local dev without a real project**: `firebase emulators:start --project
   demo-contempo` runs fully offline against a Firebase "demo project" — no real
@@ -411,7 +416,11 @@ linked from `reports/index.html`'s card grid. The load-bearing facts:
   hypothesis that frictionless capture changes logging behavior).
 - **The business entity this product ships under is Hejitech.** Every platform's
   app/bundle identifier follows `com.hejitech.<app>` — e.g. the Android phone app
-  is `com.hejitech.contempo`, the Wear OS app is `com.hejitech.wear`. Apply the
-  same pattern when iOS (`ios/`) or web (`web/`) code actually starts (iOS bundle
-  ID, web package namespace, etc.) — `com.hejitech.<platform-or-app-name>`, not
-  `com.contempo.*`.
+  is `com.hejitech.contempo` (Gradle `namespace`; the actual `applicationId` is
+  `com.hejitech.contempoapp`, see the Play Console exception above). The Wear OS
+  app deviates further, as `com.hejitech.contempoappwear` rather than plain
+  `com.hejitech.wear` — Hejitech ships more than one product, so the Wear
+  companion's package name needs to say which product it belongs to, not just
+  that it's *a* Wear app. Apply the same disambiguation when iOS (`ios/`) or web
+  (`web/`) code actually starts (iOS bundle ID, web package namespace, etc.) —
+  `com.hejitech.<platform-or-app-name>`, not `com.contempo.*`.

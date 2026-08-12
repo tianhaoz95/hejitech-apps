@@ -27,7 +27,7 @@ node fetch-feedback.js --status pending --limit 5
 **Auth**: the script uses Application Default Credentials. If it fails with
 an auth error, the user needs to run `gcloud auth application-default login`
 once (interactive, needs a browser) — their own account already has Owner on
-`contempo-platform`, no separate service account is required. Don't try to
+`contempo-str`, no separate service account is required. Don't try to
 work around an auth failure yourself; tell the user what to run.
 
 If the manifest is an empty array, report that and stop — nothing to triage.

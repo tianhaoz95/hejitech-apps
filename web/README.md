@@ -15,17 +15,17 @@ is scoped to three things — never day-to-day capture:
 ## Status
 
 Initial scaffold only (Vite + React + TypeScript), wired to the real
-`contempo-platform` Firebase project — same Firestore data and Auth as the
+`contempo-str` Firebase project — same Firestore data and Auth as the
 mobile apps:
 
 - Firebase Auth (Google Sign-In) and Firestore client SDK initialized in
   `src/lib/firebase.ts`, with the same emulator-vs-real dual path as
   `android/` (`VITE_USE_FIREBASE_EMULATOR`, defaults to on in `vite dev`).
 - A registered "Contempo Web" app in the Firebase project
-  (`1:646737053318:web:5a0e0bc35f564945ac3307`). Real config lives in
+  (`1:664765495548:web:5a0e0bc35f564945ac3307`). Real config lives in
   `.env.local` (gitignored); `.env.example` documents the shape and how to
   regenerate it via
-  `npx -y firebase-tools@latest apps:sdkconfig WEB <APP_ID> --project contempo-platform`.
+  `npx -y firebase-tools@latest apps:sdkconfig WEB <APP_ID> --project contempo-str`.
 - `src/auth/AuthContext.tsx` — Google Sign-In popup + auth-state listener.
 - `src/billing/subscription.ts` — **not implemented yet**, stubbed with a
   `TODO(stripe)`. Plan is Stripe's official Firebase Extension ("Run Payments

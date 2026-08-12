@@ -5,14 +5,14 @@
 # localhost/127.0.0.1). Ctrl+C (or any exit) tears both down together.
 #
 # Usage: ./scripts/run-feedback-with-emulators.sh [firebase-project-id] [port]
-#   Defaults to "contempo-platform", NOT "demo-contempo" like the other
+#   Defaults to "contempo-str", NOT "demo-contempo" like the other
 #   run-*-with-emulators.sh scripts — unlike web/ (which reads its project id
 #   from web/.env.local at build time), feedback/public/assets/firebase-config.js
 #   is a committed, zero-build static file that always hardcodes
-#   projectId: "contempo-platform". The Firestore/Auth emulators partition
+#   projectId: "contempo-str". The Firestore/Auth emulators partition
 #   data BY PROJECT ID, so starting this against any other project id means
 #   the site's writes land in a namespace this script never points you at.
-#   Sharing the "contempo-platform" id here is still safe — the emulator
+#   Sharing the "contempo-str" id here is still safe — the emulator
 #   suite is a fully local, in-memory implementation that never talks to the
 #   real cloud project no matter which project id it's told to use.
 set -euo pipefail
@@ -23,7 +23,7 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 FEEDBACK_DIR="$ROOT_DIR/feedback/public"
 BACKEND_DIR="$ROOT_DIR/backend"
 
-PROJECT_ID="${1:-contempo-platform}"
+PROJECT_ID="${1:-contempo-str}"
 PORT="${2:-8440}"
 URL="http://localhost:${PORT}"
 

@@ -59,7 +59,6 @@
     <string name="capture_quick_capture_caption">Save audio instantly and finish the entry later — nothing on screen, safe to leave the app right away</string>
     <string name="capture_quick_capture_toggle_content_description">Quick capture toggle</string>
     <string name="capture_quick_capture_info_content_description">What is quick capture?</string>
-    <string name="capture_quick_capture_status_today">Today</string>
     <string name="capture_quick_capture_status_pending">%1$d waiting</string>
     <string name="capture_quick_capture_status_completed">%1$d done</string>
     <string name="capture_quick_capture_stage_downloading">Downloading…</string>
@@ -97,7 +96,7 @@
     <string name="capture_transcribing">Transcribing…</string>
     <string name="capture_mic_permission_needed">Microphone access is needed for voice capture — tap the mic again to grant it.</string>
     <string name="capture_send_button">Send</string>
-    <string name="capture_manual_button">Enter manually instead</string>
+    <string name="capture_manual_button">Enter manually</string>
     <string name="capture_parsing">Parsing…</string>
     <string name="capture_quick_action_work">Start Timer</string>
     <string name="capture_photo_button">Take a photo</string>

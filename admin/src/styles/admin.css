@@ -148,3 +148,110 @@ label {
   max-height: 85vh;
   overflow-y: auto;
 }
+
+/* App shell — wraps to a second row instead of crushing nav/user/sign-out
+   into the title's row once they no longer fit side by side. */
+.admin-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.5rem;
+  padding: 0.9rem 1.5rem;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--paper-raised);
+}
+
+.admin-header-nav {
+  display: flex;
+  gap: 1.25rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.admin-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-left: auto;
+}
+
+.admin-header-user {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+.admin-main {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+/* A row of side-by-side form fields (see CouponsPage's new-coupon form) —
+   stacks on a narrow phone width instead of squeezing 2-3 inputs into a few
+   dozen pixels each. */
+.form-row {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* A feedback report's screenshot-thumbnail-beside-details layout (see
+   FeedbackPage's AppFeedbackCard) — stacks on a narrow phone width instead
+   of leaving the details column too cramped to read. */
+.feedback-card {
+  display: flex;
+  gap: 1rem;
+}
+
+.feedback-card-thumb {
+  width: 160px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .admin-header {
+    padding: 0.75rem 1rem;
+  }
+
+  .admin-header-actions {
+    margin-left: 0;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .admin-header-user {
+    max-width: 50vw;
+  }
+
+  .admin-main {
+    padding: 1rem;
+  }
+
+  .modal-backdrop {
+    padding: 0.75rem;
+  }
+
+  .modal {
+    padding: 1rem;
+    max-height: 90vh;
+  }
+}
+
+@media (max-width: 520px) {
+  .form-row {
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .feedback-card {
+    flex-direction: column;
+  }
+
+  .feedback-card-thumb {
+    width: 100%;
+    max-width: 220px;
+  }
+}

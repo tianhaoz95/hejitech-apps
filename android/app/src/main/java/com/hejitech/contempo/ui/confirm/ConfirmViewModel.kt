@@ -443,7 +443,7 @@ class ConfirmViewModel(
             _uiState.value = state.copy(isSaving = true, errorMessage = null)
             viewModelScope.launch {
                 try {
-                    withTimeout(SAVE_TIMEOUT_MS) { saveTrip(reading) }
+                    withSaveRetry { saveTrip(reading) }
                     _uiState.value = _uiState.value.copy(isSaving = false, savedSuccessfully = true)
                     onSaved()
                 } catch (e: TimeoutCancellationException) {
@@ -466,7 +466,7 @@ class ConfirmViewModel(
 
         viewModelScope.launch {
             try {
-                withTimeout(SAVE_TIMEOUT_MS) {
+                withSaveRetry {
                     save(state.copy(durationMinutes = duration.toString()), status = EntryStatus.CONFIRMED, confirmedAt = Timestamp.now())
                 }
                 _uiState.value = _uiState.value.copy(isSaving = false, savedSuccessfully = true)
@@ -491,7 +491,7 @@ class ConfirmViewModel(
 
         viewModelScope.launch {
             try {
-                withTimeout(SAVE_TIMEOUT_MS) {
+                withSaveRetry {
                     save(state, status = EntryStatus.PENDING_REVIEW, confirmedAt = null)
                 }
                 _uiState.value = _uiState.value.copy(isSavingForLater = false, savedSuccessfully = true)
@@ -513,16 +513,36 @@ class ConfirmViewModel(
      * stream itself stays wedged and every retry on it fails the same way.
      * Toggling the network forces Firestore to tear down and reopen its
      * connections, so the next attempt gets a fresh stream instead of
-     * queueing behind the same stuck one.
+     * queueing behind the same stuck one. A real suspend fun (not fire-
+     * and-forget) so [withSaveRetry] can retry immediately after this
+     * actually completes, instead of racing it.
      */
-    private fun resetFirestoreConnection() {
-        viewModelScope.launch {
-            runCatching {
-                Firebase.firestore.disableNetwork().await()
-                Firebase.firestore.enableNetwork().await()
-            }
+    private suspend fun resetFirestoreConnection() {
+        runCatching {
+            Firebase.firestore.disableNetwork().await()
+            Firebase.firestore.enableNetwork().await()
         }
     }
+
+    /**
+     * One bounded auto-retry after a stuck-stream timeout —
+     * resetFirestoreConnection exists specifically to make the *next*
+     * attempt succeed, so retrying once here recovers from the common
+     * one-off stall transparently instead of always pushing that retry onto
+     * the user via a re-tap of Confirm (reported live: a user hit exactly
+     * this — a save that timed out and never got retried, so the entry was
+     * simply never saved). A second timeout still propagates to the
+     * caller's own catch, so a genuinely persistent failure surfaces the
+     * same "try again" messaging as before — this only removes the silent,
+     * avoidable failure for the common transient case.
+     */
+    private suspend fun <T> withSaveRetry(block: suspend () -> T): T =
+        try {
+            withTimeout(SAVE_TIMEOUT_MS) { block() }
+        } catch (e: TimeoutCancellationException) {
+            resetFirestoreConnection()
+            withTimeout(SAVE_TIMEOUT_MS) { block() }
+        }
 
     /**
      * Validates the model's resolved-time guess: unparsable -> null (caller

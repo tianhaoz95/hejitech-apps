@@ -87,7 +87,7 @@ fi
 if [[ ! -f "$WEB_DIR/.env.local" ]]; then
   warn "web/.env.local is missing. Copy web/.env.example to web/.env.local and fill" \
        "it in (see web/README.md), or run:" \
-       "  npx -y firebase-tools@latest apps:sdkconfig WEB <APP_ID> --project contempo-platform"
+       "  npx -y firebase-tools@latest apps:sdkconfig WEB <APP_ID> --project contempo-str"
   exit 1
 fi
 CONFIGURED_PROJECT_ID="$(sed -n 's/^VITE_FIREBASE_PROJECT_ID=//p' "$WEB_DIR/.env.local")"
