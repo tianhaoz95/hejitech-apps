@@ -51,6 +51,15 @@ private const val RECLASSIFY_PHOTO_MAX_DIMENSION_PX = 1024
 // again" quickly rather than looking hung.
 private const val SAVE_TIMEOUT_MS = 10_000L
 
+// existingEntryDeferred (below) is kicked off once, early, so its lookup has
+// a head start by the time the user taps Save — but that also means a
+// retry-after-timeout would otherwise re-await the exact same already-stuck
+// Deferred instead of trying anything fresh. This bounds the *first* wait
+// short enough that a stuck lookup still leaves real time for a fresh,
+// independent fetch (see save()'s fallback) within the overall
+// SAVE_TIMEOUT_MS budget.
+private const val EXISTING_ENTRY_TIMEOUT_MS = 4_000L
+
 data class ConfirmUiState(
     val property: String = "",
     val task: String = "",
@@ -561,7 +570,26 @@ class ConfirmViewModel(
         val now = Timestamp.now()
         val duration = state.durationMinutes.toIntOrNull() ?: 0
         val miles = state.miles.toDoubleOrNull() ?: 0.0
-        val existing = existingEntryDeferred.await()
+        // Root-caused live: a plain DocumentReference.get() (what backs
+        // existingEntryDeferred) can hang indefinitely on some devices,
+        // while listener-based reads on the same connection keep working
+        // fine — this isn't the write path at all, and a save() retry was
+        // previously re-awaiting this exact same stuck Deferred forever
+        // instead of trying anything fresh. Bound the wait, then fall back
+        // to one independent, freshly-issued fetch rather than silently
+        // giving up on it — losing this lookup would overwrite an existing
+        // pending entry's photoUrls/audioUrl/trip fields with blanks (see
+        // the Entry construction below), so it's worth one real retry
+        // before accepting that risk.
+        val existing = try {
+            withTimeout(EXISTING_ENTRY_TIMEOUT_MS) { existingEntryDeferred.await() }
+        } catch (e: TimeoutCancellationException) {
+            if (entryId.isBlank()) {
+                null
+            } else {
+                runCatching { withTimeout(EXISTING_ENTRY_TIMEOUT_MS) { entryRepository.getEntry(entryId) } }.getOrNull()
+            }
+        }
         val entry = Entry(
             propertyName = state.property,
             task = state.task,

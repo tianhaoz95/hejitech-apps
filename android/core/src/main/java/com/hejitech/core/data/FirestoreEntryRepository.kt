@@ -15,6 +15,7 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
+import com.google.firebase.firestore.Source
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.storageMetadata
 import kotlinx.coroutines.channels.awaitClose
@@ -183,7 +184,12 @@ class FirestoreEntryRepository(
     override fun newEntryId(): String = entriesCollection().document().id
 
     override suspend fun getEntry(entryId: String): Entry? {
-        val doc = entriesCollection().document(entryId).get().await()
+        // Explicit Source.SERVER — confirmed live: a plain get() using the
+        // default source (server, falling back to cache) can hang
+        // indefinitely on some devices, unlike listener-based reads, which
+        // keep working fine on the same connection. Forcing SERVER sidesteps
+        // whatever ambiguous state that fallback resolution gets stuck in.
+        val doc = entriesCollection().document(entryId).get(Source.SERVER).await()
         return doc.toObject(Entry::class.java)?.copy(id = doc.id)
     }
 
