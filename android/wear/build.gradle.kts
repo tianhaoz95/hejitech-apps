@@ -73,7 +73,7 @@ android {
         applicationId = "com.hejitech.contempoappwear"
         minSdk = 30 // Wear OS 3+
         targetSdk = 36
-        versionCode = 2
+        versionCode = 4
         versionName = "0.1.0-mvp"
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
         buildConfigField("boolean", "USE_FIREBASE_EMULATOR", "false")
@@ -153,6 +153,13 @@ dependencies {
     implementation(libs.credentials)
     implementation(libs.credentials.play.services.auth)
     implementation(libs.googleid)
+
+    // Wear Data Layer API (MessageClient) — relays a Firebase custom token
+    // from the paired phone for first-time sign-in, since Credential
+    // Manager's Google Sign-In doesn't reliably work standalone here (no
+    // usable credential for an account that's never authorized this app's
+    // OAuth client before, confirmed live — see WatchAuthTokenClient.kt).
+    implementation(libs.play.services.wearable)
 
     // Complication (watch face glanceable) + Tile (swipeable progress card).
     implementation(libs.wear.watchface.complications.data.source.ktx)

@@ -8,6 +8,7 @@ import com.hejitech.contempo.agent.LiteRtLlm
 import com.hejitech.contempo.agent.OnDeviceLlm
 import com.hejitech.contempo.agent.WhisperTranscriber
 import com.hejitech.contempo.auth.AuthManager
+import com.hejitech.contempo.auth.WatchAuthTokenRelay
 import com.hejitech.contempo.capture.PendingCaptureStore
 import com.hejitech.contempo.capture.QuickCaptureStatsStore
 import com.hejitech.core.data.AudioCaptureQueue
@@ -142,6 +143,7 @@ object ServiceLocator {
             },
         )
         authManager = AuthManager(context.applicationContext)
+        WatchAuthTokenRelay(context.applicationContext, appScope).start()
         audioRecorder = AudioRecorder(context.applicationContext)
         whisperTranscriber = WhisperTranscriber(context.applicationContext)
     }

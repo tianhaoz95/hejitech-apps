@@ -57,7 +57,7 @@ android {
         applicationId = "com.hejitech.contempoapp"
         minSdk = 26
         targetSdk = 36
-        versionCode = 59
+        versionCode = 61
         versionName = "0.1.0-mvp"
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
         // Default for every build type except debug (which overrides to
@@ -200,6 +200,11 @@ dependencies {
     implementation(libs.credentials)
     implementation(libs.credentials.play.services.auth)
     implementation(libs.googleid)
+
+    // Wear Data Layer API (MessageClient) — relays a Firebase custom token
+    // to the paired Wear OS watch for first-time sign-in there — see
+    // wear/auth/WatchAuthTokenClient.kt and auth/WatchAuthTokenRelay.kt.
+    implementation(libs.play.services.wearable)
 
     // FusedLocationProviderClient for GPS mileage-trip tracking — see
     // mileage/MileageTrackingService.kt.
