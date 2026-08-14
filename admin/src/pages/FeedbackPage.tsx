@@ -7,7 +7,7 @@ import {
   type AppFeedbackReport,
   type FeedbackStatus,
 } from "../lib/feedback";
-import { buildAnonymousFeedbackPrompt, buildAppFeedbackPrompt } from "../lib/prompts";
+import { buildAnonymousFeedbackPrompt, buildAppFeedbackPrompt, buildCombinedFeedbackPrompt, type FeedbackSelection } from "../lib/prompts";
 
 type Tab = "app" | "anonymous";
 
@@ -66,10 +66,12 @@ function PromptModal({ prompt, onClose }: { prompt: string; onClose: () => void 
   );
 }
 
-function AppFeedbackCard({ report, onChanged, onPrompt }: {
+function AppFeedbackCard({ report, onChanged, onPrompt, selected, onToggleSelect }: {
   report: AppFeedbackReport;
   onChanged: () => void;
   onPrompt: (prompt: string) => void;
+  selected: boolean;
+  onToggleSelect: () => void;
 }) {
   const [busy, setBusy] = useState(false);
 
@@ -85,6 +87,13 @@ function AppFeedbackCard({ report, onChanged, onPrompt }: {
 
   return (
     <div className="card feedback-card">
+      <input
+        type="checkbox"
+        checked={selected}
+        onChange={onToggleSelect}
+        aria-label={`Select report for ${report.screenName}`}
+        style={{ marginTop: "0.3rem", width: "1.1rem", height: "1.1rem", flexShrink: 0 }}
+      />
       <div className="feedback-card-thumb" style={{ position: "relative" }}>
         {report.screenshotUrl ? (
           <div style={{ position: "relative", width: "100%" }}>
@@ -161,6 +170,8 @@ export function FeedbackPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [prompt, setPrompt] = useState<string | null>(null);
+  const [selectedApp, setSelectedApp] = useState<Set<string>>(new Set());
+  const [selectedAnon, setSelectedAnon] = useState<Set<string>>(new Set());
 
   async function refreshApp() {
     setLoading(true);
@@ -200,6 +211,51 @@ export function FeedbackPage() {
   }
 
   const visibleAnonymous = useMemo(() => anonymous.filter((a) => !dismissed.has(a.id)), [anonymous, dismissed]);
+
+  function toggleApp(docPath: string) {
+    setSelectedApp((prev) => {
+      const next = new Set(prev);
+      if (next.has(docPath)) next.delete(docPath);
+      else next.add(docPath);
+      return next;
+    });
+  }
+
+  function toggleAnon(id: string) {
+    setSelectedAnon((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  const allAppSelected = reports.length > 0 && reports.every((r) => selectedApp.has(r.docPath));
+  const allAnonSelected = visibleAnonymous.length > 0 && visibleAnonymous.every((a) => selectedAnon.has(a.id));
+
+  function toggleSelectAllApp() {
+    setSelectedApp(allAppSelected ? new Set() : new Set(reports.map((r) => r.docPath)));
+  }
+
+  function toggleSelectAllAnon() {
+    setSelectedAnon(allAnonSelected ? new Set() : new Set(visibleAnonymous.map((a) => a.id)));
+  }
+
+  function clearSelection() {
+    setSelectedApp(new Set());
+    setSelectedAnon(new Set());
+  }
+
+  const selectionCount = selectedApp.size + selectedAnon.size;
+
+  function generateCombinedPrompt() {
+    const selection: FeedbackSelection[] = [
+      ...reports.filter((r) => selectedApp.has(r.docPath)).map((report) => ({ type: "app" as const, report })),
+      ...anonymous.filter((a) => selectedAnon.has(a.id)).map((item) => ({ type: "anonymous" as const, item })),
+    ];
+    if (selection.length === 0) return;
+    setPrompt(buildCombinedFeedbackPrompt(selection));
+  }
 
   return (
     <div>
@@ -265,13 +321,55 @@ export function FeedbackPage() {
         </p>
       )}
 
+      {selectionCount > 0 && (
+        <div
+          className="card"
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "0.75rem",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: "1rem",
+            position: "sticky",
+            top: "0.5rem",
+            zIndex: 1,
+          }}
+        >
+          <strong>
+            {selectionCount} selected ({selectedApp.size} in-app, {selectedAnon.size} anonymous)
+          </strong>
+          <div style={{ display: "flex", gap: "0.6rem" }}>
+            <button className="btn-secondary" onClick={clearSelection}>
+              Clear selection
+            </button>
+            <button className="btn-primary" onClick={generateCombinedPrompt}>
+              Generate combined prompt ({selectionCount})
+            </button>
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <p>Loading…</p>
       ) : tab === "app" ? (
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           {reports.length === 0 && <p style={{ color: "var(--ink-faint)" }}>No reports.</p>}
+          {reports.length > 0 && (
+            <label style={{ flexDirection: "row", alignItems: "center", gap: "0.5rem", fontSize: "0.85rem" }}>
+              <input type="checkbox" checked={allAppSelected} onChange={toggleSelectAllApp} />
+              Select all visible ({reports.length})
+            </label>
+          )}
           {reports.map((report) => (
-            <AppFeedbackCard key={report.docPath} report={report} onChanged={() => void refreshApp()} onPrompt={setPrompt} />
+            <AppFeedbackCard
+              key={report.docPath}
+              report={report}
+              onChanged={() => void refreshApp()}
+              onPrompt={setPrompt}
+              selected={selectedApp.has(report.docPath)}
+              onToggleSelect={() => toggleApp(report.docPath)}
+            />
           ))}
         </div>
       ) : (
@@ -279,6 +377,9 @@ export function FeedbackPage() {
           <table className="admin-table">
             <thead>
               <tr>
+                <th>
+                  <input type="checkbox" checked={allAnonSelected} onChange={toggleSelectAllAnon} aria-label="Select all visible" />
+                </th>
                 <th>Submitted</th>
                 <th>Email</th>
                 <th>Message</th>
@@ -288,13 +389,21 @@ export function FeedbackPage() {
             <tbody>
               {visibleAnonymous.length === 0 && (
                 <tr>
-                  <td colSpan={4} style={{ color: "var(--ink-faint)" }}>
+                  <td colSpan={5} style={{ color: "var(--ink-faint)" }}>
                     Nothing here.
                   </td>
                 </tr>
               )}
               {visibleAnonymous.map((item) => (
                 <tr key={item.id}>
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={selectedAnon.has(item.id)}
+                      onChange={() => toggleAnon(item.id)}
+                      aria-label={`Select feedback from ${item.email ?? "anonymous"}`}
+                    />
+                  </td>
                   <td style={{ whiteSpace: "nowrap" }}>{item.createdAt.toLocaleString()}</td>
                   <td>{item.email ?? "—"}</td>
                   <td>{item.message}</td>

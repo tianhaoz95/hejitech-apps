@@ -13,7 +13,7 @@
  * Auth: uses Application Default Credentials, same as fetch-feedback.js —
  * run `gcloud auth application-default login` once if this fails with an
  * auth error. jacksonzhou666@gmail.com already has Owner on
- * contempo-platform, so its own ADC works fine, no separate service
+ * contempo-str, so its own ADC works fine, no separate service
  * account needed.
  *
  * Usage:
@@ -29,7 +29,7 @@
 const { initializeApp, applicationDefault } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
 
-const PROJECT_ID = "contempo-platform";
+const PROJECT_ID = "contempo-str";
 
 function parseArgs(argv) {
   const args = { grant: null, revoke: null, listAdmins: false };
