@@ -42,7 +42,12 @@ import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 
 @Composable
-fun WearSignInScreen(isSigningIn: Boolean, errorMessage: String?, onSignIn: () -> Unit) {
+fun WearSignInScreen(
+    isSigningIn: Boolean,
+    isWaitingForPhone: Boolean,
+    errorMessage: String?,
+    onSignIn: () -> Unit,
+) {
     Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
@@ -64,6 +69,15 @@ fun WearSignInScreen(isSigningIn: Boolean, errorMessage: String?, onSignIn: () -
                 },
                 colors = ChipDefaults.primaryChipColors(),
             )
+            if (isWaitingForPhone) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Waiting for phone to reconnect…",
+                    style = MaterialTheme.typography.caption2,
+                    color = MaterialTheme.colors.onBackground,
+                    textAlign = TextAlign.Center,
+                )
+            }
             errorMessage?.let {
                 Spacer(Modifier.height(8.dp))
                 Text(

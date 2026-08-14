@@ -119,6 +119,11 @@
     <string name="confirm_title">Confirm entry</string>
     <string name="confirm_property_label">Property</string>
     <string name="confirm_task_label">What you did</string>
+    <string name="confirm_task_dictate_raw">Dictate</string>
+    <string name="confirm_task_dictate_cleanup">AI rewrite</string>
+    <string name="confirm_task_dictate_stop">Stop</string>
+    <string name="confirm_task_dictate_transcribing">Transcribing…</string>
+    <string name="confirm_task_rewriting">Rewriting…</string>
     <string name="confirm_duration_label">Duration (minutes)</string>
     <string name="confirm_activity_date_label">Activity date &amp; time</string>
     <string name="confirm_date_picker_next">Next</string>

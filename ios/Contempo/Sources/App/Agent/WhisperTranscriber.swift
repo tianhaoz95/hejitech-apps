@@ -123,6 +123,35 @@ final class WhisperTranscriber {
         await preparationTask?.value
         guard let recognizer = recognizer(for: language) else { return "" }
         let result = recognizer.decode(samples: samples, sampleRate: WhisperTranscriber.sampleRateHz)
-        return result.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return Self.collapseRepeatedWords(result.text.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
+    /// Confirmed live: greedy-search decoding on this model size can loop on
+    /// trailing silence after a short utterance and repeat the last word
+    /// dozens of times ("test test" transcribing as 20+ "test"s) — the
+    /// sherpa-onnx config built above exposes no repetition-penalty/
+    /// no-repeat decoding option to prevent it at the source, so it's
+    /// collapsed here instead. Caps any run of the same consecutive word at
+    /// 2 — enough to leave real doubled words alone ("very very tired", a
+    /// stutter like "the the sink") while still killing a genuine
+    /// hallucination loop, which runs far longer than any natural
+    /// repetition would. Mirrors Android's WhisperTranscriber.kt equivalent.
+    private static let maxConsecutiveRepeats = 2
+
+    static func collapseRepeatedWords(_ text: String) -> String {
+        let words = text.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
+        guard words.count > maxConsecutiveRepeats else { return text }
+        var result: [String] = []
+        var i = 0
+        while i < words.count {
+            let current = words[i]
+            var runEnd = i + 1
+            while runEnd < words.count, words[runEnd].caseInsensitiveCompare(current) == .orderedSame {
+                runEnd += 1
+            }
+            result.append(contentsOf: repeatElement(current, count: min(runEnd - i, maxConsecutiveRepeats)))
+            i = runEnd
+        }
+        return result.joined(separator: " ")
     }
 }

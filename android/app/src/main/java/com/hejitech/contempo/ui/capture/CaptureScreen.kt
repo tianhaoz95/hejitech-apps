@@ -373,6 +373,28 @@ fun CaptureScreen(
             }
         }
 
+        // Same top-of-screen position as the trip/timer banners above, not
+        // down by the hero button — the transcript-ready-to-confirm card is
+        // the same kind of "something needs your attention" state they are,
+        // so it should read consistently rather than appearing wherever it
+        // happens to fall in the scroll. Moved here in response to feedback
+        // that a bottom-of-screen placement was easy to miss/inconsistent.
+        AnimatedVisibility(
+            visible = uiState.finalizedTranscript != null,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut(),
+        ) {
+            uiState.finalizedTranscript?.let { text ->
+                Column {
+                    FinalizedTranscriptCard(
+                        text = text,
+                        onClick = { viewModel.confirmTranscript { result -> onDraftReady(result) } },
+                    )
+                    Spacer(Modifier.height(24.dp))
+                }
+            }
+        }
+
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -567,14 +589,6 @@ fun CaptureScreen(
                     stringResource(R.string.capture_camera_permission_needed),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
-            uiState.finalizedTranscript?.let { text ->
-                Spacer(Modifier.height(16.dp))
-                FinalizedTranscriptCard(
-                    text = text,
-                    onClick = { viewModel.confirmTranscript { result -> onDraftReady(result) } },
                 )
             }
 

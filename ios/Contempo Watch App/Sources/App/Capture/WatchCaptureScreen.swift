@@ -205,20 +205,6 @@ struct WatchCaptureScreen: View {
                     .tint(palette.brass)
                     .disabled(viewModel.isUploadingPending)
                 }
-
-                Divider()
-
-                Button(role: .destructive) {
-                    WatchAuthManager.shared.signOut()
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "rectangle.portrait.and.arrow.right")
-                        Text("Sign Out")
-                    }
-                    .font(ContempoFont.labelSmall())
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(palette.danger)
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)

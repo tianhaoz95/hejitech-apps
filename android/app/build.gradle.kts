@@ -57,7 +57,7 @@ android {
         applicationId = "com.hejitech.contempoapp"
         minSdk = 26
         targetSdk = 36
-        versionCode = 61
+        versionCode = 66
         versionName = "0.1.0-mvp"
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
         // Default for every build type except debug (which overrides to

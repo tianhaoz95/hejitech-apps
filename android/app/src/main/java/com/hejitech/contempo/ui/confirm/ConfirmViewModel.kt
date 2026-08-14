@@ -63,6 +63,16 @@ private const val EXISTING_ENTRY_TIMEOUT_MS = 4_000L
 data class ConfirmUiState(
     val property: String = "",
     val task: String = "",
+    /**
+     * Voice input for the task field (see ConfirmScreen's task field) — raw
+     * dictation, pasting the Whisper transcript as spoken. Separate from
+     * [isRewritingTask]/rewriteTask, which operates on the field's existing
+     * text rather than recording anything.
+     */
+    val isRecordingTask: Boolean = false,
+    val isTranscribingTask: Boolean = false,
+    /** Set while rewriteTask() is running — see there. */
+    val isRewritingTask: Boolean = false,
     val durationMinutes: String = "",
     /**
      * A raw category value — either one of [EntryCategory]'s built-in
@@ -144,6 +154,9 @@ class ConfirmViewModel(
     private val entryRepository = ServiceLocator.entryRepository
     private val mileageTripCoordinator = ServiceLocator.mileageTripCoordinator
     private val agentClient = ServiceLocator.agentClient
+    private val audioRecorder = ServiceLocator.audioRecorder
+    private val whisperTranscriber = ServiceLocator.whisperTranscriber
+    private val captureLanguageStore = ServiceLocator.captureLanguageStore
 
     // Falls back to inferring MANUAL vs VOICE from whether AI text was
     // present — only relevant for captureSource values from before this
@@ -248,6 +261,70 @@ class ConfirmViewModel(
             state.category
         }
         _uiState.value = state.copy(task = value, category = suggestedCategory)
+    }
+
+    fun hasRecordAudioPermission(): Boolean = audioRecorder.hasPermission()
+
+    fun startRecordingTask() {
+        if (_uiState.value.isRecordingTask || !audioRecorder.hasPermission()) return
+        _uiState.value = _uiState.value.copy(isRecordingTask = true, errorMessage = null)
+        audioRecorder.start(viewModelScope)
+    }
+
+    /**
+     * Stop -> on-device Whisper transcribe -> inserted into the task field.
+     * Appends rather than replacing when the field already has text — this
+     * is meant to add detail via voice, not silently overwrite whatever the
+     * host already typed. (Cleanup formatting is rewriteTask's job now, not
+     * this button's — see there.)
+     */
+    fun stopRecordingTask() {
+        if (!_uiState.value.isRecordingTask) return
+        _uiState.value = _uiState.value.copy(isRecordingTask = false, isTranscribingTask = true)
+
+        viewModelScope.launch {
+            val samples = audioRecorder.stop()
+            val rawTranscript = runCatching {
+                whisperTranscriber.transcribe(samples, captureLanguageStore.selected.value)
+            }.getOrDefault("")
+
+            if (rawTranscript.isBlank()) {
+                _uiState.value = _uiState.value.copy(
+                    isTranscribingTask = false,
+                    errorMessage = "Didn't catch that — try again.",
+                )
+                return@launch
+            }
+
+            val existing = _uiState.value.task
+            val merged = when {
+                existing.isBlank() -> rawTranscript
+                existing.last().isWhitespace() -> "$existing$rawTranscript"
+                else -> "$existing $rawTranscript"
+            }
+            onTaskChanged(merged)
+            _uiState.value = _uiState.value.copy(isTranscribingTask = false)
+        }
+    }
+
+    /**
+     * "AI rewrite" — copy-edits the task field's *existing* text in place
+     * (typos, punctuation, phrasing) via AgentClient.cleanupTranscript, the
+     * same on-device pass [stopRecordingTask] used to apply to a fresh
+     * recording. Fixed a real mismatch: the button used to start a new
+     * voice recording and clean up only that, so tapping it while editing
+     * an already-populated entry did nothing to the text on screen — it
+     * should rewrite what's there, not transcribe.
+     */
+    fun rewriteTask() {
+        val trimmed = _uiState.value.task.trim()
+        if (trimmed.isEmpty() || _uiState.value.isRewritingTask) return
+        _uiState.value = _uiState.value.copy(isRewritingTask = true)
+        viewModelScope.launch {
+            val rewritten = runCatching { agentClient.cleanupTranscript(trimmed) }.getOrDefault(trimmed)
+            onTaskChanged(rewritten)
+            _uiState.value = _uiState.value.copy(isRewritingTask = false)
+        }
     }
 
     fun onDurationChanged(value: String) {

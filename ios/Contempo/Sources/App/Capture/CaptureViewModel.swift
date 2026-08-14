@@ -4,6 +4,7 @@ import CoreLocation
 import FirebaseFirestore
 import Foundation
 import Observation
+import SwiftUI
 
 /// Typed-entry, voice-capture, and unified photo capture paths, plus manual
 /// timer/GPS-trip toggles. Photo capture is a single entry point — the
@@ -387,7 +388,7 @@ final class CaptureViewModel {
     func confirmTranscript(onDrafted: @escaping (ConfirmParams) -> Void) {
         guard let result = pendingResult else { return }
         pendingResult = nil
-        finalizedTranscript = nil
+        withAnimation(.easeInOut(duration: 0.3)) { finalizedTranscript = nil }
         inputText = ""
         onDrafted(result)
     }
@@ -395,7 +396,7 @@ final class CaptureViewModel {
     /// Discards a held transcript instead of confirming it — e.g. "try again."
     func discardTranscript() {
         pendingResult = nil
-        finalizedTranscript = nil
+        withAnimation(.easeInOut(duration: 0.3)) { finalizedTranscript = nil }
         inputText = ""
     }
 
@@ -563,7 +564,13 @@ final class CaptureViewModel {
                 captureLng: location?.lng
             )
             pendingResult = params
-            finalizedTranscript = (result.draft.task?.isEmpty == false) ? result.draft.task : text
+            // Animated to match OngoingWorkBanner/OngoingTripBanner's
+            // appearance — see CaptureScreen.swift's finalizedTranscript
+            // card, which now shares their top-of-screen position and
+            // .move(edge: .top) transition.
+            withAnimation(.easeInOut(duration: 0.3)) {
+                finalizedTranscript = (result.draft.task?.isEmpty == false) ? result.draft.task : text
+            }
         case .failure(let message):
             errorMessage = message
         }

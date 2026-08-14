@@ -23,6 +23,9 @@ final class ConfirmViewModel {
     private let entryRepository = ServiceLocator.entryRepository
     private let mileageTripCoordinator = ServiceLocator.mileageTripCoordinator
     private let agentClient = ServiceLocator.agentClient
+    private let audioRecorder = ServiceLocator.audioRecorder
+    private let whisperTranscriber = ServiceLocator.whisperTranscriber
+    private let captureLanguageStore = ServiceLocator.captureLanguageStore
     private let photoData: Data?
     private let captureSource: CaptureSource
 
@@ -60,6 +63,15 @@ final class ConfirmViewModel {
             }
         }
     }
+    /// Voice input for the task field (see ConfirmScreen's task field) — raw
+    /// dictation, pasting the Whisper transcript as spoken. Separate from
+    /// `rewriteTask()` below, which operates on the field's existing text
+    /// rather than recording anything. Mirrors Android's
+    /// ConfirmViewModel.kt equivalent.
+    var isRecordingTask = false
+    var isTranscribingTask = false
+    /// Set while `rewriteTask()` is running — see there.
+    var isRewritingTask = false
     var durationMinutes = ""
     /// A raw category value — either one of `EntryCategory`'s built-in
     /// `firestoreValue`s, or a free-form name from the user's own
@@ -236,6 +248,58 @@ final class ConfirmViewModel {
     func onPropertySelected(_ property: Property) {
         self.property = property.name
         isAddingNewProperty = false
+    }
+
+    func startRecordingTask() async {
+        guard !isRecordingTask, await audioRecorder.hasPermission() else { return }
+        errorMessage = nil
+        do {
+            try audioRecorder.start()
+            isRecordingTask = true
+        } catch {
+            errorMessage = "Couldn't start recording — try again."
+        }
+    }
+
+    /// Stop -> on-device Whisper transcribe -> inserted into the task field.
+    /// Appends rather than replacing when the field already has text — this
+    /// is meant to add detail via voice, not silently overwrite whatever the
+    /// host already typed. (Cleanup formatting is `rewriteTask()`'s job now,
+    /// not this button's — see there.)
+    func stopRecordingTask() async {
+        guard isRecordingTask else { return }
+        isRecordingTask = false
+        isTranscribingTask = true
+        let samples = audioRecorder.stop()
+        let rawTranscript = await whisperTranscriber.transcribe(samples: samples, language: captureLanguageStore.selected)
+        guard !rawTranscript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            isTranscribingTask = false
+            errorMessage = "Didn't catch that — try again."
+            return
+        }
+        if task.isEmpty {
+            task = rawTranscript
+        } else if task.last?.isWhitespace == true {
+            task += rawTranscript
+        } else {
+            task += " " + rawTranscript
+        }
+        isTranscribingTask = false
+    }
+
+    /// "AI rewrite" — copy-edits the task field's *existing* text in place
+    /// (typos, punctuation, phrasing) via `agentClient.cleanupTranscript`,
+    /// same on-device pass `stopRecordingTask` used to apply to a fresh
+    /// recording. Fixed a real mismatch: the button used to start a new
+    /// voice recording and clean up only *that*, so tapping it while editing
+    /// an already-populated entry did nothing to the text on screen — it
+    /// should rewrite what's there, not transcribe.
+    func rewriteTask() async {
+        let trimmed = task.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !isRewritingTask else { return }
+        isRewritingTask = true
+        task = await agentClient.cleanupTranscript(trimmed)
+        isRewritingTask = false
     }
 
     func onAddNewPropertyClicked() {

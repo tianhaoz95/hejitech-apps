@@ -116,7 +116,7 @@ class WhisperTranscriber(context: Context) {
                 try {
                     stream.acceptWaveform(samples, sampleRate = SAMPLE_RATE_HZ)
                     recognizer.decode(stream)
-                    recognizer.getResult(stream).text.trim()
+                    collapseRepeatedWords(recognizer.getResult(stream).text.trim())
                 } finally {
                     stream.release()
                 }
@@ -125,5 +125,37 @@ class WhisperTranscriber(context: Context) {
 
     companion object {
         const val SAMPLE_RATE_HZ = 16_000
+
+        /**
+         * Confirmed live: greedy-search decoding on this model size can loop
+         * on trailing silence after a short utterance and repeat the last
+         * word dozens of times ("test test" transcribing as 20+ "test"s) —
+         * this sherpa-onnx binding exposes no repetition-penalty/no-repeat
+         * decoding option to prevent it at the source (see
+         * OfflineRecognizerConfig in com/k2fsa/sherpa/onnx/OfflineRecognizer.kt),
+         * so it's collapsed here instead. Caps any run of the same
+         * consecutive word at 2 — enough to leave real doubled words alone
+         * ("very very tired", a stutter like "the the sink") while still
+         * killing a genuine hallucination loop, which runs far longer than
+         * any natural repetition would.
+         */
+        private const val MAX_CONSECUTIVE_REPEATS = 2
+
+        internal fun collapseRepeatedWords(text: String): String {
+            val words = text.split(Regex("\\s+")).filter { it.isNotEmpty() }
+            if (words.size <= MAX_CONSECUTIVE_REPEATS) return text
+            val result = mutableListOf<String>()
+            var i = 0
+            while (i < words.size) {
+                val current = words[i]
+                var runEnd = i + 1
+                while (runEnd < words.size && words[runEnd].equals(current, ignoreCase = true)) {
+                    runEnd++
+                }
+                repeat(minOf(runEnd - i, MAX_CONSECUTIVE_REPEATS)) { result.add(current) }
+                i = runEnd
+            }
+            return result.joinToString(" ")
+        }
     }
 }

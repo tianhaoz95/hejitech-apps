@@ -158,6 +158,7 @@ struct ConfirmScreen: View {
                 Section("Task") {
                     TextEditor(text: $viewModel.task)
                         .frame(minHeight: 80)
+                    taskDictationButtons
                 }
 
                 Section("Duration (minutes)") {
@@ -300,5 +301,72 @@ struct ConfirmScreen: View {
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
+    }
+
+    // Two buttons, not one, doing two different things: "Dictate" records
+    // new speech and inserts the raw Whisper transcript; "AI rewrite"
+    // copy-edits the text *already in the field* (typos, punctuation,
+    // phrasing) via agentClient.cleanupTranscript — it doesn't record
+    // anything. Confirmed live this was a real bug, not just a naming
+    // nitpick: "AI rewrite" used to also start a fresh recording and clean
+    // up only that, so tapping it while editing an already-populated entry
+    // silently did nothing to the visible text. A spinner replaces both
+    // while transcribing/rewriting so there's nothing tappable mid-request.
+    // Bordered (not .plain) with real spacing and a text label on each, not
+    // just an icon — confirmed live: two icon-only .plain buttons sitting
+    // right next to each other led to real mis-taps. Mirrors Android's
+    // ConfirmScreen.kt equivalent.
+    //
+    // Pulled out of `body` into its own property, not inlined in the "Task"
+    // Section — inlined here, this pushed the surrounding Form's single
+    // expression past what the Swift type-checker can resolve in reasonable
+    // time ("the compiler is unable to type-check this expression...",
+    // confirmed live, reported against an unrelated line elsewhere in the
+    // same Form — a known Swift/SwiftUI quirk where the error location
+    // inside one huge expression tree isn't necessarily where the actual
+    // complexity is). Splitting into a separately-type-checked property
+    // fixes it.
+    @ViewBuilder
+    private var taskDictationButtons: some View {
+        if viewModel.isTranscribingTask {
+            HStack(spacing: 8) {
+                ProgressView()
+                Text("Transcribing…")
+                    .font(ContempoFont.labelSmall())
+                    .foregroundStyle(palette.inkSoft)
+            }
+        } else if viewModel.isRewritingTask {
+            HStack(spacing: 8) {
+                ProgressView()
+                Text("Rewriting…")
+                    .font(ContempoFont.labelSmall())
+                    .foregroundStyle(palette.inkSoft)
+            }
+        } else {
+            HStack(spacing: 16) {
+                Button {
+                    Task {
+                        if viewModel.isRecordingTask {
+                            await viewModel.stopRecordingTask()
+                        } else {
+                            await viewModel.startRecordingTask()
+                        }
+                    }
+                } label: {
+                    Label(viewModel.isRecordingTask ? "Stop" : "Dictate", systemImage: viewModel.isRecordingTask ? "stop.fill" : "mic")
+                }
+                .buttonStyle(.bordered)
+                .tint(viewModel.isRecordingTask ? palette.danger : palette.inkSoft)
+
+                Button {
+                    Task { await viewModel.rewriteTask() }
+                } label: {
+                    Label("AI rewrite", systemImage: "sparkles")
+                }
+                .buttonStyle(.bordered)
+                .tint(palette.pine)
+                .disabled(viewModel.isRecordingTask || viewModel.task.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
     }
 }

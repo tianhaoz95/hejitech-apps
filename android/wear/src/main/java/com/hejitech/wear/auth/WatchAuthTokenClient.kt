@@ -1,6 +1,10 @@
 package com.hejitech.wear.auth
 
 import android.content.Context
+import com.google.android.gms.wearable.DataClient
+import com.google.android.gms.wearable.DataEvent
+import com.google.android.gms.wearable.DataEventBuffer
+import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.MessageClient
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.Wearable
@@ -14,12 +18,12 @@ private const val REQUEST_AUTH_TOKEN_PATH = "/requestAuthToken"
 private const val AUTH_TOKEN_REPLY_PATH = "/requestAuthToken/reply"
 private const val AUTH_TOKEN_DATA_PATH = "/authToken"
 private const val REQUEST_TIMEOUT_MS = 15_000L
+private const val RECONNECT_WAIT_TIMEOUT_MS = 45_000L
 
 sealed class WatchAuthTokenResult {
     data class CustomToken(val token: String) : WatchAuthTokenResult()
     data object IsEmulator : WatchAuthTokenResult()
     data class PhoneError(val message: String) : WatchAuthTokenResult()
-    data object PhoneUnreachable : WatchAuthTokenResult()
 }
 
 /**
@@ -29,6 +33,17 @@ sealed class WatchAuthTokenResult {
  * have proactively sent one via DataClient before the watch was ready to
  * ask), falling back to an interactive MessageClient request/reply with a
  * bounded wait if not.
+ *
+ * If neither of those finds the phone reachable *right now* (the common real
+ * failure mode — Bluetooth hasn't reconnected yet when the watch app opens),
+ * this doesn't give up: it registers a DataClient listener and waits for the
+ * phone's proactive push (WatchAuthTokenRelay pushes on every auth-state
+ * change, so once Bluetooth reconnects the phone will send one on its own
+ * without the user re-tapping anything) for up to
+ * [RECONNECT_WAIT_TIMEOUT_MS]. There's no working alternative in the
+ * meantime — see WearAuthManager's kdoc: Credential Manager was confirmed
+ * live to throw NoCredentialException on Wear OS even with a real Google
+ * account already on the watch, so it isn't a usable fallback here.
  */
 class WatchAuthTokenClient(private val context: Context) {
 
@@ -36,7 +51,7 @@ class WatchAuthTokenClient(private val context: Context) {
     private val dataClient by lazy { Wearable.getDataClient(context) }
     private val nodeClient by lazy { Wearable.getNodeClient(context) }
 
-    suspend fun requestToken(): WatchAuthTokenResult {
+    suspend fun requestToken(onWaitingForPhone: () -> Unit = {}): WatchAuthTokenResult {
         val persisted = readPersistedPayload()
         android.util.Log.d("WearAuthDiag", "readPersistedPayload: ${persisted?.let { String(it) }}")
         parsePayload(persisted)?.let { return it }
@@ -44,18 +59,43 @@ class WatchAuthTokenClient(private val context: Context) {
         val nodesResult = runCatching { nodeClient.connectedNodes.await() }
         android.util.Log.d("WearAuthDiag", "connectedNodes result: ${nodesResult.getOrNull()?.map { it.displayName + "/" + it.id }} exception=${nodesResult.exceptionOrNull()}")
         val nodes = nodesResult.getOrNull().orEmpty()
-        if (nodes.isEmpty()) return WatchAuthTokenResult.PhoneUnreachable
+        if (nodes.isNotEmpty()) {
+            val payload = withTimeoutOrNull(REQUEST_TIMEOUT_MS) { requestOverMessageClient(nodes.first().id) }
+            android.util.Log.d("WearAuthDiag", "requestOverMessageClient result: ${payload?.let { String(it) }}")
+            parsePayload(payload)?.let { return it }
+        }
 
-        val payload = withTimeoutOrNull(REQUEST_TIMEOUT_MS) { requestOverMessageClient(nodes.first().id) }
-        android.util.Log.d("WearAuthDiag", "requestOverMessageClient result: ${payload?.let { String(it) }}")
-        if (payload == null) return WatchAuthTokenResult.PhoneUnreachable
-        return parsePayload(payload) ?: WatchAuthTokenResult.PhoneError("Unexpected response from phone")
+        onWaitingForPhone()
+        return awaitTokenFromDataLayerPush()
+            ?: WatchAuthTokenResult.PhoneError("Couldn't reach your phone — check Bluetooth and try again")
     }
+
+    private suspend fun awaitTokenFromDataLayerPush(): WatchAuthTokenResult? =
+        withTimeoutOrNull(RECONNECT_WAIT_TIMEOUT_MS) {
+            suspendCancellableCoroutine { cont ->
+                lateinit var listener: DataClient.OnDataChangedListener
+                listener = DataClient.OnDataChangedListener { events: DataEventBuffer ->
+                    for (event in events) {
+                        if (event.type != DataEvent.TYPE_CHANGED) continue
+                        if (event.dataItem.uri.path != AUTH_TOKEN_DATA_PATH) continue
+                        val payload = DataMapItem.fromDataItem(event.dataItem).dataMap.getByteArray("payload")
+                        val result = parsePayload(payload) ?: continue
+                        if (cont.isActive) {
+                            dataClient.removeListener(listener)
+                            cont.resume(result)
+                        }
+                        return@OnDataChangedListener
+                    }
+                }
+                dataClient.addListener(listener)
+                cont.invokeOnCancellation { dataClient.removeListener(listener) }
+            }
+        }
 
     private suspend fun readPersistedPayload(): ByteArray? {
         val items = runCatching { dataClient.dataItems.await() }.getOrNull() ?: return null
         val item = items.firstOrNull { it.uri.path == AUTH_TOKEN_DATA_PATH } ?: return null
-        return com.google.android.gms.wearable.DataMapItem.fromDataItem(item).dataMap.getByteArray("payload")
+        return DataMapItem.fromDataItem(item).dataMap.getByteArray("payload")
     }
 
     private suspend fun requestOverMessageClient(nodeId: String): ByteArray? = suspendCancellableCoroutine { cont ->

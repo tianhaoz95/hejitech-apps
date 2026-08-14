@@ -43,6 +43,8 @@ import kotlinx.coroutines.Job
 data class WearUiState(
     val isSignedIn: Boolean = false,
     val isSigningIn: Boolean = false,
+    /** True once sign-in has given up on an immediate round trip and is waiting for the phone's Bluetooth to reconnect — see WatchAuthTokenClient's kdoc. */
+    val isWaitingForPhone: Boolean = false,
     val isRecording: Boolean = false,
     val confirmedHours: Double = 0.0,
     val lastSavedSummary: String? = null,
@@ -257,17 +259,25 @@ class WearCaptureViewModel : ViewModel() {
     }
 
     fun signIn() {
-        _uiState.update { it.copy(isSigningIn = true, errorMessage = null) }
+        _uiState.update { it.copy(isSigningIn = true, errorMessage = null, isWaitingForPhone = false) }
         viewModelScope.launch {
-            authManager.signIn()
+            authManager.signIn(onWaitingForPhone = { _uiState.update { it.copy(isWaitingForPhone = true) } })
                 .onSuccess {
-                    _uiState.update { it.copy(isSigningIn = false, isSignedIn = true) }
+                    _uiState.update { it.copy(isSigningIn = false, isSignedIn = true, isWaitingForPhone = false) }
                     observeProgress()
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(isSigningIn = false, errorMessage = e.message ?: "Sign-in failed — try again.") }
+                    _uiState.update {
+                        it.copy(isSigningIn = false, isWaitingForPhone = false, errorMessage = e.message ?: "Sign-in failed — try again.")
+                    }
                 }
         }
+    }
+
+    /** User-initiated sign-out (see WearSettingsScreen), distinct from the auth-race recovery path above. */
+    fun signOut() {
+        authManager.signOut()
+        _uiState.update { it.copy(isSignedIn = false) }
     }
 
     fun hasRecordAudioPermission(): Boolean = audioRecorder.hasPermission()

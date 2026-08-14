@@ -110,6 +110,44 @@ struct CaptureScreen: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
                 }
 
+                // Same top-of-screen position as the trip/timer banners
+                // above, not down by the hero button — the transcript-
+                // ready-to-confirm card is the same kind of "something
+                // needs your attention" state they are, so it should read
+                // consistently rather than appearing wherever it happens to
+                // fall in the scroll. Moved here in response to feedback
+                // that a bottom-of-screen placement was easy to miss/
+                // inconsistent — see Android's CaptureScreen.kt for the
+                // matching change.
+                if let finalizedTranscript = viewModel.finalizedTranscript {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Here's what we heard")
+                            .font(ContempoFont.titleMedium())
+                        Text(finalizedTranscript)
+                            .font(ContempoFont.bodyLarge())
+
+                        HStack {
+                            Button("Try again") { viewModel.discardTranscript() }
+                                .buttonStyle(.bordered)
+                            Spacer()
+                            Button("Looks good — continue") {
+                                viewModel.confirmTranscript(onDrafted: onDrafted)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(palette.pine)
+                            .disabled(viewModel.isParsing)
+                        }
+                    }
+                    .padding()
+                    .background(palette.paperRaised)
+                    .clipShape(RoundedRectangle(cornerRadius: ContempoRadius.large))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: ContempoRadius.large)
+                            .stroke(palette.hairline, lineWidth: 1)
+                    )
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+
                 // Session-only choice between the two hero widgets below —
                 // separate from Settings' persisted default, which only
                 // seeds which one a *fresh* Capture visit opens into (see
@@ -245,33 +283,6 @@ struct CaptureScreen: View {
                             .foregroundStyle(palette.inkFaint)
                     }
 
-                    if let finalizedTranscript = viewModel.finalizedTranscript {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Here's what we heard")
-                                .font(ContempoFont.titleMedium())
-                            Text(finalizedTranscript)
-                                .font(ContempoFont.bodyLarge())
-
-                            HStack {
-                                Button("Try again") { viewModel.discardTranscript() }
-                                    .buttonStyle(.bordered)
-                                Spacer()
-                                Button("Looks good — continue") {
-                                    viewModel.confirmTranscript(onDrafted: onDrafted)
-                                }
-                                .buttonStyle(.borderedProminent)
-                                .tint(palette.pine)
-                                .disabled(viewModel.isParsing)
-                            }
-                        }
-                        .padding()
-                        .background(palette.paperRaised)
-                        .clipShape(RoundedRectangle(cornerRadius: ContempoRadius.large))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: ContempoRadius.large)
-                                .stroke(palette.hairline, lineWidth: 1)
-                        )
-                    }
                 }
 
                 if let errorMessage = viewModel.errorMessage {

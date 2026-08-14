@@ -1,11 +1,16 @@
 package com.hejitech.contempo.ui.confirm
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import com.hejitech.contempo.ui.components.ActivityDateTimeField
 import com.hejitech.contempo.ui.components.OsmAddressAutoCompleteField
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,7 +25,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -60,7 +68,7 @@ import com.hejitech.core.model.EntryCategory
 
 private const val PHOTO_PREVIEW_MAX_DIMENSION_PX = 512
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ConfirmScreen(
     property: String,
@@ -105,6 +113,34 @@ fun ConfirmScreen(
     var categoryMenuExpanded by remember { mutableStateOf(false) }
     var roleMenuExpanded by remember { mutableStateOf(false) }
     val context = LocalContext.current
+
+    // Voice input for the task field (see ConfirmViewModel.startRecordingTask)
+    // — pendingTaskRecording remembers that a permission request was
+    // triggered by the dictate button, so the launcher's callback can start
+    // recording once granted, same pattern as CaptureScreen's
+    // pendingRecordAfterPermission. "AI rewrite" is a separate button that
+    // rewrites the field's existing text (ConfirmViewModel.rewriteTask) — no
+    // microphone or permission involved.
+    var micPermissionDenied by remember { mutableStateOf(false) }
+    var pendingTaskRecording by remember { mutableStateOf(false) }
+    val micPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        micPermissionDenied = !granted
+        if (granted && pendingTaskRecording) viewModel.startRecordingTask()
+        pendingTaskRecording = false
+    }
+    fun onTaskMicTap() {
+        when {
+            uiState.isRecordingTask -> viewModel.stopRecordingTask()
+            uiState.isTranscribingTask -> Unit
+            hasPermission(context, Manifest.permission.RECORD_AUDIO) -> viewModel.startRecordingTask()
+            else -> {
+                pendingTaskRecording = true
+                micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            }
+        }
+    }
     val photoPreview = remember(photoUri) {
         photoUri?.let { uri -> runCatching { PhotoUtils.decodeSampledBitmap(context, uri.toUri(), PHOTO_PREVIEW_MAX_DIMENSION_PX) }.getOrNull() }
     }
@@ -276,6 +312,86 @@ fun ConfirmScreen(
             modifier = Modifier.fillMaxWidth(),
             minLines = 2,
         )
+        Spacer(Modifier.height(8.dp))
+        // Two full labeled buttons below the field, not icon-only buttons
+        // crammed into the text field's own trailing-icon slot — that
+        // cramped layout led to real mis-taps (reported live: tapping the
+        // AI-rewrite button was triggering raw dictation instead), and
+        // neither button explained what it actually did. FlowRow, not a
+        // plain Row, for the same overflow safety net as CaptureScreen's
+        // quick-action row — these labels are long enough that a narrow
+        // phone or larger accessibility text could push them past one line.
+        //
+        // "Dictate" records new speech; "AI rewrite" copy-edits the text
+        // already in the field via ConfirmViewModel.rewriteTask — it does
+        // not record anything. Fixed a real bug: this button used to start
+        // a fresh recording and clean up only that, so tapping it while
+        // editing an already-populated entry silently did nothing to the
+        // visible text.
+        if (uiState.isTranscribingTask) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    stringResource(R.string.confirm_task_dictate_transcribing),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else if (uiState.isRewritingTask) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    stringResource(R.string.confirm_task_rewriting),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedButton(
+                    onClick = { onTaskMicTap() },
+                    colors = if (uiState.isRecordingTask) {
+                        ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    } else {
+                        ButtonDefaults.outlinedButtonColors()
+                    },
+                ) {
+                    Icon(
+                        if (uiState.isRecordingTask) Icons.Filled.Stop else Icons.Filled.Mic,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        stringResource(
+                            if (uiState.isRecordingTask) R.string.confirm_task_dictate_stop else R.string.confirm_task_dictate_raw,
+                        ),
+                    )
+                }
+                OutlinedButton(
+                    onClick = { viewModel.rewriteTask() },
+                    enabled = uiState.task.isNotBlank(),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                ) {
+                    Icon(Icons.Filled.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.confirm_task_dictate_cleanup))
+                }
+            }
+        }
+        if (micPermissionDenied) {
+            Text(
+                stringResource(R.string.capture_mic_permission_needed),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         Spacer(Modifier.height(12.dp))
 
         OutlinedTextField(
@@ -515,3 +631,7 @@ private fun RequiredFieldLabel(text: String, missing: Boolean) {
         color = if (missing) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
+
+private fun hasPermission(context: android.content.Context, permission: String): Boolean =
+    androidx.core.content.ContextCompat.checkSelfPermission(context, permission) ==
+        android.content.pm.PackageManager.PERMISSION_GRANTED
