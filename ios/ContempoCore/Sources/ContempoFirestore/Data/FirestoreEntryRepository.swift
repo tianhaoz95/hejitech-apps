@@ -56,6 +56,10 @@ public final class FirestoreEntryRepository: EntryRepository, @unchecked Sendabl
         return try await waitForPendingWrite(at: ref) { try $0.data(as: Property.self) } ?? property
     }
 
+    public func deleteProperty(propertyId: String) async throws {
+        try await propertiesCollection().document(propertyId).delete()
+    }
+
     public func observeRoles() -> AsyncThrowingStream<[ParticipantRole], Error> {
         observeDecodedArray(
             query: rolesCollection().order(by: "createdAt", descending: false),

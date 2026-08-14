@@ -9,6 +9,7 @@ import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig
 import com.k2fsa.sherpa.onnx.OfflineWhisperModelConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * On-device speech-to-text via sherpa-onnx (k2-fsa/sherpa-onnx). Three
@@ -106,25 +107,37 @@ class WhisperTranscriber(context: Context) {
      * AudioRecorder. Loading a recognizer (first use of that particular
      * [language] only) and decoding both do real CPU work, hence
      * Dispatchers.Default rather than the calling coroutine's own dispatcher.
+     * Bounded by [TRANSCRIBE_TIMEOUT_MS] — same reasoning as iOS's
+     * WhisperTranscriber.swift equivalent (confirmed live there: a stalled
+     * on-demand resource fetch left this hanging forever with no way out).
+     * Android's models are bundled assets rather than a network fetch, so
+     * this is a defensive bound against a pathological native-decode stall
+     * rather than a fix for a reproduced hang here — but a timeout here
+     * costs nothing and keeps both platforms' worst case the same: "" (which
+     * every caller already treats as "didn't catch that, try again") instead
+     * of an indefinite wait.
      */
     suspend fun transcribe(samples: FloatArray, language: CaptureLanguage): String =
         traced("whisper_transcribe", mapOf("language" to language.name)) {
-            withContext(Dispatchers.Default) {
-                if (samples.isEmpty()) return@withContext ""
-                val recognizer = recognizerFor(language)
-                val stream = recognizer.createStream()
-                try {
-                    stream.acceptWaveform(samples, sampleRate = SAMPLE_RATE_HZ)
-                    recognizer.decode(stream)
-                    collapseRepeatedWords(recognizer.getResult(stream).text.trim())
-                } finally {
-                    stream.release()
+            withTimeoutOrNull(TRANSCRIBE_TIMEOUT_MS) {
+                withContext(Dispatchers.Default) {
+                    if (samples.isEmpty()) return@withContext ""
+                    val recognizer = recognizerFor(language)
+                    val stream = recognizer.createStream()
+                    try {
+                        stream.acceptWaveform(samples, sampleRate = SAMPLE_RATE_HZ)
+                        recognizer.decode(stream)
+                        collapseRepeatedWords(recognizer.getResult(stream).text.trim())
+                    } finally {
+                        stream.release()
+                    }
                 }
-            }
+            } ?: ""
         }
 
     companion object {
         const val SAMPLE_RATE_HZ = 16_000
+        private const val TRANSCRIBE_TIMEOUT_MS = 45_000L
 
         /**
          * Confirmed live: greedy-search decoding on this model size can loop

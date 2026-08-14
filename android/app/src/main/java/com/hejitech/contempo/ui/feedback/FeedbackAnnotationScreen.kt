@@ -1,6 +1,9 @@
 package com.hejitech.contempo.ui.feedback
 
+import android.Manifest
 import android.graphics.BitmapFactory
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.fadeIn
@@ -12,6 +15,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,7 +33,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -37,6 +44,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -94,7 +102,32 @@ fun FeedbackAnnotationScreen(
     val bitmap = remember(imageFile) {
         BitmapFactory.decodeFile(imageFile.absolutePath)?.asImageBitmap()
     }
-    var description by remember { mutableStateOf("") }
+
+    // Voice input for the description field (see ConfirmScreen.kt's
+    // onTaskMicTap for the same pattern) — pendingDescriptionRecording
+    // remembers that a permission request was triggered by the dictate
+    // button, so the launcher's callback can start recording once granted.
+    var micPermissionDenied by remember { mutableStateOf(false) }
+    var pendingDescriptionRecording by remember { mutableStateOf(false) }
+    val micPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        micPermissionDenied = !granted
+        if (granted && pendingDescriptionRecording) viewModel.startRecordingDescription()
+        pendingDescriptionRecording = false
+    }
+    fun onDescriptionMicTap() {
+        when {
+            uiState.isRecordingDescription -> viewModel.stopRecordingDescription()
+            uiState.isTranscribingDescription -> Unit
+            viewModel.hasRecordAudioPermission() -> viewModel.startRecordingDescription()
+            else -> {
+                pendingDescriptionRecording = true
+                micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            }
+        }
+    }
+
     var containerSize by remember { mutableStateOf(Offset.Zero) }
     val imageSize = remember(bitmap) { bitmap?.let { Offset(it.width.toFloat(), it.height.toFloat()) } ?: Offset.Zero }
 
@@ -134,6 +167,13 @@ fun FeedbackAnnotationScreen(
     // need to clear it.
     var isInputExpanded by remember { mutableStateOf(true) }
     val collapsedReserve = 88.dp
+    // Inset from the screen edges on both the expanded panel and the
+    // collapsed FAB below — same value on both so the panel visibly floats
+    // in from the same margin it collapses into, instead of the expanded
+    // state reading as a flush, edge-to-edge sheet while only the
+    // collapsed state looks like a floating control.
+    val panelMargin = 16.dp
+    val panelMarginPx = with(density) { panelMargin.toPx() }
     fun toggleInputExpanded() {
         focusManager.clearFocus()
         isInputExpanded = !isInputExpanded
@@ -159,7 +199,7 @@ fun FeedbackAnnotationScreen(
                 .systemBarsPadding()
                 .padding(
                     bottom = if (isInputExpanded) {
-                        with(density) { restingControlsHeightPx.toDp() }
+                        with(density) { (restingControlsHeightPx + panelMarginPx).toDp() }
                     } else {
                         collapsedReserve
                     },
@@ -317,53 +357,111 @@ fun FeedbackAnnotationScreen(
             label = "feedback_input_expand_collapse",
         ) { expanded ->
             if (expanded) {
-                Column(
+                // A floating rounded card, not a flush edge-to-edge sheet —
+                // inset by panelMargin on the sides/bottom (matching the
+                // collapsed FAB's own inset below) with a shadow to read as
+                // genuinely floating above the image, not just a bar pinned
+                // to the screen edge.
+                Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.background)
                         .navigationBarsPadding()
                         .imePadding()
-                        .padding(16.dp)
+                        .padding(horizontal = panelMargin)
+                        .padding(bottom = panelMargin)
                         .onSizeChanged {
                             if (restingControlsHeightPx == 0f) restingControlsHeightPx = it.height.toFloat()
                         },
+                    shape = RoundedCornerShape(28.dp),
+                    color = MaterialTheme.colorScheme.background,
+                    shadowElevation = 12.dp,
                 ) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        IconButton(onClick = { toggleInputExpanded() }) {
-                            Icon(
-                                Icons.Filled.KeyboardArrowDown,
-                                contentDescription = stringResource(R.string.feedback_minimize_input_content_description),
-                            )
-                        }
-                    }
-                    OutlinedTextField(
-                        value = description,
-                        onValueChange = { description = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text(stringResource(R.string.feedback_description_placeholder)) },
-                        minLines = 3,
-                    )
-                    uiState.errorMessage?.let { error ->
-                        Spacer(Modifier.height(8.dp))
-                        Text(error, color = MaterialTheme.colorScheme.error)
-                    }
-                    Spacer(Modifier.height(12.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        OutlinedButton(onClick = { viewModel.cancel(); onDismiss() }, enabled = !uiState.isSubmitting) {
-                            Text(stringResource(R.string.feedback_cancel_button))
-                        }
-                        Spacer(Modifier.width(12.dp))
-                        Button(
-                            onClick = { viewModel.submit(imageFile, boxNormalized, description) },
-                            enabled = !uiState.isSubmitting,
-                        ) {
-                            if (uiState.isSubmitting) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.padding(end = 8.dp).width(16.dp).height(16.dp),
-                                    strokeWidth = 2.dp,
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            IconButton(onClick = { toggleInputExpanded() }) {
+                                Icon(
+                                    Icons.Filled.KeyboardArrowDown,
+                                    contentDescription = stringResource(R.string.feedback_minimize_input_content_description),
                                 )
                             }
-                            Text(stringResource(R.string.feedback_submit_button))
+                        }
+                        OutlinedTextField(
+                            value = uiState.description,
+                            onValueChange = { viewModel.onDescriptionChanged(it) },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text(stringResource(R.string.feedback_description_placeholder)) },
+                            minLines = 3,
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        // On-device dictation, same pipeline as Confirm's
+                        // task field — a labeled button (mic icon + text),
+                        // not icon-only, so it's clear what tapping it does.
+                        if (uiState.isTranscribingDescription) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    stringResource(R.string.confirm_task_dictate_transcribing),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        } else {
+                            OutlinedButton(
+                                onClick = { onDescriptionMicTap() },
+                                colors = if (uiState.isRecordingDescription) {
+                                    ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                                } else {
+                                    ButtonDefaults.outlinedButtonColors()
+                                },
+                            ) {
+                                Icon(
+                                    if (uiState.isRecordingDescription) Icons.Filled.Stop else Icons.Filled.Mic,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    stringResource(
+                                        if (uiState.isRecordingDescription) R.string.confirm_task_dictate_stop else R.string.confirm_task_dictate_raw,
+                                    ),
+                                )
+                            }
+                        }
+                        if (micPermissionDenied) {
+                            Text(
+                                stringResource(R.string.capture_mic_permission_needed),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        uiState.errorMessage?.let { error ->
+                            Spacer(Modifier.height(8.dp))
+                            Text(error, color = MaterialTheme.colorScheme.error)
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            OutlinedButton(
+                                onClick = { viewModel.cancel(); onDismiss() },
+                                enabled = !uiState.isSubmitting,
+                                shape = RoundedCornerShape(50),
+                            ) {
+                                Text(stringResource(R.string.feedback_cancel_button))
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Button(
+                                onClick = { viewModel.submit(imageFile, boxNormalized, uiState.description) },
+                                enabled = !uiState.isSubmitting && !uiState.isRecordingDescription && !uiState.isTranscribingDescription,
+                                shape = RoundedCornerShape(50),
+                            ) {
+                                if (uiState.isSubmitting) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.padding(end = 8.dp).width(16.dp).height(16.dp),
+                                        strokeWidth = 2.dp,
+                                    )
+                                }
+                                Text(stringResource(R.string.feedback_submit_button))
+                            }
                         }
                     }
                 }
@@ -372,7 +470,7 @@ fun FeedbackAnnotationScreen(
                     onClick = { toggleInputExpanded() },
                     modifier = Modifier
                         .navigationBarsPadding()
-                        .padding(16.dp)
+                        .padding(panelMargin)
                         .size(56.dp),
                 ) {
                     Icon(

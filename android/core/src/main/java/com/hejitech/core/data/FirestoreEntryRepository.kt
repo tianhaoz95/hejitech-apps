@@ -90,6 +90,10 @@ class FirestoreEntryRepository(
         return property.copy(id = ref.id)
     }
 
+    override suspend fun deleteProperty(propertyId: String) {
+        propertiesCollection().document(propertyId).delete().await()
+    }
+
     override fun observeRoles(): Flow<List<Role>> = callbackFlow {
         val registration = rolesCollection()
             .orderBy("createdAt", Query.Direction.ASCENDING)

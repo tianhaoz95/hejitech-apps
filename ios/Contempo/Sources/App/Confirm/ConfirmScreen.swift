@@ -1,4 +1,5 @@
 import ContempoCore
+import ContempoFirestore
 import SwiftUI
 import UIKit
 
@@ -9,6 +10,12 @@ struct ConfirmScreen: View {
     @State private var viewModel: ConfirmViewModel
     @Environment(\.contempoPalette) private var palette
     @Environment(\.dismiss) private var dismiss
+    /// Drives the "save or discard?" confirmation shown by the custom back
+    /// button below — only when `viewModel.hasUnsavedChanges` is true;
+    /// tapping back with no edits made just dismisses immediately.
+    @State private var showUnsavedChangesConfirm = false
+    /// Non-nil while the delete confirmation for a long-pressed property chip is showing — see the `.onLongPressGesture` in the Property section.
+    @State private var propertyPendingDeletion: Property?
 
     init(params: ConfirmParams, onSaved: @escaping () -> Void) {
         self.params = params
@@ -107,18 +114,7 @@ struct ConfirmScreen: View {
                             }
                         }
                     } else {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack {
-                                ForEach(viewModel.properties) { property in
-                                    let name = property.name
-                                    Button(name) { viewModel.onPropertySelected(property) }
-                                        .buttonStyle(.bordered)
-                                        .tint(viewModel.property == name ? palette.pine : palette.hairlineStrong)
-                                }
-                                Button("+ New") { viewModel.onAddNewPropertyClicked() }
-                                    .buttonStyle(.bordered)
-                            }
-                        }
+                        propertyChipsRow
                         AddressAutoCompleteField(
                             placeholder: "Property name or address",
                             text: $viewModel.property
@@ -191,39 +187,45 @@ struct ConfirmScreen: View {
                             }
                         }
                     } else {
-                        // Picker + on-device auto-detect button side by side —
-                        // available regardless of whether a category is already
-                        // set (an already-confirmed entry reaching this screen
-                        // for editing always arrives with a real one, not just
-                        // fresh captures). The button is a correctable
-                        // suggestion, not a silent commit: it just fills the
-                        // picker, which stays fully editable afterward (see
+                        // Picker on its own row — available regardless of
+                        // whether a category is already set (an already-
+                        // confirmed entry reaching this screen for editing
+                        // always arrives with a real one, not just fresh
+                        // captures).
+                        Picker("Category", selection: Binding(
+                            get: { viewModel.category },
+                            set: { viewModel.onCategoryChanged($0) }
+                        )) {
+                            ForEach(EntryCategory.allCases, id: \.self) { category in
+                                Text(category.firestoreValue.replacingOccurrences(of: "_", with: " ").capitalized)
+                                    .tag(category.firestoreValue)
+                            }
+                            ForEach(viewModel.categories) { category in
+                                Text(category.name).tag(category.name)
+                            }
+                        }
+                        // A full labeled row, not a bare icon — confirmed
+                        // live: an icon-only button here was too small to
+                        // tap reliably and didn't explain what it did. The
+                        // button is a correctable suggestion, not a silent
+                        // commit: it just fills the picker above, which
+                        // stays fully editable afterward (see
                         // ConfirmViewModel.detectCategory's doc comment).
-                        HStack {
-                            Picker("Category", selection: Binding(
-                                get: { viewModel.category },
-                                set: { viewModel.onCategoryChanged($0) }
-                            )) {
-                                ForEach(EntryCategory.allCases, id: \.self) { category in
-                                    Text(category.firestoreValue.replacingOccurrences(of: "_", with: " ").capitalized)
-                                        .tag(category.firestoreValue)
-                                }
-                                ForEach(viewModel.categories) { category in
-                                    Text(category.name).tag(category.name)
-                                }
-                            }
-                            if viewModel.isDetectingCategory {
+                        if viewModel.isDetectingCategory {
+                            HStack(spacing: 8) {
                                 ProgressView()
-                            } else {
-                                Button {
-                                    viewModel.detectCategory()
-                                } label: {
-                                    Image(systemName: "sparkles")
-                                }
-                                .buttonStyle(.plain)
-                                .tint(palette.pine)
-                                .accessibilityLabel("Auto-detect category with on-device AI")
+                                Text("Detecting…")
+                                    .font(ContempoFont.labelSmall())
+                                    .foregroundStyle(palette.inkSoft)
                             }
+                        } else {
+                            Button {
+                                viewModel.detectCategory()
+                            } label: {
+                                Label("Auto-detect category with AI", systemImage: "sparkles")
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(palette.pine)
                         }
                         Button("+ New category") { viewModel.onAddNewCategoryClicked() }
                         if let categoryDetectError = viewModel.categoryDetectError {
@@ -301,6 +303,94 @@ struct ConfirmScreen: View {
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
+        // Custom back button so an unsaved edit gets a save/discard prompt
+        // instead of silently vanishing — confirmed live as a real gap: a
+        // stray tap on the system back button lost whatever the user had
+        // just typed. Also blocks the edge-swipe-back gesture while dirty
+        // (interactiveDismissDisabled applies to pushed views, not just
+        // sheets), so that path can't bypass the same prompt.
+        .navigationBarBackButtonHidden(true)
+        .interactiveDismissDisabled(viewModel.hasUnsavedChanges)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button {
+                    if viewModel.hasUnsavedChanges {
+                        showUnsavedChangesConfirm = true
+                    } else {
+                        dismiss()
+                    }
+                } label: {
+                    Image(systemName: "chevron.backward")
+                }
+            }
+        }
+        // A centered .alert, not .confirmationDialog — confirmed live:
+        // confirmationDialog renders as a popover anchored to the toolbar
+        // button that presented it (with a pointer arrow) rather than a
+        // proper modal alert, which read as broken/out of place here.
+        .alert(
+            "You have unsaved changes",
+            isPresented: $showUnsavedChangesConfirm
+        ) {
+            Button("Save Changes") {
+                // saveForLater only handles the regular entry shape, not a
+                // trip's odometer save — trip mode always goes through
+                // confirm() (-> saveTrip), same as the primary button below.
+                if !viewModel.isTripMode && viewModel.isIncomplete {
+                    viewModel.saveForLater { onSaved(); dismiss() }
+                } else {
+                    viewModel.confirm { onSaved(); dismiss() }
+                }
+            }
+            Button("Discard Changes", role: .destructive) { dismiss() }
+            Button("Cancel", role: .cancel) {}
+        }
+        .alert(
+            "Delete \"\(propertyPendingDeletion?.name ?? "")\"?",
+            isPresented: Binding(
+                get: { propertyPendingDeletion != nil },
+                set: { if !$0 { propertyPendingDeletion = nil } }
+            )
+        ) {
+            Button("Delete", role: .destructive) {
+                if let property = propertyPendingDeletion {
+                    viewModel.deleteProperty(property)
+                }
+                propertyPendingDeletion = nil
+            }
+            Button("Cancel", role: .cancel) { propertyPendingDeletion = nil }
+        } message: {
+            Text("This removes it from your saved properties. Entries already logged against it aren't affected.")
+        }
+    }
+
+    // Pulled out of `body` for the same reason as `taskDictationButtons`
+    // below — inlined directly in the Property Section, this pushed the
+    // surrounding Form's single expression past what the Swift type-checker
+    // can resolve in reasonable time. The long-press-to-delete gesture
+    // (confirmed via `propertyPendingDeletion`, see the alert below) adds
+    // exactly the kind of extra modifier chain that trips this.
+    @ViewBuilder
+    private var propertyChipsRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack {
+                ForEach(viewModel.properties) { property in
+                    let name = property.name
+                    Button(name) { viewModel.onPropertySelected(property) }
+                        .buttonStyle(.bordered)
+                        .tint(viewModel.property == name ? palette.pine : palette.hairlineStrong)
+                        // Long-press to delete a saved property — confirmed
+                        // here rather than deleting on the press itself,
+                        // since this list has no undo and a stray
+                        // long-press is easy to trigger while scrolling.
+                        .onLongPressGesture {
+                            propertyPendingDeletion = property
+                        }
+                }
+                Button("+ New") { viewModel.onAddNewPropertyClicked() }
+                    .buttonStyle(.bordered)
+            }
+        }
     }
 
     // Two buttons, not one, doing two different things: "Dictate" records

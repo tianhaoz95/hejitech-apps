@@ -210,6 +210,25 @@ class ConfirmViewModel(
     )
     val uiState: StateFlow<ConfirmUiState> = _uiState.asStateFlow()
 
+    // Snapshot of every user-editable field as first shown, so
+    // hasUnsavedChanges() can tell "the user actually touched something"
+    // apart from "nothing to lose yet" — distinct from aiOriginal* above,
+    // which exists for the separate correction-feedback pipeline and (for a
+    // resumed pending entry) doesn't reflect what the form actually loaded
+    // with. initialSnapshotRoleId is a var, not a val, since selectedRoleId
+    // itself only resolves asynchronously for a resumed entry (see the
+    // existingEntryDeferred launch below) — updated there alongside it so
+    // the snapshot always matches what the user actually saw before making
+    // any edit.
+    private val initialSnapshotProperty = _uiState.value.property
+    private val initialSnapshotTask = _uiState.value.task
+    private val initialSnapshotDurationMinutes = _uiState.value.durationMinutes
+    private val initialSnapshotCategory = _uiState.value.category
+    private val initialSnapshotMiles = _uiState.value.miles
+    private val initialSnapshotActivityDateMillis = _uiState.value.activityDateMillis
+    private var initialSnapshotRoleId: String? = null
+    private val initialSnapshotOdometerReading = _uiState.value.odometerReading
+
     init {
         entryRepository.observeProperties()
             // See CaptureViewModel.openTripEntry's comment — same crash risk
@@ -234,9 +253,28 @@ class ConfirmViewModel(
         // selectedRoleId at its "Me" default.
         viewModelScope.launch {
             existingEntryDeferred.await()?.let { existing ->
-                _uiState.value = _uiState.value.copy(selectedRoleId = existing.roleId.ifEmpty { null })
+                val roleId = existing.roleId.ifEmpty { null }
+                _uiState.value = _uiState.value.copy(selectedRoleId = roleId)
+                initialSnapshotRoleId = roleId
             }
         }
+    }
+
+    /**
+     * Drives the "discard/save unsaved changes?" prompt on back navigation
+     * (see ConfirmScreen's BackHandler) — true once any field has diverged
+     * from what the form first loaded with.
+     */
+    fun hasUnsavedChanges(): Boolean {
+        val state = _uiState.value
+        return state.property != initialSnapshotProperty ||
+            state.task != initialSnapshotTask ||
+            state.durationMinutes != initialSnapshotDurationMinutes ||
+            state.category != initialSnapshotCategory ||
+            state.miles != initialSnapshotMiles ||
+            state.activityDateMillis != initialSnapshotActivityDateMillis ||
+            state.selectedRoleId != initialSnapshotRoleId ||
+            state.odometerReading != initialSnapshotOdometerReading
     }
 
     fun onRoleSelected(roleId: String?) {
@@ -370,6 +408,23 @@ class ConfirmViewModel(
 
     fun onPropertySelected(property: Property) {
         _uiState.value = _uiState.value.copy(property = property.name, isAddingNewProperty = false)
+    }
+
+    /**
+     * Long-press-to-delete on a property chip — see ConfirmScreen's
+     * confirmation dialog, shown before this is ever called. If the deleted
+     * property was the one currently selected, clears the field rather than
+     * leaving a name on screen that no longer resolves to a saved property.
+     */
+    fun deleteProperty(property: Property) {
+        viewModelScope.launch {
+            val succeeded = runCatching { entryRepository.deleteProperty(property.id) }.isSuccess
+            if (succeeded && _uiState.value.property == property.name) {
+                _uiState.value = _uiState.value.copy(property = "")
+            } else if (!succeeded) {
+                _uiState.value = _uiState.value.copy(errorMessage = "Couldn't delete that property — try again.")
+            }
+        }
     }
 
     fun onAddNewPropertyClicked() {

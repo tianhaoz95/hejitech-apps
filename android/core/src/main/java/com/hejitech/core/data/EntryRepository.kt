@@ -20,6 +20,9 @@ interface EntryRepository {
 
     suspend fun createProperty(name: String): Property
 
+    /** Long-press-to-delete on Confirm's property chips — see firestore.rules' owner-only delete on `properties/{propertyId}`. */
+    suspend fun deleteProperty(propertyId: String)
+
     /** Live stream of the user's role roster (Property Manager, Co-host, Cleaner, ...) managed in Settings. */
     fun observeRoles(): Flow<List<Role>>
 

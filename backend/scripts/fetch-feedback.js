@@ -11,7 +11,7 @@
  *   gcloud auth application-default login
  * once (interactively, needs a browser) as an account with Firestore +
  * Storage read (and, for --mark-triaged/--mark-resolved, write) access on
- * contempo-platform — jacksonzhou666@gmail.com already has Owner on this
+ * contempo-str — jacksonzhou666@gmail.com already has Owner on this
  * project, so its own ADC works fine, no separate service account needed.
  * Alternatively set GOOGLE_APPLICATION_CREDENTIALS to a service account
  * key's path if you'd rather use a dedicated key.
@@ -40,8 +40,8 @@ const { initializeApp, applicationDefault } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { getStorage } = require("firebase-admin/storage");
 
-const PROJECT_ID = "contempo-platform";
-const STORAGE_BUCKET = "contempo-platform.firebasestorage.app";
+const PROJECT_ID = "contempo-str";
+const STORAGE_BUCKET = "contempo-str.firebasestorage.app";
 
 function parseArgs(argv) {
   const args = { status: "pending", limit: 20, out: null, markTriaged: null, markResolved: null };

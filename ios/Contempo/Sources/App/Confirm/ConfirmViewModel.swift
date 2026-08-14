@@ -49,6 +49,24 @@ final class ConfirmViewModel {
     private var existingEntryTask: Task<Entry?, Never>!
     private let resolvedEntryId: String
 
+    // Snapshot of every user-editable field as first shown, so `hasUnsavedChanges`
+    // can tell "the user actually touched something" apart from "nothing to lose
+    // yet" — distinct from the aiOriginal* fields above, which exist for the
+    // separate correction-feedback pipeline and (for a resumed pending entry)
+    // don't reflect what the form actually loaded with. initialSnapshotRoleId is
+    // a var, not a let, since selectedRoleId itself only resolves asynchronously
+    // for a resumed entry (see the last Task in init below) — updated there
+    // alongside it so the snapshot always matches what the user actually saw
+    // before making any edit.
+    private let initialSnapshotProperty: String
+    private let initialSnapshotTask: String
+    private let initialSnapshotDurationMinutes: String
+    private let initialSnapshotCategory: String
+    private let initialSnapshotMiles: String
+    private let initialSnapshotActivityDate: Date
+    private var initialSnapshotRoleId: String?
+    private let initialSnapshotOdometerReading: String
+
     var property = ""
     /// Re-runs `CategoryClassifier` on every edit when nothing has
     /// classified this entry yet (still `.other`, and the user hasn't
@@ -146,6 +164,19 @@ final class ConfirmViewModel {
         isTripMode = params.isTripCapture
         odometerReading = params.odometerReading.map { Self.cleanString($0) } ?? ""
 
+        // Snapshotted from `params` directly, not by reading back the
+        // stored properties just assigned above — Swift disallows any
+        // property read on `self` until every stored property has a value,
+        // and resolvedEntryId/existingEntryTask below aren't set yet.
+        initialSnapshotProperty = params.property
+        initialSnapshotTask = params.task
+        initialSnapshotDurationMinutes = params.durationMinutes > 0 ? String(params.durationMinutes) : ""
+        initialSnapshotCategory = params.category.isEmpty ? EntryCategory.other.firestoreValue : params.category
+        initialSnapshotMiles = params.miles > 0 ? Self.cleanString(params.miles) : ""
+        initialSnapshotActivityDate = Self.resolveValidatedDate(params.resolvedActivityDateIso) ?? Date()
+        initialSnapshotRoleId = nil
+        initialSnapshotOdometerReading = params.odometerReading.map { Self.cleanString($0) } ?? ""
+
         let entryId = params.entryId
         resolvedEntryId = entryId.isEmpty ? entryRepository.newEntryId() : entryId
         let repository = entryRepository
@@ -210,7 +241,22 @@ final class ConfirmViewModel {
         Task { [weak self] in
             guard let self, let existing = await self.existingEntryTask.value else { return }
             self.selectedRoleId = existing.roleId
+            self.initialSnapshotRoleId = existing.roleId
         }
+    }
+
+    /// Drives the "discard/save unsaved changes?" prompt on back navigation
+    /// (see ConfirmScreen's custom back button) — true once any field has
+    /// diverged from what the form first loaded with.
+    var hasUnsavedChanges: Bool {
+        property != initialSnapshotProperty
+            || task != initialSnapshotTask
+            || durationMinutes != initialSnapshotDurationMinutes
+            || category != initialSnapshotCategory
+            || miles != initialSnapshotMiles
+            || activityDate != initialSnapshotActivityDate
+            || selectedRoleId != initialSnapshotRoleId
+            || odometerReading != initialSnapshotOdometerReading
     }
 
     func onRoleSelected(_ roleId: String?) {
@@ -248,6 +294,24 @@ final class ConfirmViewModel {
     func onPropertySelected(_ property: Property) {
         self.property = property.name
         isAddingNewProperty = false
+    }
+
+    /// Long-press-to-delete on a property chip — see ConfirmScreen's
+    /// confirmation alert, shown before this is ever called. If the deleted
+    /// property was the one currently selected, clears the field rather than
+    /// leaving a name on screen that no longer resolves to a saved property.
+    func deleteProperty(_ property: Property) {
+        guard let propertyId = property.id else { return }
+        Task {
+            do {
+                try await entryRepository.deleteProperty(propertyId: propertyId)
+                if self.property == property.name {
+                    self.property = ""
+                }
+            } catch {
+                errorMessage = "Couldn't delete that property — try again."
+            }
+        }
     }
 
     func startRecordingTask() async {

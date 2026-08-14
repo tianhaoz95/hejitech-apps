@@ -107,23 +107,38 @@ final class WhisperTranscriber {
         }
     }
 
+    // Confirmed live: a stalled ODR fetch (NSBundleResourceRequest silently
+    // never completing — a known ODR flakiness, TestFlight builds especially,
+    // even for "Initial Install" tags that are supposed to auto-fetch at
+    // install time) left `await preparationTask?.value` below hanging
+    // forever, which left every caller's "Transcribing…" spinner stuck with
+    // no way out. Same bound as Firestore's save timeout elsewhere in this
+    // codebase (see ConfirmViewModel.withSaveRetry) — generous enough to
+    // cover a real first-run model download over a slow connection, but
+    // finite, so a genuine stall surfaces as "" (which every caller already
+    // treats as "didn't catch that, try again") instead of an infinite wait.
+    private static let transcribeTimeoutSeconds: UInt64 = 45
+
     /// `samples` must be 16kHz mono, normalized to [-1, 1] — see `AudioRecorder`.
     /// Awaits ODR resource access first (a no-op after the first successful
     /// call, since `preparationTask`'s result is cached) — in practice this
     /// resolves near-instantly since both tags are Initial Install, but a
     /// slow first launch or a purged cache could still make this a real
-    /// wait. Runs the decode inline (on the caller's task) rather than
-    /// detaching: the sherpa-onnx wrapper types aren't `Sendable`, so
-    /// hopping them across a `Task.detached` boundary isn't safe to do
-    /// casually. The decode itself is a blocking native call either way;
-    /// callers already invoke this from a background `Task`, not directly
-    /// from a UI action.
+    /// wait, bounded by `transcribeTimeoutSeconds` above. Runs the decode
+    /// inline (on the caller's task) rather than detaching: the sherpa-onnx
+    /// wrapper types aren't `Sendable`, so hopping them across a
+    /// `Task.detached` boundary isn't safe to do casually. The decode itself
+    /// is a blocking native call either way; callers already invoke this
+    /// from a background `Task`, not directly from a UI action.
     func transcribe(samples: [Float], language: CaptureLanguage) async -> String {
         guard !samples.isEmpty else { return "" }
-        await preparationTask?.value
-        guard let recognizer = recognizer(for: language) else { return "" }
-        let result = recognizer.decode(samples: samples, sampleRate: WhisperTranscriber.sampleRateHz)
-        return Self.collapseRepeatedWords(result.text.trimmingCharacters(in: .whitespacesAndNewlines))
+        let transcript = try? await withTimeout(seconds: Self.transcribeTimeoutSeconds) { [self] in
+            await preparationTask?.value
+            guard let recognizer = await recognizer(for: language) else { return "" }
+            let result = recognizer.decode(samples: samples, sampleRate: WhisperTranscriber.sampleRateHz)
+            return Self.collapseRepeatedWords(result.text.trimmingCharacters(in: .whitespacesAndNewlines))
+        }
+        return transcript ?? ""
     }
 
     /// Confirmed live: greedy-search decoding on this model size can loop on
@@ -136,9 +151,14 @@ final class WhisperTranscriber {
     /// stutter like "the the sink") while still killing a genuine
     /// hallucination loop, which runs far longer than any natural
     /// repetition would. Mirrors Android's WhisperTranscriber.kt equivalent.
-    private static let maxConsecutiveRepeats = 2
+    private nonisolated static let maxConsecutiveRepeats = 2
 
-    static func collapseRepeatedWords(_ text: String) -> String {
+    // nonisolated — called from the timeout-wrapped closure in transcribe()
+    // above, which runs partially off the main actor (see its comment); a
+    // pure string-processing utility with no actor-isolated state, so
+    // there's no isolation reason for callers to have to hop back onto
+    // MainActor just to reach it.
+    nonisolated static func collapseRepeatedWords(_ text: String) -> String {
         let words = text.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
         guard words.count > maxConsecutiveRepeats else { return text }
         var result: [String] = []

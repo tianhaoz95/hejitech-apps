@@ -1,11 +1,13 @@
 package com.hejitech.contempo.ui.confirm
 
 import android.Manifest
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import com.hejitech.contempo.ui.components.ActivityDateTimeField
 import com.hejitech.contempo.ui.components.OsmAddressAutoCompleteField
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -27,6 +29,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -36,7 +39,6 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
@@ -65,6 +67,7 @@ import com.hejitech.contempo.ui.theme.Eyebrow
 import com.hejitech.contempo.util.PhotoUtils
 import com.hejitech.core.model.CaptureSource
 import com.hejitech.core.model.EntryCategory
+import com.hejitech.core.model.Property
 
 private const val PHOTO_PREVIEW_MAX_DIMENSION_PX = 512
 
@@ -102,6 +105,8 @@ fun ConfirmScreen(
     tripIsEndingExistingTrip: Boolean = false,
     odometerReading: Double? = null,
     onConfirmed: () -> Unit,
+    /** Pops the back stack — see the unsaved-changes BackHandler below, which needs an actual escape hatch for "Discard Changes." */
+    onBack: () -> Unit,
     viewModel: ConfirmViewModel = viewModel(
         factory = ConfirmViewModel.Factory(
             property, task, durationMinutes, category, captureSource, miles, resolvedActivityDateIso,
@@ -113,6 +118,74 @@ fun ConfirmScreen(
     var categoryMenuExpanded by remember { mutableStateOf(false) }
     var roleMenuExpanded by remember { mutableStateOf(false) }
     val context = LocalContext.current
+
+    // Intercepts the system back gesture/button when there's something to
+    // lose — confirmed live as a real gap: a stray back press silently
+    // dropped whatever the user had just typed. Only enabled while dirty, so
+    // an unmodified entry still backs out immediately as before.
+    var showUnsavedChangesConfirm by remember { mutableStateOf(false) }
+    var propertyPendingDeletion by remember { mutableStateOf<Property?>(null) }
+    BackHandler(enabled = viewModel.hasUnsavedChanges()) {
+        showUnsavedChangesConfirm = true
+    }
+    if (showUnsavedChangesConfirm) {
+        AlertDialog(
+            onDismissRequest = { showUnsavedChangesConfirm = false },
+            title = { Text(stringResource(R.string.confirm_unsaved_changes_title)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showUnsavedChangesConfirm = false
+                    // saveForLater only handles the regular entry shape, not
+                    // a trip's odometer save — trip mode always goes through
+                    // confirm() (-> saveTrip), same as the primary button below.
+                    if (!uiState.isTripMode && uiState.isIncomplete) {
+                        viewModel.saveForLater(onConfirmed)
+                    } else {
+                        viewModel.confirm(onConfirmed)
+                    }
+                }) {
+                    Text(stringResource(R.string.confirm_unsaved_changes_save))
+                }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = {
+                        showUnsavedChangesConfirm = false
+                        onBack()
+                    }) {
+                        Text(stringResource(R.string.confirm_unsaved_changes_discard))
+                    }
+                    TextButton(onClick = { showUnsavedChangesConfirm = false }) {
+                        Text(stringResource(R.string.confirm_cancel_button))
+                    }
+                }
+            },
+        )
+    }
+
+    // Long-press to delete a saved property — confirmed here rather than
+    // deleting on the press itself, since this list has no undo and a stray
+    // long-press is easy to trigger while scrolling the chip row.
+    propertyPendingDeletion?.let { property ->
+        AlertDialog(
+            onDismissRequest = { propertyPendingDeletion = null },
+            title = { Text(stringResource(R.string.confirm_delete_property_title, property.name)) },
+            text = { Text(stringResource(R.string.confirm_delete_property_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteProperty(property)
+                    propertyPendingDeletion = null
+                }) {
+                    Text(stringResource(R.string.confirm_delete_property_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { propertyPendingDeletion = null }) {
+                    Text(stringResource(R.string.confirm_cancel_button))
+                }
+            },
+        )
+    }
 
     // Voice input for the task field (see ConfirmViewModel.startRecordingTask)
     // — pendingTaskRecording remembers that a permission request was
@@ -276,8 +349,17 @@ fun ConfirmScreen(
                 uiState.properties.forEach { savedProperty ->
                     FilterChip(
                         selected = savedProperty.name == uiState.property,
-                        onClick = { viewModel.onPropertySelected(savedProperty) },
+                        // Click handling moved onto the combinedClickable
+                        // modifier below (long-press to delete a saved
+                        // property, confirmed via dialog before it's ever
+                        // called) — this onClick would otherwise fire
+                        // alongside it and double-handle every tap.
+                        onClick = {},
                         label = { Text(savedProperty.name) },
+                        modifier = Modifier.combinedClickable(
+                            onClick = { viewModel.onPropertySelected(savedProperty) },
+                            onLongClick = { propertyPendingDeletion = savedProperty },
+                        ),
                     )
                 }
                 FilterChip(
@@ -446,63 +528,74 @@ fun ConfirmScreen(
                 }
             }
         } else {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ExposedDropdownMenuBox(
+            ExposedDropdownMenuBox(
+                expanded = categoryMenuExpanded,
+                onExpandedChange = { categoryMenuExpanded = it },
+            ) {
+                OutlinedTextField(
+                    value = EntryCategory.displayName(uiState.category),
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text(stringResource(R.string.confirm_category_label)) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryMenuExpanded) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                )
+                ExposedDropdownMenu(
                     expanded = categoryMenuExpanded,
-                    onExpandedChange = { categoryMenuExpanded = it },
-                    modifier = Modifier.weight(1f),
+                    onDismissRequest = { categoryMenuExpanded = false },
                 ) {
-                    OutlinedTextField(
-                        value = EntryCategory.displayName(uiState.category),
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text(stringResource(R.string.confirm_category_label)) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryMenuExpanded) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(MenuAnchorType.PrimaryNotEditable),
-                    )
-                    ExposedDropdownMenu(
-                        expanded = categoryMenuExpanded,
-                        onDismissRequest = { categoryMenuExpanded = false },
-                    ) {
-                        EntryCategory.entries.forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(option.name.lowercase().replace('_', ' ')) },
-                                onClick = {
-                                    viewModel.onCategoryChanged(option.firestoreValue)
-                                    categoryMenuExpanded = false
-                                },
-                            )
-                        }
-                        uiState.categories.forEach { category ->
-                            DropdownMenuItem(
-                                text = { Text(category.name) },
-                                onClick = {
-                                    viewModel.onCategoryChanged(category.name)
-                                    categoryMenuExpanded = false
-                                },
-                            )
-                        }
+                    EntryCategory.entries.forEach { option ->
                         DropdownMenuItem(
-                            text = { Text(stringResource(R.string.confirm_add_new_category_item)) },
-                            leadingIcon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                            text = { Text(option.name.lowercase().replace('_', ' ')) },
                             onClick = {
+                                viewModel.onCategoryChanged(option.firestoreValue)
                                 categoryMenuExpanded = false
-                                viewModel.onAddNewCategoryClicked()
                             },
                         )
                     }
-                }
-                if (uiState.isDetectingCategory) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                } else {
-                    IconButton(onClick = viewModel::detectCategory) {
-                        Icon(
-                            Icons.Filled.AutoAwesome,
-                            contentDescription = stringResource(R.string.entry_detail_detect_category_content_description),
+                    uiState.categories.forEach { category ->
+                        DropdownMenuItem(
+                            text = { Text(category.name) },
+                            onClick = {
+                                viewModel.onCategoryChanged(category.name)
+                                categoryMenuExpanded = false
+                            },
                         )
                     }
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.confirm_add_new_category_item)) },
+                        leadingIcon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                        onClick = {
+                            categoryMenuExpanded = false
+                            viewModel.onAddNewCategoryClicked()
+                        },
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            // A full labeled row below the dropdown, not a bare icon button
+            // beside it — confirmed live: the icon-only button was too
+            // small and didn't explain what it did. A correctable
+            // suggestion, not a silent commit: it just fills the dropdown
+            // above, which stays fully editable afterward (see
+            // ConfirmViewModel.detectCategory's kdoc).
+            if (uiState.isDetectingCategory) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        stringResource(R.string.confirm_category_detecting),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else {
+                OutlinedButton(onClick = viewModel::detectCategory) {
+                    Icon(Icons.Filled.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.confirm_category_detect_button))
                 }
             }
             uiState.categoryDetectError?.let {

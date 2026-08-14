@@ -47,6 +47,12 @@ struct FeedbackAnnotationView: View {
     // survives this resize correctly, so there's no need to clear it.
     @State private var isInputExpanded = true
     private let collapsedReserve: CGFloat = 88
+    // Inset from the screen edges on both the expanded panel and the
+    // collapsed FAB below — same value on both so the panel visibly floats
+    // in from the same margin it collapses into, instead of the expanded
+    // state reading as a flush, edge-to-edge sheet while only the
+    // collapsed state looks like a floating control.
+    private let panelMargin: CGFloat = 16
 
     private enum Corner: CaseIterable {
         case topLeft, topRight, bottomLeft, bottomRight
@@ -187,7 +193,7 @@ struct FeedbackAnnotationView: View {
             // the keyboard, which is what keeps the drawn box from
             // drifting while typing.
             .padding(.top, restingHeaderHeight)
-            .padding(.bottom, isInputExpanded ? restingPanelHeight : collapsedReserve)
+            .padding(.bottom, isInputExpanded ? restingPanelHeight + panelMargin : collapsedReserve)
             .onTapGesture { isDescriptionFocused = false }
 
             VStack(spacing: 0) {
@@ -242,6 +248,32 @@ struct FeedbackAnnotationView: View {
                                 }
                             }
 
+                        // On-device dictation, same pipeline as Confirm's
+                        // task field — a labeled button (mic icon + text),
+                        // not icon-only, so it's clear what tapping it does.
+                        if viewModel.isTranscribingDescription {
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                Text("Transcribing…")
+                                    .font(ContempoFont.labelSmall())
+                                    .foregroundStyle(palette.inkSoft)
+                            }
+                        } else {
+                            Button {
+                                Task {
+                                    if viewModel.isRecordingDescription {
+                                        await viewModel.stopRecordingDescription()
+                                    } else {
+                                        await viewModel.startRecordingDescription()
+                                    }
+                                }
+                            } label: {
+                                Label(viewModel.isRecordingDescription ? "Stop" : "Dictate", systemImage: viewModel.isRecordingDescription ? "stop.fill" : "mic")
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(viewModel.isRecordingDescription ? palette.danger : palette.inkSoft)
+                        }
+
                         if let submitError = viewModel.submitError {
                             Text(submitError)
                                 .font(ContempoFont.labelSmall())
@@ -260,8 +292,12 @@ struct FeedbackAnnotationView: View {
                             }
                         }
                         .buttonStyle(.borderedProminent)
+                        .buttonBorderShape(.capsule)
                         .tint(palette.pine)
-                        .disabled(viewModel.isSubmitting || viewModel.description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .disabled(
+                            viewModel.isSubmitting || viewModel.isRecordingDescription || viewModel.isTranscribingDescription
+                                || viewModel.description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        )
                     }
                     .padding()
                     .background(
@@ -271,7 +307,18 @@ struct FeedbackAnnotationView: View {
                             }
                         }
                     )
-                    .background(palette.paper)
+                    // A floating rounded card, not a flush edge-to-edge
+                    // sheet — inset by panelMargin on the sides/bottom
+                    // (matching the collapsed FAB's own inset below) with a
+                    // shadow to read as genuinely floating above the image,
+                    // not just a bar pinned to the screen edge.
+                    .background(
+                        RoundedRectangle(cornerRadius: 28, style: .continuous)
+                            .fill(palette.paper)
+                            .shadow(color: .black.opacity(0.15), radius: 14, x: 0, y: 6)
+                    )
+                    .padding(.horizontal, panelMargin)
+                    .padding(.bottom, panelMargin)
                     .padding(.bottom, keyboardHeight)
                     .animation(.easeOut(duration: 0.25), value: keyboardHeight)
                     // Anchored at the same corner the FAB sits in below,
@@ -289,8 +336,9 @@ struct FeedbackAnnotationView: View {
                                 .font(.system(size: 44))
                                 .foregroundStyle(palette.pine)
                                 .background(Circle().fill(.white))
+                                .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 3)
                         }
-                        .padding()
+                        .padding(panelMargin)
                     }
                     .transition(.scale(scale: 0.05, anchor: .bottomTrailing).combined(with: .opacity))
                 }

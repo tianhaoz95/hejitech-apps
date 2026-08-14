@@ -291,6 +291,7 @@ fun ContempoNavHost() {
                             popUpTo(TopLevelDestination.Capture.route)
                         }
                     },
+                    onBack = { navController.popBackStack() },
                 )
             }
             composable(

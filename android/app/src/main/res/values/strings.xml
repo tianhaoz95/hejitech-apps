@@ -131,6 +131,8 @@
     <string name="confirm_miles_label">Miles driven (optional)</string>
     <string name="confirm_miles_placeholder">e.g. 12.5</string>
     <string name="confirm_category_label">Category</string>
+    <string name="confirm_category_detect_button">Auto-detect category with AI</string>
+    <string name="confirm_category_detecting">Detecting…</string>
     <string name="confirm_add_new_category_item">Add new category…</string>
     <string name="confirm_new_category_label">Category name</string>
     <string name="confirm_add_category_button">Add</string>
@@ -151,6 +153,12 @@
     <string name="confirm_new_property_label">Property name</string>
     <string name="confirm_add_property_button">Add</string>
     <string name="confirm_cancel_button">Cancel</string>
+    <string name="confirm_unsaved_changes_title">You have unsaved changes</string>
+    <string name="confirm_unsaved_changes_save">Save Changes</string>
+    <string name="confirm_unsaved_changes_discard">Discard Changes</string>
+    <string name="confirm_delete_property_title">Delete \"%1$s\"?</string>
+    <string name="confirm_delete_property_message">This removes it from your saved properties. Entries already logged against it aren\'t affected.</string>
+    <string name="confirm_delete_property_confirm">Delete</string>
     <string name="confirm_required_field_format">%1$s · required</string>
     <string name="confirm_complete_later_button">Complete later</string>
     <string name="confirm_photo_intent_toggle_label">This is an odometer reading</string>

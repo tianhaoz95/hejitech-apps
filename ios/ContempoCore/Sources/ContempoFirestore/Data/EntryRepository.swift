@@ -8,6 +8,10 @@ public protocol EntryRepository: Sendable {
 
     func createProperty(name: String) async throws -> Property
 
+    /// Long-press-to-delete on Confirm's property chips — see firestore.rules'
+    /// owner-only delete on `properties/{propertyId}`.
+    func deleteProperty(propertyId: String) async throws
+
     /// Live stream of the user's role roster (Property Manager, Co-host,
     /// Cleaner, ...) managed in Settings — see `ParticipantRole`.
     func observeRoles() -> AsyncThrowingStream<[ParticipantRole], Error>
