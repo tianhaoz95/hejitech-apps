@@ -52,6 +52,26 @@
     <string name="help_walkthrough_chat_body">Ask questions about your entries or material participation rules and get answers grounded in your own records.</string>
     <string name="help_walkthrough_settings_title">Set up your properties</string>
     <string name="help_walkthrough_settings_body">Add properties, pick a capture language, and manage your account here.</string>
+
+    <string name="onboarding_skip_button">Skip</string>
+    <string name="onboarding_back_button">Back</string>
+    <string name="onboarding_next_button">Next</string>
+    <string name="onboarding_get_started_button">Get Started</string>
+    <string name="onboarding_welcome_title">Welcome to Contempo</string>
+    <string name="onboarding_welcome_body">Let\'s set up a couple of things so logging your hours feels natural from the start — this takes a few seconds, and you can change any of it later in Settings.</string>
+    <string name="onboarding_capture_mode_title">How do you want to log hours?</string>
+    <string name="onboarding_capture_mode_audio_first_title">Voice-first</string>
+    <string name="onboarding_capture_mode_audio_first_description">Tap the mic and describe your work out loud — fastest for logging hands-free.</string>
+    <string name="onboarding_capture_mode_typing_title">Typing</string>
+    <string name="onboarding_capture_mode_typing_description">Type your entry instead — better when talking out loud isn\'t practical.</string>
+    <string name="onboarding_quick_capture_title">Quick Capture</string>
+    <string name="onboarding_quick_capture_intro">Quick Capture lets you record multiple voice notes in rapid succession without waiting for on-device transcription or AI structuring.</string>
+    <string name="onboarding_quick_capture_bullet_1">Recorded notes are saved locally to disk instantly.</string>
+    <string name="onboarding_quick_capture_bullet_2">Notes are uploaded in the background to your queue.</string>
+    <string name="onboarding_quick_capture_bullet_3">On-device AI transcribes and converts notes into entries asynchronously.</string>
+    <string name="onboarding_quick_capture_enable_label">Enable Quick Capture</string>
+    <string name="onboarding_done_title">You\'re all set</string>
+    <string name="onboarding_done_body">You can change either of these — and everything else — anytime from Settings.</string>
     <string name="capture_language_english">English</string>
     <string name="capture_language_chinese">中文</string>
     <string name="capture_language_auto">Auto</string>

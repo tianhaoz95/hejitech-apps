@@ -39,6 +39,7 @@ import com.hejitech.contempo.feedback.PendingFeedbackCaptureStore
 import com.hejitech.contempo.feedback.ShakeDetector
 import com.hejitech.contempo.ui.feedback.FeedbackAnnotationScreen
 import com.hejitech.contempo.ui.navigation.ContempoNavHost
+import com.hejitech.contempo.ui.onboarding.OnboardingScreen
 import com.hejitech.contempo.ui.signin.SignInScreen
 import com.hejitech.contempo.ui.theme.ContempoTheme
 import com.hejitech.contempo.wear.AudioCaptureProcessor
@@ -171,17 +172,25 @@ class MainActivity : ComponentActivity() {
 private fun ContempoRoot() {
     ContempoTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
-            AuthGate {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    ContempoNavHost()
-                    // Shown on top of whichever tab is active — a shake can
-                    // happen from anywhere, see MainActivity.handleShake.
-                    val pendingCapture by PendingFeedbackCaptureStore.pendingCapture.collectAsState()
-                    pendingCapture?.let { file ->
-                        FeedbackAnnotationScreen(
-                            imageFile = file,
-                            onDismiss = { PendingFeedbackCaptureStore.clear() },
-                        )
+            // Device-scoped, checked ahead of AuthGate — shown once
+            // regardless of whether this device already has a signed-in
+            // account (see OnboardingStore's kdoc).
+            val hasCompletedOnboarding by ServiceLocator.onboardingStore.hasCompleted.collectAsState()
+            if (!hasCompletedOnboarding) {
+                OnboardingScreen(onFinished = { ServiceLocator.onboardingStore.setCompleted(true) })
+            } else {
+                AuthGate {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        ContempoNavHost()
+                        // Shown on top of whichever tab is active — a shake can
+                        // happen from anywhere, see MainActivity.handleShake.
+                        val pendingCapture by PendingFeedbackCaptureStore.pendingCapture.collectAsState()
+                        pendingCapture?.let { file ->
+                            FeedbackAnnotationScreen(
+                                imageFile = file,
+                                onDismiss = { PendingFeedbackCaptureStore.clear() },
+                            )
+                        }
                     }
                 }
             }

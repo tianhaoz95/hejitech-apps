@@ -74,6 +74,8 @@ object ServiceLocator {
         private set
     lateinit var shakeToReportSettingsStore: ShakeToReportSettingsStore
         private set
+    lateinit var onboardingStore: OnboardingStore
+        private set
     lateinit var pendingCaptureStore: PendingCaptureStore
         private set
     lateinit var quickCaptureStatsStore: QuickCaptureStatsStore
@@ -110,6 +112,7 @@ object ServiceLocator {
         textCaptureQueue = TextCaptureQueue(Firebase.firestore, auth)
         quickCaptureSettingsStore = QuickCaptureSettingsStore(context)
         shakeToReportSettingsStore = ShakeToReportSettingsStore(context)
+        onboardingStore = OnboardingStore(context)
         pendingCaptureStore = PendingCaptureStore(context)
         quickCaptureStatsStore = QuickCaptureStatsStore(context)
         captureLanguageStore = CaptureLanguageStore(context)

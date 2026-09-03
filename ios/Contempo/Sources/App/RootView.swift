@@ -14,7 +14,12 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if isSignedIn {
+            // Device-scoped, checked ahead of sign-in — shown once regardless
+            // of whether this device already has a signed-in account (see
+            // OnboardingStore's doc comment).
+            if !ServiceLocator.onboardingStore.hasCompleted {
+                OnboardingView()
+            } else if isSignedIn {
                 MainTabView()
             } else {
                 SignInScreen()
