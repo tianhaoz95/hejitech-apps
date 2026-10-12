@@ -46,17 +46,14 @@ private actor ModelHost {
     }
   }
 
-  /// The GPU (Metal) when LiteRT can use it, else the CPU.
+  /// The CPU only. On iPhones the GPU (Metal) engine loads but then fails or garbles answers
+  /// (LiteRT-LM #2814, #3087, #3913), and the simulator can't create it at all, so it was never
+  /// what we tested.
   private func loaded(modelPath: String, cacheDir: String) async throws -> Engine {
     if let engine { return engine }
-    func make(_ backend: Backend) async throws -> Engine {
-      let e = Engine(
-        engineConfig: try EngineConfig(modelPath: modelPath, backend: backend, maxNumTokens: 4096, cacheDir: cacheDir))
-      try await e.initialize()
-      return e
-    }
-    let e: Engine
-    do { e = try await make(.gpu) } catch { e = try await make(.cpu()) }
+    let e = Engine(
+      engineConfig: try EngineConfig(modelPath: modelPath, backend: .cpu(), maxNumTokens: 4096, cacheDir: cacheDir))
+    try await e.initialize()
     engine = e
     return e
   }
@@ -350,6 +347,7 @@ final class WaypackLocalModel: NSObject, FlutterStreamHandler, URLSessionDataDel
         if Task.isCancelled {
           self.send(["id": id, "type": "done", "text": Self.clean(text)])
         } else {
+          NSLog("waypack litert: %@", String(describing: error))
           let d = String(describing: error).lowercased()
           let code =
             d.contains("token") || d.contains("too long") || d.contains("context") ? "context"
