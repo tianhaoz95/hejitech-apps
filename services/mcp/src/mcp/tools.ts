@@ -1,4 +1,4 @@
-import { decodeInlineFiles, formatResult, LIMITS, SCHEMA_VERSION, SDK_MAJOR, unzipBundle, validateFiles, validateZip, manifestSchema, type BundleFile, type InlineFile } from "@waypack/bundle-schema";
+import { decodeInlineFiles, formatMoney, formatResult, LIMITS, privateDetailReason, priceChangePct, type Manifest, SCHEMA_VERSION, SDK_MAJOR, unzipBundle, validateFiles, validateZip, manifestSchema, type BundleFile, type InlineFile } from "@waypack/bundle-schema";
 import type { Env } from "../env.js";
 import { Db, eq } from "../lib/db.js";
 import { computeRoute, geocode, rateLimit, type LatLon, type Mode } from "../lib/geo.js";
@@ -7,6 +7,7 @@ import { keys, signedFileUrl, signedUploadUrl } from "../lib/storage.js";
 import { deletePreview, listPreviews, PreviewError, publishPreview, pushPreview, type PushResult } from "../lib/previews.js";
 import { ShareError, sharedTripForAgent, shareTrip, unshareTrip } from "../lib/shares.js";
 import { draftTemplate, filterCards, MONTHS, MOVES, PACES, publishedCards, setTemplateStatus, templateForAgent, TemplateError, type SearchQuery, type TemplateCard, type TemplateInput, matchReasons } from "../lib/templates.js";
+import { bookingStatusArg, loadPriceState, mergePriceState, observedAtArg, PriceError, trackedPlaces, type TrackedPlace } from "../lib/prices.js";
 import { GUIDE } from "../generated/guide.js";
 import { ToolError, type ToolDef, type ToolResult } from "./protocol.js";
 
@@ -82,6 +83,7 @@ Workflow: interview the user → research → geocode every place and compute_ro
 Live preview: as soon as there's a skeleton, push_preview and give the user the link; push again (changed files only) at milestones so they can watch it take shape on any device. When they approve, publish_preview publishes it to the app.
 Updates to an existing trip ("we booked X", "add a day", "the road is closed"): list_trips → get_trip (latest files) → revise everything the change affects → push_preview { trip_id, changed files, note } → publish_preview when approved.
 Trip gallery: early in a new plan, search_templates for proven trips that fit (season, length, who's going) and offer the best ones; if the user picks one, get_template and adapt it. After a trip the user enjoyed, offer to turn it into a template: debrief them (kept / would cut / surprised), draft_template, show them the draft, publish_template only after they approve.
+Prices: when the user cares about a booking's price, record_price each time you check it (put promo deadlines in the note, e.g. "promo ends Oct 11"); when they ask "should we book?", call suggest_booking_timing; set_booking_status once it's booked.
 "Template" always means a gallery template made with draft_template (only for trips whose dates have passed). It never means a local copy of the bundle with placeholders; the files you build new trips from are the starter bundle (get_authoring_guide section="starter").`;
 
 export const tools: ToolDef<ToolCtx>[] = [
@@ -654,6 +656,123 @@ export const tools: ToolDef<ToolCtx>[] = [
     },
   },
   {
+    name: "record_price",
+    title: "Record a price",
+    description:
+      "Records a price you or the user just observed for a place in a published trip (e.g. the lodge's nightly or total rate) and returns the recomputed booking signal. " +
+      "Snapshots are append-only; record one every time you check. Put any promo/sale deadline in `note` in a form like \"promo ends Oct 11\" or \"sale ends 2026-10-11\" so the signal can act on it. " +
+      "Never put confirmation numbers, names or payment details in `note` or `source`. The trip's bundle shows prices and signals after its next publish (push_preview { trip_id } + publish_preview).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        trip_id: { type: "string" },
+        place_id: { type: "string", description: "A place id from the trip's manifest." },
+        amount: { type: "number", exclusiveMinimum: 0, description: "The price as a number, e.g. 563 (say in `note` what it covers: per night, total for 2 nights…)." },
+        currency: { type: "string", default: "USD", description: "ISO 4217 code." },
+        source: { type: "string", description: "Where it was seen, e.g. greatwolf.com." },
+        note: { type: "string", description: "What the price covers and any deadline, e.g. \"Flexible rate, 2 nights; Scary Savings promo ends Oct 11\"." },
+        observed_at: { type: "string", description: "ISO-8601 with time zone; default now." },
+      },
+      required: ["trip_id", "place_id", "amount"],
+    },
+    annotations: { openWorldHint: false },
+    async run(args, ctx) {
+      const id = tripIdArg(args, true)!;
+      const m = await pricedManifest(ctx, id);
+      const place = placeArg(m, args);
+      const amount = typeof args.amount === "number" ? Math.round(args.amount * 100) / 100 : NaN;
+      if (!Number.isFinite(amount) || amount <= 0) throw new ToolError("`amount` must be a number greater than 0 (no currency symbol).");
+      const currency = (str(args, "currency", false) ?? "USD").toUpperCase();
+      if (!/^[A-Z]{3}$/.test(currency)) throw new ToolError("`currency` must be an ISO 4217 code like USD or EUR.");
+      const source = str(args, "source", false)?.trim().slice(0, 200) || null;
+      const note = str(args, "note", false)?.trim().slice(0, 500) || null;
+      for (const [k, v] of [["note", note], ["source", source]] as const) {
+        const why = privateDetailReason(v ?? undefined);
+        if (why) throw new ToolError(`\`${k}\` can't be stored: ${why}. Prices end up in the trip bundle; leave out confirmation numbers, names and payment details.`);
+      }
+      const now = new Date();
+      const observed_at = priceArg(() => observedAtArg(args.observed_at, now));
+      await ctx.db.insert("place_price_snapshots", { trip_id: id, user_id: ctx.userId, place_id: place.id, observed_at, amount, currency, source, note });
+      const t = (await pricedTracked(ctx, id, now)).find((x) => x.place_id === place.id)!;
+      return {
+        text: `Recorded ${formatMoney(amount, currency)} for ${place.name} (${t.price_snapshots.length} observation${t.price_snapshots.length === 1 ? "" : "s"}).\n${verdictLine(t)}\nIt shows in the trip's Prices section after the next publish.`,
+        structured: { place_id: place.id, snapshot_count: t.price_snapshots.length, signal: t.signal },
+      };
+    },
+  },
+  {
+    name: "get_price_history",
+    title: "Get price history",
+    description: "Returns the recorded price snapshots, booking status and current booking signal for one place, or for every price-tracked place in a trip.",
+    inputSchema: { type: "object", properties: { trip_id: { type: "string" }, place_id: { type: "string" } }, required: ["trip_id"] },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+    async run(args, ctx) {
+      const id = tripIdArg(args, true)!;
+      const m = await pricedManifest(ctx, id);
+      const one = args.place_id !== undefined ? placeArg(m, args) : null;
+      const all = trackedPlaces(m);
+      const places = one ? [all.find((t) => t.place_id === one.id) ?? { place_id: one.id, name: one.name, booking_status: "unbooked" as const, price_snapshots: [], signal: { verdict: "none" as const, reason: "Not price-tracked yet." } }] : all;
+      if (!places.length) return { text: `No price-tracked places in "${m.title}" yet. Use record_price to start tracking one.`, structured: { places: [] } };
+      const text = places
+        .map((t) => [`${t.name} (${t.place_id}) · ${t.booking_status}`, ...t.price_snapshots.map((s) => `  - ${s.observed_at}: ${formatMoney(s.amount, s.currency)}${s.source ? ` · ${s.source}` : ""}${s.note ? ` · ${s.note}` : ""}`), `  ${verdictLine(t)}`].join("\n"))
+        .join("\n\n");
+      return { text, structured: { places } };
+    },
+  },
+  {
+    name: "set_booking_status",
+    title: "Set booking status",
+    description:
+      "Marks a place in a published trip as unbooked, held or booked. Held/booked stops its booking signals (verdict none); unbooked also marks a place as price-tracked before any price is recorded. " +
+      "Never pass confirmation numbers, names or payment details. Shows in the bundle after the next publish.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        trip_id: { type: "string" },
+        place_id: { type: "string" },
+        status: { type: "string", enum: ["unbooked", "held", "booked"] },
+        note: { type: "string", description: "Optional, for you: e.g. \"refundable until Nov 20\". Not shown in the bundle." },
+      },
+      required: ["trip_id", "place_id", "status"],
+    },
+    annotations: { idempotentHint: true, openWorldHint: false },
+    async run(args, ctx) {
+      const id = tripIdArg(args, true)!;
+      const m = await pricedManifest(ctx, id);
+      const place = placeArg(m, args);
+      const status = priceArg(() => bookingStatusArg(args.status));
+      const note = str(args, "note", false)?.trim().slice(0, 500) || null;
+      const why = privateDetailReason(note ?? undefined);
+      if (why) throw new ToolError(`\`note\` can't be stored: ${why}. Leave out confirmation numbers, names and payment details.`);
+      await ctx.db.insert(
+        "place_bookings",
+        { trip_id: id, user_id: ctx.userId, place_id: place.id, status, note, updated_at: new Date().toISOString() },
+        { upsert: true, onConflict: "trip_id,place_id" },
+      );
+      const t = (await pricedTracked(ctx, id)).find((x) => x.place_id === place.id)!;
+      return {
+        text: `${place.name} is now ${status}.\n${verdictLine(t)}\nThe bundle's Prices section updates after the next publish.`,
+        structured: { place_id: place.id, booking_status: status, signal: t.signal },
+      };
+    },
+  },
+  {
+    name: "suggest_booking_timing",
+    title: "Suggest booking timing",
+    description:
+      "Answers \"should we book now or wait?\" for every price-tracked place in a trip: verdict (book_now, book_soon, good_time, stable, none) and a reason citing the observed prices and deadlines. " +
+      "Rules: a deadline in a note within 7 days → book_now; price ≥ 5% above the first observation → book_soon, ≥ 5% below → good_time; trip within 21 days and unbooked → book_soon; booked/held or past trip → none. Relay the reasons; don't overstate them.",
+    inputSchema: { type: "object", properties: { trip_id: { type: "string" } }, required: ["trip_id"] },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+    async run(args, ctx) {
+      const id = tripIdArg(args, true)!;
+      const tracked = await pricedTracked(ctx, id);
+      const suggestions = tracked.map((t) => ({ place_id: t.place_id, name: t.name, verdict: t.signal.verdict, reason: t.signal.reason }));
+      if (!suggestions.length) return { text: "No price-tracked places in this trip yet. Check current prices, then record_price for each booking the user is weighing.", structured: { suggestions } };
+      return { text: tracked.map((t) => `${t.name} (${t.place_id}): ${verdictLine(t)}`).join("\n"), structured: { suggestions } };
+    },
+  },
+  {
     name: "get_trip_status",
     title: "Get trip status",
     description: "Processing status of a trip: status (processing | ready | failed), tiles_status, and sizes. Poll every ~20 s after uploading until ready.",
@@ -690,6 +809,43 @@ export const tools: ToolDef<ToolCtx>[] = [
     },
   },
 ];
+
+// ------------------------------------------------------------------ price tracking
+
+/** The latest published manifest with recorded prices and statuses merged in. */
+async function pricedManifest(ctx: ToolCtx, tripId: string, now = new Date()): Promise<Manifest> {
+  const t = await ownTrip(ctx, tripId);
+  const v = await ctx.db.one<{ manifest: Manifest }>("trip_versions", `select=manifest&trip_id=${eq(tripId)}&version=${eq(t.current_version)}`);
+  if (!v) throw new ToolError(`Trip "${t.title}" has no published version yet. Publish it first, or put price_snapshots in the manifest (see get_authoring_guide, "Price tracking").`);
+  return mergePriceState(v.manifest, await loadPriceState(ctx.db, ctx.userId, tripId), now);
+}
+
+async function pricedTracked(ctx: ToolCtx, tripId: string, now = new Date()): Promise<TrackedPlace[]> {
+  return trackedPlaces(await pricedManifest(ctx, tripId, now), now);
+}
+
+function placeArg(m: Manifest, args: Record<string, unknown>) {
+  const pid = str(args, "place_id")!;
+  const p = m.places.find((x) => x.id === pid);
+  if (!p) throw new ToolError(`Unknown place_id \`${pid}\` in "${m.title}". Places: ${m.places.map((x) => x.id).join(", ")}.`);
+  return p;
+}
+
+function priceArg<T>(f: () => T): T {
+  try {
+    return f();
+  } catch (e) {
+    if (e instanceof PriceError) throw new ToolError(e.message);
+    throw e;
+  }
+}
+
+const VERDICTS: Record<string, string> = { book_now: "BOOK NOW", book_soon: "Book soon", good_time: "Good time to book", stable: "Stable", none: "No signal" };
+function verdictLine(t: TrackedPlace): string {
+  const s = t.price_snapshots;
+  const delta = s.length > 1 && new Set(s.map((x) => x.currency ?? "USD")).size === 1 ? ` · ${priceChangePct(s[0].amount, s[s.length - 1].amount)}% since first seen` : "";
+  return `${VERDICTS[t.signal.verdict] ?? t.signal.verdict}${delta}: ${t.signal.reason}`;
+}
 
 async function ownUpload(ctx: ToolCtx, id: string) {
   if (!uuidRe.test(id)) throw new ToolError("`upload_id` must be the id returned by create_upload.");

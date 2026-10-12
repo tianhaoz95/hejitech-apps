@@ -5,6 +5,7 @@ import { Db, eq } from "./db.js";
 import { activeTripCount, planFor, upgradeHint, type Plan } from "./entitlements.js";
 import { keys, signedFileUrl } from "./storage.js";
 import { devicePlanet, resolvePlanet, type Planet } from "./planet.js";
+import { prunePriceState, withPriceState } from "./prices.js";
 
 export interface TripRow {
   id: string;
@@ -76,6 +77,15 @@ export async function publishBundle(
   input: { zip: Uint8Array } | { files: BundleFile[] },
   tripIdArg?: string | null,
 ): Promise<PublishResult> {
+  // Recorded prices and booking statuses go into the manifest with fresh booking signals, before
+  // validation so they're checked like everything else.
+  const raw = "zip" in input ? unzipBundle(input.zip) : { files: input.files, errors: [] };
+  let pricesRecorded = false;
+  if (!raw.errors.length) {
+    const priced = await withPriceState(db, userId, tripIdArg ?? manifestTripId(raw.files), raw.files);
+    if (priced.files !== raw.files) input = { files: priced.files };
+    pricesRecorded = priced.recorded;
+  }
   let zip = "zip" in input ? input.zip : zipBundle(input.files);
   const v = validateZip(zip);
   if (!v.ok || !v.manifest) {
@@ -212,6 +222,8 @@ export async function publishBundle(
     status,
   });
 
+  if (pricesRecorded) await prunePriceState(db, userId, tripId, stored.places.map((p) => p.id));
+
   const warnings = [...v.warnings, ...mapWarnings];
   const app_hint = `Open Waypack on your phone and tap Download on "${manifest.title}" before you lose signal.`;
   const tilesMsg =
@@ -232,6 +244,17 @@ export async function publishBundle(
     app_hint,
     message: `Published "${manifest.title}" as version ${version} (trip_id ${tripId}). ${tilesMsg} ${app_hint}`,
   };
+}
+
+function manifestTripId(files: BundleFile[]): string | null {
+  const f = files.find((x) => x.path === "manifest.json");
+  if (!f) return null;
+  try {
+    const id = JSON.parse(new TextDecoder().decode(f.data).replace(/^\uFEFF/, ""))?.trip_id;
+    return typeof id === "string" ? id : null;
+  } catch {
+    return null;
+  }
 }
 
 async function planExtracts(env: Env, db: Db, plan: Plan, trip: TripRow, version: number, m: Manifest) {

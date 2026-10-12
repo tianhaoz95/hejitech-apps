@@ -157,6 +157,19 @@ details summary { min-height: 40px; display: flex; align-items: center; font-wei
 .callout { border-left: 4px solid var(--warn); background: var(--surface-2); padding: 10px 12px; border-radius: 8px; margin: 8px 0; }
 .empty { text-align: center; color: var(--muted); padding: 32px 16px; }
 .guide-grid { display: block; }
+.price-row { padding: 12px 0; border-top: 1px solid var(--line); }
+.price-row:first-child { border-top: 0; padding-top: 0; }
+.price-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.price-head h3 { margin: 0; }
+.price-now { font-size: 1.15rem; font-variant-numeric: tabular-nums; margin: 4px 0; }
+.delta { font-size: .9rem; font-weight: 600; color: var(--muted); }
+.delta.up { color: var(--warn); }
+.delta.down { color: var(--ok); }
+.status-chip { flex: none; font-size: .75rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--surface-2); color: var(--muted); }
+.status-chip.booked, .status-chip.held { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+.verdict { border-left: 4px solid var(--line); background: var(--surface-2); padding: 8px 12px; border-radius: 8px; margin: 8px 0; }
+.verdict.book_now, .verdict.book_soon { border-left-color: var(--warn); }
+.verdict.good_time { border-left-color: var(--ok); }
 
 /* ---------- Add-to-calendar sheet ---------- */
 .sheet-backdrop { position: fixed; inset: 0; z-index: 40; background: rgba(8, 12, 20, .45); display: flex; align-items: flex-end; justify-content: center; }

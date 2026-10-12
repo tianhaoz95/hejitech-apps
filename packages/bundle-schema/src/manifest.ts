@@ -1,6 +1,7 @@
 import validateSchema from "./generated/validate-manifest.js";
 import type { Issue, Manifest } from "./types.js";
 import { LIMITS } from "./limits.js";
+import { privateDetailReason } from "./prices.js";
 import { bboxAreaKm2, countCoords, expandBBox, inAnyArea, mapAreas, padBBox } from "./geo.js";
 
 export interface ManifestCheck { errors: Issue[]; warnings: Issue[]; manifest?: Manifest }
@@ -21,6 +22,9 @@ const FIELD_HINTS: Record<string, string> = {
   geometry: "call the `compute_route` tool and paste its `geometry`",
   bbox: "use [minLon, minLat, maxLon, maxLat] covering every place plus a few km",
   timezone: "use an IANA zone like America/Los_Angeles",
+  observed_at: "ISO-8601 with a time zone, e.g. 2026-10-04T12:00:00-07:00",
+  amount: "a positive number without a currency symbol, e.g. 563 (currency goes in `currency`)",
+  booking_status: "unbooked, held or booked",
 };
 
 export function parseManifestText(text: string): { manifest?: unknown; error?: Issue } {
@@ -196,6 +200,21 @@ function semanticChecks(m: Manifest, errors: Issue[], warnings: Issue[]): void {
       hint: `expand to [${s.join(", ")}] (~${Math.round(bboxAreaKm2(s)).toLocaleString("en-US")} km²) or add an extra_area around the outliers`,
     });
   }
+
+  // Price tracking: signals are computed server-side; notes ship in the bundle, so keep them private-free.
+  m.places.forEach((p, i) => {
+    const snaps = p.price_snapshots;
+    if (Array.isArray(snaps) && snaps.length === 0) {
+      warnings.push({ path: `places[${i}].price_snapshots`, message: `\`${p.id}\` is marked for price tracking but has no observations yet`, hint: "record one with record_price, or add a snapshot" });
+    }
+    if (snaps?.length && !p.booking_signal) {
+      warnings.push({ path: `places[${i}].booking_signal`, message: `\`${p.id}\` has price snapshots but no booking signal`, hint: "Waypack computes it when you publish (or call suggest_booking_timing); republish to embed it" });
+    }
+    snaps?.forEach((s, j) => {
+      const why = privateDetailReason(s.note);
+      if (why) errors.push({ path: `places[${i}].price_snapshots[${j}].note`, message: `can't go in the bundle: ${why}`, hint: "remove confirmation numbers, names and payment details from price notes" });
+    });
+  });
 
   // Coverage nudges.
   if (!m.live_checks?.length) warnings.push({ path: "live_checks", message: "no live checks", hint: "add links for road/weather/park alerts — never present conditions as fact" });

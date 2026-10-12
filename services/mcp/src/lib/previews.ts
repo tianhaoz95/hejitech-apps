@@ -14,6 +14,7 @@ import type { Env } from "../env.js";
 import { randomToken, sha256 } from "./crypto.js";
 import { Db, eq } from "./db.js";
 import { publishBundle, type PublishResult } from "./pipeline.js";
+import { withPriceState } from "./prices.js";
 
 export const PREVIEW_TTL_DAYS = 14;
 /** Open (unexpired) previews per account. */
@@ -259,12 +260,14 @@ export async function pushPreview(env: Env, db: Db, userId: string, input: PushI
   }
   if (!input.files.length && !deletes.length) throw new PreviewError("Nothing to push: pass `files` (changed files only is fine) and/or `delete`.");
 
-  const adds = await Promise.all(
-    input.files.map(async (f) => ({ path: f.path, data: f.data, ref: { sha256: await sha256(f.data), bytes: f.data.byteLength, type: contentTypeFor(f.path) } })),
-  );
-
   const target = await targetPreview(env, db, userId, input.previewId, input.tripId);
   let row = target.row;
+  // Recorded prices and booking signals show in the preview just as they will once published.
+  const { files } = await withPriceState(db, userId, row.trip_id, input.files);
+  const adds = await Promise.all(
+    files.map(async (f) => ({ path: f.path, data: f.data, ref: { sha256: await sha256(f.data), bytes: f.data.byteLength, type: contentTypeFor(f.path) } })),
+  );
+
   for (let attempt = 0; ; attempt++) {
     const next = mergeFiles(row.files, adds, deletes, !!input.replace);
     const over = limitErrors(next);

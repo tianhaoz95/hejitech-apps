@@ -86,7 +86,7 @@ The `@waypack/cli` npm package provides local development workflows:
 
 ### 4. Remote MCP Server (`services/mcp`)
 A horizontal, stateless Cloudflare Worker implementing the Model Context Protocol:
-* Exposes tools: `geocode`, `compute_route`, `validate_bundle`, `push_preview`, `publish_preview`, `upload_bundle_inline`, `list_trips`, `get_trip_status`.
+* Exposes tools: `geocode`, `compute_route`, `validate_bundle`, `push_preview`, `publish_preview`, `upload_bundle_inline`, `list_trips`, `get_trip_status`, and price tracking (`record_price`, `get_price_history`, `set_booking_status`, `suggest_booking_timing`).
 * **Live Previews**: Allows travelers to watch trip plans materialize in real-time on any device before final publishing.
 * **Security**: PKCE OAuth 2.1 with Cloudflare OAuth Provider, signed upload/download URLs, and Row-Level Security (RLS).
 

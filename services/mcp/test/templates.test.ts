@@ -12,7 +12,7 @@ const sequoia = {
   places: [
     { id: "a", name: "Sequoia Coffee Co.", category: "food", lat: 36.43856, lon: -118.90529 },
     { id: "b", name: "General Sherman Tree", category: "sight", lat: 36.58163, lon: -118.75135 },
-    { id: "c", name: "Wuksachi Lodge", category: "lodging", lat: 36.59466, lon: -118.75812, notes: "Confirmation #AB12CD" },
+    { id: "c", name: "Wuksachi Lodge", category: "lodging", lat: 36.59466, lon: -118.75812, notes: "Confirmation #AB12CD", booking_status: "booked", price_snapshots: [{ observed_at: "2026-11-01T12:00:00-07:00", amount: 410 }], booking_signal: { verdict: "none", reason: "Already booked." } },
   ],
   routes: [{ id: "r1", from: "a", to: "b", mode: "driving", geometry: { type: "LineString", coordinates: [[-118.9, 36.4], [-118.75, 36.58]] } }],
   days: [
@@ -85,6 +85,7 @@ describe("cleanManifest", () => {
     expect((c.travelers as Record<string, unknown>).notes).toBeUndefined();
     expect((c.routes as Record<string, unknown>[]).every((r) => r.geometry === undefined)).toBe(true);
     expect(text).toContain("Reservation no. ••••");
+    expect(text).not.toMatch(/price_snapshots|booking_status|booking_signal/);
   });
 });
 

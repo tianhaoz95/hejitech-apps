@@ -24,6 +24,7 @@ Ask **only what you don't already know**, in **one batched message** (numbered, 
 7. Budget level; dietary needs
 8. Season-specific gear (snow, heat, rain); connectivity expectations
 9. Preferred navigation app (Google Maps or Apple Maps)
+10. Which bookings are price-sensitive? Any promo or sale deadlines I should know about?
 
 If the user says "just plan it", make sensible assumptions and **list them** at the top of the Overview.
 
@@ -75,6 +76,7 @@ Start from the starter bundle: CLI agents run `npx @waypack/cli init ./waypack/<
    - [ ] **Safety**: no-service zones, emergency numbers, nearest hospital/urgent care, ranger stations (as `medical`/`other` places referenced from `emergency.places`)
    - [ ] **Packing list** for season, activities, travelers
    - [ ] **Budget** estimate by category
+   - [ ] **Price history**: ≥ 1 snapshot recorded for each price-tracked place; signal verdict present (see "Price tracking")
    - [ ] **Backup plans** per day for weather/closures
    - [ ] **Offline prep**: download trip in Waypack, download Google/Apple offline area, charge power banks, print confirmations
 
@@ -119,6 +121,20 @@ Then call `get_trip_status` until `status` is `ready` (map extraction takes ~1�
 > "Open Waypack on your phone and tap **Download** on *<title>* before you lose signal."
 
 If the server returns an entitlement/limit message, relay it verbatim — don't retry in a loop.
+
+## Price tracking
+
+For bookings where timing matters (a lodge with a promo, a rate that drifts), Waypack remembers the prices you check and answers "book now or wait?" from them. Nothing is scraped: every price is one you or the user actually saw.
+
+- **Data** (on the place, in `manifest.json`): `booking_status` (`unbooked` default | `held` | `booked`), `price_snapshots` (append-only `{observed_at, amount, currency, source?, note?}`; `observed_at` is ISO-8601 with a time zone, `amount` a plain number), and `booking_signal` (`{verdict, reason, computed_at}`). The human-written `cost` stays as your estimate; snapshots are the observed history. A place is price-tracked once it has `price_snapshots` (even `[]`) or a `booking_status`.
+- **Tools** (for a published trip):
+  - `record_price { trip_id, place_id, amount, currency?, source?, note?, observed_at? }` each time you check a price. Write deadlines in the note in a form like `promo ends Oct 11`, `sale ends 2026-10-11`, `book by 10/15` or `expires 11 Oct` (cue word: ends, expires, until, through, book by, deadline, last day).
+  - `get_price_history { trip_id, place_id? }` for the snapshots and current signal.
+  - `set_booking_status { trip_id, place_id, status }` when it's held or booked (signals stop).
+  - `suggest_booking_timing { trip_id }` when the user asks "should we book?". Relay each verdict with its reason.
+- **Verdicts** (rule-based, each reason cites the prices and dates used): a deadline within 7 days → `book_now`; latest price ≥ 5% above the first → `book_soon`, ≥ 5% below → `good_time`; trip within 21 days and unbooked → `book_soon`; otherwise `stable`. Booked/held, a past trip or mixed currencies → `none`. Deadline beats trend beats proximity.
+- **Offline:** signals are computed by Waypack when a price is recorded and when the trip is published or previewed, and embedded in the manifest. The bundle only displays them (the starter bundle's Guide → Prices card); never compute verdicts in page JS. Recorded prices reach the bundle on the next publish (`push_preview { trip_id }` + `publish_preview`). Before a trip is first published, write `price_snapshots` into the manifest yourself; the signal is added on publish.
+- **Privacy:** no confirmation numbers, guest names or payment details in price notes, sources or status notes. The tools and the validator reject them.
 
 ## Updating an existing trip
 

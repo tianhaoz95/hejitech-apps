@@ -167,6 +167,13 @@ export function cleanManifest(m: Manifest): Record<string, unknown> {
       return rest;
     });
   }
+  // Prices and booking state were this trip's, at its dates.
+  if (Array.isArray(c.places)) {
+    c.places = (c.places as Record<string, unknown>[]).map((p) => {
+      const { price_snapshots: _s, booking_status: _b, booking_signal: _g, ...rest } = p;
+      return rest;
+    });
+  }
   return JSON.parse(redactText(JSON.stringify(c)).text) as Record<string, unknown>;
 }
 

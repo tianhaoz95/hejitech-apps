@@ -47,7 +47,15 @@ Authoritative JSON Schema: `packages/bundle-schema/manifest.v1.schema.json` (als
     "lat": 36.5960, "lon": -118.7547,// from `geocode` — never guessed
     "address": "...", "phone": "+1-...", "hours": "...", "cost": "...",
     "notes": "Check-in 4pm. Confirmation #ABC123.",
-    "links": [{ "label": "Reservation", "url": "https://..." }]  // http(s)/tel/mailto/sms
+    "links": [{ "label": "Reservation", "url": "https://..." }], // http(s)/tel/mailto/sms
+    "booking_status": "unbooked",    // optional: unbooked|held|booked (price tracking, see SKILL.md)
+    "price_snapshots": [{            // optional, append-only; present (even []) = price-tracked
+      "observed_at": "2026-10-04T12:00:00-07:00", // ISO-8601 with time zone
+      "amount": 563.00, "currency": "USD",         // plain number; ISO 4217 (default USD)
+      "source": "greatwolf.com",
+      "note": "Flexible rate, 2 nights; promo ends Oct 11"  // deadlines in a parseable form; nothing private
+    }],
+    "booking_signal": { "verdict": "book_now", "reason": "…", "computed_at": "…" } // written by Waypack on publish; don't hand-write
   }],
   "routes": [{
     "id": "r-day1-drive",
@@ -84,4 +92,5 @@ Authoritative JSON Schema: `packages/bundle-schema/manifest.v1.schema.json` (als
 - Items sorted by `time`; `end_time ≥ time` (split overnight items across days).
 - Places outside every map area → warning with a suggested expanded bbox.
 - Route geometry: valid `[lon, lat]` order, ≤ 5,000 coordinates; 2-point lines get a warning (use `compute_route`).
+- Price tracking: snapshots need `observed_at` (with time zone) and `amount > 0`; `booking_status` must be unbooked/held/booked; notes with confirmation or card numbers are errors. Warnings for snapshots without a `booking_signal` (publish computes it) and for tracked places with no snapshots.
 - Extra properties are allowed (for your own rendering) — the app ignores them.

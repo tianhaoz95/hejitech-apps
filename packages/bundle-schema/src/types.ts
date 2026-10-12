@@ -20,6 +20,29 @@ export interface Place {
   hours?: string;
   cost?: string;
   links?: Link[];
+  booking_status?: BookingStatus;
+  /** Observed prices, append-only. Present (even empty) = price-tracked. */
+  price_snapshots?: PriceSnapshot[];
+  /** Computed by the server when prices are recorded / the trip is published. */
+  booking_signal?: BookingSignal;
+}
+
+export type BookingStatus = "unbooked" | "held" | "booked";
+
+export interface PriceSnapshot {
+  /** ISO-8601 with a time zone, e.g. 2026-10-04T12:00:00-07:00 */
+  observed_at: string;
+  amount: number;
+  /** ISO 4217, default USD. */
+  currency?: string;
+  source?: string;
+  note?: string;
+}
+
+export interface BookingSignal {
+  verdict: "book_now" | "book_soon" | "good_time" | "stable" | "none";
+  reason: string;
+  computed_at?: string;
 }
 
 export type Position = [number, number] | [number, number, number];

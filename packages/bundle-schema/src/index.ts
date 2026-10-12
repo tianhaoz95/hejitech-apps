@@ -9,6 +9,7 @@ export * from "./types.js";
 export * from "./limits.js";
 export * from "./geo.js";
 export * from "./listing.js";
+export * from "./prices.js";
 export { checkManifest, pointerToPath } from "./manifest.js";
 export { classifyUrl, resolveRelative } from "./html.js";
 export { unzipBundle, zipBundle, readCentralDirectory, unsafePathReason } from "./zip.js";
