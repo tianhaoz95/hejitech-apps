@@ -1,7 +1,7 @@
 import type { Manifest } from "@waypack/bundle-schema";
 import { mountBar, setMenu } from "./bar.js";
 import { callNative, host } from "./host.js";
-import { chooseApp, mapsUrl } from "./links.js";
+import { chooseApp, explicitApp, mapsUrl } from "./links.js";
 import { createMap } from "./map.js";
 import { categories, routeModes } from "./theme.js";
 import { eventFromItem, eventsFromManifest, googleCalendarUrl, resolveTimes, toIcs, type CalEvent, type CalTarget } from "./calendar.js";
@@ -95,7 +95,9 @@ const Waypack: WaypackSDK = {
       const app = chooseApp(opts.app, m?.nav_app, host().platform, host().navApp);
       const navigate = opts.navigate !== false;
       const url = mapsUrl(t, app, navigate);
-      if (!(await callNative("openInMaps", { lat: t.lat, lon: t.lon, label: t.label ?? null, app, navigate, url }))) openWeb(url);
+      // "auto" lets the app use the user's remembered maps app or ask; `url` is the web fallback.
+      const native = explicitApp(opts.app, m?.nav_app, host().navApp) ?? "auto";
+      if (!(await callNative("openInMaps", { lat: t.lat, lon: t.lon, label: t.label ?? null, app: native, navigate, url }))) openWeb(url);
     })();
   },
 

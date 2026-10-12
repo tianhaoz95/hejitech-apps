@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -23,6 +25,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   int? _storage;
   UpdaterInfo? _updates;
   List<Map<String, dynamic>>? _tokens;
+  String? _mapsApp;
 
   @override
   void initState() {
@@ -33,6 +36,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     _loadUpdates();
     _loadTokens();
+    Handoff.rememberedMapsApp().then(
+      (a) => mounted ? setState(() => _mapsApp = a) : null,
+    );
     if (widget.scrollToConnect) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final c = _connectKey.currentContext;
@@ -44,6 +50,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
         }
       });
     }
+  }
+
+  Future<void> _chooseMapsApp() async {
+    final apps = await Handoff.availableMapsApps();
+    if (!mounted) return;
+    final app = await Handoff.showMapsAppSheet(
+      context,
+      apps: apps,
+      title: 'Directions open in',
+      askOption: true,
+      selected: _mapsApp ?? 'ask',
+    );
+    if (app == null) return;
+    final remembered = app == 'ask' ? null : app;
+    await Handoff.setRememberedMapsApp(remembered);
+    if (mounted) setState(() => _mapsApp = remembered);
   }
 
   Future<void> _loadUpdates() async {
@@ -357,6 +379,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SectionTitle('More'),
           PaperCard(
             children: [
+              // Android hands directions to the system's default maps app.
+              if (Platform.isIOS || Platform.isMacOS)
+                PaperRow(
+                  icon: Icons.directions_outlined,
+                  chip: ChipColor.mint,
+                  title: 'Directions app',
+                  subtitle: Handoff.mapsAppNames[_mapsApp] ?? 'Ask every time',
+                  chevron: true,
+                  onTap: _chooseMapsApp,
+                ),
               // Shaking is a phone gesture (and FeedbackKit is phone-only).
               if (feedbackAvailable)
                 PaperRow(

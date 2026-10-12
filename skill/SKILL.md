@@ -23,7 +23,7 @@ Ask **only what you don't already know**, in **one batched message** (numbered, 
 6. Transport: own car / rental / transit; EV? 4WD/AWD? chains?
 7. Budget level; dietary needs
 8. Season-specific gear (snow, heat, rain); connectivity expectations
-9. Preferred navigation app (Google Maps or Apple Maps)
+9. Preferred navigation app (Google Maps or Apple Maps). No preference → leave `nav_app` unset and the app asks on each Navigate
 10. Which bookings are price-sensitive? Any promo or sale deadlines I should know about?
 
 If the user says "just plan it", make sensible assumptions and **list them** at the top of the Overview.

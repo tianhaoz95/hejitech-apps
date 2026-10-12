@@ -14,9 +14,14 @@ export function mapsUrl(t: LatLon, app: MapsApp, navigate: boolean): string {
     : `https://www.google.com/maps/search/?api=1&query=${ll}`;
 }
 
-export function chooseApp(pref: "google" | "apple" | "auto" | undefined, manifestPref: unknown, platform: string, hostPref?: MapsApp): MapsApp {
+/** The app the page, host or trip asked for; undefined lets the app ask the user. */
+export function explicitApp(pref: "google" | "apple" | "auto" | undefined, manifestPref: unknown, hostPref?: MapsApp): MapsApp | undefined {
   if (pref === "google" || pref === "apple") return pref;
   if (hostPref) return hostPref;
   if (manifestPref === "google" || manifestPref === "apple") return manifestPref;
-  return platform === "ios" || platform === "macos" ? "apple" : "google";
+  return undefined;
+}
+
+export function chooseApp(pref: "google" | "apple" | "auto" | undefined, manifestPref: unknown, platform: string, hostPref?: MapsApp): MapsApp {
+  return explicitApp(pref, manifestPref, hostPref) ?? (platform === "ios" || platform === "macos" ? "apple" : "google");
 }

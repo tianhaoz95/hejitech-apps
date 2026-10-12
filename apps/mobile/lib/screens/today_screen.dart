@@ -39,7 +39,8 @@ class _TodayScreenState extends State<TodayScreen> {
   void _navigate(String? placeId) {
     final p = placeId == null ? null : widget.manifest.placesById[placeId];
     if (p == null) return;
-    Handoff.openInMaps(
+    Handoff.navigateTo(
+      context,
       lat: p.lat,
       lon: p.lon,
       label: p.name,

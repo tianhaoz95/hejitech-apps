@@ -85,6 +85,7 @@
 	<array>
 		<string>comgooglemaps</string>
 		<string>maps</string>
+		<string>waze</string>
 	</array>
 	<key>CFBundleURLTypes</key>
 	<array>

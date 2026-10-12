@@ -150,7 +150,9 @@ class _BundleWebViewState extends State<BundleWebView> {
           handlerName: 'openInMaps',
           callback: (args) async {
             final a = (args.isNotEmpty ? args.first : {}) as Map;
-            await Handoff.openInMaps(
+            if (!mounted) return false;
+            await Handoff.navigateTo(
+              context,
               lat: (a['lat'] as num).toDouble(),
               lon: (a['lon'] as num).toDouble(),
               label: a['label'] as String?,
