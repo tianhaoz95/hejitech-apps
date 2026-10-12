@@ -15,5 +15,8 @@ import UIKit
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "WaypackAssistant") {
       WaypackAssistant.register(messenger: registrar.messenger())
     }
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "WaypackLocalModel") {
+      WaypackLocalModel.register(messenger: registrar.messenger())
+    }
   }
 }

@@ -369,6 +369,44 @@ void main() {
       expect(e, isA<UnsupportedEngine>());
       expect(s.explanation, contains('enough memory'));
     });
+    test('turning on Apple Intelligence beats downloading Qwen', () async {
+      final (e, s) = await AssistantEngines.pick([
+        FakeEngine(
+          const EngineStatus(
+            engine: 'apple-foundation',
+            state: EngineState.unavailable,
+            reason: 'appleIntelligenceNotEnabled',
+          ),
+        ),
+        FakeEngine(
+          const EngineStatus(
+            engine: 'litert-qwen',
+            state: EngineState.downloadable,
+          ),
+        ),
+      ]);
+      expect(e, isA<UnsupportedEngine>());
+      expect(s.explanation, contains('Turn on Apple Intelligence'));
+    });
+    test('an iPhone without Apple Intelligence is offered Qwen', () async {
+      final qwen = FakeEngine(
+        const EngineStatus(
+          engine: 'litert-qwen',
+          state: EngineState.downloadable,
+        ),
+      );
+      final (e, _) = await AssistantEngines.pick([
+        FakeEngine(
+          const EngineStatus(
+            engine: 'apple-foundation',
+            state: EngineState.unavailable,
+            reason: 'deviceNotEligible',
+          ),
+        ),
+        qwen,
+      ]);
+      expect(e, same(qwen));
+    });
     test('download size comes through the channel map', () {
       final s = EngineStatus.fromMap({
         'engine': 'litert-qwen',

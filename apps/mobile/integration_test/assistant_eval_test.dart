@@ -15,6 +15,21 @@ import 'package:waypack/models/manifest.dart';
 const evalUrl = String.fromEnvironment('EVAL_URL');
 const evalTools = bool.fromEnvironment('EVAL_TOOLS', defaultValue: true);
 
+/// `litert`: the downloadable Qwen model even where the system has one (fetched first if needed).
+const evalEngine = String.fromEnvironment('EVAL_ENGINE');
+
+Future<(AssistantEngine, EngineStatus)> litert() async {
+  final e = NativeAssistantEngine(channel: 'waypack/assistant/litert');
+  if ((await e.status()).state == EngineState.downloadable) {
+    var shown = -1;
+    await for (final p in e.download()) {
+      final pct = (p * 100).floor();
+      if (pct ~/ 10 != shown ~/ 10) say('download ${shown = pct}%');
+    }
+  }
+  return (e as AssistantEngine, await e.status());
+}
+
 Future<String> fetch(String path) async {
   final c = HttpClient();
   try {
@@ -33,7 +48,9 @@ void main() {
 
   testWidgets('assistant eval', (t) async {
     tzdata.initializeTimeZones();
-    final (engine, status) = await AssistantEngines.pick();
+    final (engine, status) = evalEngine == 'litert'
+        ? await litert()
+        : await AssistantEngines.pick();
     say(
       'engine=${status.engine} state=${status.state.name} tools=${status.tools}',
     );
@@ -108,5 +125,5 @@ void main() {
     }
     say('$pass/${cases.length} passed, $toolCalls tool call(s)');
     expect(pass, cases.length);
-  });
+  }, timeout: const Timeout(Duration(minutes: 60)));
 }
