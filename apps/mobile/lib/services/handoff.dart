@@ -44,7 +44,8 @@ class Handoff {
 
   /// Hands a place to a maps app. With `app: 'auto'` on iPhone/Mac it uses the remembered
   /// app, or asks (Apple Maps, Google Maps, Waze) with an option to remember the choice.
-  /// A trip's or page's explicit app wins. Android keeps the system's default.
+  /// A page's explicit app wins (a trip's `nav_app` doesn't reach here). Android keeps the
+  /// system's default.
   static Future<void> navigateTo(
     BuildContext context, {
     required double lat,

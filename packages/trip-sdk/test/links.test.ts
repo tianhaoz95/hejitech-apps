@@ -16,13 +16,12 @@ describe("chooseApp", () => {
 });
 
 describe("explicitApp", () => {
-  it("is undefined when nothing asked for an app, so the app can ask the user", () => {
-    expect(explicitApp(undefined, undefined)).toBeUndefined();
-    expect(explicitApp("auto", "waze")).toBeUndefined();
+  it("is undefined unless the page or host named an app, so the app can ask the user", () => {
+    expect(explicitApp(undefined)).toBeUndefined();
+    expect(explicitApp("auto")).toBeUndefined();
   });
-  it("explicit choice, then the app setting, then the manifest", () => {
-    expect(explicitApp("google", "apple", "apple")).toBe("google");
-    expect(explicitApp("auto", "apple", "google")).toBe("google");
-    expect(explicitApp(undefined, "apple")).toBe("apple");
+  it("explicit choice, then the app setting", () => {
+    expect(explicitApp("google", "apple")).toBe("google");
+    expect(explicitApp("auto", "google")).toBe("google");
   });
 });

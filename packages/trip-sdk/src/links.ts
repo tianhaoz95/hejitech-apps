@@ -14,14 +14,18 @@ export function mapsUrl(t: LatLon, app: MapsApp, navigate: boolean): string {
     : `https://www.google.com/maps/search/?api=1&query=${ll}`;
 }
 
-/** The app the page, host or trip asked for; undefined lets the app ask the user. */
-export function explicitApp(pref: "google" | "apple" | "auto" | undefined, manifestPref: unknown, hostPref?: MapsApp): MapsApp | undefined {
+/**
+ * The app the page or host asked for. Undefined lets the Waypack app use the user's remembered
+ * maps app or ask; the trip's `nav_app` is the planner's guess, so it only steers the web.
+ */
+export function explicitApp(pref: "google" | "apple" | "auto" | undefined, hostPref?: MapsApp): MapsApp | undefined {
   if (pref === "google" || pref === "apple") return pref;
-  if (hostPref) return hostPref;
-  if (manifestPref === "google" || manifestPref === "apple") return manifestPref;
-  return undefined;
+  return hostPref;
 }
 
 export function chooseApp(pref: "google" | "apple" | "auto" | undefined, manifestPref: unknown, platform: string, hostPref?: MapsApp): MapsApp {
-  return explicitApp(pref, manifestPref, hostPref) ?? (platform === "ios" || platform === "macos" ? "apple" : "google");
+  const explicit = explicitApp(pref, hostPref);
+  if (explicit) return explicit;
+  if (manifestPref === "google" || manifestPref === "apple") return manifestPref;
+  return platform === "ios" || platform === "macos" ? "apple" : "google";
 }

@@ -44,7 +44,6 @@ class _TodayScreenState extends State<TodayScreen> {
       lat: p.lat,
       lon: p.lon,
       label: p.name,
-      app: widget.manifest.navApp ?? 'auto',
     );
   }
 

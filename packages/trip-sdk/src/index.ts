@@ -96,7 +96,7 @@ const Waypack: WaypackSDK = {
       const navigate = opts.navigate !== false;
       const url = mapsUrl(t, app, navigate);
       // "auto" lets the app use the user's remembered maps app or ask; `url` is the web fallback.
-      const native = explicitApp(opts.app, m?.nav_app, host().navApp) ?? "auto";
+      const native = explicitApp(opts.app, host().navApp) ?? "auto";
       if (!(await callNative("openInMaps", { lat: t.lat, lon: t.lon, label: t.label ?? null, app: native, navigate, url }))) openWeb(url);
     })();
   },

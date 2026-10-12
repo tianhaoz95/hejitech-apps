@@ -32,8 +32,8 @@ TripMap.destroy()
 TripMap.raw                         // maplibregl.Map escape hatch (not semver-stable)
 
 Waypack.openInMaps(placeId | {lat, lon, label?}, { app?: "google"|"apple"|"auto", navigate?: true })
-  // "auto" (default) with no manifest nav_app: the app asks Apple/Google Maps/Waze (or uses the
-  // user's remembered choice); in a browser, Apple Maps on Apple devices, Google elsewhere.
+  // "auto" (default): in the app on iPhone/Mac the user picks Apple/Google Maps/Waze (or their
+  // remembered choice); in a browser, manifest nav_app, else Apple on Apple devices, Google elsewhere.
 Waypack.addToCalendar(target, { app?: "apple"|"google"|"auto" })
   // target: { date: "YYYY-MM-DD", index }  → that manifest day item
   //      or { date, time?, end_time?, title, location?, notes? }  → a custom event
