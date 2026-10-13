@@ -245,8 +245,9 @@ dialog.lbox::backdrop { background: transparent; }
         <button role="tab" aria-selected="true" data-panel="p-claude">Claude (web &amp; desktop)</button>
         <button role="tab" aria-selected="false" data-panel="p-gemini">Gemini (web)</button>
         <button role="tab" aria-selected="false" data-panel="p-muse">Meta Muse</button>
+        <button role="tab" aria-selected="false" data-panel="p-codex-app">Codex app</button>
         <button role="tab" aria-selected="false" data-panel="p-cc">Claude Code</button>
-        <button role="tab" aria-selected="false" data-panel="p-codex">Codex</button>
+        <button role="tab" aria-selected="false" data-panel="p-codex">Codex CLI</button>
         <button role="tab" aria-selected="false" data-panel="p-cursor">Cursor &amp; others</button>
       </div>
 
@@ -274,6 +275,12 @@ dialog.lbox::backdrop { background: transparent; }
           <button type="button" class="secondary" id="muse-create-token">Generate token for Muse</button>
         </div>
         <p style="margin-top:12px">3. Then ask: <code class="inline">Plan a weekend in Lake Tahoe in January with Waypack</code>.</p>
+      </div>
+
+      <div class="panel" id="p-codex-app" role="tabpanel" hidden>
+        <p>In the Codex app: <strong>Settings → MCP servers → Add server</strong>. Name it <code class="inline">waypack</code>, choose <strong>Streamable HTTP</strong>, and paste your MCP URL:</p>
+        <pre><code id="codex-app-url"></code><button type="button" data-copy="codex-app-url">Copy</button></pre>
+        <p>Save, then click <strong>Authenticate</strong> and sign in with <strong class="user-email-display">your account</strong>. Start a new thread and ask: <code class="inline">Plan a weekend in Lake Tahoe in January with Waypack</code>.</p>
       </div>
 
       <div class="panel" id="p-cc" role="tabpanel" hidden>
@@ -417,6 +424,7 @@ dialog.lbox::backdrop { background: transparent; }
       $("codex-cmd").textContent = "codex mcp add waypack --url " + m.mcp_url + "\ncodex mcp login waypack\nnpx @waypack/cli skill install --dir ~/.codex/skills";
       $("claude-url").textContent = m.mcp_url;
       $("gemini-url").textContent = m.mcp_url;
+      $("codex-app-url").textContent = m.mcp_url;
       $("muse-cmd").textContent = "Create a custom connector for Waypack with the MCP server at " + m.mcp_url + " using an API key";
       $("cursor-oauth-cfg").textContent = JSON.stringify({
         mcpServers: {
