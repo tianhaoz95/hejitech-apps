@@ -21,6 +21,10 @@
       FeedbackKit.currentScreen = "Join";
     } else if (path.startsWith("/remix")) {
       FeedbackKit.currentScreen = "Remix";
+    } else if (path.startsWith("/discover")) {
+      FeedbackKit.currentScreen = "Discover";
+    } else if (path.startsWith("/trips/")) {
+      FeedbackKit.currentScreen = "Template";
     } else if (path.startsWith("/privacy")) {
       FeedbackKit.currentScreen = "Privacy";
     } else if (path.startsWith("/terms")) {

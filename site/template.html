@@ -9,6 +9,9 @@
 <link rel="icon" href="/favicon.png?v=2" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2">
 <link rel="stylesheet" href="/gallery.css">
+<script src="https://cdn.jsdelivr.net/npm/feedbackkit-web/dist/feedbackkit.iife.js"></script>
+<script>if(!window.FeedbackKit){document.write('<script src="/vendor/feedbackkit.iife.js"><\/script>');}</script>
+<script src="/feedback.js"></script>
 <style>
 main { padding: 18px 0 40px; }
 .crumb { font-size: .85rem; color: var(--muted); margin-bottom: 16px; }
@@ -44,6 +47,8 @@ h3.h { margin: 30px 0 12px; font: 700 2rem/1 var(--hand); }
 .rm { position: relative; border-radius: 8px; overflow: hidden; box-shadow: var(--paper-shadow); }
 .rm .rm-bg { fill: var(--surface); }
 .rm .rm-grid { stroke: var(--grid); }
+.rm .live { width: 100%; aspect-ratio: 2 / 1; min-height: 240px; background: var(--surface); }
+.rm .pin { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #FFFDF8; color: #fff; font: 900 10px/16px system-ui, sans-serif; text-align: center; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); cursor: default; }
 .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; font-size: .8rem; font-weight: 700; }
 .legend i { display: inline-block; width: 18px; height: 4px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
 .days { display: flex; flex-direction: column; gap: 10px; }
@@ -124,6 +129,94 @@ ul.rc li::before { content: "↻"; color: #3e7a8c; font-weight: 800; }
     $("page").innerHTML = html;
     void dayStops;
     wire();
+    if (rm) liveMap(document.querySelector(".rm"));
+  }
+  // The route on the online basemap (Protomaps planet via /api/public/basemap.pmtiles).
+  // The SVG sketch stays in place until the map has loaded, and if anything fails.
+  var LIBS = [
+    "https://cdn.jsdelivr.net/npm/maplibre-gl@5.6.0/dist/maplibre-gl.js",
+    "https://cdn.jsdelivr.net/npm/pmtiles@4.5.0/dist/pmtiles.js",
+    "https://cdn.jsdelivr.net/npm/@protomaps/basemaps@5.7.2/dist/basemaps.js",
+  ];
+  var libs = null;
+  function loadLibs() {
+    if (libs) return libs;
+    if (!document.querySelector('link[href*="maplibre-gl.css"]')) {
+      var css = document.createElement("link");
+      css.rel = "stylesheet";
+      css.href = LIBS[0].replace(/\.js$/, ".css");
+      document.head.appendChild(css);
+    }
+    libs = LIBS.reduce(function (p, src) {
+      return p.then(function () {
+        return new Promise(function (ok, fail) { var s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = fail; document.head.appendChild(s); });
+      });
+    }, Promise.resolve()).then(function () {
+      maplibregl.addProtocol("pmtiles", new pmtiles.Protocol().tile);
+    });
+    return libs;
+  }
+  function liveMap(box) {
+    var pts = [];
+    c.plan.forEach(function (d, di) { d.stops.forEach(function (s) { if (typeof s.lat === "number") pts.push({ d: di, lat: s.lat, lon: s.lon, name: s.name }); }); });
+    if (!box || pts.length < 2) return;
+    loadLibs().then(function () {
+      var dark = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      var segs = [];
+      for (var i = 1; i < pts.length; i++) {
+        segs.push({ type: "Feature", properties: { color: WG.dayColor(pts[i].d), same: pts[i].d === pts[i - 1].d }, geometry: { type: "LineString", coordinates: [[pts[i - 1].lon, pts[i - 1].lat], [pts[i].lon, pts[i].lat]] } });
+      }
+      var el = document.createElement("div");
+      el.className = "live";
+      el.style.position = "absolute";
+      el.style.inset = "0";
+      el.style.visibility = "hidden";
+      box.appendChild(el);
+      var bounds = new maplibregl.LngLatBounds();
+      pts.forEach(function (p) { bounds.extend([p.lon, p.lat]); });
+      var map = new maplibregl.Map({
+        container: el,
+        style: {
+          version: 8,
+          glyphs: "/__waypack/sdk/v1/assets/fonts/{fontstack}/{range}.pbf",
+          sprite: location.origin + "/__waypack/sdk/v1/assets/sprites/v4/" + dark,
+          sources: {
+            protomaps: { type: "vector", url: "pmtiles://" + location.origin + "/api/public/basemap.pmtiles", attribution: '<a href="https://openstreetmap.org/copyright">© OpenStreetMap</a>, <a href="https://protomaps.com">Protomaps</a>' },
+            route: { type: "geojson", data: { type: "FeatureCollection", features: segs } },
+          },
+          layers: basemaps.layers("protomaps", basemaps.namedFlavor(dark), { lang: (navigator.language || "en").split("-")[0] }).concat([
+            { id: "route", type: "line", source: "route", filter: ["get", "same"], layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": ["get", "color"], "line-width": 3.5, "line-opacity": 0.9 } },
+            { id: "route-hop", type: "line", source: "route", filter: ["!", ["get", "same"]], layout: { "line-cap": "round" }, paint: { "line-color": ["get", "color"], "line-width": 3, "line-opacity": 0.85, "line-dasharray": [1.5, 1.5] } },
+          ]),
+        },
+        bounds: bounds,
+        fitBoundsOptions: { padding: 40, maxZoom: 14 },
+        cooperativeGestures: true,
+        attributionControl: { compact: true },
+      });
+      map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+      // Stops at the same spot share one pin (as in the sketch).
+      var seen = {};
+      pts.forEach(function (p, i) {
+        var key = p.lat.toFixed(4) + ":" + p.lon.toFixed(4);
+        if (seen[key]) return;
+        seen[key] = 1;
+        var pin = document.createElement("div");
+        pin.className = "pin";
+        pin.style.background = WG.dayColor(p.d);
+        pin.textContent = i + 1;
+        pin.title = p.name;
+        new maplibregl.Marker({ element: pin }).setLngLat([p.lon, p.lat]).addTo(map);
+      });
+      map.once("load", function () {
+        var svg = box.querySelector("svg");
+        if (svg) svg.remove();
+        el.style.position = "";
+        el.style.visibility = "";
+        map.resize();
+        map.fitBounds(bounds, { padding: 40, maxZoom: 14, duration: 0 });
+      });
+    }).catch(function (e) { console.warn("[waypack] route map stays a sketch", e); });
   }
   function prompt() { return WG.prompt(c, c.url, $("when").value.trim(), $("who").value.trim(), $("chg").value.trim()); }
   function update() { var p = prompt(); $("prompt").textContent = p; $("claude").href = "https://claude.ai/new?q=" + encodeURIComponent(p); }

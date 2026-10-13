@@ -16,6 +16,7 @@ import { recutExpired } from "./lib/tiles.js";
 import { deleteTripData } from "./mcp/tools.js";
 import { homePage } from "./pages.js";
 import { handleMacDownload } from "./lib/releases.js";
+import { proxyTiles } from "./lib/hosted.js";
 import { deletePreview, listPreviews, PreviewError, previewOrigin, publishPreview } from "./lib/previews.js";
 import { listShares, publicSummary, ShareError, shareByToken, shareTrip, unshareTrip } from "./lib/shares.js";
 import { deleteTemplate, filterCards, homeFeed, listCard, listMyTemplates, matchReasons, parseQuery, publicTemplate, publishedCards, setTemplateStatus, templateBySlug, TemplateError } from "./lib/templates.js";
@@ -78,6 +79,12 @@ export async function handleApp(req: Request, env: Env): Promise<Response> {
   }
   if (/^\/trips\/[a-z0-9-]{3,80}$/.test(path) && req.method === "GET" && env.ASSETS) {
     return env.ASSETS.fetch(new Request(new URL("/template", req.url), req));
+  }
+  // Online basemap for the gallery's route maps (range requests into the planet .pmtiles).
+  if (path === "/api/public/basemap.pmtiles" && (req.method === "GET" || req.method === "HEAD")) {
+    const online = await onlineTilesUrl(env);
+    if (!online) return jsonErr(404, "no online basemap");
+    return proxyTiles(req, online);
   }
   if (path.startsWith("/api/public/templates") && req.method === "GET") return handlePublicTemplates(req, env, url);
   const inv = path.match(/^\/api\/public\/invites\/([A-Za-z0-9_-]{24})$/);

@@ -166,7 +166,7 @@ const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt
 const escapeAttr = escapeHtml;
 
 /** Same-origin proxy (the page's CSP only allows connect-src 'self'): forwards Range only. */
-async function proxyTiles(req: Request, upstream: string): Promise<Response> {
+export async function proxyTiles(req: Request, upstream: string): Promise<Response> {
   const range = req.headers.get("Range");
   const res = await fetch(upstream, { method: req.method, headers: range ? { Range: range } : {} });
   const h = new Headers(BASE_HEADERS);
