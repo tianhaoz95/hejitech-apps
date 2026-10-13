@@ -242,20 +242,15 @@ dialog.lbox::backdrop { background: transparent; }
       <h2>Connect your AI agent</h2>
       <p class="muted">Add this MCP server to your agent. For the best plans, also install the Waypack skill so your agent learns the interview, coverage checklist and bundle format.</p>
       <div class="tabs" role="tablist">
-        <button role="tab" aria-selected="true" data-panel="p-cc">Claude Code</button>
-        <button role="tab" aria-selected="false" data-panel="p-claude">Claude (web &amp; desktop)</button>
+        <button role="tab" aria-selected="true" data-panel="p-claude">Claude (web &amp; desktop)</button>
         <button role="tab" aria-selected="false" data-panel="p-gemini">Gemini (web)</button>
         <button role="tab" aria-selected="false" data-panel="p-muse">Meta Muse</button>
+        <button role="tab" aria-selected="false" data-panel="p-cc">Claude Code</button>
+        <button role="tab" aria-selected="false" data-panel="p-codex">Codex</button>
         <button role="tab" aria-selected="false" data-panel="p-cursor">Cursor &amp; others</button>
       </div>
 
-      <div class="panel" id="p-cc" role="tabpanel">
-        <p>Add the server, then install the skill:</p>
-        <pre><code id="cc-cmd"></code><button type="button" data-copy="cc-cmd">Copy</button></pre>
-        <p>Then ask: <code class="inline">Plan a weekend in Lake Tahoe in January with Waypack</code>. Sign in with <strong class="user-email-display">your account</strong> when Claude opens the browser. Claude Code writes the bundle to <code class="inline">./waypack/&lt;trip&gt;/</code>, validates it, and uploads it.</p>
-      </div>
-
-      <div class="panel" id="p-claude" role="tabpanel" hidden>
+      <div class="panel" id="p-claude" role="tabpanel">
         <p>In Claude: <strong>Settings → Connectors → Add custom connector</strong>, and paste your MCP URL:</p>
         <pre><code id="claude-url"></code><button type="button" data-copy="claude-url">Copy</button></pre>
         <p>Sign in with <strong class="user-email-display">your account</strong> when prompted. No skill needed: the agent calls <code class="inline">get_authoring_guide</code> and uploads with <code class="inline">upload_bundle_inline</code>.</p>
@@ -279,6 +274,18 @@ dialog.lbox::backdrop { background: transparent; }
           <button type="button" class="secondary" id="muse-create-token">Generate token for Muse</button>
         </div>
         <p style="margin-top:12px">3. Then ask: <code class="inline">Plan a weekend in Lake Tahoe in January with Waypack</code>.</p>
+      </div>
+
+      <div class="panel" id="p-cc" role="tabpanel" hidden>
+        <p>Add the server, then install the skill:</p>
+        <pre><code id="cc-cmd"></code><button type="button" data-copy="cc-cmd">Copy</button></pre>
+        <p>Then ask: <code class="inline">Plan a weekend in Lake Tahoe in January with Waypack</code>. Sign in with <strong class="user-email-display">your account</strong> when Claude opens the browser. Claude Code writes the bundle to <code class="inline">./waypack/&lt;trip&gt;/</code>, validates it, and uploads it.</p>
+      </div>
+
+      <div class="panel" id="p-codex" role="tabpanel" hidden>
+        <p>Add the server, sign in, then install the skill:</p>
+        <pre><code id="codex-cmd"></code><button type="button" data-copy="codex-cmd">Copy</button></pre>
+        <p>Sign in with <strong class="user-email-display">your account</strong> when Codex opens the browser. Then start <code class="inline">codex</code> and ask: <code class="inline">Plan a weekend in Lake Tahoe in January with Waypack</code>. Codex writes the bundle to <code class="inline">./waypack/&lt;trip&gt;/</code>, validates it, and uploads it.</p>
       </div>
 
       <div class="panel" id="p-cursor" role="tabpanel" hidden>
@@ -407,6 +414,7 @@ dialog.lbox::backdrop { background: transparent; }
       loadPreviews();
       loadTemplates();
       $("cc-cmd").textContent = "claude mcp add --transport http waypack " + m.mcp_url + "\nnpx @waypack/cli skill install";
+      $("codex-cmd").textContent = "codex mcp add waypack --url " + m.mcp_url + "\ncodex mcp login waypack\nnpx @waypack/cli skill install --dir ~/.codex/skills";
       $("claude-url").textContent = m.mcp_url;
       $("gemini-url").textContent = m.mcp_url;
       $("muse-cmd").textContent = "Create a custom connector for Waypack with the MCP server at " + m.mcp_url + " using an API key";
@@ -583,7 +591,7 @@ dialog.lbox::backdrop { background: transparent; }
       if (!TRIPS.length) {
         // First visit: a short getting-started guide instead of an empty list.
         $("trips").innerHTML = "<p class='muted' style='margin-top:0'>No trips yet. Three steps to your first one:</p><div class='onboard'>" +
-          "<div class='step'><b>1 · Connect your agent</b><p>Add Waypack to Claude, Gemini, Cursor or another MCP agent.</p><a class='btn' href='#setup'>Set up</a></div>" +
+          "<div class='step'><b>1 · Connect your agent</b><p>Add Waypack to Claude, Gemini, Codex, Cursor or another MCP agent.</p><a class='btn' href='#setup'>Set up</a></div>" +
           "<div class='step'><b>2 · Ask for a trip</b><p>Try <code class='inline'>Plan a weekend in Lake Tahoe in January with Waypack</code>. It appears here when it's published.</p></div>" +
           "<div class='step'><b>3 · Get the app</b><p>Download the trip on your phone before you lose signal.</p><a class='btn secondary' href='#setup'>Get the app</a></div></div>";
         if (OPEN) closeListing();
