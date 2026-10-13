@@ -47,11 +47,26 @@ nav.top { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, 
 nav.top .wrap { display: flex; align-items: center; gap: 20px; height: 60px; }
 .brand { display: flex; align-items: center; gap: 10px; font: 700 1.75rem/1 var(--hand); color: var(--text); text-decoration: none; }
 .brand img { display: block; width: 30px; height: 30px; }
-nav.top .links { margin-left: auto; display: flex; align-items: center; gap: 18px; font-size: .95rem; }
-nav.top .links a { color: var(--muted); text-decoration: none; transition: color .15s ease; }
-nav.top .links a:hover { color: var(--text); }
-@media (max-width: 768px) { nav.top .links a:not(.cta):not([href="/account"]) { display: none; } }
-@media (max-width: 480px) { nav.top .links a:not(.cta) { display: none; } }
+nav.top .links { margin-left: auto; display: flex; align-items: center; gap: 4px; font-size: .92rem; }
+nav.top .links a { white-space: nowrap; padding: 7px 12px; border-radius: 999px; font-weight: 600; color: var(--muted); text-decoration: none; transition: color .15s ease, background .15s ease; }
+nav.top .links a:hover { color: var(--text); background: color-mix(in srgb, var(--text) 7%, transparent); }
+/* Account controls sit apart from the page links: a divider, then Sign in (outlined) + Start free, or, once signed in, the account chip + My trips. */
+nav.top .auth { display: flex; align-items: center; gap: 10px; margin-left: 10px; padding-left: 16px; border-left: 1px solid var(--line); }
+nav.top .auth[hidden] { display: none; }
+nav.top .auth a.signin { color: var(--text); border: 1px solid var(--line); background: var(--surface); padding: 8px 16px; }
+nav.top .auth a.signin:hover { border-color: color-mix(in srgb, var(--accent) 35%, transparent); color: var(--accent); background: var(--surface); }
+nav.top .auth a.cta { min-height: 40px; padding: 8px 18px; color: var(--accent-ink); }
+nav.top .auth a.cta:hover { background: var(--accent); color: var(--accent-ink); }
+nav.top .auth a.me { display: inline-flex; align-items: center; gap: 8px; max-width: 220px; padding: 4px 12px 4px 4px; color: var(--text); background: var(--surface); border: 1px solid var(--line); }
+nav.top .auth a.me:hover { background: var(--soft); }
+nav.top .auth .avatar { flex: none; display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--sticky); color: #3d332b; font: 700 1.2rem/1 var(--hand); }
+nav.top .auth .email { overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 960px) { nav.top .auth .email { display: none; } nav.top .auth a.me { padding-right: 4px; } }
+@media (max-width: 860px) { nav.top .links > a { display: none; } nav.top .auth { border-left: 0; margin-left: 0; padding-left: 0; } }
+@media (max-width: 420px) { nav.top .auth a.signin { display: none; } }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 28px; }
+.muted { color: var(--muted); }
+.small { font-size: .9rem; }
 .cta, .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 10px 20px; border-radius: 999px; background: var(--accent); color: var(--accent-ink) !important; font-weight: 700; text-decoration: none; transition: opacity .15s ease, background .15s ease; border: 0; cursor: pointer; box-shadow: 0 2px 0 color-mix(in srgb, var(--accent) 60%, #000); }
 .cta:hover, .btn:hover { opacity: .92; }
 .btn.ghost { background: var(--surface); color: var(--text) !important; border: 1px solid var(--line); box-shadow: 0 1px 2px rgba(60, 40, 20, .12); }
@@ -184,8 +199,14 @@ footer a:hover { color: var(--text); }
       <a href="#connect">Connect your agent</a>
       <a href="#pricing">Pricing</a>
       <a href="#faq">FAQ</a>
-      <a href="/account">Sign in</a>
-      <a class="cta" href="/account">Start free</a>
+      <div class="auth" data-auth="out">
+        <a class="signin" href="/account">Sign in</a>
+        <a class="cta" href="/account">Start free</a>
+      </div>
+      <div class="auth" data-auth="in" hidden>
+        <a class="me" href="/account#settings" title="Your account"><span class="avatar" aria-hidden="true"></span><span class="email"></span></a>
+        <a class="cta" href="/account#trips">My trips</a>
+      </div>
     </div>
   </div>
 </nav>
@@ -197,7 +218,7 @@ footer a:hover { color: var(--text); }
       <h1>Your AI agent plans the trip.<br><span class="hand">Waypack keeps it working offline.</span></h1>
       <p class="lead">Ask Claude, Cursor or any MCP agent to plan a trip “with Waypack”. It researches, builds a detailed mobile guide, and publishes it to your phone, with an offline map of trails and roads, your GPS position, and one-tap hand-off to Google or Apple Maps.</p>
       <div class="actions">
-        <a class="btn" href="/account">Start free</a>
+        <a class="btn" href="/account" data-signed-in-href="/account#trips" data-signed-in-text="Open my trips">Start free</a>
         <a class="btn ghost" href="#connect">Connect your agent</a>
       </div>
     </div>
@@ -482,6 +503,34 @@ npx @waypack/cli skill install</code><button type="button">Copy</button></pre>
 </footer>
 
 <script>
+  // Signed in (portal session cookie)? Swap the nav's Sign in / Start free for the account chip + My trips.
+  // A remembered hint applies it before the request returns so returning users don't see the signed-out nav flash.
+  function showSignedIn(email) {
+    document.querySelector('[data-auth="out"]').hidden = !!email;
+    var box = document.querySelector('[data-auth="in"]');
+    box.hidden = !email;
+    if (!email) return;
+    box.querySelector(".email").textContent = email;
+    box.querySelector(".avatar").textContent = email.charAt(0).toUpperCase();
+    box.querySelector(".me").title = "Signed in as " + email;
+    document.querySelectorAll("[data-signed-in-href]").forEach(function (a) {
+      a.href = a.getAttribute("data-signed-in-href");
+      a.textContent = a.getAttribute("data-signed-in-text");
+    });
+  }
+  function hint(v) { try { if (v === undefined) return localStorage.getItem("wp_me"); if (v) localStorage.setItem("wp_me", v); else localStorage.removeItem("wp_me"); } catch (e) { return null; } }
+  if (hint()) showSignedIn(hint());
+  if (/^https?:$/.test(location.protocol)) {
+    fetch("/api/me", { credentials: "same-origin", headers: { "X-Waypack": "1" } }).then(function (r) {
+      if (r.status === 401) { hint(null); showSignedIn(null); return; }
+      if (!r.ok) return;
+      return r.json().then(function (m) {
+        var who = m.email || "Your account";
+        hint(who); showSignedIn(who);
+        if (window.FeedbackKit && m.user_id) FeedbackKit.setUser({ id: m.user_id, email: m.email });
+      });
+    }).catch(function () {});
+  }
   // Show the address this site is served from (the fallback in the markup is the production one).
   if (/^https?:$/.test(location.protocol)) {
     document.querySelectorAll("[data-origin]").forEach(function (el) { el.textContent = location.origin; });
