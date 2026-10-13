@@ -120,7 +120,7 @@ test.describe('Meowtrix E2E Tests', () => {
     // 2. Create Browser Tab
     await addBtn.click();
     await expect(picker).toBeVisible();
-    await picker.locator('button:has-text("Browser")').click();
+    await picker.getByRole('button', { name: 'Browser', exact: true }).click();
     await expect(picker).not.toBeVisible();
 
     // Check we have browser tab and an iframe navigation bar is loaded

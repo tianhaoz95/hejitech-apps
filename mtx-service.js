@@ -108,6 +108,7 @@ function mountMtxRoutes(app, { getActiveClient }) {
       url,
       placement: placementOf(req),
       reuse: boolOf(field(req, 'reuse'), true),
+      host: boolOf(field(req, 'host'), false),
       ptyId: ptyIdOf(req),
     }));
   });

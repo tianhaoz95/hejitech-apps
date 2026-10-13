@@ -162,7 +162,7 @@ test.describe('mtx agent bridge', () => {
       expect(init.result.serverInfo.name).toBe('meowtrix');
       proc.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) + '\n');
       const list = await call(2, 'tools/list', {});
-      expect(list.result.tools.map(t => t.name).sort()).toEqual(['get_layout', 'notify', 'open_file', 'open_url']);
+      expect(list.result.tools.map(t => t.name).sort()).toEqual(['get_layout', 'host_browser_list', 'host_browser_read', 'host_browser_screenshot', 'notify', 'open_file', 'open_url']);
       const res = await call(3, 'tools/call', { name: 'open_url', arguments: { url: `${base}/meowtrix-version.js` } });
       expect(res.result.isError).toBeFalsy();
       expect(res.result.content[0].text).toContain('Opened');

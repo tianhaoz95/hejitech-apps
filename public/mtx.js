@@ -75,7 +75,7 @@ function mtxPlacePane(placement, ptyId) {
   const score = (p) => {
     const r = p.el.getBoundingClientRect();
     let s = r.width * r.height;
-    if (p.tabs.some(t => t.type === 'browser' || t.type === 'codesign')) s += 1e9;
+    if (p.tabs.some(t => t.type === 'browser' || t.type === 'hostbrowser' || t.type === 'codesign')) s += 1e9;
     if (p === activePane) s -= 5e8;
     return s;
   };
@@ -122,13 +122,15 @@ function mtxIsLocalHost(host) {
     || /\.(local|localhost|test)$/i.test(host);
 }
 
-function mtxFindReusableBrowserTab(url, panes, callerPane) {
+// `host` restricts reuse to host-browser tabs (`mtx open --host`); otherwise
+// either kind of browser tab may be reused.
+function mtxFindReusableBrowserTab(url, panes, callerPane, host) {
   let target;
   try { target = new URL(url); } catch { return null; }
   let sameOrigin = null;
   for (const pane of panes) {
     for (const t of pane.tabs) {
-      if (t.type !== 'browser' || !t.currentUrl || !t.navigate) continue;
+      if (!(t.type === 'hostbrowser' || (t.type === 'browser' && !host)) || !t.currentUrl || !t.navigate) continue;
       // Bringing a background tab forward in the agent's own pane would cover
       // the agent's terminal; open a fresh tab elsewhere instead.
       if (pane === callerPane && pane.activeTab !== t) continue;
@@ -141,10 +143,10 @@ function mtxFindReusableBrowserTab(url, panes, callerPane) {
   return sameOrigin;
 }
 
-function mtxOpenUrl({ url, placement, reuse, ptyId }) {
+function mtxOpenUrl({ url, placement, reuse, ptyId, host }) {
   const panes = getAllPanes();
   if (reuse !== false && (!placement || placement === 'auto')) {
-    const hit = mtxFindReusableBrowserTab(url, panes, mtxCallerPane(ptyId, panes));
+    const hit = mtxFindReusableBrowserTab(url, panes, mtxCallerPane(ptyId, panes), !!host);
     if (hit) {
       mtxPreservingFocus(() => {
         if (maximizedPane && maximizedPane !== hit.pane) toggleMaximizePane(maximizedPane);
@@ -158,7 +160,7 @@ function mtxOpenUrl({ url, placement, reuse, ptyId }) {
   const out = mtxPreservingFocus(() => {
     const where = mtxPlacePane(placement, ptyId);
     if (where.error) return where;
-    const tab = addTab(where.pane, 'browser', undefined, undefined, url);
+    const tab = addTab(where.pane, host ? 'hostbrowser' : 'browser', undefined, undefined, url);
     return { ...where, tab };
   });
   if (out.error) return { ok: false, error: out.error, message: out.message };
@@ -201,7 +203,7 @@ async function mtxOpenFile({ path, root, line, placement, ptyId }) {
 
 function mtxTabSummary(t, pane) {
   const s = { id: t.id, type: t.type, title: t.label?.textContent || t.type, active: pane.activeTab === t };
-  if (t.type === 'browser' && t.currentUrl) s.url = t.currentUrl;
+  if ((t.type === 'browser' || t.type === 'hostbrowser') && t.currentUrl) s.url = t.currentUrl;
   if (t.type === 'editor' && t.editorDir) s.dir = t.editorDir;
   if (t.type === 'codesign' && t.codesignDir) s.dir = t.codesignDir;
   if (t.type === 'agent' && (t.agentDir || t.workingDir)) s.dir = t.agentDir || t.workingDir;

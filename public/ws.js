@@ -49,6 +49,8 @@ function handleWsMessage(msg) {
     if (typeof onCodesignUpdate === 'function') onCodesignUpdate(msg.dir);
   } else if (msg.type === 'codesign:open') {
     if (typeof onCodesignOpen === 'function') onCodesignOpen(msg.dir, msg.ptyId);
+  } else if (msg.type === 'hostbrowser:popup') {
+    if (typeof onHostBrowserPopup === 'function') onHostBrowserPopup(msg);
   } else if (msg.type === 'mtx:rpc') {
     if (typeof onMtxRpc === 'function') onMtxRpc(msg);
   } else if (msg.type === 'fs:change') {

@@ -16,6 +16,9 @@ function getTabIconSvg(type) {
       return `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/><line x1="14" y1="4" x2="10" y2="20"/></svg>`;
     case 'browser':
       return `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><line x1="3" y1="9" x2="21" y2="9"/><circle cx="6.5" cy="6.5" r="0.75" fill="currentColor"/><circle cx="9.5" cy="6.5" r="0.75" fill="currentColor"/><circle cx="12.5" cy="6.5" r="0.75" fill="currentColor"/></svg>`;
+    case 'hostbrowser':
+      // Browser window with a server rack underneath: a real browser on the host.
+      return `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="12" rx="2.5"/><line x1="3" y1="7.5" x2="21" y2="7.5"/><rect x="5" y="17.5" width="14" height="3.5" rx="1.2"/><circle cx="8" cy="19.25" r="0.6" fill="currentColor"/><line x1="12" y1="15" x2="12" y2="17.5"/></svg>`;
     case 'codesign':
       // Pen nib over a frame: a design you review and mark up.
       return `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="14" rx="2.5"/><path d="M7 21h10"/><path d="M12 17v4"/><path d="M14.5 6.5l3 3-5 5H9.5v-3z"/></svg>`;
@@ -372,7 +375,7 @@ function addTab(pane, type, existingId, existingPtyId, existingUrl, existingDir,
   icon.className = 'tab-icon';
   icon.innerHTML = getTabIconSvg(sshHost ? 'ssh' : type);
   const label = document.createElement('span');
-  label.textContent = sshHost ? sshHost : type === 'terminal' ? 'Terminal' : type === 'editor' ? 'Editor' : type === 'agent' ? 'AI Agent' : type === 'codesign' ? 'CoDesign' : 'Browser';
+  label.textContent = sshHost ? sshHost : type === 'terminal' ? 'Terminal' : type === 'editor' ? 'Editor' : type === 'agent' ? 'AI Agent' : type === 'codesign' ? 'CoDesign' : type === 'hostbrowser' ? 'Host Browser' : 'Browser';
 
   const isMaximized = pane.el.classList.contains('maximized');
   const maxBtn = document.createElement('span');
@@ -456,6 +459,7 @@ function addTab(pane, type, existingId, existingPtyId, existingUrl, existingDir,
     if (typeof initAgentTab === 'function') initAgentTab(tab, viewEl, existingDir);
   }
   else if (type === 'codesign') initCodesignTab(tab, viewEl, existingDir);
+  else if (type === 'hostbrowser') initHostBrowserTab(tab, viewEl, label, existingUrl);
   else initBrowserTab(tab, viewEl, label, existingUrl);
 
   createZoomControls(tab);
@@ -512,6 +516,8 @@ function closeTab(pane, id) {
   if (tab.disposeTerminal) tab.disposeTerminal();
   if (tab.disposeEditor) tab.disposeEditor();
   if (tab.disposeCodesign) tab.disposeCodesign();
+  if (tab.destroyHostBrowser) tab.destroyHostBrowser(); // closes the page on the host
+  if (tab.destroyNativeBrowser) tab.destroyNativeBrowser();
   tab.viewEl.remove();
   tab.tabEl.remove();
   pane.tabs.splice(idx, 1);

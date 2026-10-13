@@ -77,6 +77,14 @@ function deactivateWorkspace(index) {
       if (tab.disposeEditor) {
         try { tab.disposeEditor(); } catch (e) {}
       }
+      // Detach only: the host page / native webview outlives this view and is
+      // re-attached by tab id when the layout is rebuilt.
+      if (tab.disposeHostBrowser) {
+        try { tab.disposeHostBrowser(); } catch (e) {}
+      }
+      if (tab.disposeNativeBrowser) {
+        try { tab.disposeNativeBrowser(); } catch (e) {}
+      }
     });
     paneRegistry.delete(pane.el);
   });
@@ -192,8 +200,8 @@ function captureWorkspaceState(index = activeWorkspaceIndex) {
           id: t.id,
           type: t.type,
           ptyId: t.ptyId || null,
-          browserUrl: t.type === 'browser' ? t.currentUrl : null,
-          browserConsoleOpen: t.type === 'browser' ? !!t.consoleOpen : null,
+          browserUrl: t.type === 'browser' || t.type === 'hostbrowser' ? t.currentUrl : null,
+          browserConsoleOpen: t.type === 'browser' || t.type === 'hostbrowser' ? !!t.consoleOpen : null,
           editorDir: t.type === 'editor' ? t.editorDir : (t.type === 'agent' ? (t.agentDir || t.workingDir) : (t.type === 'codesign' ? t.codesignDir : (t.type === 'terminal' ? t.terminalDir : null))),
           sshHost: t.type === 'terminal' ? (t.sshHost || null) : null,
           editorSidebarWidth: t.type === 'editor' ? t.editorSidebarWidth : null,
@@ -524,6 +532,7 @@ function onSessionState(activeTabId) {
       // Reconnected while still active (e.g. a network blip): layout is
       // unchanged, just re-grab the live PTY streams.
       reconnectAllPtys();
+      if (typeof reconnectAllHostBrowsers === 'function') reconnectAllHostBrowsers();
     }
     if (typeof refreshAllAgentTabs === 'function') {
       refreshAllAgentTabs();
@@ -560,7 +569,7 @@ function showTabTypePicker(e, pane) {
   const closeSubmenu = () => { if (submenu) { submenu.remove(); submenu = null; } };
   const closeAll = () => { closeSubmenu(); picker.remove(); activePicker = null; };
 
-  [['Terminal', 'terminal'], ['SSH', 'ssh'], ['AI Agent', 'agent'], ['Browser', 'browser'], ['Code editor', 'editor'], ['CoDesign', 'codesign']].forEach(([text, type]) => {
+  [['Terminal', 'terminal'], ['SSH', 'ssh'], ['AI Agent', 'agent'], ['Browser', 'browser'], ['Host Browser', 'hostbrowser'], ['Code editor', 'editor'], ['CoDesign', 'codesign']].forEach(([text, type]) => {
     const btn = document.createElement('button');
     btn.innerHTML = `<span class="tab-type-icon">${typeof getTabIconSvg === 'function' ? getTabIconSvg(type) : ''}</span><span class="tab-type-label">${text}${type === 'ssh' ? '  ›' : ''}</span>`;
     if (type === 'ssh') {

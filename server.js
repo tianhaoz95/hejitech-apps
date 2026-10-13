@@ -4,6 +4,8 @@ const pty = require('node-pty');
 const { v4: uuidv4 } = require('uuid');
 const http = require('http');
 const https = require('https');
+const net = require('net');
+const tls = require('tls');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
@@ -15,19 +17,35 @@ const { execFile, exec, execSync } = require('child_process');
 const IS_DOCKER = fs.existsSync('/.dockerenv');
 
 const compression = require('compression');
+const { CookieJar: ProxyCookieJar } = require('./proxy-cookies');
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocketServer({
-  server,
-  perMessageDeflate: true,
+const wss = new WebSocketServer({ noServer: true, perMessageDeflate: true });
+
+// Upgrades are routed by path: proxied pages' own WebSockets (/proxy-ws/…, see
+// proxyWsUpgrade), host-browser streams (/hostbrowser/…, see
+// hostbrowser-service.js), and everything else is the app's control socket.
+server.on('upgrade', (req, socket, head) => {
+  const url = req.url || '';
+  if (url.startsWith('/proxy-ws/')) return proxyWsUpgrade(req, socket, head);
   // Opaque-origin documents (sandboxed iframes such as CoDesign specs, see
-  // codesign-service.js) send `Origin: null`; they must never reach the PTYs.
-  verifyClient: (info) => info.origin !== 'null'
+  // codesign-service.js) send `Origin: null`; they must never reach the PTYs
+  // or drive the host browser.
+  if (req.headers.origin === 'null') {
+    socket.end('HTTP/1.1 401 Unauthorized\r\n\r\n');
+    return;
+  }
+  if (url.startsWith('/hostbrowser/')) return hostBrowser.handleUpgrade(req, socket, head);
+  wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req));
 });
 
 app.use(compression());
-app.use(express.json());
+// The embedding proxy forwards request bodies verbatim (req.pipe), so it must see
+// the raw stream — a parsed-and-restringified JSON body would no longer match the
+// forwarded Content-Length, and form posts would be turned into JSON.
+const jsonParser = express.json();
+app.use((req, res, next) => (req.path === '/proxy' || req.path.startsWith('/proxy/') ? next() : jsonParser(req, res, next)));
 
 // Serve local monaco-editor, marked, and xterm-addon-webgl assets from node_modules for offline-readiness and reduced load latency
 app.use('/vendor/monaco-editor', express.static(path.join(__dirname, 'node_modules', 'monaco-editor')));
@@ -106,6 +124,10 @@ const DEFAULT_SETTINGS = {
   termScrollback: 10000,
   shell: process.env.SHELL || '/bin/bash',
   browserHomepage: '', // blank → new browser tabs show the local start page
+  browserEngine: 'auto', // browser tabs in the desktop app: 'auto' (native webview) or 'proxy'
+  hostBrowserPath: '', // host browser tabs: Chromium-based executable (blank → auto-detect)
+  hostBrowserHeadless: true, // false shows the host browser's own window on the host
+  hostBrowserQuality: 70, // host browser stream JPEG quality (30–95)
   httpProxy: '', // optional HTTP proxy for updates
   httpsProxy: '', // optional HTTPS proxy for updates
   autoUpdate: true, // background-check the git clone for updates (see self-update below)
@@ -808,69 +830,8 @@ function extractOriginalUrl(url) {
   return url;
 }
 
-class CookieJar {
-  constructor() {
-    this.store = new Map(); // host -> Map of name -> { value, expires }
-  }
-
-  getCookieHeader(urlObj) {
-    const host = urlObj.hostname;
-    const hostCookies = this.store.get(host);
-    if (!hostCookies) return '';
-    
-    const now = Date.now();
-    const active = [];
-    for (const [name, entry] of hostCookies.entries()) {
-      if (entry.expires && entry.expires < now) {
-        hostCookies.delete(name);
-        continue;
-      }
-      active.push(`${name}=${entry.value}`);
-    }
-    return active.join('; ');
-  }
-
-  saveCookies(urlObj, setCookieHeaders) {
-    if (!setCookieHeaders) return;
-    const host = urlObj.hostname;
-    if (!this.store.has(host)) {
-      this.store.set(host, new Map());
-    }
-    const hostCookies = this.store.get(host);
-    
-    const headers = Array.isArray(setCookieHeaders) ? setCookieHeaders : [setCookieHeaders];
-    headers.forEach(header => {
-      const parts = header.split(';').map(p => p.trim());
-      if (parts.length === 0) return;
-      const [nameValue, ...attrs] = parts;
-      const eqIdx = nameValue.indexOf('=');
-      if (eqIdx === -1) return;
-      const name = nameValue.slice(0, eqIdx).trim();
-      const value = nameValue.slice(eqIdx + 1).trim();
-      
-      let expires = null;
-      attrs.forEach(attr => {
-        const [k, v] = attr.split('=').map(s => s.trim());
-        if (k.toLowerCase() === 'expires' && v) {
-          try { expires = Date.parse(v); } catch (e) {}
-        }
-        if (k.toLowerCase() === 'max-age' && v) {
-          const secs = parseInt(v, 10);
-          if (!isNaN(secs)) {
-            expires = Date.now() + secs * 1000;
-          }
-        }
-      });
-      
-      if (value === '' || (expires && expires < Date.now())) {
-        hostCookies.delete(name);
-      } else {
-        hostCookies.set(name, { value, expires });
-      }
-    });
-  }
-}
-const proxyCookies = new CookieJar();
+// Persistent, RFC 6265-ish jar (Domain/Path/Secure/expiry) — see proxy-cookies.js.
+const proxyCookies = new ProxyCookieJar(path.join(MEOWTRIX_DATA_DIR, 'proxy-cookies.json'));
 
 // Resolve the proxied target from either /proxy?url=<enc> (initial loads) or
 // /proxy/<enc>[?formquery] (rewritten links & GET-form submissions). The path
@@ -898,6 +859,154 @@ function resolveProxyTarget(req) {
   }
   return null;
 }
+
+// `document.cookie` on a proxied page would read/write the *Meowtrix* origin's
+// jar, which the proxy never forwards. Shadow it with an accessor backed by the
+// server-side jar: reads see the page's non-HttpOnly cookies (snapshotted into
+// the page when it's served), writes update that snapshot immediately and are
+// sent to /api/proxy/cookie so later requests carry them.
+function proxyCookieShim(targetUrl) {
+  const initial = proxyCookies.getScriptCookieString(targetUrl);
+  return `
+<script id="mtx-proxy-cookies">
+(function () {
+  var target = ${JSON.stringify(targetUrl.href).replace(/</g, '\\u003c')};
+  // Captured before the proxy's URL-rewriting script patches fetch, so this
+  // call reaches Meowtrix rather than being routed to the target site.
+  var nativeFetch = window.fetch.bind(window);
+  var jar = {};
+  ${JSON.stringify(initial).replace(/</g, '\\u003c')}.split('; ').forEach(function (kv) {
+    var i = kv.indexOf('='); if (i > 0) jar[kv.slice(0, i)] = kv.slice(i + 1);
+  });
+  function serialize() {
+    return Object.keys(jar).map(function (k) { return k + '=' + jar[k]; }).join('; ');
+  }
+  try {
+    Object.defineProperty(document, 'cookie', {
+      configurable: true,
+      get: function () { return serialize(); },
+      set: function (v) {
+        v = String(v);
+        var first = v.split(';')[0], i = first.indexOf('=');
+        if (i > 0) {
+          var name = first.slice(0, i).trim(), lower = v.toLowerCase();
+          var m = /max-age=(-?\\d+)/.exec(lower), e = /expires=([^;]+)/.exec(lower);
+          var dead = (m && +m[1] <= 0) || (!m && e && Date.parse(e[1]) <= Date.now());
+          if (dead) delete jar[name]; else jar[name] = first.slice(i + 1).trim();
+        }
+        try {
+          nativeFetch('/api/proxy/cookie', {
+            method: 'POST', keepalive: true,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: target, cookie: v })
+          });
+        } catch (err) {}
+      }
+    });
+  } catch (err) {}
+})();
+</script>
+`;
+}
+
+// Proxied pages run on the Meowtrix origin, so `new WebSocket(...)` would either
+// hit the real site directly (no cookies, and blocked by many servers' Origin
+// checks) or — for URLs built from `location.host` — hit Meowtrix itself.
+// Rewrite every socket URL to /proxy-ws/<ws|wss>/<host>/<path>, which
+// proxyWsUpgrade tunnels to the real server with the jar's cookies.
+function proxyWebSocketShim(targetUrl) {
+  return `
+<script id="mtx-proxy-ws">
+(function () {
+  var NativeWS = window.WebSocket;
+  if (!NativeWS || NativeWS.__mtxProxied) return;
+  var target = new URL(${JSON.stringify(targetUrl.href).replace(/</g, '\\u003c')});
+  function rewrite(url) {
+    var u;
+    try { u = new URL(String(url), target); } catch (e) { return url; }
+    if (u.protocol === 'http:') u.protocol = 'ws:';
+    if (u.protocol === 'https:') u.protocol = 'wss:';
+    if (u.protocol !== 'ws:' && u.protocol !== 'wss:') return url;
+    if (u.host === location.host) {
+      if (u.pathname.indexOf('/proxy-ws/') === 0) return u.href;
+      // Built from location.host: the page meant its own (real) server.
+      u = new URL(u.pathname + u.search, target);
+      u.protocol = target.protocol === 'https:' ? 'wss:' : 'ws:';
+    }
+    var scheme = location.protocol === 'https:' ? 'wss://' : 'ws://';
+    return scheme + location.host + '/proxy-ws/' + u.protocol.replace(':', '') + '/' + u.host + u.pathname + u.search;
+  }
+  function ProxiedWebSocket(url, protocols) {
+    return protocols === undefined ? new NativeWS(rewrite(url)) : new NativeWS(rewrite(url), protocols);
+  }
+  ProxiedWebSocket.prototype = NativeWS.prototype;
+  ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'].forEach(function (k) { ProxiedWebSocket[k] = NativeWS[k]; });
+  ProxiedWebSocket.__mtxProxied = true;
+  window.WebSocket = ProxiedWebSocket;
+})();
+</script>
+`;
+}
+
+// Tunnel a proxied page's WebSocket to its real server. The browser's upgrade
+// request is replayed upstream with Host/Origin/Cookie rewritten for the target,
+// then the two sockets are piped together — the handshake response (including
+// Sec-WebSocket-Accept, subprotocol and extensions) passes through untouched.
+function proxyWsUpgrade(req, socket, head) {
+  const m = (req.url || '').match(/^\/proxy-ws\/(wss?)\/([^/?#]+)(\/[^#]*)?$/);
+  let target;
+  try {
+    if (!m) throw new Error('bad path');
+    target = new URL(`${m[1] === 'wss' ? 'https' : 'http'}://${m[2]}${m[3] || '/'}`);
+  } catch {
+    socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+    return;
+  }
+  if (IS_DOCKER && (target.hostname === '127.0.0.1' || target.hostname === 'localhost')) {
+    target.hostname = 'host.docker.internal';
+  }
+  const secure = target.protocol === 'https:';
+  const port = Number(target.port) || (secure ? 443 : 80);
+  const upstream = secure
+    ? tls.connect({ host: target.hostname, port, servername: net.isIP(target.hostname) ? undefined : target.hostname })
+    : net.connect({ host: target.hostname, port });
+
+  const fail = () => { socket.destroy(); upstream.destroy(); };
+  upstream.on('error', fail);
+  socket.on('error', fail);
+  upstream.once(secure ? 'secureConnect' : 'connect', () => {
+    const lines = [
+      `GET ${target.pathname}${target.search} HTTP/1.1`,
+      `Host: ${target.host}`,
+      `Origin: ${target.origin}`,
+    ];
+    const cookie = proxyCookies.getCookieHeader(target);
+    if (cookie) lines.push(`Cookie: ${cookie}`);
+    for (let i = 0; i < req.rawHeaders.length; i += 2) {
+      const k = req.rawHeaders[i];
+      if (/^(host|origin|cookie|referer)$/i.test(k)) continue;
+      lines.push(`${k}: ${req.rawHeaders[i + 1]}`);
+    }
+    upstream.write(lines.join('\r\n') + '\r\n\r\n');
+    if (head && head.length) upstream.write(head);
+    socket.pipe(upstream).pipe(socket);
+  });
+}
+
+// document.cookie writes from proxied pages (see proxyCookieShim).
+app.post('/api/proxy/cookie', (req, res) => {
+  let u;
+  try { u = new URL(req.body?.url); } catch { return res.status(400).json({ ok: false }); }
+  if (!['http:', 'https:'].includes(u.protocol) || typeof req.body?.cookie !== 'string') return res.status(400).json({ ok: false });
+  res.json({ ok: proxyCookies.setFromScript(u, req.body.cookie) });
+});
+
+// Palette: "Clear embedded-browser cookies" (signs the proxy out of every site).
+app.delete('/api/proxy/cookies', (req, res) => {
+  const cleared = proxyCookies.size;
+  proxyCookies.clear();
+  res.json({ ok: true, cleared });
+});
 
 function proxyHandler(req, res) {
   const target = resolveProxyTarget(req);
@@ -952,20 +1061,26 @@ function proxyHandler(req, res) {
   };
 
   const proxyReq = lib.request(opts, (proxyRes) => {
+    // Store cookies *before* following a redirect: a sign-in POST typically
+    // answers 302 + Set-Cookie, and dropping those is why logins didn't stick.
+    if (proxyRes.headers['set-cookie']) {
+      proxyCookies.saveCookies(parsed, proxyRes.headers['set-cookie']);
+    }
+
     if ([301, 302, 303, 307, 308].includes(proxyRes.statusCode) && proxyRes.headers.location) {
       const next = new URL(proxyRes.headers.location, target).href;
+      let loc;
       try {
         const nextUrl = new URL(next);
         const proto = nextUrl.protocol.replace(':', '');
         const pathAndQuery = nextUrl.pathname + nextUrl.search + nextUrl.hash;
-        return res.redirect(`/proxy/${proto}/${nextUrl.host}${pathAndQuery}`);
+        loc = `/proxy/${proto}/${nextUrl.host}${pathAndQuery}`;
       } catch (e) {
-        return res.redirect(`/proxy/${encodeURIComponent(next)}`);
+        loc = `/proxy/${encodeURIComponent(next)}`;
       }
-    }
-
-    if (proxyRes.headers['set-cookie']) {
-      proxyCookies.saveCookies(parsed, proxyRes.headers['set-cookie']);
+      proxyRes.resume();
+      // Keep the upstream status: 307/308 must replay the method and body.
+      return res.status(proxyRes.statusCode).location(loc).end();
     }
 
     Object.entries(proxyRes.headers).forEach(([k, v]) => {
@@ -1242,10 +1357,11 @@ function proxyHandler(req, res) {
 </script>
 `;
         const headMatch = body.match(/<head[^>]*>/i);
+        const injected = proxyCookieShim(parsed) + proxyWebSocketShim(parsed) + script;
         if (headMatch) {
-          body = body.replace(headMatch[0], headMatch[0] + script);
+          body = body.replace(headMatch[0], headMatch[0] + injected);
         } else {
-          body = script + body;
+          body = injected + body;
         }
 
         // Firebase Auth Emulator popup sign-in fix.
@@ -1321,13 +1437,7 @@ function proxyHandler(req, res) {
 
   proxyReq.on('error', err => res.status(502).send(`Proxy error: ${err.message}`));
 
-  if (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0) {
-    const bodyStr = JSON.stringify(req.body);
-    proxyReq.write(bodyStr);
-    proxyReq.end();
-  } else {
-    req.pipe(proxyReq);
-  }
+  req.pipe(proxyReq);
 }
 
 app.all('/proxy/:protocol/:hostname/*', proxyHandler);
@@ -1337,6 +1447,18 @@ app.all('/proxy/:enc', proxyHandler);
 
 // ── PTY / WebSocket ──────────────────────────────────────────────────────────
 // ptys: id -> { proc, dataListeners: Set, buffer: string }
+// ── Host browser: a real Chromium on the host, streamed into a tab ───────────
+const { HostBrowserService, mountHostBrowserRoutes } = require('./hostbrowser-service');
+const hostBrowser = new HostBrowserService({
+  dataDir: MEOWTRIX_DATA_DIR,
+  getSettings: () => readSettings(),
+  broadcast: (msg) => {
+    const payload = JSON.stringify(msg);
+    for (const c of sessionClients) if (c.readyState === c.OPEN) c.send(payload);
+  },
+});
+mountHostBrowserRoutes(app, hostBrowser);
+
 const ptys = new Map();
 
 // Keep ~200KB of recent output per PTY so a reconnecting client (e.g. after a

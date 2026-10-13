@@ -34,6 +34,7 @@ const TOOLS = [
         url: { type: 'string', description: 'http(s) URL; a bare host like localhost:5173 is fine.' },
         placement: placementSchema,
         reuse: { type: 'boolean', description: 'Reuse a tab already showing this URL (or this local dev server). Default true.' },
+        host: { type: 'boolean', description: 'Open in a host-browser tab: a real Chromium running on the Meowtrix host (keeps sign-ins, works with sites the embedded browser cannot show, and lets you take screenshots with host_browser_screenshot). Default false.' },
       },
       required: ['url'],
     },
@@ -55,6 +56,21 @@ const TOOLS = [
     name: 'get_layout',
     description: 'Describe the user\'s current Meowtrix workspace: the split tree of panes (sizes in px, row = side by side, column = stacked), each pane\'s tabs (type, title, URL/folder), which pane is focused, and which holds your terminal (containsCaller). Only needed to honour an explicit request like "open it in the right-hand pane" — open_url/open_file already place tabs sensibly.',
     inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'host_browser_list',
+    description: 'List the host-browser tabs (real Chromium pages on the Meowtrix host that the user is looking at): tab id, URL and title.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'host_browser_screenshot',
+    description: 'Screenshot a host-browser tab — see exactly what the user sees, e.g. to check a page you are building. Get the tab id from host_browser_list (or open one with open_url host:true).',
+    inputSchema: { type: 'object', properties: { tabId: { type: 'string' } }, required: ['tabId'] },
+  },
+  {
+    name: 'host_browser_read',
+    description: 'Read the visible text of a host-browser tab (document.body.innerText).',
+    inputSchema: { type: 'object', properties: { tabId: { type: 'string' } }, required: ['tabId'] },
   },
   {
     name: 'notify',
@@ -88,6 +104,18 @@ async function api(method, endpoint, params) {
   }
 }
 
+// GET /api/hostbrowser/tabs<suffix> → raw body (JSON list, PNG or text).
+async function hostBrowser(suffix) {
+  try {
+    const res = await fetch(`${BASE}/api/hostbrowser/tabs${suffix}`, { signal: AbortSignal.timeout(30000) });
+    const body = Buffer.from(await res.arrayBuffer());
+    if (!res.ok) return { ok: false, result: { isError: true, content: [{ type: 'text', text: res.status === 404 ? 'No such host-browser tab (see host_browser_list).' : `Request failed (HTTP ${res.status})` }] } };
+    return { ok: true, body };
+  } catch (e) {
+    return { ok: false, result: { isError: true, content: [{ type: 'text', text: `Cannot reach Meowtrix at ${BASE} (${e.message}).` }] } };
+  }
+}
+
 function text(result, okText) {
   if (!result.ok) {
     return { isError: true, content: [{ type: 'text', text: `${result.message || 'Request failed'} (${result.error || 'error'})` }] };
@@ -98,7 +126,7 @@ function text(result, okText) {
 async function callTool(name, args = {}) {
   switch (name) {
     case 'open_url': {
-      const r = await api('POST', 'open', { url: args.url, placement: args.placement, reuse: args.reuse });
+      const r = await api('POST', 'open', { url: args.url, placement: args.placement, reuse: args.reuse, host: args.host });
       return text(r, (r) => `${r.action === 'reused' ? 'Reused an existing tab for' : 'Opened'} ${r.url} in Meowtrix (pane ${r.paneId}${r.action === 'opened-in-new-split' ? ', new split' : ''}).`);
     }
     case 'open_file': {
@@ -108,6 +136,21 @@ async function callTool(name, args = {}) {
     case 'get_layout': {
       const r = await api('GET', 'layout', {});
       return text(r, (r) => { const { ok, ...rest } = r; return JSON.stringify(rest, null, 2); });
+    }
+    case 'host_browser_list': {
+      const r = await hostBrowser('');
+      if (!r.ok) return r.result;
+      return { content: [{ type: 'text', text: r.body.toString('utf8') }] };
+    }
+    case 'host_browser_screenshot': {
+      const r = await hostBrowser(`/${encodeURIComponent(args.tabId || '')}/screenshot`);
+      if (!r.ok) return r.result;
+      return { content: [{ type: 'image', data: r.body.toString('base64'), mimeType: 'image/png' }] };
+    }
+    case 'host_browser_read': {
+      const r = await hostBrowser(`/${encodeURIComponent(args.tabId || '')}/text`);
+      if (!r.ok) return r.result;
+      return { content: [{ type: 'text', text: r.body.toString('utf8').slice(0, 200000) }] };
     }
     case 'notify': {
       const r = await api('POST', 'notify', { message: args.message, title: args.title });

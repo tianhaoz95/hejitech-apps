@@ -10,6 +10,7 @@
 #   mtx feedback [dir]    print the open review comments (non-blocking)
 #   mtx resolve <id>...   mark review comments as addressed
 #   mtx open <url>        show a web page in a browser tab beside this terminal
+#   mtx browser ...       list / screenshot / read host-browser tabs
 #   mtx edit <file>[:line] open a file in an editor tab beside this terminal
 #   mtx layout            print the current pane/tab layout as JSON
 #   mtx notify <message>  toast (and flag this terminal's tab) in the browser
@@ -38,8 +39,11 @@ usage() {
   printf '                        print open review comments without waiting\n' >&2
   printf '  mtx resolve <id>... [-m note] [--dir dir]\n' >&2
   printf '                        mark review comments as addressed\n' >&2
-  printf '  mtx open <url> [--split | --pane ID] [--new]\n' >&2
+  printf '  mtx open <url> [--split | --pane ID] [--new] [--host]\n' >&2
   printf '                        show a web page in a browser tab beside this terminal\n' >&2
+  printf '                        (--host: in a real Chromium on the host)\n' >&2
+  printf '  mtx browser list | shot <tab> [file.png] | text <tab> | goto <tab> <url>\n' >&2
+  printf '                        inspect host-browser tabs (what the user sees)\n' >&2
   printf '  mtx edit <file>[:line] [--split | --pane ID]\n' >&2
   printf '                        open a file in an editor tab beside this terminal\n' >&2
   printf '  mtx layout            print the current pane/tab layout as JSON\n' >&2
@@ -280,10 +284,11 @@ case "$cmd" in
     ;;
   open)
     need_curl
-    url=; placement=auto; reuse=true
+    url=; placement=auto; reuse=true; host=false
     while [ $# -gt 0 ]; do
       case "$1" in
         --new) reuse=false; shift ;;
+        --host) host=true; shift ;;
         -h|--help) usage ;;
         *)
           placement_arg "$1" "${2:-}"; r=$?
@@ -292,7 +297,7 @@ case "$cmd" in
       esac
     done
     [ -z "$url" ] && usage
-    mtx_api post open --data-urlencode "url=$url" --data-urlencode "placement=$placement" --data-urlencode "reuse=$reuse" || exit 1
+    mtx_api post open --data-urlencode "url=$url" --data-urlencode "placement=$placement" --data-urlencode "reuse=$reuse" --data-urlencode "host=$host" || exit 1
     printf '\342\206\227 %s %s in Meowtrix\n' "$(json_field action | tr '-' ' ')" "$(json_field url)"
     ;;
   edit)
@@ -325,6 +330,36 @@ case "$cmd" in
     fi
     mtx_api post open-file --data-urlencode "path=$abs" --data-urlencode "line=$line" --data-urlencode "placement=$placement" || exit 1
     printf '\342\206\227 opened %s%s in Meowtrix\n' "$abs" "${line:+:$line}"
+    ;;
+  browser)
+    # Host-browser tabs (hostbrowser-service.js): the pages the user is looking
+    # at in a real Chromium on this host. Tab ids come from `mtx browser list`.
+    need_curl
+    base="$(mtx_url)/api/hostbrowser/tabs"
+    sub=${1:-list}; [ $# -gt 0 ] && shift
+    case "$sub" in
+      list)
+        curl -fsS --max-time 20 "$base" || { printf 'mtx: cannot reach Meowtrix at %s\n' "$(mtx_url)" >&2; exit 1; }
+        printf '\n'
+        ;;
+      shot|screenshot)
+        [ -z "${1:-}" ] && usage
+        dest=${2:-$(mktemp "${TMPDIR:-/tmp}/mtx-browser.XXXXXX").png}
+        curl -fsS --max-time 30 -o "$dest" "$base/$1/screenshot" || { printf 'mtx: no host-browser tab %s\n' "$1" >&2; exit 1; }
+        printf '%s\n' "$dest"
+        ;;
+      text)
+        [ -z "${1:-}" ] && usage
+        curl -fsS --max-time 30 "$base/$1/text" || { printf 'mtx: no host-browser tab %s\n' "$1" >&2; exit 1; }
+        printf '\n'
+        ;;
+      goto)
+        { [ -z "${1:-}" ] || [ -z "${2:-}" ]; } && usage
+        curl -fsS --max-time 30 -o /dev/null -H 'Content-Type: application/json' \
+          -d "{\"url\":\"$2\"}" "$base/$1/navigate" || { printf 'mtx: navigation failed\n' >&2; exit 1; }
+        ;;
+      *) usage ;;
+    esac
     ;;
   layout)
     need_curl
