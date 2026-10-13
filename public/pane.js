@@ -1355,6 +1355,9 @@ function initBrowserTab(tab, viewEl, label, initialUrl) {
     } catch (e) {}
   });
 
+  // Exposed so `mtx open` can retarget an existing browser tab (see mtx.js).
+  tab.navigate = navigate;
+
   tab.updateTheme = () => {
     try {
       syncThemeToIframe(frame);

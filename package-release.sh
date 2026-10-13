@@ -65,11 +65,13 @@ cp -R bin "$TARGET_DIR/bin-helpers"
 # Rename bin-helpers back to bin inside target directory, but wait, target node binary goes to target bin/ too.
 # Let's place mtx helper in bin/ alongside node binary.
 cp "$TARGET_DIR/bin-helpers/mtx" "$TARGET_DIR/bin/mtx"
+cp "$TARGET_DIR/bin-helpers/mtx-mcp.js" "$TARGET_DIR/bin/mtx-mcp.js"
 rm -rf "$TARGET_DIR/bin-helpers"
 
 cp server.js "$TARGET_DIR/server.js"
 cp ai-service.js "$TARGET_DIR/ai-service.js"
 cp codesign-service.js "$TARGET_DIR/codesign-service.js"
+cp mtx-service.js "$TARGET_DIR/mtx-service.js"
 cp package.json "$TARGET_DIR/package.json"
 cp package-lock.json "$TARGET_DIR/package-lock.json"
 cp README.md "$TARGET_DIR/README.md"

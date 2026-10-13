@@ -57,6 +57,7 @@
         <a href="#browser">Browser panes</a>
         <a href="#editor">Code editor &amp; Git</a>
         <a href="#codesign">CoDesign review</a>
+        <a href="#agent-tools">Agent tools (mtx &amp; MCP)</a>
         <a href="#broadcast">Broadcast input</a>
         <a href="#schedules">Scheduled Enter (⏰)</a>
         <a href="#palette">Command palette</a>
@@ -290,6 +291,19 @@ HOST=0.0.0.0 npm start</code></pre>
           <li><strong>State on disk:</strong> the revision counter, comments and the latest decision live in <code>.codesign/review.json</code>. Restarts lose nothing, and you can commit the folder.</li>
           <li><strong>Sandboxed:</strong> the spec runs in an opaque-origin sandbox, so agent-written HTML and CDN scripts can't call Meowtrix's file or terminal APIs. One side effect: <code>localStorage</code> isn't available to the spec.</li>
         </ul>
+      </section>
+
+      <section id="agent-tools">
+        <h2>Agent tools (mtx &amp; MCP)</h2>
+        <p>Coding agents running in a Meowtrix terminal can show you things directly instead of handing you a link to click. Each command places its tab <em>beside the agent's terminal</em>, never on top of it, and leaves your keyboard focus where it was.</p>
+        <ul>
+          <li><code>mtx open &lt;url&gt;</code> opens a page in a browser tab. A bare <code>localhost:5173</code> works. Pages on a local dev server reuse that server's existing tab and reload it, so tabs don't pile up. The host fetches the page, so <code>localhost</code> URLs work even when you're on another device. Add <code>--split</code> for a fresh pane beside the terminal, <code>--pane &lt;id&gt;</code> for a specific pane, or <code>--new</code> to always open a new tab.</li>
+          <li><code>mtx edit &lt;file&gt;[:line]</code> opens a file in an editor tab at that line. It reuses an editor already rooted above the file, otherwise it opens one at the file's git repo.</li>
+          <li><code>mtx layout</code> prints the current workspace as JSON: the split tree, pane sizes, each pane's tabs, and which pane is yours (<code>containsCaller</code>).</li>
+          <li><code>mtx notify [--title T] &lt;message&gt;</code> shows a toast and puts a dot on the agent's tab until you look at it. Clicking the toast jumps to that terminal.</li>
+        </ul>
+        <p><strong>As an MCP server:</strong> <code>mtx mcp</code> serves the same actions as MCP tools (<code>open_url</code>, <code>open_file</code>, <code>get_layout</code>, <code>notify</code>) over stdio. Run <code>mtx mcp --install</code> once in a Meowtrix terminal to register it with Claude Code. Without Claude Code, it prints a config snippet for other agents. The CLI needs no setup; MCP makes agents more likely to use the tools unprompted.</p>
+        <p>How placement works: by default a new tab goes to a pane other than the agent's own. It prefers one already showing pages, then the largest, and avoids the pane you're focused on. If the agent's pane is the only one, it is split along its longer side. On phones nothing is split. Commands report an error if no Meowtrix session is active, so the agent can print the link instead.</p>
       </section>
 
       <section id="editor">

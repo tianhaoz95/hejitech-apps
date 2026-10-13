@@ -248,6 +248,17 @@ mountCodesignRoutes(app, {
   },
 });
 
+// ── mtx agent bridge: open URLs/files, read layout, notify (see mtx-service.js) ─
+const { mountMtxRoutes } = require('./mtx-service');
+const mtxBridge = mountMtxRoutes(app, {
+  getActiveClient: () => {
+    for (const c of sessionClients) {
+      if (activeTabId && c.tabId === activeTabId && c.readyState === c.OPEN) return c;
+    }
+    return null;
+  },
+});
+
 
 // ── Session state persistence ────────────────────────────────────────────────
 const SESSION_FILE = process.env.MEOWTRIX_SESSION_FILE || path.join(MEOWTRIX_DATA_DIR, 'session.json');
@@ -1615,6 +1626,10 @@ wss.on('connection', (ws) => {
         broadcastSession();
         break;
       }
+      case 'mtx:rpc:result': {
+        mtxBridge.handleRpcResult(ws, msg);
+        break;
+      }
       case 'session:sync': {
         // A (re)connecting client that doesn't want to steal — just learn state.
         ws.tabId = msg.tabId;
@@ -1665,6 +1680,11 @@ wss.on('connection', (ws) => {
         ptyEnv.PATH = path.join(__dirname, 'bin') + path.delimiter + (ptyEnv.PATH || '');
         // …and tell it how to reach this server (`mtx review` etc. use HTTP).
         ptyEnv.MEOWTRIX_URL = `http://${HOST === '0.0.0.0' || HOST === '::' ? '127.0.0.1' : HOST.includes(':') ? `[${HOST}]` : HOST}:${PORT}`;
+        // …which terminal it runs in (so `mtx open` / `mtx mcp` can place tabs
+        // beside the calling agent rather than on top of it)…
+        ptyEnv.MEOWTRIX_PTY_ID = id;
+        // …and a node binary for `mtx mcp` (the standalone app bundles its own).
+        ptyEnv.MEOWTRIX_NODE = process.execPath;
 
         let initialCwd = msg.cwd;
         if (!initialCwd && msg.inheritFromPtyId) {

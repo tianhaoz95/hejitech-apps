@@ -57,6 +57,7 @@
         <a href="#workspace">Workspace state</a>
         <a href="#proxy">Embedding proxy</a>
         <a href="#fs-git">FS &amp; Git APIs</a>
+        <a href="#mtx-bridge">mtx agent bridge</a>
         <a href="#schedules-timer">Schedules timer</a>
         <a href="#self-update-flow">Self-updates flow</a>
       </div>
@@ -110,6 +111,7 @@
 │   ├── editor.js          # Monaco text editor, file tree & Git client
 │   ├── codesign.js        # CoDesign tab: spec frame, comment pins, sign-off
 │   ├── codesign-inspector.js # injected into specs: inspect/annotate over postMessage
+│   ├── mtx.js             # mtx agent bridge: tab placement, layout, notify
 │   ├── layout.js          # splitting & draggable dividers
 │   ├── app.js             # session bootstrap, serialize/restore, shortcuts
 │   ├── mobile.js          # on-screen key bar, sticky modifiers
@@ -247,9 +249,21 @@ docker compose -f docker-compose.test.yml down -v</code></pre>
         <p><code>codesign-service.js</code> (mounted from <code>server.js</code>) serves a living HTML spec at <code>&lt;project&gt;/.codesign/spec.html</code> and records the human's review. The agent side is just the shell CLI <code>bin/mtx</code>, with no MCP server.</p>
         <ul>
           <li><strong>State on disk:</strong> <code>.codesign/review.json</code> holds the revision counter, a hash of the spec, the comments and the latest decision. <code>syncRevision()</code> runs on every access and from an <code>fs.watchFile</code> poll: a content change bumps the revision, clears the decision, and broadcasts <code>codesign:update {dir}</code> over the WebSocket.</li>
-          <li><strong>Agent API:</strong> <code>mtx review</code> long-polls <code>GET /api/codesign/wait</code> (≤50s per request, looped up to <code>--timeout</code>). The server replies right away if a decision exists for the current revision (an approval every time; a change request only until it has been delivered once). The <code>X-Codesign-Event</code> header carries <code>approved|changes|timeout|missing</code>, and <code>format=text</code> gives an agent-readable summary. <code>mtx spec</code>/<code>review</code> call <code>POST /api/codesign/open</code>, which broadcasts <code>codesign:open</code>; the active session opens a tab next to the focused pane. Agents run <code>mtx</code> in tool subprocesses whose output never reaches xterm, so an OSC sequence wouldn't work here.</li>
+          <li><strong>Agent API:</strong> <code>mtx review</code> long-polls <code>GET /api/codesign/wait</code> (≤50s per request, looped up to <code>--timeout</code>). The server replies right away if a decision exists for the current revision (an approval every time; a change request only until it has been delivered once). The <code>X-Codesign-Event</code> header carries <code>approved|changes|timeout|missing</code>, and <code>format=text</code> gives an agent-readable summary. <code>mtx spec</code>/<code>review</code> call <code>POST /api/codesign/open</code>, which broadcasts <code>codesign:open</code>; the active session opens a tab beside the calling agent's pane using the shared <code>mtx</code> placement policy (see <a href="#mtx-bridge">mtx agent bridge</a>). Agents run <code>mtx</code> in tool subprocesses whose output never reaches xterm, so an OSC sequence wouldn't work here.</li>
           <li><strong>Sandbox:</strong> the spec is served from <code>/codesign-spec/&lt;base64url dir&gt;/…</code> with <code>Content-Security-Policy: sandbox</code> (no <code>allow-same-origin</code>), and the tab's iframe carries the same flags. The WebSocket rejects <code>Origin: null</code>. The tab never reads the iframe DOM: <code>public/codesign-inspector.js</code> is inlined into the HTML and exchanges <code>mode / pins / scale / focus / scrollTo</code> commands and <code>ready / pick / pinClick / scroll</code> events with <code>public/codesign.js</code> via <code>postMessage</code>.</li>
           <li><strong>Pins</strong> are anchored to a CSS selector plus a fractional offset inside the element, so they follow reflow across device frames. Raw document coordinates are the fallback.</li>
+        </ul>
+      </section>
+
+      <section id="mtx-bridge">
+        <h2>mtx agent bridge</h2>
+        <p><code>mtx-service.js</code> (mounted from <code>server.js</code>) exposes <code>/api/mtx/open</code>, <code>/open-file</code>, <code>/layout</code> and <code>/notify</code> for host processes: the <code>mtx open|edit|layout|notify</code> commands and the stdio MCP server <code>bin/mtx-mcp.js</code> (<code>mtx mcp</code>). The MCP server is a dependency-free adapter that turns each tool call into one HTTP call.</p>
+        <ul>
+          <li><strong>RPC to the active session:</strong> the layout lives in the browser, so each endpoint sends <code>mtx:rpc {reqId, method, params}</code> to the active session's socket and waits up to 8s for <code>mtx:rpc:result</code>. Only that socket may answer. With no active session the endpoint returns 409 <code>no-active-session</code>.</li>
+          <li><strong>Caller identity:</strong> every PTY gets <code>MEOWTRIX_PTY_ID</code> (plus <code>MEOWTRIX_NODE</code>, the server's node binary, for <code>mtx mcp</code>). Callers pass it as <code>ptyId</code>, so the client knows which pane is the agent's. CoDesign's <code>codesign:open</code> carries it too.</li>
+          <li><strong>Placement is client policy</strong> (<code>mtxPlacePane</code> in <code>public/mtx.js</code>). Agents pass <code>auto</code>, <code>split</code>, or a pane id from <code>layout</code>. <code>auto</code> picks a pane other than the caller's, preferring panes that show pages, then larger panes, and avoiding the focused pane. It splits the caller along its longer axis only when no other pane exists. Opening goes through <code>mtxPreservingFocus</code>, so the user's active pane and terminal focus survive.</li>
+          <li><strong>Reuse:</strong> <code>open</code> retargets a browser tab with the exact URL, or one on the same origin if the host is loopback/private (a dev server). Public sites never get navigated away. <code>open-file</code> reuses the editor tab whose root most specifically contains the file; otherwise the server picks the enclosing git repo as the new editor's root.</li>
+          <li><strong>Safety:</strong> URLs are normalized server-side and restricted to <code>http(s)</code>. There is no new trust boundary: anything that can reach the API already has a shell.</li>
         </ul>
       </section>
 
@@ -275,7 +289,7 @@ docker compose -f docker-compose.test.yml down -v</code></pre>
 
       <section id="modules">
         <h2>Frontend module map</h2>
-        <p>All files are global-scope and <strong>load order matters</strong>. In <code>index.html</code>: <code>demo.js</code> → <code>ws.js</code> → <code>pane.js</code> → <code>editor.js</code> → <code>codesign.js</code> → <code>layout.js</code> → <code>app.js</code> → <code>mobile.js</code> → <code>settings.js</code> → <code>palette.js</code> → <code>schedule.js</code> → <code>update.js</code> → <code>combo.js</code> → <code>pet.js</code>. Cross-file calls are plain function references (e.g. <code>wsSend</code>, <code>getAllPanes</code>, <code>applyStickyMods</code>), not imports.</p>
+        <p>All files are global-scope and <strong>load order matters</strong>. In <code>index.html</code>: <code>demo.js</code> → <code>ws.js</code> → <code>pane.js</code> → <code>editor.js</code> → <code>codesign.js</code> → <code>layout.js</code> → <code>app.js</code> → <code>mobile.js</code> → <code>settings.js</code> → <code>palette.js</code> → <code>schedule.js</code> → <code>update.js</code> → <code>mtx.js</code> → <code>combo.js</code> → <code>pet.js</code>. Cross-file calls are plain function references (e.g. <code>wsSend</code>, <code>getAllPanes</code>, <code>applyStickyMods</code>), not imports.</p>
         <table>
           <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
           <tbody>

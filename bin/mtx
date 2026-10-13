@@ -9,6 +9,11 @@
 #   mtx review [dir]      wait for the human to approve the spec or send comments
 #   mtx feedback [dir]    print the open review comments (non-blocking)
 #   mtx resolve <id>...   mark review comments as addressed
+#   mtx open <url>        show a web page in a browser tab beside this terminal
+#   mtx edit <file>[:line] open a file in an editor tab beside this terminal
+#   mtx layout            print the current pane/tab layout as JSON
+#   mtx notify <message>  toast (and flag this terminal's tab) in the browser
+#   mtx mcp               run the same tools as an MCP server over stdio
 #
 # `download` emits ESC ] 5379 ; <abs-path> BEL  → client GETs /api/download.
 # `code`     emits ESC ] 5380 ; <abs-path> BEL  → client opens an editor tab.
@@ -16,6 +21,9 @@
 # HTTP instead, at $MEOWTRIX_URL (set for every spawned shell) — they are
 # usually run by an agent in a tool subprocess whose output never reaches the
 # terminal, so OSC sequences wouldn't work. See codesign-service.js.
+# open/edit/layout/notify (and `mtx mcp`) also use HTTP, via /api/mtx/* — see
+# mtx-service.js. They pass $MEOWTRIX_PTY_ID (set for every spawned shell) so the
+# browser places new tabs beside the calling terminal, not on top of it.
 # This script is placed on PATH for every spawned shell, which also gives
 # `mtx <cmd> ` filename/dir tab-completion for free.
 
@@ -30,6 +38,15 @@ usage() {
   printf '                        print open review comments without waiting\n' >&2
   printf '  mtx resolve <id>... [-m note] [--dir dir]\n' >&2
   printf '                        mark review comments as addressed\n' >&2
+  printf '  mtx open <url> [--split | --pane ID] [--new]\n' >&2
+  printf '                        show a web page in a browser tab beside this terminal\n' >&2
+  printf '  mtx edit <file>[:line] [--split | --pane ID]\n' >&2
+  printf '                        open a file in an editor tab beside this terminal\n' >&2
+  printf '  mtx layout            print the current pane/tab layout as JSON\n' >&2
+  printf '  mtx notify [--title T] <message>\n' >&2
+  printf '                        toast in the browser and flag this terminal\n' >&2
+  printf '  mtx mcp [--install]   run these tools as an MCP server (stdio);\n' >&2
+  printf '                        --install registers it with Claude Code\n' >&2
   exit 1
 }
 
@@ -78,7 +95,43 @@ find_project() {
 
 # Ask the browser to show the CoDesign tab for $1. Fails if the server is down.
 open_spec_tab() {
-  curl -fsS -o /dev/null -X POST --data-urlencode "dir=$1" "$(mtx_url)/api/codesign/open" 2>/dev/null
+  curl -fsS -o /dev/null -X POST --data-urlencode "dir=$1" --data-urlencode "ptyId=${MEOWTRIX_PTY_ID:-}" \
+    "$(mtx_url)/api/codesign/open" 2>/dev/null
+}
+
+# Call /api/mtx/<endpoint> (get|post) with extra curl args. On success the JSON
+# reply is in $mtx_body; on failure the server's message is printed and 1 is
+# returned.
+mtx_api() {
+  verb=$1; endpoint=$2; shift 2
+  out=$(mktemp "${TMPDIR:-/tmp}/mtx-api.XXXXXX")
+  if [ "$verb" = get ]; then set -- -G "$@"; else set -- -X POST "$@"; fi
+  code=$(curl -sS -o "$out" -w '%{http_code}' --max-time 20 "$@" \
+    --data-urlencode "ptyId=${MEOWTRIX_PTY_ID:-}" "$(mtx_url)/api/mtx/$endpoint" 2>/dev/null)
+  mtx_body=$(cat "$out"); rm -f "$out"
+  case "$code" in
+    2??) return 0 ;;
+    000|'') printf 'mtx: cannot reach Meowtrix at %s (set MEOWTRIX_URL)\n' "$(mtx_url)" >&2; return 1 ;;
+  esac
+  msg=$(json_field message)
+  printf 'mtx: %s\n' "${msg:-request failed (HTTP $code)}" >&2
+  return 1
+}
+
+# Pull a top-level string field out of $mtx_body (no jq dependency).
+json_field() {
+  printf '%s' "$mtx_body" | sed -n "s/.*\"$1\":\"\([^\"]*\)\".*/\1/p" | head -n 1
+}
+
+# --split / --pane ID → the placement the browser should use.
+placement_arg() {
+  case "$1" in
+    --split) placement=split ;;
+    --pane) placement=$2; return 2 ;;
+    --pane=*) placement=${1#--pane=} ;;
+    *) return 1 ;;
+  esac
+  return 0
 }
 
 # Resolve $1 to an absolute path, collapsing ./ and ../ when the directory
@@ -224,6 +277,88 @@ case "$cmd" in
     proj=$(find_project "$dir_arg") || exit 1
     curl -sS -f -X POST --data-urlencode "dir=$proj" --data-urlencode "ids=$ids" --data-urlencode "note=$note" \
       --data-urlencode "format=text" "$(mtx_url)/api/codesign/resolve" || { printf 'mtx: cannot reach Meowtrix at %s\n' "$(mtx_url)" >&2; exit 1; }
+    ;;
+  open)
+    need_curl
+    url=; placement=auto; reuse=true
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --new) reuse=false; shift ;;
+        -h|--help) usage ;;
+        *)
+          placement_arg "$1" "${2:-}"; r=$?
+          if [ $r -eq 0 ]; then shift; elif [ $r -eq 2 ]; then shift 2 || usage; else url=$1; shift; fi
+          ;;
+      esac
+    done
+    [ -z "$url" ] && usage
+    mtx_api post open --data-urlencode "url=$url" --data-urlencode "placement=$placement" --data-urlencode "reuse=$reuse" || exit 1
+    printf '\342\206\227 %s %s in Meowtrix\n' "$(json_field action | tr '-' ' ')" "$(json_field url)"
+    ;;
+  edit)
+    need_curl
+    target=; line=; placement=auto
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --line) line=${2:-}; shift 2 || usage ;;
+        -h|--help) usage ;;
+        *)
+          placement_arg "$1" "${2:-}"; r=$?
+          if [ $r -eq 0 ]; then shift; elif [ $r -eq 2 ]; then shift 2 || usage; else target=$1; shift; fi
+          ;;
+      esac
+    done
+    [ -z "$target" ] && usage
+    # Accept file:line (as printed by compilers/grep) when file:line itself isn't a file.
+    if [ ! -e "$target" ]; then
+      case "$target" in
+        *:[0-9]*)
+          n=${target##*:}
+          case "$n" in *[!0-9]*) ;; *) [ -e "${target%:*}" ] && { line=${line:-$n}; target=${target%:*}; } ;; esac
+          ;;
+      esac
+    fi
+    abs=$(resolve_abs "$target")
+    if [ ! -f "$abs" ]; then
+      printf 'mtx: %s: no such file\n' "$target" >&2
+      exit 1
+    fi
+    mtx_api post open-file --data-urlencode "path=$abs" --data-urlencode "line=$line" --data-urlencode "placement=$placement" || exit 1
+    printf '\342\206\227 opened %s%s in Meowtrix\n' "$abs" "${line:+:$line}"
+    ;;
+  layout)
+    need_curl
+    mtx_api get layout || exit 1
+    printf '%s\n' "$mtx_body"
+    ;;
+  notify)
+    need_curl
+    title=; message=
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        -t|--title) title=${2:-}; shift 2 || usage ;;
+        *) message="${message:+$message }$1"; shift ;;
+      esac
+    done
+    [ -z "$message" ] && usage
+    mtx_api post notify --data-urlencode "message=$message" --data-urlencode "title=$title" || exit 1
+    ;;
+  mcp)
+    self=$(cd "$(dirname "$0")" 2>/dev/null && pwd)/$(basename "$0")
+    case "${1:-}" in
+      --install)
+        if command -v claude >/dev/null 2>&1; then
+          claude mcp add --scope user meowtrix -- "$self" mcp
+        else
+          printf 'Claude Code not found. Add this stdio MCP server to your agent instead:\n\n'
+          printf '  { "mcpServers": { "meowtrix": { "command": "%s", "args": ["mcp"] } } }\n' "$self"
+        fi
+        ;;
+      '')
+        exec "${MEOWTRIX_NODE:-node}" "$(dirname "$self")/mtx-mcp.js"
+        ;;
+      *) usage ;;
+    esac
     ;;
   *)
     printf 'mtx: unknown command: %s\n' "$cmd" >&2

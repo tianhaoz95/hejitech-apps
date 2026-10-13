@@ -38,6 +38,7 @@ Remote vibe engineering tool — a browser-based workspace with tiling split pan
 - **Keystroke Combo FX** — level up your typing with streak rewards: particle bursts, screen shake, edge glow, and heat-tinted combo readouts.
 - **Self-updates** — background git check notifies you of updates via an in-app banner; trigger a pull and clean server restart directly from the UI.
 - **`mtx` host helper** — `mtx download <file>` pushes a host file to your browser as a download; `mtx code <dir>` opens that directory in a code-editor tab; `mtx spec` / `mtx review` / `mtx feedback` / `mtx resolve` drive the CoDesign review loop
+- **Agent tools (`mtx` + MCP)** — agents in a Meowtrix terminal can show you their work instead of handing you links: `mtx open <url>` opens a page in a browser tab beside the agent's terminal and reuses the tab for a local dev server; `mtx edit <file>:<line>` opens code in the editor; `mtx layout` describes the panes; `mtx notify <msg>` toasts and flags the agent's tab. None of them steal your focus. `mtx mcp` serves the same actions as MCP tools; register it with Claude Code via `mtx mcp --install`
 - **Cross-device sessions** — server-coordinated single active session; move the whole workspace between browsers and devices and your layout follows
 - **Command palette** — `⌘K` (or `Ctrl/⌘+Shift+P`) fuzzy launcher for every action: split, new tab, switch tabs/panes, broadcast, themes, settings, schedules, self-update
   

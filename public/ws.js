@@ -48,7 +48,9 @@ function handleWsMessage(msg) {
   } else if (msg.type === 'codesign:update') {
     if (typeof onCodesignUpdate === 'function') onCodesignUpdate(msg.dir);
   } else if (msg.type === 'codesign:open') {
-    if (typeof onCodesignOpen === 'function') onCodesignOpen(msg.dir);
+    if (typeof onCodesignOpen === 'function') onCodesignOpen(msg.dir, msg.ptyId);
+  } else if (msg.type === 'mtx:rpc') {
+    if (typeof onMtxRpc === 'function') onMtxRpc(msg);
   } else if (msg.type === 'fs:change') {
     if (typeof onFsChange === 'function') onFsChange(msg.path, msg.eventType, msg.filename);
   }

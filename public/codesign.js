@@ -427,23 +427,28 @@ function refreshAllCodesignTabs() {
 // (via the server's `codesign:open` broadcast), the palette and the tab picker.
 // Prefers a pane other than the focused one, so the agent's terminal stays
 // visible next to the spec.
-function triggerOpenCodesign(dir, { fromAgent = false } = {}) {
+function triggerOpenCodesign(dir, { fromAgent = false, ptyId = null } = {}) {
   if (!dir) return;
   if (fromAgent && typeof isActiveSession !== 'undefined' && !isActiveSession) return;
   for (const p of getAllPanes()) {
     const existing = p.tabs.find(t => t.type === 'codesign' && t.codesignDir === dir);
     if (existing) { activateTab(p, existing.id); return; }
   }
-  let pane = activePane || getAllPanes()[0];
-  if (!pane) return;
   if (fromAgent) {
-    const others = getAllPanes().filter(p => p !== pane);
-    pane = others.length ? others[others.length - 1] : splitPane(pane, 'vertical', { empty: true });
+    // Same placement policy as `mtx open` (mtx.js): beside the agent's
+    // terminal, never on top of it, without stealing the user's focus.
+    mtxPreservingFocus(() => {
+      const where = mtxPlacePane('auto', ptyId);
+      if (!where.error) addTab(where.pane, 'codesign', undefined, undefined, undefined, dir);
+    });
+    return;
   }
+  const pane = activePane || getAllPanes()[0];
+  if (!pane) return;
   addTab(pane, 'codesign', undefined, undefined, undefined, dir);
   saveSessionState();
 }
 
-function onCodesignOpen(dir) {
-  triggerOpenCodesign(dir, { fromAgent: true });
+function onCodesignOpen(dir, ptyId) {
+  triggerOpenCodesign(dir, { fromAgent: true, ptyId });
 }

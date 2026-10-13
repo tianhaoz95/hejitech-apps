@@ -214,7 +214,10 @@ function mountCodesignRoutes(app, { broadcast }) {
   // an agent's tool subprocess where OSC sequences never reach the terminal.
   router.post('/open', withDir((dir, req, res) => {
     project(dir);
-    broadcast({ type: 'codesign:open', dir });
+    // ptyId ($MEOWTRIX_PTY_ID of the calling shell) lets the client place the
+    // tab beside the agent's terminal instead of on top of it.
+    const ptyId = typeof req.body?.ptyId === 'string' ? req.body.ptyId.slice(0, 200) : null;
+    broadcast({ type: 'codesign:open', dir, ptyId });
     res.json({ ok: true, dir, exists: !!readSpec(dir) });
   }));
 

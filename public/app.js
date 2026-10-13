@@ -797,6 +797,7 @@ function showToast(msg, onClick) {
   el.textContent = msg;
   el.classList.add('visible');
 
+  el.classList.toggle('clickable', !!onClick);
   if (onClick) {
     el.style.cursor = 'pointer';
     _toastClickHandler = onClick;
