@@ -117,3 +117,9 @@ xcodebuild test \
 ```bash
 xcodegen generate
 ```
+
+### 📋 "What's New" Policy
+Whenever introducing **new features**, **bug fixes**, or **improvements**, they **must always be populated in `VoxbriefApp/Views/WhatsNewView.swift`**:
+- **New Features**: Placed in `features: [WhatsNewItem]` to appear up front on the primary sheet.
+- **Bug Fixes & Improvements**: Placed in `improvementsAndFixes: [WhatsNewItem]` with `kind: .fix` or `kind: .improvement`, viewable in the secondary UI modal.
+- **Version History**: Prepend new releases to `WhatsNewView.releases` and bump `WhatsNewView.currentVersion` so historical notes remain browseable.

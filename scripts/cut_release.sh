@@ -89,6 +89,14 @@ if [[ "$ALLOW_DIRTY" != "true" ]] && [[ -n "$(git status --porcelain)" ]]; then
   exit 1
 fi
 
+CLEAN_VERSION="${VERSION#v}"
+WHATS_NEW_FILE="VoxbriefApp/Views/WhatsNewView.swift"
+if [[ -f "$WHATS_NEW_FILE" ]] && ! grep -q "currentVersion = \"$CLEAN_VERSION\"" "$WHATS_NEW_FILE"; then
+  echo "error: WhatsNewView.currentVersion does not match $CLEAN_VERSION in $WHATS_NEW_FILE." >&2
+  echo "Always populate 'What's New' with new features, bug fixes, and improvements before cutting a release!" >&2
+  exit 1
+fi
+
 CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 if [[ "$CURRENT_BRANCH" != "main" ]]; then
   echo "warning: releasing from branch '$CURRENT_BRANCH', not 'main'." >&2

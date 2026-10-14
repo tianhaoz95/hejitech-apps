@@ -132,3 +132,23 @@ The script fails fast if either `AppIcon.appiconset` (iOS or watch) has no actua
 Both are prompted for structured JSON (title/summary/requirements/conditions/actionItems/tags), which `LLMCopywriterService` renders through its own `assembleMarkdown` — the model's own prose formatting is never trusted directly, only its structured fields.
 
 **Critical, permanent constraint: MLX does not run in the iOS Simulator.** Its Metal GPU allocator requires a heap storage mode the Simulator's Metal implementation doesn't support, and touching *any* MLX API on Simulator crashes the whole process with an uncatchable C++ `abort()` (`mlx::core::metal::Device::Device()` throwing past Swift's `try/catch` — this cannot be caught, only avoided). This is a known upstream limitation ([ml-explore/mlx#2605](https://github.com/ml-explore/mlx/issues/2605)), not a bug in this integration, and it reproduces identically whether triggered from an XCTest bundle or the real running app. `OnDeviceLLMService.isSupportedOnThisDevice` (`#if targetEnvironment(simulator)`) gates every single entry point — `generate`, `downloadLargeModel`, `refreshLargeModelState` — so none of them ever touch an MLX API on Simulator; they fail with `OnDeviceLLMError.unavailableInSimulator` instead, which `LLMCopywriterService` catches and falls through to the rule-based transformer exactly as if the model had failed for any other reason. **Never remove or bypass this guard** — real device testing is the only way to verify actual on-device generation; Simulator testing can only verify the graceful-failure path.
+
+## Always Populate "What's New" When Making Changes
+
+Whenever **new features**, **bug fixes**, or **improvements** are added to the codebase, they **MUST always be populated in `VoxbriefApp/Views/WhatsNewView.swift`**. Do not ship changes, merge PRs, or cut a release without updating What's New.
+
+### Rules for "What's New" Updates:
+1. **New Features (Shown Up Front)**:
+   - Add new capabilities and user-facing additions directly to `features: [WhatsNewItem]` in the active `ReleaseHistoryItem`.
+   - These are presented prominently on the main screen of `WhatsNewView`.
+   - Each item must have an intuitive SF Symbol `icon`, a descriptive `title`, a concise `description`, and a semantic `tint` color.
+2. **Bug Fixes & Improvements (Secondary UI)**:
+   - Add fixes, performance optimizations, and polish to `improvementsAndFixes: [WhatsNewItem]` in the active `ReleaseHistoryItem`.
+   - These are displayed in the secondary UI (`WhatsNewImprovementsView` modal sheet) accessible when users tap the "Bug Fixes & Improvements" card button or navigation bar shortcut.
+   - Always tag each item with `kind: .fix` (Bug Fix) or `kind: .improvement` (Improvement).
+3. **Version Bumping & Release History**:
+   - When preparing a new version release, update `WhatsNewView.currentVersion` (e.g. `"1.22.0"`). This triggers the automated presentation prompt for users upon updating (`WhatsNewView.shouldShowAutomatically`).
+   - Prepend a new `ReleaseHistoryItem` at index 0 of `WhatsNewView.releases`.
+   - **Never overwrite or delete previous release notes**; retain existing versions in the array so users can browse historical version notes in the app's version browser.
+   - Update `Tests/UnitTests/WhatsNewViewTests.swift` (`testCurrentVersionMatchesReleases` and `expectedVersions`) to verify the new version numbers and content counts.
+
