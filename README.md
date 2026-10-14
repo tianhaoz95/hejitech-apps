@@ -21,7 +21,7 @@ Remote vibe engineering tool — a browser-based workspace with tiling split pan
   ![Persistent terminals](website/assets/features/terminal-dark.gif)
 
 - **Embedded browser panes** — built-in browser with a server-side proxy that strips frame-blocking headers so otherwise un-embeddable pages render in a pane. The proxy keeps a persistent, domain-aware cookie jar (so sign-ins stick across subdomains and restarts) and tunnels pages' WebSockets. In the **desktop app**, browser tabs are real native webviews instead — no proxy, sites run on their own origins
-- **Host Browser tabs** — a real Chromium running on the host, streamed into a tab (works from any device, including phones). Sites see a normal browser: Google sign-in, OAuth popups, passkeys, WebSockets and downloads work, and the signed-in profile lives on the host so it follows you between devices. Agents can screenshot and read these tabs (`mtx browser`, MCP `host_browser_*`)
+- **Host Browser tabs** — a real Chromium running on the host, streamed into a tab (works from any device, including phones). Sites see a normal browser: Google sign-in, OAuth popups, WebSockets and downloads work (passkeys can't reach it — sites fall back to their other sign-in methods), and the signed-in profile lives on the host so it follows you between devices. Agents can screenshot and read these tabs (`mtx browser`, MCP `host_browser_*`)
   
   ![Embedded browser](website/assets/features/embedded-browser-dark.gif)
 
@@ -310,7 +310,8 @@ Settings are saved to `~/.meowtrix/settings.json` on the host machine; the works
 |---|---|---|---|
 | Engine | iframe behind the server proxy | native webview on your machine | Chromium on the host, streamed |
 | Sign-ins | kept in the proxy's cookie jar | your OS browser store | host profile (`~/.meowtrix/host-browser-profile`), follows you across devices |
-| Google / OAuth popups / passkeys | often blocked | ✓ (popups open as tabs) | ✓ |
+| Google sign-in / OAuth popups | often blocked | ✓ (popups open as tabs) | ✓ |
+| Passkeys | ✗ | not verified | ✗ (declined, so sites offer other methods) |
 | `localhost` means | the host | your machine (same as the host for local installs) | the host |
 | Feel | native | native | video-like (JPEG stream), slight latency |
 

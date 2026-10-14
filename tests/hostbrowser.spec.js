@@ -16,6 +16,13 @@ function startFixtureSite() {
       res.writeHead(302, { Location: '/', 'Set-Cookie': 'session=abc123; Path=/; HttpOnly' });
       return res.end();
     }
+    if (req.url === '/passkey') {
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      return res.end(`<title>Passkey</title><div id="r">pending</div><script>
+        navigator.credentials.get({ publicKey: { challenge: new Uint8Array(32), timeout: 60000 } })
+          .then(() => { r.textContent = 'passkey:resolved'; }, (e) => { r.textContent = 'passkey:' + e.name; });
+      </script>`);
+    }
     if (req.url === '/popup') {
       res.writeHead(200, { 'Content-Type': 'text/html' });
       return res.end('<title>Popup page</title><h1>popup opened</h1>');
@@ -119,6 +126,17 @@ test.describe('host browser tab', () => {
     await page.evaluate(() => {
       for (const p of getAllPanes()) for (const t of [...p.tabs]) if (t.type === 'hostbrowser') closeTab(p, t.id);
     });
+    await expect.poll(async () => (await tabs(request)).length).toBe(0);
+  });
+
+  test('passkey requests fail fast so sites offer other sign-in methods', async ({ page, request }) => {
+    test.setTimeout(60000);
+    // Headless Chrome's passkey sheet has no window: without the shim the
+    // request hangs forever. It must reject like a cancelled prompt instead.
+    const tabId = await page.evaluate((url) => addTab(activePane, 'hostbrowser', undefined, undefined, url).id, siteUrl + '/passkey');
+    await expect.poll(() => pageText(request, tabId), { timeout: 30000 }).toContain('passkey:NotAllowedError');
+    await expect(page.locator('#mtx-toast')).toContainText('Passkeys');
+    await page.evaluate(() => { for (const p of getAllPanes()) for (const t of [...p.tabs]) if (t.type === 'hostbrowser') closeTab(p, t.id); });
     await expect.poll(async () => (await tabs(request)).length).toBe(0);
   });
 

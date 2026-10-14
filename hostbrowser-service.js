@@ -136,6 +136,28 @@ const PAGE_INIT_SCRIPT = `(() => {
   }, { capture: true, passive: true });
   document.addEventListener('focusin', (e) => report({ editable: editable(e.target) }), true);
   document.addEventListener('focusout', () => setTimeout(() => report({ editable: editable(document.activeElement) }), 0), true);
+  // Passkeys live on the user's own devices, which the host browser can't
+  // reach, and headless Chrome's passkey sheet has no window, so a WebAuthn
+  // request would hang forever ("Verifying it's you…"). Answer it the way a
+  // cancelled prompt does (NotAllowedError) so sites offer their other sign-in
+  // methods, and tell the tab so it can explain.
+  if (window.CredentialsContainer) {
+    const proto = CredentialsContainer.prototype;
+    for (const m of ['get', 'create']) {
+      const orig = proto[m];
+      if (typeof orig !== 'function') continue;
+      proto[m] = function (opts) {
+        if (opts && opts.publicKey) {
+          if (opts.mediation !== 'conditional') report({ passkey: m });
+          return Promise.reject(new DOMException('The operation either timed out or was not allowed.', 'NotAllowedError'));
+        }
+        return orig.apply(this, arguments);
+      };
+    }
+  }
+  if (window.PublicKeyCredential) {
+    try { PublicKeyCredential.isConditionalMediationAvailable = () => Promise.resolve(false); } catch (e) {}
+  }
 })();`;
 
 class HostBrowserService {
@@ -396,6 +418,7 @@ class HostBrowserService {
         this._send(entry, { t: 'cursor', cursor: entry.cursor });
       }
       if (typeof info.editable === 'boolean') this._send(entry, { t: 'editable', editable: info.editable });
+      if (info.passkey) this._send(entry, { t: 'passkey' });
     }
   }
 

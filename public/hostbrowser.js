@@ -221,6 +221,10 @@ function initHostBrowserTab(tab, viewEl, label, initialUrl) {
       case 'editable': tab.hbEditable = !!msg.editable; kbdBtn.classList.toggle('active', !!msg.editable); break;
       case 'clipboard': hbCopyToClipboard(msg.text); break;
       case 'console': addConsoleLog(msg.level || 'log', msg.text || ''); break;
+      case 'passkey':
+        // See PAGE_INIT_SCRIPT in hostbrowser-service.js.
+        if (typeof showToast === 'function') showToast('Passkeys can’t be used in a host browser tab — choose another sign-in method (e.g. “Try another way”).');
+        break;
       case 'error': if (typeof showToast === 'function') showToast(msg.message); break;
       case 'download': {
         if (typeof showToast === 'function') {
