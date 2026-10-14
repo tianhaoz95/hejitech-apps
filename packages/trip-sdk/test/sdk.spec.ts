@@ -1,10 +1,16 @@
 import { readFileSync } from "node:fs";
-import { expect, test, type Locator } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
-/** Playwright scrolls targets flush to the viewport edge, under our fixed tab bar; center them first. */
+/** Playwright scrolls targets flush to the viewport edge, under our pinned top bar; center them first. */
 async function tap(l: Locator) {
   await l.evaluate((e) => e.scrollIntoView({ block: "center" }));
   await l.click();
+}
+
+/** Sections live in the collapsible sidebar on phones: open it with the bar's ☰, then pick one. */
+async function go(page: Page, section: string) {
+  await page.locator("[data-waypack-bar] .wp-bar-menu").click();
+  await page.locator(`#sidebar a[data-go=${section}]`).click();
 }
 
 const BASE = "http://127.0.0.1:4199/t/local/";
@@ -17,8 +23,13 @@ test.describe("Waypack SDK in a phone viewport", () => {
     expect(await page.evaluate(() => document.body.firstElementChild?.hasAttribute("data-waypack-bar"))).toBe(true);
     await expect(bar.locator(".wp-bar-back")).toHaveCount(0);
     await expect(bar.locator(".wp-bar-more")).toHaveCount(0);
-    // This example has a bottom tab bar and no section drawer, so no ☰ either.
-    await expect(bar.locator(".wp-bar-menu")).toBeHidden();
+    // The example registers its section sidebar with Waypack.onMenu, so ☰ shows and opens it.
+    await bar.locator(".wp-bar-menu").click();
+    await expect(page.locator("#sidebar")).toHaveClass(/open/);
+    await expect(bar.locator(".wp-bar-menu")).toHaveAttribute("aria-expanded", "true");
+    await page.locator("#sidebar a[data-go=plan]").click();
+    await expect(page.locator("#sidebar")).not.toHaveClass(/open/);
+    await expect(page.locator("#tab-plan")).toBeVisible();
     await page.evaluate(() => window.scrollTo(0, 800));
     expect(await bar.evaluate((e) => Math.round(e.getBoundingClientRect().top))).toBe(0);
   });
@@ -82,18 +93,18 @@ test.describe("Waypack SDK in a phone viewport", () => {
   test("Today, Plan, Places and Guide tabs work", async ({ page }) => {
     await page.goto(BASE);
     await expect(page.locator("#trip-title")).toHaveText("Sequoia Winter Weekend");
-    await page.getByRole("link", { name: /Plan/ }).click();
+    await go(page, "plan");
     await expect(page.locator("#day-2026-12-25")).toContainText("Christmas in the snow");
-    await page.getByRole("link", { name: /Places/ }).click();
+    await go(page, "places");
     await expect(page.locator("#place-lodge-wuksachi")).toContainText("Wuksachi Lodge");
-    await page.getByRole("link", { name: /Guide/ }).click();
+    await go(page, "guide");
     await expect(page.locator("#g-packing")).toBeVisible();
     await expect(page.locator("#live-checks a")).toHaveCount(7);
   });
 
   test("Navigate hands off to Google Maps on the web", async ({ page, context }) => {
     await page.goto(BASE);
-    await page.getByRole("link", { name: /Places/ }).click();
+    await go(page, "places");
     const [popup] = await Promise.all([
       context.waitForEvent("page"),
       tap(page.locator("#place-lodge-wuksachi [data-nav]")),
@@ -129,7 +140,7 @@ test.describe("Waypack SDK in a phone viewport", () => {
     expect(ics).toMatch(/DTSTART:\d{8}T\d{6}Z/);
   });
 
-  test("responsive: rail + pinned map on desktop, bottom tabs on phone", async ({ browser }) => {
+  test("responsive: rail + pinned map on desktop, collapsed sidebar on phone", async ({ browser }) => {
     const desk = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const p = await desk.newPage();
     await p.goto(BASE);
@@ -141,7 +152,9 @@ test.describe("Waypack SDK in a phone viewport", () => {
     const q = await phone.newPage();
     await q.goto(BASE);
     await expect(q.locator("#map-pane")).toBeHidden();
-    await expect(q.locator(".tabbar a[data-go=map]")).toBeVisible();
+    await expect(q.locator("#sidebar")).not.toHaveClass(/open/);
+    await expect(q.locator("#sidebar a[data-go=map]")).not.toBeInViewport();
+    await expect(q.locator("[data-waypack-bar] .wp-bar-menu")).toBeVisible();
     expect(await q.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await phone.close();
   });

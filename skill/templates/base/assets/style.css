@@ -199,12 +199,12 @@ details summary { min-height: 40px; display: flex; align-items: center; font-wei
   padding: calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 16px);
   background: var(--surface);
   border-right: 1px solid var(--line);
-  box-shadow: 4px 0 24px rgba(0,0,0,0.15);
   transform: translateX(-100%);
-  transition: transform .25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform .25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow .25s;
   overflow-y: auto;
 }
-.sidebar.open { transform: translateX(0); }
+/* Shadow only while open: on the closed drawer its blur would bleed onto the page's left edge. */
+.sidebar.open { transform: translateX(0); box-shadow: 4px 0 24px rgba(0,0,0,0.15); }
 .rail-head {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
   padding: 4px 0 16px; border-bottom: 1px solid var(--line); margin-bottom: 12px;

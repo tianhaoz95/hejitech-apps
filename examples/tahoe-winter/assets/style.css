@@ -1,26 +1,25 @@
 /* Waypack base template — readable at arm's length on a phone, roomy on iPad and desktop.
  * Colours come from theme.css (presets per destination/season). Layout breakpoints:
- *   < 760px  phone: bottom tab bar, single column
+ *   < 760px  phone: collapsible left sidebar, full-height travel plan, single column
  *   ≥ 760px  tablet: wider content, two-column grids
  *   ≥ 1100px desktop: left navigation rail + map pinned on the right */
 :root {
   --radius: 16px;
   --tap: 48px;
-  --tabbar-h: 64px;
   --rail-w: 232px;
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", system-ui, sans-serif;
   color-scheme: light dark;
 }
 
 * { box-sizing: border-box; }
-/* Keep anchored/focused content clear of the fixed top bar and bottom tab bar. */
-html { -webkit-text-size-adjust: 100%; scroll-padding-top: 72px; scroll-padding-bottom: calc(var(--tabbar-h) + 24px); }
+/* Keep anchored/focused content clear of the sticky top bar and safe area. */
+html { -webkit-text-size-adjust: 100%; scroll-padding-top: calc(env(safe-area-inset-top) + 64px); scroll-padding-bottom: 24px; }
 body {
   margin: 0;
   font: 17px/1.5 var(--font);
   background: var(--bg);
   color: var(--text);
-  padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 12px);
+  padding-bottom: calc(env(safe-area-inset-bottom) + 16px);
 }
 h1, h2, h3 { line-height: 1.25; margin: 0 0 .4em; }
 h2 { font-size: 1.2rem; }
@@ -36,7 +35,7 @@ small { font-size: .85rem; }
 .hero-banner .scene, .hero-banner .scene svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .hero-banner .hero-text {
   position: absolute; left: 0; right: 0; top: 0;
-  padding: calc(env(safe-area-inset-top) + 18px) 18px 0;
+  padding: 16px 18px 0;
   max-width: 1100px; margin: 0 auto;
 }
 .hero-banner h1 { font-size: 1.65rem; letter-spacing: -.01em; margin: 0; color: var(--title-ink); text-shadow: 0 1px 12px var(--sky-2); }
@@ -56,19 +55,19 @@ small { font-size: .85rem; }
 @keyframes wp-rain { from { transform: translate(0, 0); } to { transform: translate(-60px, 360px); } }
 @media (prefers-reduced-motion: reduce) { .p-fall, .p-drift, .p-rain { animation: none; } }
 
-/* ---------- Compact sticky top bar (appears once the banner scrolls away) ---------- */
+/* ---------- Top bar ----------
+   The Waypack SDK pins this bar to the top (sticky, safe-area padding) and adds its buttons:
+   back and ⋯ in the app, ☰ for the sections menu. Style it freely; don't position it. */
 .topbar {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 15;
-  display: flex; align-items: center; gap: 8px;
-  padding: calc(env(safe-area-inset-top) + 8px) 16px 8px;
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
-  backdrop-filter: saturate(1.4) blur(12px); -webkit-backdrop-filter: saturate(1.4) blur(12px);
+  gap: 10px;
+  padding: calc(env(safe-area-inset-top) + 6px) 12px 8px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px);
   border-bottom: 1px solid var(--line);
-  transform: translateY(-110%); transition: transform .2s ease;
+  --wp-bar-btn-bg: var(--surface-2);
 }
-.topbar.show { transform: none; }
 .topbar-inner { flex: 1; min-width: 0; }
-.topbar h1 { font-size: 1.05rem; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topbar h1 { font-size: 1.05rem; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; }
 .net { font-size: .75rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--surface-2); color: var(--muted); }
 
 main { padding: 14px 12px 0; max-width: 760px; margin: 0 auto; }
@@ -158,6 +157,19 @@ details summary { min-height: 40px; display: flex; align-items: center; font-wei
 .callout { border-left: 4px solid var(--warn); background: var(--surface-2); padding: 10px 12px; border-radius: 8px; margin: 8px 0; }
 .empty { text-align: center; color: var(--muted); padding: 32px 16px; }
 .guide-grid { display: block; }
+.price-row { padding: 12px 0; border-top: 1px solid var(--line); }
+.price-row:first-child { border-top: 0; padding-top: 0; }
+.price-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.price-head h3 { margin: 0; }
+.price-now { font-size: 1.15rem; font-variant-numeric: tabular-nums; margin: 4px 0; }
+.delta { font-size: .9rem; font-weight: 600; color: var(--muted); }
+.delta.up { color: var(--warn); }
+.delta.down { color: var(--ok); }
+.status-chip { flex: none; font-size: .75rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--surface-2); color: var(--muted); }
+.status-chip.booked, .status-chip.held { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+.verdict { border-left: 4px solid var(--line); background: var(--surface-2); padding: 8px 12px; border-radius: 8px; margin: 8px 0; }
+.verdict.book_now, .verdict.book_soon { border-left-color: var(--warn); }
+.verdict.good_time { border-left-color: var(--ok); }
 
 /* ---------- Add-to-calendar sheet ---------- */
 .sheet-backdrop { position: fixed; inset: 0; z-index: 40; background: rgba(8, 12, 20, .45); display: flex; align-items: flex-end; justify-content: center; }
@@ -172,19 +184,48 @@ details summary { min-height: 40px; display: flex; align-items: center; font-wei
 .sheet .btn .cal-icon { width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; font-size: 14px; font-weight: 800; }
 .sheet .note { color: var(--muted); font-size: .82rem; margin: 10px 2px 0; }
 
-/* ---------- Tab bar (phone/tablet) / navigation rail (desktop) ---------- */
-.tabbar {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
-  display: grid; grid-template-columns: repeat(5, 1fr);
-  height: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom);
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px);
-  border-top: 1px solid var(--line);
+/* ---------- Sidebar backdrop (collapsible sidebar on mobile) ---------- */
+.nav-scrim {
+  position: fixed; inset: 0; z-index: 28;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
 }
-.tabbar a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--muted); text-decoration: none; font-size: .74rem; font-weight: 600; }
-.tabbar a span { font-size: 1.3rem; line-height: 1; }
-.tabbar a[aria-current="page"] { color: var(--accent); }
-.rail-head, .rail-foot { display: none; }
+
+/* ---------- Sidebar (collapsible drawer on mobile, rail on desktop) ---------- */
+.sidebar {
+  position: fixed; top: 0; bottom: 0; left: 0; z-index: 30;
+  width: min(80vw, 300px); height: 100%;
+  display: flex; flex-direction: column;
+  padding: calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 16px);
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  transform: translateX(-100%);
+  transition: transform .25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow .25s;
+  overflow-y: auto;
+}
+/* Shadow only while open: on the closed drawer its blur would bleed onto the page's left edge. */
+.sidebar.open { transform: translateX(0); box-shadow: 4px 0 24px rgba(0,0,0,0.15); }
+.rail-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+  padding: 4px 0 16px; border-bottom: 1px solid var(--line); margin-bottom: 12px;
+}
+.rail-brand b { display: block; font-size: 1.05rem; line-height: 1.3; }
+.rail-brand small { color: var(--muted); }
+.nav-close {
+  background: none; border: 0; color: var(--muted); font-size: 1.2rem;
+  padding: 4px 8px; cursor: pointer; border-radius: 8px; line-height: 1;
+}
+.nav-close:hover { background: var(--surface-2); color: var(--text); }
+.rail-links { display: flex; flex-direction: column; gap: 4px; }
+.sidebar a {
+  display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 10px 14px;
+  border-radius: 12px; color: var(--text); text-decoration: none; font-size: 1rem; font-weight: 600;
+}
+.sidebar a span { width: 22px; text-align: center; font-size: 1.15rem; color: var(--muted); }
+.sidebar a[aria-current="page"] { background: var(--accent-soft); color: var(--accent); }
+.sidebar a[aria-current="page"] span { color: var(--accent); }
+.rail-foot { margin-top: auto; padding-top: 16px; }
+.rail-foot .btn { width: 100%; }
 
 /* ---------- Tablet ---------- */
 @media (min-width: 760px) {
@@ -204,23 +245,25 @@ details summary { min-height: 40px; display: flex; align-items: center; font-wei
 /* ---------- Desktop: rail + pinned map ---------- */
 @media (min-width: 1100px) {
   html { scroll-padding-top: 16px; scroll-padding-bottom: 16px; }
+  html[data-waypack-app] { scroll-padding-top: calc(env(safe-area-inset-top) + 64px); }
   body { padding-bottom: 0; }
   body.wide { padding-left: var(--rail-w); padding-right: min(42vw, 640px); }
-  .topbar { display: none; }
-  .tabbar {
+  /* The rail is always visible: no ☰. On the web the top bar goes too; in the app it stays for back and ⋯. */
+  .nav-scrim, .nav-close, .wp-bar-menu { display: none !important; }
+  html:not([data-waypack-app]) .topbar { display: none !important; }
+  .hero-banner .hero-text { padding-left: 24px; }
+  .sidebar {
     top: 0; bottom: 0; right: auto; width: var(--rail-w); height: auto;
-    display: flex; flex-direction: column; gap: 4px; padding: 20px 14px;
+    transform: none; box-shadow: none; z-index: 20;
+    padding: 20px 14px;
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px);
     border-top: 0; border-right: 1px solid var(--line);
   }
-  .tabbar a { flex-direction: row; justify-content: flex-start; gap: 12px; min-height: 44px; padding: 8px 12px; border-radius: 12px; font-size: .98rem; }
-  .tabbar a span { width: 22px; text-align: center; font-size: 1.15rem; }
-  .tabbar a[aria-current="page"] { background: var(--accent-soft); }
-  .tabbar a[data-go="map"] { display: none; }
-  .rail-head { display: block; padding: 4px 12px 16px; }
-  .rail-head b { display: block; font-size: 1.05rem; line-height: 1.3; }
-  .rail-head small { color: var(--muted); }
-  .rail-foot { display: block; margin-top: auto; padding: 12px; }
-  .rail-foot .btn { width: 100%; }
+  .rail-head { border-bottom: 0; margin-bottom: 4px; padding: 4px 12px 16px; }
+  .sidebar a { font-size: .98rem; padding: 8px 12px; }
+  .sidebar a[data-go="map"] { display: none; }
+  .rail-foot { padding: 12px; }
   main { max-width: 860px; padding: 24px 32px 48px; }
   .hero-banner { height: 260px; }
   #map-pane { display: block; position: fixed; top: 0; right: 0; bottom: 0; width: min(42vw, 640px); padding: 12px; border-left: 1px solid var(--line); background: var(--bg); }
@@ -234,7 +277,7 @@ details summary { min-height: 40px; display: flex; align-items: center; font-wei
 }
 
 @media print {
-  .tabbar, .topbar, .tab-map, #map-pane, .btn, .filters, .hero-banner .scene { display: none !important; }
+  .sidebar, .tabbar, .nav-scrim, .topbar, .tab-map, #map-pane, .btn, .filters, .hero-banner .scene { display: none !important; }
   .tab[hidden] { display: block !important; }
   .card, .item { break-inside: avoid; }
 }

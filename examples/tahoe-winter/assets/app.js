@@ -125,14 +125,43 @@
   // ---------- layout (phone / tablet / desktop) ----------
   var TABS = ["today", "plan", "map", "places", "guide"];
   var currentTab = "today";
+  var sidebar = $("#sidebar");
+  var navScrim = $("#nav-scrim");
+  var navClose = $("#nav-close");
+  // The ☰ button lives in the Waypack top bar (added by the SDK); keep its aria-expanded in sync.
+  function setExpanded(open) {
+    var b = document.querySelector("[data-waypack-bar] .wp-bar-menu");
+    if (b) b.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+
+  function openSidebar() {
+    if (!sidebar) return;
+    sidebar.classList.add("open");
+    if (navScrim) navScrim.hidden = false;
+    setExpanded(true);
+  }
+  function closeSidebar() {
+    if (!sidebar) return;
+    sidebar.classList.remove("open");
+    if (navScrim) navScrim.hidden = true;
+    setExpanded(false);
+  }
+  if (window.Waypack && Waypack.onMenu) Waypack.onMenu(function () {
+    if (sidebar && sidebar.classList.contains("open")) closeSidebar(); else openSidebar();
+  });
+  if (navClose) navClose.addEventListener("click", closeSidebar);
+  if (navScrim) navScrim.addEventListener("click", closeSidebar);
+  window.addEventListener("keydown", function (e) { if (e.key === "Escape") closeSidebar(); });
+
   function showTab(name) {
     if (TABS.indexOf(name) < 0) name = "today";
     if (name === "map" && isWide()) name = "today"; // the map is always visible on desktop
     currentTab = name;
     $all(".tab").forEach(function (el) { el.hidden = el.getAttribute("data-tab") !== name; });
-    $all(".tabbar a").forEach(function (a) {
+    $all(".tabbar a, .sidebar a").forEach(function (a) {
       if (a.getAttribute("data-go") === name) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
     });
+    closeSidebar();
     if (name === "map") ensureMap();
     window.scrollTo(0, 0);
     if (name !== "plan" && tripMap && isWide()) tripMap.setDay(null);
@@ -152,6 +181,7 @@
   function applyLayout() {
     var wide = isWide();
     document.body.classList.toggle("wide", wide);
+    if (wide) closeSidebar();
     var block = $("#map-block");
     var dest = wide ? $("#map-pane") : $("#tab-map");
     if (block.parentNode !== dest) dest.appendChild(block);
@@ -357,6 +387,46 @@
     });
   }
 
+  // Prices: display only. booking_signal is computed by Waypack at publish time (the bundle is
+  // offline), so this never decides a verdict itself.
+  var VERDICTS = { book_now: "Book now", book_soon: "Book soon", good_time: "Good time to book", stable: "Stable", none: "" };
+  var STATUS = { unbooked: "Not booked", held: "Held", booked: "Booked" };
+  function money(amount, currency) {
+    try { return new Intl.NumberFormat(undefined, { style: "currency", currency: currency || "USD", maximumFractionDigits: amount % 1 ? 2 : 0 }).format(amount); }
+    catch (e) { return (currency || "USD") + " " + amount; }
+  }
+  function renderPrices() {
+    var box = $("#prices");
+    if (!box) return;
+    var tracked = M.places.filter(function (p) { return Array.isArray(p.price_snapshots) || p.booking_status; });
+    $("#g-prices").hidden = !tracked.length;
+    var link = $("[data-prices-link]");
+    if (link) link.hidden = !tracked.length;
+    box.innerHTML = tracked.map(function (p) {
+      var snaps = (p.price_snapshots || []).slice().sort(function (a, b) { return Date.parse(a.observed_at) - Date.parse(b.observed_at); });
+      var first = snaps[0], last = snaps[snaps.length - 1];
+      var status = p.booking_status || "unbooked";
+      var sig = p.booking_signal;
+      var delta = "";
+      if (snaps.length > 1 && (first.currency || "USD") === (last.currency || "USD")) {
+        var pct = Math.round((last.amount - first.amount) / first.amount * 1000) / 10;
+        delta = '<span class="delta ' + (pct > 0 ? "up" : pct < 0 ? "down" : "") + '">' + (pct > 0 ? "▲ +" : pct < 0 ? "▼ " : "") + pct + "% vs first seen</span>";
+      }
+      var showVerdict = status === "unbooked" && sig && sig.verdict && sig.verdict !== "none";
+      return '<div class="price-row">' +
+        '<div class="price-head"><h3>' + esc(p.name) + '</h3><span class="status-chip ' + esc(status) + '">' + esc(STATUS[status] || status) + "</span></div>" +
+        (last ? '<div class="price-now"><b>' + esc(money(last.amount, last.currency)) + "</b> " + delta + "</div>" : '<p class="muted">No prices recorded yet.</p>') +
+        (showVerdict ? '<p class="verdict ' + esc(sig.verdict) + '"><b>' + esc(VERDICTS[sig.verdict] || sig.verdict) + ".</b> " + esc(sig.reason) + "</p>" : "") +
+        (status === "unbooked" && sig && sig.verdict === "none" && sig.reason ? '<p class="muted">' + esc(sig.reason) + "</p>" : "") +
+        (snaps.length ? "<details><summary>Price history (" + snaps.length + ")</summary><ul class=\"kv\">" + snaps.slice().reverse().map(function (s) {
+          var d = new Date(s.observed_at);
+          var when = isNaN(d) ? s.observed_at : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+          return "<li><span>" + esc(when) + (s.source ? " · " + esc(s.source) : "") + (s.note ? "<br><small>" + esc(s.note) + "</small>" : "") + "</span><b>" + esc(money(s.amount, s.currency)) + "</b></li>";
+        }).join("") + "</ul></details>" : "") +
+        "</div>";
+    }).join("");
+  }
+
   function renderMapDays() {
     var sel = $("#map-day");
     sel.innerHTML = '<option value="">All days</option>' + M.days.map(function (d, i) {
@@ -407,13 +477,6 @@
   window.addEventListener("online", updateNet);
   window.addEventListener("offline", updateNet);
 
-  // Compact top bar once the illustrated banner scrolls away (phones/tablets).
-  if ("IntersectionObserver" in window) {
-    new IntersectionObserver(function (entries) {
-      $("#topbar").classList.toggle("show", !entries[0].isIntersecting);
-    }).observe($("#hero-banner"));
-  }
-
   // ---------- boot ----------
   var load = W ? W.manifest() : fetch("manifest.json").then(function (r) { return r.json(); });
   load.then(function (m) {
@@ -427,6 +490,7 @@
     renderPlan();
     renderPlaces();
     renderGuide();
+    renderPrices();
     renderMapDays();
     updateNet();
     applyLayout();

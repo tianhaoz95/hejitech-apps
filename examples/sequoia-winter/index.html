@@ -12,19 +12,24 @@
   <script src="/__waypack/sdk/v1/waypack.js"></script>
 </head>
 <body>
+  <!-- Collapsible navigation backdrop for mobile screens -->
+  <div class="nav-scrim" id="nav-scrim" hidden></div>
+
+  <!-- The trip's one top bar. Style it and set its title; the Waypack SDK adds the controls
+       (back and ⋯ in the app, ☰ for the sections menu) and keeps it pinned to the top. -->
+  <header class="topbar" id="topbar" data-waypack-bar>
+    <div class="topbar-inner"><h1 id="bar-title">Trip</h1></div>
+    <span id="net" class="net" hidden>Offline</span>
+  </header>
+
   <!-- Illustrated header drawn by assets/scene.js from manifest.theme (or replace with your own inline SVG). -->
-  <header class="hero-banner" id="hero-banner">
+  <div class="hero-banner" id="hero-banner">
     <div class="scene" id="scene"></div>
     <div class="hero-text">
       <h1 id="trip-title">Trip</h1>
       <p class="hero-dates" id="trip-dates"></p>
       <span class="hero-chip" id="hero-chip" hidden></span>
     </div>
-  </header>
-
-  <div class="topbar" id="topbar" data-waypack-bar>
-    <div class="topbar-inner"><h1 id="bar-title">Trip</h1></div>
-    <span id="net" class="net" hidden>Offline</span>
   </div>
 
   <main id="app">
@@ -50,7 +55,7 @@
     <section id="tab-guide" class="tab" data-tab="guide" hidden>
       <nav class="chips" aria-label="Guide sections">
         <a href="#g-overview">Overview</a><a href="#g-conditions">Conditions</a><a href="#g-safety">Safety</a>
-        <a href="#g-toddler">Toddler</a><a href="#g-packing">Packing</a><a href="#g-budget">Budget</a><a href="#g-backup">Backup plans</a><a href="#g-offline">Offline prep</a>
+        <a href="#g-toddler">Toddler</a><a href="#g-packing">Packing</a><a href="#g-budget">Budget</a><a href="#g-prices" data-prices-link hidden>Prices</a><a href="#g-backup">Backup plans</a><a href="#g-offline">Offline prep</a>
       </nav>
       <div class="guide-grid">
 
@@ -156,6 +161,15 @@
         <p class="muted">Rough estimates — verify current rates when booking.</p>
       </article>
 
+      <!-- Prices: filled from manifest places[].price_snapshots / booking_status / booking_signal.
+           Waypack computes the signals when the trip is published; this card only shows them.
+           It stays hidden when no place is price-tracked. -->
+      <article id="g-prices" class="card" hidden>
+        <h2>Prices</h2>
+        <p class="muted">Prices we checked while planning, and whether to book now or wait. Rates change: check before you book.</p>
+        <div id="prices"></div>
+      </article>
+
       <article id="g-backup" class="card">
         <h2>Backup plans</h2>
         <h3>Dec 24 — storm or chain controls on the way up</h3>
@@ -191,13 +205,18 @@
 
   <aside id="map-pane" aria-label="Map"></aside>
 
-  <nav class="tabbar" aria-label="Sections">
-    <div class="rail-head"><b id="rail-title">Trip</b><small id="rail-dates"></small></div>
-    <a href="#today" data-go="today"><span aria-hidden="true">◎</span>Today</a>
-    <a href="#plan" data-go="plan"><span aria-hidden="true">☰</span>Plan</a>
-    <a href="#map" data-go="map"><span aria-hidden="true">⌖</span>Map</a>
-    <a href="#places" data-go="places"><span aria-hidden="true">◉</span>Places</a>
-    <a href="#guide" data-go="guide"><span aria-hidden="true">✦</span>Guide</a>
+  <nav class="sidebar tabbar" id="sidebar" aria-label="Sections">
+    <div class="rail-head">
+      <div class="rail-brand"><b id="rail-title">Trip</b><small id="rail-dates"></small></div>
+      <button type="button" class="nav-close" id="nav-close" aria-label="Close menu">✕</button>
+    </div>
+    <div class="rail-links">
+      <a href="#today" data-go="today"><span aria-hidden="true">◎</span>Today</a>
+      <a href="#plan" data-go="plan"><span aria-hidden="true">☰</span>Plan</a>
+      <a href="#map" data-go="map"><span aria-hidden="true">⌖</span>Map</a>
+      <a href="#places" data-go="places"><span aria-hidden="true">◉</span>Places</a>
+      <a href="#guide" data-go="guide"><span aria-hidden="true">✦</span>Guide</a>
+    </div>
     <div class="rail-foot"><button class="btn secondary small" id="cal-all" hidden>Add whole trip to calendar</button></div>
   </nav>
 
