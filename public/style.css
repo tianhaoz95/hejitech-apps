@@ -801,8 +801,12 @@ body.has-maximized-pane .pane.maximized {
   mask-image: linear-gradient(to right, black calc(100% - 44px), transparent calc(100% - 4px));
   -webkit-mask-image: linear-gradient(to right, black calc(100% - 44px), transparent calc(100% - 4px));
 }
-.pane-tabs::-webkit-scrollbar { height: 2px; }
-.pane-tabs::-webkit-scrollbar-thumb { background: var(--border3); border-radius: 1px; }
+/* No visible scrollbar: in Safari (esp. with "always show scroll bars") it
+   took its height out of the 38px strip and squeezed the tabs. Overflowing
+   tabs still scroll by trackpad, by mouse wheel (mapped in pane.js), and by
+   dragging. */
+.pane-tabs { scrollbar-width: none; }
+.pane-tabs::-webkit-scrollbar { display: none; width: 0; height: 0; }
 
 /* Pill-style tabs: the active one floats on a rounded highlight. */
 .tab {

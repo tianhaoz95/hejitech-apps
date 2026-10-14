@@ -342,6 +342,13 @@ function createPane() {
   paneRegistry.set(el, pane);
 
   addBtn.addEventListener('click', (e) => { e.stopPropagation(); showTabTypePicker(e, pane); });
+  // The tab strip has no visible scrollbar (style.css), so let a plain mouse
+  // wheel scroll overflowing tabs sideways. Trackpads already scroll on X.
+  tabBar.addEventListener('wheel', (e) => {
+    if (tabBar.scrollWidth <= tabBar.clientWidth || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+    e.preventDefault();
+    tabBar.scrollLeft += e.deltaY;
+  }, { passive: false });
   el.addEventListener('mousedown', () => setActivePane(pane));
 
   // Tab drag-and-drop drop zone (reorder within / move across panes).
