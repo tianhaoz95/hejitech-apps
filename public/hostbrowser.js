@@ -490,8 +490,9 @@ function initHostBrowserTab(tab, viewEl, label, initialUrl) {
   };
   // Tab closed by the user — close the page on the host too.
   tab.destroyHostBrowser = () => {
-    if (ws && ws.readyState === WebSocket.OPEN) send({ t: 'destroy' });
-    else fetch('/api/hostbrowser/tabs/' + encodeURIComponent(tab.id), { method: 'DELETE' }).catch(() => {});
+    // Over REST rather than the socket: a message queued right before close()
+    // isn't reliably delivered (Firefox drops it).
+    fetch('/api/hostbrowser/tabs/' + encodeURIComponent(tab.id), { method: 'DELETE', keepalive: true }).catch(() => {});
     tab.disposeHostBrowser();
   };
 

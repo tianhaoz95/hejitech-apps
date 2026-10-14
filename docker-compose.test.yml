@@ -30,6 +30,9 @@ services:
         condition: service_healthy
     environment:
       - BASE_URL=http://meowtrix:9123
+      # Tests that start their own fixture sites (proxy, host browser) need the
+      # server container to reach back into this one.
+      - FIXTURE_HOST=playwright
       - CI=true
     volumes:
       - .:/app

@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const http = require('http');
+const os = require('os');
 
 // Host-browser tabs (hostbrowser-service.js + public/hostbrowser.js): a real
 // Chromium on the host, streamed into a canvas, with input forwarded back.
@@ -40,8 +41,11 @@ test.describe('host browser tab', () => {
 
   test.beforeAll(async ({ baseURL }) => {
     site = await startFixtureSite();
-    const host = new URL(baseURL).hostname;
-    siteUrl = `http://${host === 'localhost' ? '127.0.0.1' : host}:${site.address().port}`;
+    // The server's host browser loads this site: address it by this machine's
+    // hostname when the server runs elsewhere (e.g. another container in CI).
+    const h = new URL(baseURL).hostname;
+    const host = h === 'localhost' || h === '127.0.0.1' ? '127.0.0.1' : (process.env.FIXTURE_HOST || os.hostname());
+    siteUrl = `http://${host}:${site.address().port}`;
   });
   test.afterAll(() => new Promise(r => { site.close(r); site.closeAllConnections(); }));
 
@@ -102,6 +106,10 @@ test.describe('host browser tab', () => {
     await expect.poll(() => pageText(request, popup.id)).toContain('popup opened');
 
     // Refresh: the page survives and re-attaches (no reload of the site).
+    // Flush the debounced layout save first (Firefox doesn't reliably run the
+    // unload beacon on a scripted reload).
+    await page.evaluate(() => { saveSessionState(); flushSessionState(); });
+    await expect.poll(async () => JSON.stringify(await (await request.get('/api/session')).json())).toContain(tabId);
     await page.reload();
     try { await page.locator('#btn-takeover').click({ timeout: 1500 }); } catch (e) {}
     await expect(page.locator(`.pane-view[data-tab-id="${tabId}"] .hostbrowser-overlay`)).toBeHidden({ timeout: 30000 });
