@@ -653,6 +653,8 @@ test.describe('Meowtrix E2E Tests', () => {
   });
 
   test('every quick overlay animation style summons and dismisses cleanly', async ({ page }) => {
+    // Eleven summon/dismiss cycles: ~28s on Chromium, over the default 30s on WebKit.
+    test.setTimeout(90000);
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
     await page.goto('/');

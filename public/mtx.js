@@ -116,9 +116,11 @@ function mtxFlashTab(tab) {
 
 // Loopback / private hosts are dev servers: any page on the same origin can
 // reuse the tab. Public sites only reuse a tab showing the exact same URL, so we
-// never navigate away from something the user was reading.
+// never navigate away from something the user was reading. Dotless names
+// (LAN machines, docker-compose services) can't be public sites either.
 function mtxIsLocalHost(host) {
-  return /^(localhost|127\.\d+\.\d+\.\d+|0\.0\.0\.0|\[::1\]|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)$/i.test(host)
+  return /^[a-z0-9-]+$/i.test(host)
+    || /^(localhost|127\.\d+\.\d+\.\d+|0\.0\.0\.0|\[::1\]|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)$/i.test(host)
     || /\.(local|localhost|test)$/i.test(host);
 }
 
