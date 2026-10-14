@@ -215,9 +215,28 @@ fi
 echo "==> submitting to the notary service (this takes a few minutes)"
 xcrun notarytool submit "$OUT_DMG" "${AUTH[@]}" --wait
 
+# Stapling fetches the fresh ticket from Apple's CloudKit service, which right
+# after notarization often drops the connection ("The network connection was
+# lost", exit 68) — retry with growing waits before giving up.
+staple_with_retry() {
+  local target="$1" delay=15 attempt
+  for attempt in 1 2 3 4 5 6; do
+    if xcrun stapler staple "$target"; then
+      return 0
+    fi
+    if [ "$attempt" -eq 6 ]; then
+      echo "!! stapling $target failed after $attempt attempts" >&2
+      return 1
+    fi
+    echo "    staple attempt $attempt failed, retrying in ${delay}s..."
+    sleep "$delay"
+    delay=$((delay * 2 > 120 ? 120 : delay * 2))
+  done
+}
+
 echo "==> stapling"
-xcrun stapler staple "$OUT_DMG"
-xcrun stapler staple "$APP"
+staple_with_retry "$OUT_DMG"
+staple_with_retry "$APP"
 
 if [ "$SKIP_UPDATER" -eq 0 ]; then
   echo "==> Rebuilding updater artifact from notarized app"
