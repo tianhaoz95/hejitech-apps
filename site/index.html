@@ -115,7 +115,13 @@ section .sub { color: var(--muted); max-width: 42em; margin: 0 0 28px; line-heig
 .gallery { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
 @media (max-width: 860px) { .gallery { grid-template-columns: repeat(2, 1fr); } }
 .gallery figure { margin: 0; }
-.gallery-phone { position: relative; width: 100%; max-width: 250px; margin: 0 auto; }
+.gallery-phone { position: relative; width: 100%; max-width: 250px; margin: 0 auto; transform: rotate(-1.5deg); }
+.gallery figure:nth-child(even) .gallery-phone { transform: rotate(1.5deg); }
+/* Taped down like the hero phone, one tape colour per note. */
+.gallery-phone::before { content: ""; position: absolute; z-index: 30; top: -10px; left: 50%; width: 90px; height: 24px; margin-left: -45px; transform: rotate(3deg); opacity: .9; background: repeating-linear-gradient(45deg, rgba(255, 255, 255, .35) 0 6px, transparent 6px 12px), var(--tape); clip-path: polygon(2% 0, 98% 4%, 100% 50%, 97% 100%, 3% 96%, 0 50%); pointer-events: none; }
+.gallery figure:nth-child(2) .gallery-phone::before { background-color: var(--tape-2); transform: rotate(-4deg); }
+.gallery figure:nth-child(3) .gallery-phone::before { background-color: var(--tape-3); }
+.gallery figure:nth-child(4) .gallery-phone::before { transform: rotate(-3deg); }
 .gallery-phone .phone-chassis {
   padding: 3px; border-radius: 42px;
   background: linear-gradient(145deg, #484f5d 0%, #2a2f3a 20%, #15181f 45%, #181c24 75%, #363d4b 100%);
