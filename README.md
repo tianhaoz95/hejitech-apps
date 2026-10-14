@@ -20,7 +20,8 @@ Remote vibe engineering tool — a browser-based workspace with tiling split pan
   
   ![Persistent terminals](website/assets/features/terminal-dark.gif)
 
-- **Embedded browser panes** — built-in browser with a server-side proxy that strips frame-blocking headers so otherwise un-embeddable pages render in a pane
+- **Embedded browser panes** — built-in browser with a server-side proxy that strips frame-blocking headers so otherwise un-embeddable pages render in a pane. The proxy keeps a persistent, domain-aware cookie jar (so sign-ins stick across subdomains and restarts) and tunnels pages' WebSockets. In the **desktop app**, browser tabs are real native webviews instead — no proxy, sites run on their own origins
+- **Host Browser tabs** — a real Chromium running on the host, streamed into a tab (works from any device, including phones). Sites see a normal browser: Google sign-in, OAuth popups, passkeys, WebSockets and downloads work, and the signed-in profile lives on the host so it follows you between devices. Agents can screenshot and read these tabs (`mtx browser`, MCP `host_browser_*`)
   
   ![Embedded browser](website/assets/features/embedded-browser-dark.gif)
 
@@ -38,7 +39,7 @@ Remote vibe engineering tool — a browser-based workspace with tiling split pan
 - **Keystroke Combo FX** — level up your typing with streak rewards: particle bursts, screen shake, edge glow, and heat-tinted combo readouts.
 - **Self-updates** — background git check notifies you of updates via an in-app banner; trigger a pull and clean server restart directly from the UI.
 - **`mtx` host helper** — `mtx download <file>` pushes a host file to your browser as a download; `mtx code <dir>` opens that directory in a code-editor tab; `mtx spec` / `mtx review` / `mtx feedback` / `mtx resolve` drive the CoDesign review loop
-- **Agent tools (`mtx` + MCP)** — agents in a Meowtrix terminal can show you their work instead of handing you links: `mtx open <url>` opens a page in a browser tab beside the agent's terminal and reuses the tab for a local dev server; `mtx edit <file>:<line>` opens code in the editor; `mtx layout` describes the panes; `mtx notify <msg>` toasts and flags the agent's tab. None of them steal your focus. `mtx mcp` serves the same actions as MCP tools; register it with Claude Code via `mtx mcp --install`
+- **Agent tools (`mtx` + MCP)** — agents in a Meowtrix terminal can show you their work instead of handing you links: `mtx open <url>` opens a page in a browser tab beside the agent's terminal and reuses the tab for a local dev server (`--host` for a Host Browser tab); `mtx browser list|shot|text` lets the agent see the host-browser page you're looking at; `mtx edit <file>:<line>` opens code in the editor; `mtx layout` describes the panes; `mtx notify <msg>` toasts and flags the agent's tab. None of them steal your focus. `mtx mcp` serves the same actions as MCP tools; register it with Claude Code via `mtx mcp --install`
 - **Cross-device sessions** — server-coordinated single active session; move the whole workspace between browsers and devices and your layout follows
 - **Command palette** — `⌘K` (or `Ctrl/⌘+Shift+P`) fuzzy launcher for every action: split, new tab, switch tabs/panes, broadcast, themes, settings, schedules, self-update
   
@@ -288,7 +289,7 @@ Double-click (or double-tap) inside a terminal to send `Tab` for autocomplete.
 
 ## Settings
 
-Settings are saved to `~/.meowtrix/settings.json` on the host machine; the workspace layout is saved to `~/.meowtrix/session.json`.
+Settings are saved to `~/.meowtrix/settings.json` on the host machine; the workspace layout is saved to `~/.meowtrix/session.json`. The embedded browser's cookies live in `~/.meowtrix/proxy-cookies.json` and the Host Browser's profile in `~/.meowtrix/host-browser-profile/` — both hold real sign-in sessions, so treat them like passwords.
 
 | Setting | Default |
 |---|---|
@@ -299,6 +300,21 @@ Settings are saved to `~/.meowtrix/settings.json` on the host machine; the works
 | Scrollback | 10,000 lines |
 | Shell | `$SHELL` (falls back to `/bin/bash`) |
 | Browser homepage | blank (shows a start page) |
+| Browser tabs (desktop app) | Native webview (or the embedded proxy) |
+| Host browser executable | auto-detect Chrome / Chromium / Edge / Brave, else Chrome for Testing |
+| Host browser stream quality | Balanced |
+
+### Which browser tab should I use?
+
+| | Browser (web) | Browser (desktop app) | Host Browser |
+|---|---|---|---|
+| Engine | iframe behind the server proxy | native webview on your machine | Chromium on the host, streamed |
+| Sign-ins | kept in the proxy's cookie jar | your OS browser store | host profile (`~/.meowtrix/host-browser-profile`), follows you across devices |
+| Google / OAuth popups / passkeys | often blocked | ✓ (popups open as tabs) | ✓ |
+| `localhost` means | the host | your machine (same as the host for local installs) | the host |
+| Feel | native | native | video-like (JPEG stream), slight latency |
+
+The Host Browser needs a Chromium-based browser on the host; if none is found the tab offers to download Chrome for Testing (~150MB) via Playwright.
 
 ## How it works
 

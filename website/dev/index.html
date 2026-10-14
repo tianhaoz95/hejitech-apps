@@ -56,6 +56,8 @@
         <a href="#session">Session coordination</a>
         <a href="#workspace">Workspace state</a>
         <a href="#proxy">Embedding proxy</a>
+        <a href="#hostbrowser">Host browser</a>
+        <a href="#nativebrowser">Native browser tabs</a>
         <a href="#fs-git">FS &amp; Git APIs</a>
         <a href="#mtx-bridge">mtx agent bridge</a>
         <a href="#schedules-timer">Schedules timer</a>
@@ -231,7 +233,32 @@ docker compose -f docker-compose.test.yml down -v</code></pre>
           <li><code>/proxy?url=</code> — initial loads.</li>
           <li><code>/proxy/&lt;encoded&gt;</code> — target in the path, so GET-form submissions don't wipe the target when the browser replaces the query string with form fields.</li>
         </ul>
-        <p>Google, sign-in flows, and heavily bot-protected sites still won't embed.</p>
+        <p><strong>Cookies.</strong> Proxied pages all share the Meowtrix origin, so the browser can't hold their cookies: the proxy strips <code>Set-Cookie</code> and keeps them in a server-side jar (<code>proxy-cookies.js</code>) that follows RFC 6265's Domain/Path/Secure/expiry rules and persists to <code>~/.meowtrix/proxy-cookies.json</code>. Cookies are stored <em>before</em> a redirect is followed (sign-in POSTs answer 302 + <code>Set-Cookie</code>), request bodies are piped through untouched (the JSON body parser skips <code>/proxy</code>), and an injected <code>document.cookie</code> accessor reads a snapshot of the page's non-HttpOnly cookies and forwards writes to <code>/api/proxy/cookie</code>.</p>
+        <p><strong>WebSockets.</strong> An injected shim rewrites <code>new WebSocket(url)</code> — including URLs built from <code>location.host</code>, which behind the proxy is Meowtrix's — to <code>/proxy-ws/&lt;ws|wss&gt;/&lt;host&gt;/&lt;path&gt;</code>. The server's <code>upgrade</code> router (<code>server.js</code>) hands those to <code>proxyWsUpgrade</code>, which replays the handshake upstream with Host/Origin/Cookie rewritten and pipes the two sockets together.</p>
+      </section>
+
+      <section id="hostbrowser">
+        <h2>Host browser</h2>
+        <p>A <code>'hostbrowser'</code> tab drives a page in a real Chromium on the host (<code>hostbrowser-service.js</code>, via <code>playwright-core</code> + raw CDP) with a persistent profile in <code>~/.meowtrix/host-browser-profile</code>. Each tab has its own WebSocket, <code>/hostbrowser/&lt;tabId&gt;</code>, so frames never queue behind terminal traffic:</p>
+        <ul>
+          <li><strong>Pixels:</strong> <code>Page.startScreencast</code> JPEG frames go to the tab as binary messages and are painted on a canvas (<code>public/hostbrowser.js</code>). The client acks each frame; the server holds back CDP's frame ack while two frames are unacknowledged, so a slow link lowers the frame rate instead of building a backlog.</li>
+          <li><strong>Size:</strong> the page's viewport is the canvas's CSS size at the client's devicePixelRatio (<code>Emulation.setDeviceMetricsOverride</code>), so frames map 1:1. Touch clients get touch emulation and real touch events, so the page scrolls and pinches natively.</li>
+          <li><strong>Input:</strong> mouse/wheel/touch become <code>Input.dispatch*</code> calls; keys go through Playwright's keyboard (key codes, macOS editing commands). A hidden textarea catches IME composition, soft-keyboard input and paste (sent as <code>insertText</code>). ⌘/Ctrl is swapped when client and host platforms differ.</li>
+          <li><strong>Lifecycle:</strong> pages are keyed by tab id and outlive their sockets, like PTYs — the newest socket becomes the viewer. Popups (<code>context.on('page')</code>) get their own ids and a <code>hostbrowser:popup</code> broadcast asks the active session to open a tab for them. Dialogs, file choosers and downloads are relayed to the viewer. Chromium is launched lazily and closed after 10 idle minutes.</li>
+          <li><strong>Agent surface:</strong> <code>/api/hostbrowser/tabs</code> (+ <code>/:id/screenshot</code>, <code>/:id/text</code>, <code>/:id/navigate</code>) backs <code>mtx browser</code> and the <code>host_browser_*</code> MCP tools.</li>
+        </ul>
+      </section>
+
+      <section id="nativebrowser">
+        <h2>Native browser tabs (desktop app)</h2>
+        <p>In the Tauri app a <code>'browser'</code> tab renders with a native webview (<code>src-tauri/src/native_browser.rs</code> + <code>public/nativebrowser.js</code>) instead of the proxy. The engine is a per-client choice — the saved tab is still <code>'browser'</code>, so the same layout uses the proxy in a plain browser.</p>
+        <ul>
+          <li>Each view is a borderless <strong>child window</strong> of the main window, not a second webview inside it: Tauri only treats a window as a <code>WebviewWindow</code> while it holds one webview, so <code>get_webview_window("main")</code> (tray, overlay, updater) would break. On macOS the view is attached with <code>addChildWindow</code> and ordered in without taking key focus.</li>
+          <li>The page owns placement: every frame it measures the placeholder and sends its rect plus the viewport size; Rust maps it as a fraction of the main window's content area. Native views draw over the DOM, so the page hides a view whenever hit-testing finds DOM UI (palette, menus, overlays) covering its placeholder.</li>
+          <li>Events (load, title, SPA URL changes, new-window, downloads) come back by <code>eval</code>ing <code>onNativeBrowserEvent</code> in the main page. App shortcuts pressed inside a native page (⌘K, ⌘L, ⌘W, workspace switching) are forwarded by navigating to <code>meowtrix-native://key/…</code>, which <code>on_navigation</code> cancels and relays — pages in native tabs get no IPC.</li>
+          <li>The main window loads the Node server, a <em>remote</em> origin to Tauri, so the <code>nb_*</code> commands are granted in <code>capabilities/remote-window.json</code> via the app manifest in <code>build.rs</code>. The server self-updates independently of the app, so the page probes <code>nb_supported</code> and falls back to the proxy on older app builds.</li>
+        </ul>
+        <p>Google, OAuth popups, and heavily bot-protected sites still won't work through it — that's what the host browser is for.</p>
       </section>
 
       <section id="fs-git">
@@ -289,7 +316,7 @@ docker compose -f docker-compose.test.yml down -v</code></pre>
 
       <section id="modules">
         <h2>Frontend module map</h2>
-        <p>All files are global-scope and <strong>load order matters</strong>. In <code>index.html</code>: <code>demo.js</code> → <code>ws.js</code> → <code>pane.js</code> → <code>editor.js</code> → <code>codesign.js</code> → <code>layout.js</code> → <code>app.js</code> → <code>mobile.js</code> → <code>settings.js</code> → <code>palette.js</code> → <code>schedule.js</code> → <code>update.js</code> → <code>mtx.js</code> → <code>combo.js</code> → <code>pet.js</code>. Cross-file calls are plain function references (e.g. <code>wsSend</code>, <code>getAllPanes</code>, <code>applyStickyMods</code>), not imports.</p>
+        <p>All files are global-scope and <strong>load order matters</strong>. In <code>index.html</code>: <code>demo.js</code> → <code>ws.js</code> → <code>pane.js</code> → <code>editor.js</code> → <code>codesign.js</code> → <code>hostbrowser.js</code> → <code>nativebrowser.js</code> → <code>layout.js</code> → <code>app.js</code> → <code>mobile.js</code> → <code>settings.js</code> → <code>palette.js</code> → <code>schedule.js</code> → <code>update.js</code> → <code>mtx.js</code> → <code>combo.js</code> → <code>pet.js</code>. Cross-file calls are plain function references (e.g. <code>wsSend</code>, <code>getAllPanes</code>, <code>applyStickyMods</code>), not imports.</p>
         <table>
           <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
           <tbody>
@@ -297,6 +324,8 @@ docker compose -f docker-compose.test.yml down -v</code></pre>
             <tr><td><code>ws.js</code></td><td>The single WebSocket, 1s auto-reconnect, and the <code>ptyCallbacks</code> map (ptyId → xterm Terminal). Queues <code>pty:create</code> calls made before the socket opens.</td></tr>
             <tr><td><code>pane.js</code></td><td>Pane/tab model and registry, tab creation for terminals, browsers, and editor tabs, drag-and-drop tab movements.</td></tr>
             <tr><td><code>editor.js</code></td><td>Code editor integration (Monaco, file sidebar, Markdown/HTML Preview, Git Source Control integration and AI commit messages).</td></tr>
+            <tr><td><code>hostbrowser.js</code></td><td>Host Browser tab: canvas renderer for the streamed Chromium page, input/IME/clipboard forwarding, popups, dialogs and file choosers.</td></tr>
+            <tr><td><code>nativebrowser.js</code></td><td>Desktop app: native-webview browser tabs — the <code>nb_supported</code> probe, per-frame placement and occlusion hiding, native events and forwarded shortcuts.</td></tr>
             <tr><td><code>layout.js</code></td><td>Splitting panes and the draggable dividers. Splits are <em>flat</em>; sizes are unitless flex-grow ratios so they survive resizes.</td></tr>
             <tr><td><code>app.js</code></td><td>Session bootstrap/claim/handoff, workspace serialize/restore, keyboard shortcuts, double-click → autocomplete.</td></tr>
             <tr><td><code>mobile.js</code></td><td>On-screen key bar. Ctrl/Alt/Cmd are <em>sticky</em> modifiers applied at the PTY-input layer (<code>applyStickyMods</code>), not via synthetic key events.</td></tr>
@@ -317,6 +346,8 @@ docker compose -f docker-compose.test.yml down -v</code></pre>
           <tbody>
             <tr><td><code>~/.meowtrix/settings.json</code></td><td>Theme, terminal font/size/scrollback, shell, browser homepage. Server merges over <code>DEFAULT_SETTINGS</code>.</td></tr>
             <tr><td><code>~/.meowtrix/session.json</code></td><td>Serialized workspace layout (panes, splits, tabs, PTY ids).</td></tr>
+            <tr><td><code>~/.meowtrix/proxy-cookies.json</code></td><td>The embedding proxy's cookie jar (mode 0600).</td></tr>
+            <tr><td><code>~/.meowtrix/host-browser-profile/</code></td><td>The Host Browser's Chromium profile (cookies, storage, history).</td></tr>
           </tbody>
         </table>
         <p>PTY state itself is in-memory only — restarting the server kills all shells.</p>

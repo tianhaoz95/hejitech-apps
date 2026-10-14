@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "update-hud",
+  "description": "The update progress card (public/update-progress.html, bundled/local) pulls its state and can dismiss itself (see src/update_hud.rs).",
+  "windows": [
+    "update-progress"
+  ],
+  "permissions": [
+    "allow-update-hud-state",
+    "allow-dismiss-update-hud"
+  ]
+}

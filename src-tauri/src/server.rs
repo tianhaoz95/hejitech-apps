@@ -8,6 +8,13 @@ use tauri::{AppHandle, Manager};
 
 pub const DEFAULT_PORT: u16 = 9123;
 
+/// The server port to connect to / launch on. `MEOWTRIX_PORT` overrides it so a
+/// development build can run beside an installed Meowtrix without sharing its
+/// server (and live session).
+pub fn default_port() -> u16 {
+    std::env::var("MEOWTRIX_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(DEFAULT_PORT)
+}
+
 #[derive(Debug, Clone)]
 pub enum AppMode {
     /// 100% self-contained standalone app with bundled Node runtime and server payload
@@ -29,7 +36,7 @@ impl ServerManager {
     pub fn new() -> Self {
         Self {
             child: None,
-            port: DEFAULT_PORT,
+            port: default_port(),
             mode: None,
         }
     }
@@ -58,15 +65,15 @@ impl ServerManager {
 
         if is_standalone {
             // Standalone mode: Connect to existing Meowtrix server on DEFAULT_PORT if already running
-            if check_server_ready(DEFAULT_PORT) {
-                log::info!("[Standalone] Connected to existing server on port {}", DEFAULT_PORT);
-                self.port = DEFAULT_PORT;
+            if check_server_ready(default_port()) {
+                log::info!("[Standalone] Connected to existing server on port {}", default_port());
+                self.port = default_port();
                 return Ok(self.port);
             }
 
             // Otherwise allocate port (prefer DEFAULT_PORT if available, else ephemeral)
-            let chosen_port = if TcpListener::bind(format!("127.0.0.1:{}", DEFAULT_PORT)).is_ok() {
-                DEFAULT_PORT
+            let chosen_port = if TcpListener::bind(format!("127.0.0.1:{}", default_port())).is_ok() {
+                default_port()
             } else {
                 get_free_port()
             };
@@ -146,9 +153,9 @@ impl ServerManager {
         }
 
         // Lite mode: Reuse existing server if running on 9123
-        if check_server_ready(DEFAULT_PORT) {
-            log::info!("[Lite] Connected to existing server on port {}", DEFAULT_PORT);
-            self.port = DEFAULT_PORT;
+        if check_server_ready(default_port()) {
+            log::info!("[Lite] Connected to existing server on port {}", default_port());
+            self.port = default_port();
             return Ok(self.port);
         }
 
@@ -168,7 +175,7 @@ impl ServerManager {
 
             let child = Command::new(&node_bin)
                 .arg(&server_script)
-                .env("PORT", DEFAULT_PORT.to_string())
+                .env("PORT", default_port().to_string())
                 .env("HOST", "127.0.0.1")
                 .env("MISTRALRS_PORT", ai_port.to_string())
                 .current_dir(&work_dir)
@@ -176,7 +183,7 @@ impl ServerManager {
                 .map_err(|e| format!("Failed to spawn Node server: {e}"))?;
 
             self.child = Some(child);
-            self.port = DEFAULT_PORT;
+            self.port = default_port();
 
             for _ in 0..100 {
                 if let Some(ref mut child) = self.child {
@@ -195,7 +202,8 @@ impl ServerManager {
         }
 
         Err(format!(
-            "No Meowtrix server found running on http://127.0.0.1:{DEFAULT_PORT}. Please start the server or launch Meowtrix Standalone."
+            "No Meowtrix server found running on http://127.0.0.1:{}. Please start the server or launch Meowtrix Standalone.",
+            default_port()
         ))
     }
 

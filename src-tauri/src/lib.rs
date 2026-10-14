@@ -1,4 +1,5 @@
 pub mod ai;
+mod native_browser;
 mod server;
 mod update_hud;
 
@@ -587,7 +588,18 @@ pub fn run() {
             minimize_window,
             maximize_window,
             update_hud::update_hud_state,
-            update_hud::dismiss_update_hud
+            update_hud::dismiss_update_hud,
+            native_browser::nb_supported,
+            native_browser::nb_open,
+            native_browser::nb_set_bounds,
+            native_browser::nb_set_visible,
+            native_browser::nb_navigate,
+            native_browser::nb_action,
+            native_browser::nb_focus,
+            native_browser::nb_focus_main,
+            native_browser::nb_zoom,
+            native_browser::nb_close,
+            native_browser::nb_hide_all
         ])
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
@@ -715,6 +727,11 @@ pub fn run() {
 
                     window.on_window_event(move |event| {
                         match event {
+                            // Native browser tabs are child windows placed over their
+                            // placeholders; keep them there (see native_browser.rs).
+                            tauri::WindowEvent::Moved(_) | tauri::WindowEvent::Resized(_) => {
+                                native_browser::reposition_all(window_clone.app_handle());
+                            }
                             tauri::WindowEvent::CloseRequested { api, .. } => {
                                 api.prevent_close();
                                 let _ = window_clone.hide();
@@ -730,9 +747,12 @@ pub fn run() {
                                 };
                                 // The event is queued, so re-check: a stale blur can arrive after
                                 // the window has already become key again.
+                                // Clicking into a native browser tab moves focus to its
+                                // child window; that isn't the user leaving the overlay.
                                 if dismiss
                                     && window_for_blur.is_visible().unwrap_or(false)
                                     && !window_for_blur.is_focused().unwrap_or(false)
+                                    && !native_browser::any_focused(window_for_blur.app_handle())
                                 {
                                     let _ = window_for_blur.eval("if (typeof dismissQuickOverlay === 'function') { dismissQuickOverlay(); }");
                                 }

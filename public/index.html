@@ -333,6 +333,25 @@
               <input type="text" id="s-homepage" placeholder="Blank = start page">
             </div>
             <div class="settings-row">
+              <label for="s-browser-engine">Browser tabs (desktop app)</label>
+              <select id="s-browser-engine">
+                <option value="auto">Native webview (recommended)</option>
+                <option value="proxy">Embedded proxy</option>
+              </select>
+            </div>
+            <div class="settings-row">
+              <label for="s-hostbrowser-quality">Host browser stream quality</label>
+              <select id="s-hostbrowser-quality">
+                <option value="50">Low (faster over slow links)</option>
+                <option value="70">Balanced</option>
+                <option value="85">High</option>
+              </select>
+            </div>
+            <div class="settings-row">
+              <label for="s-hostbrowser-path">Host browser executable</label>
+              <input type="text" id="s-hostbrowser-path" placeholder="Blank = auto-detect Chrome / Chromium">
+            </div>
+            <div class="settings-row">
               <label for="s-local-server-ip">Local server IP mapping</label>
               <select id="s-local-server-ip">
                 <option value="127.0.0.1">127.0.0.1 (default)</option>

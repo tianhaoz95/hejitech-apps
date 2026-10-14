@@ -55,6 +55,7 @@
         <a href="#panes">Panes &amp; tabs</a>
         <a href="#terminals">Terminals</a>
         <a href="#browser">Browser panes</a>
+        <a href="#hostbrowser">Host Browser</a>
         <a href="#editor">Code editor &amp; Git</a>
         <a href="#codesign">CoDesign review</a>
         <a href="#agent-tools">Agent tools (mtx &amp; MCP)</a>
@@ -271,8 +272,18 @@ HOST=0.0.0.0 npm start</code></pre>
 
       <section id="browser">
         <h2>Browser panes</h2>
-        <p>A browser tab is an embedded mini-browser with an address bar, back/forward, reload, and an "open in a new window" (<strong>↗</strong>) button. Pages are fetched through a built-in server-side proxy that strips frame-blocking headers, so many sites that normally refuse to be embedded will render right in the pane.</p>
-        <p>Some sites — Google, sign-in flows, heavily bot-protected pages — still won't embed. Use <strong>↗</strong> to open those in a real browser window. You can set a default homepage for new browser tabs in <a href="#settings">Settings</a>.</p>
+        <p>A browser tab is an embedded mini-browser with an address bar, back/forward, reload, and an "open in a new window" (<strong>↗</strong>) button. Pages are fetched through a built-in server-side proxy that strips frame-blocking headers, so many sites that normally refuse to be embedded will render right in the pane. The proxy keeps its own cookie jar (domain-aware, saved to <code>~/.meowtrix/proxy-cookies.json</code>), so most sign-ins stick — across subdomains and across server restarts — and pages' WebSockets are tunnelled too. "Clear embedded-browser cookies" in the command palette signs the proxy out of everything.</p>
+        <p><strong>In the desktop app</strong>, browser tabs are real native webviews instead of proxied iframes: sites run on their own origins with your OS cookie store, so they behave like any browser. <strong>⌘L</strong> focuses the address bar and <strong>⌘[</strong> / <strong>⌘]</strong> go back and forward; links that open new windows open as new tabs. (Settings → Browser tabs switches back to the proxy.) The same layout opened from a regular browser or a phone shows those tabs through the proxy.</p>
+        <p>Some sites — Google, OAuth popups, heavily bot-protected pages — still won't work through the proxy. For those, use a <strong>Host Browser</strong> tab.</p>
+        <h3 id="hostbrowser">Host Browser tabs</h3>
+        <p>A Host Browser tab (the <strong>+</strong> menu, or "New host browser tab" in the palette) shows a <strong>real Chromium running on the host</strong>, streamed into the pane. Because it's a real browser, everything works: Google sign-in, OAuth popups (they open as new tabs), passkeys, WebSockets, file uploads and downloads (saved to the host's <code>~/Downloads</code>, with a click-to-save toast). The signed-in profile lives on the host in <code>~/.meowtrix/host-browser-profile</code>, so you stay logged in when you switch devices, and <code>localhost</code> URLs reach the host's dev servers.</p>
+        <ul>
+          <li>Like terminals, the page keeps running when you refresh or switch devices — the tab re-attaches to it.</li>
+          <li>Copy/paste goes through your own clipboard; on phones, tap a text field (or the ⌨ button) for the keyboard.</li>
+          <li>It needs a Chromium-based browser on the host (Chrome, Chromium, Edge or Brave are auto-detected). If there's none, the tab offers to download Chrome for Testing.</li>
+          <li>The picture is a compressed stream, so it's a little less crisp and responsive than a local tab — lower or raise <strong>Host browser stream quality</strong> in Settings.</li>
+        </ul>
+        <p>You can set a default homepage for new browser tabs in <a href="#settings">Settings</a>.</p>
       </section>
 
       <section id="codesign">
@@ -297,7 +308,8 @@ HOST=0.0.0.0 npm start</code></pre>
         <h2>Agent tools (mtx &amp; MCP)</h2>
         <p>Coding agents running in a Meowtrix terminal can show you things directly instead of handing you a link to click. Each command places its tab <em>beside the agent's terminal</em>, never on top of it, and leaves your keyboard focus where it was.</p>
         <ul>
-          <li><code>mtx open &lt;url&gt;</code> opens a page in a browser tab. A bare <code>localhost:5173</code> works. Pages on a local dev server reuse that server's existing tab and reload it, so tabs don't pile up. The host fetches the page, so <code>localhost</code> URLs work even when you're on another device. Add <code>--split</code> for a fresh pane beside the terminal, <code>--pane &lt;id&gt;</code> for a specific pane, or <code>--new</code> to always open a new tab.</li>
+          <li><code>mtx open &lt;url&gt;</code> opens a page in a browser tab. A bare <code>localhost:5173</code> works. Pages on a local dev server reuse that server's existing tab and reload it, so tabs don't pile up. The host fetches the page, so <code>localhost</code> URLs work even when you're on another device. Add <code>--split</code> for a fresh pane beside the terminal, <code>--pane &lt;id&gt;</code> for a specific pane, <code>--new</code> to always open a new tab, or <code>--host</code> to open it in a Host Browser tab.</li>
+          <li><code>mtx browser list</code>, <code>mtx browser shot &lt;tab&gt; [file.png]</code>, <code>mtx browser text &lt;tab&gt;</code> and <code>mtx browser goto &lt;tab&gt; &lt;url&gt;</code> let an agent see and steer the Host Browser page you're looking at (the MCP server offers the same as <code>host_browser_list</code> / <code>host_browser_screenshot</code> / <code>host_browser_read</code>).</li>
           <li><code>mtx edit &lt;file&gt;[:line]</code> opens a file in an editor tab at that line. It reuses an editor already rooted above the file, otherwise it opens one at the file's git repo.</li>
           <li><code>mtx layout</code> prints the current workspace as JSON: the split tree, pane sizes, each pane's tabs, and which pane is yours (<code>containsCaller</code>).</li>
           <li><code>mtx notify [--title T] &lt;message&gt;</code> shows a toast and puts a dot on the agent's tab until you look at it. Clicking the toast jumps to that terminal.</li>

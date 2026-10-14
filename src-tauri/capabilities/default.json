@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capability permissions required for Tauri v2 auto-updater and relaunch.",
+  "description": "Permissions for the main window's local (bundled) content: auto-updater, relaunch, global shortcut, and the window/overlay commands.",
   "windows": [
     "main"
   ],
@@ -10,6 +10,14 @@
     "core:window:default",
     "updater:default",
     "process:allow-restart",
-    "global-shortcut:default"
+    "global-shortcut:default",
+    "allow-hide-overlay",
+    "allow-show-overlay",
+    "allow-show-normal-window",
+    "allow-set-overlay-opacity",
+    "allow-start-window-drag",
+    "allow-close-window",
+    "allow-minimize-window",
+    "allow-maximize-window"
   ]
 }

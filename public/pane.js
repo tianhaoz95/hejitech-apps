@@ -460,6 +460,8 @@ function addTab(pane, type, existingId, existingPtyId, existingUrl, existingDir,
   }
   else if (type === 'codesign') initCodesignTab(tab, viewEl, existingDir);
   else if (type === 'hostbrowser') initHostBrowserTab(tab, viewEl, label, existingUrl);
+  // Desktop app: a native webview instead of the proxy iframe (nativebrowser.js).
+  else if (typeof nativeBrowserEnabled === 'function' && nativeBrowserEnabled()) initNativeBrowserTab(tab, viewEl, label, existingUrl);
   else initBrowserTab(tab, viewEl, label, existingUrl);
 
   createZoomControls(tab);

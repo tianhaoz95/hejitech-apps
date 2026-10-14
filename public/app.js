@@ -353,6 +353,9 @@ function fitAllTerminals() {
 async function bootstrapSession() {
   try {
     ensureWorkspaceViews();
+    // Desktop app: learn whether browser tabs can use native webviews before
+    // any tab is built (see nativebrowser.js).
+    if (typeof nativeBrowserProbe !== 'undefined') await nativeBrowserProbe;
     const saved = await fetch('/api/session').then(r => r.json());
     if (saved) {
       if (saved.workspaces && Array.isArray(saved.workspaces)) {

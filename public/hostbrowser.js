@@ -498,7 +498,7 @@ function initHostBrowserTab(tab, viewEl, label, initialUrl) {
   if (tab.currentUrl) { urlInput.value = tab.currentUrl; setLabel('', tab.currentUrl); }
   else label.textContent = 'Host Browser';
   // Defer until the view is in the DOM and sized.
-  requestAnimationFrame(connect);
+  setTimeout(connect, 0);
 }
 
 // Copy text from the host page to this device's clipboard. The keypress that

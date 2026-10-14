@@ -484,6 +484,12 @@ function populateControls(s) {
   document.getElementById('s-scrollback').value = String(s.termScrollback);
   document.getElementById('s-shell').value = s.shell;
   document.getElementById('s-homepage').value = s.browserHomepage;
+  const engineSel = document.getElementById('s-browser-engine');
+  if (engineSel) engineSel.value = s.browserEngine === 'proxy' ? 'proxy' : 'auto';
+  const hbQuality = document.getElementById('s-hostbrowser-quality');
+  if (hbQuality) hbQuality.value = String([50, 70, 85].reduce((a, b) => Math.abs(b - (s.hostBrowserQuality || 70)) < Math.abs(a - (s.hostBrowserQuality || 70)) ? b : a));
+  const hbPath = document.getElementById('s-hostbrowser-path');
+  if (hbPath) hbPath.value = s.hostBrowserPath || '';
   const localServerIpSel = document.getElementById('s-local-server-ip');
   if (localServerIpSel) {
     const val = s.localServerIp || '127.0.0.1';
@@ -843,6 +849,9 @@ function wireControls() {
 
   s('s-shell', 'shell');
   s('s-homepage', 'browserHomepage');
+  s('s-browser-engine', 'browserEngine');
+  s('s-hostbrowser-quality', 'hostBrowserQuality', Number);
+  s('s-hostbrowser-path', 'hostBrowserPath');
   s('s-local-server-ip', 'localServerIp');
   s('s-http-proxy', 'httpProxy');
   s('s-https-proxy', 'httpsProxy');
