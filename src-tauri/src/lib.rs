@@ -1057,8 +1057,7 @@ fn check_for_updates(app: tauri::AppHandle) {
                 }
                 Err(e) => {
                     log::error!("Failed to check for updates: {e}");
-                    app_dialog(&app, "Update Check Failed", e.to_string(), MessageDialogKind::Warning)
-                        .show(|_| {});
+                    show_update_check_error(&app, &e);
                 }
             },
             Err(e) => {
@@ -1066,6 +1065,32 @@ fn check_for_updates(app: tauri::AppHandle) {
             }
         }
     });
+}
+
+/// A release is published before CI has built, signed and attached its updater artifacts,
+/// so for a while `latest.json` is missing (404 → ReleaseNotFound) or lacks this platform.
+/// That's an expected in-progress state, not a failure: say so instead of warning.
+fn show_update_check_error(app: &tauri::AppHandle, e: &tauri_plugin_updater::Error) {
+    use tauri_plugin_updater::Error;
+    match e {
+        Error::ReleaseNotFound | Error::TargetNotFound(_) | Error::TargetsNotFound(_) => {
+            app_dialog(
+                app,
+                "Update Still Processing",
+                format!(
+                    "A new Meowtrix release may still be building for your platform. \
+                     Please check again in a few minutes.\n\nYou're on v{}.",
+                    app.package_info().version
+                ),
+                MessageDialogKind::Info,
+            )
+            .show(|_| {});
+        }
+        _ => {
+            app_dialog(app, "Update Check Failed", e.to_string(), MessageDialogKind::Warning)
+                .show(|_| {});
+        }
+    }
 }
 
 fn update_and_restart(app: tauri::AppHandle) {
@@ -1137,8 +1162,7 @@ fn update_and_restart(app: tauri::AppHandle) {
                 }
                 Err(e) => {
                     log::error!("Update check before install failed: {e}");
-                    app_dialog(&app, "Update Check Failed", e.to_string(), MessageDialogKind::Warning)
-                        .show(|_| {});
+                    show_update_check_error(&app, &e);
                 }
             },
             Err(e) => {
