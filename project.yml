@@ -47,6 +47,8 @@ targets:
         NSMicrophoneUsageDescription: "Voxbrief uses your microphone to record voice notes and capture ideas."
         NSRemindersUsageDescription: "Voxbrief can export action items from your voice notes into Apple Reminders."
         NSRemindersFullAccessUsageDescription: "Voxbrief can export action items from your voice notes into Apple Reminders."
+        NSCalendarsUsageDescription: "Voxbrief can export voice notes as scheduled events into Apple Calendar."
+        NSCalendarsFullAccessUsageDescription: "Voxbrief can export voice notes as scheduled events into Apple Calendar."
         UIBackgroundModes:
           - audio
           - fetch
@@ -252,7 +254,9 @@ targets:
       - path: VoxbriefApp/Services/AudioPlaybackService.swift
       - path: VoxbriefApp/Services/VoiceCommandProcessor.swift
       - path: VoxbriefApp/Services/RemindersExportService.swift
+      - path: VoxbriefApp/Services/CalendarExportService.swift
       - path: VoxbriefApp/Services/NoteExportService.swift
+      - path: VoxbriefApp/Services/PDFExportService.swift
       - path: VoxbriefApp/Models
       # Shared SwiftUI (feature parity with the iOS app, see CLAUDE.md's "macOS auto-update" /
       # desktop-parity notes): these are the same view/viewmodel files the iOS app uses, guarded
@@ -269,6 +273,7 @@ targets:
       - path: VoxbriefApp/Views/DictionaryEntryEditView.swift
       - path: VoxbriefApp/Views/TemplatesView.swift
       - path: VoxbriefApp/Views/TemplateEditView.swift
+      - path: VoxbriefApp/Views/WhatsNewView.swift
       - path: VoxbriefApp/Views/TemplateDetailView.swift
       - path: VoxbriefApp/Resources/Models/Qwen3-0.6B-4bit
         type: folder

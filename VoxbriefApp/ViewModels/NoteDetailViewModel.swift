@@ -56,10 +56,10 @@ public final class NoteDetailViewModel: ObservableObject {
         self.pipeline = pipeline
         self.playbackService = playbackService
         
-        repository.objectWillChange
-            .sink { [weak self] in
+        repository.$notes
+            .sink { [weak self] allNotes in
                 guard let self = self else { return }
-                if let updated = self.repository.note(withId: self.note.id) {
+                if let updated = allNotes.first(where: { $0.id == self.note.id }) {
                     self.note = updated
                 }
             }
@@ -109,12 +109,44 @@ public final class NoteDetailViewModel: ObservableObject {
         playbackService.play(fileName: fileName, startingAt: time)
     }
 
+    @discardableResult
+    public func cyclePlaybackRate() -> Float {
+        playbackService.cyclePlaybackRate()
+    }
+
     public func exportActionItemsToReminders() async throws -> Int {
         try await RemindersExportService.shared.exportActionItems(note.actionItems, noteTitle: note.title)
     }
 
+    public func exportToCalendar(startDate: Date = Date().addingTimeInterval(3600)) async throws {
+        try await CalendarExportService.shared.exportEvent(for: note, startDate: startDate)
+    }
+
     public var markdownShareFileURL: URL? {
         NoteExportService.shared.exportTemporaryMarkdownFile(for: note)
+    }
+
+    public var pdfShareFileURL: URL? {
+        PDFExportService.shared.exportTemporaryPDF(for: note)
+    }
+
+    public func isActionItemCompleted(_ item: String) -> Bool {
+        note.completedActionItems.contains(item)
+    }
+
+    public func toggleActionItem(_ item: String) {
+        var updated = note
+        if let idx = updated.completedActionItems.firstIndex(of: item) {
+            updated.completedActionItems.remove(at: idx)
+            // If markdown has - [x] item, revert to - [ ] item
+            updated.cleanedNote = updated.cleanedNote.replacingOccurrences(of: "- [x] \(item)", with: "- [ ] \(item)")
+        } else {
+            updated.completedActionItems.append(item)
+            // If markdown has - [ ] item, mark as - [x] item
+            updated.cleanedNote = updated.cleanedNote.replacingOccurrences(of: "- [ ] \(item)", with: "- [x] \(item)")
+        }
+        self.note = updated
+        repository.save(updated)
     }
     
     /// Triggers Stage 2's "light" rewrite the first time something actually needs to display it

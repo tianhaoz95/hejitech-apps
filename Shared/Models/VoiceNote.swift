@@ -140,6 +140,7 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
     public var requirements: [String]
     public var conditions: [String]
     public var actionItems: [String]
+    public var completedActionItems: [String] = []
     public var tags: [String]
     
     // Metadata & Pipeline Status
@@ -194,6 +195,7 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
         requirements: [String] = [],
         conditions: [String] = [],
         actionItems: [String] = [],
+        completedActionItems: [String] = [],
         tags: [String] = [],
         status: NoteProcessingStatus = .ready,
         source: NoteSource = .phoneApp,
@@ -219,6 +221,7 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
         self.requirements = requirements
         self.conditions = conditions
         self.actionItems = actionItems
+        self.completedActionItems = completedActionItems
         self.tags = tags
         self.status = status
         self.source = source
@@ -250,6 +253,7 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
         requirements = try container.decode([String].self, forKey: .requirements)
         conditions = try container.decode([String].self, forKey: .conditions)
         actionItems = try container.decode([String].self, forKey: .actionItems)
+        completedActionItems = try container.decodeIfPresent([String].self, forKey: .completedActionItems) ?? []
         tags = try container.decode([String].self, forKey: .tags)
         status = try container.decode(NoteProcessingStatus.self, forKey: .status)
         source = try container.decode(NoteSource.self, forKey: .source)

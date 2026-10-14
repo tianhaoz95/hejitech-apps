@@ -20,6 +20,7 @@ public struct NoteListView: View {
     /// presentation instead.
     @State private var keyboardRecordTrigger: KeyboardRecordTrigger?
     @State private var isSearchExpanded: Bool = false
+    @State private var showingWhatsNew: Bool = WhatsNewView.shouldShowAutomatically
     @FocusState private var isSearchFieldFocused: Bool
 
     public init() {}
@@ -74,6 +75,9 @@ public struct NoteListView: View {
             }
             .sheet(isPresented: $viewModel.showingSettings) {
                 SettingsView()
+            }
+            .sheet(isPresented: $showingWhatsNew) {
+                WhatsNewView()
             }
             .sheet(item: $viewModel.mergeSourceNote) { source in
                 NoteMergePickerSheet(source: source, candidates: viewModel.mergeCandidates(excluding: source)) { target in

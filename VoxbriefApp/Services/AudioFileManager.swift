@@ -59,4 +59,62 @@ public final class AudioFileManager: Sendable {
         let fileURL = notesDirectoryURL.appendingPathComponent(fileName)
         return FileManager.default.fileExists(atPath: fileURL.path)
     }
+
+    public struct StorageUsage: Sendable, Equatable {
+        public let fileCount: Int
+        public let totalBytes: Int64
+
+        public init(fileCount: Int, totalBytes: Int64) {
+            self.fileCount = fileCount
+            self.totalBytes = totalBytes
+        }
+
+        public var formattedBytes: String {
+            ByteCountFormatter.string(fromByteCount: totalBytes, countStyle: .file)
+        }
+    }
+
+    /// Computes total storage consumed by recordings in the audio directory
+    public func calculateStorageUsage() -> StorageUsage {
+        let fileManager = FileManager.default
+        guard let files = try? fileManager.contentsOfDirectory(at: notesDirectoryURL, includingPropertiesForKeys: [.fileSizeKey], options: .skipsHiddenFiles) else {
+            return StorageUsage(fileCount: 0, totalBytes: 0)
+        }
+
+        var total: Int64 = 0
+        var count = 0
+        for file in files where file.pathExtension.lowercased() == AudioConstants.fileExtension.lowercased() {
+            count += 1
+            if let resources = try? file.resourceValues(forKeys: [.fileSizeKey]), let size = resources.fileSize {
+                total += Int64(size)
+            }
+        }
+        return StorageUsage(fileCount: count, totalBytes: total)
+    }
+
+    /// Purges audio files older than a given number of days, optionally preserving active note audio
+    @discardableResult
+    public func purgeAudioFiles(olderThanDays days: Int, preservingFileNames: Set<String> = []) -> Int {
+        let fileManager = FileManager.default
+        let cutoffDate = Date().addingTimeInterval(-Double(days * 24 * 3600))
+        guard let files = try? fileManager.contentsOfDirectory(at: notesDirectoryURL, includingPropertiesForKeys: [.contentModificationDateKey], options: .skipsHiddenFiles) else {
+            return 0
+        }
+
+        var purgedCount = 0
+        for file in files where file.pathExtension.lowercased() == AudioConstants.fileExtension.lowercased() {
+            let filename = file.lastPathComponent
+            if preservingFileNames.contains(filename) {
+                continue
+            }
+            if let resources = try? file.resourceValues(forKeys: [.contentModificationDateKey]),
+               let modDate = resources.contentModificationDate,
+               modDate < cutoffDate {
+                if (try? fileManager.removeItem(at: file)) != nil {
+                    purgedCount += 1
+                }
+            }
+        }
+        return purgedCount
+    }
 }

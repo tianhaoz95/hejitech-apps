@@ -88,4 +88,81 @@ final class NoteDetailViewModelTests: XCTestCase {
         XCTAssertEqual(updated?.actionItems, ["New action item"])
         XCTAssertEqual(updated?.effectiveTemplateSections.count, 2)
     }
+
+    func testToggleActionItemTogglesCompletionAndMarkdown() {
+        let tempDir = FileManager.default.temporaryDirectory
+        let tempStorageURL = tempDir.appendingPathComponent("test_notes_\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: tempStorageURL) }
+
+        let repository = NoteRepository(customStorageURL: tempStorageURL)
+        let noteId = UUID()
+        let note = VoiceNote(
+            id: noteId,
+            createdAt: Date(),
+            duration: 15,
+            title: "Task Note",
+            summary: "Summary",
+            rawTranscript: "raw",
+            cleanedNote: "### Action Items\n- [ ] Ship version 1.18\n- [ ] Update documentation",
+            actionItems: ["Ship version 1.18", "Update documentation"],
+            completedActionItems: []
+        )
+        repository.save(note)
+
+        let viewModel = NoteDetailViewModel(note: note, repository: repository)
+
+        XCTAssertFalse(viewModel.isActionItemCompleted("Ship version 1.18"))
+
+        viewModel.toggleActionItem("Ship version 1.18")
+        XCTAssertTrue(viewModel.isActionItemCompleted("Ship version 1.18"))
+        XCTAssertTrue(viewModel.note.cleanedNote.contains("- [x] Ship version 1.18"))
+
+        viewModel.toggleActionItem("Ship version 1.18")
+        XCTAssertFalse(viewModel.isActionItemCompleted("Ship version 1.18"))
+        XCTAssertTrue(viewModel.note.cleanedNote.contains("- [ ] Ship version 1.18"))
+    }
+
+    func testPlaybackRateCycling() {
+        let note = VoiceNote(id: UUID(), title: "Rate Test")
+        let viewModel = NoteDetailViewModel(note: note)
+
+        viewModel.playbackService.setRate(1.0)
+        XCTAssertEqual(viewModel.playbackService.playbackRate, 1.0)
+
+        let rate1 = viewModel.cyclePlaybackRate()
+        XCTAssertEqual(rate1, 1.25, accuracy: 0.01)
+
+        let rate2 = viewModel.cyclePlaybackRate()
+        XCTAssertEqual(rate2, 1.5, accuracy: 0.01)
+
+        let rate3 = viewModel.cyclePlaybackRate()
+        XCTAssertEqual(rate3, 2.0, accuracy: 0.01)
+
+        let rate4 = viewModel.cyclePlaybackRate()
+        XCTAssertEqual(rate4, 0.8, accuracy: 0.01)
+
+        let rate5 = viewModel.cyclePlaybackRate()
+        XCTAssertEqual(rate5, 1.0, accuracy: 0.01)
+    }
+
+    func testPDFExportGeneratesValidFile() {
+        let note = VoiceNote(
+            id: UUID(),
+            createdAt: Date(),
+            duration: 30,
+            title: "Executive Strategy Sync",
+            summary: "Key decisions on Q4 roadmap.",
+            rawTranscript: "Let's review the quarterly roadmap.",
+            cleanedNote: "### Summary\nKey decisions on Q4 roadmap.\n\n### Action Items\n- [ ] Finalize budget"
+        )
+
+        let pdfURL = PDFExportService.shared.exportTemporaryPDF(for: note)
+        #if canImport(UIKit) && !os(watchOS)
+        XCTAssertNotNil(pdfURL)
+        if let pdfURL = pdfURL {
+            XCTAssertTrue(FileManager.default.fileExists(atPath: pdfURL.path))
+            XCTAssertTrue(pdfURL.pathExtension.lowercased() == "pdf")
+        }
+        #endif
+    }
 }

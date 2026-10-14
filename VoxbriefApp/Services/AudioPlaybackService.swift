@@ -10,6 +10,7 @@ public final class AudioPlaybackService: NSObject, ObservableObject {
     @Published public private(set) var currentTime: TimeInterval = 0
     @Published public private(set) var duration: TimeInterval = 0
     @Published public private(set) var currentlyPlayingFileName: String?
+    @Published public var playbackRate: Float = 1.0
     
     private var audioPlayer: AVAudioPlayer?
     private var timer: Timer?
@@ -18,6 +19,27 @@ public final class AudioPlaybackService: NSObject, ObservableObject {
     public init(audioFileManager: AudioFileManager = .shared) {
         self.audioFileManager = audioFileManager
         super.init()
+    }
+
+    public func setRate(_ rate: Float) {
+        playbackRate = rate
+        if let player = audioPlayer {
+            player.enableRate = true
+            player.rate = rate
+        }
+    }
+
+    @discardableResult
+    public func cyclePlaybackRate() -> Float {
+        let rates: [Float] = [1.0, 1.25, 1.5, 2.0, 0.8]
+        if let idx = rates.firstIndex(where: { abs($0 - playbackRate) < 0.05 }) {
+            let next = rates[(idx + 1) % rates.count]
+            setRate(next)
+            return next
+        } else {
+            setRate(1.0)
+            return 1.0
+        }
     }
     
     public func play(fileName: String) {
@@ -46,6 +68,8 @@ public final class AudioPlaybackService: NSObject, ObservableObject {
 
             let player = try AVAudioPlayer(contentsOf: fileURL)
             player.delegate = self
+            player.enableRate = true
+            player.rate = playbackRate
             player.prepareToPlay()
             player.play()
             

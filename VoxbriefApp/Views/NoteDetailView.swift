@@ -7,6 +7,8 @@ public struct NoteDetailView: View {
     @State private var showingAddRecording = false
     @State private var showingRemindersAlert = false
     @State private var remindersExportMessage = ""
+    @State private var showingCalendarAlert = false
+    @State private var calendarExportMessage = ""
 
     private enum CopyField: Equatable {
         case fullRewrite, lightCleanup, rawTranscript
@@ -125,9 +127,30 @@ public struct NoteDetailView: View {
                         }
                     }
 
+                    Button {
+                        Task {
+                            do {
+                                try await viewModel.exportToCalendar()
+                                calendarExportMessage = "Successfully added note to Apple Calendar."
+                                showingCalendarAlert = true
+                            } catch {
+                                calendarExportMessage = error.localizedDescription
+                                showingCalendarAlert = true
+                            }
+                        }
+                    } label: {
+                        Label("Add to Apple Calendar", systemImage: "calendar.badge.plus")
+                    }
+
                     if let fileURL = viewModel.markdownShareFileURL {
                         ShareLink(item: fileURL) {
                             Label("Share Markdown File (.md)", systemImage: "doc.text")
+                        }
+                    }
+
+                    if let pdfURL = viewModel.pdfShareFileURL {
+                        ShareLink(item: pdfURL) {
+                            Label("Share PDF Document (.pdf)", systemImage: "doc.richtext")
                         }
                     }
 
@@ -145,6 +168,11 @@ public struct NoteDetailView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(remindersExportMessage)
+        }
+        .alert("Apple Calendar", isPresented: $showingCalendarAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(calendarExportMessage)
         }
         .sheet(isPresented: $viewModel.isEditing) {
             editSheet
@@ -343,11 +371,22 @@ public struct NoteDetailView: View {
             .buttonStyle(.plain)
 
             VStack(alignment: .leading, spacing: 6) {
-                HStack {
+                HStack(spacing: 8) {
                     Text(isCurrentTrack ? playback.currentTime.formattedDuration : "00:00")
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.primary)
                     Spacer()
+                    Button {
+                        viewModel.cyclePlaybackRate()
+                    } label: {
+                        Text(playback.playbackRate == 1.0 ? "1x" : String(format: "%.2gx", playback.playbackRate))
+                            .font(.caption2.bold())
+                            .foregroundStyle(Color.accentColor)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.appTertiaryFill, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
                     Text(viewModel.note.duration.formattedDuration)
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
@@ -592,12 +631,36 @@ public struct NoteDetailView: View {
 
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(Array(items.enumerated()), id: \.offset) { index, item in
-                    HStack(alignment: .top, spacing: 10) {
-                        markerView(marker, index: index, tint: tint)
-                        Text(item)
-                            .font(.body)
-                            .foregroundStyle(.primary)
-                            .fixedSize(horizontal: false, vertical: true)
+                    if marker == .checkbox {
+                        let isDone = viewModel.isActionItemCompleted(item)
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                viewModel.toggleActionItem(item)
+                            }
+                        } label: {
+                            HStack(alignment: .top, spacing: 10) {
+                                Image(systemName: isDone ? "checkmark.square.fill" : "square")
+                                    .font(.system(size: 16))
+                                    .foregroundStyle(isDone ? Color.secondary : tint)
+                                    .padding(.top, 1)
+
+                                Text(item)
+                                    .font(.body)
+                                    .strikethrough(isDone, color: .secondary)
+                                    .foregroundStyle(isDone ? .secondary : .primary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .multilineTextAlignment(.leading)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        HStack(alignment: .top, spacing: 10) {
+                            markerView(marker, index: index, tint: tint)
+                            Text(item)
+                                .font(.body)
+                                .foregroundStyle(.primary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                 }
             }

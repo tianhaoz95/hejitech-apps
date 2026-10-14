@@ -16,6 +16,10 @@ public struct SettingsView: View {
     @State private var showingSimulationAlert = false
     @State private var simulatedTitle = ""
     @State private var keyboardStatus: KeyboardSetupStatus = .notAdded
+    @State private var storageUsage: AudioFileManager.StorageUsage = AudioFileManager.shared.calculateStorageUsage()
+    @State private var showingPurgeAlert = false
+    @State private var purgeResult = ""
+    @State private var showingWhatsNew = false
 
     private static let byteFormatter: ByteCountFormatter = {
         let formatter = ByteCountFormatter()
@@ -260,6 +264,29 @@ public struct SettingsView: View {
                     }
                 }
                 
+                Section(
+                    header: Text("Storage & Media"),
+                    footer: Text("Audio recordings are preserved for playback and scrubbing. You can purge older audio files while keeping all structured notes and transcripts intact.")
+                ) {
+                    HStack {
+                        Label("Audio Recordings", systemImage: "waveform")
+                        Spacer()
+                        Text("\(storageUsage.fileCount) files (\(storageUsage.formattedBytes))")
+                            .foregroundColor(.secondary)
+                    }
+
+                    Button(role: .destructive) {
+                        let preservedIds = Set(NoteRepository.shared.notes.compactMap { $0.audioFileName })
+                        let purged = AudioFileManager.shared.purgeAudioFiles(olderThanDays: 30, preservingFileNames: preservedIds)
+                        storageUsage = AudioFileManager.shared.calculateStorageUsage()
+                        purgeResult = "Purged \(purged) audio recording(s) older than 30 days."
+                        showingPurgeAlert = true
+                    } label: {
+                        Label("Purge Audio Older Than 30 Days", systemImage: "trash")
+                            .foregroundColor(.red)
+                    }
+                }
+
                 Section(header: Text("Simulator & Developer Tools")) {
                     Button {
                         simulateIncomingWatchMemo()
@@ -277,10 +304,16 @@ public struct SettingsView: View {
                 }
 
                 Section(header: Text("About Voxbrief")) {
+                    Button {
+                        showingWhatsNew = true
+                    } label: {
+                        Label("What's New in Voxbrief", systemImage: "sparkles")
+                    }
+
                     HStack {
                         Text("Version")
                         Spacer()
-                        Text("1.0.0")
+                        Text(WhatsNewView.currentVersion)
                             .foregroundColor(.secondary)
                     }
                     HStack {
@@ -290,6 +323,9 @@ public struct SettingsView: View {
                             .foregroundColor(.secondary)
                     }
                 }
+            }
+            .sheet(isPresented: $showingWhatsNew) {
+                WhatsNewView()
             }
             .navigationTitle("Settings & Pipeline")
             .navigationBarTitleDisplayMode(.inline)
@@ -305,9 +341,15 @@ public struct SettingsView: View {
             } message: {
                 Text("Simulated memo '\(simulatedTitle)' has been added and processed through Stage 1 ASR and Stage 2 LLM cleanup.")
             }
+            .alert("Storage Cleaned", isPresented: $showingPurgeAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(purgeResult)
+            }
             .trackFeedbackScreen("Settings")
             .onAppear {
                 keyboardStatus = KeyboardSetupStatus.current
+                storageUsage = AudioFileManager.shared.calculateStorageUsage()
             }
             .onChange(of: scenePhase) { _, newPhase in
                 // Refreshes after the user goes to Settings.app to add the keyboard / grant Full
