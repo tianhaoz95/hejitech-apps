@@ -43,7 +43,10 @@
 .row-h { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 34px 0 12px; }
 .row-h h2 { margin: 0; font: 700 2rem/1 var(--hand); }
 .row-h a { font-weight: 700; font-size: .9rem; text-decoration: none; white-space: nowrap; }
-.rowc { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(210px, 1fr); gap: 20px; overflow-x: auto; padding: 4px 4px 14px; scroll-snap-type: x mandatory; }
+/* A swipeable shelf: at most four postcards per screen (a lone card stays postcard-sized), and no
+   scrollbar, which macOS otherwise flashes whenever a hovered card lifts against the edge. */
+.rowc { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(210px, calc((100% - 60px) / 4)); gap: 20px; overflow-x: auto; padding: 8px 4px 14px; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.rowc::-webkit-scrollbar { display: none; }
 .rowc > * { scroll-snap-align: start; }
 .share { display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; margin-top: 40px; padding: 22px; }
 .share b { font: 700 1.8rem/1 var(--hand); }
