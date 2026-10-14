@@ -1,0 +1,62 @@
+/* Ambient background: soft washes in the tape colours (--tape, --tape-2, --tape-3) drifting
+   very slowly behind the page, over the dotted paper. Shared by every site page.
+   Two oversized fixed layers move on different periods, so the light never visibly repeats.
+   Only transform/opacity animate (composited, no repaints). Still under reduced motion,
+   hidden when framed (/discover?embed=1) and in print. */
+:root {
+  --wash-1: rgba(242, 162, 139, .34);
+  --wash-2: rgba(169, 211, 192, .30);
+  --wash-3: rgba(243, 210, 122, .30);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --wash-1: rgba(232, 132, 104, .14);
+    --wash-2: rgba(120, 180, 155, .10);
+    --wash-3: rgba(240, 200, 110, .09);
+  }
+}
+:root[data-theme="dark"] {
+  --wash-1: rgba(232, 132, 104, .14);
+  --wash-2: rgba(120, 180, 155, .10);
+  --wash-3: rgba(240, 200, 110, .09);
+}
+
+body::before, body::after {
+  content: "";
+  position: fixed;
+  inset: -25vmax;
+  z-index: -1;
+  pointer-events: none;
+  will-change: transform;
+}
+body::before {
+  background:
+    radial-gradient(closest-side, var(--wash-1), transparent) 18% 22% / 55vmax 55vmax no-repeat,
+    radial-gradient(closest-side, var(--wash-2), transparent) 82% 70% / 60vmax 60vmax no-repeat;
+  animation: wp-drift-a 48s ease-in-out infinite alternate;
+}
+body::after {
+  background:
+    radial-gradient(closest-side, var(--wash-3), transparent) 70% 18% / 48vmax 48vmax no-repeat,
+    radial-gradient(closest-side, var(--wash-1), transparent) 25% 85% / 42vmax 42vmax no-repeat;
+  opacity: .85;
+  animation: wp-drift-b 67s ease-in-out infinite alternate;
+}
+@keyframes wp-drift-a {
+  0%   { transform: translate3d(0, 0, 0) rotate(0deg); }
+  50%  { transform: translate3d(6vmax, 4vmax, 0) rotate(8deg); }
+  100% { transform: translate3d(-4vmax, 7vmax, 0) rotate(-6deg); }
+}
+@keyframes wp-drift-b {
+  0%   { transform: translate3d(0, 0, 0) scale(1); opacity: .85; }
+  50%  { transform: translate3d(-7vmax, 3vmax, 0) scale(1.08); opacity: .6; }
+  100% { transform: translate3d(5vmax, -5vmax, 0) scale(.96); opacity: .9; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before, body::after { animation: none; }
+}
+html.embed body::before, html.embed body::after { display: none; }
+@media print {
+  body::before, body::after { display: none; }
+}
