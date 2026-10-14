@@ -95,6 +95,33 @@ public final class WatchStorage: ObservableObject {
         }
     }
     
+    /// Reconciles notes marked `.transferring` against actual active transfer note IDs.
+    /// If a note is marked `.transferring` but no transfer is active, resets it to `.pending`.
+    public func reconcileInFlightTransfers(activeTransferNoteIds: Set<UUID>) {
+        var didModify = false
+        for idx in notes.indices {
+            if notes[idx].syncState == .transferring && !activeTransferNoteIds.contains(notes[idx].id) {
+                notes[idx].syncState = .pending
+                didModify = true
+            }
+        }
+        if didModify {
+            persist()
+        }
+    }
+
+    /// Automatically cleans up local audio files for notes that have already synced to iPhone
+    /// older than `retentionPeriod` (default 7 days) to conserve Apple Watch storage.
+    public func purgeOldSyncedRecordings(olderThan retentionPeriod: TimeInterval = 7 * 24 * 3600) {
+        let cutoff = Date().addingTimeInterval(-retentionPeriod)
+        for note in notes where note.syncState == .synced && note.createdAt < cutoff {
+            let file = fileURL(for: note.localFileName)
+            if FileManager.default.fileExists(atPath: file.path) {
+                try? FileManager.default.removeItem(at: file)
+            }
+        }
+    }
+    
     private func load() {
         guard FileManager.default.fileExists(atPath: storageURL.path) else { return }
         do {

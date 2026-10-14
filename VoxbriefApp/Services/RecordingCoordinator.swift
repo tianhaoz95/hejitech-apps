@@ -68,8 +68,16 @@ public final class RecordingCoordinator: ObservableObject {
         liveActivity.updateToProcessing(duration: result.duration)
         activeNoteId = nil
 
+        let noteToProcessId = appendTargetNoteId ?? result.noteId
         activeBackgroundTaskId = UIApplication.shared.beginBackgroundTask(withName: "FinishVoiceNoteRecording") { [weak self] in
-            self?.endActiveBackgroundTask()
+            Task { @MainActor in
+                guard let self = self else { return }
+                if let currentNote = self.repository.note(withId: noteToProcessId), currentNote.status.isProcessing {
+                    self.repository.updateStatus(for: noteToProcessId, status: .failed, errorMessage: "Processing timed out while backgrounded. Tap Retry to process.")
+                    self.liveActivity.finish(success: false)
+                }
+                self.endActiveBackgroundTask()
+            }
         }
 
         if let targetNoteId = appendTargetNoteId {

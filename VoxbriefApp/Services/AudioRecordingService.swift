@@ -16,10 +16,52 @@ public final class AudioRecordingService: NSObject, ObservableObject {
     private var currentAudioURL: URL?
     
     private let audioFileManager: AudioFileManager
+    private var interruptionObserver: NSObjectProtocol?
+    private var routeChangeObserver: NSObjectProtocol?
     
     public init(audioFileManager: AudioFileManager = .shared) {
         self.audioFileManager = audioFileManager
         super.init()
+        setupAudioSessionObservers()
+    }
+
+    private func setupAudioSessionObservers() {
+        interruptionObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self = self,
+                  let userInfo = notification.userInfo,
+                  let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+            
+            if type == .began && self.isRecording {
+                print("[AudioRecordingService] Audio interruption began, stopping active recording")
+                _ = self.stopRecording()
+            }
+        }
+
+        routeChangeObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.routeChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self = self,
+                  let userInfo = notification.userInfo,
+                  let reasonValue = userInfo[AVAudioSessionRouteChangeReasonKey] as? UInt,
+                  let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else { return }
+
+            if reason == .oldDeviceUnavailable && self.isRecording {
+                print("[AudioRecordingService] Audio route old device unavailable, stopping active recording")
+                _ = self.stopRecording()
+            }
+        }
+    }
+
+    deinit {
+        if let interruptionObserver { NotificationCenter.default.removeObserver(interruptionObserver) }
+        if let routeChangeObserver { NotificationCenter.default.removeObserver(routeChangeObserver) }
     }
     
     public func requestPermission() async -> Bool {

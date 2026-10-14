@@ -153,8 +153,80 @@ public final class NoteDetailViewModel: ObservableObject {
         let trimmedTitle = editedTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         updated.title = trimmedTitle.isEmpty ? note.title : trimmedTitle
         updated.cleanedNote = editedCleanedNote
+
+        // Re-synchronize templateSections and legacy fields from the edited markdown so
+        // the structured info cards above stay in lockstep with the markdown text below.
+        let parsedSections = Self.parseSectionsFromMarkdown(editedCleanedNote, originalSections: note.effectiveTemplateSections)
+        if !parsedSections.isEmpty {
+            updated.templateSections = parsedSections
+            let (reqs, conds, actions) = LLMCopywriterService.legacyFields(from: parsedSections)
+            let resolvedReqs = !reqs.isEmpty ? reqs : (parsedSections.first(where: { $0.title.localizedCaseInsensitiveContains("requirement") })?.items ?? [])
+            let resolvedConds = !conds.isEmpty ? conds : (parsedSections.first(where: { $0.title.localizedCaseInsensitiveContains("condition") })?.items ?? [])
+            let resolvedActions = !actions.isEmpty ? actions : (parsedSections.first(where: { $0.title.localizedCaseInsensitiveContains("action") || $0.style == .checklist })?.items ?? [])
+
+            if !resolvedReqs.isEmpty { updated.requirements = resolvedReqs }
+            if !resolvedConds.isEmpty { updated.conditions = resolvedConds }
+            if !resolvedActions.isEmpty { updated.actionItems = resolvedActions }
+        }
+
         repository.save(updated)
         isEditing = false
+    }
+
+    /// Parses markdown with `### Header` headers into structured `TemplateSectionContent` items,
+    /// matching against original sections' styles when possible.
+    public static func parseSectionsFromMarkdown(_ markdown: String, originalSections: [TemplateSectionContent]) -> [TemplateSectionContent] {
+        let lines = markdown.components(separatedBy: .newlines)
+        var sections: [TemplateSectionContent] = []
+        var currentTitle: String? = nil
+        var currentItems: [String] = []
+        var hasChecklistItems = false
+        var hasNumberedItems = false
+
+        func flushSection() {
+            guard let title = currentTitle, !currentItems.isEmpty else { return }
+            var style = originalSections.first(where: { $0.title == title })?.style
+            if style == nil {
+                if hasChecklistItems {
+                    style = .checklist
+                } else if hasNumberedItems {
+                    style = .numbered
+                } else {
+                    style = .bullet
+                }
+            }
+            sections.append(TemplateSectionContent(title: title, style: style ?? .bullet, items: currentItems))
+            currentItems.removeAll()
+            hasChecklistItems = false
+            hasNumberedItems = false
+        }
+
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("### ") {
+                flushSection()
+                currentTitle = String(trimmed.dropFirst(4)).trimmingCharacters(in: .whitespaces)
+            } else if trimmed.hasPrefix("- [ ] ") || trimmed.hasPrefix("- [x] ") {
+                hasChecklistItems = true
+                currentItems.append(String(trimmed.dropFirst(6)).trimmingCharacters(in: .whitespaces))
+            } else if trimmed.hasPrefix("- ") || trimmed.hasPrefix("* ") {
+                currentItems.append(String(trimmed.dropFirst(2)).trimmingCharacters(in: .whitespaces))
+            } else if let dotIndex = trimmed.firstIndex(of: "."),
+                      dotIndex > trimmed.startIndex,
+                      Int(trimmed[..<dotIndex]) != nil {
+                hasNumberedItems = true
+                let afterDot = trimmed[trimmed.index(after: dotIndex)...].trimmingCharacters(in: .whitespaces)
+                if !afterDot.isEmpty {
+                    currentItems.append(afterDot)
+                }
+            } else if !trimmed.isEmpty && !trimmed.hasPrefix("#") && !trimmed.hasPrefix(">") {
+                if currentTitle != nil {
+                    currentItems.append(trimmed)
+                }
+            }
+        }
+        flushSection()
+        return sections
     }
 
     public func cancelEditing() {

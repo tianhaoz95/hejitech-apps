@@ -9,6 +9,7 @@ DERIVED_DATA_PATH="$REPO_ROOT/build/DerivedData"
 # Regenerates Voxbrief.xcodeproj from project.yml if xcodegen is installed,
 # so the simulator always runs what project.yml describes.
 regenerate_project() {
+  mkdir -p "$REPO_ROOT/VoxbriefApp/Resources/Models/Qwen3-0.6B-4bit"
   if command -v xcodegen >/dev/null 2>&1; then
     echo "-> Regenerating Xcode project via xcodegen..."
     (cd "$REPO_ROOT" && xcodegen generate >/dev/null)

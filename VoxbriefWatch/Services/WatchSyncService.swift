@@ -33,6 +33,18 @@ public final class WatchSyncService: NSObject, ObservableObject {
     /// Syncs all pending notes to iOS app via WCSession file transfers
     public func syncPendingNotes() {
         guard WCSession.isSupported() else { return }
+
+        // Reconcile any in-flight transfers that were interrupted or ended without callback
+        let activeTransfers = WCSession.default.outstandingFileTransfers
+        var activeNoteIds = Set<UUID>()
+        for transfer in activeTransfers {
+            if let metadata = transfer.file.metadata,
+               let payload = WatchSyncPayload.from(dictionary: metadata) {
+                activeNoteIds.insert(payload.noteId)
+            }
+        }
+        storage.reconcileInFlightTransfers(activeTransferNoteIds: activeNoteIds)
+        storage.purgeOldSyncedRecordings()
         
         let pending = storage.pendingNotes()
         guard !pending.isEmpty else {

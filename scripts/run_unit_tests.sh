@@ -38,6 +38,8 @@ for arg in "$@"; do
   esac
 done
 
+mkdir -p "$REPO_ROOT/VoxbriefApp/Resources/Models/Qwen3-0.6B-4bit"
+
 if command -v xcodegen >/dev/null 2>&1; then
   echo "-> Regenerating Xcode project with xcodegen..."
   xcodegen generate >/dev/null

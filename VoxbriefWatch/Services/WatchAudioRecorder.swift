@@ -16,9 +16,33 @@ public final class WatchAudioRecorder: NSObject, ObservableObject {
     private var currentFileURL: URL?
     
     private let storage = WatchStorage.shared
+    private var interruptionObserver: NSObjectProtocol?
     
     public override init() {
         super.init()
+        setupAudioSessionObservers()
+    }
+
+    private func setupAudioSessionObservers() {
+        interruptionObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self = self,
+                  let userInfo = notification.userInfo,
+                  let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+
+            if type == .began && self.isRecording {
+                print("[WatchAudioRecorder] Interruption began, stopping active recording")
+                _ = self.stopRecording()
+            }
+        }
+    }
+
+    deinit {
+        if let interruptionObserver { NotificationCenter.default.removeObserver(interruptionObserver) }
     }
     
     public func requestPermission() async -> Bool {

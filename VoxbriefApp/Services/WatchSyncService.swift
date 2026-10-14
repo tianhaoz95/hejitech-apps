@@ -135,7 +135,11 @@ extension WatchSyncService: WCSessionDelegate {
                 // get killed mid-flight, leaving the note stuck at a non-terminal status forever --
                 // this extends the window and gives processing a real chance to reach .ready/.failed.
                 self.activeBackgroundTaskId = UIApplication.shared.beginBackgroundTask(withName: "IngestAndProcessVoiceNote") { [weak self] in
-                    self?.endActiveBackgroundTask()
+                    guard let self = self else { return }
+                    if let currentNote = self.repository.note(withId: noteId), currentNote.status.isProcessing {
+                        self.repository.updateStatus(for: noteId, status: .failed, errorMessage: "Processing timed out while backgrounded. Tap Retry to process.")
+                    }
+                    self.endActiveBackgroundTask()
                 }
                 defer { self.endActiveBackgroundTask() }
 
