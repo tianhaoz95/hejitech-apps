@@ -33,7 +33,9 @@
       FeedbackKit.currentScreen = path;
     }
 
-    FeedbackKit.showFloatingTriggerButton();
+    // Framed pages (the account portal's Discover tab loads /discover?embed=1) would draw a
+    // second button over the host page's own.
+    if (window.parent === window) FeedbackKit.showFloatingTriggerButton();
     FeedbackKit.enableFixVerification();
   }
 
