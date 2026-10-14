@@ -114,6 +114,42 @@ public final class NoteDetailViewModel: ObservableObject {
         playbackService.cyclePlaybackRate()
     }
 
+    public func skipForward() {
+        playbackService.skipForward(seconds: 15)
+    }
+
+    public func skipBackward() {
+        playbackService.skipBackward(seconds: 15)
+    }
+
+    public func toggleLooping() {
+        playbackService.toggleLooping()
+    }
+
+    public func togglePinned() {
+        repository.togglePinned(id: note.id)
+    }
+
+    public func toggleArchived() {
+        repository.toggleArchived(id: note.id)
+    }
+
+    public func setColorTag(_ color: String?) {
+        repository.setColorTag(id: note.id, colorTag: color)
+    }
+
+    public func toggleLocked() {
+        repository.toggleLocked(id: note.id)
+    }
+
+    public func addTag(_ tag: String) {
+        repository.addTag(id: note.id, tag: tag)
+    }
+
+    public func removeTag(_ tag: String) {
+        repository.removeTag(id: note.id, tag: tag)
+    }
+
     public func exportActionItemsToReminders() async throws -> Int {
         try await RemindersExportService.shared.exportActionItems(note.actionItems, noteTitle: note.title)
     }
@@ -124,6 +160,14 @@ public final class NoteDetailViewModel: ObservableObject {
 
     public var markdownShareFileURL: URL? {
         NoteExportService.shared.exportTemporaryMarkdownFile(for: note)
+    }
+
+    public var plainTextShareFileURL: URL? {
+        NoteExportService.shared.exportTemporaryPlainTextFile(for: note)
+    }
+
+    public var htmlShareFileURL: URL? {
+        NoteExportService.shared.exportTemporaryHTMLFile(for: note)
     }
 
     public var pdfShareFileURL: URL? {

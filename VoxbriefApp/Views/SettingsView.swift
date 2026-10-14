@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 public struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
@@ -20,6 +21,9 @@ public struct SettingsView: View {
     @State private var showingPurgeAlert = false
     @State private var purgeResult = ""
     @State private var showingWhatsNew = false
+    @State private var showingFileImporter = false
+    @State private var showingBackupAlert = false
+    @State private var backupAlertMessage = ""
 
     private static let byteFormatter: ByteCountFormatter = {
         let formatter = ByteCountFormatter()
@@ -287,6 +291,54 @@ public struct SettingsView: View {
                     }
                 }
 
+                Section(header: Text("Library Insights")) {
+                    HStack {
+                        Label("Total Notes", systemImage: "doc.on.doc")
+                        Spacer()
+                        Text("\(NoteRepository.shared.notes.count)")
+                            .foregroundColor(.secondary)
+                    }
+
+                    HStack {
+                        Label("Total Audio Captured", systemImage: "waveform")
+                        Spacer()
+                        Text(NoteRepository.shared.totalAudioDuration.formattedDuration)
+                            .foregroundColor(.secondary)
+                    }
+
+                    HStack {
+                        Label("Total Words Captured", systemImage: "text.word.spacing")
+                        Spacer()
+                        Text("\(NoteRepository.shared.totalWordCount)")
+                            .foregroundColor(.secondary)
+                    }
+
+                    let actionStats = NoteRepository.shared.totalActionItemsStats
+                    HStack {
+                        Label("Tasks Completed", systemImage: "checklist")
+                        Spacer()
+                        Text("\(actionStats.completed) of \(actionStats.total)")
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                Section(
+                    header: Text("Data Management & Backups"),
+                    footer: Text("Export your entire note library to a portable JSON backup file, or restore previously exported notes.")
+                ) {
+                    if let backupURL = DataBackupService.shared.createBackupFile(for: NoteRepository.shared.notes) {
+                        ShareLink(item: backupURL) {
+                            Label("Export Library Backup (JSON)", systemImage: "square.and.arrow.up.on.square")
+                        }
+                    }
+
+                    Button {
+                        showingFileImporter = true
+                    } label: {
+                        Label("Restore Notes from Backup", systemImage: "square.and.arrow.down.on.square")
+                    }
+                }
+
                 Section(header: Text("Simulator & Developer Tools")) {
                     Button {
                         simulateIncomingWatchMemo()
@@ -326,6 +378,39 @@ public struct SettingsView: View {
             }
             .sheet(isPresented: $showingWhatsNew) {
                 WhatsNewView()
+            }
+            .fileImporter(
+                isPresented: $showingFileImporter,
+                allowedContentTypes: [.json],
+                allowsMultipleSelection: false
+            ) { result in
+                switch result {
+                case .success(let urls):
+                    guard let fileURL = urls.first else { return }
+                    guard fileURL.startAccessingSecurityScopedResource() else {
+                        backupAlertMessage = "Permission denied accessing the backup file."
+                        showingBackupAlert = true
+                        return
+                    }
+                    defer { fileURL.stopAccessingSecurityScopedResource() }
+                    do {
+                        let restored = try DataBackupService.shared.restoreNotes(from: fileURL)
+                        NoteRepository.shared.restoreAllNotes(importedNotes: restored)
+                        backupAlertMessage = "Successfully imported \(restored.count) note(s) into your library."
+                        showingBackupAlert = true
+                    } catch {
+                        backupAlertMessage = "Failed to restore backup: \(error.localizedDescription)"
+                        showingBackupAlert = true
+                    }
+                case .failure(let error):
+                    backupAlertMessage = "File selection failed: \(error.localizedDescription)"
+                    showingBackupAlert = true
+                }
+            }
+            .alert("Data Backup", isPresented: $showingBackupAlert) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(backupAlertMessage)
             }
             .navigationTitle("Settings & Pipeline")
             .navigationBarTitleDisplayMode(.inline)

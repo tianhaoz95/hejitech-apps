@@ -1,12 +1,36 @@
 import Foundation
 import Combine
 
+public enum SearchScope: String, CaseIterable, Identifiable, Sendable {
+    case all = "All"
+    case title = "Title"
+    case content = "Content"
+    case tags = "Tags"
+    case actionItems = "Action Items"
+
+    public var id: String { rawValue }
+}
+
+public enum SortOption: String, CaseIterable, Identifiable, Sendable {
+    case newest = "Newest First"
+    case oldest = "Oldest First"
+    case titleAsc = "Title (A–Z)"
+    case titleDesc = "Title (Z–A)"
+    case durationLongest = "Longest Audio"
+    case durationShortest = "Shortest Audio"
+
+    public var id: String { rawValue }
+}
+
 @MainActor
 public final class NoteListViewModel: ObservableObject {
     @Published public var searchText: String = ""
+    @Published public var searchScope: SearchScope = .all
+    @Published public var sortOption: SortOption = .newest
     @Published public var selectedTag: String? = nil
     @Published public var filterSource: NoteSource? = nil
     @Published public var onlyFavorites: Bool = false
+    @Published public var showArchived: Bool = false
     @Published public var showingRecordSheet: Bool = false
     @Published public var showingSyncStatus: Bool = false
     @Published public var showingSettings: Bool = false
@@ -19,11 +43,6 @@ public final class NoteListViewModel: ObservableObject {
 
     private var cancellables = Set<AnyCancellable>()
 
-    // Note: watch sync status used to be a `WatchSyncService` dependency here. It's been moved to
-    // iOS's `NoteListView` owning its own `WatchSyncService.shared` directly instead, since this
-    // view model is now shared with `VoxbriefMac`'s Notes browser (see project.yml) where it's not
-    // meaningful (no Watch pairing on plain macOS), and it was only ever a UI-only concern anyway,
-    // not note-filtering logic.
     public init(
         repository: NoteRepository = .shared,
         pipeline: NoteProcessingPipeline = .shared
@@ -40,27 +59,45 @@ public final class NoteListViewModel: ObservableObject {
     }
     
     public var notes: [VoiceNote] {
-        return repository.notes.filter { note in
-            // Search filter
+        let filtered = repository.notes.filter { note in
+            // Archive filter
+            if showArchived {
+                guard note.isArchived else { return false }
+            } else {
+                guard !note.isArchived else { return false }
+            }
+
+            // Search filter with scope support
             if !searchText.isEmpty {
                 let query = searchText.lowercased()
-                let matchesTitle = note.title.lowercased().contains(query)
-                let matchesSummary = note.summary.lowercased().contains(query)
-                let matchesTranscript = note.rawTranscript.lowercased().contains(query)
-                let matchesCleaned = note.cleanedNote.lowercased().contains(query)
-                let matchesTags = note.tags.contains { $0.lowercased().contains(query) }
-                let matchesRequirements = note.requirements.contains { $0.lowercased().contains(query) }
-                let matchesConditions = note.conditions.contains { $0.lowercased().contains(query) }
-                let matchesActionItems = note.actionItems.contains { $0.lowercased().contains(query) }
-                // Legacy arrays cover old notes and Design-Doc-templated ones; templateSections
-                // covers any other template (Email, Short Tweet, custom) -- both checked since a
-                // given note only ever populates one or the other, never both.
-                let matchesTemplateSections = note.templateSections.flatMap(\.items).contains { $0.lowercased().contains(query) }
-                let matchesAny = matchesTitle || matchesSummary || matchesTranscript || matchesCleaned
-                    || matchesTags || matchesRequirements || matchesConditions || matchesActionItems
-                    || matchesTemplateSections
-                if !matchesAny {
-                    return false
+                switch searchScope {
+                case .all:
+                    let matchesTitle = note.title.lowercased().contains(query)
+                    let matchesSummary = note.summary.lowercased().contains(query)
+                    let matchesTranscript = note.rawTranscript.lowercased().contains(query)
+                    let matchesCleaned = note.cleanedNote.lowercased().contains(query)
+                    let matchesTags = note.tags.contains { $0.lowercased().contains(query) }
+                    let matchesRequirements = note.requirements.contains { $0.lowercased().contains(query) }
+                    let matchesConditions = note.conditions.contains { $0.lowercased().contains(query) }
+                    let matchesActionItems = note.actionItems.contains { $0.lowercased().contains(query) }
+                    let matchesTemplateSections = note.templateSections.flatMap(\.items).contains { $0.lowercased().contains(query) }
+                    let matchesAny = matchesTitle || matchesSummary || matchesTranscript || matchesCleaned
+                        || matchesTags || matchesRequirements || matchesConditions || matchesActionItems
+                        || matchesTemplateSections
+                    if !matchesAny { return false }
+                case .title:
+                    if !note.title.lowercased().contains(query) { return false }
+                case .content:
+                    let matchesSummary = note.summary.lowercased().contains(query)
+                    let matchesTranscript = note.rawTranscript.lowercased().contains(query)
+                    let matchesCleaned = note.cleanedNote.lowercased().contains(query)
+                    if !(matchesSummary || matchesTranscript || matchesCleaned) { return false }
+                case .tags:
+                    let matchesTags = note.tags.contains { $0.lowercased().contains(query) }
+                    if !matchesTags { return false }
+                case .actionItems:
+                    let matchesActions = note.actionItems.contains { $0.lowercased().contains(query) }
+                    if !matchesActions { return false }
                 }
             }
             
@@ -85,6 +122,38 @@ public final class NoteListViewModel: ObservableObject {
             
             return true
         }
+
+        // Apply sorting
+        return filtered.sorted { a, b in
+            switch sortOption {
+            case .newest:
+                return a.createdAt > b.createdAt
+            case .oldest:
+                return a.createdAt < b.createdAt
+            case .titleAsc:
+                return a.title.localizedCaseInsensitiveCompare(b.title) == .orderedAscending
+            case .titleDesc:
+                return a.title.localizedCaseInsensitiveCompare(b.title) == .orderedDescending
+            case .durationLongest:
+                return a.duration > b.duration
+            case .durationShortest:
+                return a.duration < b.duration
+            }
+        }
+    }
+
+    /// Pinned notes subset of current filtered notes (only if not viewing archived)
+    public var pinnedNotes: [VoiceNote] {
+        guard !showArchived else { return [] }
+        return notes.filter(\.isPinned)
+    }
+
+    /// Non-pinned notes subset of current filtered notes
+    public var unpinnedNotes: [VoiceNote] {
+        if showArchived {
+            return notes
+        }
+        return notes.filter { !$0.isPinned }
     }
     
     public var allTags: [String] {
@@ -96,6 +165,16 @@ public final class NoteListViewModel: ObservableObject {
         }
         return Array(tagsSet).sorted()
     }
+
+    public var tagCounts: [(tag: String, count: Int)] {
+        var counts: [String: Int] = [:]
+        for note in repository.notes where !note.isArchived {
+            for tag in note.tags {
+                counts[tag, default: 0] += 1
+            }
+        }
+        return counts.map { (tag: $0.key, count: $0.value) }.sorted { $0.count > $1.count }
+    }
     
     public func delete(note: VoiceNote) {
         repository.delete(id: note.id)
@@ -103,6 +182,19 @@ public final class NoteListViewModel: ObservableObject {
     
     public func toggleFavorite(note: VoiceNote) {
         repository.toggleFavorite(id: note.id)
+    }
+
+    public func togglePinned(note: VoiceNote) {
+        repository.togglePinned(id: note.id)
+    }
+
+    public func toggleArchived(note: VoiceNote) {
+        repository.toggleArchived(id: note.id)
+    }
+
+    @discardableResult
+    public func duplicate(note: VoiceNote) -> VoiceNote? {
+        repository.duplicate(id: note.id)
     }
     
     public func retryProcessing(note: VoiceNote) {
@@ -115,8 +207,6 @@ public final class NoteListViewModel: ObservableObject {
         mergeSourceNote = source
     }
 
-    /// Other `.ready` notes `source` could be appended into -- excludes itself and anything still
-    /// mid-pipeline (nothing to merge from, or an in-flight run `mergeNote` would collide with).
     public func mergeCandidates(excluding source: VoiceNote) -> [VoiceNote] {
         repository.notes.filter { $0.id != source.id && $0.status == .ready }
     }
@@ -128,10 +218,6 @@ public final class NoteListViewModel: ObservableObject {
         mergeSourceNote = nil
     }
 
-    /// Re-kicks the pipeline for any note still sitting in a non-terminal status. Safe to call
-    /// at any time -- `NoteProcessingPipeline` no-ops for a note that's already actively running --
-    /// so this doubles as manual (pull-to-refresh) and automatic (returning to foreground) recovery
-    /// for a note whose background processing got cut off before reaching `.ready`/`.failed`.
     public func refresh() async {
         for note in repository.notes where note.status.isProcessing {
             await pipeline.process(note: note)

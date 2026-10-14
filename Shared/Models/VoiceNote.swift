@@ -147,6 +147,10 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
     public var status: NoteProcessingStatus
     public var source: NoteSource
     public var isFavorite: Bool
+    public var isPinned: Bool = false
+    public var isArchived: Bool = false
+    public var colorTag: String?
+    public var isLocked: Bool = false
     public var errorMessage: String?
 
     /// Human-readable label for whichever Stage 2 engine actually produced this note's cleanup
@@ -200,6 +204,10 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
         status: NoteProcessingStatus = .ready,
         source: NoteSource = .phoneApp,
         isFavorite: Bool = false,
+        isPinned: Bool = false,
+        isArchived: Bool = false,
+        colorTag: String? = nil,
+        isLocked: Bool = false,
         errorMessage: String? = nil,
         cleanupEngine: String? = nil,
         lightCleanedNote: String? = nil,
@@ -226,6 +234,10 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
         self.status = status
         self.source = source
         self.isFavorite = isFavorite
+        self.isPinned = isPinned
+        self.isArchived = isArchived
+        self.colorTag = colorTag
+        self.isLocked = isLocked
         self.errorMessage = errorMessage
         self.cleanupEngine = cleanupEngine
         self.lightCleanedNote = lightCleanedNote
@@ -258,6 +270,10 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
         status = try container.decode(NoteProcessingStatus.self, forKey: .status)
         source = try container.decode(NoteSource.self, forKey: .source)
         isFavorite = try container.decode(Bool.self, forKey: .isFavorite)
+        isPinned = try container.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
+        isArchived = try container.decodeIfPresent(Bool.self, forKey: .isArchived) ?? false
+        colorTag = try container.decodeIfPresent(String.self, forKey: .colorTag)
+        isLocked = try container.decodeIfPresent(Bool.self, forKey: .isLocked) ?? false
         errorMessage = try container.decodeIfPresent(String.self, forKey: .errorMessage)
         cleanupEngine = try container.decodeIfPresent(String.self, forKey: .cleanupEngine)
         lightCleanedNote = try container.decodeIfPresent(String.self, forKey: .lightCleanedNote)
@@ -286,5 +302,37 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
             synthesized.append(TemplateSectionContent(title: "✅ Action Items", style: .checklist, items: actionItems))
         }
         return synthesized
+    }
+
+    /// Word count calculated from whichever text is the primary output: cleanedNote or rawTranscript.
+    public var wordCount: Int {
+        let text = cleanedNote.isEmpty ? rawTranscript : cleanedNote
+        let words = text.components(separatedBy: CharacterSet.whitespacesAndNewlines)
+            .filter { !$0.trimmingCharacters(in: .punctuationCharacters).isEmpty }
+        return words.count
+    }
+
+    /// Estimated reading time in minutes (based on standard reading speed of 200 words per minute).
+    public var readingTimeMinutes: Double {
+        let words = Double(wordCount)
+        return max(0.1, (words / 200.0 * 10).rounded() / 10)
+    }
+
+    /// Human-friendly formatted reading time (e.g. "< 1 min read", "2 min read").
+    public var formattedReadingTime: String {
+        let minutes = Int(ceil(Double(wordCount) / 200.0))
+        if minutes <= 1 {
+            return "< 1 min read"
+        } else {
+            return "\(minutes) min read"
+        }
+    }
+
+    /// Returns completed count, total count, and ratio (0.0 to 1.0) for action items.
+    public var actionItemsProgress: (completed: Int, total: Int, ratio: Double) {
+        let total = actionItems.count
+        guard total > 0 else { return (0, 0, 0.0) }
+        let completed = completedActionItems.filter { actionItems.contains($0) }.count
+        return (completed, total, Double(completed) / Double(total))
     }
 }

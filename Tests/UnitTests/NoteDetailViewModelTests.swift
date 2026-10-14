@@ -165,4 +165,65 @@ final class NoteDetailViewModelTests: XCTestCase {
         }
         #endif
     }
+
+    func testPinArchiveAndColorTagOperations() {
+        let tempDir = FileManager.default.temporaryDirectory
+        let tempStorageURL = tempDir.appendingPathComponent("test_notes_\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: tempStorageURL) }
+
+        let repository = NoteRepository(customStorageURL: tempStorageURL)
+        let note = VoiceNote(id: UUID(), title: "Detail Test")
+        repository.save(note)
+
+        let viewModel = NoteDetailViewModel(note: note, repository: repository)
+
+        viewModel.togglePinned()
+        XCTAssertTrue(viewModel.note.isPinned)
+
+        viewModel.toggleArchived()
+        XCTAssertTrue(viewModel.note.isArchived)
+
+        viewModel.setColorTag("indigo")
+        XCTAssertEqual(viewModel.note.colorTag, "indigo")
+
+        viewModel.toggleLocked()
+        XCTAssertTrue(viewModel.note.isLocked)
+    }
+
+    func testTagOperationsInDetailViewModel() {
+        let tempDir = FileManager.default.temporaryDirectory
+        let tempStorageURL = tempDir.appendingPathComponent("test_notes_\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: tempStorageURL) }
+
+        let repository = NoteRepository(customStorageURL: tempStorageURL)
+        let note = VoiceNote(id: UUID(), title: "Tag Test")
+        repository.save(note)
+
+        let viewModel = NoteDetailViewModel(note: note, repository: repository)
+
+        viewModel.addTag("architecture")
+        XCTAssertTrue(viewModel.note.tags.contains("#architecture"))
+
+        viewModel.removeTag("#architecture")
+        XCTAssertFalse(viewModel.note.tags.contains("#architecture"))
+    }
+
+    func testAudioControlsAndExportURLs() {
+        let note = VoiceNote(
+            id: UUID(),
+            title: "Export Test",
+            cleanedNote: "Some cleaned text"
+        )
+        let viewModel = NoteDetailViewModel(note: note)
+
+        viewModel.toggleLooping()
+        XCTAssertTrue(viewModel.playbackService.isLooping)
+
+        viewModel.skipForward()
+        viewModel.skipBackward()
+
+        XCTAssertNotNil(viewModel.plainTextShareFileURL)
+        XCTAssertNotNil(viewModel.htmlShareFileURL)
+        XCTAssertNotNil(viewModel.markdownShareFileURL)
+    }
 }

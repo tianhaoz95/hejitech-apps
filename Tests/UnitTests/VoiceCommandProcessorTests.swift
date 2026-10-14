@@ -49,4 +49,11 @@ final class VoiceCommandProcessorTests: XCTestCase {
         XCTAssertNil(result.explicitTitle)
         XCTAssertTrue(result.extractedActionItems.isEmpty)
     }
+
+    func testNewParagraphAndBulletPointCommands() {
+        let input = "Section one summary. New paragraph. Section two bullet point first item."
+        let result = VoiceCommandProcessor.process(input)
+        XCTAssertTrue(result.cleanedTranscript.contains("\n\n"))
+        XCTAssertTrue(result.cleanedTranscript.contains("\n- "))
+    }
 }

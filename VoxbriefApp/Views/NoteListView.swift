@@ -9,15 +9,6 @@ public struct NoteListView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedDetailNote: VoiceNote? = nil
     @State private var selectedDetailTab: NoteDetailViewModel.DetailTab = .cleanedNote
-    /// `.sheet(item:)`, not `.sheet(isPresented:)` -- a second "keyboardRecord" deep link while
-    /// the sheet from a previous keyboard-triggered recording is still up (e.g. the user left via
-    /// the system back arrow instead of tapping Close, so it was never actually dismissed) needs
-    /// to force a genuinely fresh `KeyboardRecordSheet`, not just leave the stale one from last
-    /// time on screen. A bool toggled false-then-true in the same synchronous call (as
-    /// `applyNavigation` does) never observably changes from `.sheet(isPresented:)`'s point of
-    /// view, so the old sheet (and its already-`.readyToPaste` @State) never gets torn down. A
-    /// fresh, distinct id on every trigger guarantees SwiftUI always treats it as a new
-    /// presentation instead.
     @State private var keyboardRecordTrigger: KeyboardRecordTrigger?
     @State private var isSearchExpanded: Bool = false
     @State private var showingWhatsNew: Bool = WhatsNewView.shouldShowAutomatically
@@ -44,11 +35,21 @@ public struct NoteListView: View {
 
                 notesList
             }
-            .navigationTitle("")
+            .navigationTitle(viewModel.showArchived ? "Archived Notes" : "")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    VoxbriefLogoView(size: .inline)
+                    if viewModel.showArchived {
+                        Button {
+                            withAnimation {
+                                viewModel.showArchived = false
+                            }
+                        } label: {
+                            Label("Active Notes", systemImage: "chevron.left")
+                        }
+                    } else {
+                        VoxbriefLogoView(size: .inline)
+                    }
                 }
                 .hideSharedBackgroundIfAvailable()
 
@@ -198,52 +199,98 @@ public struct NoteListView: View {
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
                     .frame(maxWidth: .infinity, minHeight: 350)
+            } else if !viewModel.showArchived && !viewModel.pinnedNotes.isEmpty {
+                Section {
+                    ForEach(viewModel.pinnedNotes) { note in
+                        noteRowItem(note: note)
+                    }
+                } header: {
+                    Label("Pinned", systemImage: "pin.fill")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Color.accentColor)
+                }
+
+                if !viewModel.unpinnedNotes.isEmpty {
+                    Section {
+                        ForEach(viewModel.unpinnedNotes) { note in
+                            noteRowItem(note: note)
+                        }
+                    } header: {
+                        Text("Notes")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                }
             } else {
                 ForEach(viewModel.notes) { note in
-                    NavigationLink(destination: NoteDetailView(note: note)) {
-                        NoteRowView(note: note)
-                    }
-                    .swipeActions(edge: .leading) {
-                        Button {
-                            viewModel.toggleFavorite(note: note)
-                        } label: {
-                            Label(note.isFavorite ? "Unfavorite" : "Favorite", systemImage: note.isFavorite ? "star.slash" : "star.fill")
-                        }
-                        .tint(.yellow)
-                    }
-                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                        Button(role: .destructive) {
-                            viewModel.delete(note: note)
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
-
-                        if note.status == .failed {
-                            Button {
-                                viewModel.retryProcessing(note: note)
-                            } label: {
-                                Label("Retry", systemImage: "arrow.triangle.2.circlepath")
-                            }
-                            .tint(.accentColor)
-                        }
-
-                        if note.status == .ready {
-                            Button {
-                                viewModel.beginMerge(source: note)
-                            } label: {
-                                Label("Append To…", systemImage: "arrow.triangle.merge")
-                            }
-                            .tint(.blue)
-                        }
-                    }
-                    .listRowSeparator(.hidden)
+                    noteRowItem(note: note)
                 }
             }
         }
-        .listStyle(.plain)
+        .listStyle(.insetGrouped)
         .scrollDismissesKeyboard(.interactively)
         .refreshable {
             await viewModel.refresh()
+        }
+    }
+
+    private func noteRowItem(note: VoiceNote) -> some View {
+        NavigationLink(destination: NoteDetailView(note: note)) {
+            NoteRowView(note: note)
+        }
+        .swipeActions(edge: .leading) {
+            Button {
+                viewModel.toggleFavorite(note: note)
+            } label: {
+                Label(note.isFavorite ? "Unfavorite" : "Favorite", systemImage: note.isFavorite ? "star.slash" : "star.fill")
+            }
+            .tint(.yellow)
+
+            Button {
+                viewModel.togglePinned(note: note)
+            } label: {
+                Label(note.isPinned ? "Unpin" : "Pin", systemImage: note.isPinned ? "pin.slash.fill" : "pin.fill")
+            }
+            .tint(Color.accentColor)
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button(role: .destructive) {
+                viewModel.delete(note: note)
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+
+            Button {
+                viewModel.toggleArchived(note: note)
+            } label: {
+                Label(note.isArchived ? "Unarchive" : "Archive", systemImage: note.isArchived ? "tray.and.arrow.up.fill" : "archivebox.fill")
+            }
+            .tint(.purple)
+
+            Button {
+                viewModel.duplicate(note: note)
+            } label: {
+                Label("Duplicate", systemImage: "doc.on.doc")
+            }
+            .tint(.indigo)
+
+            if note.status == .failed {
+                Button {
+                    viewModel.retryProcessing(note: note)
+                } label: {
+                    Label("Retry", systemImage: "arrow.triangle.2.circlepath")
+                }
+                .tint(.accentColor)
+            }
+
+            if note.status == .ready {
+                Button {
+                    viewModel.beginMerge(source: note)
+                } label: {
+                    Label("Append To…", systemImage: "arrow.triangle.merge")
+                }
+                .tint(.blue)
+            }
         }
     }
 
@@ -273,16 +320,30 @@ public struct NoteListView: View {
         .accessibilityLabel(syncService.isReachable ? "Apple Watch connected" : "Apple Watch disconnected")
 
         Menu {
-            Picker("Source Filter", selection: $viewModel.filterSource) {
-                Text("All Sources").tag(NoteSource?.none)
-                Text("Apple Watch").tag(NoteSource?.some(.watchApp))
-                Text("Watch Complication").tag(NoteSource?.some(.watchComplication))
-                Text("Watch Live Activity").tag(NoteSource?.some(.watchLiveActivity))
-                Text("iPhone Direct").tag(NoteSource?.some(.phoneApp))
+            Section("Sort By") {
+                Picker("Sort Order", selection: $viewModel.sortOption) {
+                    ForEach(SortOption.allCases) { opt in
+                        Text(opt.rawValue).tag(opt)
+                    }
+                }
             }
 
-            Toggle(isOn: $viewModel.onlyFavorites) {
-                Label("Favorites Only", systemImage: "star")
+            Section("Filters") {
+                Picker("Source Filter", selection: $viewModel.filterSource) {
+                    Text("All Sources").tag(NoteSource?.none)
+                    Text("Apple Watch").tag(NoteSource?.some(.watchApp))
+                    Text("Watch Complication").tag(NoteSource?.some(.watchComplication))
+                    Text("Watch Live Activity").tag(NoteSource?.some(.watchLiveActivity))
+                    Text("iPhone Direct").tag(NoteSource?.some(.phoneApp))
+                }
+
+                Toggle(isOn: $viewModel.onlyFavorites) {
+                    Label("Favorites Only", systemImage: "star")
+                }
+
+                Toggle(isOn: $viewModel.showArchived) {
+                    Label("Show Archived", systemImage: "archivebox")
+                }
             }
 
             Divider()
@@ -323,12 +384,22 @@ public struct NoteListView: View {
     }
 
     private var searchAndTagsHeader: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 8) {
             searchBar
-            if !viewModel.allTags.isEmpty {
+
+            Picker("Scope", selection: $viewModel.searchScope) {
+                ForEach(SearchScope.allCases) { scope in
+                    Text(scope.rawValue).tag(scope)
+                }
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal)
+
+            if !viewModel.tagCounts.isEmpty {
                 tagFilterBar
             }
         }
+        .padding(.bottom, 6)
         .background(Color(UIColor.systemBackground))
     }
 
@@ -376,7 +447,6 @@ public struct NoteListView: View {
         }
         .padding(.horizontal)
         .padding(.top, 8)
-        .padding(.bottom, viewModel.allTags.isEmpty ? 8 : 4)
     }
 
     private func collapseSearch() {
@@ -395,18 +465,18 @@ public struct NoteListView: View {
                     viewModel.selectedTag = nil
                 }
 
-                ForEach(viewModel.allTags, id: \.self) { tag in
-                    filterChip(title: tag, isSelected: viewModel.selectedTag == tag) {
-                        if viewModel.selectedTag == tag {
+                ForEach(viewModel.tagCounts, id: \.tag) { item in
+                    filterChip(title: "\(item.tag) (\(item.count))", isSelected: viewModel.selectedTag == item.tag) {
+                        if viewModel.selectedTag == item.tag {
                             viewModel.selectedTag = nil
                         } else {
-                            viewModel.selectedTag = tag
+                            viewModel.selectedTag = item.tag
                         }
                     }
                 }
             }
             .padding(.horizontal)
-            .padding(.vertical, 8)
+            .padding(.vertical, 4)
         }
     }
 
@@ -426,14 +496,28 @@ public struct NoteListView: View {
     }
 
     private var isAnyFilterActive: Bool {
-        !viewModel.searchText.isEmpty || viewModel.selectedTag != nil || viewModel.filterSource != nil || viewModel.onlyFavorites
+        !viewModel.searchText.isEmpty || viewModel.selectedTag != nil || viewModel.filterSource != nil || viewModel.onlyFavorites || viewModel.showArchived
     }
 
     private var emptyStateView: some View {
         VStack(spacing: 18) {
             Spacer()
 
-            if isAnyFilterActive {
+            if viewModel.showArchived {
+                Image(systemName: "archivebox")
+                    .font(.system(size: 46, weight: .light))
+                    .foregroundStyle(.tertiary)
+
+                VStack(spacing: 6) {
+                    Text("No Archived Notes")
+                        .font(.title3.weight(.semibold))
+                    Text("Archived notes will appear here when you swipe to archive them.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 40)
+                }
+            } else if isAnyFilterActive {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 46, weight: .light))
                     .foregroundStyle(.tertiary)
@@ -469,11 +553,6 @@ public struct NoteListView: View {
     }
 }
 
-/// A fresh, distinct instance is created on every `voxbrief://record?source=keyboard` deep link
-/// (see `NoteListView.applyNavigation`) specifically so `.sheet(item:)` always presents a brand
-/// new `KeyboardRecordSheet`, even if one from a previous keyboard-triggered recording was
-/// somehow still up.
 private struct KeyboardRecordTrigger: Identifiable {
     let id = UUID()
 }
-

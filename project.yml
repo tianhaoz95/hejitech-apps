@@ -257,6 +257,7 @@ targets:
       - path: VoxbriefApp/Services/CalendarExportService.swift
       - path: VoxbriefApp/Services/NoteExportService.swift
       - path: VoxbriefApp/Services/PDFExportService.swift
+      - path: VoxbriefApp/Services/DataBackupService.swift
       - path: VoxbriefApp/Models
       # Shared SwiftUI (feature parity with the iOS app, see CLAUDE.md's "macOS auto-update" /
       # desktop-parity notes): these are the same view/viewmodel files the iOS app uses, guarded

@@ -11,6 +11,7 @@ public final class AudioPlaybackService: NSObject, ObservableObject {
     @Published public private(set) var duration: TimeInterval = 0
     @Published public private(set) var currentlyPlayingFileName: String?
     @Published public var playbackRate: Float = 1.0
+    @Published public var isLooping: Bool = false
     
     private var audioPlayer: AVAudioPlayer?
     private var timer: Timer?
@@ -112,6 +113,20 @@ public final class AudioPlaybackService: NSObject, ObservableObject {
         #endif
     }
     
+    public func toggleLooping() {
+        isLooping.toggle()
+    }
+
+    public func skipForward(seconds: TimeInterval = 15) {
+        guard duration > 0 else { return }
+        seek(toTime: min(duration, currentTime + seconds))
+    }
+
+    public func skipBackward(seconds: TimeInterval = 15) {
+        guard duration > 0 else { return }
+        seek(toTime: max(0, currentTime - seconds))
+    }
+
     public func seek(to progress: Double) {
         guard let player = audioPlayer else { return }
         let targetTime = player.duration * max(0.0, min(1.0, progress))
@@ -149,7 +164,12 @@ public final class AudioPlaybackService: NSObject, ObservableObject {
 extension AudioPlaybackService: AVAudioPlayerDelegate {
     public nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         Task { @MainActor in
-            self.stop()
+            if self.isLooping {
+                self.seek(toTime: 0)
+                self.resume()
+            } else {
+                self.stop()
+            }
         }
     }
 }

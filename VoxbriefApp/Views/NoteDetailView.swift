@@ -9,6 +9,10 @@ public struct NoteDetailView: View {
     @State private var remindersExportMessage = ""
     @State private var showingCalendarAlert = false
     @State private var calendarExportMessage = ""
+    @State private var showingAddTagAlert = false
+    @State private var newTagText = ""
+    @State private var showingCopiedNotification = false
+    @State private var copiedNotificationText = ""
 
     private enum CopyField: Equatable {
         case fullRewrite, lightCleanup, rawTranscript
@@ -104,60 +108,162 @@ public struct NoteDetailView: View {
                 }
 
                 Menu {
-                    Button {
-                        viewModel.beginEditing()
-                    } label: {
-                        Label("Edit Note", systemImage: "pencil")
+                    Section("Actions") {
+                        Button {
+                            viewModel.beginEditing()
+                        } label: {
+                            Label("Edit Note", systemImage: "pencil")
+                        }
+
+                        Button {
+                            viewModel.togglePinned()
+                        } label: {
+                            Label(viewModel.note.isPinned ? "Unpin Note" : "Pin Note", systemImage: viewModel.note.isPinned ? "pin.slash" : "pin")
+                        }
+
+                        Button {
+                            viewModel.toggleArchived()
+                        } label: {
+                            Label(viewModel.note.isArchived ? "Unarchive Note" : "Archive Note", systemImage: viewModel.note.isArchived ? "tray.and.arrow.up" : "archivebox")
+                        }
+
+                        Button {
+                            viewModel.toggleLocked()
+                        } label: {
+                            Label(viewModel.note.isLocked ? "Unlock Note" : "Lock Note (Privacy Shield)", systemImage: viewModel.note.isLocked ? "lock.open" : "lock")
+                        }
                     }
 
-                    if !viewModel.note.actionItems.isEmpty {
+                    Section("Color Accent") {
+                        Menu("Color Category") {
+                            Button("None") { viewModel.setColorTag(nil) }
+                            Button("Blue") { viewModel.setColorTag("blue") }
+                            Button("Purple") { viewModel.setColorTag("purple") }
+                            Button("Green") { viewModel.setColorTag("green") }
+                            Button("Orange") { viewModel.setColorTag("orange") }
+                            Button("Pink") { viewModel.setColorTag("pink") }
+                            Button("Teal") { viewModel.setColorTag("teal") }
+                            Button("Red") { viewModel.setColorTag("red") }
+                        }
+                    }
+
+                    Section("Copy") {
+                        Button {
+                            #if os(iOS)
+                            UIPasteboard.general.string = viewModel.note.cleanedNote
+                            #elseif os(macOS)
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(viewModel.note.cleanedNote, forType: .string)
+                            #endif
+                        } label: {
+                            Label("Copy Full Note", systemImage: "doc.on.doc")
+                        }
+
+                        if !viewModel.note.summary.isEmpty {
+                            Button {
+                                #if os(iOS)
+                                UIPasteboard.general.string = viewModel.note.summary
+                                #elseif os(macOS)
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.setString(viewModel.note.summary, forType: .string)
+                                #endif
+                            } label: {
+                                Label("Copy Summary Only", systemImage: "text.quote")
+                            }
+                        }
+
+                        if !viewModel.note.actionItems.isEmpty {
+                            Button {
+                                let actions = NoteExportService.shared.extractActionItems(for: viewModel.note)
+                                #if os(iOS)
+                                UIPasteboard.general.string = actions
+                                #elseif os(macOS)
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.setString(actions, forType: .string)
+                                #endif
+                            } label: {
+                                Label("Copy Action Items", systemImage: "checklist")
+                            }
+                        }
+
+                        if !viewModel.note.rawTranscript.isEmpty {
+                            Button {
+                                #if os(iOS)
+                                UIPasteboard.general.string = viewModel.note.rawTranscript
+                                #elseif os(macOS)
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.setString(viewModel.note.rawTranscript, forType: .string)
+                                #endif
+                            } label: {
+                                Label("Copy Verbatim Transcript", systemImage: "waveform")
+                            }
+                        }
+                    }
+
+                    Section("Export") {
+                        if let fileURL = viewModel.markdownShareFileURL {
+                            ShareLink(item: fileURL) {
+                                Label("Share Markdown File (.md)", systemImage: "doc.text")
+                            }
+                        }
+
+                        if let txtURL = viewModel.plainTextShareFileURL {
+                            ShareLink(item: txtURL) {
+                                Label("Share Plain Text (.txt)", systemImage: "doc.plaintext")
+                            }
+                        }
+
+                        if let htmlURL = viewModel.htmlShareFileURL {
+                            ShareLink(item: htmlURL) {
+                                Label("Share HTML Document (.html)", systemImage: "safari")
+                            }
+                        }
+
+                        if let pdfURL = viewModel.pdfShareFileURL {
+                            ShareLink(item: pdfURL) {
+                                Label("Share PDF Document (.pdf)", systemImage: "doc.richtext")
+                            }
+                        }
+
+                        if !viewModel.note.actionItems.isEmpty {
+                            Button {
+                                Task {
+                                    do {
+                                        let count = try await viewModel.exportActionItemsToReminders()
+                                        remindersExportMessage = "Successfully exported \(count) action items to Apple Reminders."
+                                        showingRemindersAlert = true
+                                    } catch {
+                                        remindersExportMessage = error.localizedDescription
+                                        showingRemindersAlert = true
+                                    }
+                                }
+                            } label: {
+                                Label("Export to Apple Reminders", systemImage: "checklist")
+                            }
+                        }
+
                         Button {
                             Task {
                                 do {
-                                    let count = try await viewModel.exportActionItemsToReminders()
-                                    remindersExportMessage = "Successfully exported \(count) action items to Apple Reminders."
-                                    showingRemindersAlert = true
+                                    try await viewModel.exportToCalendar()
+                                    calendarExportMessage = "Successfully added note to Apple Calendar."
+                                    showingCalendarAlert = true
                                 } catch {
-                                    remindersExportMessage = error.localizedDescription
-                                    showingRemindersAlert = true
+                                    calendarExportMessage = error.localizedDescription
+                                    showingCalendarAlert = true
                                 }
                             }
                         } label: {
-                            Label("Export to Apple Reminders", systemImage: "checklist")
+                            Label("Add to Apple Calendar", systemImage: "calendar.badge.plus")
                         }
                     }
 
-                    Button {
-                        Task {
-                            do {
-                                try await viewModel.exportToCalendar()
-                                calendarExportMessage = "Successfully added note to Apple Calendar."
-                                showingCalendarAlert = true
-                            } catch {
-                                calendarExportMessage = error.localizedDescription
-                                showingCalendarAlert = true
-                            }
+                    Section {
+                        Button {
+                            viewModel.reprocessNote()
+                        } label: {
+                            Label("Re-run LLM Cleanup", systemImage: "sparkles")
                         }
-                    } label: {
-                        Label("Add to Apple Calendar", systemImage: "calendar.badge.plus")
-                    }
-
-                    if let fileURL = viewModel.markdownShareFileURL {
-                        ShareLink(item: fileURL) {
-                            Label("Share Markdown File (.md)", systemImage: "doc.text")
-                        }
-                    }
-
-                    if let pdfURL = viewModel.pdfShareFileURL {
-                        ShareLink(item: pdfURL) {
-                            Label("Share PDF Document (.pdf)", systemImage: "doc.richtext")
-                        }
-                    }
-
-                    Button {
-                        viewModel.reprocessNote()
-                    } label: {
-                        Label("Re-run LLM Cleanup", systemImage: "sparkles")
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
@@ -173,6 +279,19 @@ public struct NoteDetailView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(calendarExportMessage)
+        }
+        .alert("Add Tag", isPresented: $showingAddTagAlert) {
+            TextField("#tag", text: $newTagText)
+            Button("Add") {
+                let trimmed = newTagText.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty {
+                    viewModel.addTag(trimmed)
+                    newTagText = ""
+                }
+            }
+            Button("Cancel", role: .cancel) {
+                newTagText = ""
+            }
         }
         .sheet(isPresented: $viewModel.isEditing) {
             editSheet
@@ -200,8 +319,26 @@ public struct NoteDetailView: View {
     // MARK: - Header
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 6) {
+                if let colorName = viewModel.note.colorTag, let color = colorForName(colorName) {
+                    Circle()
+                        .fill(color)
+                        .frame(width: 8, height: 8)
+                }
+
+                if viewModel.note.isPinned {
+                    Image(systemName: "pin.fill")
+                        .font(.caption2)
+                        .foregroundStyle(Color.accentColor)
+                }
+
+                if viewModel.note.isLocked {
+                    Image(systemName: "lock.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+
                 Label(viewModel.note.source.displayName, systemImage: viewModel.note.source.iconName)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
@@ -226,27 +363,85 @@ public struct NoteDetailView: View {
                 .font(.title2.bold())
                 .foregroundStyle(.primary)
 
+            // Reading stats & action items progress pill row
+            HStack(spacing: 10) {
+                Label("\(viewModel.note.wordCount) words", systemImage: "doc.text")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+
+                Text("·")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+
+                Label(viewModel.note.formattedReadingTime, systemImage: "clock")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+
+                if !viewModel.note.actionItems.isEmpty {
+                    let progress = viewModel.note.actionItemsProgress
+                    Text("·")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                    Label("\(progress.completed)/\(progress.total) tasks done", systemImage: "checklist")
+                        .font(.caption2)
+                        .foregroundStyle(progress.completed == progress.total ? .green : .secondary)
+                }
+            }
+
             if !viewModel.note.summary.isEmpty {
                 Text(viewModel.note.summary)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
 
-            if !viewModel.note.tags.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        ForEach(viewModel.note.tags, id: \.self) { tag in
+            // Tags row with interactive remove and add tag button
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(viewModel.note.tags, id: \.self) { tag in
+                        HStack(spacing: 4) {
                             Text(tag)
-                                .font(.caption.weight(.medium))
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                                .background(Color.appTertiaryFill, in: Capsule())
-                                .foregroundStyle(.secondary)
+                            Button {
+                                viewModel.removeTag(tag)
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 8, weight: .bold))
+                            }
+                            .buttonStyle(.plain)
                         }
+                        .font(.caption.weight(.medium))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color.appTertiaryFill, in: Capsule())
+                        .foregroundStyle(.secondary)
                     }
+
+                    Button {
+                        showingAddTagAlert = true
+                    } label: {
+                        Label("Add Tag", systemImage: "plus")
+                            .font(.caption.weight(.medium))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Color.accentColor.opacity(0.12), in: Capsule())
+                            .foregroundStyle(Color.accentColor)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .padding(.top, 2)
             }
+            .padding(.top, 2)
+        }
+    }
+
+    private func colorForName(_ name: String) -> Color? {
+        switch name.lowercased() {
+        case "blue": return .blue
+        case "purple": return .purple
+        case "green": return .green
+        case "orange": return .orange
+        case "pink": return .pink
+        case "teal": return .teal
+        case "red": return .red
+        default: return nil
         }
     }
 
@@ -360,7 +555,17 @@ public struct NoteDetailView: View {
         let isCurrentTrack = playback.currentlyPlayingFileName == viewModel.note.audioFileName
         let isPlaying = playback.isPlaying && isCurrentTrack
 
-        return HStack(spacing: 14) {
+        return HStack(spacing: 12) {
+            Button {
+                viewModel.skipBackward()
+            } label: {
+                Image(systemName: "gobackward.15")
+                    .font(.system(size: 20))
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Skip backward 15 seconds")
+
             Button {
                 viewModel.togglePlayback()
             } label: {
@@ -369,6 +574,16 @@ public struct NoteDetailView: View {
                     .foregroundStyle(Color.accentColor)
             }
             .buttonStyle(.plain)
+
+            Button {
+                viewModel.skipForward()
+            } label: {
+                Image(systemName: "goforward.15")
+                    .font(.system(size: 20))
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Skip forward 15 seconds")
 
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
@@ -387,6 +602,20 @@ public struct NoteDetailView: View {
                             .background(Color.appTertiaryFill, in: Capsule())
                     }
                     .buttonStyle(.plain)
+
+                    Button {
+                        viewModel.toggleLooping()
+                    } label: {
+                        Image(systemName: playback.isLooping ? "repeat.1" : "repeat")
+                            .font(.caption2.bold())
+                            .foregroundStyle(playback.isLooping ? Color.accentColor : .secondary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(playback.isLooping ? Color.accentColor.opacity(0.15) : Color.appTertiaryFill, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(playback.isLooping ? "Disable loop" : "Enable loop")
+
                     Text(viewModel.note.duration.formattedDuration)
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)

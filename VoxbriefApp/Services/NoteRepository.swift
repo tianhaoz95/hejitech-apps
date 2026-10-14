@@ -79,7 +79,147 @@ public final class NoteRepository: ObservableObject {
         notes[index].isFavorite.toggle()
         persistNotes()
     }
-    
+
+    public func togglePinned(id: UUID) {
+        guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
+        notes[index].isPinned.toggle()
+        persistNotes()
+    }
+
+    public func toggleArchived(id: UUID) {
+        guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
+        notes[index].isArchived.toggle()
+        persistNotes()
+    }
+
+    public func setColorTag(id: UUID, colorTag: String?) {
+        guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
+        notes[index].colorTag = colorTag
+        persistNotes()
+    }
+
+    public func toggleLocked(id: UUID) {
+        guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
+        notes[index].isLocked.toggle()
+        persistNotes()
+    }
+
+    public func updateTitle(id: UUID, title: String) {
+        guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        notes[index].title = trimmed.isEmpty ? "Untitled Note" : trimmed
+        persistNotes()
+    }
+
+    public func addTag(id: UUID, tag: String) {
+        guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
+        let cleanTag = tag.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanTag.isEmpty else { return }
+        let formattedTag = cleanTag.hasPrefix("#") ? cleanTag : "#\(cleanTag)"
+        if !notes[index].tags.contains(formattedTag) {
+            notes[index].tags.append(formattedTag)
+            persistNotes()
+        }
+    }
+
+    public func removeTag(id: UUID, tag: String) {
+        guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
+        notes[index].tags.removeAll(where: { $0 == tag })
+        persistNotes()
+    }
+
+    @discardableResult
+    public func duplicate(id: UUID) -> VoiceNote? {
+        guard let original = note(withId: id) else { return nil }
+        var copy = original
+        let newId = UUID()
+        copy = VoiceNote(
+            id: newId,
+            createdAt: Date(),
+            duration: original.duration,
+            audioFileName: original.audioFileName,
+            segments: original.segments,
+            title: "\(original.title) (Copy)",
+            summary: original.summary,
+            rawTranscript: original.rawTranscript,
+            cleanedNote: original.cleanedNote,
+            requirements: original.requirements,
+            conditions: original.conditions,
+            actionItems: original.actionItems,
+            completedActionItems: original.completedActionItems,
+            tags: original.tags,
+            status: original.status,
+            source: original.source,
+            isFavorite: false,
+            isPinned: false,
+            isArchived: false,
+            colorTag: original.colorTag,
+            isLocked: false,
+            errorMessage: original.errorMessage,
+            cleanupEngine: original.cleanupEngine,
+            lightCleanedNote: original.lightCleanedNote,
+            lightCleanupEngine: original.lightCleanupEngine,
+            templateSections: original.templateSections,
+            templateId: original.templateId,
+            templateName: original.templateName,
+            transcriptSegments: original.transcriptSegments
+        )
+        save(copy)
+        return copy
+    }
+
+    public func bulkDelete(ids: Set<UUID>) {
+        for id in ids {
+            delete(id: id)
+        }
+    }
+
+    public func bulkArchive(ids: Set<UUID>, archive: Bool = true) {
+        var modified = false
+        for id in ids {
+            if let index = notes.firstIndex(where: { $0.id == id }) {
+                notes[index].isArchived = archive
+                modified = true
+            }
+        }
+        if modified {
+            persistNotes()
+        }
+    }
+
+    public func restoreAllNotes(importedNotes: [VoiceNote]) {
+        // Merge without losing notes, deduping by id
+        for imported in importedNotes {
+            if let index = notes.firstIndex(where: { $0.id == imported.id }) {
+                notes[index] = imported
+            } else {
+                notes.append(imported)
+            }
+        }
+        notes.sort(by: { $0.createdAt > $1.createdAt })
+        persistNotes()
+    }
+
+    // MARK: - Library Analytics & Metrics
+
+    public var totalAudioDuration: TimeInterval {
+        notes.reduce(0) { $0 + $1.duration }
+    }
+
+    public var totalWordCount: Int {
+        notes.reduce(0) { $0 + $1.wordCount }
+    }
+
+    public var totalActionItemsStats: (completed: Int, total: Int) {
+        var completed = 0
+        var total = 0
+        for note in notes {
+            total += note.actionItems.count
+            completed += note.completedActionItems.filter { note.actionItems.contains($0) }.count
+        }
+        return (completed, total)
+    }
+
     public func note(withId id: UUID) -> VoiceNote? {
         return notes.first(where: { $0.id == id })
     }

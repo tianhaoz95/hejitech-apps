@@ -69,6 +69,10 @@ public enum VoiceCommandProcessor {
         // 3. Process scratch/strike-that cancellation commands
         currentText = applyScratchCommands(to: currentText)
 
+        // 4. Process structural formatting dictation commands
+        currentText = currentText.replacingOccurrences(of: #"(?i)\b(?:new|next)\s+paragraph\b[,.]?\s*"#, with: "\n\n", options: .regularExpression)
+        currentText = currentText.replacingOccurrences(of: #"(?i)\b(?:bullet\s+point|new\s+bullet)\b[,.]?\s*"#, with: "\n- ", options: .regularExpression)
+
         return ProcessedVoiceCommands(
             cleanedTranscript: currentText.trimmingCharacters(in: .whitespacesAndNewlines),
             explicitTitle: extractedTitle,
@@ -80,7 +84,7 @@ public enum VoiceCommandProcessor {
     private static func applyScratchCommands(to text: String) -> String {
         var working = text
         for phrase in scratchPhrases {
-            let pattern = "(?i)(?:[;,.]|^)([^;,.\\n]+?)[,.]?\\s*" + NSRegularExpression.escapedPattern(for: phrase) + "[;,.]?\\s*"
+            let pattern = "(?i)(?:[;,.]|^)([^;,.\n]+?)[,.]?\\s*" + NSRegularExpression.escapedPattern(for: phrase) + "[;,.]?\\s*"
             if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
                 while let match = regex.firstMatch(in: working, options: [], range: NSRange(working.startIndex..<working.endIndex, in: working)),
                       let fullRange = Range(match.range(at: 0), in: working) {
@@ -96,8 +100,8 @@ public enum VoiceCommandProcessor {
                 }
             }
         }
-        // Clean up accidental multiple spaces or leading punctuation
-        working = working.replacingOccurrences(of: #"\s{2,}"#, with: " ", options: .regularExpression)
+        // Clean up accidental multiple horizontal spaces or leading punctuation
+        working = working.replacingOccurrences(of: #"[ \t]{2,}"#, with: " ", options: .regularExpression)
         working = working.replacingOccurrences(of: #"^\s*[,;.]\s*"#, with: "", options: .regularExpression)
         working = working.trimmingCharacters(in: .whitespacesAndNewlines)
         if let first = working.first {
