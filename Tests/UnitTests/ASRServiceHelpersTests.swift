@@ -86,4 +86,23 @@ final class ASRServiceHelpersTests: XCTestCase {
         let activeTracker = ASRProgressTracker(onProgress: { _ in })
         XCTAssertNotNil(activeTracker.makeCallback())
     }
+
+    func testTranscriptTimingSegmentFormattedRange() {
+        let segment = TranscriptTimingSegment(start: 65, end: 125, text: "Testing timing")
+        XCTAssertEqual(segment.formattedRange, "01:05 - 02:05")
+    }
+
+    func testASRServiceLanguageConfigurationStorage() {
+        let prev = ASRService.configuredLanguage
+        defer { ASRService.configuredLanguage = prev }
+
+        ASRService.configuredLanguage = "es"
+        XCTAssertEqual(ASRService.configuredLanguage, "es")
+
+        ASRService.configuredLanguage = "auto"
+        XCTAssertNil(ASRService.configuredLanguage)
+
+        ASRService.configuredLanguage = nil
+        XCTAssertNil(ASRService.configuredLanguage)
+    }
 }

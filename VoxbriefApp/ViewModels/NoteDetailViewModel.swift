@@ -103,6 +103,19 @@ public final class NoteDetailViewModel: ObservableObject {
         }
         playbackService.seek(to: progress)
     }
+
+    public func seek(toTime time: TimeInterval) {
+        guard let fileName = note.audioFileName else { return }
+        playbackService.play(fileName: fileName, startingAt: time)
+    }
+
+    public func exportActionItemsToReminders() async throws -> Int {
+        try await RemindersExportService.shared.exportActionItems(note.actionItems, noteTitle: note.title)
+    }
+
+    public var markdownShareFileURL: URL? {
+        NoteExportService.shared.exportTemporaryMarkdownFile(for: note)
+    }
     
     /// Triggers Stage 2's "light" rewrite the first time something actually needs to display it
     /// (see `NoteDetailView`'s light cleanup tab) -- a no-op if it's off in Settings, already

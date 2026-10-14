@@ -5,6 +5,8 @@ public struct NoteDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var copiedField: CopyField?
     @State private var showingAddRecording = false
+    @State private var showingRemindersAlert = false
+    @State private var remindersExportMessage = ""
 
     private enum CopyField: Equatable {
         case fullRewrite, lightCleanup, rawTranscript
@@ -106,6 +108,29 @@ public struct NoteDetailView: View {
                         Label("Edit Note", systemImage: "pencil")
                     }
 
+                    if !viewModel.note.actionItems.isEmpty {
+                        Button {
+                            Task {
+                                do {
+                                    let count = try await viewModel.exportActionItemsToReminders()
+                                    remindersExportMessage = "Successfully exported \(count) action items to Apple Reminders."
+                                    showingRemindersAlert = true
+                                } catch {
+                                    remindersExportMessage = error.localizedDescription
+                                    showingRemindersAlert = true
+                                }
+                            }
+                        } label: {
+                            Label("Export to Apple Reminders", systemImage: "checklist")
+                        }
+                    }
+
+                    if let fileURL = viewModel.markdownShareFileURL {
+                        ShareLink(item: fileURL) {
+                            Label("Share Markdown File (.md)", systemImage: "doc.text")
+                        }
+                    }
+
                     Button {
                         viewModel.reprocessNote()
                     } label: {
@@ -115,6 +140,11 @@ public struct NoteDetailView: View {
                     Image(systemName: "ellipsis.circle")
                 }
             }
+        }
+        .alert("Apple Reminders", isPresented: $showingRemindersAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(remindersExportMessage)
         }
         .sheet(isPresented: $viewModel.isEditing) {
             editSheet
@@ -610,9 +640,34 @@ public struct NoteDetailView: View {
                 copyButton(text: viewModel.note.rawTranscript, field: .rawTranscript)
             }
 
-            Text(viewModel.note.rawTranscript.isEmpty ? "No raw transcript available." : viewModel.note.rawTranscript)
-                .font(.body)
-                .foregroundStyle(.secondary)
+            if !viewModel.note.transcriptSegments.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(viewModel.note.transcriptSegments) { segment in
+                        Button {
+                            viewModel.seek(toTime: segment.start)
+                        } label: {
+                            HStack(alignment: .top, spacing: 10) {
+                                Text(segment.formattedRange)
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(Color.accentColor)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 3)
+                                    .background(Color.accentColor.opacity(0.12), in: Capsule())
+
+                                Text(segment.text)
+                                    .font(.body)
+                                    .foregroundStyle(.primary)
+                                    .multilineTextAlignment(.leading)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            } else {
+                Text(viewModel.note.rawTranscript.isEmpty ? "No raw transcript available." : viewModel.note.rawTranscript)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding(16)
         .background(Color.appSecondaryBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))

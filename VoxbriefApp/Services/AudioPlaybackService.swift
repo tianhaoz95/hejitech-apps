@@ -91,8 +91,26 @@ public final class AudioPlaybackService: NSObject, ObservableObject {
     public func seek(to progress: Double) {
         guard let player = audioPlayer else { return }
         let targetTime = player.duration * max(0.0, min(1.0, progress))
-        player.currentTime = targetTime
-        self.currentTime = targetTime
+        seek(toTime: targetTime)
+    }
+
+    public func seek(toTime targetTime: TimeInterval) {
+        guard let player = audioPlayer else { return }
+        let clamped = max(0.0, min(player.duration, targetTime))
+        player.currentTime = clamped
+        self.currentTime = clamped
+    }
+
+    public func play(fileName: String, startingAt time: TimeInterval) {
+        if currentlyPlayingFileName == fileName {
+            seek(toTime: time)
+            if !isPlaying {
+                resume()
+            }
+        } else {
+            play(fileName: fileName)
+            seek(toTime: time)
+        }
     }
     
     private func startProgressTimer() {

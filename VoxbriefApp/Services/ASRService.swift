@@ -13,6 +13,12 @@ public protocol ASRServiceProtocol: Sendable {
         onProgress: (@Sendable (String) -> Void)?
     ) async throws -> String
 
+    func transcribeAudioWithTimings(
+        at fileURL: URL,
+        vocabulary: [String],
+        onProgress: (@Sendable (String) -> Void)?
+    ) async throws -> (transcript: String, segments: [TranscriptTimingSegment])
+
     /// Best-effort: starts loading the underlying model now (if not already loaded/loading)
     /// rather than waiting for the first real `transcribeAudio` call to pay that cost. Errors are
     /// swallowed -- a real call will surface them properly if loading still fails by the time it
@@ -26,6 +32,15 @@ public protocol ASRServiceProtocol: Sendable {
 public extension ASRServiceProtocol {
     func transcribeAudio(at fileURL: URL, vocabulary: [String] = []) async throws -> String {
         try await transcribeAudio(at: fileURL, vocabulary: vocabulary, onProgress: nil)
+    }
+
+    func transcribeAudioWithTimings(
+        at fileURL: URL,
+        vocabulary: [String] = [],
+        onProgress: (@Sendable (String) -> Void)? = nil
+    ) async throws -> (transcript: String, segments: [TranscriptTimingSegment]) {
+        let text = try await transcribeAudio(at: fileURL, vocabulary: vocabulary, onProgress: onProgress)
+        return (transcript: text, segments: [])
     }
 }
 
@@ -71,6 +86,20 @@ public actor ASRService: ASRServiceProtocol {
     /// earlier-added terms from the front of an unbounded list.
     public static let maxVocabularyTerms = 100
 
+    public static let languageStorageKey = "voxbrief_asr_language_preference"
+
+    public static var configuredLanguage: String? {
+        get {
+            guard let val = UserDefaults.standard.string(forKey: languageStorageKey), !val.isEmpty, val != "auto" else {
+                return nil
+            }
+            return val
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: languageStorageKey)
+        }
+    }
+
     private let modelName: String
     private var pipe: WhisperKit?
     private var loadTask: Task<WhisperKit, Error>?
@@ -90,6 +119,15 @@ public actor ASRService: ASRServiceProtocol {
         vocabulary: [String] = [],
         onProgress: (@Sendable (String) -> Void)? = nil
     ) async throws -> String {
+        let result = try await transcribeAudioWithTimings(at: fileURL, vocabulary: vocabulary, onProgress: onProgress)
+        return result.transcript
+    }
+
+    public func transcribeAudioWithTimings(
+        at fileURL: URL,
+        vocabulary: [String] = [],
+        onProgress: (@Sendable (String) -> Void)? = nil
+    ) async throws -> (transcript: String, segments: [TranscriptTimingSegment]) {
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
             throw ASRError.fileNotFound
         }
@@ -114,7 +152,22 @@ public actor ASRService: ASRServiceProtocol {
             if transcript.isEmpty {
                 throw ASRError.emptyAudio
             }
-            return transcript
+
+            var timingSegments: [TranscriptTimingSegment] = []
+            for res in results {
+                for seg in res.segments {
+                    let segText = seg.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !segText.isEmpty {
+                        timingSegments.append(TranscriptTimingSegment(
+                            start: TimeInterval(seg.start),
+                            end: TimeInterval(seg.end),
+                            text: segText
+                        ))
+                    }
+                }
+            }
+
+            return (transcript: transcript, segments: timingSegments)
         } catch let error as ASRError {
             throw error
         } catch {
@@ -122,14 +175,28 @@ public actor ASRService: ASRServiceProtocol {
         }
     }
 
-    /// `nil` (not a `DecodingOptions` with empty `promptTokens`) when there's no vocabulary or no
-    /// tokenizer loaded yet, so an empty dictionary produces byte-identical behavior to calling
-    /// `transcribe` with no options at all.
-    static func buildDecodingOptions(vocabulary: [String], tokenizer: WhisperTokenizer?) -> DecodingOptions? {
-        guard let promptText = vocabularyPromptText(from: vocabulary), let tokenizer else { return nil }
-        let tokens = tokenizer.encode(text: " " + promptText)
-        guard !tokens.isEmpty else { return nil }
-        return DecodingOptions(promptTokens: tokens)
+    /// `nil` (not a `DecodingOptions` with empty `promptTokens`) when there's no vocabulary, no
+    /// language override, or no tokenizer loaded yet.
+    static func buildDecodingOptions(
+        vocabulary: [String],
+        tokenizer: WhisperTokenizer?,
+        language: String? = configuredLanguage
+    ) -> DecodingOptions? {
+        var options: DecodingOptions? = nil
+        if let promptText = vocabularyPromptText(from: vocabulary), let tokenizer {
+            let tokens = tokenizer.encode(text: " " + promptText)
+            if !tokens.isEmpty {
+                options = DecodingOptions(promptTokens: tokens)
+            }
+        }
+        if let language = language {
+            if options == nil {
+                options = DecodingOptions(language: language)
+            } else {
+                options?.language = language
+            }
+        }
+        return options
     }
 
     /// Pure and independently unit-testable (no WhisperKit/tokenizer needed): joins up to

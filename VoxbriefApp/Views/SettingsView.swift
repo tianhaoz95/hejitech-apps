@@ -6,6 +6,7 @@ public struct SettingsView: View {
     @AppStorage("use_local_llm_endpoint") private var useLocalLLM: Bool = false
     @AppStorage("local_llm_endpoint_url") private var localLLMUrl: String = "http://127.0.0.1:11434/api/generate"
     @AppStorage(LLMCopywriterService.localLLMModelNameKey) private var localLLMModel: String = LLMCopywriterService.defaultLocalLLMModelName
+    @AppStorage(ASRService.languageStorageKey) private var asrLanguage: String = "auto"
     @AppStorage("app_appearance") private var appearance: String = "system"
     @AppStorage(NoteProcessingPipeline.lightCleanupEnabledKey) private var lightCleanupEnabled: Bool = true
     @AppStorage(FeedbackSettings.shakeEnabledKey) private var feedbackShakeEnabled: Bool = true
@@ -34,6 +35,24 @@ public struct SettingsView: View {
                         Text("Dark").tag("dark")
                     }
                     .pickerStyle(.segmented)
+                }
+
+                Section(
+                    header: Text("Stage 1: Speech-to-Text (ASR)"),
+                    footer: Text("WhisperKit runs completely on-device. Set language to bias speech recognition, or leave on Auto-detect.")
+                ) {
+                    Picker("Dictation Language", selection: $asrLanguage) {
+                        Text("Auto-detect / English").tag("auto")
+                        Text("English (en)").tag("en")
+                        Text("Spanish (es)").tag("es")
+                        Text("French (fr)").tag("fr")
+                        Text("German (de)").tag("de")
+                        Text("Italian (it)").tag("it")
+                        Text("Portuguese (pt)").tag("pt")
+                        Text("Chinese (zh)").tag("zh")
+                        Text("Japanese (ja)").tag("ja")
+                        Text("Korean (ko)").tag("ko")
+                    }
                 }
 
                 Section(

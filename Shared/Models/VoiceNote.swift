@@ -95,6 +95,25 @@ public struct NoteSegment: Codable, Hashable, Sendable, Identifiable {
     }
 }
 
+/// Time-aligned audio transcript segment for interactive scrubbing and playback sync.
+public struct TranscriptTimingSegment: Codable, Hashable, Sendable, Identifiable {
+    public let id: UUID
+    public let start: TimeInterval
+    public let end: TimeInterval
+    public let text: String
+
+    public init(id: UUID = UUID(), start: TimeInterval, end: TimeInterval, text: String) {
+        self.id = id
+        self.start = start
+        self.end = end
+        self.text = text
+    }
+
+    public var formattedRange: String {
+        "\(start.formattedDuration) - \(end.formattedDuration)"
+    }
+}
+
 /// Complete Voice Note model containing raw audio metadata, ASR transcript, and LLM-processed note
 public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
     public let id: UUID
@@ -159,6 +178,9 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
     /// was actually used even if that template is later renamed or deleted.
     public var templateName: String?
 
+    /// Time-indexed segments produced during speech-to-text, enabling interactive audio-transcript sync.
+    public var transcriptSegments: [TranscriptTimingSegment] = []
+
     public init(
         id: UUID = UUID(),
         createdAt: Date = Date(),
@@ -182,7 +204,8 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
         lightCleanupEngine: String? = nil,
         templateSections: [TemplateSectionContent] = [],
         templateId: UUID? = nil,
-        templateName: String? = nil
+        templateName: String? = nil,
+        transcriptSegments: [TranscriptTimingSegment] = []
     ) {
         self.id = id
         self.createdAt = createdAt
@@ -207,6 +230,7 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
         self.templateSections = templateSections
         self.templateId = templateId
         self.templateName = templateName
+        self.transcriptSegments = transcriptSegments
     }
 
     /// Hand-written (rather than relying on synthesized `Decodable`) solely so `segments` can use
@@ -237,6 +261,7 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
         templateSections = try container.decodeIfPresent([TemplateSectionContent].self, forKey: .templateSections) ?? []
         templateId = try container.decodeIfPresent(UUID.self, forKey: .templateId)
         templateName = try container.decodeIfPresent(String.self, forKey: .templateName)
+        transcriptSegments = try container.decodeIfPresent([TranscriptTimingSegment].self, forKey: .transcriptSegments) ?? []
     }
 
     /// `templateSections` if this note has any (every note processed after multi-template

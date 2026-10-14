@@ -135,7 +135,8 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
     /// type don't need to change; callers through `LLMCopywriterServiceProtocol` must pass all
     /// three explicitly since protocol requirements can't carry default argument values.
     public func processTranscript(_ rawTranscript: String, mode: RewriteMode = .full, dictionary: [DictionaryEntry] = [], templates: [NoteTemplate] = []) async throws -> LLMProcessingResult {
-        let trimmed = rawTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
+        let commands = VoiceCommandProcessor.process(rawTranscript)
+        let trimmed = commands.cleanedTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             return LLMProcessingResult(
                 title: "Empty Note",
@@ -149,54 +150,84 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
             )
         }
 
-        // 1. Optional external endpoint (e.g. Ollama running a bigger model at home) -- opt-in,
-        //    off by default, for users who want to trade on-device-only for more horsepower.
-        if UserDefaults.standard.bool(forKey: "use_local_llm_endpoint"),
-           let endpointString = UserDefaults.standard.string(forKey: "local_llm_endpoint_url"),
-           let endpointURL = URL(string: endpointString) {
-            let modelName = Self.configuredLocalLLMModelName()
-            do {
-                return try await callLocalLLMEndpoint(url: endpointURL, model: modelName, transcript: trimmed, mode: mode, dictionary: dictionary, templates: templates)
-            } catch {
-                print("[LLMCopywriterService] Local LLM endpoint failed, falling back: \(error)")
-            }
-        }
-
-        // 2. On-device LLM:
-        //    On available devices/platforms, Apple Foundation Model is used by default.
-        //    Qwen is only used when the user chooses to download and use it.
-        let onDevice = OnDeviceLLMService.shared
-        let useAppleFM = await onDevice.isUsingAppleFoundationModel
-        let useQwen = await onDevice.isUsingQwenModel
-
-        if useAppleFM {
-            do {
-                return try await processWithAppleFoundationModel(transcript: trimmed, mode: mode, dictionary: dictionary, templates: templates)
-            } catch {
-                print("[LLMCopywriterService] Apple Foundation Model failed, falling back: \(error)")
-                if await onDevice.largeModelState == .ready {
-                    do {
-                        return try await processWithOnDeviceLLM(transcript: trimmed, mode: mode, dictionary: dictionary, templates: templates)
-                    } catch {
-                        print("[LLMCopywriterService] Fallback Qwen LLM also failed: \(error)")
-                    }
+        let baseResult: LLMProcessingResult = try await {
+            // 1. Optional external endpoint (e.g. Ollama running a bigger model at home) -- opt-in,
+            //    off by default, for users who want to trade on-device-only for more horsepower.
+            if UserDefaults.standard.bool(forKey: "use_local_llm_endpoint"),
+               let endpointString = UserDefaults.standard.string(forKey: "local_llm_endpoint_url"),
+               let endpointURL = URL(string: endpointString) {
+                let modelName = Self.configuredLocalLLMModelName()
+                do {
+                    return try await callLocalLLMEndpoint(url: endpointURL, model: modelName, transcript: trimmed, mode: mode, dictionary: dictionary, templates: templates)
+                } catch {
+                    print("[LLMCopywriterService] Local LLM endpoint failed, falling back: \(error)")
                 }
             }
-        } else if useQwen {
-            do {
-                return try await processWithOnDeviceLLM(transcript: trimmed, mode: mode, dictionary: dictionary, templates: templates)
-            } catch {
-                print("[LLMCopywriterService] On-device Qwen LLM failed, falling back to rule-based transformer: \(error)")
+
+            // 2. On-device LLM:
+            //    On available devices/platforms, Apple Foundation Model is used by default.
+            //    Qwen is only used when the user chooses to download and use it.
+            let onDevice = OnDeviceLLMService.shared
+            let useAppleFM = await onDevice.isUsingAppleFoundationModel
+            let useQwen = await onDevice.isUsingQwenModel
+
+            if useAppleFM {
+                do {
+                    return try await processWithAppleFoundationModel(transcript: trimmed, mode: mode, dictionary: dictionary, templates: templates)
+                } catch {
+                    print("[LLMCopywriterService] Apple Foundation Model failed, falling back: \(error)")
+                    if await onDevice.largeModelState == .ready {
+                        do {
+                            return try await processWithOnDeviceLLM(transcript: trimmed, mode: mode, dictionary: dictionary, templates: templates)
+                        } catch {
+                            print("[LLMCopywriterService] Fallback Qwen LLM also failed: \(error)")
+                        }
+                    }
+                }
+            } else if useQwen {
+                do {
+                    return try await processWithOnDeviceLLM(transcript: trimmed, mode: mode, dictionary: dictionary, templates: templates)
+                } catch {
+                    print("[LLMCopywriterService] On-device Qwen LLM failed, falling back to rule-based transformer: \(error)")
+                }
+            }
+
+            // 3. Deterministic rule-based transformer -- the zero-dependency fallback that always works.
+            switch mode {
+            case .full:
+                return transformLocally(rawTranscript: trimmed)
+            case .light:
+                return transformLocallyLight(rawTranscript: trimmed)
+            }
+        }()
+
+        return applyVoiceCommands(to: baseResult, commands: commands)
+    }
+
+    private func applyVoiceCommands(to result: LLMProcessingResult, commands: ProcessedVoiceCommands) -> LLMProcessingResult {
+        var title = result.title
+        if let explicit = commands.explicitTitle, !explicit.isEmpty {
+            title = explicit
+        }
+        var actions = result.actionItems
+        for item in commands.extractedActionItems {
+            if !actions.contains(item) {
+                actions.append(item)
             }
         }
-
-        // 3. Deterministic rule-based transformer -- the zero-dependency fallback that always works.
-        switch mode {
-        case .full:
-            return transformLocally(rawTranscript: trimmed)
-        case .light:
-            return transformLocallyLight(rawTranscript: trimmed)
-        }
+        return LLMProcessingResult(
+            title: title,
+            summary: result.summary,
+            requirements: result.requirements,
+            conditions: result.conditions,
+            actionItems: actions,
+            cleanedMarkdown: result.cleanedMarkdown,
+            tags: result.tags,
+            engine: result.engine,
+            sections: result.sections,
+            templateId: result.templateId,
+            templateName: result.templateName
+        )
     }
 
     // MARK: - On-Device LLM (MLX Swift + Qwen3)

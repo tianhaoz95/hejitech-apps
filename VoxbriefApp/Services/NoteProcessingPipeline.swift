@@ -89,7 +89,7 @@ public final class NoteProcessingPipeline: ObservableObject {
 
             // Stage 1: ASR Speech-to-Text
             repository.updateStatus(for: note.id, status: .transcribingASR)
-            let asrTranscript = try await asrService.transcribeAudio(
+            let (asrTranscript, timingSegments) = try await asrService.transcribeAudioWithTimings(
                 at: audioURL,
                 vocabulary: dictionaryEntries.map(\.term),
                 onProgress: { [weak self, noteId = note.id] partialText in
@@ -113,6 +113,7 @@ public final class NoteProcessingPipeline: ObservableObject {
             // Build completed note
             var updatedNote = note
             updatedNote.rawTranscript = rawTranscript
+            updatedNote.transcriptSegments = timingSegments
             updatedNote.segments = [
                 NoteSegment(
                     id: note.id,
@@ -192,7 +193,7 @@ public final class NoteProcessingPipeline: ObservableObject {
         do {
             let dictionaryEntries = dictionaryStore.entries
             let audioURL = audioFileManager.url(for: audioFileName)
-            let asrTranscript = try await asrService.transcribeAudio(
+            let (asrTranscript, timingSegments) = try await asrService.transcribeAudioWithTimings(
                 at: audioURL,
                 vocabulary: dictionaryEntries.map(\.term),
                 onProgress: { [weak self] partialText in
@@ -216,6 +217,7 @@ public final class NoteProcessingPipeline: ObservableObject {
             note.segments = (note.segments.isEmpty ? [Self.legacySegment(from: note)] : note.segments) + [segment]
             note.audioFileName = segment.audioFileName
             note.duration = segment.duration
+            note.transcriptSegments = note.transcriptSegments + timingSegments
             repository.save(note)
 
             await reprocessStage2(for: noteId)

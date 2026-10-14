@@ -45,6 +45,8 @@ targets:
       path: VoxbriefApp/App/Info.plist
       properties:
         NSMicrophoneUsageDescription: "Voxbrief uses your microphone to record voice notes and capture ideas."
+        NSRemindersUsageDescription: "Voxbrief can export action items from your voice notes into Apple Reminders."
+        NSRemindersFullAccessUsageDescription: "Voxbrief can export action items from your voice notes into Apple Reminders."
         UIBackgroundModes:
           - audio
           - fetch
@@ -100,6 +102,7 @@ targets:
       - framework: AVFoundation.framework
       - framework: WatchConnectivity.framework
       - framework: ActivityKit.framework
+      - framework: EventKit.framework
     scheme:
       testTargets:
         - VoxbriefTests
@@ -247,6 +250,9 @@ targets:
       - path: VoxbriefApp/Services/PersonalDictionaryStore.swift
       - path: VoxbriefApp/Services/TemplateStore.swift
       - path: VoxbriefApp/Services/AudioPlaybackService.swift
+      - path: VoxbriefApp/Services/VoiceCommandProcessor.swift
+      - path: VoxbriefApp/Services/RemindersExportService.swift
+      - path: VoxbriefApp/Services/NoteExportService.swift
       - path: VoxbriefApp/Models
       # Shared SwiftUI (feature parity with the iOS app, see CLAUDE.md's "macOS auto-update" /
       # desktop-parity notes): these are the same view/viewmodel files the iOS app uses, guarded
@@ -311,6 +317,7 @@ targets:
       - framework: AVFoundation.framework
       - framework: ApplicationServices.framework
       - framework: CoreGraphics.framework
+      - framework: EventKit.framework
 
   VoxbriefMacTests:
     type: bundle.unit-test
