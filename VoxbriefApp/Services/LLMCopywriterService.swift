@@ -135,7 +135,8 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
     /// type don't need to change; callers through `LLMCopywriterServiceProtocol` must pass all
     /// three explicitly since protocol requirements can't carry default argument values.
     public func processTranscript(_ rawTranscript: String, mode: RewriteMode = .full, dictionary: [DictionaryEntry] = [], templates: [NoteTemplate] = []) async throws -> LLMProcessingResult {
-        let commands = VoiceCommandProcessor.process(rawTranscript)
+        let stripped = stripASRSpecialTokens(rawTranscript)
+        let commands = VoiceCommandProcessor.process(stripped)
         let trimmed = commands.cleanedTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             return LLMProcessingResult(

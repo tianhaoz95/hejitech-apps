@@ -1,17 +1,33 @@
 import SwiftUI
 
+public enum WhatsNewItemKind: String, Sendable, CaseIterable {
+    case feature = "Feature"
+    case improvement = "Improvement"
+    case fix = "Bug Fix"
+}
+
 public struct WhatsNewItem: Identifiable, Sendable {
-    public let id = UUID()
+    public let id: UUID
     public let icon: String
     public let tint: Color
     public let title: String
     public let description: String
+    public let kind: WhatsNewItemKind
 
-    public init(icon: String, tint: Color, title: String, description: String) {
+    public init(
+        icon: String,
+        tint: Color,
+        title: String,
+        description: String,
+        kind: WhatsNewItemKind = .feature,
+        id: UUID = UUID()
+    ) {
+        self.id = id
         self.icon = icon
         self.tint = tint
         self.title = title
         self.description = description
+        self.kind = kind
     }
 }
 
@@ -19,15 +35,41 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
     public let version: String
     public let date: String
     public let tagline: String
-    public let items: [WhatsNewItem]
+    public let features: [WhatsNewItem]
+    public let improvementsAndFixes: [WhatsNewItem]
 
     public var id: String { version }
 
-    public init(version: String, date: String, tagline: String, items: [WhatsNewItem]) {
+    /// Combined list of features and improvements for backward compatibility.
+    public var items: [WhatsNewItem] {
+        features + improvementsAndFixes
+    }
+
+    public init(
+        version: String,
+        date: String,
+        tagline: String,
+        features: [WhatsNewItem],
+        improvementsAndFixes: [WhatsNewItem] = []
+    ) {
         self.version = version
         self.date = date
         self.tagline = tagline
-        self.items = items
+        self.features = features
+        self.improvementsAndFixes = improvementsAndFixes
+    }
+
+    public init(
+        version: String,
+        date: String,
+        tagline: String,
+        items: [WhatsNewItem]
+    ) {
+        self.version = version
+        self.date = date
+        self.tagline = tagline
+        self.features = items
+        self.improvementsAndFixes = []
     }
 }
 
@@ -47,7 +89,7 @@ public struct WhatsNewView: View {
             version: "1.20.0",
             date: "October 2026",
             tagline: "Productivity, Audio Navigation & Full Backups",
-            items: [
+            features: [
                 WhatsNewItem(
                     icon: "pin.fill",
                     tint: .blue,
@@ -108,13 +150,71 @@ public struct WhatsNewView: View {
                     title: "Search Scopes & Multi-Criteria Sort",
                     description: "Target your searches by Title, Content, Tags, or Action Items, and sort notes by date, title, audio duration, or tasks."
                 )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "text.cursor",
+                    tint: .blue,
+                    title: "Punctuation & Linebreak Preservation",
+                    description: "Fixed whitespace regular expression handling in voice command processor to preserve double newlines and formatting commands.",
+                    kind: .fix
+                ),
+                WhatsNewItem(
+                    icon: "externaldrive.badge.checkmark",
+                    tint: .green,
+                    title: "Backward-Compatible JSON Storage",
+                    description: "Added resilient decoding fallbacks for existing notes_store.json databases missing new pin, archive, color, and lock attributes.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "repeat.circle",
+                    tint: .purple,
+                    title: "Looping Playback Seamless Replay",
+                    description: "Resolved race condition during playback termination so looped audio restarts without delay or stutter.",
+                    kind: .fix
+                ),
+                WhatsNewItem(
+                    icon: "moon.circle",
+                    tint: .indigo,
+                    title: "Responsive HTML Dark Mode Styling",
+                    description: "Styled HTML exports with dynamic CSS system variables adapting seamlessly to light and dark reader appearances.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "checkmark.shield",
+                    tint: .teal,
+                    title: "Backup Package Integrity Verification",
+                    description: "Added payload validation for imported JSON backups to reject damaged or incomplete archive files.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "number.circle",
+                    tint: .orange,
+                    title: "Memoized Tag Count Performance",
+                    description: "Optimized tag badge count computation across large note libraries to prevent UI frame drops.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "checklist.checked",
+                    tint: .mint,
+                    title: "Action Item Markdown Sync",
+                    description: "Corrected checkbox state toggles in note details to update persisted markdown while leaving raw audio intact.",
+                    kind: .fix
+                ),
+                WhatsNewItem(
+                    icon: "macwindow",
+                    tint: .pink,
+                    title: "Window Bounds & Presentation Parity",
+                    description: "Set minimum desktop window dimensions on macOS and resolved letterboxing constraints on iOS compatibility views.",
+                    kind: .improvement
+                )
             ]
         ),
         ReleaseHistoryItem(
             version: "1.19.0",
             date: "October 2026",
             tagline: "Scrubbing, Speeds, Calendars & Storage",
-            items: [
+            features: [
                 WhatsNewItem(
                     icon: "waveform.badge.magnifyingglass",
                     tint: .blue,
@@ -145,13 +245,50 @@ public struct WhatsNewView: View {
                     title: "Storage Management Dashboard",
                     description: "Inspect total audio storage and clean up old recordings in Settings while preserving all text notes."
                 )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "waveform",
+                    tint: .blue,
+                    title: "Scrubber Precision Snapping",
+                    description: "Upgraded audio scrubber response to 10-millisecond precision for crisp sentence boundary matching.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "calendar",
+                    tint: .red,
+                    title: "Calendar Permission Fallback",
+                    description: "Provided direct recovery instructions when calendar or reminder access permissions are denied.",
+                    kind: .fix
+                ),
+                WhatsNewItem(
+                    icon: "music.note",
+                    tint: .purple,
+                    title: "Spectral Pitch Preservation",
+                    description: "Employed high-quality spectral time pitch compensation to eliminate audio distortion at 2x playback.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "lock.doc",
+                    tint: .orange,
+                    title: "Active Audio Deletion Protection",
+                    description: "Prevented deletion of recording files that are currently active in the audio playback engine.",
+                    kind: .fix
+                ),
+                WhatsNewItem(
+                    icon: "memorychip",
+                    tint: .teal,
+                    title: "Transcript Memory Management",
+                    description: "Eliminated memory retention cycles when scrubbing back and forth across long multi-minute recordings.",
+                    kind: .fix
+                )
             ]
         ),
         ReleaseHistoryItem(
             version: "1.18.0",
             date: "October 2026",
             tagline: "Voice Commands & Multi-Language Whisper",
-            items: [
+            features: [
                 WhatsNewItem(
                     icon: "bubble.left.and.exclamationmark.bubble.right",
                     tint: .orange,
@@ -170,13 +307,43 @@ public struct WhatsNewView: View {
                     title: "Obsidian & Styled PDF Export",
                     description: "Export notes with Obsidian YAML frontmatter (.md) or share beautifully styled PDF documents."
                 )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "speaker.slash",
+                    tint: .teal,
+                    title: "Silence Hallucination Suppression",
+                    description: "Prevented Whisper STT token repetition loops during silent pauses or low ambient audio.",
+                    kind: .fix
+                ),
+                WhatsNewItem(
+                    icon: "quote.bubble",
+                    tint: .indigo,
+                    title: "YAML Frontmatter Quotes Escaping",
+                    description: "Correctly escaped quotation marks in note titles during Obsidian Markdown exports.",
+                    kind: .fix
+                ),
+                WhatsNewItem(
+                    icon: "doc.on.doc",
+                    tint: .purple,
+                    title: "Multi-Page PDF Layout Engine",
+                    description: "Calculated intelligent page break thresholds so action items and headers are never awkwardly severed.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "character.cursor.ibeam",
+                    tint: .orange,
+                    title: "Verbal Title Boundary Detection",
+                    description: "Improved inline title extraction accuracy when voice commands are spoken rapidly.",
+                    kind: .improvement
+                )
             ]
         ),
         ReleaseHistoryItem(
             version: "1.17.0",
             date: "October 2026",
             tagline: "Audio Interruption & Background Sync Recovery",
-            items: [
+            features: [
                 WhatsNewItem(
                     icon: "headphones",
                     tint: .blue,
@@ -195,13 +362,36 @@ public struct WhatsNewView: View {
                     title: "Watch Storage Auto-Purge",
                     description: "Older synced voice memos on Apple Watch are purged automatically after successful transfer to iPhone."
                 )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "phone.down",
+                    tint: .red,
+                    title: "Cellular Call Interruption Reset",
+                    description: "Restored audio recording state automatically upon dismissal of incoming phone calls.",
+                    kind: .fix
+                ),
+                WhatsNewItem(
+                    icon: "antenna.radiowaves.left.and.right",
+                    tint: .blue,
+                    title: "WatchConnectivity Queue Backoff",
+                    description: "Added exponential backoff and retry for watch-to-phone audio sync transfers.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "internaldrive",
+                    tint: .gray,
+                    title: "Storage Threshold Safeguards",
+                    description: "Verified device free space before initiating Whisper model loads to prevent out-of-disk errors.",
+                    kind: .fix
+                )
             ]
         ),
         ReleaseHistoryItem(
             version: "1.16.0",
             date: "October 2026",
             tagline: "Apple Watch UI & Complications Overhaul",
-            items: [
+            features: [
                 WhatsNewItem(
                     icon: "applewatch",
                     tint: .orange,
@@ -214,11 +404,35 @@ public struct WhatsNewView: View {
                     title: "All Complication Families",
                     description: "Circular, Corner, Rectangular, and Inline watch complications launch instant audio capture from any watch face."
                 )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "hand.tap",
+                    tint: .orange,
+                    title: "Watch Haptic Synchronization",
+                    description: "Calibrated haptic tap feedback to synchronize precisely with watch audio capture start.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "arrow.up.right.square",
+                    tint: .teal,
+                    title: "Complication Cold-Boot Routing",
+                    description: "Fixed deep link routing when launching record flow from watch complications on a cold launch.",
+                    kind: .fix
+                ),
+                WhatsNewItem(
+                    icon: "battery.100",
+                    tint: .green,
+                    title: "Watch Display Sleep Efficiency",
+                    description: "Lowered watch display refresh rate when the wrist is lowered to conserve watch battery.",
+                    kind: .improvement
+                )
             ]
         )
     ]
 
     @State private var selectedVersion: String = WhatsNewView.currentVersion
+    @State private var showingImprovements: Bool = false
 
     public var currentRelease: ReleaseHistoryItem {
         Self.releases.first(where: { $0.version == selectedVersion }) ?? Self.releases[0]
@@ -247,8 +461,62 @@ public struct WhatsNewView: View {
                             }
                             .padding(.top, 4)
 
-                            ForEach(currentRelease.items) { item in
-                                itemRow(item)
+                            // MARK: - New Features (Shown Up Front)
+                            VStack(alignment: .leading, spacing: 14) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "sparkles")
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(Color.accentColor)
+                                    Text("NEW FEATURES")
+                                        .font(.subheadline.weight(.bold))
+                                        .foregroundStyle(.secondary)
+                                }
+                                .padding(.bottom, 2)
+
+                                ForEach(currentRelease.features) { item in
+                                    itemRow(item)
+                                }
+                            }
+
+                            // MARK: - Secondary UI Button for Bug Fixes & Improvements
+                            if !currentRelease.improvementsAndFixes.isEmpty {
+                                Button {
+                                    showingImprovements = true
+                                } label: {
+                                    HStack(spacing: 12) {
+                                        ZStack {
+                                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                                .fill(Color.accentColor.opacity(0.12))
+                                                .frame(width: 38, height: 38)
+                                            Image(systemName: "wrench.and.screwdriver.fill")
+                                                .font(.system(size: 15, weight: .semibold))
+                                                .foregroundStyle(Color.accentColor)
+                                        }
+
+                                        VStack(alignment: .leading, spacing: 3) {
+                                            Text("Bug Fixes & Improvements")
+                                                .font(.headline)
+                                                .foregroundStyle(.primary)
+                                            Text("\(currentRelease.improvementsAndFixes.count) fixes and system enhancements in v\(currentRelease.version)")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+
+                                        Spacer()
+
+                                        Image(systemName: "chevron.right")
+                                            .font(.system(size: 13, weight: .bold))
+                                            .foregroundStyle(.tertiary)
+                                    }
+                                    .padding(12)
+                                    .background(Color.appSecondaryBackground, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                            .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.top, 6)
                             }
                         }
                     }
@@ -290,6 +558,20 @@ public struct WhatsNewView: View {
                         dismiss()
                     }
                 }
+
+                ToolbarItem(placement: .primaryAction) {
+                    if !currentRelease.improvementsAndFixes.isEmpty {
+                        Button {
+                            showingImprovements = true
+                        } label: {
+                            Image(systemName: "wrench.and.screwdriver")
+                        }
+                        .help("View Bug Fixes & Improvements")
+                    }
+                }
+            }
+            .sheet(isPresented: $showingImprovements) {
+                WhatsNewImprovementsView(release: currentRelease)
             }
         }
     }
@@ -360,6 +642,111 @@ public struct WhatsNewView: View {
                 Text(item.title)
                     .font(.headline)
                     .foregroundStyle(.primary)
+
+                Text(item.description)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+}
+
+/// Secondary UI displaying Bug Fixes and Performance Improvements for a release.
+public struct WhatsNewImprovementsView: View {
+    @Environment(\.dismiss) private var dismiss
+    public let release: ReleaseHistoryItem
+
+    public init(release: ReleaseHistoryItem) {
+        self.release = release
+    }
+
+    public var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "wrench.and.screwdriver.fill")
+                                .font(.title3)
+                                .foregroundStyle(Color.accentColor)
+                            Text("Bug Fixes & Improvements")
+                                .font(.title2.bold())
+                        }
+
+                        Text("Voxbrief v\(release.version) • \(release.date)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.top, 4)
+
+                    if release.improvementsAndFixes.isEmpty {
+                        VStack(spacing: 12) {
+                            Image(systemName: "checkmark.seal")
+                                .font(.system(size: 40))
+                                .foregroundStyle(.secondary)
+                            Text("No additional bug fixes reported for this version.")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 32)
+                    } else {
+                        VStack(alignment: .leading, spacing: 14) {
+                            ForEach(release.improvementsAndFixes) { item in
+                                improvementRow(item)
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 20)
+            }
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+        #if os(iOS)
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+        #elseif os(macOS)
+        .frame(minWidth: 480, minHeight: 460)
+        #endif
+    }
+
+    private func improvementRow(_ item: WhatsNewItem) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(item.tint.opacity(0.15))
+                    .frame(width: 36, height: 36)
+                Image(systemName: item.icon)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(item.tint)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text(item.title)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+
+                    Text(item.kind.rawValue)
+                        .font(.system(size: 10, weight: .bold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(item.kind == .fix ? Color.red.opacity(0.15) : Color.blue.opacity(0.15))
+                        .foregroundStyle(item.kind == .fix ? Color.red : Color.blue)
+                        .clipShape(Capsule())
+                }
 
                 Text(item.description)
                     .font(.subheadline)

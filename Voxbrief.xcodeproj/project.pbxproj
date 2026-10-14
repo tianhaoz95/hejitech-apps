@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		00DE4614C618FC2A873DD7FF /* MacFeedbackPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21EBE178B4D20AED497C380E /* MacFeedbackPresenter.swift */; };
 		023362F4B7173F4218B8D128 /* KeyboardHandoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38326DAFB38C97F2FF11D41B /* KeyboardHandoff.swift */; };
+		03C9C8652C216EB5AB43FDC1 /* WhatsNewViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5719502D7118C6E4D80CEED3 /* WhatsNewViewTests.swift */; };
 		0473F467D03D78330B7B0432 /* DictionaryEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B46B0AD5BCBCB6851AAE2DC /* DictionaryEntry.swift */; };
 		04A7C1C55D6A3448A20CEDEC /* FormattingExtensionsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BFF1B48591E606188875EF7 /* FormattingExtensionsTests.swift */; };
 		062F0A4ACE8294D820ABAA0D /* TemplatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B890732A2E9F6A9C8361C2B2 /* TemplatesView.swift */; };
@@ -301,6 +302,7 @@
 		4E1023302B3222C429215588 /* DataBackupServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataBackupServiceTests.swift; sourceTree = "<group>"; };
 		4F9E58587D34FC957F4AE403 /* LLMCopywriterServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMCopywriterServiceTests.swift; sourceTree = "<group>"; };
 		560015483170C2C0F42ED686 /* TemplateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateStore.swift; sourceTree = "<group>"; };
+		5719502D7118C6E4D80CEED3 /* WhatsNewViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsNewViewTests.swift; sourceTree = "<group>"; };
 		57C43AFCEE906F715A993001 /* RecordingCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingCoordinator.swift; sourceTree = "<group>"; };
 		5FD5F519993C6DB394849326 /* ExtensionDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionDelegate.swift; sourceTree = "<group>"; };
 		61F11F8A2D3B21ECC69ECA27 /* DictionaryCorrector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryCorrector.swift; sourceTree = "<group>"; };
@@ -765,6 +767,7 @@
 				316AAE5323E87405498B6594 /* VoiceCommandProcessorTests.swift */,
 				D7875C4076C495328336A671 /* VoiceNoteStatsTests.swift */,
 				AF568BAA055854561F1C46D7 /* WatchSyncServiceTests.swift */,
+				5719502D7118C6E4D80CEED3 /* WhatsNewViewTests.swift */,
 			);
 			path = UnitTests;
 			sourceTree = "<group>";
@@ -1105,6 +1108,7 @@
 				100CCA9858954F44A3C7E9AE /* VoiceCommandProcessorTests.swift in Sources */,
 				F82AE5C04961809E357B5B9E /* VoiceNoteStatsTests.swift in Sources */,
 				29A7E9237247703B7C122B19 /* WatchSyncServiceTests.swift in Sources */,
+				03C9C8652C216EB5AB43FDC1 /* WhatsNewViewTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
