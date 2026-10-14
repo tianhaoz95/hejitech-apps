@@ -5,7 +5,7 @@ public struct BackupMetadata: Codable, Sendable {
     public let exportedAt: Date
     public let noteCount: Int
 
-    public init(appVersion: String = "1.20.0", exportedAt: Date = Date(), noteCount: Int) {
+    public init(appVersion: String = "1.21.0", exportedAt: Date = Date(), noteCount: Int) {
         self.appVersion = appVersion
         self.exportedAt = exportedAt
         self.noteCount = noteCount

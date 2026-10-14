@@ -76,7 +76,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.20.0"
+    public static let currentVersion = "1.21.0"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -85,6 +85,60 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.21.0",
+            date: "October 2026",
+            tagline: "Secondary Release Notes & ASR Token Sanitization",
+            features: [
+                WhatsNewItem(
+                    icon: "wrench.and.screwdriver.fill",
+                    tint: .blue,
+                    title: "Dedicated Bug Fixes & Improvements Sheet",
+                    description: "Tap the prominent new action button in What's New to open a dedicated secondary modal inspecting all bug fixes and system enhancements."
+                ),
+                WhatsNewItem(
+                    icon: "tag.fill",
+                    tint: .purple,
+                    title: "Categorized Change Badges",
+                    description: "All changes in the secondary UI are classified with distinct visual badges: Feature, Improvement, or Bug Fix."
+                ),
+                WhatsNewItem(
+                    icon: "sparkle.magnifyingglass",
+                    tint: .teal,
+                    title: "ASR Non-Speech Token Sanitization",
+                    description: "WhisperKit audio event annotations are automatically stripped before sending transcripts to on-device models, ensuring perfectly clean outputs."
+                ),
+                WhatsNewItem(
+                    icon: "menubar.rectangle",
+                    tint: .orange,
+                    title: "Toolbar Quick-Access Button",
+                    description: "Quickly view bug fixes and performance notes directly from the navigation bar without scrolling."
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "speaker.slash.fill",
+                    tint: .red,
+                    title: "Speech Annotation Hallucination Suppression",
+                    description: "Fixed issue where on-device proofreading models could echo non-speech annotations like '[ breathing heavily ]'.",
+                    kind: .fix
+                ),
+                WhatsNewItem(
+                    icon: "uiwindow.split.2x1",
+                    tint: .blue,
+                    title: "Presentation Detents & Window Layout",
+                    description: "Configured adaptive sheet detents on iOS and verified minimum window constraints for macOS dialogs.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "clock.arrow.circlepath",
+                    tint: .green,
+                    title: "Multi-Version History Preservation",
+                    description: "Preserved full release changelog archives across past versions with independent feature and bug fix sections.",
+                    kind: .improvement
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.20.0",
             date: "October 2026",

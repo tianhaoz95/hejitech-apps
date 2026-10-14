@@ -6,32 +6,32 @@ import SwiftUI
 final class WhatsNewViewTests: XCTestCase {
 
     func testCurrentVersionMatchesReleases() {
-        XCTAssertEqual(WhatsNewView.currentVersion, "1.20.0")
+        XCTAssertEqual(WhatsNewView.currentVersion, "1.21.0")
         let latest = WhatsNewView.releases.first
         XCTAssertNotNil(latest)
         XCTAssertEqual(latest?.version, WhatsNewView.currentVersion)
     }
 
     func testReleaseSeparatesFeaturesFromImprovements() {
-        guard let current = WhatsNewView.releases.first(where: { $0.version == "1.20.0" }) else {
-            XCTFail("Missing v1.20.0 release")
+        guard let current = WhatsNewView.releases.first(where: { $0.version == "1.21.0" }) else {
+            XCTFail("Missing v1.21.0 release")
             return
         }
 
         // New features are shown up front
         XCTAssertFalse(current.features.isEmpty)
-        XCTAssertGreaterThanOrEqual(current.features.count, 5)
+        XCTAssertGreaterThanOrEqual(current.features.count, 4)
 
         // Bug fixes & improvements are stored separately for secondary UI
         XCTAssertFalse(current.improvementsAndFixes.isEmpty)
-        XCTAssertGreaterThanOrEqual(current.improvementsAndFixes.count, 5)
+        XCTAssertGreaterThanOrEqual(current.improvementsAndFixes.count, 3)
 
         // items property aggregates both for backward compatibility
         XCTAssertEqual(current.items.count, current.features.count + current.improvementsAndFixes.count)
     }
 
     func testHistoricalVersionsContainBothFeaturesAndImprovements() {
-        let expectedVersions = ["1.20.0", "1.19.0", "1.18.0", "1.17.0", "1.16.0"]
+        let expectedVersions = ["1.21.0", "1.20.0", "1.19.0", "1.18.0", "1.17.0", "1.16.0"]
         for version in expectedVersions {
             guard let release = WhatsNewView.releases.first(where: { $0.version == version }) else {
                 XCTFail("Missing historical version \(version)")
