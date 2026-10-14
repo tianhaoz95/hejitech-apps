@@ -192,6 +192,95 @@ pub fn bring_macos_overlay_to_front(window: &tauri::WebviewWindow) {
     }
 }
 
+#[cfg(target_os = "macos")]
+#[link(name = "CoreGraphics", kind = "framework")]
+extern "C" {
+    fn CGWindowListCopyWindowInfo(option: u32, relative_to_window: u32) -> *mut objc2_foundation::NSArray;
+}
+
+/// The screen the overlay should open on: the one holding the frontmost app's frontmost
+/// window (what the user has focused), else the one under the mouse, else the main screen.
+/// NSScreen::mainScreen alone isn't enough: while another app is active it tracks *our*
+/// key window rather than the user's focus, so with two displays the overlay could open
+/// on the wrong one.
+#[cfg(target_os = "macos")]
+fn macos_target_screen(mtm: objc2::MainThreadMarker) -> Option<objc2::rc::Retained<objc2_app_kit::NSScreen>> {
+    use objc2::rc::Retained;
+    use objc2_app_kit::{NSEvent, NSScreen, NSWorkspace};
+    use objc2_foundation::{NSPoint, NSRect, NSSize};
+
+    let screens = NSScreen::screens(mtm);
+    let primary = screens.firstObject()?;
+    let primary_h = primary.frame().size.height;
+
+    // Screen with the largest overlap with a rect in Cocoa coordinates.
+    let best_for_rect = |r: NSRect| -> Option<Retained<NSScreen>> {
+        let mut best: Option<(f64, Retained<NSScreen>)> = None;
+        for s in screens.iter() {
+            let f = s.frame();
+            let w = (r.origin.x + r.size.width).min(f.origin.x + f.size.width) - r.origin.x.max(f.origin.x);
+            let h = (r.origin.y + r.size.height).min(f.origin.y + f.size.height) - r.origin.y.max(f.origin.y);
+            let area = if w > 0.0 && h > 0.0 { w * h } else { 0.0 };
+            if area > 0.0 && best.as_ref().map_or(true, |(a, _)| area > *a) {
+                best = Some((area, s));
+            }
+        }
+        best.map(|(_, s)| s)
+    };
+
+    if let Some(rect) = macos_frontmost_window_rect(primary_h, NSWorkspace::sharedWorkspace().frontmostApplication().map(|a| a.processIdentifier())) {
+        if let Some(s) = best_for_rect(rect) {
+            return Some(s);
+        }
+    }
+    let mouse = NSEvent::mouseLocation();
+    if let Some(s) = best_for_rect(NSRect::new(NSPoint::new(mouse.x - 0.5, mouse.y - 0.5), NSSize::new(1.0, 1.0))) {
+        return Some(s);
+    }
+    NSScreen::mainScreen(mtm).or(Some(primary))
+}
+
+/// Frame (Cocoa coordinates) of `pid`'s frontmost normal on-screen window. Window bounds
+/// and owner PIDs don't need the Screen Recording permission (only titles do).
+#[cfg(target_os = "macos")]
+fn macos_frontmost_window_rect(primary_h: f64, pid: Option<i32>) -> Option<objc2_foundation::NSRect> {
+    use objc2::rc::Retained;
+    use objc2::runtime::AnyObject;
+    use objc2_foundation::{NSArray, NSDictionary, NSNumber, NSPoint, NSRect, NSSize, NSString};
+    let pid = pid?;
+    const ON_SCREEN_ONLY: u32 = 1 << 0;
+    const EXCLUDE_DESKTOP_ELEMENTS: u32 = 1 << 4;
+    // A Copy function: we own the returned CFArray (toll-free bridged to NSArray).
+    let list: Retained<NSArray> = unsafe {
+        Retained::from_raw(CGWindowListCopyWindowInfo(ON_SCREEN_ONLY | EXCLUDE_DESKTOP_ELEMENTS, 0))?
+    };
+    let num = |d: &NSDictionary<NSString, AnyObject>, k: &str| -> Option<f64> {
+        let v = d.objectForKey(&NSString::from_str(k))?;
+        v.downcast::<NSNumber>().ok().map(|n| n.doubleValue())
+    };
+    // Ordered front to back, so the first match is the app's frontmost window.
+    for item in list.iter() {
+        let Ok(d) = item.downcast::<NSDictionary>() else { continue };
+        let d: &NSDictionary<NSString, AnyObject> = unsafe { &*(Retained::as_ptr(&d) as *const NSDictionary<NSString, AnyObject>) };
+        if num(d, "kCGWindowOwnerPID") != Some(pid as f64) || num(d, "kCGWindowLayer") != Some(0.0) {
+            continue;
+        }
+        if num(d, "kCGWindowAlpha").map_or(false, |a| a <= 0.0) {
+            continue;
+        }
+        let Some(b) = d.objectForKey(&NSString::from_str("kCGWindowBounds")) else { continue };
+        let Ok(b) = b.downcast::<NSDictionary>() else { continue };
+        let b: &NSDictionary<NSString, AnyObject> = unsafe { &*(Retained::as_ptr(&b) as *const NSDictionary<NSString, AnyObject>) };
+        let (Some(x), Some(y), Some(w), Some(h)) = (num(b, "X"), num(b, "Y"), num(b, "Width"), num(b, "Height")) else { continue };
+        if w < 50.0 || h < 50.0 {
+            continue;
+        }
+        // CG global space is top-left origin on the primary display; Cocoa is bottom-left.
+        return Some(NSRect::new(NSPoint::new(x, primary_h - (y + h)), NSSize::new(w, h)));
+    }
+    None
+}
+
 /// Where the overlay window was placed: its size, the menu-bar/notch strip at its top that
 /// the page keeps empty, and the notch size (0 on displays without one). Points.
 pub struct OverlayPlacement {
@@ -211,10 +300,10 @@ pub struct OverlayPlacement {
 fn place_macos_overlay_window(window: &tauri::WebviewWindow, cfg: &QuickOverlayConfig) -> Option<OverlayPlacement> {
     use objc2::runtime::NSObjectProtocol;
     use objc2::{sel, MainThreadMarker};
-    use objc2_app_kit::{NSScreen, NSWindow};
+    use objc2_app_kit::NSWindow;
     use objc2_foundation::{NSPoint, NSRect, NSSize};
     let mtm = MainThreadMarker::new()?;
-    let screen = NSScreen::mainScreen(mtm).or_else(|| NSScreen::screens(mtm).firstObject())?;
+    let screen = macos_target_screen(mtm)?;
     let frame = screen.frame();
     let visible = screen.visibleFrame();
     let screen_top = frame.origin.y + frame.size.height;
