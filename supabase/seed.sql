@@ -1,6 +1,6 @@
 -- Local development seed: two parents in one household with half a day of log.
 -- Sign in with parent1@example.com / parent2@example.com, password "newborn-dev".
--- MCP dev token: nbl_dev_local_token (read + write), local only.
+-- MCP dev token: wh_dev_local_token (read + write), local only.
 
 insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
                         raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
@@ -33,7 +33,7 @@ insert into public.entitlements (household_id, trial_started_at) values
 
 insert into public.access_tokens (user_id, household_id, name, scope, token_hash) values
   ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-0000000000aa', 'Local dev agent', 'write',
-   encode(digest('nbl_dev_local_token', 'sha256'), 'hex'));
+   encode(digest('wh_dev_local_token', 'sha256'), 'hex'));
 
 -- half a day of entries, relative to now
 with p as (

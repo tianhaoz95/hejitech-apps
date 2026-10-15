@@ -37,7 +37,7 @@ Sign in with `parent1@example.com` / `newborn-dev` (or `parent2@…`). Both acco
 
 - **Voice in the simulator.** Type into "Or type…" on the home screen; it runs the same pipeline as speech. For the real model, run `llama-server -m Laya-Q8_0.gguf --port 8089` and pick *Settings → Voice → Laya on Mac*. Or download the model in Settings to use the on-device runtime; the simulator runs it on the CPU.
 - **Glasses.** `scripts/glasses-sim.sh` opens the official Even Hub simulator, signed in. `scripts/glasses-sim.sh --e2e` drives the simulator through its automation API, checks the backend and saves HUD screenshots.
-- **MCP.** The endpoint is `http://127.0.0.1:54321/functions/v1/mcp` with `Authorization: Bearer nbl_dev_local_token`. `node scripts/test-mcp.mjs` runs the integration checks.
+- **MCP.** The endpoint is `http://127.0.0.1:54321/functions/v1/mcp` with `Authorization: Bearer wh_dev_local_token`. `node scripts/test-mcp.mjs` runs the integration checks.
 - **Billing.** Run from Xcode to use `Subscriptions.storekit` (monthly, yearly, lifetime). Launched any other way, the paywall uses a built-in dummy store through the same entitlement path.
 - **Eval.** `LAYA_MODEL=… LLAMA_SERVER_BIN=… scripts/eval.sh` re-runs the decision eval and refits `spec/calibration.json`.
 
@@ -62,4 +62,4 @@ Google and Apple sign-in go through Supabase Auth, using the same session for th
 2. Set `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID/SECRET` and the Apple service id (see `supabase/config.toml`), and enable the providers.
 3. Point the app at the project in *Sign in → Server*, or change `BackendConfig`.
 
-Agents that can't do OAuth use personal access tokens (`nbl_…`) created in *Settings → AI agents*. Only hashes are stored, and each token can be read-only or allowed to log.
+Agents that can't do OAuth use personal access tokens (`wh_…`) created in *Settings → AI agents*. Only hashes are stored, and each token can be read-only or allowed to log.

@@ -2,7 +2,7 @@
 //
 // Auth: `Authorization: Bearer <token>` where the token is either a Supabase session JWT (the
 // same Google / Apple sign-in the app uses; OAuth-capable agents discover the auth server via
-// /.well-known/oauth-protected-resource) or a personal access token `nbl_…` created in the app
+// /.well-known/oauth-protected-resource) or a personal access token `wh_…` created in the app
 // for agents that cannot do OAuth.
 //
 // The tools return facts (events, profile, the status line). They never aggregate or advise:
@@ -36,7 +36,7 @@ async function authenticate(req: Request, admin: SupabaseClient): Promise<Caller
   const header = req.headers.get("Authorization") ?? "";
   const token = header.replace(/^Bearer\s+/i, "").trim();
   if (!token) return null;
-  if (token.startsWith("nbl_")) {
+  if (token.startsWith("wh_")) {
     const { data } = await admin.rpc("resolve_access_token", { p_token: token });
     const row = Array.isArray(data) ? data[0] : null;
     return row ? { userId: row.user_id, householdId: row.household_id, scope: row.scope, via: "token" } : null;
@@ -243,14 +243,14 @@ Deno.serve(async (req) => {
     return json({ resource: base, authorization_servers: [`${SUPABASE_URL}/auth/v1`], bearer_methods_supported: ["header"] });
   }
   if (req.method === "GET") {
-    return json({ name: "newborn-log-mcp", transport: "streamable-http", post: base }, 200);
+    return json({ name: "wee-hours-mcp", transport: "streamable-http", post: base }, 200);
   }
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
 
   const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
   const caller = await authenticate(req, admin);
   if (!caller) {
-    return json({ jsonrpc: "2.0", id: null, error: { code: -32001, message: "unauthorized: use a session token or a personal access token (nbl_…)" } }, 401, {
+    return json({ jsonrpc: "2.0", id: null, error: { code: -32001, message: "unauthorized: use a session token or a personal access token (wh_…)" } }, 401, {
       "WWW-Authenticate": `Bearer resource_metadata="${base}/.well-known/oauth-protected-resource"`,
     });
   }
@@ -269,7 +269,7 @@ Deno.serve(async (req) => {
       return reply({
         protocolVersion: PROTOCOL_VERSION,
         capabilities: { tools: { listChanged: false } },
-        serverInfo: { name: "newborn-log", version: "0.1.0" },
+        serverInfo: { name: "wee-hours", version: "0.1.0" },
         instructions:
           "Facts from one household's newborn log. Tools return raw entries and the current status; they do not summarize or give advice. Compute any totals yourself from list_events.",
       });

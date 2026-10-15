@@ -37,7 +37,7 @@ let frames: Uint8Array[] = [];
 let recordingSurface: "glasses" | "ring" = "ring";
 
 function log(msg: string) {
-  console.log(`[newborn-log] ${msg}`);
+  console.log(`[wee-hours] ${msg}`);
   const el = $("log");
   if (el) el.textContent = `${new Date().toLocaleTimeString()} ${msg}\n${el.textContent}`.slice(0, 4000);
 }
@@ -135,7 +135,7 @@ async function boot() {
   if (bridge) {
     await bridge.createStartUpPageContainer(new CreateStartUpPageContainer({
       containerTotalNum: 1,
-      textObject: [new TextContainerProperty({ containerID: 1, containerName: "hud", xPosition: 8, yPosition: 96, width: 560, height: 96, content: "Newborn Log", isEventCapture: 1 })],
+      textObject: [new TextContainerProperty({ containerID: 1, containerName: "hud", xPosition: 8, yPosition: 96, width: 560, height: 96, content: "Wee Hours", isEventCapture: 1 })],
     }));
     bridge.onEvenHubEvent((event: EvenHubEvent) => {
       if (event.audioEvent) {

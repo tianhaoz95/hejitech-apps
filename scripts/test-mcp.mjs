@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 
 const base = process.argv[2] ?? "http://127.0.0.1:54321/functions/v1/mcp";
-const token = "nbl_dev_local_token";
+const token = "wh_dev_local_token";
 let id = 0;
 
 async function rpc(method, params = {}, auth = token) {
@@ -32,7 +32,7 @@ await step("rejects missing token with OAuth discovery hint", async () => {
 });
 await step("initialize", async () => {
   const r = await rpc("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "test", version: "1" } });
-  assert.equal(r.body.result.serverInfo.name, "newborn-log");
+  assert.equal(r.body.result.serverInfo.name, "wee-hours");
 });
 await step("tools/list", async () => {
   const r = await rpc("tools/list");

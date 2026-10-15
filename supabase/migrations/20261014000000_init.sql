@@ -228,7 +228,7 @@ language plpgsql security definer set search_path = public, extensions as $$
 declare v_token text;
 begin
   if my_household_id() is null then raise exception 'no household'; end if;
-  v_token := 'nbl_' || encode(gen_random_bytes(24), 'hex');
+  v_token := 'wh_' || encode(gen_random_bytes(24), 'hex');
   insert into access_tokens (user_id, household_id, name, scope, token_hash)
   values (auth.uid(), my_household_id(), p_name, p_scope, encode(digest(v_token, 'sha256'), 'hex'));
   return v_token;   -- shown once
