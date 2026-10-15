@@ -13,7 +13,7 @@ public extension Transcriber {
 /// watch messages, capture processing). It validates against the registry, writes locally first
 /// (zero data loss), and leaves syncing to `sync()`.
 public actor LogService {
-    public let store: LogStore
+    public nonisolated let store: LogStore
     public private(set) var household: Household
     public let me: UUID
     public var interpreter: VoiceInterpreter

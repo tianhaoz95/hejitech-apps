@@ -1,15 +1,15 @@
 {
-  "auto_commit_rate" : 48.899999999999999,
+  "auto_commit_rate" : 51.100000000000001,
   "calibrated" : false,
   "design" : "hierarchical",
-  "full_accuracy" : 91.599999999999994,
-  "full_list_rate" : 24.199999999999999,
+  "full_accuracy" : 92.700000000000003,
+  "full_list_rate" : 21.899999999999999,
   "label" : "keywords-hierarchical",
   "model" : "keywords-1",
   "ms_per_utterance" : 0,
   "per_question_accuracy" : {
     "amount" : 97.400000000000006,
-    "category" : 83.700000000000003,
+    "category" : 86,
     "contents" : 100,
     "diaper_kind" : 97,
     "phase" : 99.200000000000003,
@@ -22,6 +22,6 @@
   "temperatures" : {
 
   },
-  "type_accuracy" : 92.099999999999994,
-  "wrong_auto_commit_rate" : 0
+  "type_accuracy" : 93.299999999999997,
+  "wrong_auto_commit_rate" : 1.1000000000000001
 }

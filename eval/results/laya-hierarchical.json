@@ -1,12 +1,12 @@
 {
-  "auto_commit_rate" : 0,
+  "auto_commit_rate" : 2.7999999999999998,
   "calibrated" : false,
   "design" : "hierarchical",
-  "full_accuracy" : 23.600000000000001,
-  "full_list_rate" : 97.200000000000003,
+  "full_accuracy" : 65.700000000000003,
+  "full_list_rate" : 87.099999999999994,
   "label" : "laya-hierarchical",
   "model" : "laya-q8_0@http",
-  "ms_per_utterance" : 380,
+  "ms_per_utterance" : 794,
   "per_question_accuracy" : {
     "amount" : 66.700000000000003,
     "category" : 36,
@@ -14,11 +14,10 @@
     "diaper_kind" : 84.799999999999997,
     "phase" : 64.200000000000003,
     "side" : 83.900000000000006,
-    "solids_amount" : 75,
-    "when" : 21.5
+    "solids_amount" : 75
   },
-  "pick_contains_correct" : 60,
-  "pick_rate" : 2.7999999999999998,
+  "pick_contains_correct" : 61.100000000000001,
+  "pick_rate" : 10.1,
   "rows_evaluated" : 178,
   "temperatures" : {
 

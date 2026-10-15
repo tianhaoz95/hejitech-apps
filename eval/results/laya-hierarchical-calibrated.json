@@ -6,7 +6,7 @@
   "full_list_rate" : 91,
   "label" : "laya-hierarchical-calibrated",
   "model" : "laya-q8_0@http",
-  "ms_per_utterance" : 510,
+  "ms_per_utterance" : 708,
   "per_question_accuracy" : {
     "amount" : 68.200000000000003,
     "category" : 38.200000000000003,

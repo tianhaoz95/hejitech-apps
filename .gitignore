@@ -16,3 +16,5 @@ models/
 *.gguf
 report/v0/site/screenshots/*.tmp
 eval/.venv/
+.llama-build/
+ios/.derived/
