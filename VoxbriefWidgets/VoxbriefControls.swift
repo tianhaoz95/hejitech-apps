@@ -12,7 +12,7 @@ public struct StartCaptureControl: ControlWidget {
 
     public var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: Self.kind) {
-            ControlWidgetButton(action: OpenURLIntent(URL(string: "voxbrief://record?source=action_button")!)) {
+            ControlWidgetButton(action: OpenVoxbriefLinkIntent(url: VoxbriefControlLink.startCapture)) {
                 Label("Start Capture", systemImage: "mic.fill")
             }
         }
@@ -29,7 +29,7 @@ public struct QuickMemoControl: ControlWidget {
 
     public var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: Self.kind) {
-            ControlWidgetButton(action: OpenURLIntent(URL(string: "voxbrief://record?source=quick_memo")!)) {
+            ControlWidgetButton(action: OpenVoxbriefLinkIntent(url: VoxbriefControlLink.quickMemo)) {
                 Label("Quick Memo", systemImage: "waveform.badge.plus")
             }
         }
@@ -46,7 +46,7 @@ public struct OpenVoxbriefControl: ControlWidget {
 
     public var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: Self.kind) {
-            ControlWidgetButton(action: OpenURLIntent(URL(string: "voxbrief://navigate?screen=list")!)) {
+            ControlWidgetButton(action: OpenVoxbriefLinkIntent(url: VoxbriefControlLink.openVault)) {
                 Label("Open Voxbrief", systemImage: "waveform")
             }
         }

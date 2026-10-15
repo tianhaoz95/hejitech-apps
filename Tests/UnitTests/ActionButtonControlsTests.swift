@@ -101,8 +101,17 @@ final class ActionButtonControlsTests: XCTestCase {
         XCTAssertEqual(shortcuts.count, 3)
     }
 
+    func testControlLinkIntentOpensAppAndKeepsURL() throws {
+        guard #available(iOS 18.0, *) else { throw XCTSkip("Controls require iOS 18") }
+        XCTAssertTrue(OpenVoxbriefLinkIntent.openAppWhenRun)
+        XCTAssertEqual(OpenVoxbriefLinkIntent(url: VoxbriefControlLink.quickMemo).url, VoxbriefControlLink.quickMemo)
+        XCTAssertEqual(VoxbriefControlLink.openVault.host, "navigate")
+        XCTAssertEqual(URLComponents(url: VoxbriefControlLink.openVault, resolvingAgainstBaseURL: false)?
+            .queryItems?.first(where: { $0.name == "screen" })?.value, "list")
+    }
+
     func testActionButtonDeepLinkURLs() {
-        let captureURL = URL(string: "voxbrief://record?source=action_button")!
+        let captureURL = VoxbriefControlLink.startCapture
         XCTAssertEqual(captureURL.scheme, "voxbrief")
         XCTAssertEqual(captureURL.host, "record")
 
@@ -110,7 +119,7 @@ final class ActionButtonControlsTests: XCTestCase {
         let sourceParam = components?.queryItems?.first(where: { $0.name == "source" })?.value
         XCTAssertEqual(sourceParam, "action_button")
 
-        let memoURL = URL(string: "voxbrief://record?source=quick_memo")!
+        let memoURL = VoxbriefControlLink.quickMemo
         let memoComponents = URLComponents(url: memoURL, resolvingAgainstBaseURL: false)
         let memoSource = memoComponents?.queryItems?.first(where: { $0.name == "source" })?.value
         XCTAssertEqual(memoSource, "quick_memo")

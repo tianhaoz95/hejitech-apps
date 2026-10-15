@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.26.1"
+    public static let currentVersion = "1.26.2"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,28 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.26.2",
+            date: "October 2026",
+            tagline: "Action Button Controls Fixed",
+            features: [
+                WhatsNewItem(
+                    icon: "button.programmable",
+                    tint: .orange,
+                    title: "Working Action Button & Control Center Controls",
+                    description: "Start Capture, Quick Memo, and Open Voxbrief controls now open the app as expected from the Action Button, Control Center, and Lock Screen."
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "wrench.and.screwdriver.fill",
+                    tint: .gray,
+                    title: "Controls Launch Reliably",
+                    description: "Fixed controls doing nothing when pressed: they now launch Voxbrief before routing to capture or your notes vault.",
+                    kind: .fix
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.26.1",
             date: "October 2026",

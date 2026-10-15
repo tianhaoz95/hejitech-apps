@@ -187,6 +187,8 @@ targets:
     deploymentTarget: "17.0"
     sources:
       - path: Shared/Models/VoiceNoteActivityAttributes.swift
+      # Control intents must be compiled into the app as well as this extension (see the file).
+      - path: VoxbriefApp/Intents/ControlLaunchIntent.swift
       - path: VoxbriefWidgets
     info:
       path: VoxbriefWidgets/Info.plist
