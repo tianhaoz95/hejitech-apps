@@ -24,6 +24,10 @@ cd ios/LayaRuntime && LAYA_MODEL=… LAYA_SERVER=http://127.0.0.1:8089 swift tes
 cd glasses && npm test             # or: npx vitest run test/core.test.ts -t "name"
 cd glasses && npm run typecheck && npm run build
 
+# Website (landing, agent setup, account, OAuth consent, legal; Cloudflare static assets)
+cd web && npm run dev              # http://127.0.0.1:3000 against the local stack (email sign-in shown in dev)
+cd web && npm run build            # needs VITE_SUPABASE_URL etc. (web/.env.example) or WEB_ALLOW_LOCAL=1
+
 # Backend
 supabase start && node scripts/test-mcp.mjs     # MCP edge function integration checks
 scripts/glasses-sim.sh --e2e                    # drives the Even Hub simulator end to end
@@ -43,6 +47,8 @@ Local dev sign-in: `parent1@example.com` / `newborn-dev` (seeded household). MCP
 **Voice pipeline (on the phone only).** WhisperKit transcribes, then LogCore's decision layer (`Interpreter.swift`, `Decision.swift`, `LayaPrompt.swift`) asks Laya questions shaped as category × phase rather than one flat type question. Clock times, relative times and quantities are parsed deterministically, not by the model. Calibrated confidence picks a tier: auto-commit, pick from two, or full list. The `DecisionModel` backends are in `ios/App/Sources/Services.swift`: on-device Laya (`ios/LayaRuntime`, a Swift port of llama.cpp's server-side decision path that runs on `ios/Vendor/llama.xcframework`), a llama-server on the Mac for development, and a keyword fallback. Models are bundled from `ios/App/Models` (`scripts/fetch-models.sh`, git-ignored).
 
 **Data and sync.** Events are append-only, with corrections written as new events. The phone keeps SQLite in the App Group container (`ios/Shared/SharedStore.swift`), which it shares with the widgets. Sync with Supabase (`Sync.swift`) uses an outbox plus a seq cursor; RLS makes the tables append-only for clients (`supabase/migrations`). Local-only mode keeps the household on the phone, and signing in later re-homes the rows. The glasses never run inference: gestures write events directly, and hold-to-speak uploads a *capture* that a household phone processes later. The event id is derived from the capture id, so two phones converge on the same result.
+
+**Website.** `web/` is a Vite multi-page static site served by Cloudflare (`web/wrangler.jsonc`, assets only). Pages share `src/partials` through a small Vite plugin. `/account` and `/oauth/consent` (Supabase's OAuth server `authorization_url_path`) use supabase-js with the same RPCs and RLS as the app, and the account page derives the status line with the TS `core.ts`. Pricing and feature claims on the landing page mirror `Subscriptions.storekit` and `Entitlement.allows`, so update both together.
 
 **Agents.** The app records facts and the user's own agent interprets them: there is no in-app advice. `supabase/functions/mcp` serves the log over MCP with Supabase OAuth or `wh_…` personal access tokens (only hashes are stored).
 
