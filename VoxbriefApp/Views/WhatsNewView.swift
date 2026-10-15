@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.26.2"
+    public static let currentVersion = "1.26.3"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,28 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.26.3",
+            date: "October 2026",
+            tagline: "Controls Go Straight to Capture",
+            features: [
+                WhatsNewItem(
+                    icon: "mic.circle.fill",
+                    tint: .red,
+                    title: "One-Press Capture from Controls",
+                    description: "Start Capture and Quick Memo controls now open straight into a live recording instead of the home screen."
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "arrow.triangle.turn.up.right.circle.fill",
+                    tint: .gray,
+                    title: "Control Deep Links Delivered",
+                    description: "Fixed Action Button and Control Center controls opening the app without carrying out their action, including from a cold launch.",
+                    kind: .fix
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.26.2",
             date: "October 2026",

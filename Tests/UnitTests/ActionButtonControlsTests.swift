@@ -110,6 +110,15 @@ final class ActionButtonControlsTests: XCTestCase {
             .queryItems?.first(where: { $0.name == "screen" })?.value, "list")
     }
 
+    func testControlLinkIntentDeliversURLToInbox() async throws {
+        guard #available(iOS 18.0, *) else { throw XCTSkip("Controls require iOS 18") }
+        _ = VoxbriefDeepLinkInbox.shared.take()
+        _ = try await OpenVoxbriefLinkIntent(url: VoxbriefControlLink.startCapture).perform()
+        XCTAssertEqual(VoxbriefDeepLinkInbox.shared.pending, VoxbriefControlLink.startCapture)
+        XCTAssertEqual(VoxbriefDeepLinkInbox.shared.take(), VoxbriefControlLink.startCapture)
+        XCTAssertNil(VoxbriefDeepLinkInbox.shared.pending, "a link is handled exactly once")
+    }
+
     func testActionButtonDeepLinkURLs() {
         let captureURL = VoxbriefControlLink.startCapture
         XCTAssertEqual(captureURL.scheme, "voxbrief")

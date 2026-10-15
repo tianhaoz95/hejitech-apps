@@ -53,6 +53,15 @@ private struct RootView: View {
             .onOpenURL { url in
                 handleDeepLink(url)
             }
+            .onReceive(VoxbriefDeepLinkInbox.shared.$pending.compactMap { $0 }) { _ in
+                guard let url = VoxbriefDeepLinkInbox.shared.take() else { return }
+                // On a cold launch from a control this fires during the very first render --
+                // wait (as NoteListView.applyLaunchArguments does) until NoteListView is
+                // listening for .voxbriefNavigate and can present the record sheet.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    handleDeepLink(url)
+                }
+            }
     }
 
     private var colorScheme: ColorScheme? {
