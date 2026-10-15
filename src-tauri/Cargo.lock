@@ -3565,7 +3565,7 @@ dependencies = [
 
 [[package]]
 name = "meowtrix"
-version = "1.32.7"
+version = "1.32.8"
 dependencies = [
  "anyhow",
  "log",

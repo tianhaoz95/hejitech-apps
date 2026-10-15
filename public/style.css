@@ -2303,7 +2303,8 @@ details.settings-section[open] .settings-section-content {
 .settings-row input[type="checkbox"]:checked {
   background: var(--accent); border-color: var(--accent);
 }
-.settings-row input[type="checkbox"]:checked::after { transform: translateX(17px); }
+/* Knob contrasts with the accent track (white track + black knob in OLED). */
+.settings-row input[type="checkbox"]:checked::after { transform: translateX(17px); background: var(--accent-fg); }
 .settings-row input[type="checkbox"]:focus-visible {
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
