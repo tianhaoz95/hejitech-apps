@@ -30,6 +30,7 @@ Please read CONTRIBUTING.md before opening this PR.
 
 - [ ] I read [CONTRIBUTING.md](../blob/main/CONTRIBUTING.md)
 - [ ] I bumped the `version` in `package.json` (semver) — required by the release workflow
+- [ ] For user-visible changes, I added/extended this version's entry in `public/whats-new.json`
 - [ ] My change keeps the no-build-step, global-scope frontend conventions intact
 - [ ] I did not weaken the localhost-first / no-auth security model (see [SECURITY.md](../blob/main/SECURITY.md))
 - [ ] I updated the docs (`README.md`, `CLAUDE.md`, developer docs) where relevant

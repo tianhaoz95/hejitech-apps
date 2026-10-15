@@ -29,6 +29,7 @@ Playwright E2E tests reside in `tests/`. The frontend is plain ES scripts served
 ## Development Guidelines
 
 - **Versioning**: When a change is made, boost the version in [package.json](file:///Users/tianhaozhou/experimental/web-vibe-eng-tool/package.json) accordingly (following semantic versioning). This version is used by the release workflow to determine the release draft tag name when pushed to `main`.
+- **What's new**: Whenever a change adds or changes something users will notice (a feature, a setting, a visible behavior change), add or extend that version's entry in [`public/whats-new.json`](public/whats-new.json) in the same change. Entries go newest first, keyed by the new `package.json` version, and a highlight can carry an animated `visual` and a `try` action (see the file's `_doc` and `whats-new.js`). The sheet is how upgraded users find out about new things, so a feature with no entry goes unnoticed. Pure bug fixes, refactors and internal tooling don't need one.
 
 ## Architecture
 

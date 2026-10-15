@@ -73,6 +73,11 @@ shaped the way they are.
   [`package.json`](package.json) following [semantic versioning](https://semver.org/).
   The release workflow uses this version to name the release draft when pushed to
   `main`.
+- **Update "What's new".** If your change adds or changes something users will
+  notice, add or extend that version's entry in
+  [`public/whats-new.json`](public/whats-new.json) (newest first, keyed by the new
+  `package.json` version). It feeds the in-app "What's new" sheet that upgraded
+  users see once. Pure bug fixes and internal changes can skip it.
 - **Keep the security model intact.** Meowtrix has no built-in auth and gives
   whoever can reach it a shell — see [`SECURITY.md`](SECURITY.md). Don't widen the
   default network exposure or weaken the localhost-first defaults without a clear
@@ -98,8 +103,9 @@ you change.
 1. **Fork** the repository and create a branch off `main` for your change.
 2. **Make focused commits** with clear messages describing what changed and why.
 3. **Bump the version** in `package.json` (see above).
-4. **Run the tests** (`npm run test:e2e`) and make sure they pass.
-5. **Open a pull request** against `main`. Describe the change, the motivation, and
+4. **Add a "What's new" entry** in `public/whats-new.json` for user-visible changes (see above).
+5. **Run the tests** (`npm run test:e2e`) and make sure they pass.
+6. **Open a pull request** against `main`. Describe the change, the motivation, and
    any testing you did. Link any related issues.
 
 Small, focused PRs are easier to review and land faster than large ones. If you're
