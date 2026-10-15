@@ -52,27 +52,40 @@ public struct WatchMainRecordView: View {
 
     // MARK: - Capture Page View (Page 0)
     private var capturePageView: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 0) {
             if recorder.isRecording {
                 // MARK: Active Recording State
-                VStack(spacing: 3) {
-                    HStack(spacing: 4) {
+                VStack(spacing: 4) {
+                    HStack(spacing: 5) {
                         Circle()
                             .fill(recorder.isPaused ? Color.yellow : Color.red)
                             .frame(width: 6, height: 6)
                         Text(recorder.isPaused ? "PAUSED" : "RECORDING")
-                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
                             .tracking(0.8)
                             .foregroundColor(recorder.isPaused ? .yellow : .red)
                     }
                     .padding(.top, 2)
 
                     Text(recorder.recordingDuration.formattedDuration)
-                        .font(.system(size: 24, weight: .bold, design: .monospaced))
+                        .font(.system(size: 26, weight: .bold, design: .monospaced))
                         .foregroundColor(.primary)
                         .monospacedDigit()
 
-                    HStack(spacing: 12) {
+                    CaptureWaveformView(
+                        isRecording: !recorder.isPaused,
+                        audioLevel: recorder.audioLevel,
+                        diameter: 46,
+                        systemImage: "stop.fill",
+                        waveformWidth: 140,
+                        showsCore: false
+                    )
+                    .frame(height: 32)
+                    .padding(.vertical, 4)
+
+                    Spacer(minLength: 2)
+
+                    HStack(spacing: 16) {
                         Button {
                             if recorder.isPaused {
                                 recorder.resumeRecording()
@@ -83,9 +96,9 @@ public struct WatchMainRecordView: View {
                             }
                         } label: {
                             Image(systemName: recorder.isPaused ? "play.fill" : "pause.fill")
-                                .font(.system(size: 15, weight: .semibold))
+                                .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(recorder.isPaused ? .green : .yellow)
-                                .frame(width: 36, height: 36)
+                                .frame(width: 44, height: 44)
                                 .background(Color.white.opacity(0.14), in: Circle())
                         }
                         .buttonStyle(.plain)
@@ -93,12 +106,11 @@ public struct WatchMainRecordView: View {
                         Button {
                             stopAndSave()
                         } label: {
-                            CaptureWaveformView(
-                                isRecording: !recorder.isPaused,
-                                audioLevel: recorder.audioLevel,
-                                diameter: 42,
-                                systemImage: "stop.fill"
-                            )
+                            Image(systemName: "stop.fill")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.white)
+                                .frame(width: 50, height: 50)
+                                .background(Color.red, in: Circle())
                         }
                         .buttonStyle(.plain)
                     }
@@ -106,27 +118,36 @@ public struct WatchMainRecordView: View {
                     Text(recorder.isPaused ? "Tap play to resume" : "Tap stop to save")
                         .font(.system(size: 10, weight: .medium))
                         .foregroundColor(.secondary)
+                        .padding(.bottom, 2)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                // MARK: Resting Idle State (Zero waveform before recording!)
-                VStack(spacing: 4) {
-                    VoxbriefLogoView(size: .watch)
-                        .padding(.top, 2)
+                // MARK: Resting Idle State (Full-bleed Hero Auto-First Capture)
+                VStack(spacing: 0) {
+                    // Top Bar: Logo on left, Tag selector on right
+                    HStack(alignment: .center) {
+                        VoxbriefLogoView(size: .watch)
 
-                    // Tag Selector Pill (Defaults to ✨ Auto, tap to triage)
-                    Button {
-                        cycleTag()
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text(selectedTag.rawValue)
-                                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                        Spacer()
+
+                        Button {
+                            cycleTag()
+                        } label: {
+                            HStack(spacing: 3) {
+                                Text(selectedTag.rawValue)
+                                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+                            }
+                            .foregroundColor(selectedTag == .auto ? Color.accentColor : .primary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.white.opacity(0.12), in: Capsule())
                         }
-                        .foregroundColor(selectedTag == .auto ? Color.accentColor : .primary)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Color.white.opacity(0.12), in: Capsule())
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
+                    .padding(.horizontal, 6)
+                    .padding(.top, 2)
+
+                    Spacer(minLength: 4)
 
                     if showingSavedToast {
                         HStack(spacing: 4) {
@@ -138,58 +159,64 @@ public struct WatchMainRecordView: View {
                                 .foregroundColor(.green)
                         }
                         .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
-                        .background(Color.green.opacity(0.15), in: Capsule())
+                        .padding(.vertical, 3)
+                        .background(Color.green.opacity(0.16), in: Capsule())
+                        .padding(.bottom, 4)
                     }
 
-                    // Flat Hero Record Button (Clean microphone, no pre-capture waveform)
+                    // Large Hero Record Button (Prominent tactile target, zero empty margins)
                     Button {
                         startRecording(source: .watchApp)
                     } label: {
-                        CaptureWaveformView(
-                            isRecording: false,
-                            audioLevel: 0,
-                            diameter: 44,
-                            systemImage: "mic.fill"
-                        )
+                        ZStack {
+                            Circle()
+                                .fill(Color.accentColor)
+                                .frame(width: 76, height: 76)
+
+                            Image(systemName: "mic.fill")
+                                .font(.system(size: 32, weight: .semibold))
+                                .foregroundColor(.white)
+                        }
                     }
                     .buttonStyle(.plain)
 
                     Text("Tap to record")
-                        .font(.system(size: 10, weight: .medium))
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.secondary)
-                }
-            }
+                        .padding(.top, 6)
 
-            Spacer(minLength: 0)
+                    Spacer(minLength: 4)
 
-            // Bottom Navigation Hint (Swipe to Vault)
-            HStack(spacing: 4) {
-                Spacer()
-                Button {
-                    withAnimation {
-                        selectedPage = 1
+                    // Bottom Navigation Hint (Direct Vault trigger)
+                    HStack {
+                        Spacer()
+                        Button {
+                            withAnimation {
+                                selectedPage = 1
+                            }
+                        } label: {
+                            HStack(spacing: 3) {
+                                Image(systemName: "tray.full.fill")
+                                    .font(.system(size: 9))
+                                Text("Vault (\(storage.notes.count))")
+                                    .font(.system(size: 9, weight: .semibold, design: .rounded))
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 7, weight: .bold))
+                            }
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.white.opacity(0.10), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
                     }
-                } label: {
-                    HStack(spacing: 3) {
-                        Image(systemName: "tray.full.fill")
-                            .font(.system(size: 9))
-                        Text("Vault (\(storage.notes.count))")
-                            .font(.system(size: 9, weight: .semibold, design: .rounded))
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 7, weight: .bold))
-                    }
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 3)
-                    .background(Color.white.opacity(0.08), in: Capsule())
+                    .padding(.horizontal, 6)
+                    .padding(.bottom, 2)
                 }
-                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .padding(.horizontal, 6)
-            .padding(.bottom, 1)
         }
-        .padding(.horizontal, 4)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func cycleTag() {

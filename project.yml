@@ -137,6 +137,7 @@ targets:
     dependencies:
       - target: VoxbriefWatchWidgets
         embed: true
+    scheme: {}
     frameworks:
       - framework: AVFoundation.framework
       - framework: WatchConnectivity.framework

@@ -4,7 +4,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DERIVED_DATA_PATH="$REPO_ROOT/build/DerivedData"
+DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-/Volumes/DATA/.derivedData}"
 
 # Regenerates Voxbrief.xcodeproj from project.yml if xcodegen is installed,
 # so the simulator always runs what project.yml describes.

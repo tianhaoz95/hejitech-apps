@@ -1211,6 +1211,11 @@ body {
   align-items: center;
   width: 100%;
   height: 100%;
+  padding: 14px 12px 10px 12px;
+}
+
+.screen-circle .view-idle {
+  padding: 16px 14px 12px 14px;
 }
 
 .rect-icon-col {

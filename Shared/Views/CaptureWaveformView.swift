@@ -14,15 +14,30 @@ public struct CaptureWaveformView: View {
     public var audioLevel: Float
     public var diameter: CGFloat
     public var systemImage: String?
+    public var waveformWidth: CGFloat?
+    public var showsCore: Bool
 
-    public init(isRecording: Bool, audioLevel: Float, diameter: CGFloat = 96, systemImage: String? = nil) {
+    public init(
+        isRecording: Bool,
+        audioLevel: Float,
+        diameter: CGFloat = 96,
+        systemImage: String? = nil,
+        waveformWidth: CGFloat? = nil,
+        showsCore: Bool = true
+    ) {
         self.isRecording = isRecording
         self.audioLevel = audioLevel
         self.diameter = diameter
         self.systemImage = systemImage
+        self.waveformWidth = waveformWidth
+        self.showsCore = showsCore
     }
 
     private static let barCount = 32
+
+    private var effectiveWaveformWidth: CGFloat {
+        waveformWidth ?? (diameter * 2.7)
+    }
 
     public var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: false)) { timeline in
@@ -31,10 +46,15 @@ public struct CaptureWaveformView: View {
                 if isRecording {
                     waveform(time: t)
                 }
-                core(time: t)
+                if showsCore {
+                    core(time: t)
+                }
             }
         }
-        .frame(width: diameter * 2.7, height: isRecording ? diameter * 1.95 : diameter * 0.95)
+        .frame(
+            width: isRecording ? effectiveWaveformWidth : (diameter * 0.85),
+            height: isRecording ? (showsCore ? diameter * 1.95 : diameter * 0.85) : diameter * 0.85
+        )
     }
 
     /// Linear gradient while recording (warm coral into magenta), clean accent while idle.
@@ -45,7 +65,7 @@ public struct CaptureWaveformView: View {
     /// A real sound-wave shape scaled by live microphone level.
     @ViewBuilder
     private func waveform(time: TimeInterval) -> some View {
-        let width = diameter * 2.7
+        let width = effectiveWaveformWidth
         let barWidth = max(2.0, diameter * 0.028)
         let spacing = (width - barWidth * CGFloat(Self.barCount)) / CGFloat(Self.barCount - 1)
         let level = Double(min(max(audioLevel, 0), 1))

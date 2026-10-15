@@ -96,7 +96,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.25.1"
+    public static let currentVersion = "1.25.2"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -105,6 +105,65 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.25.2",
+            date: "October 2026",
+            tagline: "Edge-to-Edge Watch & Wear OS Capture Experience",
+            features: [
+                WhatsNewItem(
+                    icon: "applewatch.radiowaves.left.and.right",
+                    tint: .blue,
+                    title: "Full-Bleed Watch Hero Capture",
+                    description: "Redesigned Apple Watch capture screen with an expansive 76pt hero microphone button, full-bleed edge-to-edge layout, and balanced navigation.",
+                    detailedDescription: "Eliminated cramped margins on Apple Watch capture view. The main capture interface now features a generous 76pt tactile microphone hero button, top-anchored logo and tag selector, and harmonious edge-to-edge proportions matching the Vault screen.",
+                    highlights: [
+                        "Expansive 76pt hero microphone disc replacing cramped 34pt target",
+                        "Full-bleed layout utilizing entire watchOS display curve",
+                        "Top-anchored brand mark and tag pill with instant triage access"
+                    ],
+                    visualization: .swipeGesture
+                ),
+                WhatsNewItem(
+                    icon: "waveform.circle.fill",
+                    tint: .red,
+                    title: "Expansive Active Recording Controls",
+                    description: "Large 28pt monospaced duration timer, dedicated 140pt audio waveform, and generous tactile Pause and Stop controls.",
+                    detailedDescription: "Active watch recording now provides dedicated 44pt pause and 52pt vibrant stop buttons alongside a live 140pt audio equalizer without layout overlap.",
+                    highlights: [
+                        "Distinct 44pt pause and 52pt stop & save tactile buttons",
+                        "High-contrast 28pt monospaced recording duration timer",
+                        "Clean 140pt live audio waveform responding to real-time speech"
+                    ],
+                    visualization: .waveform
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "circle.circle",
+                    tint: .cyan,
+                    title: "Wear OS & Circular Screen Polish",
+                    description: "Eliminated excessive safe area margins on circular screens in the Redesign Studio, creating expansive edge-to-edge capture.",
+                    kind: .improvement,
+                    detailedDescription: "Refined view-idle padding in the redesign studio to prevent excessive margin cramping on circular displays."
+                ),
+                WhatsNewItem(
+                    icon: "slider.horizontal.3",
+                    tint: .green,
+                    title: "Responsive Waveform Architecture",
+                    description: "Enhanced CaptureWaveformView to support custom waveform widths and waveform-only presentation modes.",
+                    kind: .improvement,
+                    detailedDescription: "Added waveformWidth and showsCore options to CaptureWaveformView for flexible wearable layouts."
+                ),
+                WhatsNewItem(
+                    icon: "bolt.fill",
+                    tint: .orange,
+                    title: "Fast Watch Build Scheme",
+                    description: "Configured standalone VoxbriefWatch Xcode scheme, reducing build times from minutes to seconds.",
+                    kind: .improvement,
+                    detailedDescription: "Isolated VoxbriefWatch target dependencies for rapid watch simulator iterations."
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.25.1",
             date: "October 2026",
