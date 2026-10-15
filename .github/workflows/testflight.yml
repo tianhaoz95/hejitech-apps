@@ -1,11 +1,13 @@
 name: Release to TestFlight
 
-# Runs on a published GitHub Release or on demand from the Actions tab. Deliberately not wired to
-# push/tag events: this uploads a real build to App Store Connect, so it only fires on an explicit
-# release or an explicit manual click.
+# Runs on a published GitHub Release, weekly on Wednesday from main (keeps TestFlight fresh; builds
+# expire after 90 days), or on demand from the Actions tab. Deliberately not wired to push/tag
+# events: this uploads a real build to App Store Connect.
 on:
   release:
     types: [published]
+  schedule:
+    - cron: "0 17 * * 3" # Wednesdays 17:00 UTC (10:00 Pacific in summer, 09:00 in winter)
   workflow_dispatch: {}
 
 concurrency:
