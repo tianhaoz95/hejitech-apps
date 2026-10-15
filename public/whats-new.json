@@ -1,6 +1,47 @@
 {
-  "_doc": "Release notes for the in-app \"What's new\" sheet (public/whats-new.js). Newest first. Each highlight may carry a `visual` (timeline | glyph) and a `try` action (settings:<section id> | tab:<type> | split | palette | copy:<text>).",
+  "_doc": "Release notes for the in-app \"What's new\" sheet (public/whats-new.js). Newest first, keyed by package.json version. `highlights` are the features (the main stage); each may carry a `visual` (timeline | glyph) and a `try` action (settings:<section id> | tab:<type> | split | palette | copy:<text>). `fixes` is a list of one-line strings (bug fixes and small improvements, inline `code` allowed) shown on a secondary page behind a footer button. A fixes-only release omits `highlights` (and may omit `title`/`summary`); upgrading to only fixes-only releases shows a toast instead of opening the sheet.",
   "releases": [
+    {
+      "version": "1.34.0",
+      "date": "2026-10-15",
+      "title": "See what got fixed",
+      "summary": "Release notes now list bug fixes too, on their own page, so you can check whether the thing that bugged you is sorted.",
+      "highlights": [
+        {
+          "title": "Fixes & improvements page",
+          "body": "Features stay front and centre here. Bug fixes and small improvements sit one click away behind the button at the bottom of this sheet. Updates that only bring fixes no longer open the sheet; a toast tells you instead.",
+          "visual": {
+            "type": "glyph",
+            "glyph": "🔧"
+          }
+        }
+      ],
+      "fixes": [
+        "Releases that only contain fixes show a short toast after updating instead of opening this sheet."
+      ]
+    },
+    {
+      "version": "1.33.3",
+      "date": "2026-10-15",
+      "fixes": [
+        "Terminal apps such as Claude Code, vim or htop sometimes drew into a corner of the pane until you nudged a divider. Another open Meowtrix window or device could shrink the active session's terminals; now only the active session sizes them, and a resize lost while reconnecting is re-sent."
+      ]
+    },
+    {
+      "version": "1.33.2",
+      "date": "2026-10-15",
+      "fixes": [
+        "Terminal tabs failed to open (`Terminal is not defined`) when the server was older than the page, e.g. after pulling an update without restarting. The bundled terminal now falls back to the CDN copy."
+      ]
+    },
+    {
+      "version": "1.33.1",
+      "date": "2026-10-15",
+      "fixes": [
+        "Desktop builds of 1.33.0 reported the wrong version, so the updater kept offering the update you already had.",
+        "Upgrading from a version before this sheet existed now shows the latest release notes."
+      ]
+    },
     {
       "version": "1.33.0",
       "date": "2026-10-15",

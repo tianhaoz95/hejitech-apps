@@ -258,7 +258,23 @@ test.describe('Meowtrix E2E Tests', () => {
     await page.reload();
     await expect(sheet).toBeVisible();
     await expect(sheet.locator('.wn-card').first()).toBeVisible();
+    // Features are the main stage; fixes sit behind a footer button.
+    await expect(sheet.locator('.wn-fixes')).toHaveCount(0);
+    const fixesToggle = sheet.locator('.wn-fixes-toggle');
+    await expect(fixesToggle).toBeVisible();
+    await expect(fixesToggle).toContainText('Fixes & improvements');
+    await fixesToggle.click();
+    await expect(sheet.locator('.wn-fixes li').first()).toBeVisible();
+    await expect(sheet.locator('.wn-card')).toHaveCount(0);
+    await expect(sheet.locator('#wn-title')).toHaveText('Fixes & improvements');
+    await fixesToggle.click(); // back to features
+    await expect(sheet.locator('.wn-card').first()).toBeVisible();
+    // A fixes-only release shows just its fixes list.
+    await sheet.locator('.wn-versions button', { hasText: '1.33.3' }).click();
+    await expect(sheet.locator('.wn-fixes li')).toContainText(/corner of the pane/);
+    await expect(fixesToggle).toBeHidden();
     // Timelines animate a live counter for each lane.
+    await sheet.locator('.wn-versions button', { hasText: '1.33.0' }).click();
     await expect(sheet.locator('.wn-visual-timeline').first()).toBeVisible();
 
     await sheet.locator('.wn-done').click();
@@ -278,10 +294,31 @@ test.describe('Meowtrix E2E Tests', () => {
     await expect(page.locator('.palette-item.active')).toContainText("What's new");
     await page.keyboard.press('Enter');
     await expect(sheet).toBeVisible();
+    await sheet.locator('.wn-versions button', { hasText: '1.33.0' }).click();
     await sheet.locator('.wn-try', { hasText: 'Performance settings' }).click();
     await expect(sheet).toHaveCount(0);
     await expect(page.locator('#settings-panel')).toHaveClass(/open/);
     await expect(page.locator('#s-output-batching')).toBeVisible();
+  });
+
+  test("an upgrade with only fixes shows a toast, not the sheet", async ({ page, request }) => {
+    const sheet = page.locator('#whats-new');
+    const version = await page.evaluate(() => window.MEOWTRIX_VERSION);
+    // Serve notes where everything after 1.0.0 is fixes-only.
+    await page.route('**/whats-new.json', r => r.fulfill({ json: { releases: [
+      { version, date: '2026-10-15', fixes: ['Fixed the thing that bugged you.'] },
+      { version: '1.0.0', date: '2026-01-01', title: 'Old', highlights: [{ title: 'Old feature', body: '…' }] },
+    ] } }));
+    await request.post('/api/settings', { data: { whatsNewSeen: '1.0.0' } });
+    await page.reload();
+    const toast = page.locator('#mtx-toast');
+    await expect(toast).toBeVisible();
+    await expect(toast).toContainText('1 fix');
+    await expect(sheet).toHaveCount(0);
+    await expect.poll(async () => (await (await request.get('/api/settings')).json()).whatsNewSeen).toBe(version);
+    await toast.click();
+    await expect(sheet).toBeVisible();
+    await expect(sheet.locator('.wn-fixes li')).toHaveText('Fixed the thing that bugged you.');
   });
 
   test('should control app commands via the keyboard command palette', async ({ page }) => {

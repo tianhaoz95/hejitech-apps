@@ -77,7 +77,10 @@ shaped the way they are.
   notice, add or extend that version's entry in
   [`public/whats-new.json`](public/whats-new.json) (newest first, keyed by the new
   `package.json` version). It feeds the in-app "What's new" sheet that upgraded
-  users see once. Pure bug fixes and internal changes can skip it.
+  users see once. Features go in `highlights`. Bug fixes and small improvements
+  go in `fixes`, one line each, describing the symptom the user saw; they're
+  listed on a secondary page so people can check whether their bug is fixed.
+  Only internal changes users can't observe can skip it.
 - **Keep the security model intact.** Meowtrix has no built-in auth and gives
   whoever can reach it a shell — see [`SECURITY.md`](SECURITY.md). Don't widen the
   default network exposure or weaken the localhost-first defaults without a clear

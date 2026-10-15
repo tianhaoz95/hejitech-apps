@@ -2,13 +2,17 @@
 // A sheet that walks through what changed since the version the user last saw.
 // Content lives in whats-new.json (newest release first); each highlight can
 // carry an animated `visual` and a `try` action that jumps straight to the
-// feature. The last-seen version is the `whatsNewSeen` setting, so seeing the
+// feature. Features are the main stage; a release's `fixes` (bug fixes and
+// small improvements, plain strings) sit on a secondary page behind a footer
+// button, so people can check whether their bug is fixed without the fixes
+// crowding out the features. A fixes-only release has no `highlights`. The last-seen version is the `whatsNewSeen` setting, so seeing the
 // sheet on one device marks it seen everywhere.
 //
 // Shown automatically once per upgrade, only to the active session (an
 // inactive client sits behind the overlay). With no `whatsNewSeen` yet
 // (upgrading from a version before this sheet existed) only the newest
-// release's notes are shown; a fresh install starts with it set (server.js). Reopen any time from the palette or Settings → About.
+// release's notes are shown. An upgrade that brings only fixes doesn't pop the
+// sheet — a clickable toast offers it instead. A fresh install starts with it set (server.js). Reopen any time from the palette or Settings → About.
 
 let _whatsNewData = null;
 
@@ -46,12 +50,30 @@ async function maybeShowWhatsNew() {
   if (seen && whatsNewCompare(seen, current) >= 0) return;
   let data;
   try { data = await loadWhatsNew(); } catch { return; }
-  // Releases are newest first. Without a seen version, show just the newest
-  // release up to the running one (a patch release may have no notes of its own).
+  // Releases are newest first. Without a seen version, show the newest feature
+  // release up to the running one, plus any fixes-only releases after it.
   const released = data.releases.filter(r => whatsNewCompare(r.version, current) <= 0);
-  const unseen = seen ? released.filter(r => whatsNewCompare(r.version, seen) > 0) : released.slice(0, 1);
+  let unseen;
+  if (seen) unseen = released.filter(r => whatsNewCompare(r.version, seen) > 0);
+  else {
+    const lastFeature = released.findIndex(whatsNewHasFeatures);
+    unseen = released.slice(0, lastFeature < 0 ? 1 : lastFeature + 1);
+  }
   if (!unseen.length) { markWhatsNewSeen(); return; }
+  if (!unseen.some(whatsNewHasFeatures)) {
+    // Only fixes: don't interrupt, but say so in case one was theirs.
+    const n = unseen.reduce((sum, r) => sum + (r.fixes || []).length, 0);
+    markWhatsNewSeen();
+    if (n && typeof showToast === 'function') {
+      showToast(`Updated to Meowtrix ${current} · ${n} fix${n === 1 ? '' : 'es'} — click to see`, () => openWhatsNew({ releases: unseen }));
+    }
+    return;
+  }
   openWhatsNew({ releases: unseen });
+}
+
+function whatsNewHasFeatures(r) {
+  return !!(r.highlights && r.highlights.length);
 }
 
 function markWhatsNewSeen() {
@@ -60,6 +82,7 @@ function markWhatsNewSeen() {
 }
 
 // opts.releases: the releases to show (defaults to all, newest first).
+// opts.fixes: open on the first release's fixes page.
 async function openWhatsNew(opts = {}) {
   let releases = opts.releases;
   if (!releases) {
@@ -85,7 +108,10 @@ async function openWhatsNew(opts = {}) {
       <div class="wn-cards"></div>
       <footer class="wn-foot">
         <span class="wn-foot-note"></span>
-        <button class="wn-done" type="button">Got it</button>
+        <span class="wn-foot-actions">
+          <button class="wn-fixes-toggle" type="button" hidden></button>
+          <button class="wn-done" type="button">Got it</button>
+        </span>
       </footer>
     </div>`;
   document.body.appendChild(overlay);
@@ -104,10 +130,27 @@ async function openWhatsNew(opts = {}) {
     versionsEl.hidden = true;
   }
 
-  function renderRelease(index) {
+  const fixesToggle = overlay.querySelector('.wn-fixes-toggle');
+  let current = 0, showingFixes = false;
+  fixesToggle.addEventListener('click', () => renderRelease(current, !showingFixes));
+
+  // `fixes`: show the release's fixes page instead of its feature cards. A
+  // release without features only has the fixes page.
+  function renderRelease(index, fixes = false) {
     const r = releases[index];
-    overlay.querySelector('#wn-title').textContent = r.title;
-    overlay.querySelector('.wn-summary').textContent = r.summary || '';
+    const fixList = r.fixes || [];
+    current = index;
+    showingFixes = fixes || !whatsNewHasFeatures(r);
+    const n = fixList.length;
+    const title = showingFixes && (fixes || !r.title) ? 'Fixes & improvements' : r.title;
+    overlay.querySelector('#wn-title').textContent = title;
+    overlay.querySelector('.wn-summary').textContent = showingFixes
+      ? `Bug fixes and polish in Meowtrix ${r.version}.`
+      : (r.summary || '');
+    fixesToggle.hidden = !whatsNewHasFeatures(r) || !n;
+    fixesToggle.innerHTML = showingFixes
+      ? '<span aria-hidden="true">←</span> Back to features'
+      : `Fixes &amp; improvements (${n}) <span aria-hidden="true">→</span>`;
     overlay.querySelector('.wn-foot-note').textContent = `Meowtrix ${r.version}${r.date ? ' · ' + formatWhatsNewDate(r.date) : ''}`;
     [...versionsEl.children].forEach((b, i) => {
       b.classList.toggle('active', i === index);
@@ -115,10 +158,12 @@ async function openWhatsNew(opts = {}) {
     });
     const cards = overlay.querySelector('.wn-cards');
     cards.innerHTML = '';
-    r.highlights.forEach((h, i) => cards.appendChild(buildWhatsNewCard(h, i)));
+    cards.classList.toggle('wn-cards-fixes', showingFixes);
+    if (showingFixes) cards.appendChild(buildWhatsNewFixes(fixList));
+    else r.highlights.forEach((h, i) => cards.appendChild(buildWhatsNewCard(h, i)));
     cards.scrollTop = 0;
   }
-  renderRelease(0);
+  renderRelease(0, !!opts.fixes);
 
   const close = () => { closeWhatsNew(); markWhatsNewSeen(); };
   overlay.querySelector('.wn-close').addEventListener('click', close);
@@ -145,6 +190,18 @@ function formatWhatsNewDate(iso) {
 function whatsNewRichText(text) {
   const esc = (s) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   return esc(text || '').replace(/`([^`]+)`/g, '<code>$1</code>');
+}
+
+function buildWhatsNewFixes(fixes) {
+  const list = document.createElement('ul');
+  list.className = 'wn-fixes';
+  fixes.forEach((f, i) => {
+    const li = document.createElement('li');
+    li.style.setProperty('--wn-delay', `${i * 40}ms`);
+    li.innerHTML = whatsNewRichText(f);
+    list.appendChild(li);
+  });
+  return list;
 }
 
 function buildWhatsNewCard(h, index) {
