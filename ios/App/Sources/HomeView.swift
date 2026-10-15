@@ -7,9 +7,9 @@ struct MainView: View {
 
     var body: some View {
         TabView(selection: $model.screen) {
-            HomeView().tabItem { Label("Now", systemImage: "moon.stars.fill") }.tag("home")
-            TimelineView().tabItem { Label("Timeline", systemImage: "list.bullet.rectangle") }.tag("timeline")
-            SettingsView().tabItem { Label("Settings", systemImage: "gearshape.fill") }.tag("settings")
+            HomeView().fabClearance().tabItem { Label("Now", systemImage: "moon.stars.fill") }.tag("home")
+            TimelineView().fabClearance().tabItem { Label("Timeline", systemImage: "list.bullet.rectangle") }.tag("timeline")
+            SettingsView().fabClearance().tabItem { Label("Settings", systemImage: "gearshape.fill") }.tag("settings")
             if model.screen == "paywall" || model.screen == "agents" {
                 NavigationStack { if model.screen == "paywall" { PaywallView() } else { AgentsView() } }
                     .tabItem { Label("More", systemImage: "ellipsis") }.tag(model.screen)
@@ -18,7 +18,8 @@ struct MainView: View {
         .sheet(item: $model.reviewing) { capture in
             ReviewSheet(capture: capture).presentationDetents([.medium, .large])
         }
-        .overlay(alignment: .bottom) { ToastView().padding(.bottom, 64) }
+        .overlay(alignment: .bottomTrailing) { VoiceButton().padding(.trailing, 20).padding(.bottom, 64) }
+        .overlay(alignment: .bottom) { ToastView().padding(.trailing, VoiceButton.size + 20).padding(.bottom, 64) }
         .onChange(of: model.screen, initial: true) { _, screen in FeedbackKit.currentScreen = screen }
         .onChange(of: model.reviews) { _, reviews in
             if model.screen == "review", model.reviewing == nil, let first = reviews.first {
@@ -31,7 +32,6 @@ struct MainView: View {
 
 struct HomeView: View {
     @EnvironmentObject var model: AppModel
-    @State private var typed = ""
     @State private var now = Date()
     private let tick = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
@@ -42,19 +42,8 @@ struct HomeView: View {
                     StatusCard(now: now)
                     if !model.reviews.isEmpty || !model.log.duplicates.isEmpty { ReviewBanner() }
                     QuickActions()
-                    VoiceButton()
-                    HStack {
-                        TextField("Or type: \"finished, drank half\"", text: $typed)
-                            .textFieldStyle(.roundedBorder)
-                            .submitLabel(.send)
-                            .onSubmit(sendTyped)
-                        Button(action: sendTyped) { Image(systemName: "arrow.up.circle.fill").font(.title2) }
-                            .disabled(typed.isEmpty)
-                    }
-                    .accessibilityIdentifier("typedEntry")
                 }
                 .padding()
-                .padding(.bottom, 40)
             }
             .navigationTitle(model.household.babyName)
             .toolbar {
@@ -67,12 +56,6 @@ struct HomeView: View {
             .refreshable { await model.syncNow() }
             .onReceive(tick) { now = $0 }
         }
-    }
-
-    private func sendTyped() {
-        let t = typed
-        typed = ""
-        Task { await model.handle(transcript: t) }
     }
 
     static func age(_ birth: Date) -> String {
@@ -248,33 +231,46 @@ struct ActionTile: View {
     }
 }
 
-/// Hold to speak; release to log. The models start loading the moment the press begins.
+extension View {
+    /// Keeps the last rows of a tab's scroll content clear of the floating voice button.
+    func fabClearance() -> some View { contentMargins(.bottom, VoiceButton.size + 16, for: .scrollContent) }
+}
+
+/// Floating hold-to-speak button, on every tab. Release to log. The models start loading the
+/// moment the press begins.
 struct VoiceButton: View {
+    static let size: CGFloat = 68
     @EnvironmentObject var model: AppModel
-    @GestureState private var pressing = false
 
     var body: some View {
-        VStack(spacing: 8) {
+        HStack(spacing: 10) {
+            if model.recording {
+                Text("Listening… release to log")
+                    .font(.footnote.weight(.medium))
+                    .padding(.horizontal, 12).padding(.vertical, 8)
+                    .background(.thinMaterial, in: Capsule())
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
             ZStack {
-                Circle().fill(model.recording ? Theme.accent : Theme.accent.opacity(0.18)).frame(width: 96, height: 96)
-                    .scaleEffect(model.recording ? 1.12 : 1)
-                    .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: model.recording)
+                Circle().fill(Theme.accent).frame(width: Self.size, height: Self.size)
+                    .shadow(color: .black.opacity(0.25), radius: 8, y: 4)
+                    .scaleEffect(model.recording ? 1.15 : 1)
+                    .animation(model.recording ? .easeInOut(duration: 0.6).repeatForever(autoreverses: true) : .default, value: model.recording)
                 if model.thinking {
-                    ProgressView()
+                    ProgressView().tint(.white)
                 } else {
-                    Image(systemName: "mic.fill").font(.system(size: 36)).foregroundStyle(model.recording ? .white : Theme.accent)
+                    Image(systemName: "mic.fill").font(.system(size: 28)).foregroundStyle(.white)
                 }
             }
+            .contentShape(Circle())
             .gesture(DragGesture(minimumDistance: 0)
-                .updating($pressing) { _, s, _ in s = true }
                 .onChanged { _ in if !model.recording { model.startVoice() } }
                 .onEnded { _ in model.stopVoice() })
+            .sensoryFeedback(.start, trigger: model.recording) { _, new in new }
             .accessibilityLabel("Hold to speak")
-            Text(model.recording ? "Listening… release to log" : "Hold to speak")
-                .font(.footnote).foregroundStyle(.secondary)
+            .accessibilityIdentifier("voiceButton")
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
+        .animation(.snappy, value: model.recording)
     }
 }
 

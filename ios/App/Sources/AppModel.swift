@@ -419,7 +419,7 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// The same pipeline as speech, from typed text (simulator, accessibility, quiet rooms).
+    /// The voice pipeline from a transcript (phone and watch speech, or the `demoText` launch argument).
     func handle(transcript: String, capturedAt: Date = Date(), surface: Surface = .phone, attachTo: UUID? = nil) async {
         guard let service, !transcript.isEmpty else { return }
         do {
