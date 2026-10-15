@@ -96,7 +96,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.25.0"
+    public static let currentVersion = "1.25.1"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -105,6 +105,64 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.25.1",
+            date: "October 2026",
+            tagline: "Refined Multi-Select Experience & Polished Home Navigation",
+            features: [
+                WhatsNewItem(
+                    icon: "checkmark.circle.badge.questionmark.fill",
+                    tint: .blue,
+                    title: "Native Selection Mode Architecture",
+                    description: "Access multi-select seamlessly through the action menu with dynamic selection counters and dedicated Done controls.",
+                    detailedDescription: "Multi-select now integrates harmoniously with iOS navigation patterns. Tapping 'Select Notes' enters a dedicated selection state with dynamic title counts and instant Done dismissal.",
+                    highlights: [
+                        "Accessed cleanly from the action menu without navigation clutter",
+                        "Live counter header displaying selected note quantity",
+                        "Dedicated Select All / Deselect All header action"
+                    ],
+                    visualization: .vwaveMark
+                ),
+                WhatsNewItem(
+                    icon: "square.and.arrow.up.on.square.fill",
+                    tint: .purple,
+                    title: "Streamlined Batch Action Bar",
+                    description: "Execute batch operations with 5 evenly spaced native toolbar actions across the bottom bar.",
+                    detailedDescription: "A redesigned bottom action bar features native tactile icons for Pin, Favorite, Archive, Share Markdown, and Delete, with automated disabled states when no items are selected.",
+                    highlights: [
+                        "5 balanced native action icons across bottom toolbar",
+                        "Accidental delete protection via confirmation dialog",
+                        "Real-time disabled state updates reflecting selection"
+                    ]
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "sparkles",
+                    tint: .teal,
+                    title: "Restored Clean Navigation Bar",
+                    description: "Removed raw text buttons from the top navigation bar, preserving clean icon alignment for search, watch, filter, and settings.",
+                    kind: .fix,
+                    detailedDescription: "Eliminated header crowding on iPhone by nesting selection options in the standard action menu."
+                ),
+                WhatsNewItem(
+                    icon: "checkmark.circle",
+                    tint: .green,
+                    title: "Smooth Checkmark Transitions",
+                    description: "Added spring scaling transitions to row selection checkmarks to prevent horizontal layout shifting.",
+                    kind: .improvement,
+                    detailedDescription: "Smooth checkmark circle animation ensures rows maintain perfect visual stability."
+                ),
+                WhatsNewItem(
+                    icon: "info.circle",
+                    tint: .cyan,
+                    title: "Watch Settings Version Sync",
+                    description: "Updated Apple Watch Settings to v1.25.1 for full companion parity.",
+                    kind: .improvement,
+                    detailedDescription: "Synchronized companion app build version numbers."
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.25.0",
             date: "October 2026",

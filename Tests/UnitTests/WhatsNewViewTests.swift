@@ -6,30 +6,30 @@ import SwiftUI
 final class WhatsNewViewTests: XCTestCase {
 
     func testCurrentVersionMatchesReleases() {
-        XCTAssertEqual(WhatsNewView.currentVersion, "1.25.0")
+        XCTAssertEqual(WhatsNewView.currentVersion, "1.25.1")
         let latest = WhatsNewView.releases.first
         XCTAssertNotNil(latest)
         XCTAssertEqual(latest?.version, WhatsNewView.currentVersion)
     }
 
     func testReleaseSeparatesFeaturesFromImprovements() {
-        guard let current = WhatsNewView.releases.first(where: { $0.version == "1.25.0" }) else {
-            XCTFail("Missing v1.25.0 release")
+        guard let current = WhatsNewView.releases.first(where: { $0.version == "1.25.1" }) else {
+            XCTFail("Missing v1.25.1 release")
             return
         }
 
-        // 10 new features are shown up front
-        XCTAssertEqual(current.features.count, 10)
+        // 2 new features are shown up front
+        XCTAssertEqual(current.features.count, 2)
 
-        // 20 bug fixes & improvements are stored separately for secondary UI
-        XCTAssertGreaterThanOrEqual(current.improvementsAndFixes.count, 20)
+        // Bug fixes & improvements are stored separately for secondary UI
+        XCTAssertGreaterThanOrEqual(current.improvementsAndFixes.count, 3)
 
         // items property aggregates both for backward compatibility
         XCTAssertEqual(current.items.count, current.features.count + current.improvementsAndFixes.count)
     }
 
     func testHistoricalVersionsContainBothFeaturesAndImprovements() {
-        let expectedVersions = ["1.25.0", "1.24.0", "1.23.0", "1.22.0", "1.21.0", "1.20.0", "1.19.0", "1.18.0", "1.17.0", "1.16.0"]
+        let expectedVersions = ["1.25.1", "1.25.0", "1.24.0", "1.23.0", "1.22.0", "1.21.0", "1.20.0", "1.19.0", "1.18.0", "1.17.0", "1.16.0"]
         for version in expectedVersions {
             guard let release = WhatsNewView.releases.first(where: { $0.version == version }) else {
                 XCTFail("Missing historical version \(version)")
@@ -153,20 +153,20 @@ final class WhatsNewViewTests: XCTestCase {
     }
 
     func testCurrentReleaseContainsRichFeatureDetails() {
-        guard let current = WhatsNewView.releases.first(where: { $0.version == "1.25.0" }) else {
-            XCTFail("Missing v1.25.0 release")
+        guard let current = WhatsNewView.releases.first(where: { $0.version == "1.25.1" }) else {
+            XCTFail("Missing v1.25.1 release")
             return
         }
 
-        // Check that features in 1.25.0 have rich fields
+        // Check that features in 1.25.1 have rich fields
         let featuresWithDetailedDesc = current.features.filter { $0.detailedDescription != nil }
-        XCTAssertFalse(featuresWithDetailedDesc.isEmpty, "v1.25.0 should have features with detailedDescription")
+        XCTAssertFalse(featuresWithDetailedDesc.isEmpty, "v1.25.1 should have features with detailedDescription")
 
         let featuresWithHighlights = current.features.filter { $0.highlights != nil && !$0.highlights!.isEmpty }
-        XCTAssertFalse(featuresWithHighlights.isEmpty, "v1.25.0 should have features with highlights")
+        XCTAssertFalse(featuresWithHighlights.isEmpty, "v1.25.1 should have features with highlights")
 
         let featuresWithVisualizations = current.features.filter { $0.visualization != nil }
-        XCTAssertFalse(featuresWithVisualizations.isEmpty, "v1.25.0 should have features with visualization")
+        XCTAssertFalse(featuresWithVisualizations.isEmpty, "v1.25.1 should have features with visualization")
     }
 
     func testSpokenWPMAndCadenceLabel() {
