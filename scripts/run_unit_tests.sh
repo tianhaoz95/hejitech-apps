@@ -45,7 +45,16 @@ if command -v xcodegen >/dev/null 2>&1; then
   xcodegen generate >/dev/null
 fi
 
-DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-/Volumes/DATA/.derivedData}"
+# Prefer the external DATA volume for DerivedData when it's mounted and writable (this
+# dev machine); otherwise -- e.g. on GitHub Actions runners -- fall back to a repo-local
+# (gitignored) build/ directory. Override either way with DERIVED_DATA_PATH=...
+if [ -z "${DERIVED_DATA_PATH:-}" ]; then
+  if [ -d /Volumes/DATA ] && [ -w /Volumes/DATA ]; then
+    DERIVED_DATA_PATH="/Volumes/DATA/.derivedData"
+  else
+    DERIVED_DATA_PATH="$REPO_ROOT/build/DerivedData"
+  fi
+fi
 
 if [ "$RUN_MAC" = true ]; then
   echo "==> Running macOS Unit Tests (VoxbriefMacTests)..."

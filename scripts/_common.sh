@@ -4,7 +4,16 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-/Volumes/DATA/.derivedData}"
+# Prefer the external DATA volume for DerivedData when it's mounted and writable (this
+# dev machine); otherwise -- e.g. on GitHub Actions runners -- fall back to a repo-local
+# (gitignored) build/ directory. Override either way with DERIVED_DATA_PATH=...
+if [ -z "${DERIVED_DATA_PATH:-}" ]; then
+  if [ -d /Volumes/DATA ] && [ -w /Volumes/DATA ]; then
+    DERIVED_DATA_PATH="/Volumes/DATA/.derivedData"
+  else
+    DERIVED_DATA_PATH="$REPO_ROOT/build/DerivedData"
+  fi
+fi
 
 # Regenerates Voxbrief.xcodeproj from project.yml if xcodegen is installed,
 # so the simulator always runs what project.yml describes.
