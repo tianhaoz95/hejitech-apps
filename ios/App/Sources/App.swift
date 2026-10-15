@@ -1,5 +1,6 @@
 import AppIntents
 import AuthenticationServices
+import FeedbackKit
 import LogCore
 import SwiftUI
 
@@ -10,6 +11,11 @@ struct WeeHoursApp: App {
 
     init() {
         WeeHoursShortcuts.updateAppShortcutParameters()
+        FeedbackKit.configure(.init(
+            endpointURL: URL(string: "https://gpucoladcyvijefdjudf.supabase.co/functions/v1/ingest-feedback")!,
+            projectKey: "pk_bdbb442ad21b2c2b2a6d63bdbd8621aa1b79"
+        ))
+        Feedback.apply(enabled: Feedback.isEnabled)
     }
 
     var body: some Scene {
@@ -223,5 +229,33 @@ struct HouseholdSetupView: View {
             }
             .navigationTitle("Set up")
         }
+    }
+}
+
+/// Shake to report a problem (FeedbackKit). On by default; Settings turns it off, which also stops
+/// the "is it fixed?" card for the reporter's earlier reports.
+enum Feedback {
+    static let key = "shakeToReport"
+
+    static var isEnabled: Bool { UserDefaults.standard.object(forKey: key) as? Bool ?? true }
+
+    static func apply(enabled: Bool) {
+        if enabled {
+            FeedbackKit.enableShakeToReport(presenter: topViewController)
+            FeedbackKit.enableFixVerification(presenter: topViewController)
+        } else {
+            FeedbackKit.disableShakeToReport()
+            FeedbackKit.disableFixVerification()
+        }
+    }
+
+    private static func topViewController() -> UIViewController? {
+        var vc = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first { $0.isKeyWindow }?
+            .rootViewController
+        while let presented = vc?.presentedViewController { vc = presented }
+        return vc
     }
 }

@@ -29,6 +29,9 @@ packages:
   ArgmaxOSS:
     url: https://github.com/argmaxinc/argmax-oss-swift
     from: 1.1.0
+  FeedbackKit:
+    url: https://github.com/tianhaoz95/feedback-kit
+    from: 1.0.62
 
 targets:
   App:
@@ -51,6 +54,7 @@ targets:
       - package: LayaRuntime
       - package: ArgmaxOSS
         product: WhisperKit
+      - package: FeedbackKit
       - target: Widgets
       - target: WatchApp
     settings:

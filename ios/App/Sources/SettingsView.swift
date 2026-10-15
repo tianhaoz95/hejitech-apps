@@ -8,6 +8,7 @@ struct SettingsView: View {
     @State private var draft = Household()
     @State private var invite: String?
     @State private var confirmDelete = false
+    @AppStorage(Feedback.key) private var shakeToReport = true
 
     var body: some View {
         NavigationStack {
@@ -87,6 +88,12 @@ struct SettingsView: View {
                     }
                 } footer: {
                     Text("The app records facts. Ask the assistant you already use to analyze them through MCP.")
+                }
+                Section {
+                    Toggle("Shake to report a problem", isOn: $shakeToReport)
+                        .onChange(of: shakeToReport) { _, on in Feedback.apply(enabled: on) }
+                } footer: {
+                    Text("Shake your iPhone to send the developer a screenshot and a note.")
                 }
                 if model.localOnly {
                     Section {

@@ -1,3 +1,4 @@
+import FeedbackKit
 import LogCore
 import SwiftUI
 
@@ -18,6 +19,7 @@ struct MainView: View {
             ReviewSheet(capture: capture).presentationDetents([.medium, .large])
         }
         .overlay(alignment: .bottom) { ToastView().padding(.bottom, 64) }
+        .onChange(of: model.screen, initial: true) { _, screen in FeedbackKit.currentScreen = screen }
         .onChange(of: model.reviews) { _, reviews in
             if model.screen == "review", model.reviewing == nil, let first = reviews.first {
                 model.reviewing = first

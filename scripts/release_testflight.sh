@@ -19,6 +19,11 @@
 #   APPLE_TEAM_ID                     Apple Developer Team ID (no fallback)
 #
 # The build number (CFBundleVersion) is the current UTC timestamp, so uploads never collide.
+#
+# After the upload, `feedbackkit release` marks merged FeedbackKit fixes as shipped in this build so
+# reporters get asked "is it fixed?". It needs `npx feedbackkit-cli login` locally or
+# FEEDBACKKIT_RELEASE_TOKEN (a project access token with releases:write) in CI; without either it
+# only warns, and the upload still counts.
 
 set -euo pipefail
 
@@ -157,4 +162,9 @@ xcodebuild -exportArchive \
   -authenticationKeyIssuerID "$ASC_ISSUER_ID"
 
 echo "✅ Build $BUILD_NUMBER uploaded to App Store Connect."
+
+echo "-> Announcing build $BUILD_NUMBER to FeedbackKit..."
+if ! (cd "$REPO_ROOT" && npx -y feedbackkit-cli release --build "$BUILD_NUMBER"); then
+  echo "warning: feedbackkit release failed; run it by hand: npx feedbackkit-cli release --build $BUILD_NUMBER" >&2
+fi
 echo "   It will appear in TestFlight once Apple finishes processing (usually a few minutes)."
