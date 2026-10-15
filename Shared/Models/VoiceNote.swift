@@ -112,6 +112,66 @@ public struct TranscriptTimingSegment: Codable, Hashable, Sendable, Identifiable
     public var formattedRange: String {
         "\(start.formattedDuration) - \(end.formattedDuration)"
     }
+
+    /// One piece of a segment's text: either spoken words, or a Whisper control token
+    /// (`<|startoftranscript|>`, `<|en|>`, `<|7.54|>`, ...) that WhisperKit leaves inline.
+    public enum TextPart: Hashable, Sendable {
+        case text(String)
+        case token(SpecialToken)
+    }
+
+    public enum SpecialToken: Hashable, Sendable {
+        case timestamp(TimeInterval)
+        case startOfTranscript
+        case endOfText
+        case language(String)
+        case task(String)
+        case noTimestamps
+        case other(String)
+
+        init(rawName: String) {
+            let name = rawName.trimmingCharacters(in: .whitespaces)
+            if let seconds = TimeInterval(name) {
+                self = .timestamp(seconds)
+                return
+            }
+            switch name.lowercased() {
+            case "startoftranscript": self = .startOfTranscript
+            case "endoftext": self = .endOfText
+            case "notimestamps": self = .noTimestamps
+            case "transcribe", "translate": self = .task(name.lowercased())
+            default:
+                let isLanguageCode = (2...3).contains(name.count) && name.allSatisfy { $0.isLetter && $0.isLowercase }
+                self = isLanguageCode ? .language(name) : .other(name)
+            }
+        }
+    }
+
+    /// `text` split into spoken words and Whisper control tokens, in order. Whitespace-only
+    /// runs between tokens are dropped.
+    public var parts: [TextPart] {
+        var result: [TextPart] = []
+        var remaining = Substring(text)
+        while let open = remaining.range(of: "<|") {
+            guard let close = remaining[open.upperBound...].range(of: "|>") else { break }
+            let before = remaining[..<open.lowerBound].trimmingCharacters(in: .whitespacesAndNewlines)
+            if !before.isEmpty { result.append(.text(before)) }
+            result.append(.token(SpecialToken(rawName: String(remaining[open.upperBound..<close.lowerBound]))))
+            remaining = remaining[close.upperBound...]
+        }
+        let tail = remaining.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !tail.isEmpty { result.append(.text(tail)) }
+        return result
+    }
+
+    /// The spoken words only, with every Whisper control token removed.
+    public var displayText: String {
+        parts.compactMap { part -> String? in
+            if case .text(let words) = part { return words }
+            return nil
+        }
+        .joined(separator: " ")
+    }
 }
 
 /// Complete Voice Note model containing raw audio metadata, ASR transcript, and LLM-processed note

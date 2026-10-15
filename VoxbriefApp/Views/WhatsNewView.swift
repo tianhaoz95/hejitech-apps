@@ -172,6 +172,13 @@ public struct WhatsNewView: View {
                     title: "Optimized Capture Launch Latency",
                     description: "Streamlined auto-record initiation in QuickRecordSheet for instantaneous recording feedback.",
                     kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "tag.fill",
+                    tint: .teal,
+                    title: "Transcript Token Badges",
+                    description: "Whisper markers like timestamps and start-of-transcript now appear as tidy badges in the Verbatim ASR Output instead of raw <|...|> text.",
+                    kind: .fix
                 )
             ]
         ),

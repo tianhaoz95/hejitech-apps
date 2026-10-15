@@ -1106,7 +1106,7 @@ public struct NoteDetailView: View {
             let query = transcriptSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
 
             if !viewModel.note.transcriptSegments.isEmpty {
-                let matching = query.isEmpty ? viewModel.note.transcriptSegments : viewModel.note.transcriptSegments.filter { $0.text.lowercased().contains(query) }
+                let matching = query.isEmpty ? viewModel.note.transcriptSegments : viewModel.note.transcriptSegments.filter { $0.displayText.lowercased().contains(query) }
 
                 if !query.isEmpty {
                     Text("\(matching.count) matches found")
@@ -1133,10 +1133,8 @@ public struct NoteDetailView: View {
                                         .padding(.vertical, 3)
                                         .background(Color.accentColor.opacity(0.12), in: Capsule())
 
-                                    Text(segment.text)
-                                        .font(.body)
-                                        .foregroundStyle(.primary)
-                                        .multilineTextAlignment(.leading)
+                                    TranscriptSegmentText(segment: segment)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
                                 }
                             }
                             .buttonStyle(.plain)
@@ -1322,5 +1320,162 @@ public struct NoteDetailView: View {
             .foregroundStyle(.tertiary)
             .frame(maxWidth: .infinity, alignment: .center)
         }
+    }
+}
+
+// MARK: - Transcript Segment Text (Whisper token badges)
+
+/// Renders a transcript segment's spoken words inline with its Whisper control tokens
+/// (`<|startoftranscript|>`, `<|7.54|>`, ...) shown as compact badges instead of raw markup.
+private struct TranscriptSegmentText: View {
+    let segment: TranscriptTimingSegment
+
+    var body: some View {
+        TranscriptFlowLayout(horizontalSpacing: 4, verticalSpacing: 6) {
+            ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                switch item {
+                case .word(let word):
+                    Text(word)
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                case .token(let token):
+                    TranscriptTokenBadge(token: token)
+                }
+            }
+        }
+    }
+
+    private enum Item {
+        case word(String)
+        case token(TranscriptTimingSegment.SpecialToken)
+    }
+
+    private var items: [Item] {
+        segment.parts.flatMap { part -> [Item] in
+            switch part {
+            case .text(let text):
+                return text.split(whereSeparator: \.isWhitespace).map { .word(String($0)) }
+            case .token(let token):
+                return [.token(token)]
+            }
+        }
+    }
+}
+
+private struct TranscriptTokenBadge: View {
+    let token: TranscriptTimingSegment.SpecialToken
+
+    var body: some View {
+        Label {
+            Text(title)
+        } icon: {
+            Image(systemName: icon)
+                .imageScale(.small)
+        }
+        .labelStyle(.titleAndIcon)
+        .font(.caption2.weight(.semibold).monospacedDigit())
+        .foregroundStyle(tint)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(tint.opacity(0.12), in: Capsule())
+        .overlay(Capsule().strokeBorder(tint.opacity(0.25), lineWidth: 0.5))
+        .accessibilityLabel(accessibilityText)
+    }
+
+    private var title: String {
+        switch token {
+        case .timestamp(let seconds): return String(format: "%.2fs", seconds)
+        case .startOfTranscript: return "Start"
+        case .endOfText: return "End"
+        case .language(let code): return code.uppercased()
+        case .task(let name): return name.capitalized
+        case .noTimestamps: return "No Timestamps"
+        case .other(let name): return name
+        }
+    }
+
+    private var icon: String {
+        switch token {
+        case .timestamp: return "clock"
+        case .startOfTranscript: return "play.fill"
+        case .endOfText: return "stop.fill"
+        case .language: return "globe"
+        case .task: return "waveform"
+        case .noTimestamps: return "clock.badge.xmark"
+        case .other: return "chevron.left.forwardslash.chevron.right"
+        }
+    }
+
+    private var tint: Color {
+        switch token {
+        case .timestamp: return .teal
+        case .startOfTranscript: return .green
+        case .endOfText: return .red
+        case .language: return .purple
+        case .task: return .indigo
+        case .noTimestamps, .other: return .gray
+        }
+    }
+
+    private var accessibilityText: String {
+        switch token {
+        case .timestamp(let seconds): return String(format: "Timestamp %.2f seconds", seconds)
+        case .startOfTranscript: return "Start of transcript"
+        case .endOfText: return "End of text"
+        default: return title
+        }
+    }
+}
+
+/// Wraps subviews left-to-right onto as many lines as needed, vertically centering each line.
+private struct TranscriptFlowLayout: Layout {
+    var horizontalSpacing: CGFloat
+    var verticalSpacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let rows = arrange(subviews: subviews, maxWidth: proposal.width ?? .infinity)
+        let width = rows.map(\.width).max() ?? 0
+        let height = rows.map(\.height).reduce(0, +) + verticalSpacing * CGFloat(max(rows.count - 1, 0))
+        return CGSize(width: proposal.width ?? width, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var y = bounds.minY
+        for row in arrange(subviews: subviews, maxWidth: bounds.width) {
+            var x = bounds.minX
+            for index in row.indices {
+                let size = subviews[index].sizeThatFits(.unspecified)
+                subviews[index].place(
+                    at: CGPoint(x: x, y: y + (row.height - size.height) / 2),
+                    proposal: ProposedViewSize(size)
+                )
+                x += size.width + horizontalSpacing
+            }
+            y += row.height + verticalSpacing
+        }
+    }
+
+    private struct Row {
+        var indices: [Int] = []
+        var width: CGFloat = 0
+        var height: CGFloat = 0
+    }
+
+    private func arrange(subviews: Subviews, maxWidth: CGFloat) -> [Row] {
+        var rows: [Row] = []
+        var current = Row()
+        for index in subviews.indices {
+            let size = subviews[index].sizeThatFits(.unspecified)
+            let proposedWidth = current.indices.isEmpty ? size.width : current.width + horizontalSpacing + size.width
+            if proposedWidth > maxWidth, !current.indices.isEmpty {
+                rows.append(current)
+                current = Row()
+            }
+            current.width = current.indices.isEmpty ? size.width : current.width + horizontalSpacing + size.width
+            current.height = max(current.height, size.height)
+            current.indices.append(index)
+        }
+        if !current.indices.isEmpty { rows.append(current) }
+        return rows
     }
 }
