@@ -38,6 +38,7 @@ npm run screenshots
 - To eyeball the result, run `./preview-website.sh` (add `--capture` to recapture first) and open http://localhost:5173.
 - If the capture spec itself breaks (e.g. a selector it clicks was renamed), fix the spec the same way as the E2E suite — it exercises real selectors.
 - After regenerating, `git diff --stat website/assets` to confirm the PNGs actually changed; commit them if so.
+- The hero screenshots show `git status` from the Docker container, which mounts your working tree. Capture from a **clean tree** (commit your other changes first) so the terminal reads "working tree clean" rather than listing your edits. The GIF spec (`features.spec.js`) runs first and rewrites `website/assets/features/`, so when it changes anything, set those aside (`git stash push -- website/assets/features`), re-run `npx playwright test -c playwright.screenshots.config.js screenshots/screenshots.spec.js --project=chromium`, then `git stash pop`.
 
 ## 3. Docs freshness check — update if stale
 
