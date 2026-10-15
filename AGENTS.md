@@ -151,4 +151,17 @@ Whenever **new features**, **bug fixes**, or **improvements** are added to the c
    - Prepend a new `ReleaseHistoryItem` at index 0 of `WhatsNewView.releases`.
    - **Never overwrite or delete previous release notes**; retain existing versions in the array so users can browse historical version notes in the app's version browser.
    - Update `Tests/UnitTests/WhatsNewViewTests.swift` (`testCurrentVersionMatchesReleases` and `expectedVersions`) to verify the new version numbers and content counts.
+4. **Rich Detail Pages & Interactive Visualizations (Optional)**:
+   - Tapping any feature or improvement/fix row in `WhatsNewView` or `WhatsNewImprovementsView` opens a dedicated interactive detail sheet (`WhatsNewFeatureDetailView`).
+   - Major items can be populated with optional rich content fields:
+     - `detailedDescription: String?`: In-depth narrative or technical deep dive explaining architectural, privacy, or UX enhancements.
+     - `highlights: [String]?`: Structured array of bulleted key points and capabilities rendered with semantic checkmarks.
+     - `screenshotName: String?`: Asset catalog image name for visual preview screenshots (with graceful styled fallback if not present).
+     - `visualization: WhatsNewVisualization?`: Interactive SwiftUI preview widget embedded directly in the detail card:
+       - `.waveform`: Animated real-time audio waveform equalizer with live input pause/resume simulation.
+       - `.swipeGesture`: Apple Watch frame mockup showing paged swipe navigation between Capture hero and Memo Vault with native pagination dots.
+       - `.pipeline`: Step-by-step interactive 4-stage on-device pipeline diagram (Audio ➔ WhisperKit ASR ➔ Qwen3 LLM ➔ Markdown Note).
+       - `.vwaveMark`: Interactive bespoke flat V-Wave monogram inspector with color theme switching and geometry breakdown.
+       - `.complications`: Apple Watch face complications showcase (Circular, Corner, Rectangular).
+   - All rich detail fields are strictly optional (`nil` by default) so minimal or historical release entries continue to function seamlessly without breaking changes.
 

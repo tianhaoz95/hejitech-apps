@@ -6,15 +6,15 @@ import SwiftUI
 final class WhatsNewViewTests: XCTestCase {
 
     func testCurrentVersionMatchesReleases() {
-        XCTAssertEqual(WhatsNewView.currentVersion, "1.23.0")
+        XCTAssertEqual(WhatsNewView.currentVersion, "1.24.0")
         let latest = WhatsNewView.releases.first
         XCTAssertNotNil(latest)
         XCTAssertEqual(latest?.version, WhatsNewView.currentVersion)
     }
 
     func testReleaseSeparatesFeaturesFromImprovements() {
-        guard let current = WhatsNewView.releases.first(where: { $0.version == "1.23.0" }) else {
-            XCTFail("Missing v1.23.0 release")
+        guard let current = WhatsNewView.releases.first(where: { $0.version == "1.24.0" }) else {
+            XCTFail("Missing v1.24.0 release")
             return
         }
 
@@ -31,7 +31,7 @@ final class WhatsNewViewTests: XCTestCase {
     }
 
     func testHistoricalVersionsContainBothFeaturesAndImprovements() {
-        let expectedVersions = ["1.23.0", "1.22.0", "1.21.0", "1.20.0", "1.19.0", "1.18.0", "1.17.0", "1.16.0"]
+        let expectedVersions = ["1.24.0", "1.23.0", "1.22.0", "1.21.0", "1.20.0", "1.19.0", "1.18.0", "1.17.0", "1.16.0"]
         for version in expectedVersions {
             guard let release = WhatsNewView.releases.first(where: { $0.version == version }) else {
                 XCTFail("Missing historical version \(version)")
@@ -111,4 +111,68 @@ final class WhatsNewViewTests: XCTestCase {
         defaults.set(WhatsNewView.currentVersion, forKey: WhatsNewView.lastSeenVersionKey)
         XCTAssertFalse(WhatsNewView.shouldShowAutomatically)
     }
+
+    func testWhatsNewItemRichDetailFields() {
+        // Default values should be nil for backward compatibility
+        let minimalItem = WhatsNewItem(
+            icon: "star",
+            tint: .blue,
+            title: "Minimal Feature",
+            description: "Just a summary"
+        )
+        XCTAssertNil(minimalItem.detailedDescription)
+        XCTAssertNil(minimalItem.highlights)
+        XCTAssertNil(minimalItem.screenshotName)
+        XCTAssertNil(minimalItem.visualization)
+
+        // Rich item with all optional fields provided
+        let richItem = WhatsNewItem(
+            icon: "sparkles",
+            tint: .purple,
+            title: "Rich Feature",
+            description: "Summary text",
+            kind: .feature,
+            detailedDescription: "Full technical narrative explaining the architecture.",
+            highlights: ["Bullet point 1", "Bullet point 2"],
+            screenshotName: "preview_screenshot",
+            visualization: .waveform
+        )
+        XCTAssertEqual(richItem.detailedDescription, "Full technical narrative explaining the architecture.")
+        XCTAssertEqual(richItem.highlights?.count, 2)
+        XCTAssertEqual(richItem.highlights?[0], "Bullet point 1")
+        XCTAssertEqual(richItem.screenshotName, "preview_screenshot")
+        XCTAssertEqual(richItem.visualization, .waveform)
+    }
+
+    func testWhatsNewVisualizationAllCases() {
+        let expectedCases: [WhatsNewVisualization] = [
+            .waveform,
+            .swipeGesture,
+            .pipeline,
+            .vwaveMark,
+            .complications
+        ]
+        XCTAssertEqual(WhatsNewVisualization.allCases.count, expectedCases.count)
+        for visual in expectedCases {
+            XCTAssertTrue(WhatsNewVisualization.allCases.contains(visual))
+        }
+    }
+
+    func testCurrentReleaseContainsRichFeatureDetails() {
+        guard let current = WhatsNewView.releases.first(where: { $0.version == "1.24.0" }) else {
+            XCTFail("Missing v1.24.0 release")
+            return
+        }
+
+        // Check that at least some features in 1.24.0 have rich fields
+        let featuresWithDetailedDesc = current.features.filter { $0.detailedDescription != nil }
+        XCTAssertFalse(featuresWithDetailedDesc.isEmpty, "v1.24.0 should have features with detailedDescription")
+
+        let featuresWithHighlights = current.features.filter { $0.highlights != nil && !$0.highlights!.isEmpty }
+        XCTAssertFalse(featuresWithHighlights.isEmpty, "v1.24.0 should have features with highlights")
+
+        let featuresWithVisualizations = current.features.filter { $0.visualization != nil }
+        XCTAssertFalse(featuresWithVisualizations.isEmpty, "v1.24.0 should have features with visualization")
+    }
 }
+
