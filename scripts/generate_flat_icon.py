@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Generates the flat bespoke Voxbrief V-Wave app icon at 1024x1024.
 
-Strictly 2D flat:
+Strictly 2D flat with high legibility across all display sizes:
 - Background: Pure solid Apple Royal Blue (#0E64F6)
 - Foreground: Pure crisp white (#FFFFFF) V-Wave monogram
+- Wide 1:1 stroke-to-gap ratio ensuring zero clustering even at 16x16
 - No 3D shadows, no gloss, no specular highlights, no bevels
 """
 from pathlib import Path
@@ -28,37 +29,32 @@ def render_vwave_icon(size: int = 1024) -> Image.Image:
     img = Image.new("RGBA", (canvas_size, canvas_size), bg_color)
     draw = ImageDraw.Draw(img)
     
-    # Scale relative to 1024
-    w = 64 * scale
-    r = w / 2
-    
     # Left diagonal stem of the 'V'
-    p1 = (276 * scale, 290 * scale)
-    vertex = (454 * scale, 730 * scale)
+    stem_w = int(0.10 * canvas_size)
+    r = stem_w / 2
     
-    draw.line([p1, vertex], fill=fg_color, width=int(w))
+    p1 = (int(0.18 * canvas_size), int(0.24 * canvas_size))
+    vertex = (int(0.36 * canvas_size), int(0.76 * canvas_size))
+    
+    draw.line([p1, vertex], fill=fg_color, width=stem_w)
     draw.ellipse([p1[0]-r, p1[1]-r, p1[0]+r, p1[1]+r], fill=fg_color)
     draw.ellipse([vertex[0]-r, vertex[1]-r, vertex[0]+r, vertex[1]+r], fill=fg_color)
     
-    # Right arm: 4 stepped equalizer waveform bars ascending along the V contour
-    bar_w = 58 * scale
+    # Right arm: 3 bold, widely spaced equalizer bars (1:1 stroke to gap ratio)
+    bar_w = int(0.08 * canvas_size)
     br = bar_w / 2
     
     bars = [
-        (536, 650, 160),  # Bar 1: shortest, near vertex
-        (616, 530, 300),  # Bar 2: mid-height
-        (696, 410, 420),  # Bar 3: peak voice bar
-        (776, 320, 280),  # Bar 4: top-right exit
+        (int(0.52 * canvas_size), int(0.63 * canvas_size), int(0.20 * canvas_size)),
+        (int(0.68 * canvas_size), int(0.53 * canvas_size), int(0.32 * canvas_size)),
+        (int(0.84 * canvas_size), int(0.44 * canvas_size), int(0.44 * canvas_size)),
     ]
     
     for (bx, by, bh) in bars:
-        bx_s = bx * scale
-        by_s = by * scale
-        bh_s = bh * scale
-        x0 = bx_s - br
-        x1 = bx_s + br
-        y0 = by_s - bh_s / 2
-        y1 = by_s + bh_s / 2
+        x0 = bx - br
+        x1 = bx + br
+        y0 = by - bh / 2
+        y1 = by + bh / 2
         draw.rounded_rectangle([x0, y0, x1, y1], radius=br, fill=fg_color)
         
     return img.resize((size, size), Image.LANCZOS)

@@ -6,15 +6,15 @@ import SwiftUI
 final class WhatsNewViewTests: XCTestCase {
 
     func testCurrentVersionMatchesReleases() {
-        XCTAssertEqual(WhatsNewView.currentVersion, "1.22.0")
+        XCTAssertEqual(WhatsNewView.currentVersion, "1.23.0")
         let latest = WhatsNewView.releases.first
         XCTAssertNotNil(latest)
         XCTAssertEqual(latest?.version, WhatsNewView.currentVersion)
     }
 
     func testReleaseSeparatesFeaturesFromImprovements() {
-        guard let current = WhatsNewView.releases.first(where: { $0.version == "1.22.0" }) else {
-            XCTFail("Missing v1.22.0 release")
+        guard let current = WhatsNewView.releases.first(where: { $0.version == "1.23.0" }) else {
+            XCTFail("Missing v1.23.0 release")
             return
         }
 
@@ -31,7 +31,7 @@ final class WhatsNewViewTests: XCTestCase {
     }
 
     func testHistoricalVersionsContainBothFeaturesAndImprovements() {
-        let expectedVersions = ["1.22.0", "1.21.0", "1.20.0", "1.19.0", "1.18.0", "1.17.0", "1.16.0"]
+        let expectedVersions = ["1.23.0", "1.22.0", "1.21.0", "1.20.0", "1.19.0", "1.18.0", "1.17.0", "1.16.0"]
         for version in expectedVersions {
             guard let release = WhatsNewView.releases.first(where: { $0.version == version }) else {
                 XCTFail("Missing historical version \(version)")

@@ -356,6 +356,12 @@ public struct SettingsView: View {
                 }
 
                 Section(header: Text("About Voxbrief")) {
+                    HStack {
+                        VoxbriefLogoView(size: .inline)
+                        Spacer()
+                    }
+                    .padding(.vertical, 2)
+
                     Button {
                         showingWhatsNew = true
                     } label: {

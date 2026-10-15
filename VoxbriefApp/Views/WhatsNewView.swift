@@ -76,7 +76,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.22.0"
+    public static let currentVersion = "1.23.0"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -85,6 +85,60 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.23.0",
+            date: "October 2026",
+            tagline: "High-Legibility V-Wave Brand Mark & Unclustered Multi-Scale Geometry",
+            features: [
+                WhatsNewItem(
+                    icon: "waveform.badge.magnifyingglass",
+                    tint: .blue,
+                    title: "High-Legibility V-Wave Monogram",
+                    description: "Refined the V-Wave logo with a 1:1 stroke-to-gap ratio and 3 bold equalizer bars, eliminating visual clustering across all screen sizes."
+                ),
+                WhatsNewItem(
+                    icon: "app.badge.checkmark.fill",
+                    tint: .cyan,
+                    title: "Crisp Multi-Scale App Icon",
+                    description: "Regenerated all discrete iOS, watchOS, and macOS icon assets from 1024px down to 16px with distinct, razor-sharp negative space."
+                ),
+                WhatsNewItem(
+                    icon: "applewatch",
+                    tint: .purple,
+                    title: "High-Contrast Complications",
+                    description: "Redesigned Apple Watch face complications with bold vector marks for instant recognition in circular, corner, and rectangular slots."
+                ),
+                WhatsNewItem(
+                    icon: "sparkles",
+                    tint: .orange,
+                    title: "Optimized Home Header & Settings Branding",
+                    description: "Balanced proportions and padding in navigation bar headers and settings cards for an elevated, clean aesthetic."
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "square.split.3x3",
+                    tint: .red,
+                    title: "Monogram Bar Separation Fix",
+                    description: "Eliminated bar overlapping and smudging on small retina viewports by widening inter-bar spacing by over 300%.",
+                    kind: .fix
+                ),
+                WhatsNewItem(
+                    icon: "slider.horizontal.2.square.badge.arrow.down",
+                    tint: .green,
+                    title: "Balanced Geometric Margins",
+                    description: "Perfected optical centering and horizontal/vertical margins across all vector logo shapes.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "circle.circle.fill",
+                    tint: .teal,
+                    title: "Complication Retina Contrast",
+                    description: "Increased accessory widget scaling with high-contrast accent backgrounds for glanceable outdoor legibility.",
+                    kind: .improvement
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.22.0",
             date: "October 2026",

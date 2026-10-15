@@ -117,11 +117,10 @@ public struct WatchSettingsView: View {
 
             // MARK: - App Version
             Section {
-                HStack {
-                    Text("Voxbrief")
-                        .font(.system(size: 12, weight: .medium))
+                HStack(spacing: 8) {
+                    VoxbriefLogoView(size: .watch)
                     Spacer()
-                    Text("v1.22.0")
+                    Text("v1.23.0")
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundColor(.secondary)
                 }
