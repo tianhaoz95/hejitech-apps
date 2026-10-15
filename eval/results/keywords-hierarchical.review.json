@@ -1,0 +1,730 @@
+[
+  {
+    "expected" : "diaper",
+    "text" : "just pee",
+    "ok" : "yes",
+    "deciding" : "event_type",
+    "got" : "Diaper · wet",
+    "tier" : "pick"
+  },
+  {
+    "expected" : "feed.bottle.finish",
+    "got" : "Finish bottle · drank all",
+    "deciding" : "event_type",
+    "ok" : "yes",
+    "tier" : "pick",
+    "text" : "all done, drank all of it"
+  },
+  {
+    "expected" : "sleep.start",
+    "deciding" : "event_type",
+    "text" : "went to sleep half an hour ago",
+    "ok" : "yes",
+    "got" : "Fell asleep",
+    "tier" : "pick"
+  },
+  {
+    "text" : "began feeding him a bottle about fifteen minutes ago",
+    "deciding" : "event_type",
+    "got" : "Start bottle",
+    "tier" : "full_list",
+    "ok" : "yes",
+    "expected" : "feed.bottle.start"
+  },
+  {
+    "expected" : "feed.bottle.start",
+    "ok" : "yes",
+    "tier" : "full_list",
+    "deciding" : "event_type",
+    "got" : "Start bottle · formula",
+    "text" : "began a bottle of formula"
+  },
+  {
+    "expected" : "feed.bottle.finish",
+    "ok" : "yes",
+    "text" : "she's done, drank three quarters",
+    "got" : "Finish bottle · drank ¾",
+    "deciding" : "event_type",
+    "tier" : "pick"
+  },
+  {
+    "text" : "woke up at 3:45",
+    "expected" : "sleep.end",
+    "deciding" : "event_type",
+    "tier" : "pick",
+    "got" : "Woke up",
+    "ok" : "yes"
+  },
+  {
+    "got" : "Diaper · wet",
+    "deciding" : "diaper_kind",
+    "tier" : "pick",
+    "ok" : "yes",
+    "text" : "nappy was wet",
+    "expected" : "diaper"
+  },
+  {
+    "expected" : "diaper",
+    "deciding" : "event_type",
+    "text" : "changed a wet one",
+    "got" : "Diaper · wet",
+    "tier" : "pick",
+    "ok" : "yes"
+  },
+  {
+    "tier" : "full_list",
+    "got" : "Pump",
+    "expected" : "none_of_these",
+    "deciding" : "event_type",
+    "text" : "she has a little rash on her cheek",
+    "ok" : "yes"
+  },
+  {
+    "got" : "Finish bottle",
+    "ok" : "yes",
+    "deciding" : "event_type",
+    "text" : "he finished his bottle",
+    "expected" : "feed.bottle.finish",
+    "tier" : "full_list"
+  },
+  {
+    "expected" : "feed.breast.start",
+    "text" : "nursing on the left",
+    "deciding" : "side",
+    "tier" : "pick",
+    "got" : "Start breastfeeding · left",
+    "ok" : "yes"
+  },
+  {
+    "deciding" : "event_type",
+    "expected" : "feed.bottle.finish",
+    "text" : "done, three quarters gone",
+    "tier" : "full_list",
+    "ok" : "yes",
+    "got" : "Finish bottle · drank ¾"
+  },
+  {
+    "got" : "Pump",
+    "expected" : "none_of_these",
+    "tier" : "full_list",
+    "text" : "hiccups again",
+    "deciding" : "event_type",
+    "ok" : "yes"
+  },
+  {
+    "expected" : "feed.solids",
+    "ok" : "yes",
+    "deciding" : "solids_amount",
+    "got" : "Solids · some",
+    "tier" : "pick",
+    "text" : "she had some banana puree"
+  },
+  {
+    "deciding" : "event_type",
+    "ok" : "yes",
+    "expected" : "none_of_these",
+    "got" : "Pump",
+    "text" : "what time is the appointment",
+    "tier" : "full_list"
+  },
+  {
+    "got" : "Diaper",
+    "ok" : "yes",
+    "text" : "diaper change",
+    "tier" : "full_list",
+    "deciding" : "diaper_kind",
+    "expected" : "diaper"
+  },
+  {
+    "deciding" : "event_type",
+    "text" : "gave her a bottle of formula about fifteen minutes ago",
+    "tier" : "full_list",
+    "got" : "Pump",
+    "ok" : "no",
+    "expected" : "feed.bottle.start"
+  },
+  {
+    "got" : "Diaper · dry",
+    "tier" : "pick",
+    "text" : "diaper was dry",
+    "deciding" : "diaper_kind",
+    "ok" : "yes",
+    "expected" : "diaper"
+  },
+  {
+    "deciding" : "event_type",
+    "text" : "gave her a bottle of formula five minutes ago",
+    "expected" : "feed.bottle.start",
+    "got" : "Pump",
+    "ok" : "no",
+    "tier" : "full_list"
+  },
+  {
+    "expected" : "feed.bottle.finish",
+    "deciding" : "event_type",
+    "tier" : "pick",
+    "ok" : "yes",
+    "got" : "Finish bottle · drank ¼",
+    "text" : "all done, drank a quarter"
+  },
+  {
+    "tier" : "pick",
+    "got" : "Diaper · wet",
+    "expected" : "diaper",
+    "text" : "changed a wet one five minutes ago",
+    "deciding" : "event_type",
+    "ok" : "yes"
+  },
+  {
+    "expected" : "diaper",
+    "deciding" : "diaper_kind",
+    "ok" : "no",
+    "text" : "poop and pee",
+    "got" : "Diaper · dirty",
+    "tier" : "pick"
+  },
+  {
+    "text" : "bottle's done",
+    "expected" : "feed.bottle.finish",
+    "got" : "Finish bottle",
+    "tier" : "full_list",
+    "deciding" : "event_type",
+    "ok" : "yes"
+  },
+  {
+    "ok" : "yes",
+    "text" : "ate most of the cereal",
+    "expected" : "feed.solids",
+    "got" : "Solids · most",
+    "tier" : "pick",
+    "deciding" : "solids_amount"
+  },
+  {
+    "expected" : "feed.breast.switch",
+    "text" : "switched to the left",
+    "got" : "Switch side · left",
+    "tier" : "pick",
+    "deciding" : "side",
+    "ok" : "yes"
+  },
+  {
+    "tier" : "pick",
+    "deciding" : "diaper_kind",
+    "expected" : "diaper",
+    "got" : "Diaper · dry",
+    "text" : "diaper was dry an hour ago",
+    "ok" : "yes"
+  },
+  {
+    "got" : "Finish bottle · drank ¼",
+    "deciding" : "event_type",
+    "text" : "finished, quarter of the bottle left",
+    "tier" : "full_list",
+    "ok" : "no",
+    "expected" : "feed.bottle.finish"
+  },
+  {
+    "tier" : "pick",
+    "got" : "Diaper · dirty",
+    "ok" : "yes",
+    "deciding" : "event_type",
+    "text" : "big poop",
+    "expected" : "diaper"
+  },
+  {
+    "expected" : "feed.bottle.finish",
+    "ok" : "no",
+    "deciding" : "event_type",
+    "got" : "Pump",
+    "tier" : "full_list",
+    "text" : "finished, finished the whole thing half an hour ago"
+  },
+  {
+    "tier" : "full_list",
+    "text" : "giving him a bottle now",
+    "expected" : "feed.bottle.start",
+    "got" : "Start bottle",
+    "deciding" : "event_type",
+    "ok" : "yes"
+  },
+  {
+    "tier" : "full_list",
+    "ok" : "no",
+    "deciding" : "event_type",
+    "text" : "up from the nap",
+    "expected" : "sleep.end",
+    "got" : "Pump"
+  },
+  {
+    "ok" : "yes",
+    "deciding" : "event_type",
+    "got" : "Fell asleep",
+    "text" : "baby's sleeping about fifteen minutes ago",
+    "expected" : "sleep.start",
+    "tier" : "pick"
+  },
+  {
+    "deciding" : "side",
+    "ok" : "yes",
+    "expected" : "feed.breast.start",
+    "text" : "start feeding left side",
+    "got" : "Start breastfeeding · left",
+    "tier" : "pick"
+  },
+  {
+    "got" : "Pump",
+    "ok" : "yes",
+    "tier" : "full_list",
+    "text" : "temperature is 37.2",
+    "expected" : "none_of_these",
+    "deciding" : "event_type"
+  },
+  {
+    "tier" : "full_list",
+    "text" : "she's starting her bottle",
+    "got" : "Start bottle",
+    "deciding" : "event_type",
+    "expected" : "feed.bottle.start",
+    "ok" : "yes"
+  },
+  {
+    "text" : "swapped to left",
+    "got" : "Switch side · left",
+    "expected" : "feed.breast.switch",
+    "tier" : "pick",
+    "deciding" : "side",
+    "ok" : "yes"
+  },
+  {
+    "expected" : "sleep.end",
+    "ok" : "yes",
+    "text" : "she's up now",
+    "got" : "Woke up",
+    "tier" : "full_list",
+    "deciding" : "event_type"
+  },
+  {
+    "tier" : "pick",
+    "expected" : "diaper",
+    "got" : "Diaper · dirty",
+    "deciding" : "event_type",
+    "ok" : "yes",
+    "text" : "changed a dirty nappy half an hour ago"
+  },
+  {
+    "deciding" : "when",
+    "tier" : "pick",
+    "expected" : "feed.bottle.single",
+    "got" : "Bottle (one entry) · drank all",
+    "ok" : "yes",
+    "text" : "gave him a full bottle earlier"
+  },
+  {
+    "tier" : "pick",
+    "ok" : "yes",
+    "text" : "just pee",
+    "expected" : "diaper",
+    "deciding" : "event_type",
+    "got" : "Diaper · wet"
+  },
+  {
+    "text" : "started nursing on the left about fifteen minutes ago",
+    "expected" : "feed.breast.start",
+    "deciding" : "side",
+    "got" : "Start breastfeeding · left",
+    "ok" : "yes",
+    "tier" : "pick"
+  },
+  {
+    "deciding" : "side",
+    "ok" : "yes",
+    "got" : "Start breastfeeding · left",
+    "text" : "started nursing on the left an hour ago",
+    "tier" : "pick",
+    "expected" : "feed.breast.start"
+  },
+  {
+    "text" : "remember to buy more formula",
+    "deciding" : "event_type",
+    "tier" : "full_list",
+    "expected" : "none_of_these",
+    "got" : "Pump",
+    "ok" : "yes"
+  },
+  {
+    "deciding" : "event_type",
+    "got" : "Solids",
+    "text" : "the bath water was too cold",
+    "expected" : "none_of_these",
+    "ok" : "yes",
+    "tier" : "pick"
+  },
+  {
+    "expected" : "diaper",
+    "got" : "Diaper · wet",
+    "tier" : "pick",
+    "deciding" : "event_type",
+    "ok" : "yes",
+    "text" : "wet one again"
+  },
+  {
+    "tier" : "pick",
+    "expected" : "diaper",
+    "text" : "changed a dirty nappy",
+    "ok" : "yes",
+    "got" : "Diaper · dirty",
+    "deciding" : "event_type"
+  },
+  {
+    "deciding" : "side",
+    "got" : "Start breastfeeding · left",
+    "ok" : "yes",
+    "tier" : "pick",
+    "expected" : "feed.breast.start",
+    "text" : "latched on the left"
+  },
+  {
+    "got" : "Pump",
+    "tier" : "full_list",
+    "expected" : "none_of_these",
+    "deciding" : "event_type",
+    "ok" : "yes",
+    "text" : "she smiled for the first time"
+  },
+  {
+    "tier" : "full_list",
+    "ok" : "no",
+    "got" : "Start bottle",
+    "expected" : "sleep.start",
+    "deciding" : "event_type",
+    "text" : "he dozed off"
+  },
+  {
+    "got" : "Diaper · wet",
+    "deciding" : "diaper_kind",
+    "ok" : "yes",
+    "text" : "changed her diaper, it was wet",
+    "expected" : "diaper",
+    "tier" : "pick"
+  },
+  {
+    "deciding" : "event_type",
+    "got" : "Start bottle",
+    "ok" : "yes",
+    "text" : "okay starting the bottle",
+    "expected" : "feed.bottle.start",
+    "tier" : "full_list"
+  },
+  {
+    "tier" : "pick",
+    "text" : "pee diaper",
+    "expected" : "diaper",
+    "deciding" : "diaper_kind",
+    "ok" : "yes",
+    "got" : "Diaper · wet"
+  },
+  {
+    "tier" : "full_list",
+    "deciding" : "event_type",
+    "ok" : "no",
+    "text" : "all done, finished the whole thing",
+    "got" : "Pump",
+    "expected" : "feed.bottle.finish"
+  },
+  {
+    "text" : "wet diaper",
+    "deciding" : "diaper_kind",
+    "ok" : "yes",
+    "tier" : "pick",
+    "expected" : "diaper",
+    "got" : "Diaper · wet"
+  },
+  {
+    "deciding" : "event_type",
+    "tier" : "full_list",
+    "ok" : "no",
+    "text" : "napping now",
+    "expected" : "sleep.start",
+    "got" : "Pump"
+  },
+  {
+    "text" : "wet diaper about fifteen minutes ago",
+    "expected" : "diaper",
+    "got" : "Diaper · wet",
+    "tier" : "pick",
+    "deciding" : "diaper_kind",
+    "ok" : "yes"
+  },
+  {
+    "tier" : "full_list",
+    "deciding" : "event_type",
+    "text" : "began feeding him a bottle half an hour ago",
+    "expected" : "feed.bottle.start",
+    "ok" : "yes",
+    "got" : "Start bottle"
+  },
+  {
+    "text" : "wet diaper at 1:30 am",
+    "deciding" : "diaper_kind",
+    "got" : "Diaper · wet",
+    "ok" : "yes",
+    "expected" : "diaper",
+    "tier" : "pick"
+  },
+  {
+    "ok" : "yes",
+    "expected" : "feed.bottle.finish",
+    "deciding" : "event_type",
+    "got" : "Finish bottle · drank ¼",
+    "text" : "she only drank a quarter of it",
+    "tier" : "pick"
+  },
+  {
+    "text" : "starting breastfeeding left side",
+    "got" : "Start breastfeeding · left",
+    "deciding" : "side",
+    "ok" : "yes",
+    "tier" : "pick",
+    "expected" : "feed.breast.start"
+  },
+  {
+    "expected" : "none_of_these",
+    "got" : "Pump",
+    "text" : "we're out of wipes",
+    "tier" : "full_list",
+    "deciding" : "event_type",
+    "ok" : "yes"
+  },
+  {
+    "ok" : "yes",
+    "got" : "Diaper · wet",
+    "text" : "changed her diaper, it was wet",
+    "expected" : "diaper",
+    "tier" : "pick",
+    "deciding" : "diaper_kind"
+  },
+  {
+    "tier" : "full_list",
+    "deciding" : "event_type",
+    "expected" : "none_of_these",
+    "text" : "grandma is coming at noon",
+    "got" : "Pump",
+    "ok" : "yes"
+  },
+  {
+    "deciding" : "diaper_kind",
+    "ok" : "yes",
+    "tier" : "full_list",
+    "got" : "Diaper",
+    "expected" : "diaper",
+    "text" : "changed his diaper"
+  },
+  {
+    "deciding" : "event_type",
+    "text" : "need to wash the bottles",
+    "tier" : "full_list",
+    "expected" : "none_of_these",
+    "ok" : "yes",
+    "got" : "Pump"
+  },
+  {
+    "text" : "gave her a bottle of formula half an hour ago",
+    "got" : "Pump",
+    "expected" : "feed.bottle.start",
+    "tier" : "full_list",
+    "ok" : "no",
+    "deciding" : "event_type"
+  },
+  {
+    "tier" : "full_list",
+    "deciding" : "event_type",
+    "ok" : "yes",
+    "expected" : "none_of_these",
+    "text" : "call the pediatrician tomorrow",
+    "got" : "Pump"
+  },
+  {
+    "got" : "Finish bottle · drank all",
+    "deciding" : "event_type",
+    "text" : "drank the whole bottle",
+    "ok" : "yes",
+    "expected" : "feed.bottle.finish",
+    "tier" : "pick"
+  },
+  {
+    "expected" : "feed.breast.switch",
+    "tier" : "pick",
+    "deciding" : "side",
+    "ok" : "yes",
+    "got" : "Switch side · left",
+    "text" : "switching sides, now left"
+  },
+  {
+    "got" : "Finish bottle · drank ½",
+    "deciding" : "event_type",
+    "tier" : "pick",
+    "ok" : "yes",
+    "expected" : "feed.bottle.finish",
+    "text" : "she's done, drank half a bottle"
+  },
+  {
+    "text" : "she's nursing, left side",
+    "got" : "Start breastfeeding · left",
+    "deciding" : "event_type",
+    "ok" : "yes",
+    "expected" : "feed.breast.start",
+    "tier" : "full_list"
+  },
+  {
+    "expected" : "feed.bottle.start",
+    "deciding" : "event_type",
+    "text" : "began feeding him a bottle five minutes ago",
+    "tier" : "full_list",
+    "ok" : "yes",
+    "got" : "Start bottle"
+  },
+  {
+    "expected" : "sleep.start",
+    "tier" : "full_list",
+    "ok" : "no",
+    "deciding" : "event_type",
+    "got" : "Start bottle",
+    "text" : "she's out like a light"
+  },
+  {
+    "got" : "Start breastfeeding · left",
+    "deciding" : "side",
+    "text" : "started nursing on the left five minutes ago",
+    "ok" : "yes",
+    "tier" : "pick",
+    "expected" : "feed.breast.start"
+  },
+  {
+    "tier" : "pick",
+    "ok" : "yes",
+    "deciding" : "event_type",
+    "expected" : "feed.breast.switch",
+    "got" : "Switch side · right",
+    "text" : "switching sides, now right"
+  },
+  {
+    "deciding" : "event_type",
+    "ok" : "yes",
+    "tier" : "full_list",
+    "text" : "he sneezed a lot today",
+    "got" : "Pump",
+    "expected" : "none_of_these"
+  },
+  {
+    "expected" : "diaper",
+    "tier" : "pick",
+    "got" : "Diaper · dirty",
+    "deciding" : "event_type",
+    "ok" : "yes",
+    "text" : "ugh another poop"
+  },
+  {
+    "deciding" : "event_type",
+    "text" : "finished, half left five minutes ago",
+    "expected" : "feed.bottle.finish",
+    "ok" : "no",
+    "got" : "Pump · left",
+    "tier" : "full_list"
+  },
+  {
+    "ok" : "yes",
+    "text" : "started nursing on the left half an hour ago",
+    "got" : "Start breastfeeding · left",
+    "expected" : "feed.breast.start",
+    "tier" : "pick",
+    "deciding" : "side"
+  },
+  {
+    "tier" : "full_list",
+    "expected" : "feed.bottle.finish",
+    "ok" : "no",
+    "got" : "Pump · left",
+    "text" : "all done, half left",
+    "deciding" : "event_type"
+  },
+  {
+    "deciding" : "event_type",
+    "got" : "Start bottle",
+    "tier" : "full_list",
+    "text" : "began feeding him a bottle an hour ago",
+    "expected" : "feed.bottle.start",
+    "ok" : "yes"
+  },
+  {
+    "expected" : "pump",
+    "got" : "Pump · 60 ml, left",
+    "tier" : "pick",
+    "ok" : "yes",
+    "deciding" : "side",
+    "text" : "pumped the left side, 60 ml"
+  },
+  {
+    "expected" : "feed.solids",
+    "got" : "Solids · all",
+    "text" : "ate all of her oatmeal",
+    "tier" : "pick",
+    "deciding" : "solids_amount",
+    "ok" : "yes"
+  },
+  {
+    "expected" : "feed.bottle.start",
+    "ok" : "no",
+    "got" : "Pump",
+    "text" : "he's drinking now",
+    "deciding" : "event_type",
+    "tier" : "full_list"
+  },
+  {
+    "text" : "she's nursing, right side",
+    "tier" : "full_list",
+    "ok" : "yes",
+    "expected" : "feed.breast.start",
+    "deciding" : "event_type",
+    "got" : "Start breastfeeding · right"
+  },
+  {
+    "deciding" : "event_type",
+    "ok" : "yes",
+    "text" : "she's done, a quarter left",
+    "expected" : "feed.bottle.finish",
+    "tier" : "full_list",
+    "got" : "Finish bottle · drank ¾"
+  },
+  {
+    "text" : "gave her a bottle of formula an hour ago",
+    "tier" : "full_list",
+    "got" : "Pump",
+    "ok" : "no",
+    "expected" : "feed.bottle.start",
+    "deciding" : "event_type"
+  },
+  {
+    "expected" : "sleep.end",
+    "text" : "he woke from his nap",
+    "got" : "Woke up",
+    "tier" : "pick",
+    "deciding" : "event_type",
+    "ok" : "yes"
+  },
+  {
+    "deciding" : "event_type",
+    "text" : "baby's up",
+    "expected" : "sleep.end",
+    "got" : "Woke up",
+    "tier" : "full_list",
+    "ok" : "yes"
+  },
+  {
+    "expected" : "diaper",
+    "got" : "Diaper · dirty",
+    "text" : "big poop about fifteen minutes ago",
+    "tier" : "pick",
+    "ok" : "yes",
+    "deciding" : "event_type"
+  }
+]
