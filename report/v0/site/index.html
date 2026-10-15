@@ -285,7 +285,9 @@ footer { color: var(--muted); font-size: 13px; text-align: center; padding: 40px
   <div class="grid g3">
     <div class="card"><h3>Out of the app</h3><p style="color:var(--muted)">App Intents: start or finish a feed, finish a bottle with an amount, log a diaper by kind, sleep toggle, switch side, "what's next" (Siri speaks the line), and speak-a-log-entry for the Action Button. The same intents power interactive widget buttons and Live Activity buttons.</p></div>
     <div class="card"><h3>Widgets &amp; Live Activity</h3><p style="color:var(--muted)">Home and lock-screen widgets show the line, with Feed / Wet / Dirty buttons. During an open feed or sleep, a Live Activity shows a running timer with Finish, Switch side and Woke up.</p></div>
-    <div class="card"><h3>Watch</h3><p style="color:var(--muted)">Status from the phone's application context; Feed, Diaper (kind picker), Sleep and Undo as messages; Speak records 16 kHz audio and transfers it to the phone, which transcribes and decides with the capture time.</p></div>
+    <div class="card"><h3>Watch</h3><p style="color:var(--muted)">Status from the phone's application context; Feed, Diaper (kind picker), Sleep and Undo as messages; Speak records 16 kHz audio and transfers it to the phone, which transcribes and decides with the capture time.</p>
+      <img src="screenshots/watch-home.png" alt="Watch app" style="width:150px;border-radius:28px;border:5px solid #0b0a14;margin-top:6px">
+      <p style="color:var(--muted);font-size:12.5px">Running in a paired watch simulator. The status line had not arrived from the phone (WatchConnectivity context) when captured, so this is unverified.</p></div>
   </div>
 </section>
 
@@ -393,7 +395,7 @@ footer { color: var(--muted); font-size: 13px; text-align: center; padding: 40px
     <div class="card"><h3><span class="pill warn">built, not verified</span></h3><ul style="color:var(--muted)">
       <li>Real microphone → WhisperKit on a device (the simulator has no mic input in automation)</li>
       <li>Laya on an iPhone GPU (Metal) and the 1.5 s latency target on iPhone 13</li>
-      <li>Widgets, Live Activity, Siri phrases and the watch app at runtime (they compile; not screenshotted)</li>
+      <li>Widgets, Live Activity and Siri phrases at runtime (they compile; not screenshotted). The watch app launches in the simulator, but phone↔watch messaging is unverified</li>
       <li>Glasses on hardware: audio frames, ring source tagging, the Even app's network whitelist</li>
       <li>Google / Apple sign-in (needs the hosted project), the StoreKit sheet (needs Xcode), real push</li>
     </ul></div>
