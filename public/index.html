@@ -668,15 +668,26 @@
     </div>
   </div>
   <script src="meowtrix-version.js"></script>
-  <script src="/vendor/feedbackkit-web/feedbackkit.iife.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/feedbackkit-web/dist/feedbackkit.iife.js'"></script>
+  <script src="/vendor/feedbackkit-web/feedbackkit.iife.js"></script>
+  <script>window.FeedbackKit || document.write('<script src="https://cdn.jsdelivr.net/npm/feedbackkit-web/dist/feedbackkit.iife.js"><\/script>')</script>
   <script src="feedback.js"></script>
-  <!-- xterm is served from node_modules (no CDN round-trip, works offline); the CDN is only a fallback. -->
-  <script src="/vendor/xterm/lib/xterm.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js'"></script>
-  <script src="/vendor/xterm-addon-fit/xterm-addon-fit.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js'"></script>
-  <script src="/vendor/xterm-addon-search/addon-search.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/@xterm/addon-search@0.15.0/lib/addon-search.js'"></script>
-  <script src="/vendor/xterm-addon-web-links/addon-web-links.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/@xterm/addon-web-links@0.12.0/lib/addon-web-links.min.js'"></script>
-  <script src="/vendor/xterm-addon-webgl/xterm-addon-webgl.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/xterm-addon-webgl@0.16.0/lib/xterm-addon-webgl.js'"></script>
-  <script src="/vendor/marked/marked.umd.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js'"></script>
+  <!-- Vendor libs are served from node_modules (no CDN round-trip, works offline); the CDN is only a fallback.
+       The fallback must be an inline `window.X || document.write(…)` guard, not `onerror="this.src=…"`: a
+       script element never re-runs after its src changes, so that form silently leaves the global undefined.
+       It matters whenever the server lags public/ (e.g. a pulled-but-not-restarted server without the
+       /vendor routes), and without xterm no terminal can open. -->
+  <script src="/vendor/xterm/lib/xterm.js"></script>
+  <script>window.Terminal || document.write('<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"><\/script>')</script>
+  <script src="/vendor/xterm-addon-fit/xterm-addon-fit.js"></script>
+  <script>window.FitAddon || document.write('<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"><\/script>')</script>
+  <script src="/vendor/xterm-addon-search/addon-search.js"></script>
+  <script>window.SearchAddon || document.write('<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-search@0.15.0/lib/addon-search.js"><\/script>')</script>
+  <script src="/vendor/xterm-addon-web-links/addon-web-links.js"></script>
+  <script>window.WebLinksAddon || document.write('<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-web-links@0.12.0/lib/addon-web-links.min.js"><\/script>')</script>
+  <script src="/vendor/xterm-addon-webgl/xterm-addon-webgl.js"></script>
+  <script>window.WebglAddon || document.write('<script src="https://cdn.jsdelivr.net/npm/xterm-addon-webgl@0.16.0/lib/xterm-addon-webgl.js"><\/script>')</script>
+  <script src="/vendor/marked/marked.umd.js"></script>
+  <script>window.marked || document.write('<script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"><\/script>')</script>
   <script src="demo.js"></script>
   <script src="ws.js"></script>
   <script src="agent.js"></script>
