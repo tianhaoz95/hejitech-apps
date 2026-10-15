@@ -126,6 +126,56 @@ public struct SettingsView: View {
                 }
 
                 Section(
+                    header: Text("iPhone Action Button & Controls"),
+                    footer: Text("Set your iPhone Action Button or Control Center to \"Start Capture\" to instantly record voice notes hands-free from anywhere.")
+                ) {
+                    NavigationLink {
+                        ActionButtonGuideView()
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "button.programmable")
+                                .font(.title3)
+                                .foregroundStyle(Color.accentColor)
+                                .frame(width: 24)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Configure Action Button")
+                                    .foregroundStyle(.primary)
+                                Text("Tap for step-by-step iOS setup guide")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+
+                    Button {
+                        if let url = URL(string: UIApplication.openSettingsURLString) {
+                            UIApplication.shared.open(url)
+                        }
+                    } label: {
+                        HStack {
+                            Label("Open iPhone Settings", systemImage: "gearshape")
+                            Spacer()
+                            Image(systemName: "arrow.up.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    Button {
+                        dismiss()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            NotificationCenter.default.post(
+                                name: .voxbriefNavigate,
+                                object: nil,
+                                userInfo: ["screen": "record", "source": "action_button_test"]
+                            )
+                        }
+                    } label: {
+                        Label("Test Capture Trigger", systemImage: "play.circle")
+                    }
+                }
+
+                Section(
                     header: Text("Voxbrief Keyboard"),
                     footer: Text(keyboardStatusFooter)
                 ) {

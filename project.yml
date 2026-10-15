@@ -105,6 +105,7 @@ targets:
       - framework: WatchConnectivity.framework
       - framework: ActivityKit.framework
       - framework: EventKit.framework
+      - framework: AppIntents.framework
     scheme:
       testTargets:
         - VoxbriefTests
@@ -202,6 +203,7 @@ targets:
     frameworks:
       - framework: WidgetKit.framework
       - framework: ActivityKit.framework
+      - framework: AppIntents.framework
 
   VoxbriefWatchWidgets:
     type: app-extension

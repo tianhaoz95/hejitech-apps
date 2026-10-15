@@ -12,6 +12,7 @@ public enum WhatsNewVisualization: String, Sendable, CaseIterable {
     case pipeline = "pipeline"
     case vwaveMark = "vwaveMark"
     case complications = "complications"
+    case actionButton = "actionButton"
 }
 
 public struct WhatsNewItem: Identifiable, Sendable {
@@ -96,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.25.2"
+    public static let currentVersion = "1.26.0"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -105,6 +106,75 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.26.0",
+            date: "October 2026",
+            tagline: "iPhone Action Button Capture & iOS Controls",
+            features: [
+                WhatsNewItem(
+                    icon: "button.programmable",
+                    tint: .orange,
+                    title: "iPhone Action Button Capture",
+                    description: "Trigger instant hands-free audio capture right from your iPhone's physical Action Button.",
+                    detailedDescription: "Seamlessly map your iPhone 15 Pro, iPhone 16, or compatible device's Action Button to Voxbrief. One press launches instant audio capture and initiates on-device ASR and LLM processing without navigating screens.",
+                    highlights: [
+                        "Dedicated Action Button integration configurable in iOS Settings",
+                        "Instantly launches audio capture with live audio level visualization",
+                        "Seamless transition into on-device WhisperKit and LLM cleanup pipeline",
+                        "Interactive in-app setup guide with direct links to iOS Settings"
+                    ],
+                    visualization: .actionButton
+                ),
+                WhatsNewItem(
+                    icon: "slider.horizontal.3",
+                    tint: .blue,
+                    title: "iOS 18 Controls & Lock Screen",
+                    description: "Exposed Control Center widgets for Start Capture, Quick Memo, and direct Note Vault access.",
+                    detailedDescription: "Add bespoke Voxbrief controls to your iOS 18 Control Center, Lock Screen quick-actions, or Action Button menu. Access Start Capture, Quick Memo dictation, and Vault navigation with a single tap.",
+                    highlights: [
+                        "iOS 18 ControlWidget support for Control Center & Lock Screen",
+                        "Three tailored controls: Start Capture, Quick Memo, and Open Vault",
+                        "Zero-latency launching via native AppIntents and OpenURL intents"
+                    ],
+                    visualization: .waveform
+                ),
+                WhatsNewItem(
+                    icon: "mic.badge.plus",
+                    tint: .purple,
+                    title: "Siri & App Shortcuts",
+                    description: "Hands-free voice capture via Siri phrases and full Shortcuts app integration.",
+                    detailedDescription: "Use native Siri voice commands like 'Start capture in Voxbrief' or build custom multi-app automations with exposed AppIntents.",
+                    highlights: [
+                        "Native AppShortcutsProvider with zero-configuration Siri phrases",
+                        "Shortcuts app actions for automated recording and transcription",
+                        "Full backward-compatibility across iOS 17 and iOS 18"
+                    ]
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "gearshape.fill",
+                    tint: .gray,
+                    title: "Action Button Setup & Testing in Settings",
+                    description: "Dedicated Settings section with step-by-step setup guide and instant trigger test.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "link",
+                    tint: .teal,
+                    title: "Deep Link Source Attribution",
+                    description: "Enhanced deep link ingestion tracking launch source (Action Button, Control Center, Siri).",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "speedometer",
+                    tint: .green,
+                    title: "Optimized Capture Launch Latency",
+                    description: "Streamlined auto-record initiation in QuickRecordSheet for instantaneous recording feedback.",
+                    kind: .improvement
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.25.2",
             date: "October 2026",
@@ -1535,6 +1605,7 @@ public struct WhatsNewVisualizationView: View {
     @State private var watchTabSelection: Int = 0
     @State private var pipelineActiveStage: Int = 1
     @State private var selectedThemeIndex: Int = 0
+    @State private var actionButtonActive: Bool = false
 
     public init(visualization: WhatsNewVisualization, tint: Color = .blue) {
         self.visualization = visualization
@@ -1554,6 +1625,8 @@ public struct WhatsNewVisualizationView: View {
                 vwaveMarkVisualization
             case .complications:
                 complicationsVisualization
+            case .actionButton:
+                actionButtonVisualization
             }
         }
         .padding(16)
@@ -1956,6 +2029,92 @@ public struct WhatsNewVisualizationView: View {
             Text("One-tap memo capture from any watch face slot via deep link.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    // MARK: - Action Button Visualization
+    private var actionButtonVisualization: some View {
+        VStack(spacing: 14) {
+            Text("Action Button Quick Capture")
+                .font(.caption.bold())
+                .foregroundStyle(.secondary)
+
+            ZStack {
+                // Phone Outline
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .stroke(Color.primary.opacity(0.15), lineWidth: 2)
+                    .frame(width: 140, height: 120)
+                    .background(Color.black.opacity(0.85), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+
+                // Left Edge Action Button Indicator
+                HStack {
+                    VStack {
+                        RoundedRectangle(cornerRadius: 2, style: .continuous)
+                            .fill(actionButtonActive ? Color.orange : Color.secondary.opacity(0.6))
+                            .frame(width: 4, height: 26)
+                            .scaleEffect(actionButtonActive ? 1.25 : 1.0)
+                            .shadow(color: actionButtonActive ? Color.orange.opacity(0.8) : Color.clear, radius: 4)
+                        Spacer()
+                    }
+                    .padding(.top, 24)
+                    .padding(.leading, -2)
+
+                    Spacer()
+                }
+                .frame(width: 140, height: 120)
+
+                // Phone Display Content
+                VStack(spacing: 8) {
+                    if actionButtonActive {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(Color.red)
+                                .frame(width: 6, height: 6)
+                            Text("Recording…")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(.red)
+                        }
+
+                        HStack(spacing: 3) {
+                            ForEach(0..<8, id: \.self) { i in
+                                RoundedRectangle(cornerRadius: 1.5)
+                                    .fill(Color.orange)
+                                    .frame(width: 3, height: CGFloat([12, 22, 16, 28, 20, 14, 24, 18][i]))
+                            }
+                        }
+                        .frame(height: 30)
+
+                        Text("Stage 1 WhisperKit Ready")
+                            .font(.system(size: 8, weight: .medium))
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Image(systemName: "button.programmable")
+                            .font(.system(size: 24))
+                            .foregroundStyle(.orange)
+
+                        Text("Press Action Button")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(.white)
+                    }
+                }
+            }
+
+            Button {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                    actionButtonActive.toggle()
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: actionButtonActive ? "stop.fill" : "play.fill")
+                    Text(actionButtonActive ? "Stop Simulation" : "Simulate Press & Hold")
+                }
+                .font(.caption.weight(.semibold))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 6)
+                .background(Color.orange.opacity(0.15), in: Capsule())
+                .foregroundStyle(Color.orange)
+            }
+            .buttonStyle(.plain)
         }
     }
 }

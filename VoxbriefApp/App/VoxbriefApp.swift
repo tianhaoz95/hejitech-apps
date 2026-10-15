@@ -88,10 +88,14 @@ private struct RootView: View {
                     userInfo: ["screen": "keyboardRecord"]
                 )
             } else {
+                var userInfo: [String: String] = ["screen": "record"]
+                if let source = params["source"] {
+                    userInfo["source"] = source
+                }
                 NotificationCenter.default.post(
                     name: .voxbriefNavigate,
                     object: nil,
-                    userInfo: ["screen": "record"]
+                    userInfo: userInfo
                 )
             }
         } else if host == "navigate" {

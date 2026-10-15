@@ -166,5 +166,12 @@ private extension VoiceNoteActivityAttributes.Phase {
 struct VoxbriefWidgetBundle: WidgetBundle {
     var body: some Widget {
         VoxbriefLiveActivity()
+        #if canImport(WidgetKit)
+        if #available(iOS 18.0, *) {
+            StartCaptureControl()
+            QuickMemoControl()
+            OpenVoxbriefControl()
+        }
+        #endif
     }
 }
