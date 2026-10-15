@@ -6,9 +6,9 @@
 // sheet on one device marks it seen everywhere.
 //
 // Shown automatically once per upgrade, only to the active session (an
-// inactive client sits behind the overlay). With no `whatsNewSeen` yet (first
-// run, or upgrading from a version before this sheet existed) only the current
-// release's notes are shown. Reopen any time from the palette or Settings → About.
+// inactive client sits behind the overlay). With no `whatsNewSeen` yet
+// (upgrading from a version before this sheet existed) only the newest
+// release's notes are shown; a fresh install starts with it set (server.js). Reopen any time from the palette or Settings → About.
 
 let _whatsNewData = null;
 
@@ -46,9 +46,10 @@ async function maybeShowWhatsNew() {
   if (seen && whatsNewCompare(seen, current) >= 0) return;
   let data;
   try { data = await loadWhatsNew(); } catch { return; }
-  const unseen = data.releases.filter(r =>
-    whatsNewCompare(r.version, current) <= 0 &&
-    (seen ? whatsNewCompare(r.version, seen) > 0 : whatsNewCompare(r.version, current) === 0));
+  // Releases are newest first. Without a seen version, show just the newest
+  // release up to the running one (a patch release may have no notes of its own).
+  const released = data.releases.filter(r => whatsNewCompare(r.version, current) <= 0);
+  const unseen = seen ? released.filter(r => whatsNewCompare(r.version, seen) > 0) : released.slice(0, 1);
   if (!unseen.length) { markWhatsNewSeen(); return; }
   openWhatsNew({ releases: unseen });
 }
