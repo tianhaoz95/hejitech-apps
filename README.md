@@ -35,6 +35,8 @@ open ios/WeeHours.xcodeproj         # run the "App" scheme on an iPhone simulato
 
 Sign in with `parent1@example.com` / `newborn-dev` (or `parent2@…`). Both accounts belong to the seeded household and share half a day of log.
 
+**No backend needed to try it:** tap *Use without an account*. The household then lives only on the phone, and logging, voice (bundled models), status, timeline, reminders, widgets, Siri and the watch all work. *Settings → Sign in to sync and share* later uploads the log, either as a new household or into your partner's with an invite code. Partner sync, the glasses relay and MCP need an account.
+
 - **Bundled models.** `scripts/fetch-models.sh` (run by `dev.sh`) puts Laya (~450 MB) and WhisperKit base.en (~150 MB) into `ios/App/Models`, which the app ships, so voice works offline right after install. Without them the app falls back to downloading. They are git-ignored; before the App Store, consider Apple-hosted Background Assets to keep the binary small and update the model without an app update.
 - **Voice in the simulator.** Type into "Or type…" on the home screen; it runs the same pipeline as speech. With the bundled models, the default *On-device Laya* runs in the simulator on the CPU. You can also run `llama-server -m Laya-Q8_0.gguf --port 8089` and pick *Settings → Voice → Laya on Mac*.
 - **Glasses.** `scripts/glasses-sim.sh` opens the official Even Hub simulator, signed in. `scripts/glasses-sim.sh --e2e` drives the simulator through its automation API, checks the backend and saves HUD screenshots.

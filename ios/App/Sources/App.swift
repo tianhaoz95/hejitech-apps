@@ -151,6 +151,16 @@ struct SignInView: View {
                     Button("Create account") { Task { await model.signIn(email: email, password: password, create: true) } }
                         .buttonStyle(.bordered)
                 }
+                Divider().padding(.vertical, 4)
+                Button {
+                    model.useWithoutAccount()
+                } label: {
+                    Label("Use without an account", systemImage: "iphone").frame(maxWidth: .infinity, minHeight: 40)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("localOnly")
+                Text("Everything stays on this iPhone: logging, voice, reminders, widgets and the watch. Sign in later to sync with your partner; your log comes with you.")
+                    .font(.footnote).foregroundStyle(.secondary)
                 DisclosureGroup("Server", isExpanded: $showServer) {
                     TextField("Supabase URL", text: $model.backendURL).textFieldStyle(.roundedBorder).textInputAutocapitalization(.never)
                 }
@@ -203,10 +213,12 @@ struct HouseholdSetupView: View {
                     }
                     .disabled(name.isEmpty)
                 }
+                if !model.localOnly {
                 Section("Or join your partner") {
                     TextField("Invite code", text: $code).textInputAutocapitalization(.characters)
                     Button("Join") { Task { await model.join(code: code, displayName: name.isEmpty ? "Parent" : name) } }
                         .disabled(code.count < 6 || name.isEmpty)
+                }
                 }
             }
             .navigationTitle("Set up")

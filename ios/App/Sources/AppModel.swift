@@ -46,7 +46,21 @@ final class AppModel: ObservableObject {
     private(set) var service: LogService?
     private var watch: WatchBridge?
 
-    var me: UUID? { backend.session?.userId }
+    /// Local-only mode: the household lives on this phone with no account. Everything that only
+    /// needs the phone works; signing in later uploads the log (`attachAccount`).
+    @Published var localOnly = SharedStore.defaults.bool(forKey: "localOnly") {
+        didSet { SharedStore.defaults.set(localOnly, forKey: "localOnly") }
+    }
+
+    /// A stable caregiver id for this phone while there is no account.
+    var localUserId: UUID {
+        if let s = SharedStore.defaults.string(forKey: "localUserId"), let id = UUID(uuidString: s) { return id }
+        let id = UUID()
+        SharedStore.defaults.set(id.uuidString, forKey: "localUserId")
+        return id
+    }
+
+    var me: UUID? { localOnly ? localUserId : backend.session?.userId }
     var decisionBackend: DecisionBackend {
         get { DecisionBackend(rawValue: decisionBackendRaw) ?? .keywords }
         set { decisionBackendRaw = newValue.rawValue; Task { await rebuildInterpreter() } }
@@ -77,6 +91,18 @@ final class AppModel: ObservableObject {
         if backend.session == nil, let email = UserDefaults.standard.string(forKey: "autoSignIn") {
             _ = try? await backend.signIn(email: email, password: UserDefaults.standard.string(forKey: "autoPassword") ?? "newborn-dev")
         }
+        if let baby = UserDefaults.standard.string(forKey: "localSetup"), SharedStore.household == nil {
+            localOnly = true   // automation: `-localSetup Mia` sets up a local-only household
+            await createHousehold(Household(babyName: baby, birthDate: Date().addingTimeInterval(-21 * 86400)), displayName: "Alex")
+            return
+        }
+        if localOnly {
+            if let h = SharedStore.household { await enter(h) } else { phase = .needsHousehold }
+            if let email = UserDefaults.standard.string(forKey: "attachAccount") {   // automation
+                await attachAccount(email: email, password: "newborn-dev", create: true, inviteCode: nil)
+            }
+            return
+        }
         if backend.session == nil { phase = .signedOut; return }
         if let h = SharedStore.household, SharedStore.me == backend.session?.userId {
             await enter(h)
@@ -97,12 +123,12 @@ final class AppModel: ObservableObject {
     private func enter(_ h: Household) async {
         household = h
         SharedStore.household = h
-        SharedStore.me = backend.session?.userId
-        guard let me = backend.session?.userId else { return }
+        SharedStore.me = me
+        guard let me else { return }
         do {
             let s = LogService(store: try SharedStore.store(), household: h, me: me,
                                interpreter: VoiceInterpreter(model: models.model(for: decisionBackend, devServer: devServer), calibration: .bundled),
-                               transcriber: transcriber, backend: backend)
+                               transcriber: transcriber, backend: localOnly ? nil : backend)
             service = s
             phase = .ready
             prewarmModels()
@@ -113,7 +139,7 @@ final class AppModel: ObservableObject {
             }
             if !UserDefaults.standard.bool(forKey: "skipPermissions") { await ReminderScheduler.requestPermission() }
             await billing.load()
-            entitlement = try? await backend.fetchEntitlement()
+            entitlement = localOnly ? localEntitlement : ((try? await backend.fetchEntitlement()) ?? localEntitlement)
         } catch {
             self.error = error.localizedDescription
         }
@@ -167,10 +193,36 @@ final class AppModel: ObservableObject {
         backend.signOut()
         SharedStore.household = nil
         service = nil
+        localOnly = false
         phase = .signedOut
     }
 
+    /// "Use without an account": set up the household on this phone only.
+    func useWithoutAccount() {
+        localOnly = true
+        phase = .needsHousehold
+    }
+
+    /// Trial and purchases while local-only (no server to record them).
+    var localEntitlement: Entitlement {
+        get {
+            if let d = SharedStore.defaults.data(forKey: "entitlement"), let e = try? LogCoding.decoder.decode(Entitlement.self, from: d) { return e }
+            let e = Entitlement(trialStartedAt: Date())
+            SharedStore.defaults.set(try? LogCoding.encoder.encode(e), forKey: "entitlement")
+            return e
+        }
+        set { SharedStore.defaults.set(try? LogCoding.encoder.encode(newValue), forKey: "entitlement") }
+    }
+
     func createHousehold(_ h: Household, displayName: String) async {
+        if localOnly {
+            var h = h
+            h.caregivers = [Caregiver(id: localUserId, name: displayName)]
+            SharedStore.defaults.set(displayName, forKey: "displayName")
+            _ = localEntitlement   // starts the trial
+            await enter(h)
+            return
+        }
         do {
             var h = h
             h.caregivers = [Caregiver(id: backend.session!.userId, name: displayName)]
@@ -190,15 +242,70 @@ final class AppModel: ObservableObject {
         do { return try await backend.createInvite() } catch { self.error = error.localizedDescription; return nil }
     }
 
+    /// Saved on the phone first; the server copy is retried on the next sync when offline.
     func save(_ h: Household) async {
         household = h
         SharedStore.household = h
         await service?.setHousehold(h)
         await refresh()
-        do { try await backend.saveSettings(h) } catch { self.error = error.localizedDescription }
+        guard !localOnly else { return }
+        do {
+            try await backend.saveSettings(h)
+            SharedStore.defaults.set(false, forKey: "settingsPending")
+        } catch {
+            SharedStore.defaults.set(true, forKey: "settingsPending")
+            syncError = "Settings saved on this phone; they'll sync when you're online."
+        }
+    }
+
+    /// Sign in (or create an account) and move the local log into a household on the server:
+    /// either a new household made from this one, or your partner's (with an invite code).
+    /// Entries never left the phone, so they are re-homed before their first upload.
+    func attachAccount(email: String, password: String, create: Bool, inviteCode: String?) async {
+        guard localOnly, let service else { return }
+        do {
+            backend = makeBackend()
+            let session = create ? try await backend.signUp(email: email, password: password) : try await backend.signIn(email: email, password: password)
+            let name = SharedStore.defaults.string(forKey: "displayName") ?? "Parent"
+            var target: Household
+            if let code = inviteCode, !code.isEmpty {
+                try await backend.joinHousehold(code: code, displayName: name)
+                guard let joined = try await backend.myHousehold() else { throw SupabaseClientError.noHousehold }
+                target = joined
+            } else if let existing = try await backend.myHousehold() {
+                target = existing      // this account already has a household: merge into it
+            } else {
+                var h = household
+                h.caregivers = [Caregiver(id: session.userId, name: name)]
+                try await backend.createHousehold(h, displayName: name)
+                target = try await backend.myHousehold() ?? h
+            }
+            try service.store.rehome(household: target.id, baby: target.babyId, caregiver: (localUserId, session.userId))
+            if let plan = localEntitlement.plan {
+                try? await backend.recordPurchase(plan: plan, expiresAt: localEntitlement.expiresAt)
+            }
+            localOnly = false
+            self.service = nil
+            await enter(target)
+            await syncNow()
+            toast = Toast(text: "Signed in · your log is syncing", undo: nil)
+        } catch { self.error = error.localizedDescription }
+    }
+
+    enum SupabaseClientError: Error, LocalizedError {
+        case noHousehold
+        var errorDescription: String? { "That invite didn't lead to a household." }
     }
 
     func deleteAllData() async {
+        if localOnly {
+            try? service?.store.deleteAll()
+            SharedStore.household = nil
+            service = nil
+            localOnly = false
+            phase = .signedOut
+            return
+        }
         do {
             try await backend.deleteHouseholdData()
             try service?.store.deleteAll()
@@ -224,7 +331,10 @@ final class AppModel: ObservableObject {
     }
 
     func syncNow() async {
-        guard let service else { return }
+        guard let service, !localOnly else { await refresh(); return }
+        if SharedStore.defaults.bool(forKey: "settingsPending"), (try? await backend.saveSettings(household)) != nil {
+            SharedStore.defaults.set(false, forKey: "settingsPending")
+        }
         do {
             try await service.sync()
             lastSync = Date()
@@ -359,6 +469,14 @@ final class AppModel: ObservableObject {
     func buy(_ product: Product) async {
         do {
             if let (plan, expires) = try await billing.purchase(product) {
+                if localOnly {
+                    var e = localEntitlement
+                    e.plan = plan
+                    e.expiresAt = expires
+                    localEntitlement = e
+                    entitlement = e
+                    return
+                }
                 try await backend.recordPurchase(plan: plan, expiresAt: expires)
                 entitlement = try await backend.fetchEntitlement()
             }
@@ -367,6 +485,15 @@ final class AppModel: ObservableObject {
 
     func buyDummy(_ plan: Plan) async {
         let days = DummyStore.plans.first { $0.plan == plan }?.days
+        if localOnly {
+            var e = localEntitlement
+            e.plan = plan
+            e.expiresAt = days.map { Date().addingTimeInterval(Double($0) * 86400) }
+            localEntitlement = e
+            entitlement = e
+            toast = Toast(text: "Purchased \(plan.rawValue) (dummy store)", undo: nil)
+            return
+        }
         do {
             try await backend.recordPurchase(plan: plan, expiresAt: days.map { Date().addingTimeInterval(Double($0) * 86400) })
             entitlement = try await backend.fetchEntitlement()

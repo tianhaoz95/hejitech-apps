@@ -55,6 +55,9 @@ struct SettingsView: View {
                 }
                 Section("Household") {
                     ForEach(model.household.caregivers) { c in Label(c.name, systemImage: c.id == model.me ? "person.fill" : "person") }
+                    if model.localOnly {
+                        Text("Sign in to invite your partner.").font(.footnote).foregroundStyle(.secondary)
+                    } else {
                     Button("Invite a caregiver") { Task { invite = await model.invite() } }
                     if let invite {
                         VStack(spacing: 8) {
@@ -63,6 +66,7 @@ struct SettingsView: View {
                             Text("Enter this code in the app on their phone. Valid for 7 days.").font(.caption).foregroundStyle(.secondary)
                         }
                         .frame(maxWidth: .infinity)
+                    }
                     }
                 }
                 Section("Voice") {
@@ -75,13 +79,24 @@ struct SettingsView: View {
                     }
                 }
                 Section {
-                    NavigationLink { AgentsView() } label: { Label("AI agents (MCP)", systemImage: "sparkles") }
+                    if !model.localOnly {
+                        NavigationLink { AgentsView() } label: { Label("AI agents (MCP)", systemImage: "sparkles") }
+                    }
                     if let url = model.exportCSV() {
                         ShareLink(item: url) { Label("Export CSV", systemImage: "square.and.arrow.up") }
                     }
                 } footer: {
                     Text("The app records facts. Ask the assistant you already use to analyze them through MCP.")
                 }
+                if model.localOnly {
+                    Section {
+                        LabeledContent("Account", value: "This iPhone only")
+                        NavigationLink { AttachAccountView() } label: { Label("Sign in to sync and share", systemImage: "person.crop.circle.badge.plus") }
+                        Button("Erase this phone's log", role: .destructive) { confirmDelete = true }
+                    } header: { Text("Account") } footer: {
+                        Text("Your partner's phone, the glasses and AI agents need an account. Signing in uploads everything logged here.")
+                    }
+                } else {
                 Section("Account") {
                     if let email = model.email { LabeledContent("Signed in", value: email) }
                     if let last = model.lastSync { LabeledContent("Last sync", value: last.formatted(date: .omitted, time: .standard)) }
@@ -89,6 +104,7 @@ struct SettingsView: View {
                     Button("Sync now") { Task { await model.syncNow() } }
                     Button("Sign out") { model.signOut() }
                     Button("Delete all household data", role: .destructive) { confirmDelete = true }
+                }
                 }
             }
             .navigationTitle("Settings")
@@ -281,4 +297,47 @@ enum DummyStore {
         Item(plan: .yearly, name: "Yearly", detail: "Everything in Plus, billed yearly.", price: "$39.99", days: 365),
         Item(plan: .lifetime, name: "Lifetime", detail: "Everything, forever. One purchase for the household.", price: "$79.99", days: nil),
     ]
+}
+
+/// Moves a local-only household onto an account: a new household made from this one, or the
+/// partner's household if you have an invite code.
+struct AttachAccountView: View {
+    @EnvironmentObject var model: AppModel
+    @State private var email = ""
+    @State private var password = ""
+    @State private var create = true
+    @State private var code = ""
+    @State private var working = false
+
+    var body: some View {
+        Form {
+            Section {
+                Picker("", selection: $create) {
+                    Text("New account").tag(true)
+                    Text("I have one").tag(false)
+                }
+                .pickerStyle(.segmented)
+                TextField("Email", text: $email).textContentType(.emailAddress).keyboardType(.emailAddress).textInputAutocapitalization(.never)
+                SecureField("Password", text: $password)
+            }
+            Section {
+                TextField("Partner's invite code (optional)", text: $code).textInputAutocapitalization(.characters)
+            } footer: {
+                Text("With a code, this phone's entries join your partner's log. Without one, your household is created on the server as it is now.")
+            }
+            Section {
+                Button {
+                    working = true
+                    Task {
+                        await model.attachAccount(email: email, password: password, create: create, inviteCode: code.trimmingCharacters(in: .whitespaces))
+                        working = false
+                    }
+                } label: {
+                    HStack { Text("Sign in and upload my log"); if working { Spacer(); ProgressView() } }
+                }
+                .disabled(email.isEmpty || password.count < 6 || working)
+            }
+        }
+        .navigationTitle("Sync and share")
+    }
 }

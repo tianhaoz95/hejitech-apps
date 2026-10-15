@@ -358,6 +358,36 @@ final class ServiceTests: XCTestCase {
         XCTAssertEqual(try store.value("seq"), "42")
     }
 
+    func testRehomeMovesOnlyUnsyncedRows() throws {
+        let store = try SQLiteLogStore.inMemory()
+        let local = UUID(), account = UUID(), newHousehold = UUID(), newBaby = UUID()
+        let synced = LogEvent(householdId: H, babyId: B, type: "diaper", fields: ["kind": .string("wet")], occurredAt: Date(), loggedBy: local,
+                              provenance: Provenance(surface: .phone, input: .tap))
+        let pending = LogEvent(householdId: H, babyId: B, type: "duty", fields: ["caregiver": .string(local.uuidString)], occurredAt: Date(), loggedBy: local,
+                               provenance: Provenance(surface: .phone, input: .tap))
+        try store.append(synced)
+        try store.markSynced([synced.id])
+        try store.append(pending)
+        try store.rehome(household: newHousehold, baby: newBaby, caregiver: (local, account))
+        let all = Dictionary(uniqueKeysWithValues: try store.events().map { ($0.id, $0) })
+        XCTAssertEqual(all[synced.id]?.householdId, H)
+        XCTAssertEqual(all[pending.id]?.householdId, newHousehold)
+        XCTAssertEqual(all[pending.id]?.babyId, newBaby)
+        XCTAssertEqual(all[pending.id]?.loggedBy, account)
+        XCTAssertEqual(all[pending.id]?.string("caregiver"), account.uuidString)
+    }
+
+    func testServiceWithoutBackendWorksOffline() async throws {
+        let s = try service()                       // no backend: local-only mode
+        try await s.log(type: "diaper", fields: ["kind": .string("wet")], provenance: Provenance(surface: .phone, input: .tap))
+        let report = try await s.sync()             // a no-op, not an error
+        XCTAssertEqual(report.pushed, 0)
+        let processed = try await s.processRemoteCaptures()
+        XCTAssertEqual(processed, 0)
+        let line = try await s.status().line(now: Date())
+        XCTAssertTrue(line.contains("diaper just now"))
+    }
+
     func testEventJSONRoundTripsWithSnakeCase() throws {
         let e = LogEvent(householdId: H, babyId: B, type: "feed.bottle.finish", fields: ["consumed_fraction": .number(0.5)],
                          occurredAt: fixedNow(), loggedAt: fixedNow(), loggedBy: A, provenance: Provenance(surface: .glasses, input: .voice, rawTranscript: "x", confidence: ["amount": 0.9], confidenceTier: .auto))

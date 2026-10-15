@@ -17,6 +17,11 @@ public protocol LogStore: Sendable {
     func value(_ key: String) throws -> String?
     func setValue(_ value: String?, for key: String) throws
     func deleteAll() throws
+
+    /// Moves a local-only log into a real household before its first upload: rewrites the
+    /// household, baby and local caregiver id on rows that have never been synced. Rows that
+    /// left the device are never touched, so the shared log stays append-only.
+    func rehome(household: UUID, baby: UUID, caregiver: (from: UUID, to: UUID)) throws
 }
 
 public final class SQLiteLogStore: LogStore, @unchecked Sendable {
@@ -126,6 +131,23 @@ public final class SQLiteLogStore: LogStore, @unchecked Sendable {
 
     public func setValue(_ value: String?, for key: String) throws {
         try run("INSERT INTO kv (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", [key, value])
+    }
+
+    public func rehome(household: UUID, baby: UUID, caregiver: (from: UUID, to: UUID)) throws {
+        func swap(_ id: UUID) -> UUID { id == caregiver.from ? caregiver.to : id }
+        for var e in try unsyncedEvents() {
+            e.householdId = household
+            e.babyId = baby
+            e.loggedBy = swap(e.loggedBy)
+            if e.string("caregiver") == caregiver.from.uuidString { e.fields["caregiver"] = .string(caregiver.to.uuidString) }
+            try run("UPDATE events SET json = ? WHERE id = ? AND synced = 0", [try json(e), e.id.uuidString])
+        }
+        for var c in try unsyncedCaptures() {
+            c.householdId = household
+            c.loggedBy = swap(c.loggedBy)
+            if let p = c.processedBy { c.processedBy = swap(p) }
+            try saveCapture(c, synced: false)
+        }
     }
 
     public func deleteAll() throws {

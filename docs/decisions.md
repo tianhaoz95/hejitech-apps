@@ -25,6 +25,7 @@ The PRD ("Newborn Log — PRD") plus the changes agreed while planning, and the 
 | Glasses voice | The glasses upload audio as a **capture**; a household phone processes it on open or on background refresh. Event id = f(capture id) | No server inference cost; all processing stays on the phone; two phones converge |
 | Glasses gestures | Typed events go straight to Supabase (offline outbox); hold-to-speak attaches to the entry you just made | Time-critical facts (last feed) never wait for voice processing |
 | Auth | Supabase Auth (Google, Apple, email for dev), shared by the app and MCP OAuth; personal access tokens for other agents | One identity everywhere |
+| Local-only mode | "Use without an account" keeps the household on the phone (no Supabase); signing in later re-homes the never-synced rows and uploads them | The phone must stand alone; nothing is lost when moving to an account |
 | Consistency | `spec/` is the single source; Swift and TypeScript run the same derivation fixtures | Prevents status drift between the phone, glasses and MCP |
 
 ## Not done yet
