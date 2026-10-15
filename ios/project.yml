@@ -59,6 +59,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.$(PRODUCT_SLUG)
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_CFBundleDisplayName: $(APP_DISPLAY_NAME)
+        # iPhone only: the UI is portrait-only, which App Store validation rejects for iPad apps.
+        TARGETED_DEVICE_FAMILY: "1"
     info:
       path: App/Info.plist
       properties:
@@ -97,6 +99,7 @@ targets:
       base:
         PRODUCT_NAME: Widgets
         PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.$(PRODUCT_SLUG).widgets
+        TARGETED_DEVICE_FAMILY: "1"
     info:
       path: Widgets/Info.plist
       properties:

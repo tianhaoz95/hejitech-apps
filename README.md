@@ -66,3 +66,11 @@ Google and Apple sign-in go through Supabase Auth, using the same session for th
 3. Point the app at the project in *Sign in → Server*, or change `BackendConfig`.
 
 Agents that can't do OAuth use personal access tokens (`wh_…`) created in *Settings → AI agents*. Only hashes are stored, and each token can be read-only or allowed to log.
+
+## Releasing to TestFlight
+
+Locally, run `APPLE_TEAM_ID=68CTFST8W2 ./scripts/release_testflight.sh`. It needs the App Store Connect API key (`FA_ASC_*` / `FA_KEY_LOCATION`, or `ASC_KEY_ID`, `ASC_ISSUER_ID` and `ASC_KEY_PATH`), the bundled models (`scripts/fetch-models.sh`), and exactly one Apple Development and one Apple Distribution identity for HEJI in the keychain. Each upload uses a UTC timestamp as its build number.
+
+In CI, publishing a GitHub Release (or running *Release to TestFlight* from the Actions tab) runs the same script (`.github/workflows/testflight.yml`). The workflow imports the two existing HEJI certificates from repo secrets, so CI never creates certificates. The secrets are `APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8_BASE64`, `SIGNING_DEV_P12_BASE64` / `SIGNING_DEV_P12_PASSWORD` and `SIGNING_DIST_P12_BASE64` / `SIGNING_DIST_P12_PASSWORD`. Their sources are `~/.appstoreconnect/private_keys` and the `.p12` files listed in `~/Credentials/hejitech.env`.
+
+To ship a new version, bump `MARKETING_VERSION` in `ios/project.yml`.

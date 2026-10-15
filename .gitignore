@@ -20,3 +20,4 @@ eval/.venv/
 ios/.derived/
 ios/App/Models/*
 !ios/App/Models/README.md
+build/

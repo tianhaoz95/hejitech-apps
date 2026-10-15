@@ -7,6 +7,7 @@ The PRD ("Newborn Log — PRD") plus the changes agreed while planning, and the 
 | Topic | Decision | Why |
 |---|---|---|
 | Name | **Wee Hours** (`com.hejitech.weehours`) | Built for the wee hours with a wee one. Short, warm, not clinical |
+| App Store name | **Wee Hours: Hands-Free Baby Log** (30 chars, the limit); the home screen stays "Wee Hours" | The name drives search; "hands-free" is what sets it apart. The subtitle can carry "baby tracker" or "voice" |
 | Platform | Native iOS + watchOS first; Android later | Siri, Action Button, widgets and Live Activities are what let the phone stand on its own |
 | Tracking | A type registry; every category is optional (bottle, breast, pumping, solids, diaper, sleep, weight) | Support every family; fewer enabled options also make the model more accurate |
 | Advice | The app records facts; MCP exposes them; the user's own agent interprets | No medical advice from us; no aggregation in the app beyond the status line |
