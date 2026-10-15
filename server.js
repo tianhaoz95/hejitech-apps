@@ -1808,8 +1808,11 @@ function attachPtyToWs(id, ptyEntry, ws) {
   const flush = () => flushPending();
   ptyEntry.dataListeners.add(listener);
   ptyEntry.flushers.add(flush);
+  // The attached socket owns the grid size (see `pty:resize`).
+  ptyEntry.owner = ws;
   const unsub = ptyEntry.proc.onData(listener);
   return () => {
+    if (ptyEntry.owner === ws) ptyEntry.owner = null;
     // Dropped, not flushed: anything pending is already in the replay buffer,
     // which a reattach sends in full.
     if (timer) clearTimeout(timer);
@@ -1990,7 +1993,21 @@ wss.on('connection', (ws) => {
       }
       case 'pty:resize': {
         const e = ptys.get(msg.id);
-        if (e) { e.cols = msg.cols; e.rows = msg.rows; e.proc.resize(msg.cols, msg.rows); }
+        // Only the active session sizes PTYs. Every window fits its own copy
+        // of the layout, so an inactive one (another browser or device, a
+        // stale tab) would otherwise shrink the PTY under the active session,
+        // whose xterm never changes size and so never sends a correction — a
+        // TUI launched later then draws into a corner of the pane. Clients
+        // outside the session lock (embedded shells, no tabId) may size only
+        // the PTYs they themselves streamed last.
+        if (e && !(ws.tabId && ws.tabId === activeTabId)) {
+          if (ws.tabId && activeTabId) break;
+          if (e.owner && e.owner !== ws) break;
+        }
+        if (e && msg.cols > 0 && msg.rows > 0) {
+          if (e.cols === msg.cols && e.rows === msg.rows) break;
+          e.cols = msg.cols; e.rows = msg.rows; e.proc.resize(msg.cols, msg.rows);
+        }
         else if (spawningPtys.has(msg.id)) spawningPtys.set(msg.id, { cols: msg.cols, rows: msg.rows });
         break;
       }

@@ -867,6 +867,8 @@ function initTerminalTab(tab, existingPtyId) {
     if (tab.viewEl.classList.contains('active')) {
       try { fitAddon.fit(); } catch {}
     }
+    // A new PTY spawns at this size; a reattach reports its own via onPtyRestore.
+    if (!existingPtyId) tab.ptySize = { cols: term.cols, rows: term.rows };
     createPty(ptyId, term, term.cols, term.rows, tab.terminalDir, inheritFromPtyId, tab.sshHost);
     if (typeof refreshMobileScrollbar === 'function') refreshMobileScrollbar(tab);
   };
@@ -1066,17 +1068,32 @@ function initTerminalTab(tab, existingPtyId) {
     const out = (typeof applyStickyMods === 'function') ? applyStickyMods(data) : data;
     if (out) sendTerminalInput(ptyId, out);
   });
+  // Keep the PTY's grid in step with the xterm's. `tab.ptySize` is the size
+  // the server last had (what we sent, or what a reattach reported), and every
+  // fit re-checks against it — not just xterm's onResize, which only fires when
+  // the *xterm* changes. Otherwise a resize lost while the socket was down, or
+  // a PTY created before the pane settled, leaves the shell on a stale size
+  // that no later fit corrects: a TUI started then (Claude Code, vim) draws
+  // into a corner of the pane until the user nudges a divider.
   // With `resizeDebounce` on, a divider drag sends one resize per ~80ms pause
   // instead of one per frame, so the shell (and full-screen TUIs) redraw once.
   let resizeTimer = null;
-  term.onResize(({ cols, rows }) => {
+  const sendPtySize = () => {
+    resizeTimer = null;
+    const { cols, rows } = term;
+    if (!wsReady && !window.DEMO_MODE) return; // reconnect re-syncs via pty:created
+    if (tab.ptySize && tab.ptySize.cols === cols && tab.ptySize.rows === rows) return;
+    tab.ptySize = { cols, rows };
+    wsSend({ type: 'pty:resize', id: ptyId, cols, rows });
+  };
+  tab.syncPtySize = () => {
     clearTimeout(resizeTimer);
-    if (getSettings().resizeDebounce === false) {
-      wsSend({ type: 'pty:resize', id: ptyId, cols, rows });
-      return;
-    }
-    resizeTimer = setTimeout(() => wsSend({ type: 'pty:resize', id: ptyId, cols: term.cols, rows: term.rows }), 80);
-  });
+    if (getSettings().resizeDebounce === false) { sendPtySize(); return; }
+    resizeTimer = setTimeout(sendPtySize, 80);
+  };
+  term.onResize(() => tab.syncPtySize());
+  const rawFit = fitAddon.fit.bind(fitAddon);
+  fitAddon.fit = () => { rawFit(); tab.syncPtySize(); };
   term.onTitleChange(title => { if (title && !tab.isCustomLabel) tab.label.textContent = title; });
 
   let roFrame = 0, roSettle = null;
@@ -1439,7 +1456,10 @@ function tabByPtyId(ptyId) {
 // strands a `%` at the start of every prompt line.
 function onPtyRestore(ptyId, cols, rows) {
   const tab = tabByPtyId(ptyId);
-  if (tab?.term && cols && rows) { try { tab.term.resize(cols, rows); } catch {} }
+  if (tab?.term && cols && rows) {
+    tab.ptySize = { cols, rows };
+    try { tab.term.resize(cols, rows); } catch {}
+  }
 }
 
 // Called once the replayed buffer has finished rendering: re-fit the visible

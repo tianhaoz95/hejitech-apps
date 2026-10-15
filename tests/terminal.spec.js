@@ -88,4 +88,40 @@ test.describe('terminal tab journey', () => {
     await runLsJourney(page);
     expect(errors).toEqual([]);
   });
+
+  test('an inactive window resizing does not shrink the active session\'s PTY', async ({ browser }) => {
+    // Every window fits its own copy of the layout. An inactive one (another
+    // browser, device or stale tab) used to send pty:resize too, shrinking the
+    // PTY under the active session — whose xterm didn't change, so nothing
+    // corrected it and a TUI launched later drew into a corner of the pane.
+    const ctxA = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+    const ctxB = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+    try {
+      const a = await ctxA.newPage();
+      await openApp(a);
+      await runLsJourney(a);
+      await a.evaluate(() => flushSessionState());
+
+      const b = await ctxB.newPage();
+      await openApp(b);
+      await expect(a.locator('#inactive-overlay')).toBeVisible();
+      await expect.poll(async () => (await terminalLines(b) || []).join('').trim().length, { timeout: 15000 }).toBeGreaterThan(0);
+
+      await a.setViewportSize({ width: 700, height: 400 });
+      await a.waitForTimeout(500); // past the fit settle + resize debounce
+
+      const size = await b.evaluate(() => {
+        const t = getAllPanes().map(p => p.activeTab).find(t => t && t.type === 'terminal');
+        return `${t.term.rows} ${t.term.cols}`;
+      });
+      await b.locator('.terminal-view.active').first().click();
+      await b.keyboard.type('echo "SZ=$(stty size)"');
+      await b.keyboard.press('Enter');
+      await expect.poll(async () => (await terminalLines(b) || []).find(l => /^SZ=\d/.test(l.trim()))?.trim(), { timeout: 10000 })
+        .toBe(`SZ=${size}`);
+    } finally {
+      await ctxA.close();
+      await ctxB.close();
+    }
+  });
 });
