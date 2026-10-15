@@ -473,8 +473,9 @@ html[data-theme="light"] .theme-dark { display: none; }
 .show-text h2 { font-size: clamp(26px, 3.4vw, 33px); font-weight: 800; letter-spacing: -0.03em; margin-bottom: 14px; line-height: 1.15; }
 .show-text > p { color: var(--text2); font-size: 16px; margin-bottom: 18px; }
 .show-text ul { list-style: none; display: flex; flex-direction: column; gap: 11px; margin: 0; }
-.show-text li { display: flex; gap: 11px; color: var(--text); font-size: 15px; line-height: 1.5; }
-.show-text li::before { content: '✓'; color: var(--green); font-weight: 800; flex-shrink: 0; }
+/* Block + absolute tick (not flex): inline <code> in an item must flow with the text. */
+.show-text li { position: relative; padding-left: 24px; color: var(--text); font-size: 15px; line-height: 1.5; }
+.show-text li::before { content: '✓'; position: absolute; left: 0; top: 0; color: var(--green); font-weight: 800; }
 .show-text li code { background: var(--bg4); border: 1px solid var(--border2); padding: 1px 6px; border-radius: 6px; font-size: 12.5px; color: var(--accent-hi); }
 
 /* Features page: framed feature recording (GIF) beside each description.
@@ -688,3 +689,6 @@ html[data-theme="light"] .theme-dark { display: none; }
   background: var(--bg4); border: 1px solid var(--border2);
   padding: 1px 6px; border-radius: 6px; font-size: 12px; color: var(--accent-hi);
 }
+
+/* The agent showcase: two side-by-side panes filling the window. */
+.ws.ws-agent { grid-template-rows: 1fr; }

@@ -101,6 +101,23 @@ test.describe('Meowtrix E2E Tests', () => {
     await expect(paneLocator).toHaveCount(1);
   });
 
+  test('a maximized pane in a nested split fills the window', async ({ page }) => {
+    // Split side by side, then split the right column top/bottom: the active
+    // pane now sits two split containers deep.
+    await page.locator('#btn-split-v').click();
+    await page.locator('#btn-split-h').click();
+    await expect(page.locator('.pane')).toHaveCount(3);
+    await page.evaluate(() => toggleMaximizePane(activePane));
+    const pane = page.locator('.pane.maximized');
+    await expect(pane).toHaveCount(1);
+    const box = await pane.boundingBox();
+    const vp = page.viewportSize();
+    expect(box.x).toBe(0);
+    expect(box.y).toBe(0);
+    expect(Math.round(box.width)).toBe(vp.width);
+    expect(Math.round(box.height)).toBe(vp.height);
+  });
+
   test('should support creating different types of tabs via picker', async ({ page }) => {
     const addBtn = page.locator('.tab-add').first();
     const tabLocator = page.locator('.tab');

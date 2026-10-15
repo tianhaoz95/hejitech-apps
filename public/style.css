@@ -782,6 +782,12 @@ body.has-maximized-pane .pane:not(.maximized) {
 body.has-maximized-pane .pane.maximized {
   visibility: visible !important;
 }
+/* A transformed ancestor becomes the containing block for position:fixed, so
+   the split containers' translateZ(0) would confine a maximized pane to its
+   own split column. Drop it while a pane is maximized. */
+body.has-maximized-pane .split-container {
+  transform: none;
+}
 /* Active pane gets a soft accent rail along the top of its tab bar. */
 .pane.active > .pane-tabs::before {
   content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;

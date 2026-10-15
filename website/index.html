@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Meowtrix — a browser-based remote vibe engineering workspace</title>
-  <meta name="description" content="Meowtrix is a browser-based remote workspace: tiling panes of PTY-backed terminals and embedded browsers, reachable from anywhere over the network.">
+  <meta name="description" content="Meowtrix is a remote workspace for coding with agents: tiling panes of persistent terminals, browsers and a code editor, reachable from any browser or the macOS desktop app.">
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=1.25.1">
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=1.25.1">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=1.25.1">
@@ -45,12 +45,14 @@
     <span class="hero-badge"><span class="dot"></span> Runs on your machine, reached from any browser</span>
     <h1>Your terminal and browser,<br><span class="grad">tiled in one tab.</span></h1>
     <p class="sub">
-      Meowtrix is a browser-based remote workspace. Split panes into PTY-backed
-      terminals and embedded browsers, then reach them from your laptop, phone, or
-      a tunnel — sessions survive refreshes and network blips.
+      Meowtrix is a remote workspace for coding with agents. Split panes into
+      persistent terminals, browsers and a code editor, then reach them from your
+      laptop, phone, a tunnel, or the macOS app — sessions survive refreshes and
+      network blips.
     </p>
     <div class="hero-actions">
       <a class="btn btn-primary" href="demo/?demo" target="_blank" rel="noopener">▶ Try the live demo</a>
+      <a class="btn btn-ghost" href="https://github.com/tianhaoz95/meowtrix/releases/latest" target="_blank" rel="noopener">⬇ Download for macOS</a>
       <a class="btn btn-ghost" href="features/">✨ Explore features</a>
       <a class="btn btn-ghost" href="docs/">Read the docs</a>
     </div>
@@ -158,7 +160,7 @@
             <div class="node host">
               <div class="node-ico">🖥️</div>
               <div class="node-name">Host machine</div>
-              <div class="node-sub">meowtrix · :3000</div>
+              <div class="node-sub">meowtrix · :9123</div>
               <div class="node-tag">PTYs &amp; state live here</div>
             </div>
             <div class="wire-wrap">
@@ -178,11 +180,12 @@
           <div class="show-text">
             <div class="eyebrow">Tiling layout</div>
             <h2>Split into as many panes as you need.</h2>
-            <p>Split vertically or horizontally and drag the dividers to resize. Each pane holds tabs, and every tab is a terminal or a browser.</p>
+            <p>Split vertically or horizontally and drag the dividers to resize. Each pane holds tabs: terminals (local or SSH), browsers, code editors, and review tabs for your agents.</p>
             <ul>
               <li>Side-by-side or stacked — split with <code>⌘\</code> / <code>⌘-</code></li>
               <li>Flat splits with proportional, resize-proof sizing</li>
               <li>Drag tabs within a pane or across panes</li>
+              <li>Four workspaces, each with its own layout — <code>⌘←</code> / <code>⌘→</code></li>
             </ul>
           </div>
           <div class="win" aria-hidden="true">
@@ -209,11 +212,11 @@
           <div class="show-text">
             <div class="eyebrow">Embedded browser</div>
             <h2>A real browser, in a pane.</h2>
-            <p>Open a browser tab right next to your terminal. A server-side proxy strips frame-blocking headers, so pages that normally refuse to embed render anyway.</p>
+            <p>Open a browser tab right next to your terminal. A server-side proxy strips frame-blocking headers, so pages that normally refuse to embed render anyway — and when a site needs the real thing, there's a real browser for that too.</p>
             <ul>
               <li>Preview your dev server beside the shell building it</li>
-              <li>Address bar, back/forward, reload, and open-in-window</li>
-              <li><code>↗</code> opens anything the proxy can't embed in a real window</li>
+              <li><strong>Host Browser</strong> tabs stream a real Chromium on the host, so Google sign-in and OAuth work, even from your phone</li>
+              <li>In the desktop app, browser tabs are native webviews</li>
             </ul>
           </div>
           <div class="win" aria-hidden="true">
@@ -230,6 +233,34 @@
               <div class="bm-line w70"></div>
               <div class="bm-line w80"></div>
               <div class="bm-pill"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Agents -->
+        <div class="show-row reverse">
+          <div class="show-text">
+            <div class="eyebrow">Built for coding agents</div>
+            <h2>Your agent shows you its work.</h2>
+            <p>Run Claude Code, Codex or Gemini in a Meowtrix terminal and it can drive the layout around it, without stealing your focus.</p>
+            <ul>
+              <li><code>mtx open</code> puts its dev server in a browser tab beside it; <code>mtx edit</code> opens the code</li>
+              <li>CoDesign tabs: review a living HTML spec, pin comments, and send feedback or sign off</li>
+              <li>The same actions as MCP tools — <code>mtx mcp --install</code></li>
+              <li>Queue an Enter for when your usage quota resets</li>
+            </ul>
+          </div>
+          <div class="win" aria-hidden="true">
+            <div class="win-bar"><span class="win-dots"><i></i><i></i><i></i></span><span class="win-title">🐾 meowtrix — agent</span></div>
+            <div class="ws ws-agent">
+              <div class="ws-pane">
+                <div class="ws-tabs"><span class="ws-tab active">⬛ claude</span><span class="ws-plus">＋</span></div>
+                <div class="ws-body"><span class="c">● Starting the dev server, then showing it to you</span><br><span class="p">$</span> npm run dev <span class="g">✓</span> :5173<br><span class="p">$</span> mtx open localhost:5173<br><span class="g">✓</span> opened beside you<br><span class="p">$</span> mtx review<br><span class="c"># waiting for your feedback…</span> <span class="cur">▏</span></div>
+              </div>
+              <div class="ws-pane">
+                <div class="ws-tabs"><span class="ws-tab active">🌐 localhost:5173</span><span class="ws-tab">🎯 CoDesign</span><span class="ws-plus">＋</span></div>
+                <div class="ws-body bp"><div class="mini-page"><div class="mp-h"></div><div class="mp-l w80"></div><div class="mp-l w60"></div><div class="mp-l w70"></div></div></div>
+              </div>
             </div>
           </div>
         </div>
@@ -263,7 +294,7 @@
         <a class="card" href="https://github.com/tianhaoz95/meowtrix" target="_blank" rel="noopener">
           <div class="ico">⭐</div>
           <h3>Source on GitHub</h3>
-          <p>Read the code, file issues, and grab the one-line installer. MIT-friendly, no build step, plain ES scripts.</p>
+          <p>Read the code, file issues, and grab the one-line installer or the macOS app. MIT licensed, no build step, plain ES scripts.</p>
           <span class="go">View repository →</span>
         </a>
       </div>
@@ -275,15 +306,20 @@
         <p>Small, sharp, and built to survive a flaky connection.</p>
       </div>
       <div class="features">
-        <div class="feature"><div class="ico">🪟</div><h3>Tiling panes &amp; tabs</h3><p>Split vertically or horizontally; drag dividers to resize. Each pane holds tabs — a terminal, browser, or code editor.</p></div>
+        <div class="feature"><div class="ico">🪟</div><h3>Tiling panes &amp; tabs</h3><p>Split vertically or horizontally; drag dividers to resize. Each pane holds tabs — terminals, browsers, code editors and more.</p></div>
         <div class="feature"><div class="ico">⚡</div><h3>Persistent PTYs</h3><p>Shells outlive the WebSocket. Refresh, switch devices, or hit a network blip — the server replays the buffer and reattaches.</p></div>
         <div class="feature"><div class="ico">📝</div><h3>Code editor &amp; Git</h3><p>Monaco editor with a file tree, side-by-side Markdown/HTML Preview, and a Source Control panel with AI-powered commit messages.</p></div>
         <div class="feature"><div class="ico">⏰</div><h3>Scheduled Enter</h3><p>Queue Enter key presses to fire into terminals automatically (e.g. after quota resets). Lives server-side to survive disconnects.</p></div>
         <div class="feature"><div class="ico">🐾</div><h3>On-device Chat Pet</h3><p>A customizable desktop pet companion (Mochi) powered locally by Google Chrome's built-in Gemini Nano model.</p></div>
         <div class="feature"><div class="ico">🔥</div><h3>Keystroke Combo FX</h3><p>Reward your typing streaks with interactive visuals: particle bursts, screen shake, edge glow, and heat readouts.</p></div>
-        <div class="feature"><div class="ico">🔄</div><h3>Self-updates</h3><p>Get notified of updates via in-app banners, and trigger a git-based pull &amp; server restart directly from the workspace.</p></div>
+        <div class="feature"><div class="ico">🔄</div><h3>Self-updates</h3><p>Get notified of updates via in-app banners, update &amp; restart from the workspace, then see what's new — and what got fixed.</p></div>
         <div class="feature"><div class="ico">📱</div><h3>Mobile-ready</h3><p>An on-screen key bar with sticky Ctrl/Alt/Cmd modifiers, double-tap autocomplete, and a layout that reflows for touch.</p></div>
-        <div class="feature"><div class="ico">🌐</div><h3>Embedded browser</h3><p>A server-side proxy strips frame-blocking headers so otherwise un-embeddable pages render right inside a pane.</p></div>
+        <div class="feature"><div class="ico">🌐</div><h3>Embedded browser</h3><p>A server-side proxy strips frame-blocking headers so otherwise un-embeddable pages render right inside a pane; the desktop app uses native webviews.</p></div>
+        <div class="feature"><div class="ico">🧭</div><h3>Host Browser</h3><p>A real Chromium on the host, streamed into a tab. Google sign-in and OAuth work, and the signed-in profile follows you between devices.</p></div>
+        <div class="feature"><div class="ico">🤖</div><h3>Agent tools &amp; MCP</h3><p><code>mtx open</code>, <code>edit</code>, <code>notify</code> and <code>browser</code> let agents show you pages and code beside their terminal — also as MCP tools.</p></div>
+        <div class="feature"><div class="ico">🎯</div><h3>CoDesign reviews</h3><p>Review an agent-written HTML spec in device frames, pin comments to elements, then send feedback or approve — no MCP setup needed.</p></div>
+        <div class="feature"><div class="ico">💻</div><h3>macOS desktop app</h3><p>Standalone or Lite editions, with a quick overlay that drops your workspace from the notch on <code>⌥Space</code> — even over full-screen apps.</p></div>
+        <div class="feature"><div class="ico">🔐</div><h3>SSH &amp; workspaces</h3><p>Open SSH tabs from your <code>~/.ssh/config</code>, and keep four workspaces with their own layouts a keystroke apart.</p></div>
         <div class="feature"><div class="ico">🔒</div><h3>Single active session</h3><p>Server-coordinated handoff across devices: the newest client claims the workspace; others see a "move session here" overlay.</p></div>
         <div class="feature"><div class="ico">⌘</div><h3>Command palette</h3><p>Press ⌘K (or Ctrl/⌘+Shift+P) for a fuzzy launcher — split panes, open tabs, switch panes, broadcast, themes, settings, schedules, updates.</p></div>
         <div class="feature"><div class="ico">🛡️</div><h3>Localhost by default</h3><p>Binds to 127.0.0.1 so it's off the network until you opt in with <code>--network</code>. Tunnel in over SSH for safe remote access.</p></div>

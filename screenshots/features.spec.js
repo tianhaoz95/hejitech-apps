@@ -223,7 +223,7 @@ test.describe('Generate Feature Showcase GIFs', () => {
         await pane.locator('.tab-add').click();
         const picker = page.locator('.tab-type-picker');
         await expect(picker).toBeVisible();
-        await picker.locator('button:has-text("Browser")').click();
+        await picker.getByRole('button', { name: 'Browser', exact: true }).click();
         await expect(picker).not.toBeVisible();
 
         const urlInput = pane.locator('input.browser-url');

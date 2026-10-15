@@ -116,7 +116,7 @@ test.describe('Generate Showcase Screenshots', () => {
     await pane2.click();
     await pane2.locator('.tab-add').click();
     await expect(picker).toBeVisible();
-    await picker.locator('button:has-text("Browser")').click();
+    await picker.getByRole('button', { name: 'Browser', exact: true }).click();
     await expect(picker).not.toBeVisible();
 
     // Navigate to DuckDuckGo for the browser preview demo

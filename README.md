@@ -4,7 +4,7 @@
 [![Build and Release](https://github.com/tianhaoz95/meowtrix/actions/workflows/release.yml/badge.svg)](https://github.com/tianhaoz95/meowtrix/actions/workflows/release.yml)
 [![E2E Tests](https://github.com/tianhaoz95/meowtrix/actions/workflows/e2e.yml/badge.svg)](https://github.com/tianhaoz95/meowtrix/actions/workflows/e2e.yml)
 
-Remote vibe engineering tool — a browser-based workspace with tiling split panes, each pane holding tabs that are either a PTY-backed terminal or an embedded browser. Run it on a host machine and reach it from any browser on your network (or anywhere via a tunnel); shells live on the server, so refreshes, device switches, and network blips don't kill your work.
+Remote vibe engineering tool — a browser-based workspace with tiling split panes, each pane holding tabs: PTY-backed terminals (local or SSH), browsers, a Monaco code editor, and review tabs for your coding agents. Run it on a host machine and reach it from any browser on your network (or anywhere via a tunnel), or use the macOS desktop app; shells live on the server, so refreshes, device switches, and network blips don't kill your work.
 
 **[Website & docs](https://tianhaoz95.github.io/meowtrix/)** · **[Live demo](https://tianhaoz95.github.io/meowtrix/demo/?demo)** · **[User guide](https://tianhaoz95.github.io/meowtrix/docs/)** · **[Developer docs](https://tianhaoz95.github.io/meowtrix/dev/)**
 
@@ -12,24 +12,26 @@ Remote vibe engineering tool — a browser-based workspace with tiling split pan
 
 ## Features
 
-- **Tiling panes & tabs** — split vertically or horizontally, drag dividers to resize; each pane holds multiple tabs
+- **Tiling panes & tabs** — split vertically or horizontally, drag dividers to resize; each pane holds multiple tabs. Four **workspaces** each keep their own layout (`⌘←` / `⌘→` or `⌘⌥1`–`4` to switch)
   
   ![Tiling panes](website/assets/features/tiling-panes-dark.gif)
 
-- **Persistent terminals** — full PTY-backed shells via xterm.js that outlive the connection; refresh or reconnect and they reattach with replayed scrollback
+- **Persistent terminals** — full PTY-backed shells via xterm.js that outlive the connection; refresh or reconnect and they reattach with replayed scrollback. Search the scrollback with `⌘F`; open **SSH tabs** straight to a host from your `~/.ssh/config`
   
   ![Persistent terminals](website/assets/features/terminal-dark.gif)
 
 - **Embedded browser panes** — built-in browser with a server-side proxy that strips frame-blocking headers so otherwise un-embeddable pages render in a pane. The proxy keeps a persistent, domain-aware cookie jar (so sign-ins stick across subdomains and restarts) and tunnels pages' WebSockets. In the **desktop app**, browser tabs are real native webviews instead — no proxy, sites run on their own origins
-- **Host Browser tabs** — a real Chromium running on the host, streamed into a tab (works from any device, including phones). Sites see a normal browser: Google sign-in, OAuth popups, WebSockets and downloads work (passkeys can't reach it — sites fall back to their other sign-in methods), and the signed-in profile lives on the host so it follows you between devices. Agents can screenshot and read these tabs (`mtx browser`, MCP `host_browser_*`)
-  
+
   ![Embedded browser](website/assets/features/embedded-browser-dark.gif)
 
+- **Host Browser tabs** — a real Chromium running on the host, streamed into a tab (works from any device, including phones). Sites see a normal browser: Google sign-in, OAuth popups, WebSockets and downloads work (passkeys can't reach it — sites fall back to their other sign-in methods), and the signed-in profile lives on the host so it follows you between devices. Agents can screenshot and read these tabs (`mtx browser`, MCP `host_browser_*`)
 - **Code editor tabs** — Monaco (VS Code) editor with file tree sidebar; features side-by-side live **Markdown Preview** (with toggle & quick copy for code blocks) and live **HTML Preview** in browser tabs. Git repos gain a **Source Control** panel (stage/unstage, side-by-side diffs, commit, push/pull) with **AI-powered commit message generation**.
   
   ![Code editor](website/assets/features/code-editor-dark.gif)
 
 - **CoDesign review tabs** — review a living HTML design spec with your agent. The agent writes `.codesign/spec.html` and runs `mtx review`; a CoDesign tab opens beside its terminal, where you preview the design in desktop/tablet/mobile frames, inspect sizes, type and colors, and drop comment pins on elements. Then press **Send feedback** (the agent gets your comments with element selectors) or **Approve & sign off**. Works with any CLI agent (Claude Code, Codex, Gemini, …) and needs no MCP setup. The spec runs in a sandboxed iframe, and review state lives in `.codesign/review.json`, so it survives restarts and can be committed.
+
+- **AI Agent tabs** — a built-in coding agent with a plan/diff view, running on a local model, Ollama, or any OpenAI-compatible API; switch between autonomous and supervised (confirm each tool action) modes
 
 - **Scheduled Enter presses (⏰)** — queue an `Enter` key press for later (delay or clock time) to run commands automatically, e.g. when an agent usage quota resets. Timers live server-side next to the PTY to survive page reloads and disconnects.
   
@@ -37,7 +39,9 @@ Remote vibe engineering tool — a browser-based workspace with tiling split pan
 
 - **On-device AI Chat Pet (🐾)** — chat with Mochi, a customizable wandering desktop companion (choose from 12 animal faces) powered locally via Chrome's on-device LLM (Gemini Nano via Prompt API).
 - **Keystroke Combo FX** — level up your typing with streak rewards: particle bursts, screen shake, edge glow, and heat-tinted combo readouts.
-- **Self-updates** — background git check notifies you of updates via an in-app banner; trigger a pull and clean server restart directly from the UI.
+- **Self-updates** — background git check notifies you of updates via an in-app banner; trigger a pull and clean server restart directly from the UI. After an update, a **What's new** sheet walks through the new features, with bug fixes on a page of their own
+- **Desktop app (macOS)** — Meowtrix in its own window, with native webview browser tabs and a **quick overlay** that drops the workspace down from the notch with a global shortcut (`⌥Space` by default), even over full-screen apps. Comes in two editions: *Standalone* bundles its own server; *Lite* is a small shell that connects to a Meowtrix server already running on the Mac. See [Desktop app](#3-desktop-app-macos)
+- **File transfer & dev-server detection** — upload files to the host (`⌘⇧U`, drop them onto the editor's file tree, or paste a screenshot into a terminal) and pull files back with `mtx download`; when a new dev server starts listening, a toast offers to open it
 - **`mtx` host helper** — `mtx download <file>` pushes a host file to your browser as a download; `mtx code <dir>` opens that directory in a code-editor tab; `mtx spec` / `mtx review` / `mtx feedback` / `mtx resolve` drive the CoDesign review loop
 - **Agent tools (`mtx` + MCP)** — agents in a Meowtrix terminal can show you their work instead of handing you links: `mtx open <url>` opens a page in a browser tab beside the agent's terminal and reuses the tab for a local dev server (`--host` for a Host Browser tab); `mtx browser list|shot|text` lets the agent see the host-browser page you're looking at; `mtx edit <file>:<line>` opens code in the editor; `mtx layout` describes the panes; `mtx notify <msg>` toasts and flags the agent's tab. None of them steal your focus. `mtx mcp` serves the same actions as MCP tools; register it with Claude Code via `mtx mcp --install`
 - **Cross-device sessions** — server-coordinated single active session; move the whole workspace between browsers and devices and your layout follows
@@ -48,10 +52,11 @@ Remote vibe engineering tool — a browser-based workspace with tiling split pan
 - **Localhost-first** — the manual launcher binds to `127.0.0.1` by default so it's not exposed to your network; opt into LAN/remote access explicitly (a `--service` install binds `0.0.0.0`) — see [Network access](#network-access--security)
 - **Broadcast input** — mirror keystrokes to every visible terminal at once (like tmux `synchronize-panes`)
 - **Mobile-ready** — on-screen key bar with sticky Ctrl/Alt/Cmd modifiers and double-tap autocomplete
-- **Linear Slate & OLED themes** — Precision engineered developer tool aesthetic in light and dark modes, plus Retina OLED high-contrast black; terminals are themed to match
+- **Linear Slate & OLED themes** — Precision engineered developer tool aesthetic in light and dark modes (or follow the system), plus Retina OLED jet black and a high-contrast light theme; terminals are themed to match
   
   ![Themes](website/assets/features/themes-dark.gif)
 
+- **Built for flaky links and heavy output** — bursts of terminal output are batched, divider drags resize shells once per pause, and background scans pause while no window is visible (each switchable in Settings → Performance)
 - **No build step** — plain ES scripts served directly; settings & layout persist to `~/.meowtrix/`
 
 
@@ -96,6 +101,15 @@ cd ~/.meowtrix/app
 # Run the installer from source
 ./install.sh
 ```
+
+### 3. Desktop app (macOS)
+
+Download the `.dmg` from the [latest release](https://github.com/tianhaoz95/meowtrix/releases/latest) (Apple Silicon, signed and notarized):
+
+- **Meowtrix Standalone** (~55MB) — self-contained: bundles Node and the server, so there's nothing else to install. It uses a Meowtrix server already running on port 9123 if there is one, otherwise it starts its own.
+- **Meowtrix Lite** (~5MB) — a lightweight shell for a Meowtrix server installed with options 1 or 2 above; it connects to the server on port 9123.
+
+Both check for app updates themselves (or use **Check for Updates…** in the menu-bar tray). The quick overlay's shortcut and look are under Settings → Quick Overlay.
 
 ---
 
@@ -170,7 +184,7 @@ To stop it from auto-starting on login: `systemctl --user disable meowtrix` (and
 
 ### Update
 
-Re-run the installer — it pulls the latest into `~/.meowtrix/app`:
+Meowtrix checks for updates in the background and shows a banner when one is available; **Update & restart** (also in the command palette) pulls it and, for a `--service` install, restarts the server. Restarting ends running shells, so you pick the moment. You can also re-run the installer, which pulls the latest into `~/.meowtrix/app`:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/tianhaoz95/meowtrix/main/install.sh | bash
@@ -246,6 +260,16 @@ Then open `http://<host-ip>:9123` from any device. You can also bind to one spec
 ./start.sh       # nodemon + browser hot-reload
 ```
 
+### Desktop app (Tauri v2)
+
+```bash
+npm run tauri:dev               # run Meowtrix Lite against the local dev server
+npm run tauri:dev:standalone    # run Meowtrix Standalone
+npm run tauri:build             # build both editions (or tauri:build:lite / tauri:build:standalone)
+```
+
+Releases are cut with `./scripts/cut_release.sh vX.Y.Z`; CI builds, signs, notarizes and attaches the DMGs.
+
 ### Packaging a Release
 
 To package Meowtrix into a zero-dependency portable archive for the current host OS & architecture:
@@ -277,13 +301,23 @@ Use `⌘` on macOS or `Ctrl` elsewhere.
 | Shortcut | Action |
 |---|---|
 | `⌘K` / `Ctrl+Shift+P` | Open the command palette |
+| `⌘/` | Show all keyboard shortcuts |
 | `⌘\` | Split vertical |
 | `⌘-` | Split horizontal |
-| `⌘T` | New tab |
+| `⌘T` | New tab (pick the type) |
 | `⌘W` | Close tab |
-| `⌘B` / `Ctrl+Shift+B` | Toggle broadcast input |
+| `⌘⇧W` | Close pane |
+| `⌘←` / `⌘→` | Previous / next workspace |
+| `⌘⌥1`–`4` | Jump to workspace 1–4 |
+| `⌘F` | Search the terminal |
+| `⌘⇧=` / `⌘⇧-` / `⌘⇧0` | Zoom the active tab in / out / reset |
+| `⌘⇧U` | Upload files to the host |
+| `⌘⇧S` | Schedule an Enter press |
+| `⌘,` | Settings |
+| `⌘B` (macOS) / `Ctrl+Shift+B` | Toggle broadcast input |
+| `⌥Space` | Summon the quick overlay (macOS desktop app, global) |
 
-The **command palette** (`⌘K`, or `Ctrl/⌘+Shift+P`) is a fuzzy launcher for every action — splitting, new terminal/browser tabs, switching tabs and panes, broadcast input, theme switching, and settings. Type to filter, arrow keys to move, `Enter` to run.
+The **command palette** (`⌘K`, or `Ctrl/⌘+Shift+P`) is a fuzzy launcher for every action — splitting, new tabs of any type, switching tabs and panes, broadcast input, theme switching, settings, schedules, updates, and What's new. Type to filter, arrow keys to move, `Enter` to run.
 
 Double-click (or double-tap) inside a terminal to send `Tab` for autocomplete.
 
@@ -293,7 +327,7 @@ Settings are saved to `~/.meowtrix/settings.json` on the host machine; the works
 
 | Setting | Default |
 |---|---|
-| Theme | Linear Slate (dark) |
+| Theme | Auto (follows the system: Linear Slate dark/light) |
 | Terminal font size | 13 |
 | Terminal font | Cascadia Code |
 | Terminal renderer | WebGL (GPU accelerated, sharpest) |
@@ -303,6 +337,11 @@ Settings are saved to `~/.meowtrix/settings.json` on the host machine; the works
 | Browser tabs (desktop app) | Native webview (or the embedded proxy) |
 | Host browser executable | auto-detect Chrome / Chromium / Edge / Brave, else Chrome for Testing |
 | Host browser stream quality | Balanced |
+| Check for updates in the background | On |
+| Performance: batch terminal output / debounce resizes | On / On |
+| Performance: dev-server port scan | Every 10 s |
+| Quick overlay shortcut (macOS desktop app) | `⌥Space` |
+| Chat pet / Keystroke Combo FX / GPU monitor (NVIDIA) | Off (opt-in) |
 
 ### Which browser tab should I use?
 

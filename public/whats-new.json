@@ -2,6 +2,13 @@
   "_doc": "Release notes for the in-app \"What's new\" sheet (public/whats-new.js). Newest first, keyed by package.json version. `highlights` are the features (the main stage); each may carry a `visual` (timeline | glyph) and a `try` action (settings:<section id> | tab:<type> | split | palette | copy:<text>). `fixes` is a list of one-line strings (bug fixes and small improvements, inline `code` allowed) shown on a secondary page behind a footer button. A fixes-only release omits `highlights` (and may omit `title`/`summary`); upgrading to only fixes-only releases shows a toast instead of opening the sheet.",
   "releases": [
     {
+      "version": "1.34.1",
+      "date": "2026-10-15",
+      "fixes": [
+        "Maximizing a pane that sits inside a split (e.g. the bottom-right one) now fills the whole window instead of just its column."
+      ]
+    },
+    {
       "version": "1.34.0",
       "date": "2026-10-15",
       "title": "See what got fixed",
