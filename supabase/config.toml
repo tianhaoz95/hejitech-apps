@@ -413,3 +413,15 @@ enabled = true
 # formatted with uppercase keywords, indent 2, max width 180, trailing commas,
 # and column/key alignment. Set to "null" to emit raw, unformatted SQL.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":180,\"commaStyle\":\"trailing\"}"
+
+# Google sign-in (app and MCP OAuth). Fill client ids when the cloud project exists; locally the
+# app uses the dev email sign-in instead (see README).
+[auth.external.google]
+enabled = false
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+skip_nonce_check = true
+
+[functions.mcp]
+# The MCP function authenticates itself: Supabase user JWTs or personal access tokens.
+verify_jwt = false

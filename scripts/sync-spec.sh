@@ -7,6 +7,7 @@ pairs=(
   "spec/event-types.json:ios/LogCore/Sources/LogCore/Resources/event-types.json"
   "spec/calibration.json:ios/LogCore/Sources/LogCore/Resources/calibration.json"
   "spec/fixtures/status.json:ios/LogCore/Tests/LogCoreTests/Fixtures/status.json"
+  "spec/event-types.json:supabase/functions/_shared/event-types.json"
 )
 status=0
 for p in "${pairs[@]}"; do
