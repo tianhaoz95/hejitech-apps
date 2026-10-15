@@ -12,6 +12,9 @@ public struct NoteListView: View {
     @State private var keyboardRecordTrigger: KeyboardRecordTrigger?
     @State private var isSearchExpanded: Bool = false
     @State private var showingWhatsNew: Bool = WhatsNewView.shouldShowAutomatically
+    @State private var isSelectMode: Bool = false
+    @State private var selectedNoteIDs: Set<UUID> = []
+    @State private var showingBatchDeleteAlert: Bool = false
     @FocusState private var isSearchFieldFocused: Bool
 
     public init() {}
@@ -54,7 +57,9 @@ public struct NoteListView: View {
                 .hideSharedBackgroundIfAvailable()
 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    searchToolbarButton
+                    if !isSelectMode {
+                        searchToolbarButton
+                    }
                 }
 
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
@@ -62,7 +67,11 @@ public struct NoteListView: View {
                 }
 
                 ToolbarItem(placement: .bottomBar) {
-                    recordBottomBarButton
+                    if isSelectMode {
+                        batchBottomBar
+                    } else {
+                        recordBottomBarButton
+                    }
                 }
             }
             .sheet(isPresented: $viewModel.showingRecordSheet) {
@@ -79,6 +88,16 @@ public struct NoteListView: View {
             }
             .sheet(isPresented: $showingWhatsNew) {
                 WhatsNewView()
+            }
+            .confirmationDialog("Delete Selected Notes?", isPresented: $showingBatchDeleteAlert, titleVisibility: .visible) {
+                Button("Delete \(selectedNoteIDs.count) Notes", role: .destructive) {
+                    viewModel.bulkDelete(ids: selectedNoteIDs)
+                    selectedNoteIDs.removeAll()
+                    isSelectMode = false
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Are you sure you want to delete \(selectedNoteIDs.count) voice notes? This cannot be undone.")
             }
             .sheet(item: $viewModel.mergeSourceNote) { source in
                 NoteMergePickerSheet(source: source, candidates: viewModel.mergeCandidates(excluding: source)) { target in
@@ -234,62 +253,76 @@ public struct NoteListView: View {
         }
     }
 
+    @ViewBuilder
     private func noteRowItem(note: VoiceNote) -> some View {
-        NavigationLink(destination: NoteDetailView(note: note)) {
-            NoteRowView(note: note)
-        }
-        .swipeActions(edge: .leading) {
+        if isSelectMode {
             Button {
-                viewModel.toggleFavorite(note: note)
-            } label: {
-                Label(note.isFavorite ? "Unfavorite" : "Favorite", systemImage: note.isFavorite ? "star.slash" : "star.fill")
-            }
-            .tint(.yellow)
-
-            Button {
-                viewModel.togglePinned(note: note)
-            } label: {
-                Label(note.isPinned ? "Unpin" : "Pin", systemImage: note.isPinned ? "pin.slash.fill" : "pin.fill")
-            }
-            .tint(Color.accentColor)
-        }
-        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            Button(role: .destructive) {
-                viewModel.delete(note: note)
-            } label: {
-                Label("Delete", systemImage: "trash")
-            }
-
-            Button {
-                viewModel.toggleArchived(note: note)
-            } label: {
-                Label(note.isArchived ? "Unarchive" : "Archive", systemImage: note.isArchived ? "tray.and.arrow.up.fill" : "archivebox.fill")
-            }
-            .tint(.purple)
-
-            Button {
-                viewModel.duplicate(note: note)
-            } label: {
-                Label("Duplicate", systemImage: "doc.on.doc")
-            }
-            .tint(.indigo)
-
-            if note.status == .failed {
-                Button {
-                    viewModel.retryProcessing(note: note)
-                } label: {
-                    Label("Retry", systemImage: "arrow.triangle.2.circlepath")
+                if selectedNoteIDs.contains(note.id) {
+                    selectedNoteIDs.remove(note.id)
+                } else {
+                    selectedNoteIDs.insert(note.id)
                 }
-                .tint(.accentColor)
+            } label: {
+                NoteRowView(note: note, isSelectable: true, isSelected: selectedNoteIDs.contains(note.id))
             }
-
-            if note.status == .ready {
+            .buttonStyle(.plain)
+        } else {
+            NavigationLink(destination: NoteDetailView(note: note)) {
+                NoteRowView(note: note)
+            }
+            .swipeActions(edge: .leading) {
                 Button {
-                    viewModel.beginMerge(source: note)
+                    viewModel.toggleFavorite(note: note)
                 } label: {
-                    Label("Append To…", systemImage: "arrow.triangle.merge")
+                    Label(note.isFavorite ? "Unfavorite" : "Favorite", systemImage: note.isFavorite ? "star.slash" : "star.fill")
                 }
-                .tint(.blue)
+                .tint(.yellow)
+
+                Button {
+                    viewModel.togglePinned(note: note)
+                } label: {
+                    Label(note.isPinned ? "Unpin" : "Pin", systemImage: note.isPinned ? "pin.slash.fill" : "pin.fill")
+                }
+                .tint(Color.accentColor)
+            }
+            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                Button(role: .destructive) {
+                    viewModel.delete(note: note)
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+
+                Button {
+                    viewModel.toggleArchived(note: note)
+                } label: {
+                    Label(note.isArchived ? "Unarchive" : "Archive", systemImage: note.isArchived ? "tray.and.arrow.up.fill" : "archivebox.fill")
+                }
+                .tint(.purple)
+
+                Button {
+                    viewModel.duplicate(note: note)
+                } label: {
+                    Label("Duplicate", systemImage: "doc.on.doc")
+                }
+                .tint(.indigo)
+
+                if note.status == .failed {
+                    Button {
+                        viewModel.retryProcessing(note: note)
+                    } label: {
+                        Label("Retry", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    .tint(.accentColor)
+                }
+
+                if note.status == .ready {
+                    Button {
+                        viewModel.beginMerge(source: note)
+                    } label: {
+                        Label("Append To…", systemImage: "arrow.triangle.merge")
+                    }
+                    .tint(.blue)
+                }
             }
         }
     }
@@ -305,60 +338,79 @@ public struct NoteListView: View {
             } label: {
                 Image(systemName: "magnifyingglass")
             }
+            .keyboardShortcut("f", modifiers: .command)
             .accessibilityLabel("Search and filter tags")
         }
     }
 
     @ViewBuilder
     private var trailingToolbarGroup: some View {
-        Button {
-            viewModel.showingSyncStatus = true
-        } label: {
-            Image(systemName: "applewatch")
-                .foregroundStyle(watchIconColor)
-        }
-        .accessibilityLabel(syncService.isReachable ? "Apple Watch connected" : "Apple Watch disconnected")
+        if isSelectMode {
+            Button("Done") {
+                withAnimation {
+                    isSelectMode = false
+                    selectedNoteIDs.removeAll()
+                }
+            }
+            .fontWeight(.semibold)
+        } else {
+            Button {
+                viewModel.showingSyncStatus = true
+            } label: {
+                Image(systemName: "applewatch")
+                    .foregroundStyle(watchIconColor)
+            }
+            .accessibilityLabel(syncService.isReachable ? "Apple Watch connected" : "Apple Watch disconnected")
 
-        Menu {
-            Section("Sort By") {
-                Picker("Sort Order", selection: $viewModel.sortOption) {
-                    ForEach(SortOption.allCases) { opt in
-                        Text(opt.rawValue).tag(opt)
+            Button {
+                withAnimation {
+                    isSelectMode = true
+                }
+            } label: {
+                Text("Select")
+            }
+
+            Menu {
+                Section("Sort By") {
+                    Picker("Sort Order", selection: $viewModel.sortOption) {
+                        ForEach(SortOption.allCases) { opt in
+                            Text(opt.rawValue).tag(opt)
+                        }
                     }
                 }
-            }
 
-            Section("Filters") {
-                Picker("Source Filter", selection: $viewModel.filterSource) {
-                    Text("All Sources").tag(NoteSource?.none)
-                    Text("Apple Watch").tag(NoteSource?.some(.watchApp))
-                    Text("Watch Complication").tag(NoteSource?.some(.watchComplication))
-                    Text("Watch Live Activity").tag(NoteSource?.some(.watchLiveActivity))
-                    Text("iPhone Direct").tag(NoteSource?.some(.phoneApp))
+                Section("Filters") {
+                    Picker("Source Filter", selection: $viewModel.filterSource) {
+                        Text("All Sources").tag(NoteSource?.none)
+                        Text("Apple Watch").tag(NoteSource?.some(.watchApp))
+                        Text("Watch Complication").tag(NoteSource?.some(.watchComplication))
+                        Text("Watch Live Activity").tag(NoteSource?.some(.watchLiveActivity))
+                        Text("iPhone Direct").tag(NoteSource?.some(.phoneApp))
+                    }
+
+                    Toggle(isOn: $viewModel.onlyFavorites) {
+                        Label("Favorites Only", systemImage: "star")
+                    }
+
+                    Toggle(isOn: $viewModel.showArchived) {
+                        Label("Show Archived", systemImage: "archivebox")
+                    }
                 }
 
-                Toggle(isOn: $viewModel.onlyFavorites) {
-                    Label("Favorites Only", systemImage: "star")
-                }
+                Divider()
 
-                Toggle(isOn: $viewModel.showArchived) {
-                    Label("Show Archived", systemImage: "archivebox")
+                ShareLink(item: viewModel.exportAllNotesMarkdown()) {
+                    Label("Export All Notes", systemImage: "square.and.arrow.up.on.square")
                 }
+            } label: {
+                Image(systemName: "line.3.horizontal.decrease.circle")
             }
 
-            Divider()
-
-            ShareLink(item: viewModel.exportAllNotesMarkdown()) {
-                Label("Export All Notes", systemImage: "square.and.arrow.up.on.square")
+            Button {
+                viewModel.showingSettings = true
+            } label: {
+                Image(systemName: "gearshape")
             }
-        } label: {
-            Image(systemName: "line.3.horizontal.decrease.circle")
-        }
-
-        Button {
-            viewModel.showingSettings = true
-        } label: {
-            Image(systemName: "gearshape")
         }
     }
 
@@ -369,6 +421,7 @@ public struct NoteListView: View {
             Image(systemName: "mic.fill")
         }
         .tint(Color.accentColor)
+        .keyboardShortcut("n", modifiers: .command)
         .overlay(alignment: .topTrailing) {
             if viewModel.pipeline.activeProcessingCount > 0 {
                 Circle()
@@ -376,6 +429,67 @@ public struct NoteListView: View {
                     .frame(width: 7, height: 7)
                     .offset(x: 8, y: -6)
             }
+        }
+    }
+
+    private var batchBottomBar: some View {
+        HStack {
+            Button {
+                if selectedNoteIDs.count == viewModel.notes.count {
+                    selectedNoteIDs.removeAll()
+                } else {
+                    selectedNoteIDs = Set(viewModel.notes.map(\.id))
+                }
+            } label: {
+                Text(selectedNoteIDs.count == viewModel.notes.count ? "Deselect All" : "Select All")
+                    .font(.subheadline)
+            }
+
+            Spacer()
+
+            Text("\(selectedNoteIDs.count) Selected")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+
+            Spacer()
+
+            Menu {
+                Button {
+                    viewModel.bulkFavorite(ids: selectedNoteIDs, isFavorite: true)
+                } label: {
+                    Label("Favorite", systemImage: "star")
+                }
+
+                Button {
+                    viewModel.bulkPin(ids: selectedNoteIDs, isPinned: true)
+                } label: {
+                    Label("Pin", systemImage: "pin")
+                }
+
+                Button {
+                    viewModel.bulkArchive(ids: selectedNoteIDs, isArchived: true)
+                } label: {
+                    Label("Archive", systemImage: "archivebox")
+                }
+
+                if !selectedNoteIDs.isEmpty {
+                    ShareLink(item: viewModel.exportSelectedNotesMarkdown(ids: selectedNoteIDs)) {
+                        Label("Export Markdown", systemImage: "square.and.arrow.up")
+                    }
+                }
+
+                Divider()
+
+                Button(role: .destructive) {
+                    showingBatchDeleteAlert = true
+                } label: {
+                    Label("Delete (\(selectedNoteIDs.count))", systemImage: "trash")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(.system(size: 20))
+            }
+            .disabled(selectedNoteIDs.isEmpty)
         }
     }
 
@@ -394,6 +508,8 @@ public struct NoteListView: View {
             }
             .pickerStyle(.segmented)
             .padding(.horizontal)
+
+            colorFilterBar
 
             if !viewModel.tagCounts.isEmpty {
                 tagFilterBar
@@ -455,7 +571,80 @@ public struct NoteListView: View {
         }
         viewModel.searchText = ""
         viewModel.selectedTag = nil
+        viewModel.selectedColorTag = nil
         isSearchFieldFocused = false
+    }
+
+    private var colorFilterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                Button {
+                    withAnimation {
+                        viewModel.selectedColorTag = nil
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "circle.slash")
+                            .font(.system(size: 11))
+                        Text("All Colors")
+                            .font(.caption.weight(.medium))
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(
+                        Capsule()
+                            .fill(viewModel.selectedColorTag == nil ? Color.accentColor : Color(UIColor.tertiarySystemFill))
+                    )
+                    .foregroundStyle(viewModel.selectedColorTag == nil ? .white : .primary)
+                }
+                .buttonStyle(.plain)
+
+                ForEach(viewModel.presetColorTags) { colorTag in
+                    Button {
+                        withAnimation {
+                            if viewModel.selectedColorTag == colorTag.id {
+                                viewModel.selectedColorTag = nil
+                            } else {
+                                viewModel.selectedColorTag = colorTag.id
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 5) {
+                            Circle()
+                                .fill(colorForName(colorTag.id))
+                                .frame(width: 10, height: 10)
+                            Text(colorTag.name)
+                                .font(.caption.weight(.medium))
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(
+                            Capsule()
+                                .fill(viewModel.selectedColorTag == colorTag.id ? Color.accentColor : Color(UIColor.tertiarySystemFill))
+                        )
+                        .foregroundStyle(viewModel.selectedColorTag == colorTag.id ? .white : .primary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 2)
+        }
+    }
+
+    private func colorForName(_ name: String) -> Color {
+        switch name.lowercased() {
+        case "red": return .red
+        case "orange": return .orange
+        case "yellow": return .yellow
+        case "green": return .green
+        case "teal": return .teal
+        case "blue": return .blue
+        case "purple": return .purple
+        case "pink": return .pink
+        case "indigo": return .indigo
+        default: return .gray
+        }
     }
 
     private var tagFilterBar: some View {
@@ -496,7 +685,7 @@ public struct NoteListView: View {
     }
 
     private var isAnyFilterActive: Bool {
-        !viewModel.searchText.isEmpty || viewModel.selectedTag != nil || viewModel.filterSource != nil || viewModel.onlyFavorites || viewModel.showArchived
+        !viewModel.searchText.isEmpty || viewModel.selectedTag != nil || viewModel.selectedColorTag != nil || viewModel.filterSource != nil || viewModel.onlyFavorites || viewModel.showArchived
     }
 
     private var emptyStateView: some View {
@@ -531,6 +720,16 @@ public struct NoteListView: View {
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 40)
                 }
+
+                Button("Reset All Filters") {
+                    withAnimation {
+                        collapseSearch()
+                        viewModel.filterSource = nil
+                        viewModel.onlyFavorites = false
+                    }
+                }
+                .buttonStyle(.bordered)
+                .tint(Color.accentColor)
             } else {
                 Image(systemName: "waveform")
                     .font(.system(size: 46, weight: .light))
@@ -545,6 +744,14 @@ public struct NoteListView: View {
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 40)
                 }
+
+                Button {
+                    viewModel.showingRecordSheet = true
+                } label: {
+                    Label("Record Memo", systemImage: "mic.fill")
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color.accentColor)
             }
 
             Spacer()

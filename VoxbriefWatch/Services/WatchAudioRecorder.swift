@@ -7,6 +7,7 @@ public final class WatchAudioRecorder: NSObject, ObservableObject {
     public static let shared = WatchAudioRecorder()
     
     @Published public private(set) var isRecording: Bool = false
+    @Published public private(set) var isPaused: Bool = false
     @Published public private(set) var recordingDuration: TimeInterval = 0
     @Published public private(set) var audioLevel: Float = 0.0
     
@@ -78,11 +79,13 @@ public final class WatchAudioRecorder: NSObject, ObservableObject {
         
         self.audioRecorder = recorder
         self.isRecording = true
+        self.isPaused = false
         self.recordingDuration = 0
         
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            guard let self = self, let recorder = self.audioRecorder, recorder.isRecording else { return }
+            guard let self = self, let recorder = self.audioRecorder, self.isRecording else { return }
+            guard !self.isPaused else { return }
             self.recordingDuration = recorder.currentTime
             recorder.updateMeters()
             let power = recorder.averagePower(forChannel: 0)
@@ -92,9 +95,23 @@ public final class WatchAudioRecorder: NSObject, ObservableObject {
         
         return noteId
     }
+
+    public func pauseRecording() {
+        guard isRecording, !isPaused, let recorder = audioRecorder else { return }
+        recorder.pause()
+        self.isPaused = true
+        self.audioLevel = 0
+    }
+
+    public func resumeRecording() {
+        guard isRecording, isPaused, let recorder = audioRecorder else { return }
+        recorder.record()
+        self.isPaused = false
+    }
     
-    public func setSimulatedRecording(active: Bool, duration: TimeInterval = 14.0, level: Float = 0.65) {
+    public func setSimulatedRecording(active: Bool, duration: TimeInterval = 14.0, level: Float = 0.65, isPaused: Bool = false) {
         self.isRecording = active
+        self.isPaused = isPaused
         self.recordingDuration = duration
         self.audioLevel = level
     }
@@ -110,6 +127,7 @@ public final class WatchAudioRecorder: NSObject, ObservableObject {
         timer = nil
         
         self.isRecording = false
+        self.isPaused = false
         self.audioRecorder = nil
         self.audioLevel = 0
         
@@ -137,6 +155,7 @@ public final class WatchAudioRecorder: NSObject, ObservableObject {
             try? FileManager.default.removeItem(at: url)
         }
         self.isRecording = false
+        self.isPaused = false
         self.audioRecorder = nil
         self.audioLevel = 0
     }

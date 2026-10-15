@@ -141,6 +141,7 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
     public var conditions: [String]
     public var actionItems: [String]
     public var completedActionItems: [String] = []
+    public var actionItemPriorities: [String: String] = [:]
     public var tags: [String]
     
     // Metadata & Pipeline Status
@@ -200,6 +201,7 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
         conditions: [String] = [],
         actionItems: [String] = [],
         completedActionItems: [String] = [],
+        actionItemPriorities: [String: String] = [:],
         tags: [String] = [],
         status: NoteProcessingStatus = .ready,
         source: NoteSource = .phoneApp,
@@ -230,6 +232,7 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
         self.conditions = conditions
         self.actionItems = actionItems
         self.completedActionItems = completedActionItems
+        self.actionItemPriorities = actionItemPriorities
         self.tags = tags
         self.status = status
         self.source = source
@@ -266,6 +269,7 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
         conditions = try container.decode([String].self, forKey: .conditions)
         actionItems = try container.decode([String].self, forKey: .actionItems)
         completedActionItems = try container.decodeIfPresent([String].self, forKey: .completedActionItems) ?? []
+        actionItemPriorities = try container.decodeIfPresent([String: String].self, forKey: .actionItemPriorities) ?? [:]
         tags = try container.decode([String].self, forKey: .tags)
         status = try container.decode(NoteProcessingStatus.self, forKey: .status)
         source = try container.decode(NoteSource.self, forKey: .source)
@@ -334,5 +338,31 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
         guard total > 0 else { return (0, 0, 0.0) }
         let completed = completedActionItems.filter { actionItems.contains($0) }.count
         return (completed, total, Double(completed) / Double(total))
+    }
+
+    /// Priority level for a specific action item ("high", "medium", "low", or nil).
+    public func priority(for actionItem: String) -> String? {
+        actionItemPriorities[actionItem]
+    }
+
+    /// Estimated speaking speed in words per minute (WPM).
+    public var spokenWPM: Int {
+        guard duration > 3 else { return 0 }
+        let words = wordCount
+        let minutes = duration / 60.0
+        return Int((Double(words) / minutes).rounded())
+    }
+
+    /// Speaking tempo classification based on spoken WPM.
+    public var speechCadenceLabel: String {
+        let wpm = spokenWPM
+        guard wpm > 0 else { return "N/A" }
+        if wpm < 115 {
+            return "Deliberate"
+        } else if wpm <= 165 {
+            return "Conversational"
+        } else {
+            return "Rapid"
+        }
     }
 }

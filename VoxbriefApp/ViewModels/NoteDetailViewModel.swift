@@ -321,4 +321,40 @@ public final class NoteDetailViewModel: ObservableObject {
     public func cancelEditing() {
         isEditing = false
     }
+
+    // MARK: - Audio File & Export Additions
+
+    public var audioFileURL: URL? {
+        guard let fileName = note.audioFileName else { return nil }
+        let url = AudioFileManager.shared.url(for: fileName)
+        return FileManager.default.fileExists(atPath: url.path) ? url : nil
+    }
+
+    public func setActionItemPriority(item: String, priority: String?) {
+        repository.setActionItemPriority(id: note.id, actionItem: item, priority: priority)
+    }
+
+    public func cycleActionItemPriority(item: String) {
+        let current = note.priority(for: item)
+        let next: String?
+        switch current {
+        case "high": next = nil
+        case "medium": next = "high"
+        case "low": next = "medium"
+        default: next = "low"
+        }
+        setActionItemPriority(item: item, priority: next)
+    }
+
+    public func appendContent(text: String, title: String? = nil) {
+        repository.appendContent(id: note.id, text: text, title: title)
+    }
+
+    public func copyRichText() {
+        let title = note.title
+        let body = note.cleanedNote.isEmpty ? note.rawTranscript : note.cleanedNote
+        let html = "<h1>\(title)</h1>\n<p>\(body.replacingOccurrences(of: "\n", with: "<br>"))</p>"
+        PlatformPasteboard.copy(html)
+    }
 }
+

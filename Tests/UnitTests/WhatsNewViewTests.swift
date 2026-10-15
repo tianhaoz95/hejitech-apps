@@ -6,32 +6,30 @@ import SwiftUI
 final class WhatsNewViewTests: XCTestCase {
 
     func testCurrentVersionMatchesReleases() {
-        XCTAssertEqual(WhatsNewView.currentVersion, "1.24.0")
+        XCTAssertEqual(WhatsNewView.currentVersion, "1.25.0")
         let latest = WhatsNewView.releases.first
         XCTAssertNotNil(latest)
         XCTAssertEqual(latest?.version, WhatsNewView.currentVersion)
     }
 
     func testReleaseSeparatesFeaturesFromImprovements() {
-        guard let current = WhatsNewView.releases.first(where: { $0.version == "1.24.0" }) else {
-            XCTFail("Missing v1.24.0 release")
+        guard let current = WhatsNewView.releases.first(where: { $0.version == "1.25.0" }) else {
+            XCTFail("Missing v1.25.0 release")
             return
         }
 
-        // New features are shown up front
-        XCTAssertFalse(current.features.isEmpty)
-        XCTAssertGreaterThanOrEqual(current.features.count, 4)
+        // 10 new features are shown up front
+        XCTAssertEqual(current.features.count, 10)
 
-        // Bug fixes & improvements are stored separately for secondary UI
-        XCTAssertFalse(current.improvementsAndFixes.isEmpty)
-        XCTAssertGreaterThanOrEqual(current.improvementsAndFixes.count, 3)
+        // 20 bug fixes & improvements are stored separately for secondary UI
+        XCTAssertGreaterThanOrEqual(current.improvementsAndFixes.count, 20)
 
         // items property aggregates both for backward compatibility
         XCTAssertEqual(current.items.count, current.features.count + current.improvementsAndFixes.count)
     }
 
     func testHistoricalVersionsContainBothFeaturesAndImprovements() {
-        let expectedVersions = ["1.24.0", "1.23.0", "1.22.0", "1.21.0", "1.20.0", "1.19.0", "1.18.0", "1.17.0", "1.16.0"]
+        let expectedVersions = ["1.25.0", "1.24.0", "1.23.0", "1.22.0", "1.21.0", "1.20.0", "1.19.0", "1.18.0", "1.17.0", "1.16.0"]
         for version in expectedVersions {
             guard let release = WhatsNewView.releases.first(where: { $0.version == version }) else {
                 XCTFail("Missing historical version \(version)")
@@ -96,11 +94,7 @@ final class WhatsNewViewTests: XCTestCase {
         let defaults = UserDefaults.standard
         let original = defaults.string(forKey: WhatsNewView.lastSeenVersionKey)
         defer {
-            if let original = original {
-                defaults.set(original, forKey: WhatsNewView.lastSeenVersionKey)
-            } else {
-                defaults.removeObject(forKey: WhatsNewView.lastSeenVersionKey)
-            }
+            defaults.set(WhatsNewView.currentVersion, forKey: WhatsNewView.lastSeenVersionKey)
         }
 
         // When version is different, should show automatically
@@ -159,20 +153,126 @@ final class WhatsNewViewTests: XCTestCase {
     }
 
     func testCurrentReleaseContainsRichFeatureDetails() {
-        guard let current = WhatsNewView.releases.first(where: { $0.version == "1.24.0" }) else {
-            XCTFail("Missing v1.24.0 release")
+        guard let current = WhatsNewView.releases.first(where: { $0.version == "1.25.0" }) else {
+            XCTFail("Missing v1.25.0 release")
             return
         }
 
-        // Check that at least some features in 1.24.0 have rich fields
+        // Check that features in 1.25.0 have rich fields
         let featuresWithDetailedDesc = current.features.filter { $0.detailedDescription != nil }
-        XCTAssertFalse(featuresWithDetailedDesc.isEmpty, "v1.24.0 should have features with detailedDescription")
+        XCTAssertFalse(featuresWithDetailedDesc.isEmpty, "v1.25.0 should have features with detailedDescription")
 
         let featuresWithHighlights = current.features.filter { $0.highlights != nil && !$0.highlights!.isEmpty }
-        XCTAssertFalse(featuresWithHighlights.isEmpty, "v1.24.0 should have features with highlights")
+        XCTAssertFalse(featuresWithHighlights.isEmpty, "v1.25.0 should have features with highlights")
 
         let featuresWithVisualizations = current.features.filter { $0.visualization != nil }
-        XCTAssertFalse(featuresWithVisualizations.isEmpty, "v1.24.0 should have features with visualization")
+        XCTAssertFalse(featuresWithVisualizations.isEmpty, "v1.25.0 should have features with visualization")
+    }
+
+    func testSpokenWPMAndCadenceLabel() {
+        // 120 words in 60 seconds = 120 WPM (Conversational)
+        let words = Array(repeating: "hello", count: 120).joined(separator: " ")
+        let note1 = VoiceNote(
+            id: UUID(),
+            createdAt: Date(),
+            duration: 60.0,
+            audioFileName: "test1.m4a",
+            rawTranscript: words,
+            status: .ready,
+            source: .phoneApp
+        )
+        XCTAssertEqual(note1.spokenWPM, 120)
+        XCTAssertEqual(note1.speechCadenceLabel, "Conversational")
+
+        // 50 words in 60 seconds = 50 WPM (Deliberate)
+        let note2 = VoiceNote(
+            id: UUID(),
+            createdAt: Date(),
+            duration: 60.0,
+            audioFileName: "test2.m4a",
+            rawTranscript: Array(repeating: "hello", count: 50).joined(separator: " "),
+            status: .ready,
+            source: .phoneApp
+        )
+        XCTAssertEqual(note2.spokenWPM, 50)
+        XCTAssertEqual(note2.speechCadenceLabel, "Deliberate")
+
+        // 200 words in 60 seconds = 200 WPM (Rapid)
+        let note3 = VoiceNote(
+            id: UUID(),
+            createdAt: Date(),
+            duration: 60.0,
+            audioFileName: "test3.m4a",
+            rawTranscript: Array(repeating: "hello", count: 200).joined(separator: " "),
+            status: .ready,
+            source: .phoneApp
+        )
+        XCTAssertEqual(note3.spokenWPM, 200)
+        XCTAssertEqual(note3.speechCadenceLabel, "Rapid")
+    }
+
+    func testActionItemPriorities() {
+        var note = VoiceNote(
+            id: UUID(),
+            createdAt: Date(),
+            duration: 30.0,
+            audioFileName: "test.m4a",
+            cleanedNote: "## Action Items\n- [ ] Task Alpha\n- [ ] Task Beta",
+            status: .ready,
+            source: .phoneApp
+        )
+
+        XCTAssertNil(note.priority(for: "Task Alpha"))
+        note.actionItemPriorities["Task Alpha"] = "HIGH"
+        XCTAssertEqual(note.priority(for: "Task Alpha"), "HIGH")
+    }
+
+    func testRepositoryBulkOperations() {
+        let repo = NoteRepository.shared
+        let noteA = VoiceNote(id: UUID(), createdAt: Date(), duration: 10, audioFileName: "a.m4a", status: .ready, source: .phoneApp)
+        let noteB = VoiceNote(id: UUID(), createdAt: Date(), duration: 15, audioFileName: "b.m4a", status: .ready, source: .phoneApp)
+
+        repo.save(noteA)
+        repo.save(noteB)
+
+        let targetIDs: Set<UUID> = [noteA.id, noteB.id]
+
+        repo.bulkSetFavorite(ids: targetIDs, isFavorite: true)
+        XCTAssertTrue(repo.note(withId: noteA.id)?.isFavorite == true)
+        XCTAssertTrue(repo.note(withId: noteB.id)?.isFavorite == true)
+
+        repo.bulkSetPinned(ids: targetIDs, isPinned: true)
+        XCTAssertTrue(repo.note(withId: noteA.id)?.isPinned == true)
+        XCTAssertTrue(repo.note(withId: noteB.id)?.isPinned == true)
+
+        repo.bulkAddTag(ids: targetIDs, tag: "Sprint25")
+        XCTAssertTrue(repo.note(withId: noteA.id)?.tags.contains("#Sprint25") == true)
+        XCTAssertTrue(repo.note(withId: noteB.id)?.tags.contains("#Sprint25") == true)
+
+        // Cleanup
+        repo.delete(id: noteA.id)
+        repo.delete(id: noteB.id)
+    }
+
+    func testAppendContentToNote() {
+        let repo = NoteRepository.shared
+        let note = VoiceNote(
+            id: UUID(),
+            createdAt: Date(),
+            duration: 20,
+            audioFileName: "append_test.m4a",
+            cleanedNote: "# Original Title\n\nOriginal content.",
+            status: .ready,
+            source: .phoneApp
+        )
+        repo.save(note)
+
+        repo.appendContent(id: note.id, text: "Follow-up notes appended.")
+        let updated = repo.note(withId: note.id)
+        XCTAssertNotNil(updated)
+        XCTAssertTrue(updated?.cleanedNote.contains("Follow-up notes appended.") == true)
+
+        repo.delete(id: note.id)
     }
 }
 

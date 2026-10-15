@@ -69,6 +69,27 @@ public struct WatchSettingsView: View {
                         Text("\(storage.notes.count)")
                             .font(.system(size: 12, weight: .semibold, design: .rounded))
                     }
+
+                    if !storage.notes.isEmpty {
+                        let pendingCount = storage.pendingNotes().count
+                        let syncedCount = max(0, storage.notes.count - pendingCount)
+                        let syncRatio = Double(syncedCount) / Double(storage.notes.count)
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            HStack {
+                                Text("Sync Status")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                Text("\(syncedCount) synced, \(pendingCount) pending")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary)
+                            }
+                            ProgressView(value: syncRatio)
+                                .tint(Color.accentColor)
+                        }
+                        .padding(.vertical, 2)
+                    }
                 }
                 .padding(.vertical, 2)
 
@@ -120,7 +141,7 @@ public struct WatchSettingsView: View {
                 HStack(spacing: 8) {
                     VoxbriefLogoView(size: .watch)
                     Spacer()
-                    Text("v1.24.0")
+                    Text("v1.25.0")
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundColor(.secondary)
                 }

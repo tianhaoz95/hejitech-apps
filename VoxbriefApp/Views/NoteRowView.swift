@@ -2,13 +2,23 @@ import SwiftUI
 
 public struct NoteRowView: View {
     public let note: VoiceNote
+    public var isSelectable: Bool = false
+    public var isSelected: Bool = false
 
-    public init(note: VoiceNote) {
+    public init(note: VoiceNote, isSelectable: Bool = false, isSelected: Bool = false) {
         self.note = note
+        self.isSelectable = isSelectable
+        self.isSelected = isSelected
     }
 
     public var body: some View {
         HStack(spacing: 12) {
+            if isSelectable {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 20))
+                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary.opacity(0.4))
+            }
+
             if let colorName = note.colorTag, let color = colorForName(colorName) {
                 RoundedRectangle(cornerRadius: 3)
                     .fill(color)
@@ -97,6 +107,7 @@ public struct NoteRowView: View {
         case "purple": return .purple
         case "green": return .green
         case "orange": return .orange
+        case "yellow": return .yellow
         case "pink": return .pink
         case "teal": return .teal
         case "indigo": return .indigo

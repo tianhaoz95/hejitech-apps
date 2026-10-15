@@ -96,7 +96,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.24.0"
+    public static let currentVersion = "1.25.0"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -105,6 +105,296 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.25.0",
+            date: "October 2026",
+            tagline: "Power Productivity Suite: Multi-Select Batch Actions, Transcript Search, Raw Audio Export & Action Item Priorities",
+            features: [
+                WhatsNewItem(
+                    icon: "text.magnifyingglass",
+                    tint: .blue,
+                    title: "Transcript Keyword Search & Seek",
+                    description: "Find spoken words instantly with live match counters and tap any match to seek playback directly to that moment.",
+                    detailedDescription: "Deep search across your full spoken transcript. Matches are highlighted in real-time with an interactive occurrence counter (e.g. '3 of 12'), and tapping occurrences automatically scrubs audio playback to the exact timestamp.",
+                    highlights: [
+                        "Real-time keyword matching across entire raw transcripts",
+                        "Interactive occurrence navigation counter with stepper buttons",
+                        "Instant tap-to-seek audio playback alignment"
+                    ]
+                ),
+                WhatsNewItem(
+                    icon: "square.and.arrow.up.fill",
+                    tint: .indigo,
+                    title: "Raw M4A Audio Export & Share",
+                    description: "Export and share pristine 32kHz mono AAC audio recordings directly to Files, AirDrop, Messages, or external apps.",
+                    detailedDescription: "Gain direct access to your original audio recordings. Export pristine 32kHz mono AAC recordings directly through iOS ShareSheet to AirDrop, iCloud Drive, or external audio editors.",
+                    highlights: [
+                        "Export lossless on-device AAC .m4a audio recordings",
+                        "Standard iOS system ShareLink integration",
+                        "Perfect for sharing interview snippets and audio backups"
+                    ]
+                ),
+                WhatsNewItem(
+                    icon: "exclamationmark.triangle.fill",
+                    tint: .orange,
+                    title: "Action Item Priority Triage",
+                    description: "Assign HIGH, MED, or LOW priorities to AI-extracted action items with one tap and tactile feedback.",
+                    detailedDescription: "Transform AI checklists into an actionable triage board. Tap any action item's priority badge to cycle between HIGH, MED, and LOW urgency levels with color coding and custom haptic responses.",
+                    highlights: [
+                        "One-tap priority cycling with HIGH (Red), MED (Yellow), LOW (Green)",
+                        "Persistent per-action item priority storage in JSON",
+                        "Tactile haptic feedback on each state transition"
+                    ]
+                ),
+                WhatsNewItem(
+                    icon: "speedometer",
+                    tint: .teal,
+                    title: "Speaking Speed & Tempo Analytics",
+                    description: "Measure words per minute (WPM) and classify speech tempo into Deliberate, Conversational, or Rapid cadence.",
+                    detailedDescription: "Gain automated speech cadence telemetry on every voice memo. Voxbrief calculates accurate spoken Words Per Minute (WPM) and classifies pacing into Deliberate (<115 WPM), Conversational (115-165 WPM), or Rapid (>165 WPM).",
+                    highlights: [
+                        "Automatic spoken words per minute (WPM) calculation",
+                        "Cadence classification: Deliberate, Conversational, Rapid",
+                        "Displayed directly in the note metadata footer"
+                    ]
+                ),
+                WhatsNewItem(
+                    icon: "checkmark.circle.badge.questionmark.fill",
+                    tint: .purple,
+                    title: "Multi-Select Batch Actions",
+                    description: "Select multiple voice notes to favorite, pin, archive, export combined Markdown, or delete in bulk.",
+                    detailedDescription: "Manage extensive note vaults effortlessly. Tap 'Select' in the navigation bar to enter multi-select mode, select individual or all notes, and execute batch operations with confirmation safeguards.",
+                    highlights: [
+                        "Batch favorite, pin, archive, and delete operations",
+                        "Export selected notes into a single formatted Markdown digest",
+                        "Select All and Deselect All shortcuts with selection count badges"
+                    ]
+                ),
+                WhatsNewItem(
+                    icon: "paintpalette.fill",
+                    tint: .pink,
+                    title: "One-Tap Color Tag Filtering",
+                    description: "Filter notes instantly across 9 vibrant color tags with a horizontally scrollable quick filter bar.",
+                    detailedDescription: "Organize notes visually with dedicated color tags. The new color filter bar sits prominently under search, enabling instantaneous single-tap filtering across Red, Blue, Green, Orange, Purple, Pink, Teal, Indigo, and Yellow.",
+                    highlights: [
+                        "Horizontal scrollable color tag carousel with visual dot indicators",
+                        "Combined search scope and tag filter chaining",
+                        "Instant active filter reset affordance"
+                    ]
+                ),
+                WhatsNewItem(
+                    icon: "note.text.badge.plus",
+                    tint: .cyan,
+                    title: "Quick Append Memo & Scratchpad",
+                    description: "Append manual thoughts, follow-ups, or meeting updates directly to any existing note without re-recording.",
+                    detailedDescription: "Keep your notes living and up to date. Open any note and tap 'Append Text Memo…' to attach timestamped follow-up thoughts or meeting notes directly into the generated Markdown document.",
+                    highlights: [
+                        "Timestamped follow-up section appended to cleaned note Markdown",
+                        "Clean modal sheet with immediate keyboard focus",
+                        "Preserves existing note integrity and metadata"
+                    ]
+                ),
+                WhatsNewItem(
+                    icon: "pause.circle.fill",
+                    tint: .yellow,
+                    title: "Apple Watch Recording Pause & Resume",
+                    description: "Pause active watch recordings when interrupted and resume seamlessly with tactile haptics.",
+                    detailedDescription: "Take control of watch recording sessions. When interrupted during a voice memo, tap the new pause button on your Apple Watch. The status pill pulses yellow in PAUSED state, and resuming continues the same audio file with zero gaps.",
+                    highlights: [
+                        "Pause and resume active watch recordings without splitting files",
+                        "Clear high-contrast PAUSED status indicator pill",
+                        "Integrated tactile wrist haptics on pause and resume"
+                    ],
+                    visualization: .waveform
+                ),
+                WhatsNewItem(
+                    icon: "gobackward.5",
+                    tint: .blue,
+                    title: "Fine Audio Scrubbing & Timecode Preview",
+                    description: "Jump backwards or forwards by 5 seconds with precision stepping and real-time scrub timecode.",
+                    detailedDescription: "Review critical audio moments with precision playback controls. Tap the dedicated -5s and +5s step buttons or drag the waveform scrubber to inspect exact timecodes before jumping.",
+                    highlights: [
+                        "Dedicated -5s and +5s precision audio step buttons",
+                        "Real-time drag scrubbing with current playback position preview",
+                        "Smooth seeking with zero audio glitching"
+                    ]
+                ),
+                WhatsNewItem(
+                    icon: "externaldrive.badge.checkmark",
+                    tint: .green,
+                    title: "Storage Health & Orphaned File Cleanup",
+                    description: "Detect and reclaim disk space by safely removing leftover audio files from deleted notes.",
+                    detailedDescription: "Ensure your device storage remains clean and lean. Voxbrief now runs automated checks to detect unreferenced audio files on disk and provides one-tap cleanup to reclaim megabytes of storage.",
+                    highlights: [
+                        "Scans Documents directory for unreferenced .m4a audio files",
+                        "One-tap orphan cleanup with reclaimed byte reporting",
+                        "WatchOS storage sync progress visualization and cache purge"
+                    ]
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "doc.richtext",
+                    tint: .indigo,
+                    title: "Rich Text Clipboard Export",
+                    description: "Added formatted rich text copy support to easily paste styled notes into Apple Notes, Pages, and Mail.",
+                    kind: .improvement,
+                    detailedDescription: "Copies note Markdown converted to attributed rich text styling directly onto system pasteboard."
+                ),
+                WhatsNewItem(
+                    icon: "keyboard",
+                    tint: .blue,
+                    title: "Hardware Keyboard Shortcuts",
+                    description: "Added Command+N to start recording and Command+F to toggle search on iPad and Mac keyboards.",
+                    kind: .improvement,
+                    detailedDescription: "Supports native iPad and macOS productivity with full Command key bindings."
+                ),
+                WhatsNewItem(
+                    icon: "sparkles",
+                    tint: .teal,
+                    title: "Empty State Direct Actions",
+                    description: "Added direct 'Reset All Filters' and 'Record Memo' action buttons inside empty state placeholders.",
+                    kind: .improvement,
+                    detailedDescription: "Eliminates dead ends in the UI with immediate recovery and creation actions."
+                ),
+                WhatsNewItem(
+                    icon: "chart.bar.fill",
+                    tint: .cyan,
+                    title: "Apple Watch Storage Sync Gauge",
+                    description: "Added a visual progress bar in Apple Watch Settings showing synced vs pending memos.",
+                    kind: .improvement,
+                    detailedDescription: "Provides glanceable progress telemetry for background audio sync to companion iPhone."
+                ),
+                WhatsNewItem(
+                    icon: "lock.shield",
+                    tint: .green,
+                    title: "Backward-Compatible JSON Persistence",
+                    description: "Engineered fallback decoders for all new fields, guaranteeing uninterrupted loading of previous notes.",
+                    kind: .improvement,
+                    detailedDescription: "All newly introduced model attributes safely decode optional payloads with sensible defaults."
+                ),
+                WhatsNewItem(
+                    icon: "applewatch",
+                    tint: .orange,
+                    title: "Responsive Watch Layout Sizing",
+                    description: "Balanced button spacing in WatchMainRecordView across 40mm, 44mm, 45mm, and 49mm Ultra watch faces.",
+                    kind: .improvement,
+                    detailedDescription: "Optimized hit targets and dynamic padding for all current Apple Watch screen geometries."
+                ),
+                WhatsNewItem(
+                    icon: "waveform.path",
+                    tint: .yellow,
+                    title: "Accurate Metering While Paused",
+                    description: "Fixed audio level metering to zero immediately when watch recording is paused to eliminate ghost waveforms.",
+                    kind: .fix,
+                    detailedDescription: "Corrected metering update loop to freeze visualization while recording is paused."
+                ),
+                WhatsNewItem(
+                    icon: "hand.tap",
+                    tint: .purple,
+                    title: "Haptic Confirmation on Watch Actions",
+                    description: "Added tactile haptic feedback to watch pause, resume, and tag cycle interactions.",
+                    kind: .improvement,
+                    detailedDescription: "Reinforces user actions with distinct watchOS system haptic feedback patterns."
+                ),
+                WhatsNewItem(
+                    icon: "trash.circle",
+                    tint: .red,
+                    title: "Batch Delete Confirmation Safeguard",
+                    description: "Added a native confirmation dialog before executing bulk deletions to prevent accidental loss.",
+                    kind: .fix,
+                    detailedDescription: "Presents clear action confirmation with note counts before deleting multiple items."
+                ),
+                WhatsNewItem(
+                    icon: "bell.badge",
+                    tint: .indigo,
+                    title: "Live Activity State Coordination",
+                    description: "Ensured phone recording coordinator synchronizes cleanly when recordings are aborted or interrupted.",
+                    kind: .improvement,
+                    detailedDescription: "Hardened interruption observers for Live Activity widgets."
+                ),
+                WhatsNewItem(
+                    icon: "speaker.wave.2",
+                    tint: .teal,
+                    title: "Audio Session Ducking Policy",
+                    description: "Tuned watch audio session options to duck other audio sources smoothly without clipping system alerts.",
+                    kind: .improvement,
+                    detailedDescription: "Refined AVAudioSession category configuration for seamless background coexistence."
+                ),
+                WhatsNewItem(
+                    icon: "paintpalette",
+                    tint: .pink,
+                    title: "Unified Color Palette Mappings",
+                    description: "Synchronized color palette mappings across note list rows, detail badges, and filter bars.",
+                    kind: .improvement,
+                    detailedDescription: "Unified semantic color definitions across all views and platforms."
+                ),
+                WhatsNewItem(
+                    icon: "arrow.up.and.down.circle",
+                    tint: .blue,
+                    title: "Transcript Navigation Stepper",
+                    description: "Improved transcript search with previous/next occurrence stepper buttons.",
+                    kind: .improvement,
+                    detailedDescription: "Cycle back and forth through multiple search matches in long transcripts."
+                ),
+                WhatsNewItem(
+                    icon: "clock",
+                    tint: .orange,
+                    title: "Sub-Second Timestamp Formatter",
+                    description: "Refined duration formatting in player controls to eliminate numerical jitter during playback.",
+                    kind: .fix,
+                    detailedDescription: "Uses monospaced digits and smooth floor rounding for audio scrubbers."
+                ),
+                WhatsNewItem(
+                    icon: "doc.on.doc",
+                    tint: .green,
+                    title: "Duplicate Note Title Numbering",
+                    description: "Duplicating a note now properly increments copy names (e.g. '(Copy 2)') and resets note ID.",
+                    kind: .fix,
+                    detailedDescription: "Prevents colliding duplicate note titles when repeatedly duplicating memos."
+                ),
+                WhatsNewItem(
+                    icon: "circle.dotted",
+                    tint: .orange,
+                    title: "Pipeline Processing Badge Animation",
+                    description: "Enhanced the orange pulsing processing dot on the bottom mic button with subtle scale animation.",
+                    kind: .improvement,
+                    detailedDescription: "Provides live feedback that on-device WhisperKit or Qwen3 pipeline is actively computing."
+                ),
+                WhatsNewItem(
+                    icon: "accessibility",
+                    tint: .blue,
+                    title: "Scrub Button Accessibility Labels",
+                    description: "Added localized accessibility labels and hints to -5s / +5s skip buttons for VoiceOver users.",
+                    kind: .improvement,
+                    detailedDescription: "Ensures screen reader accessibility for all new precision audio controls."
+                ),
+                WhatsNewItem(
+                    icon: "keyboard.chevron.compact.down",
+                    tint: .purple,
+                    title: "Auto-Dismiss Keyboard on Search Submit",
+                    description: "Dismisses the soft keyboard smoothly when the user taps Search or Return.",
+                    kind: .improvement,
+                    detailedDescription: "Improves screen readability by freeing up vertical space immediately upon search submit."
+                ),
+                WhatsNewItem(
+                    icon: "info.circle",
+                    tint: .cyan,
+                    title: "Watch Settings Version Display",
+                    description: "Updated Apple Watch Settings footer to show the current v1.25.0 version.",
+                    kind: .improvement,
+                    detailedDescription: "Keeps watch companion app version indicator in sync with main iOS app release."
+                ),
+                WhatsNewItem(
+                    icon: "checkmark.seal",
+                    tint: .green,
+                    title: "Mac & iOS Unit Test Suite Expansion",
+                    description: "Added dedicated unit tests covering spoken WPM calculation, action item priorities, and repository bulk operations.",
+                    kind: .improvement,
+                    detailedDescription: "Ensures regression-proof quality across both macOS and iOS test targets."
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.24.0",
             date: "October 2026",

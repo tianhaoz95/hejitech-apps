@@ -28,6 +28,7 @@ public final class NoteListViewModel: ObservableObject {
     @Published public var searchScope: SearchScope = .all
     @Published public var sortOption: SortOption = .newest
     @Published public var selectedTag: String? = nil
+    @Published public var selectedColorTag: String? = nil
     @Published public var filterSource: NoteSource? = nil
     @Published public var onlyFavorites: Bool = false
     @Published public var showArchived: Bool = false
@@ -104,6 +105,13 @@ public final class NoteListViewModel: ObservableObject {
             // Tag filter
             if let selectedTag = selectedTag, !selectedTag.isEmpty {
                 if !note.tags.contains(selectedTag) {
+                    return false
+                }
+            }
+
+            // Color tag filter
+            if let selectedColorTag = selectedColorTag, !selectedColorTag.isEmpty {
+                if note.colorTag != selectedColorTag {
                     return false
                 }
             }
@@ -235,4 +243,70 @@ public final class NoteListViewModel: ObservableObject {
             }
             .joined(separator: "\n\n---\n\n")
     }
+
+    // MARK: - Batch Multi-Select Operations
+
+    public func bulkDelete(ids: Set<UUID>) {
+        repository.bulkDelete(ids: ids)
+    }
+
+    public func bulkArchive(ids: Set<UUID>, archive: Bool = true) {
+        repository.bulkArchive(ids: ids, archive: archive)
+    }
+
+    public func bulkArchive(ids: Set<UUID>, isArchived: Bool) {
+        repository.bulkArchive(ids: ids, archive: isArchived)
+    }
+
+    public func bulkFavorite(ids: Set<UUID>, isFavorite: Bool = true) {
+        repository.bulkSetFavorite(ids: ids, isFavorite: isFavorite)
+    }
+
+    public func bulkPin(ids: Set<UUID>, isPinned: Bool = true) {
+        repository.bulkSetPinned(ids: ids, isPinned: isPinned)
+    }
+
+    public func bulkAddTag(ids: Set<UUID>, tag: String) {
+        repository.bulkAddTag(ids: ids, tag: tag)
+    }
+
+    public func exportSelectedNotesMarkdown(ids: Set<UUID>) -> String {
+        let selected = repository.notes.filter { ids.contains($0.id) }
+        guard !selected.isEmpty else { return "_No notes selected._" }
+        return selected
+            .sorted(by: { $0.createdAt > $1.createdAt })
+            .map { note in
+                note.cleanedNote.isEmpty ? "# \(note.title)\n\n\(note.rawTranscript)" : note.cleanedNote
+            }
+            .joined(separator: "\n\n---\n\n")
+    }
+
+    public var presetColorTags: [PresetColorTag] {
+        Self.presetColorTags
+    }
+
+    public static let presetColorTags: [PresetColorTag] = [
+        PresetColorTag(name: "Red", id: "red", hex: "#FF3B30"),
+        PresetColorTag(name: "Orange", id: "orange", hex: "#FF9500"),
+        PresetColorTag(name: "Yellow", id: "yellow", hex: "#FFCC00"),
+        PresetColorTag(name: "Green", id: "green", hex: "#34C759"),
+        PresetColorTag(name: "Teal", id: "teal", hex: "#30B0C7"),
+        PresetColorTag(name: "Blue", id: "blue", hex: "#007AFF"),
+        PresetColorTag(name: "Indigo", id: "indigo", hex: "#5856D6"),
+        PresetColorTag(name: "Purple", id: "purple", hex: "#AF52DE"),
+        PresetColorTag(name: "Pink", id: "pink", hex: "#FF2D55")
+    ]
 }
+
+public struct PresetColorTag: Identifiable, Hashable, Sendable {
+    public let name: String
+    public let id: String
+    public let hex: String
+
+    public init(name: String, id: String, hex: String) {
+        self.name = name
+        self.id = id
+        self.hex = hex
+    }
+}
+

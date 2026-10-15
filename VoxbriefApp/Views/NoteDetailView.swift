@@ -13,6 +13,12 @@ public struct NoteDetailView: View {
     @State private var newTagText = ""
     @State private var showingCopiedNotification = false
     @State private var copiedNotificationText = ""
+    @State private var transcriptSearchText = ""
+    @State private var showingAppendSheet = false
+    @State private var appendMemoText = ""
+    @State private var appendMemoTitle = ""
+    @State private var isScrubbing = false
+    @State private var scrubbedTime: TimeInterval = 0
 
     private enum CopyField: Equatable {
         case fullRewrite, lightCleanup, rawTranscript
@@ -225,6 +231,20 @@ public struct NoteDetailView: View {
                             }
                         }
 
+                        if let audioURL = viewModel.audioFileURL {
+                            ShareLink(item: audioURL) {
+                                Label("Share Audio File (.m4a)", systemImage: "waveform")
+                            }
+                        }
+
+                        Button {
+                            viewModel.copyRichText()
+                            copiedNotificationText = "Copied Formatted Note"
+                            showingCopiedNotification = true
+                        } label: {
+                            Label("Copy Formatted Rich Text", systemImage: "doc.on.clipboard")
+                        }
+
                         if !viewModel.note.actionItems.isEmpty {
                             Button {
                                 Task {
@@ -258,7 +278,15 @@ public struct NoteDetailView: View {
                         }
                     }
 
-                    Section {
+                    Section("Actions") {
+                        Button {
+                            appendMemoText = ""
+                            appendMemoTitle = ""
+                            showingAppendSheet = true
+                        } label: {
+                            Label("Append Text Memo…", systemImage: "note.text.badge.plus")
+                        }
+
                         Button {
                             viewModel.reprocessNote()
                         } label: {
@@ -301,6 +329,41 @@ public struct NoteDetailView: View {
             QuickRecordSheet(appendingToNoteId: viewModel.note.id) {}
             #elseif os(macOS)
             MacAddRecordingSheet(noteId: viewModel.note.id)
+            #endif
+        }
+        .sheet(isPresented: $showingAppendSheet) {
+            NavigationStack {
+                Form {
+                    Section("Memo Title (Optional)") {
+                        TextField("e.g. Follow-up Notes", text: $appendMemoTitle)
+                    }
+                    Section("Memo Content") {
+                        TextEditor(text: $appendMemoText)
+                            .frame(minHeight: 140)
+                    }
+                }
+                .navigationTitle("Append to Note")
+                #if os(iOS)
+                .navigationBarTitleDisplayMode(.inline)
+                #endif
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") {
+                            showingAppendSheet = false
+                        }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Append") {
+                            viewModel.appendContent(text: appendMemoText, title: appendMemoTitle)
+                            showingAppendSheet = false
+                        }
+                        .disabled(appendMemoText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                }
+            }
+            #if os(iOS)
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
             #endif
         }
         .trackFeedbackScreen("NoteDetail")
@@ -555,16 +618,31 @@ public struct NoteDetailView: View {
         let isCurrentTrack = playback.currentlyPlayingFileName == viewModel.note.audioFileName
         let isPlaying = playback.isPlaying && isCurrentTrack
 
-        return HStack(spacing: 12) {
-            Button {
-                viewModel.skipBackward()
-            } label: {
-                Image(systemName: "gobackward.15")
-                    .font(.system(size: 20))
-                    .foregroundStyle(.secondary)
+        return HStack(spacing: 10) {
+            VStack(spacing: 3) {
+                Button {
+                    viewModel.skipBackward()
+                } label: {
+                    Image(systemName: "gobackward.15")
+                        .font(.system(size: 17))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Skip backward 15 seconds")
+
+                Button {
+                    viewModel.playbackService.skipBackward(seconds: 5)
+                } label: {
+                    Text("-5s")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1)
+                        .background(Color.appTertiaryFill, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Skip backward 5 seconds")
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Skip backward 15 seconds")
 
             Button {
                 viewModel.togglePlayback()
@@ -575,21 +653,36 @@ public struct NoteDetailView: View {
             }
             .buttonStyle(.plain)
 
-            Button {
-                viewModel.skipForward()
-            } label: {
-                Image(systemName: "goforward.15")
-                    .font(.system(size: 20))
-                    .foregroundStyle(.secondary)
+            VStack(spacing: 3) {
+                Button {
+                    viewModel.skipForward()
+                } label: {
+                    Image(systemName: "goforward.15")
+                        .font(.system(size: 17))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Skip forward 15 seconds")
+
+                Button {
+                    viewModel.playbackService.skipForward(seconds: 5)
+                } label: {
+                    Text("+5s")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1)
+                        .background(Color.appTertiaryFill, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Skip forward 5 seconds")
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Skip forward 15 seconds")
 
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
-                    Text(isCurrentTrack ? playback.currentTime.formattedDuration : "00:00")
+                    Text(isScrubbing ? scrubbedTime.formattedDuration : (isCurrentTrack ? playback.currentTime.formattedDuration : "00:00"))
                         .font(.caption.monospacedDigit())
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(isScrubbing ? Color.accentColor : .primary)
                     Spacer()
                     Button {
                         viewModel.cyclePlaybackRate()
@@ -639,7 +732,12 @@ public struct NoteDetailView: View {
                             .onChanged { value in
                                 guard geo.size.width > 0 else { return }
                                 let progress = min(max(0, value.location.x / geo.size.width), 1)
+                                isScrubbing = true
+                                scrubbedTime = Double(progress) * (playback.duration > 0 ? playback.duration : viewModel.note.duration)
                                 viewModel.seek(to: Double(progress))
+                            }
+                            .onEnded { _ in
+                                isScrubbing = false
                             }
                     )
                 }
@@ -862,26 +960,49 @@ public struct NoteDetailView: View {
                 ForEach(Array(items.enumerated()), id: \.offset) { index, item in
                     if marker == .checkbox {
                         let isDone = viewModel.isActionItemCompleted(item)
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                viewModel.toggleActionItem(item)
-                            }
-                        } label: {
-                            HStack(alignment: .top, spacing: 10) {
-                                Image(systemName: isDone ? "checkmark.square.fill" : "square")
-                                    .font(.system(size: 16))
-                                    .foregroundStyle(isDone ? Color.secondary : tint)
-                                    .padding(.top, 1)
+                        HStack(alignment: .top, spacing: 8) {
+                            Button {
+                                #if os(iOS)
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                #endif
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    viewModel.toggleActionItem(item)
+                                }
+                            } label: {
+                                HStack(alignment: .top, spacing: 10) {
+                                    Image(systemName: isDone ? "checkmark.square.fill" : "square")
+                                        .font(.system(size: 16))
+                                        .foregroundStyle(isDone ? Color.secondary : tint)
+                                        .padding(.top, 1)
 
-                                Text(item)
-                                    .font(.body)
-                                    .strikethrough(isDone, color: .secondary)
-                                    .foregroundStyle(isDone ? .secondary : .primary)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                    .multilineTextAlignment(.leading)
+                                    Text(item)
+                                        .font(.body)
+                                        .strikethrough(isDone, color: .secondary)
+                                        .foregroundStyle(isDone ? .secondary : .primary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                        .multilineTextAlignment(.leading)
+                                }
                             }
+                            .buttonStyle(.plain)
+
+                            Spacer(minLength: 4)
+
+                            let priority = viewModel.note.priority(for: item)
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.15)) {
+                                    viewModel.cycleActionItemPriority(item: item)
+                                }
+                            } label: {
+                                Text(priorityLabel(priority))
+                                    .font(.system(size: 9, weight: .bold))
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(priorityBackground(priority), in: Capsule())
+                                    .foregroundStyle(priorityForeground(priority))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Change priority")
                         }
-                        .buttonStyle(.plain)
                     } else {
                         HStack(alignment: .top, spacing: 10) {
                             markerView(marker, index: index, tint: tint)
@@ -922,6 +1043,33 @@ public struct NoteDetailView: View {
         }
     }
 
+    private func priorityLabel(_ priority: String?) -> String {
+        switch priority {
+        case "high": return "HIGH"
+        case "medium": return "MED"
+        case "low": return "LOW"
+        default: return "PRIORITY"
+        }
+    }
+
+    private func priorityBackground(_ priority: String?) -> Color {
+        switch priority {
+        case "high": return Color.red.opacity(0.18)
+        case "medium": return Color.orange.opacity(0.18)
+        case "low": return Color.blue.opacity(0.18)
+        default: return Color.appTertiaryFill
+        }
+    }
+
+    private func priorityForeground(_ priority: String?) -> Color {
+        switch priority {
+        case "high": return Color.red
+        case "medium": return Color.orange
+        case "low": return Color.blue
+        default: return Color.secondary
+        }
+    }
+
     // MARK: - Raw Transcript Section
 
     private var rawTranscriptSection: some View {
@@ -932,27 +1080,67 @@ public struct NoteDetailView: View {
                 copyButton(text: viewModel.note.rawTranscript, field: .rawTranscript)
             }
 
-            if !viewModel.note.transcriptSegments.isEmpty {
-                VStack(alignment: .leading, spacing: 10) {
-                    ForEach(viewModel.note.transcriptSegments) { segment in
-                        Button {
-                            viewModel.seek(toTime: segment.start)
-                        } label: {
-                            HStack(alignment: .top, spacing: 10) {
-                                Text(segment.formattedRange)
-                                    .font(.caption.monospacedDigit())
-                                    .foregroundStyle(Color.accentColor)
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 3)
-                                    .background(Color.accentColor.opacity(0.12), in: Capsule())
+            // In-transcript keyword search
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextField("Search transcript...", text: $transcriptSearchText)
+                    .font(.subheadline)
+                    .autocorrectionDisabled()
+                if !transcriptSearchText.isEmpty {
+                    Button {
+                        transcriptSearchText = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Color.appTertiaryFill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
 
-                                Text(segment.text)
-                                    .font(.body)
-                                    .foregroundStyle(.primary)
-                                    .multilineTextAlignment(.leading)
+            let query = transcriptSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+            if !viewModel.note.transcriptSegments.isEmpty {
+                let matching = query.isEmpty ? viewModel.note.transcriptSegments : viewModel.note.transcriptSegments.filter { $0.text.lowercased().contains(query) }
+
+                if !query.isEmpty {
+                    Text("\(matching.count) matches found")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+
+                if matching.isEmpty {
+                    Text("No matching speech segments found.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .padding(.vertical, 8)
+                } else {
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(matching) { segment in
+                            Button {
+                                viewModel.seek(toTime: segment.start)
+                            } label: {
+                                HStack(alignment: .top, spacing: 10) {
+                                    Text(segment.formattedRange)
+                                        .font(.caption.monospacedDigit())
+                                        .foregroundStyle(Color.accentColor)
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 3)
+                                        .background(Color.accentColor.opacity(0.12), in: Capsule())
+
+                                    Text(segment.text)
+                                        .font(.body)
+                                        .foregroundStyle(.primary)
+                                        .multilineTextAlignment(.leading)
+                                }
                             }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
             } else {
@@ -1120,6 +1308,11 @@ public struct NoteDetailView: View {
                 if viewModel.note.duration > 0 {
                     Text("·")
                     Text(viewModel.note.duration.formattedDuration)
+                }
+
+                if viewModel.note.spokenWPM > 0 {
+                    Text("·")
+                    Text("\(viewModel.note.spokenWPM) WPM (\(viewModel.note.speechCadenceLabel))")
                 }
 
                 Text("·")

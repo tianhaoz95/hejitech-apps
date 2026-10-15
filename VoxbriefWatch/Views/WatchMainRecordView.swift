@@ -58,12 +58,12 @@ public struct WatchMainRecordView: View {
                 VStack(spacing: 3) {
                     HStack(spacing: 4) {
                         Circle()
-                            .fill(Color.red)
+                            .fill(recorder.isPaused ? Color.yellow : Color.red)
                             .frame(width: 6, height: 6)
-                        Text("RECORDING")
+                        Text(recorder.isPaused ? "PAUSED" : "RECORDING")
                             .font(.system(size: 10, weight: .bold, design: .rounded))
                             .tracking(0.8)
-                            .foregroundColor(.red)
+                            .foregroundColor(recorder.isPaused ? .yellow : .red)
                     }
                     .padding(.top, 2)
 
@@ -72,19 +72,38 @@ public struct WatchMainRecordView: View {
                         .foregroundColor(.primary)
                         .monospacedDigit()
 
-                    Button {
-                        stopAndSave()
-                    } label: {
-                        CaptureWaveformView(
-                            isRecording: true,
-                            audioLevel: recorder.audioLevel,
-                            diameter: 42,
-                            systemImage: "stop.fill"
-                        )
-                    }
-                    .buttonStyle(.plain)
+                    HStack(spacing: 12) {
+                        Button {
+                            if recorder.isPaused {
+                                recorder.resumeRecording()
+                                WKInterfaceDevice.current().play(.start)
+                            } else {
+                                recorder.pauseRecording()
+                                WKInterfaceDevice.current().play(.stop)
+                            }
+                        } label: {
+                            Image(systemName: recorder.isPaused ? "play.fill" : "pause.fill")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(recorder.isPaused ? .green : .yellow)
+                                .frame(width: 36, height: 36)
+                                .background(Color.white.opacity(0.14), in: Circle())
+                        }
+                        .buttonStyle(.plain)
 
-                    Text("Tap to stop & save")
+                        Button {
+                            stopAndSave()
+                        } label: {
+                            CaptureWaveformView(
+                                isRecording: !recorder.isPaused,
+                                audioLevel: recorder.audioLevel,
+                                diameter: 42,
+                                systemImage: "stop.fill"
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    Text(recorder.isPaused ? "Tap play to resume" : "Tap stop to save")
                         .font(.system(size: 10, weight: .medium))
                         .foregroundColor(.secondary)
                 }

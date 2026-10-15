@@ -187,6 +187,88 @@ public final class NoteRepository: ObservableObject {
         }
     }
 
+    public func bulkSetFavorite(ids: Set<UUID>, isFavorite: Bool) {
+        var modified = false
+        for id in ids {
+            if let index = notes.firstIndex(where: { $0.id == id }) {
+                notes[index].isFavorite = isFavorite
+                modified = true
+            }
+        }
+        if modified {
+            persistNotes()
+        }
+    }
+
+    public func bulkSetPinned(ids: Set<UUID>, isPinned: Bool) {
+        var modified = false
+        for id in ids {
+            if let index = notes.firstIndex(where: { $0.id == id }) {
+                notes[index].isPinned = isPinned
+                modified = true
+            }
+        }
+        if modified {
+            persistNotes()
+        }
+    }
+
+    public func bulkAddTag(ids: Set<UUID>, tag: String) {
+        let cleanTag = tag.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanTag.isEmpty else { return }
+        let formattedTag = cleanTag.hasPrefix("#") ? cleanTag : "#\(cleanTag)"
+        var modified = false
+        for id in ids {
+            if let index = notes.firstIndex(where: { $0.id == id }) {
+                if !notes[index].tags.contains(formattedTag) {
+                    notes[index].tags.append(formattedTag)
+                    modified = true
+                }
+            }
+        }
+        if modified {
+            persistNotes()
+        }
+    }
+
+    public func setActionItemPriority(id: UUID, actionItem: String, priority: String?) {
+        guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
+        if let priority = priority {
+            notes[index].actionItemPriorities[actionItem] = priority
+        } else {
+            notes[index].actionItemPriorities.removeValue(forKey: actionItem)
+        }
+        persistNotes()
+    }
+
+    public func appendContent(id: UUID, text: String, title: String? = nil) {
+        guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        let dateStr = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short)
+        let header = title.flatMap { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? $0 : nil } ?? "Addendum (\(dateStr))"
+        let addition = "\n\n### 📝 \(header)\n\(trimmed)"
+
+        notes[index].cleanedNote += addition
+        persistNotes()
+    }
+
+    /// Cleans up orphaned audio files on disk not referenced by any note or segment.
+    @discardableResult
+    public func cleanupOrphanedAudioFiles() -> Int {
+        var referenced = Set<String>()
+        for note in notes {
+            if let file = note.audioFileName, !file.isEmpty {
+                referenced.insert(file)
+            }
+            for segment in note.segments where !segment.audioFileName.isEmpty {
+                referenced.insert(segment.audioFileName)
+            }
+        }
+        return audioFileManager.cleanupOrphanedFiles(referencedFileNames: referenced)
+    }
+
     public func restoreAllNotes(importedNotes: [VoiceNote]) {
         // Merge without losing notes, deduping by id
         for imported in importedNotes {

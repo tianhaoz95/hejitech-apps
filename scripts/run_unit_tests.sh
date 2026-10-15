@@ -45,12 +45,15 @@ if command -v xcodegen >/dev/null 2>&1; then
   xcodegen generate >/dev/null
 fi
 
+DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-/Volumes/DATA/.derivedData}"
+
 if [ "$RUN_MAC" = true ]; then
   echo "==> Running macOS Unit Tests (VoxbriefMacTests)..."
   xcodebuild test \
     -project Voxbrief.xcodeproj \
     -scheme VoxbriefMac \
     -destination 'platform=macOS' \
+    -derivedDataPath "$DERIVED_DATA_PATH" \
     CODE_SIGNING_ALLOWED=NO \
     -only-testing:VoxbriefMacTests
   echo "✅ macOS unit tests passed!"
@@ -100,6 +103,7 @@ if [ "$RUN_IOS" = true ]; then
     -project Voxbrief.xcodeproj \
     -scheme Voxbrief \
     -destination "platform=iOS Simulator,id=$DEVICE_ID" \
+    -derivedDataPath "$DERIVED_DATA_PATH" \
     CODE_SIGNING_ALLOWED=NO \
     -only-testing:VoxbriefTests
   echo "✅ iOS unit tests passed!"

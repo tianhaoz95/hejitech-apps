@@ -117,4 +117,25 @@ public final class AudioFileManager: Sendable {
         }
         return purgedCount
     }
+
+    /// Removes any audio files from the audio directory that are no longer referenced by any note.
+    @discardableResult
+    public func cleanupOrphanedFiles(referencedFileNames: Set<String>) -> Int {
+        let fileManager = FileManager.default
+        guard let files = try? fileManager.contentsOfDirectory(at: notesDirectoryURL, includingPropertiesForKeys: nil, options: .skipsHiddenFiles) else {
+            return 0
+        }
+
+        var removed = 0
+        for file in files where file.pathExtension.lowercased() == AudioConstants.fileExtension.lowercased() {
+            let filename = file.lastPathComponent
+            if !referencedFileNames.contains(filename) {
+                if (try? fileManager.removeItem(at: file)) != nil {
+                    removed += 1
+                }
+            }
+        }
+        return removed
+    }
 }
+
