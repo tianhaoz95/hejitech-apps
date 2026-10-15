@@ -16,7 +16,8 @@ public struct NoteRowView: View {
             if isSelectable {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 20))
-                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary.opacity(0.4))
+                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary.opacity(0.35))
+                    .transition(.scale.combined(with: .opacity))
             }
 
             if let colorName = note.colorTag, let color = colorForName(colorName) {

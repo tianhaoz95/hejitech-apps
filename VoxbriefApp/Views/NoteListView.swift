@@ -38,11 +38,21 @@ public struct NoteListView: View {
 
                 notesList
             }
-            .navigationTitle(viewModel.showArchived ? "Archived Notes" : "")
+            .navigationTitle(navigationBarTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    if viewModel.showArchived {
+                    if isSelectMode {
+                        Button(selectedNoteIDs.count == viewModel.notes.count && !viewModel.notes.isEmpty ? "Deselect All" : "Select All") {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                if selectedNoteIDs.count == viewModel.notes.count {
+                                    selectedNoteIDs.removeAll()
+                                } else {
+                                    selectedNoteIDs = Set(viewModel.notes.map(\.id))
+                                }
+                            }
+                        }
+                    } else if viewModel.showArchived {
                         Button {
                             withAnimation {
                                 viewModel.showArchived = false
@@ -57,13 +67,17 @@ public struct NoteListView: View {
                 .hideSharedBackgroundIfAvailable()
 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    if !isSelectMode {
-                        searchToolbarButton
+                    if isSelectMode {
+                        Button("Done") {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                isSelectMode = false
+                                selectedNoteIDs.removeAll()
+                            }
+                        }
+                        .fontWeight(.semibold)
+                    } else {
+                        trailingToolbarGroup
                     }
-                }
-
-                ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    trailingToolbarGroup
                 }
 
                 ToolbarItem(placement: .bottomBar) {
@@ -257,10 +271,12 @@ public struct NoteListView: View {
     private func noteRowItem(note: VoiceNote) -> some View {
         if isSelectMode {
             Button {
-                if selectedNoteIDs.contains(note.id) {
-                    selectedNoteIDs.remove(note.id)
-                } else {
-                    selectedNoteIDs.insert(note.id)
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    if selectedNoteIDs.contains(note.id) {
+                        selectedNoteIDs.remove(note.id)
+                    } else {
+                        selectedNoteIDs.insert(note.id)
+                    }
                 }
             } label: {
                 NoteRowView(note: note, isSelectable: true, isSelected: selectedNoteIDs.contains(note.id))
@@ -345,15 +361,9 @@ public struct NoteListView: View {
 
     @ViewBuilder
     private var trailingToolbarGroup: some View {
-        if isSelectMode {
-            Button("Done") {
-                withAnimation {
-                    isSelectMode = false
-                    selectedNoteIDs.removeAll()
-                }
-            }
-            .fontWeight(.semibold)
-        } else {
+        HStack(spacing: 14) {
+            searchToolbarButton
+
             Button {
                 viewModel.showingSyncStatus = true
             } label: {
@@ -362,15 +372,18 @@ public struct NoteListView: View {
             }
             .accessibilityLabel(syncService.isReachable ? "Apple Watch connected" : "Apple Watch disconnected")
 
-            Button {
-                withAnimation {
-                    isSelectMode = true
-                }
-            } label: {
-                Text("Select")
-            }
-
             Menu {
+                Section {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isSelectMode = true
+                        }
+                    } label: {
+                        Label("Select Notes", systemImage: "checkmark.circle")
+                    }
+                    .disabled(viewModel.notes.isEmpty)
+                }
+
                 Section("Sort By") {
                     Picker("Sort Order", selection: $viewModel.sortOption) {
                         ForEach(SortOption.allCases) { opt in
@@ -435,61 +448,67 @@ public struct NoteListView: View {
     private var batchBottomBar: some View {
         HStack {
             Button {
-                if selectedNoteIDs.count == viewModel.notes.count {
-                    selectedNoteIDs.removeAll()
-                } else {
-                    selectedNoteIDs = Set(viewModel.notes.map(\.id))
-                }
+                viewModel.bulkPin(ids: selectedNoteIDs, isPinned: true)
             } label: {
-                Text(selectedNoteIDs.count == viewModel.notes.count ? "Deselect All" : "Select All")
-                    .font(.subheadline)
-            }
-
-            Spacer()
-
-            Text("\(selectedNoteIDs.count) Selected")
-                .font(.caption.weight(.medium))
-                .foregroundStyle(.secondary)
-
-            Spacer()
-
-            Menu {
-                Button {
-                    viewModel.bulkFavorite(ids: selectedNoteIDs, isFavorite: true)
-                } label: {
-                    Label("Favorite", systemImage: "star")
-                }
-
-                Button {
-                    viewModel.bulkPin(ids: selectedNoteIDs, isPinned: true)
-                } label: {
-                    Label("Pin", systemImage: "pin")
-                }
-
-                Button {
-                    viewModel.bulkArchive(ids: selectedNoteIDs, isArchived: true)
-                } label: {
-                    Label("Archive", systemImage: "archivebox")
-                }
-
-                if !selectedNoteIDs.isEmpty {
-                    ShareLink(item: viewModel.exportSelectedNotesMarkdown(ids: selectedNoteIDs)) {
-                        Label("Export Markdown", systemImage: "square.and.arrow.up")
-                    }
-                }
-
-                Divider()
-
-                Button(role: .destructive) {
-                    showingBatchDeleteAlert = true
-                } label: {
-                    Label("Delete (\(selectedNoteIDs.count))", systemImage: "trash")
-                }
-            } label: {
-                Image(systemName: "ellipsis.circle")
-                    .font(.system(size: 20))
+                Image(systemName: "pin")
             }
             .disabled(selectedNoteIDs.isEmpty)
+            .accessibilityLabel("Pin selected notes")
+
+            Spacer()
+
+            Button {
+                viewModel.bulkFavorite(ids: selectedNoteIDs, isFavorite: true)
+            } label: {
+                Image(systemName: "star")
+            }
+            .disabled(selectedNoteIDs.isEmpty)
+            .accessibilityLabel("Favorite selected notes")
+
+            Spacer()
+
+            Button {
+                viewModel.bulkArchive(ids: selectedNoteIDs, archive: true)
+            } label: {
+                Image(systemName: "archivebox")
+            }
+            .disabled(selectedNoteIDs.isEmpty)
+            .accessibilityLabel("Archive selected notes")
+
+            Spacer()
+
+            if !selectedNoteIDs.isEmpty {
+                ShareLink(item: viewModel.exportSelectedNotesMarkdown(ids: selectedNoteIDs)) {
+                    Image(systemName: "square.and.arrow.up")
+                }
+                .accessibilityLabel("Export markdown for selected notes")
+            } else {
+                Image(systemName: "square.and.arrow.up")
+                    .foregroundStyle(.secondary.opacity(0.35))
+            }
+
+            Spacer()
+
+            Button(role: .destructive) {
+                showingBatchDeleteAlert = true
+            } label: {
+                Image(systemName: "trash")
+                    .foregroundStyle(selectedNoteIDs.isEmpty ? Color.secondary.opacity(0.35) : Color.red)
+            }
+            .disabled(selectedNoteIDs.isEmpty)
+            .accessibilityLabel("Delete selected notes")
+        }
+        .font(.system(size: 19))
+        .padding(.horizontal, 20)
+    }
+
+    private var navigationBarTitle: String {
+        if isSelectMode {
+            return selectedNoteIDs.isEmpty ? "Select Notes" : "\(selectedNoteIDs.count) Selected"
+        } else if viewModel.showArchived {
+            return "Archived Notes"
+        } else {
+            return ""
         }
     }
 
