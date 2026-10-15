@@ -6,10 +6,15 @@ import SwiftUI
 
 @main
 struct WeeHoursApp: App {
-    @StateObject private var model = AppModel()
+    @StateObject private var model: AppModel
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
+        // Background tasks must be registered once, before launch finishes; registering again
+        // (e.g. from a view's `.task`, which re-runs whenever the view reappears) aborts the app.
+        let model = AppModel()
+        _model = StateObject(wrappedValue: model)
+        AppModel.registerBackgroundTasks(model)
         WeeHoursShortcuts.updateAppShortcutParameters()
         FeedbackKit.configure(.init(
             endpointURL: URL(string: "https://gpucoladcyvijefdjudf.supabase.co/functions/v1/ingest-feedback")!,
@@ -22,10 +27,7 @@ struct WeeHoursApp: App {
         WindowGroup {
             RootView()
                 .environmentObject(model)
-                .task {
-                    AppModel.registerBackgroundTasks(model)
-                    await model.start()
-                }
+                .task { await model.start() }
                 .onOpenURL { url in
                     if url.host == "voice" { model.startVoice() }
                 }

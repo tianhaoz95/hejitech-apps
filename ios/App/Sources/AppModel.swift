@@ -86,7 +86,13 @@ final class AppModel: ObservableObject {
     /// `-autoSignIn parent1@example.com -demoText "finished, drank half" -screen timeline`
     @Published var screen = UserDefaults.standard.string(forKey: "screen") ?? "home"
 
+    private var started = false
+
+    /// Runs once per launch. It's called from a `.task`, which SwiftUI runs again whenever the root
+    /// view reappears (for example after a full-screen modal like FeedbackKit's editor is dismissed).
     func start() async {
+        guard !started else { return }
+        started = true
         watch = WatchBridge(model: self)
         if backend.session == nil, let email = UserDefaults.standard.string(forKey: "autoSignIn") {
             _ = try? await backend.signIn(email: email, password: UserDefaults.standard.string(forKey: "autoPassword") ?? "newborn-dev")
