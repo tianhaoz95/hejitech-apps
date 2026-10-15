@@ -76,7 +76,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.21.0"
+    public static let currentVersion = "1.22.0"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -85,6 +85,60 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.22.0",
+            date: "October 2026",
+            tagline: "WatchOS Paged Swipe Architecture & Flat V-Wave Brand Identity",
+            features: [
+                WhatsNewItem(
+                    icon: "hand.draw.fill",
+                    tint: .blue,
+                    title: "Paged Swipe Architecture on Apple Watch",
+                    description: "Effortlessly swipe between the resting capture hero and your memo vault with native watchOS pagination dots."
+                ),
+                WhatsNewItem(
+                    icon: "sparkles",
+                    tint: .purple,
+                    title: "Auto-First Tagging on Wrist",
+                    description: "Voice memos default to ✨ Auto-triage, with one-tap wrist switching between Idea, Task, and Meeting categories."
+                ),
+                WhatsNewItem(
+                    icon: "app.badge.checkmark.fill",
+                    tint: .cyan,
+                    title: "Bespoke Flat V-Wave Brand Identity",
+                    description: "New geometric V-Wave monogram across iOS, watchOS, and macOS icons—100% clean and flat with zero 3D glare or skeuomorphic gloss."
+                ),
+                WhatsNewItem(
+                    icon: "gearshape.fill",
+                    tint: .indigo,
+                    title: "Dedicated Apple Watch Settings & Storage",
+                    description: "Inspect companion sync health, check local audio cache size, and purge synced recordings directly from your wrist."
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "waveform.slash",
+                    tint: .orange,
+                    title: "Resting Waveform Elimination",
+                    description: "Removed idle waveform animations before recording starts; audio-reactive wave visualizers now appear strictly during active capture.",
+                    kind: .fix
+                ),
+                WhatsNewItem(
+                    icon: "capsule.portrait.fill",
+                    tint: .green,
+                    title: "Ergonomic Watch-Friendly Sync Button",
+                    description: "Replaced cramped section-header sync links with prominent, touch-friendly capsule action buttons in the watch vault.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "applewatch",
+                    tint: .teal,
+                    title: "Bespoke V-Wave Watch Face Complications",
+                    description: "Apple Watch complications now display the custom flat Voxbrief V-Wave brand mark for instant one-tap voice capture.",
+                    kind: .improvement
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.21.0",
             date: "October 2026",

@@ -110,6 +110,33 @@ public final class WatchStorage: ObservableObject {
         }
     }
 
+    /// Immediately cleans up local audio files for all notes that have already synced to iPhone.
+    public func purgeAllSyncedRecordings() {
+        for note in notes where note.syncState == .synced {
+            let file = fileURL(for: note.localFileName)
+            if FileManager.default.fileExists(atPath: file.path) {
+                try? FileManager.default.removeItem(at: file)
+            }
+        }
+    }
+
+    /// Returns human-readable storage consumed by recordings in Documents/WatchRecordings
+    public func totalLocalStorageSize() -> String {
+        guard let files = try? FileManager.default.contentsOfDirectory(at: recordingsDirectoryURL, includingPropertiesForKeys: [.fileSizeKey]) else {
+            return "0 KB"
+        }
+        var totalBytes: Int64 = 0
+        for file in files {
+            if let resources = try? file.resourceValues(forKeys: [.fileSizeKey]), let size = resources.fileSize {
+                totalBytes += Int64(size)
+            }
+        }
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useKB, .useMB]
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: totalBytes)
+    }
+
     /// Automatically cleans up local audio files for notes that have already synced to iPhone
     /// older than `retentionPeriod` (default 7 days) to conserve Apple Watch storage.
     public func purgeOldSyncedRecordings(olderThan retentionPeriod: TimeInterval = 7 * 24 * 3600) {

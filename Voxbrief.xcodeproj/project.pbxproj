@@ -116,6 +116,7 @@
 		9C867C1A7E73EB35DDFDB8FC /* VoxbriefLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C7490BC66ADC2FB729D084B /* VoxbriefLiveActivity.swift */; };
 		9D9217FE131009665D20487F /* DictionaryCorrector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61F11F8A2D3B21ECC69ECA27 /* DictionaryCorrector.swift */; };
 		9FDF6E8ED886E932926D1504 /* VoiceNoteActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46B6B4EE56273273351A6104 /* VoiceNoteActivityAttributes.swift */; };
+		A107309BA37A89B6EEEA12F3 /* WatchSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78E48B7C8B1A7E448BFE671F /* WatchSettingsView.swift */; };
 		A155FBBE8E8FF88CE47060DE /* NoteRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F47B06B91C0E08B3E8267051 /* NoteRowView.swift */; };
 		A2DC25FC3CC4733F84BD302E /* MLXLMCommon in Frameworks */ = {isa = PBXBuildFile; productRef = FE66E50CF58B0A68756AB6D7 /* MLXLMCommon */; };
 		A4084D5D0EE82481B4728AC5 /* KeyboardHandoffTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D52BAB96F04983304C68D2E5 /* KeyboardHandoffTests.swift */; };
@@ -317,6 +318,7 @@
 		6E37077EC9E2F16A4D7C2E54 /* AudioRecordingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecordingService.swift; sourceTree = "<group>"; };
 		6EB9E3588235BEFC67D80649 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
 		72CDFABD6641AF3CBC9981F9 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		78E48B7C8B1A7E448BFE671F /* WatchSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSettingsView.swift; sourceTree = "<group>"; };
 		79425446C4B377940835B987 /* NoteListViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteListViewModel.swift; sourceTree = "<group>"; };
 		7BB5149C264CEC3EE04592CE /* VoxbriefTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = VoxbriefTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		805582BA92BDC768F983C370 /* AudioFileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioFileManager.swift; sourceTree = "<group>"; };
@@ -508,6 +510,7 @@
 			children = (
 				31C3CF9D1D01A0040528A669 /* WatchMainRecordView.swift */,
 				A37729BD151097071676D002 /* WatchNotesListView.swift */,
+				78E48B7C8B1A7E448BFE671F /* WatchSettingsView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -1130,6 +1133,7 @@
 				5208B51DEF855BC15E07468D /* WatchAudioRecorder.swift in Sources */,
 				7B82D093883725D30E45366C /* WatchMainRecordView.swift in Sources */,
 				4B056B84EC62B04E005A0F43 /* WatchNotesListView.swift in Sources */,
+				A107309BA37A89B6EEEA12F3 /* WatchSettingsView.swift in Sources */,
 				845CFE1177B9118D762C4B21 /* WatchStorage.swift in Sources */,
 				7F41AF3BB8FD3A30117A83DA /* WatchSyncService.swift in Sources */,
 			);

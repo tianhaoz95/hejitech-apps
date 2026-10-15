@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voxbrief — watchOS & Wear OS UI Redesign Studio (20 Candidates)</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <!-- TOP NAVBAR -->
+  <header class="top-navbar">
+    <div class="brand-badge">
+      <div class="brand-icon-box">🎙️</div>
+      <div class="brand-title">Voxbrief Watch Redesign Studio</div>
+      <span class="brand-tag">20 Candidates</span>
+    </div>
+
+    <div class="top-controls">
+      <!-- Layout Mode Selector -->
+      <div class="control-group">
+        <button class="btn-pill layout-btn active" data-layout="quad_row" onclick="App.setViewMode('quad_row')">All 4 Screens (Row)</button>
+        <button class="btn-pill layout-btn" data-layout="quad_grid" onclick="App.setViewMode('quad_grid')">2×2 Grid</button>
+        <button class="btn-pill layout-btn" data-layout="single" onclick="App.setViewMode('single')">Single Focus</button>
+      </div>
+
+      <!-- State Sub-Selector (Used when in Single Focus) -->
+      <div class="control-group single-state-group" id="singleStateGroup" style="display: none;">
+        <button class="btn-pill state-btn active" data-state="idle" onclick="App.setState('idle')">1. Idle</button>
+        <button class="btn-pill state-btn" data-state="recording" onclick="App.setState('recording')">2. Rec</button>
+        <button class="btn-pill state-btn" data-state="secondary" onclick="App.setState('secondary')">3. Vault</button>
+        <button class="btn-pill state-btn" data-state="settings" onclick="App.setState('settings')">4. Settings ⚙️</button>
+        <button class="btn-pill state-btn" data-state="complications" onclick="App.setState('complications')">5. Comps</button>
+      </div>
+
+      <!-- Device Bezel Selector -->
+      <div class="control-group">
+        <button class="btn-pill device-btn active" data-device="ultra" onclick="App.setDevice('ultra')">Ultra 2</button>
+        <button class="btn-pill device-btn" data-device="series10" onclick="App.setDevice('series10')">Series 10</button>
+        <button class="btn-pill device-btn" data-device="pixel" onclick="App.setDevice('pixel')">Pixel Watch 3 (Round)</button>
+        <button class="btn-pill device-btn" data-device="galaxy" onclick="App.setDevice('galaxy')">Galaxy Watch 7</button>
+      </div>
+
+      <!-- Compare Mode -->
+      <button class="btn-pill" id="compareToggleBtn" onclick="App.toggleCompareMode()">Compare Mode</button>
+
+      <!-- Export Report -->
+      <button class="btn-action" onclick="App.exportReport()">Export Evaluation Report</button>
+    </div>
+  </header>
+
+  <!-- MAIN WORKSPACE -->
+  <main class="main-workspace" id="mainLayout">
+    <!-- LEFT SIDEBAR: CANDIDATE SELECTOR -->
+    <aside class="sidebar-panel">
+      <div class="sidebar-header">
+        <div class="sidebar-search-box">
+          <input type="text" id="candidateSearch" placeholder="Search 20 candidates...">
+        </div>
+        <div class="paradigm-filter-scroll">
+          <button class="paradigm-pill active" data-paradigm="all" onclick="App.setParadigm('all')">All (20)</button>
+          <button class="paradigm-pill" data-paradigm="shortlist" onclick="App.setParadigm('shortlist')">★ Shortlist</button>
+          <button class="paradigm-pill" data-paradigm="ios_lineage" onclick="App.setParadigm('ios_lineage')">iOS Lineage</button>
+          <button class="paradigm-pill" data-paradigm="Paged Swipe" onclick="App.setParadigm('Paged Swipe')">Paged Swipe (4)</button>
+          <button class="paradigm-pill" data-paradigm="Layered Rails" onclick="App.setParadigm('Layered Rails')">Layered Rails (4)</button>
+          <button class="paradigm-pill" data-paradigm="Adaptive & Capsules" onclick="App.setParadigm('Adaptive & Capsules')">Adaptive & Capsules (4)</button>
+          <button class="paradigm-pill" data-paradigm="Workflow & Ingest" onclick="App.setParadigm('Workflow & Ingest')">Workflow & Ingest (4)</button>
+          <button class="paradigm-pill" data-paradigm="High-Speed & Power" onclick="App.setParadigm('High-Speed & Power')">High-Speed & Power (4)</button>
+        </div>
+        <div style="font-size: 11px; color: var(--text-dim);" id="navCount">20 candidates</div>
+      </div>
+
+      <div class="candidate-list-scroll" id="candidateNavList">
+        <!-- Rendered by app.js -->
+      </div>
+    </aside>
+
+    <!-- CENTER STAGE: INTERACTIVE WATCH SIMULATOR -->
+    <section class="stage-panel">
+      <div class="stage-hero-meta">
+        <div class="hero-number-pill" id="heroNumber">#01</div>
+        <h1 id="heroTitle">Paged Swipe Architecture (Auto-First)</h1>
+        <div class="hero-paradigm-pill" id="heroParadigm" style="display: inline-block; font-size: 11px; border: 1px solid var(--accent-cyan); padding: 2px 8px; border-radius: 12px; margin-bottom: 6px;">Paged Swipe</div>
+        <p id="heroTagline">WatchOS paged swipe (Capture ⟷ Vault) with tag rail defaulting to ✨ Auto; zero cramped tabs</p>
+
+        <div class="hero-actions-bar">
+          <button class="btn-shortlist-hero" id="heroShortlistBtn" onclick="App.toggleShortlist(App.activeCandidateId)">☆ Add to Shortlist</button>
+          <div class="rating-stars-interactive" id="heroRatingStars">
+            <!-- 5 stars generated by app.js -->
+          </div>
+        </div>
+      </div>
+
+      <!-- WATCH DEVICE FRAMES DISPLAY (ALL 4 SCREENS TOGETHER) -->
+      <div class="devices-stage-display mode-quad_row" id="devicesStageDisplay">
+        <!-- Rendered dynamically by app.js: Idle, Recording, Vault, and Complications together -->
+      </div>
+
+      <div style="font-size: 12px; color: var(--text-dim); text-align: center; max-width: 640px;">
+        💡 <em>All States at a Glance:</em> Reviewing <strong>Idle/Daily</strong>, <strong>Active Recording</strong>, <strong>Secondary Vault</strong> (toggleable to <strong>Settings ⚙️</strong>), and <strong>Complications Suite</strong> simultaneously.
+      </div>
+    </section>
+
+    <!-- RIGHT INSPECTOR DRAWER -->
+    <aside class="inspector-panel">
+      <div class="inspector-section">
+        <h3>iOS Continuity & Backport</h3>
+        <div class="spec-card">
+          <div id="detailIosBadgeContainer" style="margin-bottom: 8px;"></div>
+          <p style="margin-bottom: 8px; font-size: 12px;"><strong>iOS Component Mapping:</strong> <span id="detailIosMapping"></span></p>
+          <div class="ios-backport-box">
+            <div class="ios-backport-title">
+              <span>💡</span> BACKPORT TO iOS APP IDEA
+            </div>
+            <span id="detailIosBackport"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="inspector-section">
+        <h3>Secondary Feature Separation</h3>
+        <div class="spec-card" id="detailSecondaryStrat">
+          <!-- Text from data.js -->
+        </div>
+      </div>
+
+      <div class="inspector-section">
+        <h3>Primary Daily Screen UX</h3>
+        <div class="spec-card" id="detailPrimaryScreen">
+          <!-- Text from data.js -->
+        </div>
+      </div>
+
+      <div class="inspector-section">
+        <h3>Active Recording State</h3>
+        <div class="spec-card" id="detailRecordingState">
+          <!-- Text from data.js -->
+        </div>
+      </div>
+
+      <div class="inspector-section">
+        <h3>Separated Secondary View (Vault / Sync)</h3>
+        <div class="spec-card" id="detailSecondaryView">
+          <!-- Text from data.js -->
+        </div>
+      </div>
+
+      <div class="inspector-section">
+        <h3>Watch Face Complications Suite</h3>
+        <div class="spec-card">
+          <p style="margin-bottom: 6px;"><strong>Circular:</strong> <span id="detailCompCircular"></span></p>
+          <p style="margin-bottom: 6px;"><strong>Rectangular:</strong> <span id="detailCompRect"></span></p>
+          <p style="margin-bottom: 6px;"><strong>Corner:</strong> <span id="detailCompCorner"></span></p>
+          <p style="margin-bottom: 6px;"><strong>Inline:</strong> <span id="detailCompInline"></span></p>
+          <p><strong>Wear OS Tile:</strong> <span id="detailCompTile"></span></p>
+        </div>
+      </div>
+
+      <div class="inspector-section">
+        <h3>Platform Adaptations</h3>
+        <div class="spec-card">
+          <p style="margin-bottom: 6px;"><strong>watchOS:</strong> <span id="detailWatchOs"></span></p>
+          <p><strong>Wear OS:</strong> <span id="detailWearOs"></span></p>
+        </div>
+      </div>
+
+      <div class="inspector-section">
+        <h3>Tradeoff Analysis</h3>
+        <div class="spec-card">
+          <div style="font-size: 11px; font-weight: 700; color: var(--accent-green); margin-bottom: 4px;">STRENGTHS</div>
+          <ul class="pro-con-list" id="detailProsList" style="margin-bottom: 12px;"></ul>
+          <div style="font-size: 11px; font-weight: 700; color: var(--accent-orange); margin-bottom: 4px;">CONSIDERATIONS</div>
+          <ul class="pro-con-list" id="detailConsList"></ul>
+        </div>
+      </div>
+
+      <div class="inspector-section">
+        <h3>Ideal User Persona</h3>
+        <div class="spec-card" id="detailBestFor">
+          <!-- Text from data.js -->
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <style>
+    /* Compare mode styles */
+    .compare-mode-active .compare-column {
+      display: flex !important;
+    }
+  </style>
+
+  <!-- SCRIPTS -->
+  <script src="js/data.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

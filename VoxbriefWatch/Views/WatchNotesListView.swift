@@ -8,6 +8,40 @@ public struct WatchNotesListView: View {
     
     public var body: some View {
         List {
+            // MARK: - Quick Action Banner
+            if !storage.notes.isEmpty {
+                Section {
+                    if storage.pendingNotes().count > 0 {
+                        Button {
+                            syncService.syncPendingNotes()
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                    .font(.system(size: 12, weight: .bold))
+                                Text("Sync Now (\(storage.pendingNotes().count))")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.orange)
+                        .listRowBackground(Color.clear)
+                    } else {
+                        HStack(spacing: 5) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 11))
+                                .foregroundColor(Color.accentColor)
+                            Text("All Memos Synced")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.vertical, 2)
+                        .listRowBackground(Color.clear)
+                    }
+                }
+            }
+
             if storage.notes.isEmpty {
                 VStack(spacing: 8) {
                     ZStack {
@@ -72,35 +106,23 @@ public struct WatchNotesListView: View {
                         }
                     }
                 } header: {
-                    HStack {
-                        Text("Recordings (\(storage.notes.count))")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(.secondary)
-                        
-                        Spacer()
-                        
-                        if storage.pendingNotes().count > 0 {
-                            Button {
-                                syncService.syncPendingNotes()
-                            } label: {
-                                HStack(spacing: 3) {
-                                    Image(systemName: "arrow.triangle.2.circlepath")
-                                        .font(.system(size: 9, weight: .bold))
-                                    Text("Sync")
-                                        .font(.system(size: 10, weight: .bold))
-                                }
-                                .foregroundColor(.orange)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Color.orange.opacity(0.2), in: Capsule())
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
+                    Text("Recordings (\(storage.notes.count))")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(.secondary)
                 }
             }
         }
-        .navigationTitle("Saved Memos")
+        .navigationTitle("Vault")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink(destination: WatchSettingsView()) {
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
     }
     
     @ViewBuilder
