@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.26.0"
+    public static let currentVersion = "1.26.1"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,34 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.26.1",
+            date: "October 2026",
+            tagline: "Polished Verbatim Transcripts",
+            features: [
+                WhatsNewItem(
+                    icon: "tag.fill",
+                    tint: .teal,
+                    title: "Transcript Token Badges",
+                    description: "Whisper markers in the Verbatim ASR Output now render as tidy, color-coded badges instead of raw <|...|> text.",
+                    detailedDescription: "The on-device Whisper model annotates each transcript segment with control markers such as start-of-transcript and word-level timestamps. Instead of showing them as raw markup, Voxbrief now renders each one as a compact badge that flows inline with the spoken words.",
+                    highlights: [
+                        "Timestamps shown as clock badges (e.g. 7.54s)",
+                        "Start, End, language, and task markers each get their own icon and color",
+                        "Words and badges wrap naturally across lines"
+                    ]
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "magnifyingglass",
+                    tint: .blue,
+                    title: "Marker-Free Transcript Search",
+                    description: "Searching the verbatim transcript now matches only spoken words, never Whisper's internal markers.",
+                    kind: .fix
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.26.0",
             date: "October 2026",
@@ -172,13 +200,6 @@ public struct WhatsNewView: View {
                     title: "Optimized Capture Launch Latency",
                     description: "Streamlined auto-record initiation in QuickRecordSheet for instantaneous recording feedback.",
                     kind: .improvement
-                ),
-                WhatsNewItem(
-                    icon: "tag.fill",
-                    tint: .teal,
-                    title: "Transcript Token Badges",
-                    description: "Whisper markers like timestamps and start-of-transcript now appear as tidy badges in the Verbatim ASR Output instead of raw <|...|> text.",
-                    kind: .fix
                 )
             ]
         ),
