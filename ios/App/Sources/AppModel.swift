@@ -1,6 +1,7 @@
 import AuthenticationServices
 import BackgroundTasks
 import Foundation
+import LayaRuntime
 import LogCore
 import StoreKit
 import SwiftUI
@@ -104,6 +105,7 @@ final class AppModel: ObservableObject {
                                transcriber: transcriber, backend: backend)
             service = s
             phase = .ready
+            prewarmModels()
             await refresh()
             if let demo = UserDefaults.standard.string(forKey: "demoText") {
                 try? await Task.sleep(for: .seconds(1))
@@ -116,6 +118,24 @@ final class AppModel: ObservableObject {
             self.error = error.localizedDescription
         }
     }
+
+    /// Load Whisper and Laya in the background at launch, so the first voice entry doesn't pay
+    /// for the one-time Core ML compile and model load. Laya is freed on a memory warning and
+    /// reloads on the next push-to-talk.
+    private func prewarmModels() {
+        Task(priority: .utility) { [transcriber, service] in
+            await transcriber.warmUp()
+            await service?.interpreter.model.warmUp()
+        }
+        guard memoryObserver == nil else { return }
+        memoryObserver = NotificationCenter.default.addObserver(forName: UIApplication.didReceiveMemoryWarningNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in
+                if let laya = await self?.service?.interpreter.model as? LayaDecisionModel { await laya.unload() }
+            }
+        }
+    }
+
+    private var memoryObserver: NSObjectProtocol?
 
     func rebuildInterpreter() async {
         await service?.setInterpreter(VoiceInterpreter(model: models.model(for: decisionBackend, devServer: devServer), calibration: .bundled))

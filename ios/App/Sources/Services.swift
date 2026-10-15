@@ -68,11 +68,26 @@ actor WhisperTranscriber: Transcriber {
 
     func warmUp() async { _ = try? await loaded() }
 
+    /// The Core ML model and tokenizer shipped in the app bundle (scripts/fetch-models.sh).
+    static var bundledFolders: (model: URL, tokenizer: URL)? {
+        guard let root = Bundle.main.url(forResource: "Models", withExtension: nil)?.appendingPathComponent("whisper") else { return nil }
+        let model = root.appendingPathComponent("openai_whisper-base.en")
+        let tokenizer = root.appendingPathComponent("tokenizer")
+        guard FileManager.default.fileExists(atPath: model.appendingPathComponent("AudioEncoder.mlmodelc").path) else { return nil }
+        return (model, tokenizer)
+    }
+
     private func loaded() async throws -> WhisperKit {
         if let pipe { return pipe }
         if let loading { return try await loading.value }
         let model = self.model
-        let task = Task { try await WhisperKit(WhisperKitConfig(model: model, verbose: false)) }
+        let config: WhisperKitConfig
+        if let bundled = Self.bundledFolders {
+            config = WhisperKitConfig(modelFolder: bundled.model.path, tokenizerFolder: bundled.tokenizer, verbose: false, download: false)
+        } else {
+            config = WhisperKitConfig(model: model, verbose: false)   // first use downloads from Hugging Face
+        }
+        let task = Task { try await WhisperKit(config) }
         loading = task
         defer { loading = nil }
         let p = try await task.value
@@ -111,7 +126,20 @@ final class ModelManager: ObservableObject {
         return dir.appendingPathComponent("Laya-Q8_0.gguf")
     }
 
-    var isDownloaded: Bool { FileManager.default.fileExists(atPath: Self.localFile.path) }
+    /// Shipped inside the app (scripts/fetch-models.sh), so voice works offline right after install.
+    static var bundledFile: URL? {
+        Bundle.main.url(forResource: "Models", withExtension: nil)
+            .map { $0.appendingPathComponent("Laya-Q8_0.gguf") }
+            .flatMap { FileManager.default.fileExists(atPath: $0.path) ? $0 : nil }
+    }
+
+    /// The bundled model, else a downloaded copy.
+    static var modelFile: URL? {
+        bundledFile ?? (FileManager.default.fileExists(atPath: localFile.path) ? localFile : nil)
+    }
+
+    var isBundled: Bool { Self.bundledFile != nil }
+    var isDownloaded: Bool { Self.modelFile != nil }
 
     /// ~450 MB, downloaded once on Wi-Fi; never bundled in the app binary.
     func download() async {
@@ -131,7 +159,7 @@ final class ModelManager: ObservableObject {
 
     func model(for backend: DecisionBackend, devServer: String) -> DecisionModel {
         switch backend {
-        case .onDevice where isDownloaded: return LayaDecisionModel(modelURL: Self.localFile)
+        case .onDevice where isDownloaded: return LayaDecisionModel(modelURL: Self.modelFile!)
         case .devServer: return SystemOneHTTPModel(endpoint: URL(string: devServer) ?? URL(string: "http://127.0.0.1:8089")!)
         default: return KeywordDecisionModel()
         }

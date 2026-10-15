@@ -35,7 +35,8 @@ open ios/WeeHours.xcodeproj         # run the "App" scheme on an iPhone simulato
 
 Sign in with `parent1@example.com` / `newborn-dev` (or `parent2@…`). Both accounts belong to the seeded household and share half a day of log.
 
-- **Voice in the simulator.** Type into "Or type…" on the home screen; it runs the same pipeline as speech. For the real model, run `llama-server -m Laya-Q8_0.gguf --port 8089` and pick *Settings → Voice → Laya on Mac*. Or download the model in Settings to use the on-device runtime; the simulator runs it on the CPU.
+- **Bundled models.** `scripts/fetch-models.sh` (run by `dev.sh`) puts Laya (~450 MB) and WhisperKit base.en (~150 MB) into `ios/App/Models`, which the app ships, so voice works offline right after install. Without them the app falls back to downloading. They are git-ignored; before the App Store, consider Apple-hosted Background Assets to keep the binary small and update the model without an app update.
+- **Voice in the simulator.** Type into "Or type…" on the home screen; it runs the same pipeline as speech. With the bundled models, the default *On-device Laya* runs in the simulator on the CPU. You can also run `llama-server -m Laya-Q8_0.gguf --port 8089` and pick *Settings → Voice → Laya on Mac*.
 - **Glasses.** `scripts/glasses-sim.sh` opens the official Even Hub simulator, signed in. `scripts/glasses-sim.sh --e2e` drives the simulator through its automation API, checks the backend and saves HUD screenshots.
 - **MCP.** The endpoint is `http://127.0.0.1:54321/functions/v1/mcp` with `Authorization: Bearer wh_dev_local_token`. `node scripts/test-mcp.mjs` runs the integration checks.
 - **Billing.** Run from Xcode to use `Subscriptions.storekit` (monthly, yearly, lifetime). Launched any other way, the paywall uses a built-in dummy store through the same entitlement path.

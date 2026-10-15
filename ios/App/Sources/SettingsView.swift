@@ -131,7 +131,9 @@ struct ModelDownloadRow: View {
     init() { models = ModelManagerHolder.shared }
 
     var body: some View {
-        if models.isDownloaded {
+        if models.isBundled {
+            Label("Laya included with the app", systemImage: "checkmark.seal.fill").foregroundStyle(.green)
+        } else if models.isDownloaded {
             Label("Laya on this iPhone (449 MB)", systemImage: "checkmark.seal.fill").foregroundStyle(.green)
         } else if models.progress != nil {
             HStack { ProgressView(); Text("Downloading Laya…") }
