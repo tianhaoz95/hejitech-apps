@@ -2353,7 +2353,16 @@ function probeDesktopDaemon(p) {
   });
 }
 
-app.get('/api/update/check', async (req, res) => {
+// Inside the desktop app the app bundle is what gets updated (Tauri updater,
+// tray "Update & Restart"), so its updater is the source of truth: it compares
+// the *app's* version against the release's latest.json. The server's own check
+// compares this server's package.json against GitHub's latest release tag, which
+// disagrees with the app whenever the server isn't the app's own embedded copy
+// (Lite / a reused server on the default port) or a release is tagged before
+// its desktop builds are attached — leaving a stale "update available" banner
+// after the user already updated from the tray. Every check (manual and the
+// background tick) goes through here so both sources can't drift apart.
+async function checkForUpdateAnySource() {
   const daemon = await probeDesktopDaemon();
   if (daemon.available) {
     try {
@@ -2361,17 +2370,26 @@ app.get('/api/update/check', async (req, res) => {
         http.get(`http://127.0.0.1:${daemon.port}/update/check`, { timeout: 15000 }, r => {
           let data = '';
           r.on('data', c => data += c);
-          r.on('end', () => resolve(JSON.parse(data)));
+          r.on('end', () => { try { resolve(JSON.parse(data)); } catch (e) { reject(e); } });
         }).on('error', reject);
       });
-      res.json(resp);
-      return;
+      lastUpdateInfo = {
+        isRepo: false, supervised: true, behind: resp.updateAvailable ? 1 : 0, ahead: 0,
+        version: appVersion(), local: '', remote: '', error: null,
+        hasLocalChanges: false, isBinary: true, isDesktop: true,
+        ...resp,
+        updateAvailable: !!resp.updateAvailable,
+      };
+      return lastUpdateInfo;
     } catch (e) {
       console.warn('[Update] Desktop daemon update check error:', e.message);
     }
   }
+  return checkForUpdate({ fetch: true });
+}
 
-  const info = await checkForUpdate({ fetch: true });
+app.get('/api/update/check', async (req, res) => {
+  const info = await checkForUpdateAnySource();
   res.json(info);
   broadcastUpdate();
 });
@@ -2538,7 +2556,7 @@ app.post('/api/restart', async (req, res) => {
 function startUpdateChecks() {
   const tick = async () => {
     if (readSettings().autoUpdate === false) return;
-    try { await checkForUpdate({ fetch: true }); broadcastUpdate(); } catch {}
+    try { await checkForUpdateAnySource(); broadcastUpdate(); } catch {}
   };
   setTimeout(tick, 10000);
   setInterval(tick, UPDATE_CHECK_INTERVAL).unref();
