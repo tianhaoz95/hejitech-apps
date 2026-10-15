@@ -10,7 +10,7 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const { URL } = require('url');
-const { execFile, exec, execSync } = require('child_process');
+const { execFile, spawn } = require('child_process');
 
 // Detect whether we are running inside a Docker container.
 // /.dockerenv is created by the Docker runtime in every container.
@@ -21,7 +21,12 @@ const { CookieJar: ProxyCookieJar } = require('./proxy-cookies');
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocketServer({ noServer: true, perMessageDeflate: true });
+// Small frames (keystroke echo, control messages) skip compression entirely;
+// a moderate zlib level keeps big batched output cheap on CPU.
+const wss = new WebSocketServer({
+  noServer: true,
+  perMessageDeflate: { threshold: 1024, zlibDeflateOptions: { level: 3 } },
+});
 
 // Upgrades are routed by path: proxied pages' own WebSockets (/proxy-ws/…, see
 // proxyWsUpgrade), host-browser streams (/hostbrowser/…, see
@@ -51,6 +56,14 @@ app.use((req, res, next) => (req.path === '/proxy' || req.path.startsWith('/prox
 app.use('/vendor/monaco-editor', express.static(path.join(__dirname, 'node_modules', 'monaco-editor')));
 app.use('/vendor/marked', express.static(path.join(__dirname, 'node_modules', 'marked', 'lib')));
 app.use('/vendor/xterm-addon-webgl', express.static(path.join(__dirname, 'node_modules', 'xterm-addon-webgl', 'lib')));
+// xterm + addons are version-pinned in package.json and only change on a
+// self-update (which restarts the server), so they can be cached for a day
+// instead of revalidated on every load.
+const vendorCache = { maxAge: '1d' };
+app.use('/vendor/xterm', express.static(path.join(__dirname, 'node_modules', 'xterm'), vendorCache));
+app.use('/vendor/xterm-addon-fit', express.static(path.join(__dirname, 'node_modules', 'xterm-addon-fit', 'lib'), vendorCache));
+app.use('/vendor/xterm-addon-search', express.static(path.join(__dirname, 'node_modules', '@xterm', 'addon-search', 'lib'), vendorCache));
+app.use('/vendor/xterm-addon-web-links', express.static(path.join(__dirname, 'node_modules', '@xterm', 'addon-web-links', 'lib'), vendorCache));
 app.use('/vendor/feedbackkit-web', express.static(path.join(__dirname, 'node_modules', 'feedbackkit-web', 'dist')));
 
 // Exposes the app version synchronously to the page so feedback.js can tag reports before any other script runs
@@ -102,8 +115,13 @@ if (process.env.HOTRELOAD) {
 }
 
 // Inject hot-reload snippet into index.html in dev mode
+// Outside dev mode index.html is cached in memory; a self-update restarts the
+// process (or asks the user to), which drops the cache along with it.
+let indexHtmlCache = null;
 app.get('/', (req, res) => {
+  if (!process.env.HOTRELOAD && indexHtmlCache) return res.send(indexHtmlCache);
   let html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+  if (!process.env.HOTRELOAD) indexHtmlCache = html;
   if (process.env.HOTRELOAD) {
     html = html.replace('</body>', `<script>
 (function(){var s=new EventSource('/__reload');s.onmessage=function(){location.reload()};s.onerror=function(){setTimeout(function(){location.reload()},500)}})();
@@ -140,6 +158,10 @@ const DEFAULT_SETTINGS = {
   quickOverlayOpacity: 1.0, // overlay window opacity (1.0 = solid, 0.95, 0.9, 0.85, 0.8, etc.)
   quickOverlayWidth: 1120, // overlay window width in logical px (min 800, capped to the screen)
   quickOverlayHeight: 700, // overlay window height in logical px (min 500, capped to the screen)
+  outputBatching: true, // coalesce bursts of terminal output into fewer WebSocket frames (first chunk after idle is still sent at once)
+  resizeDebounce: true, // send terminal resizes at most once per ~80ms while dragging dividers (fewer shell redraws)
+  portPollSeconds: 10, // how often to scan for newly listening dev-server ports (seconds, 2–120)
+  whatsNewSeen: '', // last app version whose "What's new" sheet the user has seen ('' → first run, nothing to show)
   gpuMonitor: false, // background-poll `nvidia-smi` for GPU stats and show a toolbar widget (NVIDIA hosts only)
   comboFx: false, // keystroke-streak visual effects, opt-in (see public/combo.js)
   petEnabled: false, // on-device-LLM chat pet that walks around (see public/pet.js)
@@ -187,10 +209,18 @@ const DEFAULT_SETTINGS = {
   ]
 };
 
-function readSettings() {
+// Settings are read on hot paths (PTY output batching, monitor ticks), so the
+// parsed file is cached in memory. writeSettings() refreshes the cache; a slow
+// stat poll picks up hand edits to settings.json without a restart.
+let settingsCache = null;
+
+function loadSettingsFromDisk() {
   let s;
   try { s = { ...DEFAULT_SETTINGS, ...JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')) }; }
-  catch { return { ...DEFAULT_SETTINGS }; }
+  // No settings file yet means a fresh install: there's nothing "new" to show,
+  // so count the running version as seen. (An upgrade keeps its file, and one
+  // from before the What's new sheet lacks the key → '' → the sheet shows.)
+  catch { return { ...DEFAULT_SETTINGS, whatsNewSeen: appVersion() }; }
   // Migrate the old Google homepage default → new tabs now open a local start
   // page (Google can't be proxied anyway), so clear the stale default.
   if (/^https?:\/\/(www\.)?google\.com\/?$/i.test(s.browserHomepage || '')) {
@@ -199,10 +229,25 @@ function readSettings() {
   return s;
 }
 
+function readSettings() {
+  if (!settingsCache) settingsCache = loadSettingsFromDisk();
+  return { ...settingsCache };
+}
+
+// One value without copying the whole object — for per-chunk hot paths.
+function getSetting(key) {
+  if (!settingsCache) settingsCache = loadSettingsFromDisk();
+  return settingsCache[key];
+}
+
 function writeSettings(data) {
   fs.mkdirSync(path.dirname(SETTINGS_FILE), { recursive: true });
   fs.writeFileSync(SETTINGS_FILE, JSON.stringify(data, null, 2));
+  settingsCache = loadSettingsFromDisk();
+  onSettingsWritten();
 }
+
+fs.watchFile(SETTINGS_FILE, { interval: 5000 }, () => { settingsCache = null; onSettingsWritten(); }).unref?.();
 
 app.get('/api/settings', (req, res) => res.json(readSettings()));
 app.post('/api/settings', (req, res) => {
@@ -211,8 +256,10 @@ app.post('/api/settings', (req, res) => {
   res.json(merged);
 });
 app.post('/api/settings/reset', (req, res) => {
-  writeSettings({ ...DEFAULT_SETTINGS });
-  res.json({ ...DEFAULT_SETTINGS });
+  // A reset isn't an upgrade: keep the running version's notes marked as seen.
+  const fresh = { ...DEFAULT_SETTINGS, whatsNewSeen: appVersion() };
+  writeSettings(fresh);
+  res.json(fresh);
 });
 
 app.get('/api/network-interfaces', (req, res) => {
@@ -1460,10 +1507,27 @@ const hostBrowser = new HostBrowserService({
 mountHostBrowserRoutes(app, hostBrowser);
 
 const ptys = new Map();
+// Paths *inside* .git/ or node_modules/ (the folders themselves still report).
+const FS_WATCH_IGNORE_RE = /(?:^|\/)(?:\.git|node_modules)\//;
+const spawningPtys = new Map(); // id -> latest {cols, rows} while its spawn awaits an async cwd lookup
 
 // Keep ~200KB of recent output per PTY so a reconnecting client (e.g. after a
-// page refresh) can be re-hydrated with the existing terminal content.
+// page refresh) can be re-hydrated with the existing terminal content. The
+// buffer is trimmed only once it overshoots by half, so heavy output costs an
+// occasional 200KB copy instead of one per chunk.
 const PTY_BUFFER_MAX = 200000;
+const PTY_BUFFER_SLACK = 100000;
+
+// Output batching (setting `outputBatching`): interactive output (keystroke
+// echo, prompt redraws — often several small chunks per keypress) is sent
+// immediately. Only once more than OUTPUT_BURST_BYTES arrive within one
+// OUTPUT_FLUSH_MS window does the stream switch to batching, coalescing each
+// window into one frame until a window comes in under the threshold again. A
+// flood (`cat`, build logs, an agent streaming) then costs one JSON+deflate+send
+// per window instead of one per chunk.
+const OUTPUT_FLUSH_MS = 10;
+const OUTPUT_BURST_BYTES = 4 * 1024;
+const OUTPUT_FLUSH_BYTES = 64 * 1024;
 
 // The private OSC sequences `mtx` emits: 5379 triggers a browser download
 // (`mtx download`), 5380 opens a code-editor tab on a directory (`mtx code`).
@@ -1532,19 +1596,20 @@ function armSchedule(ptyId, fireAt) {
   schedules.set(ptyId, { fireAt, timer });
 }
 
-function getPtyCwd(pid) {
+// Async (execFile, no shell) so a slow lsof/ps never stalls every PTY's output.
+const execFileP = (file, args, opts) => new Promise((resolve, reject) => {
+  execFile(file, args, { encoding: 'utf8', ...opts }, (err, stdout) => (err ? reject(err) : resolve(stdout)));
+});
+
+async function getPtyCwd(pid) {
   if (!pid) return null;
   try {
     if (os.platform() === 'darwin') {
-      const output = execSync(`lsof -p ${pid} -a -d cwd -Fn`, {
-        encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'ignore'],
-        timeout: 500
-      });
+      const output = await execFileP('lsof', ['-p', String(pid), '-a', '-d', 'cwd', '-Fn'], { timeout: 500 });
       const lines = output.split('\n');
       for (const line of lines) {
         if (line.startsWith('n/')) {
-          const resolved = line.substring(2).trim();
+          const resolved = line.substring(1).trim(); // drop lsof's `n` field tag, keep the leading `/`
           if (resolved && fs.existsSync(resolved)) {
             return resolved;
           }
@@ -1564,15 +1629,11 @@ function getPtyCwd(pid) {
 
 // Inspect the process tree under a PTY to detect if an interactive AI agent
 // (such as `agy` or `claude`) is currently running in the foreground.
-function getProcessTreeInfo(pid) {
+async function getProcessTreeInfo(pid) {
   if (!pid) return { isAgent: false, agentName: null };
   try {
     if (os.platform() === 'darwin' || os.platform() === 'linux') {
-      const stdout = execSync(`ps -eo pid,ppid,comm,args`, {
-        encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'ignore'],
-        timeout: 800
-      });
+      const stdout = await execFileP('ps', ['-eo', 'pid,ppid,comm,args'], { timeout: 800, maxBuffer: 8 * 1024 * 1024 });
       const lines = stdout.split('\n');
       const childrenMap = new Map();
       const selfMap = new Map();
@@ -1655,30 +1716,29 @@ app.post('/api/terminal/paste-image', (req, res) => {
     if (!res.headersSent) res.status(500).json({ error: err.message });
   });
 
-  out.on('finish', () => {
-    // 1. Sync to host OS clipboard
+  out.on('finish', async () => {
+    // 1. Sync to host OS clipboard (async: osascript can take most of a second)
+    const quiet = (p) => p.catch(() => {});
     if (os.platform() === 'darwin') {
-      try {
-        execSync(`osascript -e 'set the clipboard to (read (POSIX file "${destPath}") as «class PNGf»)'`, {
-          timeout: 1000,
-          stdio: 'ignore'
-        });
-      } catch (e) {
-        // Ignore AppleScript error
-      }
+      const script = `set the clipboard to (read (POSIX file ${JSON.stringify(destPath)}) as «class PNGf»)`;
+      await quiet(execFileP('osascript', ['-e', script], { timeout: 1000 }));
     } else if (os.platform() === 'linux') {
-      try {
-        execSync(`xclip -selection clipboard -t image/png -i "${destPath}"`, { timeout: 1000, stdio: 'ignore' });
-      } catch (_) {
-        try {
-          execSync(`wl-copy --type image/png < "${destPath}"`, { timeout: 1000, stdio: 'ignore' });
-        } catch (_) {}
+      const copied = await execFileP('xclip', ['-selection', 'clipboard', '-t', 'image/png', '-i', destPath], { timeout: 1000 })
+        .then(() => true, () => false);
+      if (!copied) {
+        await quiet(new Promise((resolve, reject) => {
+          const child = spawn('wl-copy', ['--type', 'image/png'], { stdio: ['pipe', 'ignore', 'ignore'] });
+          const kill = setTimeout(() => child.kill(), 1000);
+          child.on('error', reject);
+          child.on('exit', (code) => { clearTimeout(kill); code === 0 ? resolve() : reject(); });
+          fs.createReadStream(destPath).on('error', reject).pipe(child.stdin);
+        }));
       }
     }
 
     // 2. Check if a known AI CLI agent (like agy or claude) is running in the PTY
     const entry = ptyId ? ptys.get(ptyId) : null;
-    const procInfo = entry ? getProcessTreeInfo(entry.proc?.pid) : { isAgent: false };
+    const procInfo = entry ? await getProcessTreeInfo(entry.proc?.pid) : { isAgent: false };
 
     if (entry && procInfo.isAgent) {
       // Small timeout to allow the OS pasteboard change event to settle
@@ -1711,12 +1771,53 @@ app.post('/api/terminal/paste-image', (req, res) => {
 
 
 function attachPtyToWs(id, ptyEntry, ws) {
-  const listener = (data) => {
+  let pending = '';      // queued while bursting
+  let windowBytes = 0;   // bytes seen in the current window
+  let bursting = false;
+  let timer = null;      // the current window; null → idle
+  const send = (data) => {
     if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ type: 'pty:data', id, data }));
   };
+  const flushPending = () => {
+    if (!pending) return;
+    const data = pending;
+    pending = '';
+    send(data);
+  };
+  const endWindow = () => {
+    timer = null;
+    const volume = windowBytes;
+    windowBytes = 0;
+    flushPending();
+    bursting = volume >= OUTPUT_BURST_BYTES;
+    if (bursting) timer = setTimeout(endWindow, OUTPUT_FLUSH_MS);
+  };
+  const listener = (data) => {
+    if (getSetting('outputBatching') === false) { flushPending(); send(data); return; }
+    windowBytes += data.length;
+    if (!timer) timer = setTimeout(endWindow, OUTPUT_FLUSH_MS);
+    if (!bursting) {
+      send(data);
+      if (windowBytes >= OUTPUT_BURST_BYTES) bursting = true;
+      return;
+    }
+    pending += data;
+    if (pending.length >= OUTPUT_FLUSH_BYTES) flushPending();
+  };
+  // Used before pty:exit so the last output precedes the exit notice.
+  const flush = () => flushPending();
   ptyEntry.dataListeners.add(listener);
+  ptyEntry.flushers.add(flush);
   const unsub = ptyEntry.proc.onData(listener);
-  return () => { ptyEntry.dataListeners.delete(listener); unsub.dispose?.(); };
+  return () => {
+    // Dropped, not flushed: anything pending is already in the replay buffer,
+    // which a reattach sends in full.
+    if (timer) clearTimeout(timer);
+    pending = '';
+    ptyEntry.dataListeners.delete(listener);
+    ptyEntry.flushers.delete(flush);
+    unsub.dispose?.();
+  };
 }
 
 wss.on('connection', (ws) => {
@@ -1746,6 +1847,14 @@ wss.on('connection', (ws) => {
         ws.tabId = msg.tabId;
         activeTabId = msg.tabId;
         broadcastSession();
+        break;
+      }
+      case 'client:visibility': {
+        // Pages report document.visibilityState so background polling can
+        // pause while nobody is looking; catch up as soon as one is visible.
+        const wasVisible = anyClientVisible();
+        ws.pageHidden = !!msg.hidden;
+        if (!wasVisible && !ws.pageHidden && portMonitorTimer) schedulePortPoll(0);
         break;
       }
       case 'mtx:rpc:result': {
@@ -1808,50 +1917,62 @@ wss.on('connection', (ws) => {
         // …and a node binary for `mtx mcp` (the standalone app bundles its own).
         ptyEnv.MEOWTRIX_NODE = process.execPath;
 
-        let initialCwd = msg.cwd;
-        if (!initialCwd && msg.inheritFromPtyId) {
-          const parentPty = ptys.get(msg.inheritFromPtyId);
-          if (parentPty && parentPty.proc && parentPty.proc.pid) {
-            initialCwd = getPtyCwd(parentPty.proc.pid);
+        const spawnPty = (initialCwd) => {
+          // An SSH tab spawns `ssh <host>` directly instead of a login shell. The
+          // host comes from the client (chosen from ~/.ssh/config in the new-tab
+          // menu); restrict it to a safe charset and reject a leading `-` so it
+          // can't be smuggled in as an ssh option flag.
+          let spawnFile = shell, spawnArgs = shellArgs;
+          if (msg.sshHost && /^[A-Za-z0-9._@:%-]+$/.test(msg.sshHost) && !msg.sshHost.startsWith('-')) {
+            spawnFile = 'ssh';
+            spawnArgs = ['-t', msg.sshHost]; // -t forces a remote PTY for interactive use
           }
-        }
 
-        // An SSH tab spawns `ssh <host>` directly instead of a login shell. The
-        // host comes from the client (chosen from ~/.ssh/config in the new-tab
-        // menu); restrict it to a safe charset and reject a leading `-` so it
-        // can't be smuggled in as an ssh option flag.
-        let spawnFile = shell, spawnArgs = shellArgs;
-        if (msg.sshHost && /^[A-Za-z0-9._@:%-]+$/.test(msg.sshHost) && !msg.sshHost.startsWith('-')) {
-          spawnFile = 'ssh';
-          spawnArgs = ['-t', msg.sshHost]; // -t forces a remote PTY for interactive use
-        }
+          // A resize that arrived while the cwd lookup ran wins over the create's size.
+          const size = spawningPtys.get(id) || {};
+          spawningPtys.delete(id);
+          const cols = size.cols || msg.cols || 80, rows = size.rows || msg.rows || 24;
+          const proc = pty.spawn(spawnFile, spawnArgs, {
+            name: 'xterm-256color',
+            cols,
+            rows,
+            cwd: initialCwd || process.env.MEOWTRIX_WORKSPACE || process.env.HOME || process.cwd(),
+            env: ptyEnv,
+          });
+          const entry = { proc, dataListeners: new Set(), flushers: new Set(), buffer: '', cols, rows };
+          ptys.set(id, entry);
+          // Persistently buffer output (independent of any connected WS) so it can
+          // be replayed on reconnect. Capped to the most recent PTY_BUFFER_MAX bytes.
+          proc.onData((data) => {
+            // Keep the download/editor-trigger OSCs out of the replay buffer so a
+            // reconnect (which replays the buffer) doesn't re-fire the action.
+            // Both start with ESC ]53, so most chunks skip the regexes entirely.
+            entry.buffer += data.includes('\x1b]53') ? data.replace(DOWNLOAD_OSC_RE, '').replace(EDITOR_OSC_RE, '') : data;
+            if (entry.buffer.length > PTY_BUFFER_MAX + PTY_BUFFER_SLACK) {
+              entry.buffer = entry.buffer.slice(-PTY_BUFFER_MAX);
+            }
+          });
+          proc.onExit(() => {
+            ptys.delete(id);
+            if (clearSchedule(id)) broadcastSchedules(); // drop a schedule for a dead PTY
+            for (const flush of entry.flushers) flush(); // last output before the exit notice
+            if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ type: 'pty:exit', id }));
+          });
+          attached.set(id, attachPtyToWs(id, entry, ws));
+          ws.send(JSON.stringify({ type: 'pty:created', id }));
+        };
 
-        const proc = pty.spawn(spawnFile, spawnArgs, {
-          name: 'xterm-256color',
-          cols: msg.cols || 80,
-          rows: msg.rows || 24,
-          cwd: initialCwd || process.env.MEOWTRIX_WORKSPACE || process.env.HOME || process.cwd(),
-          env: ptyEnv,
+        // A split inherits the cwd of the pane it came from. Looking that up
+        // (lsof on macOS) is async so it never stalls other PTYs' output; the
+        // spawning set drops a duplicate create for the same id meanwhile.
+        const parentPid = !msg.cwd && msg.inheritFromPtyId ? ptys.get(msg.inheritFromPtyId)?.proc?.pid : null;
+        if (!parentPid) { spawnPty(msg.cwd); break; }
+        if (spawningPtys.has(id)) break;
+        spawningPtys.set(id, {});
+        getPtyCwd(parentPid).then((cwd) => {
+          if (!ptys.has(id) && ws.readyState === ws.OPEN) spawnPty(cwd);
+          else spawningPtys.delete(id);
         });
-        const entry = { proc, dataListeners: new Set(), buffer: '', cols: msg.cols || 80, rows: msg.rows || 24 };
-        ptys.set(id, entry);
-        // Persistently buffer output (independent of any connected WS) so it can
-        // be replayed on reconnect. Capped to the most recent PTY_BUFFER_MAX bytes.
-        proc.onData((data) => {
-          // Keep the download/editor-trigger OSCs out of the replay buffer so a
-          // reconnect (which replays the buffer) doesn't re-fire the action.
-          entry.buffer += data.replace(DOWNLOAD_OSC_RE, '').replace(EDITOR_OSC_RE, '');
-          if (entry.buffer.length > PTY_BUFFER_MAX) {
-            entry.buffer = entry.buffer.slice(-PTY_BUFFER_MAX);
-          }
-        });
-        proc.onExit(() => {
-          ptys.delete(id);
-          if (clearSchedule(id)) broadcastSchedules(); // drop a schedule for a dead PTY
-          if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ type: 'pty:exit', id }));
-        });
-        attached.set(id, attachPtyToWs(id, entry, ws));
-        ws.send(JSON.stringify({ type: 'pty:created', id }));
         break;
       }
       case 'pty:input': { const e = ptys.get(msg.id); if (e) e.proc.write(msg.data); break; }
@@ -1870,6 +1991,7 @@ wss.on('connection', (ws) => {
       case 'pty:resize': {
         const e = ptys.get(msg.id);
         if (e) { e.cols = msg.cols; e.rows = msg.rows; e.proc.resize(msg.cols, msg.rows); }
+        else if (spawningPtys.has(msg.id)) spawningPtys.set(msg.id, { cols: msg.cols, rows: msg.rows });
         break;
       }
       case 'pty:destroy': {
@@ -1887,10 +2009,23 @@ wss.on('connection', (ws) => {
         try {
           const resolved = path.resolve(watchPath);
           if (fs.existsSync(resolved)) {
-            const watcher = fs.watch(resolved, { recursive: true }, (eventType, filename) => {
-              if (ws.readyState === ws.OPEN) {
+            // .git/ churn (the client ignores it anyway) and node_modules/
+            // installs can fire thousands of events, so they're dropped at the
+            // source; the rest are de-duplicated per file over a short window.
+            const pendingChanges = new Map(); // filename -> eventType
+            let flushTimer = null;
+            const flushChanges = () => {
+              flushTimer = null;
+              if (ws.readyState !== ws.OPEN) { pendingChanges.clear(); return; }
+              for (const [filename, eventType] of pendingChanges) {
                 ws.send(JSON.stringify({ type: 'fs:change', path: watchPath, eventType, filename }));
               }
+              pendingChanges.clear();
+            };
+            const watcher = fs.watch(resolved, { recursive: true }, (eventType, filename) => {
+              if (filename && FS_WATCH_IGNORE_RE.test(filename.replace(/\\/g, '/'))) return;
+              pendingChanges.set(filename || '', eventType);
+              if (!flushTimer) flushTimer = setTimeout(flushChanges, 100);
             });
             watcher.on('error', (err) => {
               console.warn(`[Watcher Error] ${resolved}:`, err);
@@ -2302,6 +2437,8 @@ async function applyUpdate() {
     output = `Pull encountered conflicts; successfully recovered by resetting to upstream tracking branch and discarding local modifications.\n` + (clean.stdout || '');
   }
 
+  indexHtmlCache = null; // the pull may have changed index.html; serve the new one
+
   if (depsChanged) {
     output += '\nReinstalling dependencies…';
     const npm = await new Promise((resolve) => {
@@ -2590,7 +2727,7 @@ app.use((req, res, next) => {
 });
 
 // ── Port monitoring ──────────────────────────────────────────────────────────
-let portMonitorInterval = null;
+let portMonitorTimer = null;
 let lastPorts = []; // Array of { port, ip, command, pid }
 
 function parseLsofOutput(stdout) {
@@ -2669,9 +2806,9 @@ function parseSsOutput(stdout) {
 
 function getListeningPorts() {
   return new Promise((resolve) => {
-    exec('lsof -iTCP -sTCP:LISTEN -P -n', (err, stdout) => {
+    execFile('lsof', ['-iTCP', '-sTCP:LISTEN', '-P', '-n'], { maxBuffer: 8 * 1024 * 1024 }, (err, stdout) => {
       if (err) {
-        exec('ss -tlnp', (err2, stdout2) => {
+        execFile('ss', ['-tlnp'], (err2, stdout2) => {
           if (err2) {
             resolve([]);
             return;
@@ -2692,51 +2829,76 @@ function broadcastPorts(portsList) {
   }
 }
 
+// Scans every `portPollSeconds` (default 10s; lsof is slow and CPU-heavy on
+// macOS), and skips scans entirely while every connected page is hidden — a
+// page becoming visible again triggers an immediate catch-up scan.
+function portPollMs() {
+  const sec = Number(getSetting('portPollSeconds'));
+  return Math.min(120, Math.max(2, Number.isFinite(sec) ? sec : 10)) * 1000;
+}
+
+function anyClientVisible() {
+  for (const c of sessionClients) if (!c.pageHidden) return true;
+  return false;
+}
+
+async function pollPorts() {
+  try {
+    const currentPorts = await getListeningPorts();
+
+    const newPorts = currentPorts.filter(cp => !lastPorts.some(lp => lp.port === cp.port));
+
+    if (newPorts.length > 0) {
+      const payload = JSON.stringify({ type: 'ports:new', ports: newPorts });
+      for (const c of sessionClients) {
+        if (c.readyState === c.OPEN) c.send(payload);
+      }
+    }
+
+    const listChanged = currentPorts.length !== lastPorts.length ||
+      currentPorts.some((cp, idx) => {
+        const lp = lastPorts[idx];
+        return !lp || lp.port !== cp.port || lp.command !== cp.command;
+      });
+
+    if (listChanged) {
+      lastPorts = currentPorts;
+      broadcastPorts(currentPorts);
+    }
+  } catch (e) {
+    console.error('Error monitoring ports:', e);
+  }
+}
+
+function schedulePortPoll(delay = portPollMs()) {
+  clearTimeout(portMonitorTimer);
+  portMonitorTimer = setTimeout(async () => {
+    if (sessionClients.size === 0) { stopPortMonitoring(); return; }
+    if (anyClientVisible()) await pollPorts();
+    if (portMonitorTimer) schedulePortPoll();
+  }, delay);
+}
+
 function startPortMonitoring() {
-  if (portMonitorInterval) return;
-  
+  if (portMonitorTimer) return;
+
   getListeningPorts().then(ports => {
     lastPorts = ports;
   }).catch(() => {});
 
-  portMonitorInterval = setInterval(async () => {
-    if (sessionClients.size === 0) {
-      stopPortMonitoring();
-      return;
-    }
-    try {
-      const currentPorts = await getListeningPorts();
-      
-      const newPorts = currentPorts.filter(cp => !lastPorts.some(lp => lp.port === cp.port));
-      
-      if (newPorts.length > 0) {
-        const payload = JSON.stringify({ type: 'ports:new', ports: newPorts });
-        for (const c of sessionClients) {
-          if (c.readyState === c.OPEN) c.send(payload);
-        }
-      }
-      
-      const listChanged = currentPorts.length !== lastPorts.length ||
-        currentPorts.some((cp, idx) => {
-          const lp = lastPorts[idx];
-          return !lp || lp.port !== cp.port || lp.command !== cp.command;
-        });
-
-      if (listChanged) {
-        lastPorts = currentPorts;
-        broadcastPorts(currentPorts);
-      }
-    } catch (e) {
-      console.error('Error monitoring ports:', e);
-    }
-  }, 2000);
+  schedulePortPoll();
 }
 
 function stopPortMonitoring() {
-  if (portMonitorInterval) {
-    clearInterval(portMonitorInterval);
-    portMonitorInterval = null;
+  if (portMonitorTimer) {
+    clearTimeout(portMonitorTimer);
+    portMonitorTimer = null;
   }
+}
+
+// A settings write may have changed the poll interval; re-arm with the new one.
+function onSettingsWritten() {
+  if (portMonitorTimer) schedulePortPoll();
 }
 
 // ── GPU monitoring ───────────────────────────────────────────────────────────
@@ -2786,7 +2948,7 @@ function startGpuMonitoring() {
   if (gpuMonitorInterval) return;
   const tick = async () => {
     if (sessionClients.size === 0) { stopGpuMonitoring(); return; }
-    if (readSettings().gpuMonitor !== true) {
+    if (getSetting('gpuMonitor') !== true) {
       if (lastGpuStats !== null) { lastGpuStats = null; broadcastGpu(null); }
       return;
     }

@@ -106,6 +106,7 @@ function buildCommands() {
     { icon: '🔍', title: 'Find in active terminal', hint: isMac ? '⌘F' : 'Ctrl+F', keywords: 'search find text query match filter', run: () => { const tab = activePane?.activeTab; if (tab && tab.type === 'terminal' && typeof showTerminalSearch === 'function') showTerminalSearch(tab); } },
     { icon: '⤢', title: (typeof maximizedPane !== 'undefined' && maximizedPane) ? 'Restore layout' : 'Maximize active tab', keywords: 'maximize pane tab window scale focus zoom center hide splits', run: () => { if (activePane) toggleMaximizePane(activePane); } },
     { icon: '⛶', title: (document.fullscreenElement || document.webkitFullscreenElement) ? 'Exit fullscreen' : 'Enter fullscreen', keywords: 'fullscreen maximize zoom window screen', run: () => toggleFullscreen() },
+    { icon: '✨', title: "What's new in Meowtrix", keywords: 'release notes changelog changes version new features', run: () => { if (typeof openWhatsNew === 'function') openWhatsNew(); } },
     { icon: '⬇', title: 'Check for updates', keywords: 'upgrade version git pull', run: () => { if (typeof checkForUpdateNow === 'function') checkForUpdateNow(); } },
     { icon: '🔥', title: (typeof isComboFxEnabled === 'function' && isComboFxEnabled()) ? 'Turn off keystroke combo FX' : 'Turn on keystroke combo FX',
       keywords: 'streak effect particles fire visual', run: () => {

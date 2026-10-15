@@ -38,8 +38,18 @@ function ensureMonaco() {
         return URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
       },
     };
-    require.config({ paths: { vs: `${MONACO_BASE}/vs` } });
-    require(['vs/editor/editor.main'], () => resolve(window.monaco), reject);
+    // Monaco's AMD loader is only fetched on first use (it isn't in index.html),
+    // and it comes from the same local copy as the editor so the versions match.
+    const boot = () => {
+      window.require.config({ paths: { vs: `${MONACO_BASE}/vs` } });
+      window.require(['vs/editor/editor.main'], () => resolve(window.monaco), reject);
+    };
+    if (window.require && window.require.config) { boot(); return; }
+    const loader = document.createElement('script');
+    loader.src = `${MONACO_BASE}/vs/loader.js`;
+    loader.onload = boot;
+    loader.onerror = () => { _monacoPromise = null; reject(new Error('Failed to load the Monaco loader')); };
+    document.head.appendChild(loader);
   });
   return _monacoPromise;
 }

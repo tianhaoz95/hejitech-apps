@@ -1,0 +1,109 @@
+{
+  "_doc": "Release notes for the in-app \"What's new\" sheet (public/whats-new.js). Newest first. Each highlight may carry a `visual` (timeline | glyph) and a `try` action (settings:<section id> | tab:<type> | split | palette | copy:<text>).",
+  "releases": [
+    {
+      "version": "1.33.0",
+      "date": "2026-10-15",
+      "title": "Faster under heavy output",
+      "summary": "Busy terminals, divider drags and background scans now cost a fraction of what they did. Each change can be switched off in Settings → Performance.",
+      "highlights": [
+        {
+          "title": "Batched terminal output",
+          "body": "When a build log or an agent floods the terminal, output is grouped into one message every 10 ms instead of one per chunk. Typing and prompts aren't batched, so echo stays instant.",
+          "visual": {
+            "type": "timeline",
+            "caption": "Measured on `seq 1 300000`: ~12,000 messages before, ~150 now",
+            "rows": [
+              { "label": "Before", "tone": "muted", "every": 0.035, "width": 0.008 },
+              { "label": "Now", "tone": "accent", "at": [0.02, 0.27, 0.52, 0.77], "width": 0.2 }
+            ]
+          },
+          "try": { "label": "Open Performance settings", "action": "settings:sec-performance" }
+        },
+        {
+          "title": "Smooth pane resizing",
+          "body": "Dragging a divider used to tell every shell about its new size on every frame, so vim, htop and agent TUIs redrew constantly. Now they redraw once you pause.",
+          "visual": {
+            "type": "timeline",
+            "caption": "Resize signals sent to the shell during one drag",
+            "rows": [
+              { "label": "Before", "tone": "muted", "every": 0.03, "width": 0.008, "until": 0.8 },
+              { "label": "Now", "tone": "accent", "at": [0.82], "width": 0.03 }
+            ],
+            "span": [0, 0.8],
+            "spanLabel": "dragging"
+          },
+          "try": { "label": "Split this pane and drag", "action": "split" }
+        },
+        {
+          "title": "Quieter port detection",
+          "body": "The scan for new dev-server ports runs every 10 seconds instead of every 2, and stops entirely while no Meowtrix page is visible. The interval is yours to choose.",
+          "visual": {
+            "type": "timeline",
+            "caption": "Port scans over one minute",
+            "rows": [
+              { "label": "Before", "tone": "muted", "every": 0.0333, "width": 0.01 },
+              { "label": "Now", "tone": "accent", "every": 0.1667, "width": 0.012, "skip": [[0.42, 0.78]] }
+            ],
+            "span": [0.42, 0.78],
+            "spanLabel": "page hidden"
+          },
+          "try": { "label": "Change the interval", "action": "settings:sec-performance" }
+        },
+        {
+          "title": "Snappier startup",
+          "body": "The terminal libraries now load from your own server instead of a CDN, so pages open faster over tunnels and work offline. The code editor's loader waits until you open an editor.",
+          "visual": { "type": "glyph", "glyph": "⚡", "caption": "No CDN round-trip on load" }
+        }
+      ]
+    },
+    {
+      "version": "1.32.0",
+      "date": "2026-10-13",
+      "title": "Native browser tabs",
+      "summary": "In the desktop app, browser tabs are real native webviews instead of a proxied frame, so sign-ins and heavy sites just work.",
+      "highlights": [
+        {
+          "title": "Browser tabs use a native webview",
+          "body": "Sites that refuse to be embedded, use strict cookies, or need full WebSocket support now render as they would in a normal browser. Outside the desktop app the proxy is still used.",
+          "visual": { "type": "glyph", "glyph": "🌐", "caption": "Desktop app only · Settings → Browser to switch back" },
+          "try": { "label": "Open a browser tab", "action": "tab:browser" }
+        }
+      ]
+    },
+    {
+      "version": "1.31.0",
+      "date": "2026-10-13",
+      "title": "Host browser and the agent bridge",
+      "summary": "Drive a real Chromium on the host from any device, and let coding agents open pages and files beside you.",
+      "highlights": [
+        {
+          "title": "Host browser tabs",
+          "body": "A real Chromium runs on the host and streams to your tab, with its own persistent profile. Use it for sites the proxy can't handle, like Google sign-in.",
+          "visual": { "type": "glyph", "glyph": "🖥️", "caption": "Streams from the host · works from your phone" },
+          "try": { "label": "Open a host browser tab", "action": "tab:hostbrowser" }
+        },
+        {
+          "title": "mtx agent bridge",
+          "body": "Agents running in a terminal can call `mtx open <url>`, `mtx edit <file>` or `mtx notify`, or use them as MCP tools, and the result opens in a pane next to the agent.",
+          "visual": { "type": "glyph", "glyph": "🤝", "caption": "Register the MCP server once per agent" },
+          "try": { "label": "Copy `mtx mcp --install`", "action": "copy:mtx mcp --install" }
+        }
+      ]
+    },
+    {
+      "version": "1.30.0",
+      "date": "2026-10-09",
+      "title": "CoDesign review loop",
+      "summary": "Review an agent's living spec visually, pin comments to elements, and sign off — all without leaving Meowtrix.",
+      "highlights": [
+        {
+          "title": "CoDesign tabs",
+          "body": "An agent writes `.codesign/spec.html` and runs `mtx review`. You pin comments on the rendered page and press Send feedback; the agent picks them up and revises.",
+          "visual": { "type": "glyph", "glyph": "📐", "caption": "Spec → comments → revision → sign-off" },
+          "try": { "label": "Copy `mtx review`", "action": "copy:mtx review" }
+        }
+      ]
+    }
+  ]
+}

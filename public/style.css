@@ -5455,3 +5455,157 @@ body.dynamic-island-active #toolbar {
 /* CoDesign has its own device zoom; the generic per-tab zoom pill would sit on the footer. */
 .codesign-view .zoom-controls { display: none; }
 .cd-no-spec .codesign-drawer, .cd-no-spec .cd-drawer-toggle, .cd-no-spec .cd-note { display: none; }
+
+/* ── What's new sheet (public/whats-new.js) ─────────────────────────────────*/
+#whats-new-overlay {
+  position: fixed; inset: 0; z-index: 2100;
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px; background: rgba(0, 0, 0, 0.5);
+  animation: wn-fade 0.2s var(--ease);
+}
+#whats-new {
+  position: relative;
+  width: min(820px, 100%); max-height: min(88vh, 900px);
+  display: flex; flex-direction: column;
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border3); border-radius: 18px;
+  box-shadow: var(--shadow-lg); overflow: hidden;
+  animation: picker-in 0.25s var(--ease);
+}
+.wn-head {
+  position: relative; padding: 26px 28px 18px;
+  border-bottom: 1px solid var(--border);
+  background: radial-gradient(120% 140% at 0% 0%, var(--accent-soft), transparent 60%);
+}
+.wn-eyebrow {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--accent-hi);
+}
+.wn-head h2 {
+  margin: 6px 0 6px; font-size: 24px; font-weight: 800; letter-spacing: -0.4px; color: var(--text);
+}
+.wn-summary { margin: 0; max-width: 62ch; font-size: 13.5px; line-height: 1.55; color: var(--text2); }
+.wn-versions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.wn-versions button {
+  padding: 4px 10px; border-radius: 999px; cursor: pointer;
+  font: inherit; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums;
+  background: var(--bg3); color: var(--text2); border: 1px solid var(--border);
+  transition: all 0.13s var(--ease);
+}
+.wn-versions button:hover { color: var(--text); background: var(--bg5); }
+.wn-versions button.active { background: var(--accent); color: var(--accent-fg); border-color: transparent; }
+.wn-close {
+  position: absolute; top: 14px; right: 14px;
+  width: 30px; height: 30px; border-radius: 8px; cursor: pointer;
+  background: transparent; border: 1px solid transparent; color: var(--text3); font-size: 14px;
+}
+.wn-close:hover { background: var(--bg4); color: var(--text); border-color: var(--border); }
+
+.wn-cards {
+  flex: 1; min-height: 0; overflow-y: auto;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px; padding: 20px 28px;
+}
+.wn-card {
+  display: flex; flex-direction: column; gap: 12px; padding: 14px;
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 14px;
+  animation: wn-rise 0.35s var(--ease) both; animation-delay: var(--wn-delay, 0ms);
+}
+.wn-card-text h3 { margin: 0 0 5px; font-size: 15px; font-weight: 700; color: var(--text); }
+.wn-card-text p { margin: 0; font-size: 12.5px; line-height: 1.55; color: var(--text2); }
+.wn-card code, .wn-caption code {
+  font-family: var(--mono, ui-monospace, Menlo, monospace); font-size: 0.92em;
+  padding: 1px 5px; border-radius: 5px; background: var(--bg4); color: var(--text);
+}
+.wn-try {
+  align-self: flex-start; margin-top: auto;
+  padding: 7px 12px; border-radius: 9px; cursor: pointer;
+  font: inherit; font-size: 12.5px; font-weight: 600;
+  background: var(--accent-soft); color: var(--accent-hi); border: 1px solid var(--border3);
+  transition: all 0.15s var(--ease);
+}
+.wn-try:hover { background: var(--accent); color: var(--accent-fg); border-color: transparent; }
+.wn-try span { display: inline-block; transition: transform 0.15s var(--ease); }
+.wn-try:hover span { transform: translateX(3px); }
+.wn-try code { background: transparent; padding: 0; color: inherit; }
+.wn-try.wn-copied { background: var(--accent); color: var(--accent-fg); }
+
+/* Visual stage */
+.wn-visual {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 14px 12px 10px; border-radius: 10px;
+  background: var(--bg); border: 1px solid var(--border2);
+}
+.wn-caption { font-size: 11px; color: var(--text3); text-align: center; }
+.wn-glyph {
+  height: 86px; display: grid; place-items: center; font-size: 46px;
+  filter: drop-shadow(0 0 18px var(--accent2));
+  animation: wn-float 3.2s ease-in-out infinite;
+}
+.wn-lanes { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 16px 0 6px; }
+.wn-lane { display: grid; grid-template-columns: 50px 1fr 34px; align-items: center; gap: 8px; }
+.wn-lane-label { font-size: 11px; font-weight: 600; color: var(--text2); }
+.wn-count {
+  font-size: 13px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums;
+  color: var(--text2);
+}
+.wn-tone-accent .wn-count { color: var(--accent-hi); }
+.wn-track {
+  position: relative; height: 22px; border-radius: 6px;
+  background: var(--bg3); border: 1px solid var(--border2); overflow: hidden;
+}
+.wn-track i {
+  position: absolute; top: 4px; bottom: 4px; min-width: 2px; border-radius: 3px;
+  background: var(--text4); opacity: 0.35;
+  transition: opacity 0.12s linear, background 0.12s linear, transform 0.2s var(--ease);
+}
+.wn-tone-muted .wn-track i.lit { background: var(--text2); opacity: 0.9; }
+.wn-tone-accent .wn-track i.lit { background: var(--accent); opacity: 1; box-shadow: 0 0 8px var(--accent2); }
+/* Overlay layer spans exactly the track column (label 50px + gap, count 34px + gap). */
+.wn-layer { position: absolute; top: 0; bottom: 0; left: calc(50px + 8px); right: calc(34px + 8px); pointer-events: none; }
+.wn-span, .wn-playhead { position: absolute; top: 0; bottom: 0; }
+.wn-span {
+  background: repeating-linear-gradient(-45deg, var(--accent-soft) 0 6px, transparent 6px 12px);
+  border-left: 1px dashed var(--border3); border-right: 1px dashed var(--border3);
+}
+.wn-span span {
+  position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+  font-size: 10px; white-space: nowrap; color: var(--text3);
+}
+.wn-playhead {
+  width: 2px; margin-left: -1px;
+  background: var(--accent-hi); box-shadow: 0 0 10px var(--accent);
+}
+
+.wn-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 14px 28px; border-top: 1px solid var(--border);
+}
+.wn-foot-note { font-size: 12px; color: var(--text3); }
+.wn-done {
+  padding: 9px 20px; border-radius: 9px; cursor: pointer;
+  font: inherit; font-size: 13px; font-weight: 600;
+  background: var(--accent); color: var(--accent-fg); border: 1px solid transparent;
+}
+.wn-done:hover { background: var(--accent-hi); }
+.wn-done:focus-visible, .wn-try:focus-visible, .wn-versions button:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* Briefly ring the settings section a "Try it" jumped to. */
+.settings-section.wn-highlight { box-shadow: 0 0 0 2px var(--accent), 0 0 18px var(--accent2); border-radius: 10px; transition: box-shadow 0.3s var(--ease); }
+
+@keyframes wn-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes wn-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes wn-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+
+@media (max-width: 600px) {
+  #whats-new-overlay { padding: 0; align-items: stretch; }
+  #whats-new { max-height: none; border-radius: 0; border: none; }
+  .wn-head { padding: 22px 16px 14px; }
+  .wn-head h2 { font-size: 20px; }
+  .wn-cards { grid-template-columns: 1fr; padding: 14px 16px; }
+  .wn-foot { padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #whats-new-overlay, #whats-new, .wn-card, .wn-glyph { animation: none; }
+}

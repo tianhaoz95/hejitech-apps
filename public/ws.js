@@ -65,8 +65,16 @@ function _onConnected() {
     const args = pendingPtys.shift();
     _sendCreate(...args);
   }
+  reportVisibility();
   if (typeof onWsConnected === 'function') onWsConnected();
 }
+
+// Tells the server whether this page is visible, so background polling (port
+// scans) can pause while every connected page is hidden.
+function reportVisibility() {
+  if (!window.DEMO_MODE) wsSend({ type: 'client:visibility', hidden: document.visibilityState === 'hidden' });
+}
+document.addEventListener('visibilitychange', reportVisibility);
 
 function connectWs() {
   if (window.DEMO_MODE) {

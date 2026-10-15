@@ -1066,9 +1066,20 @@ function initTerminalTab(tab, existingPtyId) {
     const out = (typeof applyStickyMods === 'function') ? applyStickyMods(data) : data;
     if (out) sendTerminalInput(ptyId, out);
   });
-  term.onResize(({ cols, rows }) => wsSend({ type: 'pty:resize', id: ptyId, cols, rows }));
+  // With `resizeDebounce` on, a divider drag sends one resize per ~80ms pause
+  // instead of one per frame, so the shell (and full-screen TUIs) redraw once.
+  let resizeTimer = null;
+  term.onResize(({ cols, rows }) => {
+    clearTimeout(resizeTimer);
+    if (getSettings().resizeDebounce === false) {
+      wsSend({ type: 'pty:resize', id: ptyId, cols, rows });
+      return;
+    }
+    resizeTimer = setTimeout(() => wsSend({ type: 'pty:resize', id: ptyId, cols: term.cols, rows: term.rows }), 80);
+  });
   term.onTitleChange(title => { if (title && !tab.isCustomLabel) tab.label.textContent = title; });
 
+  let roFrame = 0, roSettle = null;
   const ro = new ResizeObserver(() => {
     if (tab.viewEl.classList.contains('active')) {
       const fit = () => {
@@ -1079,9 +1090,17 @@ function initTerminalTab(tab, existingPtyId) {
           } catch (e) {}
         }
       };
-      fit();
-      requestAnimationFrame(fit);
-      setTimeout(fit, 150);
+      if (getSettings().resizeDebounce === false) {
+        fit();
+        requestAnimationFrame(fit);
+        setTimeout(fit, 150);
+        return;
+      }
+      // At most one fit per frame while the size keeps changing, plus a
+      // settling fit after it stops (late font loads, panel animations).
+      if (!roFrame) roFrame = requestAnimationFrame(() => { roFrame = 0; fit(); });
+      clearTimeout(roSettle);
+      roSettle = setTimeout(fit, 150);
     }
   });
   ro.observe(tab.viewEl);

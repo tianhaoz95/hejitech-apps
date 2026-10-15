@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
+  <link rel="stylesheet" href="/vendor/xterm/css/xterm.css" onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css'">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -272,6 +272,37 @@
                 <option value="50000">50,000</option>
               </select>
             </div>
+          </div>
+        </details>
+        <details class="settings-section" id="sec-performance" open>
+          <summary class="settings-section-title">
+            <span class="settings-chevron">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </span>
+            Performance
+          </summary>
+          <div class="settings-section-content">
+            <div class="settings-row">
+              <label for="s-output-batching">Batch terminal output</label>
+              <input type="checkbox" id="s-output-batching">
+            </div>
+            <p class="settings-note">Groups floods of output (builds, logs, streaming agents) into fewer messages. Typing and prompts are never batched; during a flood, output may arrive up to 10&nbsp;ms later.</p>
+            <div class="settings-row">
+              <label for="s-resize-debounce">Smooth pane resizing</label>
+              <input type="checkbox" id="s-resize-debounce">
+            </div>
+            <p class="settings-note">Tells the shell about a new size once you pause dragging (~80&nbsp;ms) instead of every frame, so full-screen apps redraw once.</p>
+            <div class="settings-row">
+              <label for="s-port-poll">Detect new dev-server ports every</label>
+              <select id="s-port-poll">
+                <option value="2">2 seconds</option>
+                <option value="5">5 seconds</option>
+                <option value="10">10 seconds</option>
+                <option value="30">30 seconds</option>
+                <option value="60">60 seconds</option>
+              </select>
+            </div>
+            <p class="settings-note">Scanning pauses while no Meowtrix page is visible.</p>
           </div>
         </details>
         <details class="settings-section" open>
@@ -624,6 +655,10 @@
               <label>Meowtrix</label>
               <span id="s-about-version" style="font-size: 12px; color: var(--text3);">Version —</span>
             </div>
+            <div class="settings-row">
+              <label>Release notes</label>
+              <button type="button" id="s-whats-new" onclick="closeSettings(); openWhatsNew();">What's new</button>
+            </div>
             <div class="about-doc" id="about-legal-content">
               <!-- Dynamically populated from legal.json -->
             </div>
@@ -635,14 +670,13 @@
   <script src="meowtrix-version.js"></script>
   <script src="/vendor/feedbackkit-web/feedbackkit.iife.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/feedbackkit-web/dist/feedbackkit.iife.js'"></script>
   <script src="feedback.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-search@0.15.0/lib/addon-search.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-web-links@0.12.0/lib/addon-web-links.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-webgl@0.16.0/lib/xterm-addon-webgl.js" onerror="this.onerror=null;this.src='/vendor/xterm-addon-webgl/xterm-addon-webgl.js'"></script>
+  <!-- xterm is served from node_modules (no CDN round-trip, works offline); the CDN is only a fallback. -->
+  <script src="/vendor/xterm/lib/xterm.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js'"></script>
+  <script src="/vendor/xterm-addon-fit/xterm-addon-fit.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js'"></script>
+  <script src="/vendor/xterm-addon-search/addon-search.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/@xterm/addon-search@0.15.0/lib/addon-search.js'"></script>
+  <script src="/vendor/xterm-addon-web-links/addon-web-links.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/@xterm/addon-web-links@0.12.0/lib/addon-web-links.min.js'"></script>
+  <script src="/vendor/xterm-addon-webgl/xterm-addon-webgl.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/xterm-addon-webgl@0.16.0/lib/xterm-addon-webgl.js'"></script>
   <script src="/vendor/marked/marked.umd.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js'"></script>
-  <!-- Monaco's AMD loader; editor.js require()s the editor lazily on first use. -->
-  <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
   <script src="demo.js"></script>
   <script src="ws.js"></script>
   <script src="agent.js"></script>
@@ -660,6 +694,7 @@
   <script src="palette.js"></script>
   <script src="schedule.js"></script>
   <script src="update.js"></script>
+  <script src="whats-new.js"></script>
   <script src="mtx.js"></script>
   <script src="gpu.js"></script>
   <script src="combo.js"></script>

@@ -403,6 +403,7 @@ async function bootstrapSession() {
   }
   workspaceReady = true;
   bootstrapped = true;
+  if (isActiveSession && typeof maybeShowWhatsNew === 'function') maybeShowWhatsNew();
   updateWorkspaceUI();
   fitAllTerminals();
   // The server may have reported pending schedules before the tabs existed.
@@ -526,6 +527,7 @@ function onSessionState(activeTabId) {
   isActiveSession = active;
   document.getElementById('inactive-overlay').hidden = active;
   document.body.classList.toggle('session-inactive', !active);
+  if (active && workspaceReady && typeof maybeShowWhatsNew === 'function') maybeShowWhatsNew();
   if (active) {
     if (everActive && !was && workspaceReady) {
       // Idle → active: rebuild from the server so the layout matches what the

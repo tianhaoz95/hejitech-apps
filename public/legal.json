@@ -13,7 +13,7 @@
       },
       {
         "title": "Third-party resources",
-        "description": "The interface loads some assets (the terminal and editor libraries) from public CDNs, and the embedded browser/proxy fetches whatever pages you navigate to. Those requests are subject to the privacy practices of the respective providers and sites."
+        "description": "The terminal and editor libraries are served from your own Meowtrix server; public CDNs are only used as a fallback if a local copy fails to load. The interface font comes from Google Fonts, and the embedded browser/proxy fetches whatever pages you navigate to. Those requests are subject to the privacy practices of the respective providers and sites."
       },
       {
         "title": "Updates",

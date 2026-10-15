@@ -513,6 +513,12 @@ function populateControls(s) {
   document.getElementById('s-show-time').checked = s.showTimeInMenu !== false;
   document.getElementById('s-auto-update').checked = s.autoUpdate !== false;
   document.getElementById('s-gpu-monitor').checked = s.gpuMonitor === true;
+  document.getElementById('s-output-batching').checked = s.outputBatching !== false;
+  document.getElementById('s-resize-debounce').checked = s.resizeDebounce !== false;
+  const portPoll = document.getElementById('s-port-poll');
+  const pollVal = String(s.portPollSeconds || 10);
+  if (![...portPoll.options].some(o => o.value === pollVal)) portPoll.add(new Option(`${pollVal} seconds`, pollVal));
+  portPoll.value = pollVal;
   document.getElementById('s-editor-minimap').checked = s.editorMinimap !== false;
 
   const sQuickOverlayEnabled = document.getElementById('s-quick-overlay-enabled');
@@ -930,6 +936,10 @@ function wireControls() {
     if (typeof renderGpuBadge === 'function') renderGpuBadge();
   });
 
+  document.getElementById('s-output-batching').addEventListener('change', (e) => saveSetting('outputBatching', e.target.checked));
+  document.getElementById('s-resize-debounce').addEventListener('change', (e) => saveSetting('resizeDebounce', e.target.checked));
+  s('s-port-poll', 'portPollSeconds', Number);
+
   document.getElementById('s-editor-minimap').addEventListener('change', async (e) => {
     await saveSetting('editorMinimap', e.target.checked);
     onSettingChanged('editorMinimap', e.target.checked);
@@ -1258,6 +1268,9 @@ async function bootstrapSettings() {
   if (typeof rebuildMobileKeyBar === 'function') rebuildMobileKeyBar();
   applyMenuButtonMode(s.menuButtonMode);
   applyMenuButtonGroupsVisibility();
+  // The session may have become active before settings arrived.
+  if (typeof isActiveSession !== 'undefined' && isActiveSession && typeof workspaceReady !== 'undefined' && workspaceReady &&
+      typeof maybeShowWhatsNew === 'function') maybeShowWhatsNew();
 
   const searchInput = document.getElementById('settings-search');
   if (searchInput) {

@@ -248,6 +248,42 @@ test.describe('Meowtrix E2E Tests', () => {
     await expect(settingsPanel).not.toBeVisible();
   });
 
+  test("shows What's new once after an upgrade, then reopens from the palette", async ({ page, request }) => {
+    const sheet = page.locator('#whats-new');
+    // A reset counts the running version as seen, so nothing pops up.
+    await expect(sheet).toHaveCount(0);
+
+    // Pretend the last version this user saw is an older release.
+    await request.post('/api/settings', { data: { whatsNewSeen: '1.0.0' } });
+    await page.reload();
+    await expect(sheet).toBeVisible();
+    await expect(sheet.locator('.wn-card').first()).toBeVisible();
+    // Timelines animate a live counter for each lane.
+    await expect(sheet.locator('.wn-visual-timeline').first()).toBeVisible();
+
+    await sheet.locator('.wn-done').click();
+    await expect(sheet).toHaveCount(0);
+    const version = await page.evaluate(() => window.MEOWTRIX_VERSION);
+    await expect.poll(async () => (await (await request.get('/api/settings')).json()).whatsNewSeen).toBe(version);
+
+    // Seen: a reload stays quiet…
+    await page.reload();
+    await expect(page.locator('#workspace')).toBeVisible();
+    await page.waitForTimeout(800);
+    await expect(sheet).toHaveCount(0);
+
+    // …but the palette brings it back, and "Try it" jumps to the feature.
+    await page.locator('#btn-palette').click();
+    await page.locator('#palette-input').fill("What's new");
+    await expect(page.locator('.palette-item.active')).toContainText("What's new");
+    await page.keyboard.press('Enter');
+    await expect(sheet).toBeVisible();
+    await sheet.locator('.wn-try', { hasText: 'Performance settings' }).click();
+    await expect(sheet).toHaveCount(0);
+    await expect(page.locator('#settings-panel')).toHaveClass(/open/);
+    await expect(page.locator('#s-output-batching')).toBeVisible();
+  });
+
   test('should control app commands via the keyboard command palette', async ({ page }) => {
     const btnPalette = page.locator('#btn-palette');
     const paletteOverlay = page.locator('#palette-overlay');
