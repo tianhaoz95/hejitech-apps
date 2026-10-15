@@ -13,7 +13,7 @@ scripts/sync-spec.sh               # copy spec/ files into each consumer (CI run
 
 # Swift domain logic
 cd ios/LogCore && swift test
-cd ios/LogCore && swift test --filter LogCoreTests.LogCoreTests/testName
+cd ios/LogCore && swift test --filter InterpreterTests/testName   # or FixtureTests, AcceptanceTests, …
 SUPABASE_IT=1 swift test --filter BackendIntegrationTests       # needs `supabase start`
 cd ios/LogCore && swift run -c release logeval --model keywords --out /tmp/eval   # eval (CI gates on it)
 
