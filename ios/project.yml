@@ -39,11 +39,11 @@ targets:
       - path: Shared
       - path: App/Resources
         excludes: ["*.storekit"]
-      # On-device models (scripts/fetch-models.sh). Optional: without them the app downloads.
+      # On-device models (scripts/fetch-models.sh). Only a README is committed; without the
+      # models the app downloads them on first use.
       - path: App/Models
         type: folder
         buildPhase: resources
-        optional: true
     resources:
       - path: App/Resources/Assets.xcassets
     dependencies:
