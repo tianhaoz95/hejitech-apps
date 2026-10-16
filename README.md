@@ -18,6 +18,7 @@ scripts/cut_release.sh  releases one project: scripts/cut_release.sh <name> [pat
 scripts/db_migration.sh new migration for one project; check_supabase.mjs keeps projects apart
 scripts/check_isolation.mjs, graduation_check.sh   each project can leave for its own Supabase (supabase/GRADUATION.md)
 pages/                  the GitHub Pages site for every app (npm run pages:dev); project docs come from projects/<name>/docs
+.claude/skills/         agent skills: new-project, migrate-project (.agents/skills/ links them for Codex, Antigravity, Gemini CLI, Cursor…)
 .github/workflows/      <name>-*.yml per project
 .github/actions/        apple-signing (shared), <name>-toolchain
 package.json            npm workspaces: projects/*/packages/*, projects/*/services/*, projects/*/apps/*

@@ -97,6 +97,10 @@ are ancestors of HEAD). Then restructure in follow-up commits with `git mv`.
   OAuth server via `@cloudflare/workers-oauth-provider` (see `projects/weehours/services/web/src/worker`).
 - Release builds point at the hosted project (its URL + publishable key in `BACKEND_FILES`);
   Debug builds at the local stack.
+- Walk sign-in on a device against production before calling it done: every sign-in path must
+  re-route to the right screen (Wee Hours' once-per-launch `start()` swallowed all three), and the
+  Keychain survives reinstalls (forget a leftover session on the first launch after install; give
+  household/onboarding screens a "use a different account" way out).
 
 ## 5. CI and releases
 
