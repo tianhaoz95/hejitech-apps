@@ -1,0 +1,47 @@
+{
+  "name": "Meowtrix",
+  // Debian-based Node image. Ships git, build-essential, and python3, which
+  // node-pty needs to compile its native addon on `npm install`.
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+
+  // Meowtrix serves the UI + WebSocket on PORT (default 9123).
+  "forwardPorts": [9123],
+  "portsAttributes": {
+    "9123": {
+      "label": "Meowtrix",
+      "onAutoForward": "openBrowser"
+    }
+  },
+
+  "containerEnv": {
+    // Bind to all interfaces inside the (isolated) container so the forwarded
+    // port is reachable from the host browser. Safe here: the container is the
+    // sandbox. See CLAUDE.md "Network binding" — HOST overrides the loopback default.
+    "HOST": "0.0.0.0"
+  },
+
+  "remoteEnv": {
+    "PATH": "${containerEnv:PATH}:/home/node/.local/bin"
+  },
+
+  // node-pty compiles natively, so install after the container is built.
+  // Also preinstall Claude Code and Antigravity CLIs to ~/.local/bin and configure bashrc aliases.
+  // Preinstall zstd (required by the ollama install script's tar.zst extraction), Ollama itself, and the
+  // oh-my-pi (omp) coding-agent CLI via its official installer into ~/.local/bin.
+  "postCreateCommand": "npm install && mkdir -p ~/.local/bin && curl -fsSL https://claude.ai/install.sh | bash && curl -fsSL https://antigravity.google/cli/install.sh | bash && export DEBIAN_FRONTEND=noninteractive && apt-get update && apt-get install -y --no-install-recommends zstd && curl -fsSL https://ollama.com/install.sh | sh && curl -fsSL https://omp.sh/install | sh && (grep -q -F 'alias ccyolo' ~/.bashrc || echo 'alias ccyolo=\"claude --dangerously-skip-permissions\"' >> ~/.bashrc) && (grep -q -F 'alias agyyolo' ~/.bashrc || echo 'alias agyyolo=\"agy --dangerously-skip-permissions\"' >> ~/.bashrc)",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
+
+  // Run as the image's non-root user.
+  "remoteUser": "node"
+}

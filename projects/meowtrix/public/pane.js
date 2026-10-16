@@ -1,0 +1,2519 @@
+let activePane = null;
+let tabCounter = 0;
+const paneRegistry = new Map();
+let maximizedPane = null;
+
+function getTabIconSvg(type) {
+  switch (type) {
+    case 'terminal':
+      return `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 12 4 7"/><line x1="12" y1="17" x2="20" y2="17"/></svg>`;
+    case 'agent':
+      // Micro-Badge (Framed Squircle Glyphs)
+      return `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 7l1.5 3.5L17 12l-3.5 1.5L12 17l-1.5-3.5L7 12l3.5-1.5L12 7z"/></svg>`;
+    case 'ssh':
+      return `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><circle cx="7" cy="7" r="1" fill="currentColor"/><circle cx="7" cy="17" r="1" fill="currentColor"/><path d="M14 7h3m-3 10h3"/></svg>`;
+    case 'editor':
+      return `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/><line x1="14" y1="4" x2="10" y2="20"/></svg>`;
+    case 'browser':
+      return `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><line x1="3" y1="9" x2="21" y2="9"/><circle cx="6.5" cy="6.5" r="0.75" fill="currentColor"/><circle cx="9.5" cy="6.5" r="0.75" fill="currentColor"/><circle cx="12.5" cy="6.5" r="0.75" fill="currentColor"/></svg>`;
+    case 'hostbrowser':
+      // Browser window with a server rack underneath: a real browser on the host.
+      return `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="12" rx="2.5"/><line x1="3" y1="7.5" x2="21" y2="7.5"/><rect x="5" y="17.5" width="14" height="3.5" rx="1.2"/><circle cx="8" cy="19.25" r="0.6" fill="currentColor"/><line x1="12" y1="15" x2="12" y2="17.5"/></svg>`;
+    case 'codesign':
+      // Pen nib over a frame: a design you review and mark up.
+      return `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="14" rx="2.5"/><path d="M7 21h10"/><path d="M12 17v4"/><path d="M14.5 6.5l3 3-5 5H9.5v-3z"/></svg>`;
+    case 'gpu':
+      return `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="2.5"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M9 2v3m6-3v3m-6 14v3m6-3v3M2 9h3m-3 6h3m14-6h3m-3 6h3"/></svg>`;
+    default:
+      return `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 12 4 7"/><line x1="12" y1="17" x2="20" y2="17"/></svg>`;
+  }
+}
+
+// ── Broadcast input ──────────────────────────────────────────────────────────
+// When on, keystrokes from any terminal are mirrored to every *visible* terminal
+// (the active tab of each pane), like iTerm2 broadcast / tmux synchronize-panes.
+let broadcastInput = false;
+
+function visibleTerminalTabs() {
+  return getAllPanes()
+    .map(p => p.activeTab)
+    .filter(t => t && t.type === 'terminal' && t.ptyId);
+}
+
+function setBroadcastInput(on) {
+  broadcastInput = on;
+  document.body.classList.toggle('broadcasting', on);
+  const btn = document.getElementById('btn-broadcast');
+  if (btn) { btn.classList.toggle('active', on); btn.setAttribute('aria-pressed', String(on)); }
+}
+
+// Send terminal input to its own PTY, or fan out to all visible terminals when
+// broadcast is enabled.
+function sendTerminalInput(ptyId, data) {
+  const targets = broadcastInput ? visibleTerminalTabs() : null;
+  if (targets && targets.length > 1) {
+    targets.forEach(t => wsSend({ type: 'pty:input', id: t.ptyId, data }));
+  } else {
+    wsSend({ type: 'pty:input', id: ptyId, data });
+  }
+}
+
+function uid() { return 'id-' + (++tabCounter) + '-' + Math.random().toString(36).slice(2, 7); }
+
+function paneOfTab(tabEl) {
+  const paneEl = tabEl.closest('.pane');
+  return paneEl ? paneRegistry.get(paneEl) : null;
+}
+
+// ── Tab drag-and-drop ────────────────────────────────────────────────────────
+let dragState = null;        // { tab, srcPane }
+let dropIndicator = null;    // shared insertion marker, moved between tab bars
+
+function clearDropIndicator() { dropIndicator?.remove(); }
+
+// ── Touch tab dragging ───────────────────────────────────────────────────────
+// HTML5 drag events never fire for touch input, so reproduce the same reorder/
+// move behaviour with Pointer Events. Reuses computeDropRef / moveTab / the
+// shared dropIndicator so touch and mouse dragging stay in lockstep.
+let touchDrag = null;            // { tab, pointerId, startX, startY, active }
+let suppressTabClickUntil = 0;   // ignore the click synthesized after a drag
+
+function paneUnderPoint(x, y) {
+  const el = document.elementFromPoint(x, y);
+  const paneEl = el?.closest?.('.pane');
+  return paneEl ? paneRegistry.get(paneEl) : null;
+}
+
+function onTabPointerDown(e, tab) {
+  // Mouse/pen keep using native HTML5 DnD; only hijack touch.
+  if (e.pointerType !== 'touch') return;
+  if (e.target.closest('.tab-close, .tab-maximize')) return; // let close and maximize taps through
+  touchDrag = { tab, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, active: false };
+}
+
+function onTouchDragMove(e) {
+  if (!touchDrag || e.pointerId !== touchDrag.pointerId) return;
+  if (!touchDrag.active) {
+    if (Math.hypot(e.clientX - touchDrag.startX, e.clientY - touchDrag.startY) < 8) return;
+    touchDrag.active = true;
+    dragState = { tab: touchDrag.tab, srcPane: paneOfTab(touchDrag.tab.tabEl) };
+    touchDrag.tab.tabEl.classList.add('dragging');
+    document.body.classList.add('dragging-tab');
+  }
+  e.preventDefault(); // suppress scrolling once we're dragging
+  const pane = paneUnderPoint(e.clientX, e.clientY);
+  if (pane) {
+    if (!dropIndicator) { dropIndicator = document.createElement('div'); dropIndicator.className = 'tab-drop-indicator'; }
+    pane.tabBar.insertBefore(dropIndicator, computeDropRef(pane, e));
+  } else clearDropIndicator();
+}
+
+function endTouchDrag(e, drop) {
+  if (!touchDrag || e.pointerId !== touchDrag.pointerId) return;
+  const { tab, active } = touchDrag;
+  touchDrag = null;
+  if (!active) return; // it was a tap → let the click handler activate the tab
+  tab.tabEl.classList.remove('dragging');
+  document.body.classList.remove('dragging-tab');
+  const pane = drop ? paneUnderPoint(e.clientX, e.clientY) : null;
+  clearDropIndicator();
+  if (pane && dragState) moveTab(dragState.srcPane, tab.id, pane, computeDropRef(pane, e));
+  dragState = null;
+  suppressTabClickUntil = Date.now() + 400;
+}
+
+document.addEventListener('pointermove', onTouchDragMove, { passive: false });
+document.addEventListener('pointerup', (e) => endTouchDrag(e, true));
+document.addEventListener('pointercancel', (e) => endTouchDrag(e, false));
+
+// Element in `pane`'s tab bar to insert before (a .tab or the .tab-add button).
+function computeDropRef(pane, e) {
+  const addBtn = pane.tabBar.querySelector('.tab-add');
+  // Pointer below the tab bar (over the pane body) → drop at the end.
+  if (e.clientY > pane.tabBar.getBoundingClientRect().bottom) return addBtn;
+  const tabEls = [...pane.tabBar.querySelectorAll('.tab')];
+  for (const el of tabEls) {
+    const r = el.getBoundingClientRect();
+    if (e.clientX < r.left + r.width / 2) return el;
+  }
+  return addBtn;
+}
+
+function onPaneDragOver(e, pane) {
+  if (!dragState) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  if (!dropIndicator) {
+    dropIndicator = document.createElement('div');
+    dropIndicator.className = 'tab-drop-indicator';
+  }
+  pane.tabBar.insertBefore(dropIndicator, computeDropRef(pane, e));
+}
+
+function onPaneDrop(e, pane) {
+  if (!dragState) return;
+  e.preventDefault();
+  clearDropIndicator();
+  const ref = computeDropRef(pane, e);
+  moveTab(dragState.srcPane, dragState.tab.id, pane, ref);
+}
+
+// Move a tab to `destPane`, inserting its tab element before `refEl`.
+function moveTab(srcPane, tabId, destPane, refEl) {
+  const idx = srcPane.tabs.findIndex(t => t.id === tabId);
+  if (idx === -1) return;
+  const tab = srcPane.tabs[idx];
+
+  // Dropping onto its own current slot → nothing to do.
+  if (srcPane === destPane && (refEl === tab.tabEl || refEl === tab.tabEl.nextSibling)) return;
+
+  srcPane.tabs.splice(idx, 1);
+  destPane.tabBar.insertBefore(tab.tabEl, refEl);
+  if (tab.viewEl.parentElement !== destPane.contentEl) destPane.contentEl.appendChild(tab.viewEl);
+
+  // Mirror the resulting tab-bar order into the model.
+  const order = [...destPane.tabBar.querySelectorAll('.tab')];
+  destPane.tabs.splice(order.indexOf(tab.tabEl), 0, tab);
+
+  const maxBtn = tab.tabEl.querySelector('.tab-maximize');
+  if (maxBtn) {
+    const isDestMax = destPane.el.classList.contains('maximized');
+    maxBtn.textContent = isDestMax ? '⤣' : '⤢';
+    maxBtn.title = isDestMax ? 'Restore layout' : 'Maximize tab';
+  }
+
+  if (srcPane !== destPane) {
+    if (srcPane.tabs.length) activateTab(srcPane, srcPane.tabs[Math.max(0, idx - 1)].id);
+    else { srcPane.activeTab = null; collapseEmptyPane(srcPane); }
+  }
+  setActivePane(destPane);
+  activateTab(destPane, tabId);
+  // Reparenting can drop the xterm's rendered rows; refit + repaint.
+  if (tab.type === 'terminal' && tab.term) {
+    const fit = () => {
+      if (tab.fitAddon && tab.viewEl.classList.contains('active')) {
+        try {
+          tab.fitAddon.fit();
+          tab.term.refresh(0, tab.term.rows - 1);
+        } catch {}
+      }
+    };
+    requestAnimationFrame(() => {
+      fit();
+      setTimeout(fit, 150);
+    });
+  }
+  saveSessionState();
+}
+
+// Remove an emptied pane and collapse its split, keeping at least one pane.
+function collapseEmptyPane(pane) {
+  if (typeof maximizedPane !== 'undefined' && maximizedPane === pane) {
+    toggleMaximizePane(pane);
+  }
+  if (getAllPanes().length <= 1) return;
+  const paneEl = pane.el;
+  const parent = paneEl.parentElement;
+  paneRegistry.delete(paneEl);
+  if (parent.classList.contains('split-container')) {
+    const panes = [...parent.children].filter(c => !c.classList.contains('split-divider'));
+    if (panes.length > 2) {
+      // Flat container with 3+ children: drop just this pane and one adjacent
+      // divider, then redistribute the rest equally.
+      const divider = paneEl.nextElementSibling?.classList.contains('split-divider')
+        ? paneEl.nextElementSibling
+        : paneEl.previousElementSibling;
+      paneEl.remove();
+      divider?.remove();
+      equalizeChildren(parent);
+    } else {
+      // Only one child would remain: collapse the container and promote the
+      // surviving sibling into the container's slot (inheriting its flex).
+      const sibling = panes.find(c => c !== paneEl);
+      sibling.style.flex = parent.style.flex || '1 1 0';
+      parent.parentElement.replaceChild(sibling, parent);
+    }
+  } else {
+    paneEl.remove();
+  }
+  if (activePane === pane) {
+    const remaining = getAllPanes();
+    activePane = null;
+    if (remaining.length) setActivePane(remaining[0]);
+  }
+}
+
+// Derive the xterm theme from the active theme's CSS variables so every
+// theme (current and future) colors its terminals without extra wiring.
+function getTermTheme() {
+  const cs = getComputedStyle(document.documentElement);
+  const v = (name, fallback) => (cs.getPropertyValue(name).trim() || fallback);
+  const bg = v('--term-bg', '#0a0a0e');
+  return {
+    background: bg,
+    foreground: v('--term-fg', '#ededf2'),
+    cursor: v('--accent', '#8b5cf6'),
+    cursorAccent: bg,
+    selectionBackground: v('--accent2', 'rgba(139,92,246,0.3)'),
+  };
+}
+
+function toggleMaximizePane(pane) {
+  if (maximizedPane === pane) {
+    // Restore
+    pane.el.classList.remove('maximized');
+    document.body.classList.remove('has-maximized-pane');
+    maximizedPane = null;
+    
+    // Update all maximize buttons in this pane
+    pane.tabs.forEach(t => {
+      const btn = t.tabEl.querySelector('.tab-maximize');
+      if (btn) {
+        btn.textContent = '⤢';
+        btn.title = 'Maximize tab';
+      }
+    });
+  } else {
+    // If another pane was maximized, restore it first
+    if (maximizedPane) {
+      const oldPane = maximizedPane;
+      oldPane.el.classList.remove('maximized');
+      oldPane.tabs.forEach(t => {
+        const btn = t.tabEl.querySelector('.tab-maximize');
+        if (btn) {
+          btn.textContent = '⤢';
+          btn.title = 'Maximize tab';
+        }
+      });
+    }
+    
+    // Maximize
+    pane.el.classList.add('maximized');
+    document.body.classList.add('has-maximized-pane');
+    maximizedPane = pane;
+    
+    // Update all maximize buttons in this pane
+    pane.tabs.forEach(t => {
+      const btn = t.tabEl.querySelector('.tab-maximize');
+      if (btn) {
+        btn.textContent = '⤣';
+        btn.title = 'Restore layout';
+      }
+    });
+  }
+
+  // Trigger resize observer / fit for all panes to adjust xterm/monaco sizes
+  const refit = () => {
+    getAllPanes().forEach(p => {
+      const tab = p.activeTab;
+      if (tab && tab.type === 'terminal' && tab.fitAddon && tab.viewEl && tab.viewEl.classList.contains('active')) {
+        try { tab.fitAddon.fit(); } catch {}
+      }
+      if ((tab?.type === 'editor' || tab?.type === 'codesign') && typeof tab.onActivate === 'function') {
+        tab.onActivate();
+      }
+    });
+  };
+  requestAnimationFrame(() => {
+    refit();
+    setTimeout(refit, 150);
+  });
+}
+
+function createPane() {
+  const el = document.createElement('div');
+  el.className = 'pane';
+
+  const tabBar = document.createElement('div');
+  tabBar.className = 'pane-tabs';
+  el.appendChild(tabBar);
+
+  const contentEl = document.createElement('div');
+  contentEl.className = 'pane-content';
+  el.appendChild(contentEl);
+
+  const addBtn = document.createElement('span');
+  addBtn.className = 'tab-add';
+  addBtn.textContent = '+';
+  addBtn.title = 'New tab';
+  tabBar.appendChild(addBtn);
+
+  const pane = { type: 'pane', el, tabBar, contentEl, tabs: [], activeTab: null };
+  paneRegistry.set(el, pane);
+
+  addBtn.addEventListener('click', (e) => { e.stopPropagation(); showTabTypePicker(e, pane); });
+  // The tab strip has no visible scrollbar (style.css), so let a plain mouse
+  // wheel scroll overflowing tabs sideways. Trackpads already scroll on X.
+  tabBar.addEventListener('wheel', (e) => {
+    if (tabBar.scrollWidth <= tabBar.clientWidth || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+    e.preventDefault();
+    tabBar.scrollLeft += e.deltaY;
+  }, { passive: false });
+  el.addEventListener('mousedown', () => setActivePane(pane));
+
+  // Tab drag-and-drop drop zone (reorder within / move across panes).
+  el.addEventListener('dragover', (e) => onPaneDragOver(e, pane));
+  el.addEventListener('drop', (e) => onPaneDrop(e, pane));
+  el.addEventListener('dragleave', (e) => { if (!el.contains(e.relatedTarget)) clearDropIndicator(); });
+
+  return pane;
+}
+
+function setActivePane(pane) {
+  if (activePane) activePane.el.classList.remove('active');
+  activePane = pane;
+  pane.el.classList.add('active');
+}
+
+function addTab(pane, type, existingId, existingPtyId, existingUrl, existingDir, existingEditorWidth, existingEditorCollapsed, existingBrowserConsoleOpen, existingEditorExpandedDirs, existingZoomLevel, existingSshHost) {
+  const id = existingId || uid();
+  // An SSH tab is a terminal whose PTY runs `ssh <host>` (see server.js); it's
+  // labelled with the host and gets its own icon to stand out from local shells.
+  const sshHost = type === 'terminal' ? (existingSshHost || null) : null;
+
+  const viewEl = document.createElement('div');
+  viewEl.className = 'pane-view';
+  viewEl.dataset.tabId = id;
+  pane.contentEl.appendChild(viewEl);
+
+  const tabEl = document.createElement('div');
+  tabEl.className = 'tab';
+  const icon = document.createElement('span');
+  icon.className = 'tab-icon';
+  icon.innerHTML = getTabIconSvg(sshHost ? 'ssh' : type);
+  const label = document.createElement('span');
+  label.textContent = sshHost ? sshHost : type === 'terminal' ? 'Terminal' : type === 'editor' ? 'Editor' : type === 'agent' ? 'AI Agent' : type === 'codesign' ? 'CoDesign' : type === 'hostbrowser' ? 'Host Browser' : 'Browser';
+
+  const isMaximized = pane.el.classList.contains('maximized');
+  const maxBtn = document.createElement('span');
+  maxBtn.className = 'tab-maximize';
+  maxBtn.textContent = isMaximized ? '⤣' : '⤢';
+  maxBtn.title = isMaximized ? 'Restore layout' : 'Maximize tab';
+  maxBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const p = paneOfTab(tabEl);
+    if (p) {
+      if (p.activeTab?.id !== id) {
+        activateTab(p, id);
+      }
+      toggleMaximizePane(p);
+    }
+  });
+
+  const closeBtn = document.createElement('span');
+  closeBtn.className = 'tab-close';
+  closeBtn.textContent = '✕';
+  closeBtn.title = 'Close tab';
+  // Handlers resolve the pane from the DOM at event time, so they keep working
+  // after the tab is dragged into a different pane.
+  closeBtn.addEventListener('click', (e) => { e.stopPropagation(); const p = paneOfTab(tabEl); if (p) closeTab(p, id); });
+  tabEl.append(icon, label, maxBtn, closeBtn);
+  tabEl.addEventListener('click', () => {
+    if (Date.now() < suppressTabClickUntil) return; // ignore click synthesized after a touch drag
+    const p = paneOfTab(tabEl); if (p) activateTab(p, id);
+  });
+  tabEl.addEventListener('pointerdown', (e) => onTabPointerDown(e, tab));
+  tabEl.addEventListener('mousedown', (e) => { if (e.button === 1) { e.preventDefault(); const p = paneOfTab(tabEl); if (p) closeTab(p, id); } });
+  tabEl.addEventListener('contextmenu', (e) => {
+    showTabContextMenu(e, tab);
+  });
+  pane.tabBar.insertBefore(tabEl, pane.tabBar.lastChild);
+
+  const tab = {
+    id,
+    type,
+    tabEl,
+    viewEl,
+    label,
+    term: null,
+    fitAddon: null,
+    ptyId: null,
+    currentUrl: null,
+    editorDir: type === 'editor' ? existingDir : null,
+    terminalDir: type === 'terminal' ? existingDir : null,
+    agentDir: type === 'agent' ? existingDir : null,
+    codesignDir: type === 'codesign' ? existingDir : null,
+    sshHost,
+    editorSidebarWidth: existingEditorWidth || null,
+    editorSidebarCollapsed: !!existingEditorCollapsed,
+    consoleOpen: !!existingBrowserConsoleOpen,
+    // Keep the host as the tab label rather than letting the remote shell's
+    // title (e.g. `user@host:~`) overwrite it via onTitleChange.
+    isCustomLabel: !!sshHost,
+    editorExpandedDirs: type === 'editor' ? new Set(existingEditorExpandedDirs || []) : null,
+    zoomLevel: existingZoomLevel || 1.0
+  };
+  pane.tabs.push(tab);
+
+  tabEl.draggable = true;
+  tabEl.addEventListener('dragstart', (e) => {
+    dragState = { tab, srcPane: paneOfTab(tabEl) };
+    tabEl.classList.add('dragging');
+    document.body.classList.add('dragging-tab');
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', id); } catch {}
+  });
+  tabEl.addEventListener('dragend', () => {
+    tabEl.classList.remove('dragging');
+    document.body.classList.remove('dragging-tab');
+    clearDropIndicator();
+    dragState = null;
+  });
+
+  if (type === 'terminal') initTerminalTab(tab, existingPtyId);
+  else if (type === 'editor') initEditorTab(tab, viewEl, existingDir);
+  else if (type === 'agent') {
+    if (typeof initAgentTab === 'function') initAgentTab(tab, viewEl, existingDir);
+  }
+  else if (type === 'codesign') initCodesignTab(tab, viewEl, existingDir);
+  else if (type === 'hostbrowser') initHostBrowserTab(tab, viewEl, label, existingUrl);
+  // Desktop app: a native webview instead of the proxy iframe (nativebrowser.js).
+  else if (typeof nativeBrowserEnabled === 'function' && nativeBrowserEnabled()) initNativeBrowserTab(tab, viewEl, label, existingUrl);
+  else initBrowserTab(tab, viewEl, label, existingUrl);
+
+  createZoomControls(tab);
+
+  activateTab(pane, id);
+  return tab;
+}
+
+function activateTab(pane, id) {
+  pane.tabs.forEach(t => {
+    t.tabEl.classList.toggle('active', t.id === id);
+    t.viewEl.classList.toggle('active', t.id === id);
+  });
+  pane.activeTab = pane.tabs.find(t => t.id === id);
+  if (pane.activeTab?.type === 'terminal' && pane.activeTab.fitAddon) {
+    const tab = pane.activeTab;
+    const fit = () => {
+      if (pane.activeTab === tab && tab.fitAddon && tab.viewEl.classList.contains('active')) {
+        try {
+          tab.fitAddon.fit();
+          if (!tab.searchEl || !tab.searchEl.classList.contains('active')) {
+            const active = document.activeElement;
+            const isTypingElsewhere = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA') && !active.classList.contains('xterm-helper-textarea');
+            if (!isTypingElsewhere) {
+              tab.term?.focus();
+            }
+          }
+          if (typeof refreshMobileScrollbar === 'function') refreshMobileScrollbar(tab);
+        } catch (e) {}
+      }
+    };
+    requestAnimationFrame(() => {
+      fit();
+      setTimeout(fit, 50);
+      setTimeout(fit, 150);
+    });
+  }
+  if (pane.activeTab?.onActivate) requestAnimationFrame(() => pane.activeTab.onActivate());
+}
+
+function closeTab(pane, id) {
+  const idx = pane.tabs.findIndex(t => t.id === id);
+  if (idx === -1) return;
+  const tab = pane.tabs[idx];
+  if (typeof teardownSchedule === 'function') teardownSchedule(tab); // stop any pending Enter timer
+  if (tab.ptyId) destroyPty(tab.ptyId);
+  if (tab.webglAddon) {
+    try { tab.webglAddon.dispose(); } catch (e) {}
+    tab.webglAddon = null;
+  }
+  if (tab.term) {
+    try { tab.term.dispose(); } catch (e) {}
+  }
+  if (tab.disposeTerminal) tab.disposeTerminal();
+  if (tab.disposeEditor) tab.disposeEditor();
+  if (tab.disposeCodesign) tab.disposeCodesign();
+  if (tab.destroyHostBrowser) tab.destroyHostBrowser(); // closes the page on the host
+  if (tab.destroyNativeBrowser) tab.destroyNativeBrowser();
+  tab.viewEl.remove();
+  tab.tabEl.remove();
+  pane.tabs.splice(idx, 1);
+  if (pane.tabs.length) activateTab(pane, pane.tabs[Math.max(0, idx - 1)].id);
+  
+  if (pane.tabs.length === 0) {
+    if (typeof maximizedPane !== 'undefined' && maximizedPane === pane) {
+      toggleMaximizePane(pane);
+    }
+  }
+  saveSessionState();
+}
+
+// Upload an image blob to the server and paste/attach it in the terminal
+async function pasteTerminalImage(tab, blob, originalName) {
+  if (!tab || !tab.ptyId || tab.schedule) return false;
+
+  if (typeof showToast === 'function') {
+    showToast('Pasting screenshot…');
+  }
+
+  // Ensure PNG format for standard handling across OS clipboard & agent CLIs
+  let uploadBlob = blob;
+  let ext = 'png';
+  if (blob.type !== 'image/png') {
+    try {
+      const bitmap = await createImageBitmap(blob);
+      const canvas = document.createElement('canvas');
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(bitmap, 0, 0);
+      uploadBlob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+    } catch (_) {
+      ext = (blob.type.split('/')[1] || 'png').replace(/[^a-z0-9]/g, '');
+    }
+  }
+
+  try {
+    const res = await fetch(`/api/terminal/paste-image?ptyId=${encodeURIComponent(tab.ptyId)}&ext=${ext}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/octet-stream' },
+      body: uploadBlob,
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (data.ok) {
+      if (data.action === 'agent-attach') {
+        if (typeof showToast === 'function') {
+          showToast(`Attached screenshot to ${data.agent || 'agent'}`);
+        }
+      } else if (data.action === 'paste-path' && data.path) {
+        if (tab.term) {
+          const escapedPath = data.path.includes(' ') ? `"${data.path}"` : data.path;
+          tab.term.paste(escapedPath);
+        }
+        if (typeof showToast === 'function') {
+          showToast('Pasted screenshot path');
+        }
+      }
+      return true;
+    }
+  } catch (err) {
+    console.error('Failed to paste screenshot:', err);
+    if (typeof showToast === 'function') {
+      showToast('Failed to paste screenshot');
+    }
+  }
+  return false;
+}
+
+// Upload a non-image file and paste its path into the terminal
+async function uploadAndPasteFilePath(tab, file) {
+  if (!tab || !tab.ptyId || tab.schedule) return;
+  if (typeof showToast === 'function') showToast(`Uploading ${file.name}…`);
+  try {
+    const res = await fetch(`/api/upload?name=${encodeURIComponent(file.name)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/octet-stream' },
+      body: file
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (data.path && tab.term) {
+      const escapedPath = data.path.includes(' ') ? `"${data.path}"` : data.path;
+      tab.term.paste(escapedPath);
+      if (typeof showToast === 'function') showToast(`Pasted ${file.name}`);
+    }
+  } catch (err) {
+    console.error('Failed to upload file:', err);
+    if (typeof showToast === 'function') showToast(`Failed to upload ${file.name}`);
+  }
+}
+
+function initTerminalTab(tab, existingPtyId) {
+  tab.viewEl.classList.add('terminal-view');
+  const s = getSettings();
+  const term = new Terminal({
+    theme: getTermTheme(),
+    fontSize: Math.round((s.termFontSize || 13) * (tab.zoomLevel || 1.0)),
+    fontFamily: s.termFontFamily || '"Cascadia Code", "JetBrains Mono", "SF Mono", Menlo, Monaco, monospace',
+    cursorBlink: true,
+    scrollback: s.termScrollback || 10000,
+    allowProposedApi: true,
+    screenReaderMode: true,
+  });
+  const fitAddon = new FitAddon.FitAddon();
+  term.loadAddon(fitAddon);
+
+  let searchAddon = null;
+  if (window.SearchAddon) {
+    searchAddon = new window.SearchAddon.SearchAddon();
+    term.loadAddon(searchAddon);
+  }
+
+  if (window.WebLinksAddon) {
+    const webLinksAddon = new window.WebLinksAddon.WebLinksAddon((event, uri) => {
+      event.preventDefault();
+      
+      // Clear selection and prevent stuck drag-selection states in xterm.js
+      term.clearSelection();
+      window.getSelection()?.removeAllRanges();
+      window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+      
+      // Check if it's a 0.0.0.0 link to automatically open with selected host IP
+      let checkUri = uri;
+      if (!/^https?:\/\//i.test(checkUri)) {
+        checkUri = 'http://' + checkUri;
+      }
+      let parsed = null;
+      try {
+        parsed = new URL(checkUri);
+      } catch (e) {}
+
+      if (parsed && parsed.hostname === '0.0.0.0') {
+        const selectedIp = (typeof getSettings === 'function' ? getSettings().localServerIp : null) || '127.0.0.1';
+        parsed.hostname = selectedIp;
+        const newUri = parsed.toString();
+        window.open(newUri, '_blank', 'noopener,noreferrer');
+        return;
+      }
+
+      // Close any existing link menus
+      const existingMenu = document.querySelector('.term-link-menu');
+      if (existingMenu) {
+        existingMenu.remove();
+      }
+
+      // Create the menu element
+      const menuEl = document.createElement('div');
+      menuEl.className = 'term-link-menu';
+      
+      menuEl.innerHTML = `
+        <div class="term-link-menu-header">Link Options</div>
+        <div class="term-link-menu-url" title="${uri}">${uri}</div>
+        <div class="term-link-menu-item" data-action="new-tab">
+          <span class="term-link-menu-item-icon">${getTabIconSvg('browser')}</span>
+          <span>Open in browser tab</span>
+        </div>
+        <div class="term-link-menu-item" data-action="app-tab">
+          <span class="term-link-menu-item-icon">🐾</span>
+          <span>Open in Meowtrix tab</span>
+        </div>
+        <div class="term-link-menu-item" data-action="copy">
+          <span class="term-link-menu-item-icon">📋</span>
+          <span>Copy URL</span>
+        </div>
+      `;
+
+      // Position the menu
+      menuEl.style.position = 'fixed';
+      document.body.appendChild(menuEl);
+
+      const menuWidth = 240;
+      const menuHeight = 150;
+      let left = event.clientX;
+      let top = event.clientY;
+
+      if (left + menuWidth > window.innerWidth) {
+        left = window.innerWidth - menuWidth - 10;
+      }
+      if (top + menuHeight > window.innerHeight) {
+        top = window.innerHeight - menuHeight - 10;
+      }
+      left = Math.max(10, left);
+      top = Math.max(10, top);
+
+      menuEl.style.left = `${left}px`;
+      menuEl.style.top = `${top}px`;
+
+      const closeMenu = () => {
+        menuEl.remove();
+        document.removeEventListener('mousedown', onDocClick, true);
+        document.removeEventListener('touchstart', onDocClick, true);
+      };
+
+      const onDocClick = (e) => {
+        if (!menuEl.contains(e.target)) {
+          closeMenu();
+        }
+      };
+
+      // Add click handlers for menu items
+      menuEl.addEventListener('click', (e) => {
+        const item = e.target.closest('.term-link-menu-item');
+        if (!item) return;
+
+        const action = item.getAttribute('data-action');
+        if (action === 'new-tab') {
+          window.open(uri, '_blank', 'noopener,noreferrer');
+          closeMenu();
+        } else if (action === 'app-tab') {
+          const pane = paneOfTab(tab.tabEl);
+          if (pane) {
+            addTab(pane, 'browser', null, null, uri);
+            if (typeof saveSessionState === 'function') saveSessionState();
+          }
+          closeMenu();
+        } else if (action === 'copy') {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(uri).then(() => {
+              item.innerHTML = '<span class="term-link-menu-item-icon">✓</span><span>Copied!</span>';
+              item.style.color = '#10b981'; // Green accent
+              setTimeout(closeMenu, 600);
+            }).catch(() => fallbackCopy(item));
+          } else {
+            fallbackCopy(item);
+          }
+        }
+      });
+
+      const fallbackCopy = (item) => {
+        try {
+          const textarea = document.createElement('textarea');
+          textarea.value = uri;
+          textarea.style.position = 'fixed';
+          textarea.style.left = '-9999px';
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          textarea.remove();
+          item.innerHTML = '<span class="term-link-menu-item-icon">✓</span><span>Copied!</span>';
+          item.style.color = '#10b981';
+          setTimeout(closeMenu, 600);
+        } catch (err) {
+          console.error('Failed to copy', err);
+          closeMenu();
+        }
+      };
+
+      setTimeout(() => {
+        document.addEventListener('mousedown', onDocClick, true);
+        document.addEventListener('touchstart', onDocClick, true);
+      }, 0);
+    });
+    term.loadAddon(webLinksAddon);
+  }
+
+  term.open(tab.viewEl);
+
+  // Load WebGL addon for GPU-accelerated glyph rendering and crisp high-DPI text
+  if (window.WebglAddon && s.termRenderer !== 'canvas' && s.termRenderer !== 'dom') {
+    try {
+      const webglAddon = new window.WebglAddon.WebglAddon();
+      webglAddon.onContextLoss(() => {
+        console.warn('WebGL context lost, disposing WebGL addon to fallback to 2D renderer');
+        try { webglAddon.dispose(); } catch (_) {}
+        tab.webglAddon = null;
+        if (typeof updateWebGLIndicator === 'function') updateWebGLIndicator();
+      });
+      term.loadAddon(webglAddon);
+      tab.webglAddon = webglAddon;
+    } catch (e) {
+      console.warn('WebGL addon failed to initialize, falling back to default renderer:', e);
+      tab.webglAddon = null;
+    }
+  }
+  if (typeof updateWebGLIndicator === 'function') updateWebGLIndicator();
+
+  // Prevent browser autofill and password manager popups on the terminal input textarea
+  const helperTextarea = tab.viewEl.querySelector('.xterm-helper-textarea');
+  if (helperTextarea) {
+    // Start as readonly to prevent browser/extension autofill indexing
+    helperTextarea.setAttribute('readonly', 'true');
+    helperTextarea.setAttribute('autocomplete', 'off');
+    helperTextarea.setAttribute('name', 'xterm-terminal-input');
+    helperTextarea.setAttribute('data-1p-ignore', 'true');
+    helperTextarea.setAttribute('data-lpignore', 'true');
+    helperTextarea.setAttribute('data-protonpass-ignore', 'true');
+
+    const removeReadonly = () => {
+      helperTextarea.removeAttribute('readonly');
+    };
+    const restoreReadonly = () => {
+      helperTextarea.setAttribute('readonly', 'true');
+    };
+
+    // Remove readonly on user interaction or programmatic focus so typing works
+    helperTextarea.addEventListener('focus', removeReadonly);
+    helperTextarea.addEventListener('blur', restoreReadonly);
+    tab.viewEl.addEventListener('pointerdown', removeReadonly, true);
+    tab.viewEl.addEventListener('touchstart', removeReadonly, true);
+
+    if (typeof refreshMobileAutocomplete === 'function') {
+      refreshMobileAutocomplete(tab);
+    }
+  }
+
+  tab.term = term;
+  tab.fitAddon = fitAddon;
+  tab.searchAddon = searchAddon;
+
+  const ptyId = existingPtyId || uid();
+  tab.ptyId = ptyId;
+
+  // Find active terminal to inherit directory from
+  let inheritFromPtyId = null;
+  if (!existingPtyId) {
+    let activeTerm = null;
+    if (typeof activePane !== 'undefined' && activePane && activePane.activeTab && activePane.activeTab.type === 'terminal') {
+      activeTerm = activePane.activeTab;
+    } else {
+      if (typeof getAllPanes === 'function') {
+        for (const p of getAllPanes()) {
+          if (p.activeTab && p.activeTab.type === 'terminal') {
+            activeTerm = p.activeTab;
+            break;
+          }
+        }
+      }
+    }
+    if (activeTerm && activeTerm.ptyId) {
+      inheritFromPtyId = activeTerm.ptyId;
+    }
+  }
+
+  const initPty = () => {
+    if (tab.viewEl.classList.contains('active')) {
+      try { fitAddon.fit(); } catch {}
+    }
+    // A new PTY spawns at this size; a reattach reports its own via onPtyRestore.
+    if (!existingPtyId) tab.ptySize = { cols: term.cols, rows: term.rows };
+    createPty(ptyId, term, term.cols, term.rows, tab.terminalDir, inheritFromPtyId, tab.sshHost);
+    if (typeof refreshMobileScrollbar === 'function') refreshMobileScrollbar(tab);
+  };
+  // Small rAF delay ensures the terminal is sized before createPty
+  requestAnimationFrame(initPty);
+  // Web fonts load async; fitting with fallback metrics clips the bottom row,
+  // so re-fit (which resizes the PTY too) once the real font is ready.
+  if (document.fonts?.ready) document.fonts.ready.then(() => {
+    if (tab.viewEl.classList.contains('active')) {
+      try { fitAddon.fit(); } catch {}
+      if (typeof refreshMobileScrollbar === 'function') refreshMobileScrollbar(tab);
+    }
+  });
+
+  // The `mtx` command prints OSC 5379 with an absolute path; intercept it here
+  // and trigger a browser download instead of rendering it. Returning true
+  // marks the sequence handled so xterm consumes it (nothing is displayed).
+  term.parser.registerOscHandler(5379, (filePath) => {
+    if (typeof triggerDownload === 'function') triggerDownload(filePath);
+    return true;
+  });
+
+  // `mtx code <dir>` prints OSC 5380 with an absolute directory; open an editor
+  // tab rooted there instead of rendering the sequence.
+  term.parser.registerOscHandler(5380, (dir) => {
+    if (typeof triggerOpenEditor === 'function') triggerOpenEditor(dir);
+    return true;
+  });
+
+  term.attachCustomKeyEventHandler(e => {
+    if (tab.acActive) {
+      if (e.key === 'ArrowUp' && e.type === 'keydown') {
+        e.preventDefault();
+        e.stopPropagation();
+        moveAutocompleteSelection(tab, -1);
+        return false;
+      }
+      if (e.key === 'ArrowDown' && e.type === 'keydown') {
+        e.preventDefault();
+        e.stopPropagation();
+        moveAutocompleteSelection(tab, 1);
+        return false;
+      }
+      if (e.key === 'Enter' && e.type === 'keydown') {
+        e.preventDefault();
+        e.stopPropagation();
+        selectAutocompleteItem(tab, true);
+        return false;
+      }
+      if (e.key === 'Tab' && e.type === 'keydown') {
+        e.preventDefault();
+        e.stopPropagation();
+        selectAutocompleteItem(tab, false);
+        return false;
+      }
+      if (e.key === 'Escape' && e.type === 'keydown') {
+        e.preventDefault();
+        e.stopPropagation();
+        closeAutocomplete(tab);
+        return false;
+      }
+    }
+
+    // On macOS, Ctrl+V does not emit a browser paste event.
+    // If the user presses Ctrl+V with an image in the system clipboard, intercept and attach it.
+    const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform || '') || /Mac/.test(navigator.userAgent || '');
+    if (isMac && e.type === 'keydown' && e.ctrlKey && !e.metaKey && (e.key === 'v' || e.key === 'V')) {
+      if (navigator.clipboard && navigator.clipboard.read) {
+        navigator.clipboard.read().then(async (clipItems) => {
+          for (const item of clipItems) {
+            for (const type of item.types) {
+              if (type.startsWith('image/')) {
+                const blob = await item.getType(type);
+                if (blob) {
+                  await pasteTerminalImage(tab, blob);
+                  return;
+                }
+              }
+            }
+          }
+        }).catch(() => {});
+      }
+    }
+
+    return true;
+  });
+
+  // Handle clipboard paste (e.g. Cmd+V or context menu Paste):
+  // When an image/screenshot is in the clipboard, intercept and upload it to the host
+  // so agy, claude, or other tools receive the screenshot robustly.
+  tab.viewEl.addEventListener('paste', async (e) => {
+    if (tab.schedule) return;
+    const cd = e.clipboardData;
+    if (!cd) return;
+
+    let imageItem = null;
+    const items = cd.items ? Array.from(cd.items) : [];
+    for (const item of items) {
+      if (item.type && item.type.startsWith('image/')) {
+        imageItem = item;
+        break;
+      }
+    }
+    const files = cd.files ? Array.from(cd.files) : [];
+    const imageFile = imageItem ? imageItem.getAsFile() : files.find(f => f.type && f.type.startsWith('image/'));
+
+    if (!imageFile) return;
+
+    const text = cd.getData('text/plain');
+    if (text && text.trim().length > 0 && text.trim() !== imageFile.name) {
+      return;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+    await pasteTerminalImage(tab, imageFile);
+  }, true);
+
+  // Terminal drag-and-drop: drag screenshots or files directly into the terminal
+  const dropOverlay = document.createElement('div');
+  dropOverlay.className = 'terminal-drop-overlay';
+  dropOverlay.innerHTML = `
+    <div class="terminal-drop-overlay-icon">📷</div>
+    <div class="terminal-drop-overlay-text">Drop image to attach to terminal</div>
+  `;
+  tab.viewEl.appendChild(dropOverlay);
+
+  let dragCounter = 0;
+
+  tab.viewEl.addEventListener('dragenter', (e) => {
+    if (tab.schedule) return;
+    if (typeof dragState !== 'undefined' && dragState) return;
+    if (e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files')) {
+      dragCounter++;
+      dropOverlay.classList.add('active');
+    }
+  });
+
+  tab.viewEl.addEventListener('dragover', (e) => {
+    if (tab.schedule) return;
+    if (typeof dragState !== 'undefined' && dragState) return;
+    if (e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files')) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  });
+
+  tab.viewEl.addEventListener('dragleave', (e) => {
+    if (typeof dragState !== 'undefined' && dragState) return;
+    dragCounter--;
+    if (dragCounter <= 0) {
+      dragCounter = 0;
+      dropOverlay.classList.remove('active');
+    }
+  });
+
+  tab.viewEl.addEventListener('drop', async (e) => {
+    if (typeof dragState !== 'undefined' && dragState) return;
+    dragCounter = 0;
+    dropOverlay.classList.remove('active');
+    if (tab.schedule) return;
+
+    const files = e.dataTransfer?.files;
+    if (!files || !files.length) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (file.type && file.type.startsWith('image/')) {
+        await pasteTerminalImage(tab, file, file.name);
+      } else {
+        await uploadAndPasteFilePath(tab, file);
+      }
+    }
+  });
+
+  term.textarea?.addEventListener('blur', () => {
+    setTimeout(() => {
+      if (tab.acActive) closeAutocomplete(tab);
+    }, 150);
+  });
+
+  term.onData(data => {
+    // A scheduled tab is locked: swallow input until its Enter fires or is
+    // cancelled, so stray keystrokes can't disturb the queued command.
+    if (tab.schedule) return;
+
+    if (data === '!' && !tab.acActive) {
+      startAutocomplete(tab);
+    } else if (tab.acActive) {
+      handleAutocompleteData(tab, data);
+    }
+
+    // Apply any armed mobile sticky modifiers (Ctrl/Alt/Cmd) to typed input.
+    const out = (typeof applyStickyMods === 'function') ? applyStickyMods(data) : data;
+    if (out) sendTerminalInput(ptyId, out);
+  });
+  // Keep the PTY's grid in step with the xterm's. `tab.ptySize` is the size
+  // the server last had (what we sent, or what a reattach reported), and every
+  // fit re-checks against it — not just xterm's onResize, which only fires when
+  // the *xterm* changes. Otherwise a resize lost while the socket was down, or
+  // a PTY created before the pane settled, leaves the shell on a stale size
+  // that no later fit corrects: a TUI started then (Claude Code, vim) draws
+  // into a corner of the pane until the user nudges a divider.
+  // With `resizeDebounce` on, a divider drag sends one resize per ~80ms pause
+  // instead of one per frame, so the shell (and full-screen TUIs) redraw once.
+  let resizeTimer = null;
+  const sendPtySize = () => {
+    resizeTimer = null;
+    const { cols, rows } = term;
+    if (!wsReady && !window.DEMO_MODE) return; // reconnect re-syncs via pty:created
+    if (tab.ptySize && tab.ptySize.cols === cols && tab.ptySize.rows === rows) return;
+    tab.ptySize = { cols, rows };
+    wsSend({ type: 'pty:resize', id: ptyId, cols, rows });
+  };
+  tab.syncPtySize = () => {
+    clearTimeout(resizeTimer);
+    if (getSettings().resizeDebounce === false) { sendPtySize(); return; }
+    resizeTimer = setTimeout(sendPtySize, 80);
+  };
+  term.onResize(() => tab.syncPtySize());
+  const rawFit = fitAddon.fit.bind(fitAddon);
+  fitAddon.fit = () => { rawFit(); tab.syncPtySize(); };
+  term.onTitleChange(title => { if (title && !tab.isCustomLabel) tab.label.textContent = title; });
+
+  let roFrame = 0, roSettle = null;
+  const ro = new ResizeObserver(() => {
+    if (tab.viewEl.classList.contains('active')) {
+      const fit = () => {
+        if (tab.viewEl.classList.contains('active') && tab.fitAddon) {
+          try {
+            tab.fitAddon.fit();
+            if (typeof refreshMobileScrollbar === 'function') refreshMobileScrollbar(tab);
+          } catch (e) {}
+        }
+      };
+      if (getSettings().resizeDebounce === false) {
+        fit();
+        requestAnimationFrame(fit);
+        setTimeout(fit, 150);
+        return;
+      }
+      // At most one fit per frame while the size keeps changing, plus a
+      // settling fit after it stops (late font loads, panel animations).
+      if (!roFrame) roFrame = requestAnimationFrame(() => { roFrame = 0; fit(); });
+      clearTimeout(roSettle);
+      roSettle = setTimeout(fit, 150);
+    }
+  });
+  ro.observe(tab.viewEl);
+  tab.zoom = (zoomLevel) => {
+    tab.zoomLevel = zoomLevel;
+    const baseFontSize = (getSettings().termFontSize || 13);
+    term.options.fontSize = Math.round(baseFontSize * zoomLevel);
+    if (tab.webglAddon && typeof tab.webglAddon.clearTextureAtlas === 'function') {
+      try { tab.webglAddon.clearTextureAtlas(); } catch {}
+    }
+    if (tab.fitAddon && tab.viewEl && tab.viewEl.classList.contains('active')) {
+      try { tab.fitAddon.fit(); } catch {}
+    }
+  };
+  tab.disposeTerminal = () => {
+    ro.disconnect();
+    if (tab.webglAddon) {
+      try { tab.webglAddon.dispose(); } catch (_) {}
+      tab.webglAddon = null;
+    }
+    if (tab.mobileScrollDis) { tab.mobileScrollDis.dispose(); tab.mobileScrollDis = null; }
+    if (tab.mobileLfDis) { tab.mobileLfDis.dispose(); tab.mobileLfDis = null; }
+    if (tab.mobileResizeDis) { tab.mobileResizeDis.dispose(); tab.mobileResizeDis = null; }
+    if (tab.acActive) closeAutocomplete(tab);
+    if (typeof updateWebGLIndicator === 'function') updateWebGLIndicator();
+  };
+}
+
+function applyTermRenderer(tab, renderer) {
+  if (!tab || tab.type !== 'terminal' || !tab.term) return;
+  const targetRenderer = renderer || (typeof getSettings === 'function' ? getSettings().termRenderer : 'webgl') || 'webgl';
+  if (targetRenderer === 'webgl' && window.WebglAddon && !tab.webglAddon) {
+    try {
+      const addon = new window.WebglAddon.WebglAddon();
+      addon.onContextLoss(() => {
+        try { addon.dispose(); } catch (_) {}
+        tab.webglAddon = null;
+        if (typeof updateWebGLIndicator === 'function') updateWebGLIndicator();
+      });
+      tab.term.loadAddon(addon);
+      tab.webglAddon = addon;
+    } catch (e) {
+      console.warn('Failed to load WebGL addon:', e);
+    }
+  } else if ((targetRenderer === 'canvas' || targetRenderer === 'dom') && tab.webglAddon) {
+    try {
+      tab.webglAddon.dispose();
+    } catch (e) {}
+    tab.webglAddon = null;
+  }
+  if (typeof updateWebGLIndicator === 'function') updateWebGLIndicator();
+}
+
+function initBrowserTab(tab, viewEl, label, initialUrl) {
+  viewEl.classList.add('browser-view');
+
+  const bar = document.createElement('div');
+  bar.className = 'browser-bar';
+
+  const backBtn = document.createElement('button');   backBtn.textContent = '←'; backBtn.title = 'Back';
+  const fwdBtn = document.createElement('button');    fwdBtn.textContent = '→'; fwdBtn.title = 'Forward';
+  const reloadBtn = document.createElement('button'); reloadBtn.textContent = '↺'; reloadBtn.title = 'Reload';
+  const extBtn = document.createElement('button');    extBtn.textContent = '↗'; extBtn.title = 'Open in new window';
+  const consoleBtn = document.createElement('button');
+  consoleBtn.className = 'browser-console-toggle';
+  consoleBtn.textContent = 'Console';
+  consoleBtn.title = 'Toggle Developer Console';
+
+  const urlInput = document.createElement('input');
+  urlInput.className = 'browser-url';
+  urlInput.type = 'text';
+  urlInput.placeholder = 'Enter URL…';
+  urlInput.spellcheck = false;
+
+  bar.append(backBtn, fwdBtn, reloadBtn, extBtn, consoleBtn, urlInput);
+
+  const loadingBar = document.createElement('div');
+  loadingBar.className = 'browser-loading';
+
+  const frame = document.createElement('iframe');
+  frame.className = 'browser-frame';
+  frame.sandbox = 'allow-scripts allow-forms allow-popups allow-modals allow-same-origin';
+
+  // Console Panel layout
+  const consolePanel = document.createElement('div');
+  consolePanel.className = 'browser-console-panel';
+  consolePanel.style.height = '180px';
+  consolePanel.style.display = tab.consoleOpen ? 'flex' : 'none';
+
+  const consoleResizer = document.createElement('div');
+  consoleResizer.className = 'browser-console-resizer';
+
+  const consoleHeader = document.createElement('div');
+  consoleHeader.className = 'browser-console-header';
+
+  const consoleTitle = document.createElement('div');
+  consoleTitle.className = 'browser-console-title';
+  consoleTitle.innerHTML = '<span>Console</span><span class="console-indicator"></span>';
+
+  const consoleControls = document.createElement('div');
+  consoleControls.className = 'browser-console-controls';
+
+  const clearBtn = document.createElement('button');
+  clearBtn.className = 'console-clear-btn';
+  clearBtn.innerHTML = '🗑️ Clear';
+  clearBtn.title = 'Clear Console';
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'console-close-btn';
+  closeBtn.innerHTML = '✕';
+  closeBtn.title = 'Close Console';
+
+  consoleControls.append(clearBtn, closeBtn);
+  consoleHeader.append(consoleTitle, consoleControls);
+
+  const consoleLogs = document.createElement('div');
+  consoleLogs.className = 'browser-console-logs';
+
+  consolePanel.append(consoleResizer, consoleHeader, consoleLogs);
+
+  // Resize handler
+  let startY = 0;
+  let startHeight = 0;
+  
+  const onPointerMove = (e) => {
+    const deltaY = startY - e.clientY;
+    const newHeight = Math.max(50, Math.min(window.innerHeight * 0.7, startHeight + deltaY));
+    consolePanel.style.height = `${newHeight}px`;
+  };
+  
+  const onPointerUp = () => {
+    document.removeEventListener('pointermove', onPointerMove);
+    document.removeEventListener('pointerup', onPointerUp);
+    document.body.classList.remove('resizing-console');
+  };
+
+  consoleResizer.addEventListener('pointerdown', (e) => {
+    startY = e.clientY;
+    startHeight = consolePanel.offsetHeight;
+    document.addEventListener('pointermove', onPointerMove);
+    document.addEventListener('pointerup', onPointerUp);
+    document.body.classList.add('resizing-console');
+  });
+
+  // Toggle Console
+  if (tab.consoleOpen) {
+    consoleBtn.classList.add('active');
+  }
+
+  const toggleConsole = () => {
+    tab.consoleOpen = !tab.consoleOpen;
+    consolePanel.style.display = tab.consoleOpen ? 'flex' : 'none';
+    consoleBtn.classList.toggle('active', tab.consoleOpen);
+    if (typeof saveSessionState === 'function') {
+      saveSessionState();
+    }
+  };
+  consoleBtn.addEventListener('click', toggleConsole);
+  clearBtn.addEventListener('click', () => { consoleLogs.innerHTML = ''; });
+  closeBtn.addEventListener('click', toggleConsole);
+
+  tab.addConsoleLog = (level, args) => {
+    const logItem = document.createElement('div');
+    logItem.className = `console-log-item console-log-${level}`;
+
+    const timeSpan = document.createElement('span');
+    timeSpan.className = 'console-log-time';
+    const now = new Date();
+    const timeStr = now.toTimeString().split(' ')[0] + '.' + String(now.getMilliseconds()).padStart(3, '0');
+    timeSpan.textContent = `[${timeStr}]`;
+
+    const msgSpan = document.createElement('span');
+    msgSpan.className = 'console-log-message';
+    
+    const formattedArgs = args.map(arg => {
+      if (typeof arg === 'object' && arg !== null) {
+        const pre = document.createElement('pre');
+        pre.className = 'console-log-object';
+        pre.textContent = formatLogArg(arg);
+        return pre;
+      } else {
+        const text = document.createElement('span');
+        text.textContent = String(arg) + ' ';
+        return text;
+      }
+    });
+    
+    msgSpan.append(...formattedArgs);
+    logItem.append(timeSpan, msgSpan);
+    consoleLogs.appendChild(logItem);
+    
+    const isAtBottom = consoleLogs.scrollHeight - consoleLogs.clientHeight - consoleLogs.scrollTop < 30;
+    if (isAtBottom || consoleLogs.childNodes.length === 1) {
+      consoleLogs.scrollTop = consoleLogs.scrollHeight;
+    }
+  };
+
+  // Local start page shown when no URL is loaded (new tabs).
+  const startEl = document.createElement('div');
+  startEl.className = 'browser-start';
+  startEl.innerHTML = `
+    <div class="browser-start-card">
+      <div class="browser-start-icon">${getTabIconSvg('browser')}</div>
+      <h2>Browser</h2>
+      <p>Type a URL in the address bar above, then press <kbd>Enter</kbd>.</p>
+      <ul>
+        ${window.DEMO_MODE
+          ? `<li>Demo mode: pages load directly (no server proxy), so only sites that allow embedding will appear.</li>
+             <li>Many sites (Google, GitHub, sign-in pages) block embedding and show blank — use <strong>↗</strong> to open them in a real window.</li>`
+          : `<li>Pages are fetched through a built-in proxy so they can be embedded here.</li>
+             <li>Some sites (Google, sign-in pages, heavily bot-protected sites) can’t be embedded — use <strong>↗</strong> to open them in a real window.</li>`}
+      </ul>
+    </div>`;
+
+  // Demo mode has no server proxy: load URLs straight into the iframe. This only
+  // works for sites that permit embedding (no X-Frame-Options / CSP frame
+  // blocking) — the hint below sets expectations.
+  let hintEl = null;
+  if (window.DEMO_MODE) {
+    hintEl = document.createElement('div');
+    hintEl.className = 'browser-hint';
+    hintEl.textContent = 'Demo: some sites block embedding and show blank — use ↗ to open in a new window.';
+  }
+
+  viewEl.append(bar, ...(hintEl ? [hintEl] : []), loadingBar, frame, startEl, consolePanel);
+
+  const navigate = (url) => {
+    url = url.trim();
+    if (!url) return;
+    if (!/^https?:\/\//i.test(url)) url = 'http://' + url;
+    startEl.classList.remove('visible');
+    frame.style.display = '';
+    tab.currentUrl = url;
+    
+    const toProxyUrl = (targetUrl) => {
+      try {
+        const parsed = new URL(targetUrl);
+        const proto = parsed.protocol.replace(':', '');
+        const pathAndQuery = parsed.pathname + parsed.search + parsed.hash;
+        return `/proxy/${proto}/${parsed.host}${pathAndQuery}`;
+      } catch (e) {
+        return '/proxy/' + encodeURIComponent(targetUrl);
+      }
+    };
+    
+    // Serverless demo embeds directly; otherwise route through the proxy.
+    frame.src = window.DEMO_MODE ? url : toProxyUrl(url);
+    if (hintEl) hintEl.classList.add('visible');
+    urlInput.value = url;
+    if (!tab.isCustomLabel) {
+      try { label.textContent = new URL(url).hostname.replace('www.', ''); }
+      catch { label.textContent = 'Browser'; }
+    }
+    loadingBar.classList.add('active');
+  };
+
+  // Reset to the instructions start page (no site loaded).
+  const showStart = () => {
+    tab.currentUrl = null;
+    frame.removeAttribute('src');
+    frame.style.display = 'none';
+    startEl.classList.add('visible');
+    if (hintEl) hintEl.classList.remove('visible');
+    loadingBar.classList.remove('active');
+    urlInput.value = '';
+    if (!tab.isCustomLabel) {
+      label.textContent = 'New Tab';
+    }
+  };
+
+  frame.addEventListener('load', () => {
+    loadingBar.classList.remove('active');
+    try {
+      if (tab.openerWindow) {
+        try {
+          Object.defineProperty(frame.contentWindow, 'opener', {
+            value: tab.openerWindow,
+            configurable: true,
+            writable: true
+          });
+        } catch (err) {}
+      }
+      syncThemeToIframe(frame);
+      interceptLinksAndPopups(frame, tab);
+      interceptConsole(frame, tab);
+    } catch (e) {}
+  });
+
+  // Exposed so `mtx open` can retarget an existing browser tab (see mtx.js).
+  tab.navigate = navigate;
+
+  tab.updateTheme = () => {
+    try {
+      syncThemeToIframe(frame);
+    } catch (e) {}
+  };
+
+  const homepage = (getSettings().browserHomepage || '').trim();
+  if (initialUrl) navigate(initialUrl);
+  else if (homepage) navigate(homepage);
+  else showStart();
+
+  urlInput.addEventListener('focus', () => urlInput.select());
+  urlInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { navigate(urlInput.value); urlInput.blur(); }
+    if (e.key === 'Escape') { urlInput.value = tab.currentUrl || ''; urlInput.blur(); }
+  });
+  backBtn.addEventListener('click', () => { try { frame.contentWindow.history.back(); } catch {} });
+  fwdBtn.addEventListener('click', () => { try { frame.contentWindow.history.forward(); } catch {} });
+  reloadBtn.addEventListener('click', () => { if (tab.currentUrl) navigate(tab.currentUrl); });
+  extBtn.addEventListener('click', () => { if (tab.currentUrl) window.open(tab.currentUrl, '_blank'); });
+
+  tab.zoom = (zoomLevel) => {
+    tab.zoomLevel = zoomLevel;
+    frame.style.zoom = zoomLevel;
+    startEl.style.zoom = zoomLevel;
+  };
+  if (tab.zoomLevel) {
+    tab.zoom(tab.zoomLevel);
+  }
+}
+
+// Find a live terminal tab by its PTY id (used by reconnect restore + schedules).
+function tabByPtyId(ptyId) {
+  if (!ptyId) return null;
+  for (const pane of getAllPanesAllWorkspaces()) {
+    const t = pane.tabs.find(t => t.type === 'terminal' && t.ptyId === ptyId);
+    if (t) return t;
+  }
+  return null;
+}
+
+// Called from ws.js when the server reports a reconnecting PTY's generation grid
+// size (just before replaying its buffer). Snap the xterm to that size so the
+// buffer renders exactly as it was produced — otherwise zsh's PROMPT_EOL_MARK
+// strands a `%` at the start of every prompt line.
+function onPtyRestore(ptyId, cols, rows) {
+  const tab = tabByPtyId(ptyId);
+  if (tab?.term && cols && rows) {
+    tab.ptySize = { cols, rows };
+    try { tab.term.resize(cols, rows); } catch {}
+  }
+}
+
+// Called once the replayed buffer has finished rendering: re-fit the visible
+// terminal to its actual pane, which reflows the (correctly rendered) content.
+function onReplayDone(ptyId) {
+  const tab = tabByPtyId(ptyId);
+  if (tab?.fitAddon && tab.viewEl.classList.contains('active')) {
+    const fit = () => {
+      if (tab.fitAddon && tab.viewEl.classList.contains('active')) {
+        try { tab.fitAddon.fit(); } catch {}
+      }
+    };
+    requestAnimationFrame(() => {
+      fit();
+      setTimeout(fit, 150);
+    });
+  }
+}
+
+function getAllPanes() {
+  const results = [];
+  function walk(el) {
+    if (el.classList?.contains('pane')) { const p = paneRegistry.get(el); if (p) results.push(p); }
+    for (const child of el.children) walk(child);
+  }
+  const activeWsEl = document.querySelector('.workspace-view.active');
+  if (activeWsEl) {
+    walk(activeWsEl);
+  } else {
+    const wsEl = document.getElementById('workspace');
+    if (wsEl) walk(wsEl);
+  }
+  return results;
+}
+
+function getAllPanesAllWorkspaces() {
+  const results = [];
+  function walk(el) {
+    if (el.classList?.contains('pane')) { const p = paneRegistry.get(el); if (p) results.push(p); }
+    for (const child of el.children) walk(child);
+  }
+  const wsEl = document.getElementById('workspace');
+  if (wsEl) walk(wsEl);
+  return results;
+}
+
+function syncThemeToIframe(frame) {
+  try {
+    const doc = frame.contentDocument || frame.contentWindow?.document;
+    if (!doc) return;
+    const currentTheme = document.documentElement.dataset.theme || 'dark';
+    const isDark = currentTheme !== 'light';
+
+    // 1. Sync data-theme attribute
+    doc.documentElement.setAttribute('data-theme', currentTheme);
+
+    // 2. Set color-scheme style on documentElement
+    doc.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+
+    // 3. Inject overrides stylesheet if not present
+    let styleEl = doc.getElementById('mtx-theme-overrides');
+    if (!styleEl) {
+      styleEl = doc.createElement('style');
+      styleEl.id = 'mtx-theme-overrides';
+      doc.head.appendChild(styleEl);
+    }
+    styleEl.textContent = `
+      html {
+        color-scheme: ${isDark ? 'dark' : 'light'} !important;
+      }
+    `;
+
+    // 4. Trigger the custom listener if registered in proxy window
+    if (typeof frame.contentWindow.__mtx_update_theme === 'function') {
+      frame.contentWindow.__mtx_update_theme(currentTheme);
+    }
+  } catch (e) {
+    // Gracefully handle cross-origin restrictions
+    console.debug('Cannot sync theme to iframe due to cross-origin restriction:', e);
+  }
+}
+
+function extractOriginalUrl(url) {
+  if (!url) return url;
+  
+  // Handle structured proxy URLs: /proxy/(http|https)/hostname/path
+  const structRegex = /\/proxy\/(https?)\/([^/]+)\/?(.*)$/;
+  const sMatch = url.match(structRegex);
+  if (sMatch) {
+    const protocol = sMatch[1];
+    const host = sMatch[2];
+    const rest = sMatch[3] || '';
+    return `${protocol}://${host}/${rest}`;
+  }
+  
+  // Handle absolute or relative proxied URLs: /proxy/<encoded>
+  const proxyRegex = /\/proxy\/(.+)$/;
+  const match = url.match(proxyRegex);
+  if (match) {
+    try {
+      if (!match[1].startsWith('http/') && !match[1].startsWith('https/')) {
+        return decodeURIComponent(match[1]);
+      }
+    } catch (e) {}
+  }
+  
+  // Handle legacy/query-based proxied URLs: /proxy?url=<encoded>
+  const queryRegex = /\/proxy\?url=([^&]+)/;
+  const qMatch = url.match(queryRegex);
+  if (qMatch) {
+    try {
+      return decodeURIComponent(qMatch[1]);
+    } catch (e) {}
+  }
+  
+  return url;
+}
+
+function interceptLinksAndPopups(frame, tab) {
+  try {
+    const win = frame.contentWindow;
+    const doc = frame.contentDocument || win?.document;
+    if (!doc || !win) return;
+
+    // 1. Override window.open inside the iframe.
+    // Everything (including OAuth / Firebase Auth Emulator popups) opens as an
+    // in-app browser tab through the proxy, rather than a native client-browser
+    // window. The new tab's `opener` is wired back to this app iframe so popup
+    // auth flows can relay their result home (see the auth-handler shim injected
+    // by the proxy in server.js).
+    win.open = function(url, target, features) {
+      const pane = paneOfTab(tab.tabEl);
+      if (pane) {
+        let resolvedUrl = url || 'about:blank';
+        // First extract original target URL if it's already proxied
+        resolvedUrl = extractOriginalUrl(resolvedUrl);
+        // Resolve relative paths against the target site's base
+        if (resolvedUrl && !/^https?:\/\//i.test(resolvedUrl) && resolvedUrl !== 'about:blank') {
+          try {
+            const base = extractOriginalUrl(win.location.href);
+            resolvedUrl = new URL(resolvedUrl, base).href;
+          } catch (e) {}
+        }
+        const newTab = addTab(pane, 'browser', null, null, resolvedUrl);
+        newTab.openerWindow = win;
+        activateTab(pane, newTab.id);
+        if (typeof saveSessionState === 'function') {
+          saveSessionState();
+        }
+        const newIframe = newTab.viewEl.querySelector('iframe');
+        if (newIframe && newIframe.contentWindow) {
+          try {
+            Object.defineProperty(newIframe.contentWindow, 'opener', {
+              value: win,
+              configurable: true,
+              writable: true
+            });
+          } catch (e) {}
+        }
+        return newIframe ? newIframe.contentWindow : null;
+      }
+      return null;
+    };
+
+    // 2. Intercept click events on links with target="_blank"
+    doc.addEventListener('click', (e) => {
+      const anchor = e.target.closest('a');
+      if (anchor) {
+        const target = anchor.getAttribute('target');
+        
+        if (target === '_blank' || target === '_new' || e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          // Use anchor.href which is already resolved to an absolute URL by the browser,
+          // then extract the original unproxied target URL.
+          const resolvedUrl = extractOriginalUrl(anchor.href);
+          
+          const pane = paneOfTab(tab.tabEl);
+          if (pane && resolvedUrl) {
+            const newTab = addTab(pane, 'browser', null, null, resolvedUrl);
+            activateTab(pane, newTab.id);
+            if (typeof saveSessionState === 'function') {
+              saveSessionState();
+            }
+          }
+        }
+      }
+    }, true);
+
+    // 3. Intercept form submissions targeting _blank or _new
+    doc.addEventListener('submit', (e) => {
+      const form = e.target;
+      const target = form.getAttribute('target');
+      if (target === '_blank' || target === '_new') {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const pane = paneOfTab(tab.tabEl);
+        if (pane) {
+          const action = form.getAttribute('action') || '';
+          let resolvedUrl = extractOriginalUrl(action);
+          if (resolvedUrl && !/^https?:\/\//i.test(resolvedUrl)) {
+            try {
+              const base = extractOriginalUrl(win.location.href);
+              resolvedUrl = new URL(resolvedUrl, base).href;
+            } catch (err) {}
+          }
+          
+          if (form.method.toLowerCase() === 'get') {
+            const formData = new FormData(form);
+            const params = new URLSearchParams(formData);
+            const separator = resolvedUrl.includes('?') ? '&' : '?';
+            resolvedUrl = resolvedUrl + separator + params.toString();
+            
+            const newTab = addTab(pane, 'browser', null, null, resolvedUrl);
+            activateTab(pane, newTab.id);
+            if (typeof saveSessionState === 'function') {
+              saveSessionState();
+            }
+          } else {
+            const newTab = addTab(pane, 'browser', null, null, 'about:blank');
+            activateTab(pane, newTab.id);
+            
+            const newIframe = newTab.viewEl.querySelector('iframe');
+            if (newIframe) {
+              const uniqueName = 'mtx-form-target-' + Math.random().toString(36).substr(2, 9);
+              newIframe.name = uniqueName;
+              
+              const originalTarget = form.getAttribute('target');
+              form.setAttribute('target', uniqueName);
+              form.submit();
+              
+              if (originalTarget) {
+                form.setAttribute('target', originalTarget);
+              } else {
+                form.removeAttribute('target');
+              }
+            }
+          }
+        }
+      }
+    }, true);
+  } catch (e) {
+    console.debug('Cannot intercept links/popups due to cross-origin restriction:', e);
+  }
+}
+
+// ── Browser Console Helpers & Log Interceptor ──
+function formatLogArg(arg) {
+  if (arg === null) return 'null';
+  if (arg === undefined) return 'undefined';
+  if (typeof arg === 'object') {
+    if (arg.__isError) {
+      return `${arg.name || 'Error'}: ${arg.message || ''}\n${arg.stack || ''}`;
+    }
+    if (arg.__isElement) {
+      return `<${arg.tagName}${arg.id ? ' id="' + arg.id + '"' : ''}${arg.className ? ' class="' + arg.className + '"' : ''}>`;
+    }
+    try {
+      return JSON.stringify(arg, null, 2);
+    } catch (e) {
+      return String(arg);
+    }
+  }
+  return String(arg);
+}
+
+window.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'mtx:console') {
+    const matchedTab = findTabByFrameWindow(e.source);
+    if (matchedTab) {
+      matchedTab.addConsoleLog(e.data.level, e.data.args);
+    }
+  }
+});
+
+function findTabByFrameWindow(sourceWindow) {
+  for (const pane of getAllPanesAllWorkspaces()) {
+    for (const tab of pane.tabs) {
+      if (tab.type === 'browser') {
+        const frame = tab.viewEl.querySelector('iframe');
+        if (frame && frame.contentWindow === sourceWindow) {
+          return tab;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function interceptConsole(frame, tab) {
+  try {
+    const win = frame.contentWindow;
+    if (!win || win.__mtx_console_intercepted) return;
+    win.__mtx_console_intercepted = true;
+
+    const logLevels = ['log', 'info', 'warn', 'error', 'debug'];
+    
+    function serializeConsoleArg(arg) {
+      if (arg === null) return null;
+      if (arg === undefined) return undefined;
+      
+      const ElementClass = win ? win.Element : Element;
+      const ErrorClass = win ? win.Error : Error;
+
+      if (arg instanceof ElementClass) {
+        return {
+          __isElement: true,
+          tagName: arg.tagName.toLowerCase(),
+          id: arg.id || '',
+          className: arg.className || ''
+        };
+      }
+
+      if (arg instanceof ErrorClass) {
+        return {
+          __isError: true,
+          name: arg.name,
+          message: arg.message,
+          stack: arg.stack
+        };
+      }
+
+      if (typeof arg === 'function') {
+        return '[Function: ' + (arg.name || 'anonymous') + ']';
+      }
+
+      if (typeof arg === 'symbol') {
+        return arg.toString();
+      }
+
+      if (typeof arg === 'object') {
+        try {
+          const seen = new Set();
+          function clone(val) {
+            if (val === null || typeof val !== 'object') return val;
+            if (val instanceof ElementClass) return serializeConsoleArg(val);
+            if (val instanceof ErrorClass) return serializeConsoleArg(val);
+            if (seen.has(val)) return '[Circular]';
+            seen.add(val);
+            if (Array.isArray(val)) {
+              return val.map(item => clone(item));
+            }
+            const res = {};
+            for (const key in val) {
+              if (Object.prototype.hasOwnProperty.call(val, key)) {
+                res[key] = clone(val[key]);
+              }
+            }
+            return res;
+          }
+          return clone(arg);
+        } catch (e) {
+          return String(arg);
+        }
+      }
+
+      return arg;
+    }
+
+    logLevels.forEach(level => {
+      const original = win.console[level];
+      win.console[level] = function(...args) {
+        if (original) {
+          try {
+            original.apply(win.console, args);
+          } catch (e) {}
+        }
+        try {
+          const processedArgs = args.map(arg => serializeConsoleArg(arg));
+          tab.addConsoleLog(level, processedArgs);
+        } catch (err) {}
+      };
+    });
+
+    win.addEventListener('error', function(event) {
+      try {
+        tab.addConsoleLog('error', [event.message + ' at ' + (event.filename || 'unknown') + ':' + (event.lineno || 0) + ':' + (event.colno || 0)]);
+      } catch (err) {}
+    });
+
+    win.addEventListener('unhandledrejection', function(event) {
+      try {
+        let reasonMsg = event.reason;
+        if (event.reason && event.reason.message) {
+          reasonMsg = event.reason.message;
+        } else if (typeof event.reason === 'object') {
+          reasonMsg = JSON.stringify(event.reason);
+        }
+        tab.addConsoleLog('error', ['Unhandled Promise Rejection: ' + reasonMsg]);
+      } catch (err) {}
+    });
+  } catch (e) {
+    console.debug('Cannot intercept console due to cross-origin restriction:', e);
+  }
+}
+
+// ── Terminal Autocomplete ───────────────────────────────────────────────────
+
+function startAutocomplete(tab) {
+  tab.acActive = true;
+  tab.acQuery = '';
+  tab.acFiltered = [];
+  tab.acIndex = 0;
+  
+  if (!tab.acEl) {
+    tab.acEl = document.createElement('div');
+    tab.acEl.className = 'term-autocomplete';
+    const parentEl = tab.term?.element || tab.viewEl;
+    if (parentEl) parentEl.appendChild(tab.acEl);
+  }
+  
+  positionAutocomplete(tab);
+  filterAutocomplete(tab);
+}
+
+function positionAutocomplete(tab) {
+  if (!tab.acEl || !tab.term) return;
+  const term = tab.term;
+  
+  // Safe buffer dimensions extraction
+  const cursorX = (term.buffer && term.buffer.active) ? term.buffer.active.cursorX : 0;
+  const cursorY = (term.buffer && term.buffer.active) ? term.buffer.active.cursorY : 0;
+  
+  const charWidth = term._core?._renderService?.dimensions?.actualCellWidth || 8.5;
+  const charHeight = term._core?._renderService?.dimensions?.actualCellHeight || 18;
+  
+  const termPaddingLeft = 10;
+  const termPaddingTop = 5;
+  
+  let left = termPaddingLeft + (cursorX * charWidth);
+  let top = termPaddingTop + ((cursorY + 1) * charHeight);
+  
+  const parentEl = term.element || tab.viewEl;
+  const termWidth = parentEl ? parentEl.clientWidth : 800;
+  const termHeight = parentEl ? parentEl.clientHeight : 600;
+  const dropdownWidth = 240;
+  const dropdownHeight = 180;
+  
+  if (left + dropdownWidth > termWidth) {
+    left = Math.max(10, termWidth - dropdownWidth - 20);
+  }
+  if (top + dropdownHeight > termHeight) {
+    top = termPaddingTop + ((cursorY - 1) * charHeight) - dropdownHeight;
+  }
+  
+  tab.acEl.style.left = `${left}px`;
+  tab.acEl.style.top = `${top}px`;
+}
+
+function filterAutocomplete(tab) {
+  const s = typeof getSettings === 'function' ? getSettings() : {};
+  const cmds = (s.savedCommands && typeof s.savedCommands === 'object') ? s.savedCommands : {};
+  const query = (tab.acQuery || '').toLowerCase();
+  
+  const filtered = Object.entries(cmds)
+    .filter(([id]) => id.toLowerCase().includes(query))
+    .map(([id, cmd]) => ({ id, cmd }));
+    
+  tab.acFiltered = filtered;
+  tab.acIndex = Math.min(tab.acIndex, Math.max(0, filtered.length - 1));
+  
+  renderAutocomplete(tab);
+}
+
+function renderAutocomplete(tab) {
+  if (!tab.acEl) return;
+  tab.acEl.innerHTML = '';
+  
+  if (!tab.acFiltered || tab.acFiltered.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'term-autocomplete-empty';
+    empty.textContent = 'No matching commands';
+    tab.acEl.appendChild(empty);
+    return;
+  }
+  
+  tab.acFiltered.forEach((item, index) => {
+    const itemEl = document.createElement('div');
+    itemEl.className = 'term-autocomplete-item' + (index === tab.acIndex ? ' active' : '');
+    
+    const idEl = document.createElement('div');
+    idEl.className = 'term-autocomplete-id';
+    idEl.textContent = '!' + item.id;
+    
+    const cmdEl = document.createElement('div');
+    cmdEl.className = 'term-autocomplete-cmd';
+    cmdEl.textContent = item.cmd;
+    
+    itemEl.appendChild(idEl);
+    itemEl.appendChild(cmdEl);
+    
+    itemEl.addEventListener('mouseenter', () => {
+      tab.acIndex = index;
+      Array.from(tab.acEl.children).forEach((child, idx) => {
+        child.classList.toggle('active', idx === tab.acIndex);
+      });
+    });
+    
+    itemEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      selectAutocompleteItem(tab);
+    });
+    
+    tab.acEl.appendChild(itemEl);
+  });
+  
+  const activeChild = tab.acEl.children[tab.acIndex];
+  if (activeChild) {
+    activeChild.scrollIntoView({ block: 'nearest' });
+  }
+}
+
+function moveAutocompleteSelection(tab, dir) {
+  if (!tab.acActive || !tab.acFiltered || tab.acFiltered.length === 0) return;
+  tab.acIndex = (tab.acIndex + dir + tab.acFiltered.length) % tab.acFiltered.length;
+  
+  Array.from(tab.acEl.children).forEach((child, idx) => {
+    child.classList.toggle('active', idx === tab.acIndex);
+  });
+  
+  const activeChild = tab.acEl.children[tab.acIndex];
+  if (activeChild) {
+    activeChild.scrollIntoView({ block: 'nearest' });
+  }
+}
+
+function selectAutocompleteItem(tab, execute = false) {
+  if (!tab.acActive || !tab.acFiltered || tab.acFiltered.length === 0) {
+    closeAutocomplete(tab);
+    return;
+  }
+  const item = tab.acFiltered[tab.acIndex];
+  if (!item) {
+    closeAutocomplete(tab);
+    return;
+  }
+  const cmd = item.cmd;
+  
+  const eraseCount = (tab.acQuery || '').length + 1;
+  const backspaces = '\x7f'.repeat(eraseCount);
+  
+  sendTerminalInput(tab.ptyId, backspaces + cmd + (execute ? '\r' : ''));
+  closeAutocomplete(tab);
+}
+
+function closeAutocomplete(tab) {
+  tab.acActive = false;
+  tab.acQuery = '';
+  tab.acFiltered = [];
+  tab.acIndex = 0;
+  if (tab.acEl) {
+    tab.acEl.remove();
+    tab.acEl = null;
+  }
+}
+
+function handleAutocompleteData(tab, data) {
+  if (data === '\x7f' || data === '\b') {
+    if (tab.acQuery && tab.acQuery.length > 0) {
+      tab.acQuery = tab.acQuery.slice(0, -1);
+      filterAutocomplete(tab);
+    } else {
+      closeAutocomplete(tab);
+    }
+    return;
+  }
+  if (data.length === 1 && /^[a-zA-Z0-9\-_]$/.test(data)) {
+    tab.acQuery += data;
+    filterAutocomplete(tab);
+    return;
+  }
+  closeAutocomplete(tab);
+}
+
+function adjustZoom(tab, delta) {
+  const current = tab.zoomLevel || 1.0;
+  const target = Math.min(2.5, Math.max(0.5, Math.round((current + delta) * 10) / 10));
+  setTabZoom(tab, target);
+}
+
+function resetZoom(tab) {
+  setTabZoom(tab, 1.0);
+}
+
+function setTabZoom(tab, level) {
+  tab.zoomLevel = level;
+  if (typeof tab.zoom === 'function') {
+    tab.zoom(level);
+  }
+  const indicator = tab.viewEl?.querySelector('.zoom-indicator');
+  if (indicator) {
+    indicator.textContent = Math.round(level * 100) + '%';
+  }
+}
+
+function zoomActiveTab(delta) {
+  const tab = activePane?.activeTab;
+  if (!tab) return;
+  adjustZoom(tab, delta);
+  if (typeof saveSessionState === 'function') {
+    saveSessionState();
+  }
+}
+
+function resetActiveTabZoom() {
+  const tab = activePane?.activeTab;
+  if (!tab) return;
+  resetZoom(tab);
+  if (typeof saveSessionState === 'function') {
+    saveSessionState();
+  }
+}
+
+function createZoomControls(tab) {
+  const container = document.createElement('div');
+  container.className = 'zoom-controls';
+
+  const btnMinus = document.createElement('button');
+  btnMinus.className = 'zoom-btn minus';
+  btnMinus.textContent = '−';
+  btnMinus.title = 'Zoom out (Ctrl+Shift+-)';
+
+  const indicator = document.createElement('span');
+  indicator.className = 'zoom-indicator';
+  indicator.textContent = Math.round((tab.zoomLevel || 1.0) * 100) + '%';
+  indicator.title = 'Click to reset zoom (Ctrl+Shift+0)';
+
+  const btnPlus = document.createElement('button');
+  btnPlus.className = 'zoom-btn plus';
+  btnPlus.textContent = '+';
+  btnPlus.title = 'Zoom in (Ctrl+Shift++)';
+
+  container.append(btnMinus, indicator, btnPlus);
+
+  container.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  });
+
+  btnMinus.addEventListener('click', (e) => {
+    e.stopPropagation();
+    adjustZoom(tab, -0.1);
+    if (typeof saveSessionState === 'function') saveSessionState();
+  });
+
+  btnPlus.addEventListener('click', (e) => {
+    e.stopPropagation();
+    adjustZoom(tab, 0.1);
+    if (typeof saveSessionState === 'function') saveSessionState();
+  });
+
+  indicator.addEventListener('click', (e) => {
+    e.stopPropagation();
+    resetZoom(tab);
+    if (typeof saveSessionState === 'function') saveSessionState();
+  });
+
+  tab.viewEl.appendChild(container);
+}
+
+function showTerminalSearch(tab) {
+  if (!tab.searchAddon) return;
+
+  if (!tab.searchEl) {
+    const container = document.createElement('div');
+    container.className = 'term-search-container';
+    
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'term-search-input';
+    input.placeholder = 'Find...';
+    
+    const prevBtn = document.createElement('button');
+    prevBtn.className = 'term-search-btn term-search-prev';
+    prevBtn.title = 'Previous (Shift+Enter)';
+    prevBtn.innerHTML = '▲';
+    
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'term-search-btn term-search-next';
+    nextBtn.title = 'Next (Enter)';
+    nextBtn.innerHTML = '▼';
+    
+    const caseBtn = document.createElement('button');
+    caseBtn.className = 'term-search-btn term-search-case';
+    caseBtn.title = 'Match Case';
+    caseBtn.textContent = 'Aa';
+    
+    const wordBtn = document.createElement('button');
+    wordBtn.className = 'term-search-btn term-search-word';
+    wordBtn.title = 'Match Whole Word';
+    wordBtn.textContent = 'Ab';
+    
+    const regexBtn = document.createElement('button');
+    regexBtn.className = 'term-search-btn term-search-regex';
+    regexBtn.title = 'Use Regular Expression';
+    regexBtn.textContent = '.*';
+    
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'term-search-btn term-search-close';
+    closeBtn.title = 'Close (Esc)';
+    closeBtn.textContent = '✕';
+    
+    container.append(input, prevBtn, nextBtn, caseBtn, wordBtn, regexBtn, closeBtn);
+    tab.viewEl.appendChild(container);
+    
+    tab.searchEl = container;
+    tab.searchInput = input;
+    
+    const performSearch = (incremental = false, findPrevious = false) => {
+      const val = input.value;
+      if (!val) {
+        tab.searchAddon.clearDecorations();
+        tab.term.clearSelection();
+        input.classList.remove('no-results');
+        return;
+      }
+      
+      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      const opts = {
+        caseSensitive: caseBtn.classList.contains('active-option'),
+        wholeWord: wordBtn.classList.contains('active-option'),
+        regex: regexBtn.classList.contains('active-option'),
+        incremental: incremental,
+        decorations: isLight ? {
+          activeMatchBackground: '#7c3aed',
+          activeMatchBorder: '#9061f9',
+          activeMatchColorOverviewRuler: '#7c3aed',
+          matchBackground: '#ddd6fe',
+          matchBorder: '#c7d2fe',
+          matchOverviewRuler: '#ddd6fe'
+        } : {
+          activeMatchBackground: '#8b5cf6',
+          activeMatchBorder: '#a78bfa',
+          activeMatchColorOverviewRuler: '#8b5cf6',
+          matchBackground: '#4c2885',
+          matchBorder: '#3b2c60',
+          matchOverviewRuler: '#4c2885'
+        }
+      };
+      
+      let found = false;
+      if (findPrevious) {
+        found = tab.searchAddon.findPrevious(val, opts);
+      } else {
+        found = tab.searchAddon.findNext(val, opts);
+      }
+      
+      if (found) {
+        input.classList.remove('no-results');
+      } else {
+        input.classList.add('no-results');
+      }
+    };
+    
+    // Toggle options handlers
+    caseBtn.addEventListener('click', () => {
+      caseBtn.classList.toggle('active-option');
+      performSearch(true);
+      input.focus();
+    });
+    
+    wordBtn.addEventListener('click', () => {
+      wordBtn.classList.toggle('active-option');
+      performSearch(true);
+      input.focus();
+    });
+    
+    regexBtn.addEventListener('click', () => {
+      regexBtn.classList.toggle('active-option');
+      performSearch(true);
+      input.focus();
+    });
+    
+    input.addEventListener('input', () => {
+      performSearch(true);
+    });
+    
+    container.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        hideSearch();
+      } else if (e.key === 'Enter' && e.target === input) {
+        e.preventDefault();
+        e.stopPropagation();
+        performSearch(false, e.shiftKey);
+      }
+    });
+    
+    prevBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      performSearch(false, true);
+      input.focus();
+    });
+    
+    nextBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      performSearch(false, false);
+      input.focus();
+    });
+    
+    const hideSearch = () => {
+      container.classList.remove('active');
+      tab.searchAddon.clearDecorations();
+      tab.term.clearSelection();
+      input.classList.remove('no-results');
+      tab.term.focus();
+    };
+    
+    closeBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      hideSearch();
+    });
+    
+    // Prevent mouse down inside search box from stealing terminal focus / closing link menus
+    container.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+    });
+  }
+  
+  // Show it
+  tab.searchEl.classList.add('active');
+  setTimeout(() => {
+    tab.searchInput.focus();
+    tab.searchInput.select();
+  }, 0);
+}
+
+let activeTabContextMenu = null;
+
+function closeTabContextMenu() {
+  if (activeTabContextMenu) {
+    activeTabContextMenu.remove();
+    activeTabContextMenu = null;
+  }
+}
+
+// Add global listener to close tab context menu on click or scroll
+document.addEventListener('click', () => closeTabContextMenu());
+document.addEventListener('contextmenu', (e) => {
+  // If we didn't click inside a tab, close it
+  if (!e.target.closest('.tab')) {
+    closeTabContextMenu();
+  }
+});
+document.addEventListener('scroll', () => closeTabContextMenu(), { passive: true });
+
+function renameTabInline(tab) {
+  if (tab.tabEl.querySelector('.tab-rename-input')) return;
+
+  const originalText = tab.label.textContent;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'tab-rename-input';
+  input.value = originalText;
+  
+  // Style the input to fit nicely inside the tab
+  input.style.background = 'var(--bg4)';
+  input.style.border = '1px solid var(--accent)';
+  input.style.color = 'var(--text)';
+  input.style.borderRadius = '4px';
+  input.style.padding = '2px 6px';
+  input.style.fontSize = '11px';
+  input.style.outline = 'none';
+  input.style.width = '100px';
+  input.style.fontFamily = 'inherit';
+
+  // Hide original elements
+  tab.label.style.display = 'none';
+  const closeBtn = tab.tabEl.querySelector('.tab-close');
+  const maxBtn = tab.tabEl.querySelector('.tab-maximize');
+  if (closeBtn) closeBtn.style.display = 'none';
+  if (maxBtn) maxBtn.style.display = 'none';
+
+  // Disable dragging during edit
+  const originalDraggable = tab.tabEl.draggable;
+  tab.tabEl.draggable = false;
+
+  // Insert input
+  const icon = tab.tabEl.querySelector('.tab-icon');
+  if (icon) {
+    icon.after(input);
+  } else {
+    tab.tabEl.prepend(input);
+  }
+
+  input.focus();
+  input.select();
+
+  let finished = false;
+  const finish = (commit) => {
+    if (finished) return;
+    finished = true;
+
+    if (commit) {
+      const newName = input.value.trim();
+      if (newName) {
+        tab.label.textContent = newName;
+        tab.isCustomLabel = true;
+      } else {
+        tab.isCustomLabel = false;
+        if (tab.type === 'terminal') {
+          tab.label.textContent = tab.term?.title || 'Terminal';
+        } else if (tab.type === 'editor') {
+          const baseName = tab.editorDir ? tab.editorDir.split('/').pop() || tab.editorDir : 'Editor';
+          tab.label.textContent = baseName;
+        } else if (tab.type === 'agent') {
+          tab.label.textContent = 'AI Agent';
+        } else if (tab.type === 'codesign') {
+          tab.label.textContent = `Spec: ${(tab.codesignDir || '').split('/').filter(Boolean).pop() || 'CoDesign'}`;
+        } else if (tab.type === 'browser') {
+          if (tab.currentUrl) {
+            try { tab.label.textContent = new URL(tab.currentUrl).hostname.replace('www.', ''); }
+            catch { tab.label.textContent = 'Browser'; }
+          } else {
+            tab.label.textContent = 'New Tab';
+          }
+        }
+      }
+      if (typeof saveSessionState === 'function') saveSessionState();
+    }
+
+    input.remove();
+    tab.label.style.display = '';
+    if (closeBtn) closeBtn.style.display = '';
+    if (maxBtn) maxBtn.style.display = '';
+    tab.tabEl.draggable = originalDraggable;
+  };
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      finish(true);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      finish(false);
+    }
+  });
+
+  input.addEventListener('blur', () => {
+    finish(true);
+  });
+}
+
+function showTabContextMenu(e, tab) {
+  e.preventDefault();
+  e.stopPropagation();
+  closeTabContextMenu();
+  if (typeof closeContextMenu === 'function') {
+    closeContextMenu(); // close file tree context menu if open
+  }
+
+  const menu = document.createElement('div');
+  menu.className = 'tab-context-menu';
+  
+  const isMaximized = tab.tabEl.querySelector('.tab-maximize')?.title === 'Restore layout';
+
+  const items = [
+    {
+      label: 'Rename Tab...',
+      icon: '✏️',
+      onClick: () => renameTabInline(tab)
+    },
+    {
+      label: isMaximized ? 'Restore Layout' : 'Maximize Tab',
+      icon: isMaximized ? '⤣' : '⤢',
+      onClick: () => {
+        const p = paneOfTab(tab.tabEl);
+        if (p) {
+          if (p.activeTab?.id !== tab.id) {
+            activateTab(p, tab.id);
+          }
+          toggleMaximizePane(p);
+        }
+      }
+    },
+    {
+      label: 'Ask AI Agent about this Tab',
+      icon: getTabIconSvg('agent'),
+      onClick: () => {
+        const p = paneOfTab(tab.tabEl);
+        if (p) {
+          addTab(p, 'agent', undefined, undefined, undefined, tab.editorDir || tab.terminalDir || undefined);
+          if (typeof saveSessionState === 'function') saveSessionState();
+        }
+      }
+    },
+    {
+      type: 'divider'
+    },
+    {
+      label: 'Close Tab',
+      icon: '✕',
+      onClick: () => {
+        const p = paneOfTab(tab.tabEl);
+        if (p) closeTab(p, tab.id);
+      }
+    }
+  ];
+
+  items.forEach(item => {
+    if (item.type === 'divider') {
+      const divider = document.createElement('div');
+      divider.className = 'tab-context-menu-divider';
+      menu.appendChild(divider);
+    } else {
+      const el = document.createElement('div');
+      el.className = 'tab-context-menu-item';
+      
+      const iconSpan = document.createElement('span');
+      iconSpan.className = 'tab-context-menu-item-icon';
+      if (item.icon && typeof item.icon === 'string' && item.icon.startsWith('<svg')) {
+        iconSpan.innerHTML = item.icon;
+      } else {
+        iconSpan.textContent = item.icon || '';
+      }
+      
+      const labelSpan = document.createElement('span');
+      labelSpan.className = 'tab-context-menu-item-label';
+      labelSpan.textContent = item.label;
+      
+      el.appendChild(iconSpan);
+      el.appendChild(labelSpan);
+      el.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        closeTabContextMenu();
+        item.onClick();
+      });
+      menu.appendChild(el);
+    }
+  });
+
+  document.body.appendChild(menu);
+  
+  // Position menu relative to viewport
+  const menuWidth = 160;
+  const menuHeight = 120; // approximate
+  let x = e.clientX;
+  let y = e.clientY;
+  
+  if (x + menuWidth > window.innerWidth) {
+    x = window.innerWidth - menuWidth - 8;
+  }
+  if (y + menuHeight > window.innerHeight) {
+    y = window.innerHeight - menuHeight - 8;
+  }
+  
+  menu.style.left = `${x}px`;
+  menu.style.top = `${y}px`;
+  
+  activeTabContextMenu = menu;
+}

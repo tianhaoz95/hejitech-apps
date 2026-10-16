@@ -1,0 +1,23 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Permissions for the main window's local (bundled) content: auto-updater, relaunch, global shortcut, and the window/overlay commands.",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:default",
+    "updater:default",
+    "process:allow-restart",
+    "global-shortcut:default",
+    "allow-hide-overlay",
+    "allow-show-overlay",
+    "allow-show-normal-window",
+    "allow-set-overlay-opacity",
+    "allow-start-window-drag",
+    "allow-close-window",
+    "allow-minimize-window",
+    "allow-maximize-window"
+  ]
+}

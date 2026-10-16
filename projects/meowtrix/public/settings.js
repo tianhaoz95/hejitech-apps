@@ -1,0 +1,1332 @@
+// ── Settings module ──────────────────────────────────────────────────────────
+let currentSettings = {};
+
+async function loadSettings() {
+  const res = await fetch('/api/settings');
+  currentSettings = await res.json();
+  return currentSettings;
+}
+
+async function saveSetting(key, value) {
+  currentSettings[key] = value;
+  await fetch('/api/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ [key]: value }),
+  });
+}
+
+function getSettings() { return currentSettings; }
+
+// Paint the filled portion of a range slider to match its value.
+function updateRangeFill(el) {
+  const min = Number(el.min || 0), max = Number(el.max || 100);
+  const pct = ((Number(el.value) - min) / (max - min)) * 100;
+  el.style.backgroundSize = pct + '% 100%';
+}
+
+// ── Top Menu Bar Clock ───────────────────────────────────────────────────────
+let clockIntervalId = null;
+
+function updateClock() {
+  const clockEl = document.getElementById('toolbar-clock');
+  if (!clockEl) return;
+  const timeStr = new Date().toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+  const timeEl = clockEl.querySelector('.clock-time');
+  if (timeEl) {
+    timeEl.textContent = timeStr;
+  } else {
+    clockEl.textContent = timeStr;
+  }
+}
+
+function startClock() {
+  if (clockIntervalId) return;
+  updateClock();
+  clockIntervalId = setInterval(updateClock, 1000);
+}
+
+function stopClock() {
+  if (clockIntervalId) {
+    clearInterval(clockIntervalId);
+    clockIntervalId = null;
+  }
+}
+
+function initClockVisibility() {
+  const showTime = currentSettings.showTimeInMenu !== false;
+  const clockEl = document.getElementById('toolbar-clock');
+  if (clockEl) {
+    if (showTime) {
+      clockEl.hidden = false;
+      startClock();
+    } else {
+      clockEl.hidden = true;
+      stopClock();
+    }
+  }
+  if (typeof updateUiMode === 'function') {
+    updateUiMode();
+  }
+}
+
+function applyMenuButtonMode(mode) {
+  const m = mode || 'both';
+  document.body.setAttribute('data-menu-button-mode', m);
+  window.dispatchEvent(new Event('resize'));
+}
+
+function applyMenuButtonGroupsVisibility() {
+  const settings = getSettings();
+  const groups = {
+    'grp-workspace': settings.showWorkspaceButtons !== false,
+    'grp-pane': settings.showPaneButtons !== false,
+    'grp-tools': settings.showToolButtons !== false,
+    'grp-zoom': settings.showZoomButtons !== false,
+    'grp-system': settings.showSystemButtons !== false,
+  };
+  
+  for (const [id, visible] of Object.entries(groups)) {
+    const el = document.getElementById(id);
+    if (el) {
+      el.style.display = visible ? '' : 'none';
+    }
+  }
+  window.dispatchEvent(new Event('resize'));
+}
+
+// ── Apply settings live ──────────────────────────────────────────────────────
+function applyTermSettings() {
+  getAllPanesAllWorkspaces().forEach(p => p.tabs.forEach(t => {
+    if (!t.term) return;
+    t.term.options.fontSize = Math.round((currentSettings.termFontSize || 13) * (t.zoomLevel || 1.0));
+    t.term.options.fontFamily = currentSettings.termFontFamily;
+    t.term.options.scrollback = currentSettings.termScrollback;
+    if (typeof applyTermRenderer === 'function') {
+      applyTermRenderer(t, currentSettings.termRenderer || 'webgl');
+    }
+    if (t.webglAddon && typeof t.webglAddon.clearTextureAtlas === 'function') {
+      try { t.webglAddon.clearTextureAtlas(); } catch {}
+    }
+    if (t.fitAddon && t.viewEl && t.viewEl.classList.contains('active')) {
+      const wsView = t.viewEl.closest('.workspace-view');
+      if (!wsView || wsView.classList.contains('active')) {
+        try { t.fitAddon.fit(); } catch {}
+      }
+    }
+  }));
+  if (typeof updateWebGLIndicator === 'function') updateWebGLIndicator();
+}
+
+function applyEditorSettings() {
+  getAllPanesAllWorkspaces().forEach(p => p.tabs.forEach(t => {
+    if (typeof t.updateMinimap === 'function') t.updateMinimap();
+  }));
+}
+
+function updateWebGLIndicator() {
+  const el = document.getElementById('s-webgl-indicator');
+  if (!el) return;
+
+  try {
+    const s = typeof getSettings === 'function' ? getSettings() : (typeof currentSettings !== 'undefined' ? currentSettings : {});
+    const chosenRenderer = (s && s.termRenderer) || 'webgl';
+
+    let hasWebGLSupport = false;
+    let gpuInfo = '';
+    try {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl2') || canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      if (gl) {
+        hasWebGLSupport = true;
+        const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+        if (debugInfo) {
+          gpuInfo = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || '';
+        }
+      }
+    } catch (_) {}
+
+    const hasAddon = typeof window !== 'undefined' && !!window.WebglAddon;
+
+    // Check active terminal tabs to see if any are using WebGL
+    let termTabs = [];
+    if (typeof getAllPanesAllWorkspaces === 'function') {
+      try {
+        getAllPanesAllWorkspaces().forEach(p => (p && p.tabs || []).forEach(t => {
+          if (t && t.type === 'terminal' && t.term) termTabs.push(t);
+        }));
+      } catch (_) {}
+    }
+
+    const activeWithWebGL = termTabs.filter(t => !!t.webglAddon);
+
+    el.className = 'settings-renderer-status';
+
+    if (chosenRenderer === 'canvas') {
+      el.classList.add('inactive');
+      el.innerHTML = '<span class="status-dot"></span><span class="status-text">Canvas 2D active</span>';
+      el.title = 'WebGL is turned off. Using standard 2D canvas rendering.';
+      return;
+    }
+
+    if (chosenRenderer === 'dom') {
+      el.classList.add('inactive');
+      el.innerHTML = '<span class="status-dot"></span><span class="status-text">DOM active</span>';
+      el.title = 'WebGL is turned off. Using standard DOM rendering.';
+      return;
+    }
+
+    // Chosen renderer is 'webgl'
+    if (!hasWebGLSupport || !hasAddon) {
+      el.classList.add('warning');
+      el.innerHTML = '<span class="status-dot"></span><span class="status-text">WebGL unavailable (2D fallback)</span>';
+      el.title = !hasWebGLSupport ? 'WebGL is not supported by your browser or graphics environment.' : 'WebGL addon is unavailable.';
+      return;
+    }
+
+    if (termTabs.length > 0) {
+      if (activeWithWebGL.length > 0) {
+        el.classList.add('active');
+        el.innerHTML = '<span class="status-dot"></span><span class="status-text">WebGL active (GPU accelerated)</span>';
+        el.title = gpuInfo ? `GPU: ${gpuInfo}` : 'GPU-accelerated WebGL glyph rendering is currently active.';
+      } else {
+        el.classList.add('warning');
+        el.innerHTML = '<span class="status-dot"></span><span class="status-text">WebGL context lost (2D fallback)</span>';
+        el.title = 'WebGL lost its context; falling back to 2D renderer.';
+      }
+    } else {
+      el.classList.add('active');
+      el.innerHTML = '<span class="status-dot"></span><span class="status-text">WebGL ready (GPU accelerated)</span>';
+      el.title = gpuInfo ? `GPU: ${gpuInfo}` : 'GPU-accelerated WebGL glyph rendering will be used for terminals.';
+    }
+  } catch (err) {
+    console.error('Error updating WebGL indicator:', err);
+    el.className = 'settings-renderer-status warning';
+    el.innerHTML = '<span class="status-dot"></span><span class="status-text">WebGL check error</span>';
+    el.title = String(err && err.message || err);
+  }
+}
+
+// ── Panel open/close ─────────────────────────────────────────────────────────
+// ── Search settings ──────────────────────────────────────────────────────────
+function getRowSearchText(item) {
+  let texts = [];
+  texts.push(item.textContent);
+  
+  item.querySelectorAll('input').forEach(input => {
+    if (input.placeholder) texts.push(input.placeholder);
+  });
+  
+  item.querySelectorAll('select option').forEach(opt => {
+    texts.push(opt.textContent);
+  });
+  
+  return texts.join(' ').toLowerCase();
+}
+
+function triggerSettingsSearch() {
+  const searchInput = document.getElementById('settings-search');
+  const clearBtn = document.getElementById('settings-search-clear');
+  if (!searchInput) return;
+  
+  const query = searchInput.value.trim().toLowerCase();
+  
+  if (clearBtn) {
+    clearBtn.hidden = !query;
+  }
+  
+  const sections = document.querySelectorAll('.settings-section');
+  
+  if (!query) {
+    sections.forEach(section => {
+      if (section.dataset.prevOpen !== undefined) {
+        section.open = section.dataset.prevOpen === 'true';
+        delete section.dataset.prevOpen;
+      }
+      section.style.display = '';
+      
+      const items = section.querySelectorAll('.settings-row, #s-commands-list > div, #s-mobile-keys-list > div');
+      items.forEach(item => {
+        item.style.display = '';
+      });
+    });
+    return;
+  }
+  
+  sections.forEach(section => {
+    if (section.dataset.prevOpen === undefined) {
+      section.dataset.prevOpen = String(section.open);
+    }
+    
+    const titleEl = section.querySelector('.settings-section-title');
+    const titleText = titleEl ? titleEl.textContent.replace(/🐾|⚙/g, '').trim().toLowerCase() : '';
+    const sectionTitleMatches = titleText.includes(query);
+    
+    const items = section.querySelectorAll('.settings-row, #s-commands-list > div, #s-mobile-keys-list > div');
+    let hasMatchingItem = false;
+    
+    items.forEach(item => {
+      if (sectionTitleMatches) {
+        item.style.display = '';
+        hasMatchingItem = true;
+      } else {
+        const itemText = getRowSearchText(item);
+        if (itemText.includes(query)) {
+          item.style.display = '';
+          hasMatchingItem = true;
+        } else {
+          item.style.display = 'none';
+        }
+      }
+    });
+    
+    if (sectionTitleMatches || hasMatchingItem) {
+      section.style.display = '';
+      section.open = true;
+    } else {
+      section.style.display = 'none';
+    }
+  });
+}
+
+function clearSettingsSearch() {
+  const searchInput = document.getElementById('settings-search');
+  if (searchInput) {
+    searchInput.value = '';
+    triggerSettingsSearch();
+  }
+}
+
+async function loadLegalContent() {
+  const container = document.getElementById('about-legal-content');
+  if (!container) return;
+  try {
+    const res = await fetch('legal.json');
+    if (!res.ok) throw new Error('Failed to fetch legal.json');
+    const data = await res.json();
+    
+    let html = '';
+    
+    if (data.privacyNotice) {
+      html += `<h4 class="about-doc-title">${data.privacyNotice.title}</h4>`;
+      html += `<p>${data.privacyNotice.intro}</p>`;
+      html += `<ul>`;
+      data.privacyNotice.items.forEach(item => {
+        html += `<li><strong>${item.title}.</strong> ${item.description}</li>`;
+      });
+      html += `</ul>`;
+    }
+    
+    if (data.userAgreement) {
+      html += `<h4 class="about-doc-title">${data.userAgreement.title}</h4>`;
+      html += `<p>${data.userAgreement.intro}</p>`;
+      html += `<ul>`;
+      data.userAgreement.items.forEach(item => {
+        html += `<li><strong>${item.title}.</strong> ${item.description}</li>`;
+      });
+      html += `</ul>`;
+    }
+    
+    container.innerHTML = html;
+  } catch (e) {
+    console.error('Error loading legal content:', e);
+    container.innerHTML = '<p style="color: var(--text3);">Failed to load privacy notice and user agreement.</p>';
+  }
+}
+
+// ── Panel open/close ─────────────────────────────────────────────────────────
+function syncAboutVersion() {
+  const el = document.getElementById('s-about-version');
+  if (!el) return;
+  const v = (typeof latestUpdateInfo !== 'undefined' && latestUpdateInfo && latestUpdateInfo.version) || '';
+  el.textContent = v ? ('Version ' + v) : 'Version —';
+}
+
+function toggleSettingsInputs(enabled) {
+  const panel = document.getElementById('settings-panel');
+  if (!panel) return;
+  const elements = panel.querySelectorAll('input, select, textarea, button');
+  elements.forEach(el => {
+    if (el.id === 'settings-close' || el.id === 'settings-reset') return;
+    if (enabled) {
+      el.removeAttribute('disabled');
+    } else {
+      el.setAttribute('disabled', 'true');
+    }
+  });
+}
+
+function openSettings() {
+  toggleSettingsInputs(true);
+  document.getElementById('settings-panel').classList.add('open');
+  document.getElementById('settings-overlay').classList.add('open');
+  if (typeof syncSettingsUpdateStatus === 'function') syncSettingsUpdateStatus();
+  syncAboutVersion();
+  if (typeof refreshRestartAvailability === 'function') refreshRestartAvailability();
+  updateWebGLIndicator();
+  const searchInput = document.getElementById('settings-search');
+  if (searchInput) {
+    setTimeout(() => searchInput.focus(), 150);
+  }
+}
+function closeSettings() {
+  document.getElementById('settings-panel').classList.remove('open');
+  document.getElementById('settings-overlay').classList.remove('open');
+  clearSettingsSearch();
+  toggleSettingsInputs(false);
+}
+
+// ── Custom Theme Dropdown ──────────────────────────────────────────────────
+let activeThemeMenu = null;
+
+function updateThemePickerBtn(meta) {
+  if (!meta && typeof THEMES !== 'undefined') {
+    const sel = document.getElementById('s-theme');
+    const id = sel ? sel.value : (localStorage.getItem('theme') || 'auto');
+    meta = THEMES.find(t => t.id === id) || THEMES[0];
+  }
+  if (!meta) return;
+  const btn = document.getElementById('s-theme-btn');
+  if (!btn) return;
+  const iconEl = btn.querySelector('.custom-select-icon');
+  const labelEl = btn.querySelector('.custom-select-label');
+  if (iconEl) iconEl.innerHTML = meta.icon;
+  if (labelEl) labelEl.textContent = meta.label;
+}
+
+function closeThemeMenu() {
+  if (activeThemeMenu) {
+    activeThemeMenu.remove();
+    activeThemeMenu = null;
+    const btn = document.getElementById('s-theme-btn');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+  }
+}
+
+function openThemeMenu() {
+  if (activeThemeMenu) {
+    closeThemeMenu();
+    return;
+  }
+  const btn = document.getElementById('s-theme-btn');
+  if (!btn || typeof THEMES === 'undefined') return;
+
+  btn.setAttribute('aria-expanded', 'true');
+  const sel = document.getElementById('s-theme');
+  const currentId = sel ? sel.value : (localStorage.getItem('theme') || 'auto');
+
+  const menu = document.createElement('div');
+  menu.className = 'custom-select-menu';
+  menu.setAttribute('role', 'listbox');
+
+  THEMES.forEach(t => {
+    const isSelected = t.id === currentId;
+    const item = document.createElement('div');
+    item.className = 'custom-select-item' + (isSelected ? ' active' : '');
+    item.setAttribute('role', 'option');
+    item.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+    item.innerHTML = `
+      <span class="custom-select-item-icon">${t.icon}</span>
+      <span class="custom-select-item-label">${t.label}</span>
+      <span class="custom-select-item-check">${isSelected ? '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : ''}</span>
+    `;
+    item.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      closeThemeMenu();
+      if (sel) {
+        sel.value = t.id;
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+      } else {
+        await saveSetting('theme', t.id);
+        applyTheme(t.id);
+      }
+    });
+    menu.appendChild(item);
+  });
+
+  const wrap = document.getElementById('theme-select-wrap') || btn.parentElement;
+  wrap.appendChild(menu);
+  activeThemeMenu = menu;
+}
+
+document.addEventListener('click', (e) => {
+  if (activeThemeMenu && !e.target.closest('#theme-select-wrap')) {
+    closeThemeMenu();
+  }
+});
+
+// ── Populate + wire controls ─────────────────────────────────────────────────
+function populateControls(s) {
+  const themeSel = document.getElementById('s-theme');
+  // Build options once from the shared THEMES list (defined in app.js).
+  if (!themeSel.dataset.built && typeof THEMES !== 'undefined') {
+    themeSel.innerHTML = THEMES.map(t => `<option value="${t.id}">${t.label}</option>`).join('');
+    themeSel.dataset.built = '1';
+  }
+  themeSel.value = s.theme;
+  const currentMeta = (typeof THEMES !== 'undefined') ? THEMES.find(t => t.id === s.theme) : null;
+  if (currentMeta) updateThemePickerBtn(currentMeta);
+  document.getElementById('s-ui-mode').value = s.uiMode || 'auto';
+  document.getElementById('s-menu-button-mode').value = s.menuButtonMode || 'both';
+  const fontSize = document.getElementById('s-font-size');
+  fontSize.value = s.termFontSize;
+  document.getElementById('s-font-size-val').textContent = s.termFontSize;
+  updateRangeFill(fontSize);
+  const fontSel = document.getElementById('s-font-family');
+  const match = fontSel && s.termFontFamily ? [...fontSel.options].find(o => s.termFontFamily.startsWith(o.value.split(',')[0])) : null;
+  if (match && fontSel) fontSel.value = match.value;
+  const rendererSel = document.getElementById('s-term-renderer');
+  if (rendererSel) rendererSel.value = s.termRenderer || 'webgl';
+  updateWebGLIndicator();
+  document.getElementById('s-scrollback').value = String(s.termScrollback);
+  document.getElementById('s-shell').value = s.shell;
+  document.getElementById('s-homepage').value = s.browserHomepage;
+  const engineSel = document.getElementById('s-browser-engine');
+  if (engineSel) engineSel.value = s.browserEngine === 'proxy' ? 'proxy' : 'auto';
+  const hbQuality = document.getElementById('s-hostbrowser-quality');
+  if (hbQuality) hbQuality.value = String([50, 70, 85].reduce((a, b) => Math.abs(b - (s.hostBrowserQuality || 70)) < Math.abs(a - (s.hostBrowserQuality || 70)) ? b : a));
+  const hbPath = document.getElementById('s-hostbrowser-path');
+  if (hbPath) hbPath.value = s.hostBrowserPath || '';
+  const localServerIpSel = document.getElementById('s-local-server-ip');
+  if (localServerIpSel) {
+    const val = s.localServerIp || '127.0.0.1';
+    if (![...localServerIpSel.options].some(o => o.value === val)) {
+      const opt = document.createElement('option');
+      opt.value = val;
+      opt.textContent = val;
+      localServerIpSel.appendChild(opt);
+    }
+    localServerIpSel.value = val;
+  }
+  document.getElementById('s-http-proxy').value = s.httpProxy || '';
+  document.getElementById('s-https-proxy').value = s.httpsProxy || '';
+  document.getElementById('s-combo-fx').checked = s.comboFx !== false;
+  document.getElementById('s-mobile-scrollbar').checked = s.mobileScrollbar !== false;
+  const sMobileAutocomplete = document.getElementById('s-mobile-keyboard-autocomplete');
+  if (sMobileAutocomplete) {
+    sMobileAutocomplete.checked = s.mobileKeyboardAutocomplete === true;
+  }
+  if (typeof syncMobileAutocompleteVisibility === 'function') syncMobileAutocompleteVisibility();
+  document.getElementById('s-show-time').checked = s.showTimeInMenu !== false;
+  document.getElementById('s-auto-update').checked = s.autoUpdate !== false;
+  document.getElementById('s-gpu-monitor').checked = s.gpuMonitor === true;
+  document.getElementById('s-output-batching').checked = s.outputBatching !== false;
+  document.getElementById('s-resize-debounce').checked = s.resizeDebounce !== false;
+  const portPoll = document.getElementById('s-port-poll');
+  const pollVal = String(s.portPollSeconds || 10);
+  if (![...portPoll.options].some(o => o.value === pollVal)) portPoll.add(new Option(`${pollVal} seconds`, pollVal));
+  portPoll.value = pollVal;
+  document.getElementById('s-editor-minimap').checked = s.editorMinimap !== false;
+
+  const sQuickOverlayEnabled = document.getElementById('s-quick-overlay-enabled');
+  if (sQuickOverlayEnabled) sQuickOverlayEnabled.checked = s.quickOverlayEnabled !== false;
+  const sQuickOverlayShortcut = document.getElementById('s-quick-overlay-shortcut');
+  if (sQuickOverlayShortcut) sQuickOverlayShortcut.value = s.quickOverlayShortcut || 'Option+Space';
+  const sQuickOverlayAutoClaim = document.getElementById('s-quick-overlay-autoclaim');
+  if (sQuickOverlayAutoClaim) sQuickOverlayAutoClaim.checked = s.quickOverlayAutoClaim !== false;
+  const sQuickOverlayDismissBlur = document.getElementById('s-quick-overlay-dismiss-blur');
+  if (sQuickOverlayDismissBlur) sQuickOverlayDismissBlur.checked = s.quickOverlayDismissOnBlur !== false;
+  const sQuickOverlayAnimation = document.getElementById('s-quick-overlay-animation');
+  if (sQuickOverlayAnimation) sQuickOverlayAnimation.checked = s.quickOverlayAnimation !== false;
+  const sQuickOverlayAnimStyle = document.getElementById('s-quick-overlay-animation-style');
+  if (sQuickOverlayAnimStyle) {
+    if (!sQuickOverlayAnimStyle.options.length) {
+      (window.OVERLAY_ANIMATION_STYLES || []).forEach(({ id, name }) => sQuickOverlayAnimStyle.add(new Option(name, id)));
+    }
+    sQuickOverlayAnimStyle.value = s.quickOverlayAnimationStyle || window.OVERLAY_ANIMATION_DEFAULT || 'classic';
+    sQuickOverlayAnimStyle.disabled = s.quickOverlayAnimation === false;
+  }
+  const sQuickOverlayOpacity = document.getElementById('s-quick-overlay-opacity');
+  if (sQuickOverlayOpacity) sQuickOverlayOpacity.value = s.quickOverlayOpacity !== undefined ? String(s.quickOverlayOpacity) : '1';
+  const sQuickOverlayWidth = document.getElementById('s-quick-overlay-width');
+  if (sQuickOverlayWidth) sQuickOverlayWidth.value = String(s.quickOverlayWidth || 1120);
+  const sQuickOverlayHeight = document.getElementById('s-quick-overlay-height');
+  if (sQuickOverlayHeight) sQuickOverlayHeight.value = String(s.quickOverlayHeight || 700);
+
+
+  const aiEngineSel = document.getElementById('s-ai-engine');
+  if (aiEngineSel) aiEngineSel.value = s.aiSelectedEngine || 'mistralrs';
+  const aiApiKey = document.getElementById('s-ai-cloud-api-key');
+  if (aiApiKey) aiApiKey.value = s.aiCloudApiKey || '';
+  const aiBaseUrl = document.getElementById('s-ai-cloud-base-url');
+  if (aiBaseUrl) aiBaseUrl.value = s.aiCloudBaseUrl || 'https://api.openai.com/v1';
+  const aiCloudModel = document.getElementById('s-ai-cloud-model');
+  if (aiCloudModel) aiCloudModel.value = s.aiCloudModel || 'gpt-4o';
+  const aiOllamaUrl = document.getElementById('s-ai-ollama-url');
+  if (aiOllamaUrl) aiOllamaUrl.value = s.aiOllamaUrl || 'http://127.0.0.1:11434';
+  const aiOllamaModel = document.getElementById('s-ai-ollama-model');
+  if (aiOllamaModel) aiOllamaModel.value = s.aiOllamaModel || '';
+
+  const chkNetworkServing = document.getElementById('s-network-serving');
+  if (chkNetworkServing) {
+    chkNetworkServing.checked = s.networkServing === true;
+    fetch('/api/network/status').then(r => r.json()).then(st => {
+      chkNetworkServing.checked = !!st.networkServing;
+      const display = document.getElementById('s-lan-url-display');
+      if (display && st.lanUrls && st.lanUrls.length) {
+        display.textContent = st.lanUrls.join(', ');
+      }
+    }).catch(() => {});
+  }
+  
+  const chkWorkspace = document.getElementById('s-menu-workspace');
+  if (chkWorkspace) chkWorkspace.checked = s.showWorkspaceButtons !== false;
+  const chkPane = document.getElementById('s-menu-pane');
+  if (chkPane) chkPane.checked = s.showPaneButtons !== false;
+  const chkTools = document.getElementById('s-menu-tools');
+  if (chkTools) chkTools.checked = s.showToolButtons !== false;
+  const chkZoom = document.getElementById('s-menu-zoom');
+  if (chkZoom) chkZoom.checked = s.showZoomButtons !== false;
+  const chkSystem = document.getElementById('s-menu-system');
+  if (chkSystem) chkSystem.checked = s.showSystemButtons !== false;
+
+  const statusEl = document.getElementById('s-update-status');
+  if (statusEl) {
+    if (typeof syncSettingsUpdateStatus === 'function') {
+      syncSettingsUpdateStatus();
+    } else if (typeof latestUpdateInfo !== 'undefined' && latestUpdateInfo) {
+      if (latestUpdateInfo.error) {
+        statusEl.textContent = 'Error: ' + latestUpdateInfo.error;
+        statusEl.title = latestUpdateInfo.error;
+        statusEl.style.color = '#f87171';
+      } else {
+        statusEl.title = '';
+        if (latestUpdateInfo.updateAvailable) {
+          statusEl.textContent = 'Update available!';
+          statusEl.style.color = 'var(--accent-hi)';
+        } else {
+          statusEl.textContent = 'Up to date';
+          statusEl.style.color = 'var(--text3)';
+        }
+      }
+    } else {
+      statusEl.textContent = '';
+      statusEl.title = '';
+    }
+  }
+
+  document.getElementById('s-pet').checked = !!s.petEnabled;
+  const faceSel = document.getElementById('s-pet-face');
+  if (!faceSel.dataset.built && typeof PET_FACES !== 'undefined') {
+    faceSel.innerHTML = PET_FACES.map(f => `<option value="${f.id}">${f.emoji} ${f.label}</option>`).join('');
+    faceSel.dataset.built = '1';
+  }
+  faceSel.value = s.petFace || 'cat';
+  document.getElementById('s-pet-stay').checked = !!s.petStay;
+  const petSpeed = document.getElementById('s-pet-speed');
+  petSpeed.value = s.petSpeed != null ? s.petSpeed : 3;
+  petSpeed.disabled = !!s.petStay; // speed is moot when the pet stays put
+  document.getElementById('s-pet-speed-val').textContent = petSpeed.value;
+  updateRangeFill(petSpeed);
+  refreshPetAvailability();
+  populateSavedCommandsList();
+  populateMobileKeysList();
+}
+
+function populateSavedCommandsList() {
+  const listEl = document.getElementById('s-commands-list');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+  const cmds = currentSettings.savedCommands || {};
+  
+  Object.entries(cmds).forEach(([id, cmd]) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex; align-items:center; justify-content:space-between; background:var(--bg3); padding:6px 10px; border-radius:8px; border:1px solid var(--border3); font-size:12px; gap:8px; margin-bottom: 2px;';
+    
+    const left = document.createElement('div');
+    left.style.cssText = 'display:flex; flex-direction:column; gap:2px; min-width:0; flex:1;';
+    
+    const idEl = document.createElement('span');
+    idEl.style.cssText = 'font-weight:700; color:var(--accent); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
+    idEl.textContent = '!' + id;
+    
+    const cmdEl = document.createElement('span');
+    cmdEl.style.cssText = 'color:var(--text2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:monospace;';
+    cmdEl.textContent = cmd;
+    
+    left.append(idEl, cmdEl);
+    
+    const delBtn = document.createElement('button');
+    delBtn.textContent = '✕';
+    delBtn.style.cssText = 'background:none; border:none; color:var(--text3); cursor:pointer; padding:2px 6px; font-size:12px; border-radius:4px; font-weight:bold; transition: color 0.12s;';
+    delBtn.addEventListener('mouseenter', () => delBtn.style.color = '#f87171');
+    delBtn.addEventListener('mouseleave', () => delBtn.style.color = 'var(--text3)');
+    delBtn.addEventListener('click', async () => {
+      delete currentSettings.savedCommands[id];
+      await saveSetting('savedCommands', currentSettings.savedCommands);
+      populateSavedCommandsList();
+    });
+    
+    row.append(left, delBtn);
+    listEl.appendChild(row);
+  });
+  if (typeof triggerSettingsSearch === 'function') triggerSettingsSearch();
+}
+
+function populateMobileKeysList() {
+  const listEl = document.getElementById('s-mobile-keys-list');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+  
+  const keys = currentSettings.mobileKeys || [...DEFAULT_MOBILE_KEYS];
+  
+  keys.forEach((key, idx) => {
+    const row = document.createElement('div');
+    row.className = 'mobile-key-config-row';
+    row.style.cssText = 'display:flex; align-items:center; justify-content:space-between; background:var(--bg3); padding:6px 10px; border-radius:8px; border:1px solid var(--border3); font-size:12px; gap:8px; margin-bottom: 2px;';
+    
+    const left = document.createElement('div');
+    left.style.cssText = 'display:flex; align-items:center; gap:8px; min-width:0; flex:1;';
+    
+    const labelEl = document.createElement('span');
+    labelEl.style.cssText = 'font-weight:700; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
+    labelEl.textContent = key.label;
+    
+    const badge = document.createElement('span');
+    let badgeBg = 'var(--bg4)';
+    let badgeColor = 'var(--text2)';
+    if (key.kind === 'send') {
+      badgeBg = 'rgba(16, 185, 129, 0.12)';
+      badgeColor = '#10b981';
+    } else if (key.kind === 'mod') {
+      badgeBg = 'rgba(245, 158, 11, 0.12)';
+      badgeColor = '#f59e0b';
+    } else if (key.kind === 'combo') {
+      badgeBg = 'rgba(139, 92, 246, 0.12)';
+      badgeColor = '#8b5cf6';
+    } else if (key.kind === 'hide') {
+      badgeBg = 'rgba(107, 114, 128, 0.12)';
+      badgeColor = '#9ca3af';
+    }
+    badge.style.cssText = `font-size:10px; padding:2px 6px; border-radius:4px; font-weight:600; background:${badgeBg}; color:${badgeColor}; text-transform:uppercase;`;
+    badge.textContent = key.kind;
+    
+    const payloadEl = document.createElement('span');
+    payloadEl.style.cssText = 'color:var(--text3); font-family:monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width: 100px;';
+    payloadEl.textContent = key.payload;
+    
+    left.append(labelEl, badge, payloadEl);
+    
+    const right = document.createElement('div');
+    right.style.cssText = 'display:flex; align-items:center; gap:4px;';
+    
+    const upBtn = document.createElement('button');
+    upBtn.textContent = '↑';
+    upBtn.title = 'Move up';
+    upBtn.style.cssText = 'background:none; border:none; color:var(--text3); cursor:pointer; padding:2px 4px; font-size:12px; font-weight:bold;';
+    upBtn.disabled = idx === 0;
+    upBtn.addEventListener('click', async () => {
+      if (idx > 0) {
+        const temp = keys[idx];
+        keys[idx] = keys[idx - 1];
+        keys[idx - 1] = temp;
+        currentSettings.mobileKeys = keys;
+        await saveSetting('mobileKeys', keys);
+        populateMobileKeysList();
+        if (typeof rebuildMobileKeyBar === 'function') rebuildMobileKeyBar();
+      }
+    });
+    
+    const downBtn = document.createElement('button');
+    downBtn.textContent = '↓';
+    downBtn.title = 'Move down';
+    downBtn.style.cssText = 'background:none; border:none; color:var(--text3); cursor:pointer; padding:2px 4px; font-size:12px; font-weight:bold;';
+    downBtn.disabled = idx === keys.length - 1;
+    downBtn.addEventListener('click', async () => {
+      if (idx < keys.length - 1) {
+        const temp = keys[idx];
+        keys[idx] = keys[idx + 1];
+        keys[idx + 1] = temp;
+        currentSettings.mobileKeys = keys;
+        await saveSetting('mobileKeys', keys);
+        populateMobileKeysList();
+        if (typeof rebuildMobileKeyBar === 'function') rebuildMobileKeyBar();
+      }
+    });
+    
+    const delBtn = document.createElement('button');
+    delBtn.textContent = '✕';
+    delBtn.title = 'Delete';
+    delBtn.style.cssText = 'background:none; border:none; color:var(--text3); cursor:pointer; padding:2px 6px; font-size:12px; border-radius:4px; font-weight:bold; transition: color 0.12s;';
+    delBtn.addEventListener('mouseenter', () => delBtn.style.color = '#f87171');
+    delBtn.addEventListener('mouseleave', () => delBtn.style.color = 'var(--text3)');
+    delBtn.addEventListener('click', async () => {
+      keys.splice(idx, 1);
+      currentSettings.mobileKeys = keys;
+      await saveSetting('mobileKeys', keys);
+      populateMobileKeysList();
+      if (typeof rebuildMobileKeyBar === 'function') rebuildMobileKeyBar();
+    });
+    
+    right.append(upBtn, downBtn, delBtn);
+    row.append(left, right);
+    listEl.appendChild(row);
+  });
+  if (typeof triggerSettingsSearch === 'function') triggerSettingsSearch();
+}
+
+// Enable/disable the pet toggle based on whether Chrome's on-device model is
+// usable, and show setup instructions when it isn't.
+async function refreshPetAvailability() {
+  const toggle = document.getElementById('s-pet');
+  const note = document.getElementById('s-pet-note');
+  const availability = (typeof petModelAvailability === 'function')
+    ? await petModelAvailability()
+    : 'unavailable';
+
+  if (availability === 'unavailable') {
+    toggle.checked = false;
+    toggle.disabled = true;
+    note.hidden = false;
+    note.innerHTML =
+      'On-device model not available. The pet needs Chrome’s built-in AI ' +
+      '(Gemini Nano). In Chrome 138+, enable <code>chrome://flags/' +
+      '#prompt-api-for-gemini-nano</code> and <code>chrome://flags/' +
+      '#optimization-guide-on-device-model</code> (set to “Enabled ' +
+      'BypassPerfRequirement”), then restart Chrome.';
+    // If it was on but the model vanished, make sure the pet is hidden.
+    if (typeof setPetEnabled === 'function') setPetEnabled(false);
+  } else {
+    toggle.disabled = false;
+    if (availability === 'downloadable' || availability === 'downloading') {
+      note.hidden = false;
+      note.textContent =
+        'The model will download (~a few GB) the first time you chat with the pet.';
+    } else {
+      note.hidden = true;
+      note.textContent = '';
+    }
+  }
+}
+
+function wireControls() {
+  const s = (id, key, transform) => {
+    document.getElementById(id).addEventListener('change', async (e) => {
+      const val = transform ? transform(e.target.value) : e.target.value;
+      await saveSetting(key, val);
+      onSettingChanged(key, val);
+    });
+  };
+
+  // Custom theme dropdown button
+  const themeBtn = document.getElementById('s-theme-btn');
+  if (themeBtn) {
+    themeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openThemeMenu();
+    });
+  }
+
+  // Theme also needs input event for immediate feel
+  document.getElementById('s-theme').addEventListener('change', async (e) => {
+    await saveSetting('theme', e.target.value);
+    applyTheme(e.target.value);
+    if (typeof THEMES !== 'undefined') {
+      const meta = THEMES.find(t => t.id === e.target.value);
+      if (meta) updateThemePickerBtn(meta);
+    }
+  });
+
+  document.getElementById('s-font-size').addEventListener('input', async (e) => {
+    const val = Number(e.target.value);
+    document.getElementById('s-font-size-val').textContent = val;
+    updateRangeFill(e.target);
+    await saveSetting('termFontSize', val);
+    applyTermSettings();
+  });
+
+  s('s-font-family', 'termFontFamily');
+  document.getElementById('s-font-family').addEventListener('change', () => applyTermSettings());
+
+  const rendererSel = document.getElementById('s-term-renderer');
+  if (rendererSel) {
+    s('s-term-renderer', 'termRenderer');
+    rendererSel.addEventListener('change', () => {
+      applyTermSettings();
+      updateWebGLIndicator();
+    });
+  }
+
+  s('s-scrollback', 'termScrollback', Number);
+  document.getElementById('s-scrollback').addEventListener('change', () => applyTermSettings());
+
+  s('s-shell', 'shell');
+  s('s-homepage', 'browserHomepage');
+  s('s-browser-engine', 'browserEngine');
+  s('s-hostbrowser-quality', 'hostBrowserQuality', Number);
+  s('s-hostbrowser-path', 'hostBrowserPath');
+  s('s-local-server-ip', 'localServerIp');
+  s('s-http-proxy', 'httpProxy');
+  s('s-https-proxy', 'httpsProxy');
+  s('s-ui-mode', 'uiMode');
+  s('s-menu-button-mode', 'menuButtonMode');
+
+  s('s-ai-engine', 'aiSelectedEngine');
+  s('s-ai-cloud-api-key', 'aiCloudApiKey');
+  s('s-ai-cloud-base-url', 'aiCloudBaseUrl');
+  s('s-ai-cloud-model', 'aiCloudModel');
+  s('s-ai-ollama-url', 'aiOllamaUrl');
+  s('s-ai-ollama-model', 'aiOllamaModel');
+
+  const btnTestOllama = document.getElementById('btn-test-ollama');
+  if (btnTestOllama) {
+    btnTestOllama.addEventListener('click', async () => {
+      const statusEl = document.getElementById('s-ollama-status');
+      const url = document.getElementById('s-ai-ollama-url')?.value?.trim() || 'http://127.0.0.1:11434';
+      if (statusEl) {
+        statusEl.style.display = 'block';
+        statusEl.style.color = 'var(--text3)';
+        statusEl.textContent = 'Testing connection to ' + url + '...';
+      }
+      try {
+        const res = await fetch('/api/ai/test-provider', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider: 'ollama', url })
+        });
+        const data = await res.json();
+        if (data.available) {
+          statusEl.style.color = '#34d399';
+          statusEl.textContent = `Connected! ${data.models?.length || 0} models found: ${(data.models || []).slice(0, 3).join(', ')}${data.models?.length > 3 ? '...' : ''}`;
+        } else {
+          statusEl.style.color = '#f87171';
+          statusEl.textContent = `Could not reach Ollama: ${data.error || 'Server offline'}`;
+        }
+      } catch (err) {
+        if (statusEl) {
+          statusEl.style.color = '#f87171';
+          statusEl.textContent = 'Error testing connection: ' + err.message;
+        }
+      }
+    });
+  }
+
+  document.getElementById('s-combo-fx').addEventListener('change', async (e) => {
+    await saveSetting('comboFx', e.target.checked);
+    if (typeof setComboFxEnabled === 'function') setComboFxEnabled(e.target.checked);
+  });
+
+  document.getElementById('s-mobile-scrollbar').addEventListener('change', async (e) => {
+    await saveSetting('mobileScrollbar', e.target.checked);
+    if (typeof refreshAllMobileScrollbars === 'function') refreshAllMobileScrollbars();
+  });
+
+  const sMobileAutocompleteBtn = document.getElementById('s-mobile-keyboard-autocomplete');
+  if (sMobileAutocompleteBtn) {
+    sMobileAutocompleteBtn.addEventListener('change', async (e) => {
+      await saveSetting('mobileKeyboardAutocomplete', e.target.checked);
+      if (typeof refreshAllMobileAutocompletes === 'function') refreshAllMobileAutocompletes();
+    });
+  }
+
+  document.getElementById('s-show-time').addEventListener('change', async (e) => {
+    await saveSetting('showTimeInMenu', e.target.checked);
+    initClockVisibility();
+  });
+
+  document.getElementById('s-auto-update').addEventListener('change', async (e) => {
+    await saveSetting('autoUpdate', e.target.checked);
+  });
+
+  document.getElementById('s-gpu-monitor').addEventListener('change', async (e) => {
+    await saveSetting('gpuMonitor', e.target.checked);
+    if (typeof renderGpuBadge === 'function') renderGpuBadge();
+  });
+
+  document.getElementById('s-output-batching').addEventListener('change', (e) => saveSetting('outputBatching', e.target.checked));
+  document.getElementById('s-resize-debounce').addEventListener('change', (e) => saveSetting('resizeDebounce', e.target.checked));
+  s('s-port-poll', 'portPollSeconds', Number);
+
+  document.getElementById('s-editor-minimap').addEventListener('change', async (e) => {
+    await saveSetting('editorMinimap', e.target.checked);
+    onSettingChanged('editorMinimap', e.target.checked);
+  });
+
+  const elOverlayEnabled = document.getElementById('s-quick-overlay-enabled');
+  if (elOverlayEnabled) {
+    elOverlayEnabled.addEventListener('change', async (e) => {
+      await saveSetting('quickOverlayEnabled', e.target.checked);
+    });
+  }
+
+  const elOverlayShortcut = document.getElementById('s-quick-overlay-shortcut');
+  if (elOverlayShortcut) {
+    elOverlayShortcut.addEventListener('change', async (e) => {
+      const val = e.target.value.trim() || 'Option+Space';
+      elOverlayShortcut.value = val;
+      await saveSetting('quickOverlayShortcut', val);
+    });
+  }
+
+  document.querySelectorAll('.btn-preset-shortcut').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const sc = btn.dataset.sc;
+      if (sc && elOverlayShortcut) {
+        elOverlayShortcut.value = sc;
+        await saveSetting('quickOverlayShortcut', sc);
+      }
+    });
+  });
+
+  const elOverlayAutoClaim = document.getElementById('s-quick-overlay-autoclaim');
+  if (elOverlayAutoClaim) {
+    elOverlayAutoClaim.addEventListener('change', async (e) => {
+      await saveSetting('quickOverlayAutoClaim', e.target.checked);
+    });
+  }
+
+  const elOverlayDismissBlur = document.getElementById('s-quick-overlay-dismiss-blur');
+  if (elOverlayDismissBlur) {
+    elOverlayDismissBlur.addEventListener('change', async (e) => {
+      await saveSetting('quickOverlayDismissOnBlur', e.target.checked);
+    });
+  }
+
+  const elOverlayAnim = document.getElementById('s-quick-overlay-animation');
+  if (elOverlayAnim) {
+    elOverlayAnim.addEventListener('change', async (e) => {
+      const styleSel = document.getElementById('s-quick-overlay-animation-style');
+      if (styleSel) styleSel.disabled = !e.target.checked;
+      await saveSetting('quickOverlayAnimation', e.target.checked);
+    });
+  }
+
+  const elOverlayAnimStyle = document.getElementById('s-quick-overlay-animation-style');
+  if (elOverlayAnimStyle) {
+    elOverlayAnimStyle.addEventListener('change', async (e) => {
+      await saveSetting('quickOverlayAnimationStyle', e.target.value);
+    });
+  }
+
+  // Preview plays the selected call-out on the current window, in place.
+  const elOverlayAnimPreview = document.getElementById('s-quick-overlay-animation-preview');
+  if (elOverlayAnimPreview) {
+    elOverlayAnimPreview.addEventListener('click', () => {
+      const styleSel = document.getElementById('s-quick-overlay-animation-style');
+      if (styleSel && typeof playOverlayAnimation === 'function') {
+        playOverlayAnimation('in', styleSel.value);
+      }
+    });
+  }
+
+  const elOverlayOpacity = document.getElementById('s-quick-overlay-opacity');
+  if (elOverlayOpacity) {
+    elOverlayOpacity.addEventListener('change', async (e) => {
+      const val = parseFloat(e.target.value) || 1.0;
+      await saveSetting('quickOverlayOpacity', val);
+      if (typeof applyOverlayOpacity === 'function') {
+        applyOverlayOpacity(val);
+      }
+    });
+  }
+
+  // Overlay size: clamp to the window's minimum (800×500) and save on commit.
+  const overlaySizeFields = [
+    { id: 's-quick-overlay-width', key: 'quickOverlayWidth', min: 800, fallback: 1120 },
+    { id: 's-quick-overlay-height', key: 'quickOverlayHeight', min: 500, fallback: 700 },
+  ];
+  overlaySizeFields.forEach(({ id, key, min, fallback }) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('change', async (e) => {
+      const raw = Math.round(Number(e.target.value));
+      const val = Number.isFinite(raw) && raw > 0 ? Math.min(8000, Math.max(min, raw)) : fallback;
+      e.target.value = String(val);
+      await saveSetting(key, val);
+    });
+  });
+  document.querySelectorAll('.btn-preset-overlay-size').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const w = Number(btn.dataset.w);
+      const h = Number(btn.dataset.h);
+      document.getElementById('s-quick-overlay-width').value = String(w);
+      document.getElementById('s-quick-overlay-height').value = String(h);
+      await saveSetting('quickOverlayWidth', w);
+      await saveSetting('quickOverlayHeight', h);
+    });
+  });
+
+
+  const chkNetworkServingEl = document.getElementById('s-network-serving');
+  if (chkNetworkServingEl) {
+    chkNetworkServingEl.addEventListener('change', async (e) => {
+      await saveSetting('networkServing', e.target.checked);
+      fetch('/api/network/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ networkServing: e.target.checked })
+      });
+    });
+  }
+
+  const btnCopyLanUrl = document.getElementById('btn-copy-lan-url');
+  if (btnCopyLanUrl) {
+    btnCopyLanUrl.addEventListener('click', () => {
+      const display = document.getElementById('s-lan-url-display');
+      if (display) {
+        const urlToCopy = display.textContent.split(',')[0].trim();
+        navigator.clipboard?.writeText(urlToCopy);
+        btnCopyLanUrl.textContent = 'Copied!';
+        setTimeout(() => { btnCopyLanUrl.textContent = 'Copy'; }, 1500);
+      }
+    });
+  }
+
+  const btnCheckUpdate = document.getElementById('btn-check-update');
+  if (btnCheckUpdate) {
+    btnCheckUpdate.addEventListener('click', async () => {
+      const statusEl = document.getElementById('s-update-status');
+      if (statusEl) {
+        statusEl.textContent = 'Checking...';
+        statusEl.style.color = 'var(--text3)';
+      }
+      btnCheckUpdate.disabled = true;
+      try {
+        const res = await fetch('/api/update/check');
+        const info = await res.json();
+        if (typeof onUpdateState === 'function') {
+          onUpdateState(info);
+        }
+      } catch (err) {
+        if (statusEl) {
+          statusEl.textContent = 'Error';
+          statusEl.title = err.message || String(err);
+          statusEl.style.color = '#f87171';
+        }
+      } finally {
+        btnCheckUpdate.disabled = false;
+      }
+    });
+  }
+
+  const btnRestartApp = document.getElementById('btn-restart-app');
+  if (btnRestartApp) {
+    btnRestartApp.addEventListener('click', () => {
+      if (typeof restartAppNow === 'function') restartAppNow();
+    });
+  }
+
+  document.getElementById('s-pet').addEventListener('change', async (e) => {
+    await saveSetting('petEnabled', e.target.checked);
+    if (typeof setPetEnabled === 'function') setPetEnabled(e.target.checked);
+  });
+
+  document.getElementById('s-pet-face').addEventListener('change', async (e) => {
+    await saveSetting('petFace', e.target.value);
+    if (typeof setPetFace === 'function') setPetFace(e.target.value);
+  });
+
+  document.getElementById('s-pet-stay').addEventListener('change', async (e) => {
+    document.getElementById('s-pet-speed').disabled = e.target.checked;
+    if (typeof setPetStay === 'function') setPetStay(e.target.checked);
+    await saveSetting('petStay', e.target.checked);
+  });
+
+  document.getElementById('s-pet-speed').addEventListener('input', async (e) => {
+    const val = Number(e.target.value);
+    document.getElementById('s-pet-speed-val').textContent = val;
+    updateRangeFill(e.target);
+    if (typeof setPetSpeed === 'function') setPetSpeed(val);
+    await saveSetting('petSpeed', val);
+  });
+
+  const btnAdd = document.getElementById('btn-add-command');
+  if (btnAdd) {
+    btnAdd.addEventListener('click', async () => {
+      const idInput = document.getElementById('s-command-id');
+      const cmdInput = document.getElementById('s-command-cmd');
+      const id = idInput.value.trim().replace(/^[!@]/, '');
+      const cmd = cmdInput.value.trim();
+      if (!id || !cmd) return;
+      
+      if (!currentSettings.savedCommands) {
+        currentSettings.savedCommands = {};
+      }
+      currentSettings.savedCommands[id] = cmd;
+      await saveSetting('savedCommands', currentSettings.savedCommands);
+      idInput.value = '';
+      cmdInput.value = '';
+      populateSavedCommandsList();
+    });
+  }
+
+  const btnAddMobileKey = document.getElementById('btn-add-mobile-key');
+  if (btnAddMobileKey) {
+    btnAddMobileKey.addEventListener('click', async () => {
+      const labelInput = document.getElementById('s-mobile-key-label');
+      const kindSelect = document.getElementById('s-mobile-key-kind');
+      const payloadInput = document.getElementById('s-mobile-key-payload');
+      
+      const label = labelInput.value.trim();
+      const kind = kindSelect.value;
+      const payload = payloadInput.value.trim();
+      
+      if (!label) return;
+      
+      const keys = currentSettings.mobileKeys || [...DEFAULT_MOBILE_KEYS];
+      keys.push({ label, kind, payload });
+      currentSettings.mobileKeys = keys;
+      
+      await saveSetting('mobileKeys', keys);
+      
+      labelInput.value = '';
+      payloadInput.value = '';
+      
+      populateMobileKeysList();
+      if (typeof rebuildMobileKeyBar === 'function') rebuildMobileKeyBar();
+    });
+  }
+
+  const btnResetMobileKeys = document.getElementById('btn-reset-mobile-keys');
+  if (btnResetMobileKeys) {
+    btnResetMobileKeys.addEventListener('click', async () => {
+      if (!await showConfirm('Reset Mobile Keys', 'Reset mobile keys to defaults?')) return;
+      currentSettings.mobileKeys = [...DEFAULT_MOBILE_KEYS];
+      await saveSetting('mobileKeys', currentSettings.mobileKeys);
+      populateMobileKeysList();
+      if (typeof rebuildMobileKeyBar === 'function') rebuildMobileKeyBar();
+    });
+  }
+
+  const wireCheckbox = (id, key) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('change', async (e) => {
+        await saveSetting(key, e.target.checked);
+        applyMenuButtonGroupsVisibility();
+      });
+    }
+  };
+  wireCheckbox('s-menu-workspace', 'showWorkspaceButtons');
+  wireCheckbox('s-menu-pane', 'showPaneButtons');
+  wireCheckbox('s-menu-tools', 'showToolButtons');
+  wireCheckbox('s-menu-zoom', 'showZoomButtons');
+  wireCheckbox('s-menu-system', 'showSystemButtons');
+}
+
+function onSettingChanged(key) {
+  if (['termFontSize', 'termFontFamily', 'termScrollback', 'termRenderer'].includes(key)) applyTermSettings();
+  if (key === 'uiMode') {
+    if (typeof updateUiMode === 'function') updateUiMode();
+  }
+  if (key === 'menuButtonMode') {
+    applyMenuButtonMode(currentSettings.menuButtonMode);
+  }
+  if (key === 'mobileScrollbar') {
+    if (typeof refreshAllMobileScrollbars === 'function') refreshAllMobileScrollbars();
+  }
+  if (key === 'mobileKeyboardAutocomplete') {
+    if (typeof refreshAllMobileAutocompletes === 'function') refreshAllMobileAutocompletes();
+    if (typeof refreshMobileAutocompleteToggle === 'function') refreshMobileAutocompleteToggle();
+  }
+  if (key === 'mobileKeys') {
+    if (typeof rebuildMobileKeyBar === 'function') rebuildMobileKeyBar();
+  }
+  if (key === 'editorMinimap') {
+    applyEditorSettings();
+  }
+  if (['showWorkspaceButtons', 'showPaneButtons', 'showToolButtons', 'showZoomButtons', 'showSystemButtons'].includes(key)) {
+    applyMenuButtonGroupsVisibility();
+  }
+}
+
+let _networkIps = ['127.0.0.1'];
+async function initNetworkInterfaces() {
+  try {
+    const res = await fetch('/api/network-interfaces');
+    _networkIps = await res.json();
+    const sel = document.getElementById('s-local-server-ip');
+    if (sel) {
+      sel.innerHTML = _networkIps.map(ip => `<option value="${ip}">${ip}</option>`).join('');
+    }
+  } catch (e) {
+    console.error('Error fetching network interfaces:', e);
+  }
+}
+
+// ── Bootstrap ────────────────────────────────────────────────────────────────
+async function bootstrapSettings() {
+  await initNetworkInterfaces();
+  let s;
+  try {
+    s = await loadSettings();
+  } catch (e) {
+    console.error('Failed to load settings from server, using defaults:', e);
+    s = (typeof currentSettings !== 'undefined' && currentSettings) ? currentSettings : {};
+  }
+  populateControls(s);
+  wireControls();
+  toggleSettingsInputs(false);
+  loadLegalContent();
+  // Server is source of truth for theme
+  applyTheme(s.theme);
+  if (typeof updateUiMode === 'function') updateUiMode();
+  initClockVisibility();
+  if (typeof rebuildMobileKeyBar === 'function') rebuildMobileKeyBar();
+  applyMenuButtonMode(s.menuButtonMode);
+  applyMenuButtonGroupsVisibility();
+  // The session may have become active before settings arrived.
+  if (typeof isActiveSession !== 'undefined' && isActiveSession && typeof workspaceReady !== 'undefined' && workspaceReady &&
+      typeof maybeShowWhatsNew === 'function') maybeShowWhatsNew();
+
+  const searchInput = document.getElementById('settings-search');
+  if (searchInput) {
+    searchInput.addEventListener('input', triggerSettingsSearch);
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (searchInput.value) {
+          clearSettingsSearch();
+          e.stopPropagation();
+        } else {
+          closeSettings();
+        }
+      }
+    });
+  }
+  const clearBtn = document.getElementById('settings-search-clear');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      clearSettingsSearch();
+      searchInput.focus();
+    });
+  }
+
+  document.getElementById('btn-settings').addEventListener('click', openSettings);
+  document.getElementById('settings-close').addEventListener('click', closeSettings);
+  document.getElementById('settings-overlay').addEventListener('click', closeSettings);
+  document.getElementById('settings-reset').addEventListener('click', async () => {
+    if (!await showConfirm('Reset Settings', 'Reset all settings to defaults?')) return;
+    const res = await fetch('/api/settings/reset', { method: 'POST' });
+    const s = await res.json();
+    currentSettings = s;
+    clearSettingsSearch();
+    populateControls(s);
+    applyTheme(s.theme);
+    applyTermSettings();
+    applyEditorSettings();
+    if (typeof updateUiMode === 'function') updateUiMode();
+    if (typeof setComboFxEnabled === 'function') setComboFxEnabled(s.comboFx);
+    if (typeof refreshAllMobileScrollbars === 'function') refreshAllMobileScrollbars();
+    if (typeof setPetFace === 'function') setPetFace(s.petFace || 'cat');
+    if (typeof setPetSpeed === 'function') setPetSpeed(s.petSpeed != null ? s.petSpeed : 3);
+    if (typeof setPetStay === 'function') setPetStay(!!s.petStay);
+    if (typeof setPetEnabled === 'function') setPetEnabled(!!s.petEnabled);
+    initClockVisibility();
+    if (typeof rebuildMobileKeyBar === 'function') rebuildMobileKeyBar();
+    applyMenuButtonMode(s.menuButtonMode);
+    applyMenuButtonGroupsVisibility();
+    if (typeof renderGpuBadge === 'function') renderGpuBadge();
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootstrapSettings);
+} else {
+  bootstrapSettings();
+}
+
+// Run immediate initial detection so the UI never stays stuck on "Detecting..."
+updateWebGLIndicator();

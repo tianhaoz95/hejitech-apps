@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+  <title>Meowtrix</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=1.25.1">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=1.25.1">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=1.25.1">
+  <link rel="shortcut icon" href="favicon.ico?v=1.25.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=1.25.1">
+  <link rel="manifest" href="manifest.json?v=1.25.1">
+  <meta name="theme-color" content="#0b0f19">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="/vendor/xterm/css/xterm.css" onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css'">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Hidden dummy login form to capture and satisfy browser/password-manager autofill heuristics -->
+  <form style="display: none;" aria-hidden="true">
+    <input type="text" name="username" autocomplete="username" tabindex="-1">
+    <input type="password" name="password" autocomplete="current-password" tabindex="-1">
+  </form>
+  <div id="app">
+    <header id="window-header" class="window-header" data-tauri-drag-region>
+      <div class="window-header-traffic-spacer"></div>
+      <div id="dynamic-island-notch" class="dynamic-island-notch" data-tauri-drag-region>
+        <span class="normal-window-title" data-tauri-drag-region>Meowtrix</span>
+        <div class="dynamic-island-pill" title="Click to collapse overlay">
+          <div class="di-left">
+            <span class="di-icon">🐾</span>
+            <span class="di-label">Meowtrix</span>
+          </div>
+          <div class="di-center">
+            <span class="di-status"><span class="di-indicator"></span><span id="di-workspace-name">Overlay</span></span>
+          </div>
+          <div class="di-right">
+            <button id="di-btn-dismiss" class="di-dismiss-btn" title="Collapse overlay (Esc)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="window-header-right" data-tauri-drag-region>
+        <button id="header-btn-collapse" class="header-action-btn" title="Dismiss overlay (Esc)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+    </header>
+    <div id="toolbar">
+      <span id="logo">
+        <span id="logo-icon">
+          <svg class="logo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="4 8 9 12 4 16" />
+            <line x1="12" y1="16" x2="20" y2="16" />
+            <path d="M10 5l2 2 2-2" stroke-width="1.6" />
+          </svg>
+        </span>
+        <span id="logo-text"><span class="logo-letter" data-index="0" title="Switch to Workspace 1">M</span><span class="logo-letter" data-index="1" title="Switch to Workspace 2">e</span><span class="logo-letter" data-index="2" title="Switch to Workspace 3">o</span><span class="logo-letter" data-index="3" title="Switch to Workspace 4">w</span><span id="logo-trix">trix</span></span>
+        <span id="logo-separator">/</span>
+        <span id="workspace-badge" title="Click to rename workspace">Workspace 1</span>
+      </span>
+      <div id="toolbar-clock" class="toolbar-clock" hidden>
+        <span class="clock-dot"></span>
+        <span class="clock-time"></span>
+      </div>
+      <div id="toolbar-actions">
+        <button id="btn-palette" aria-label="Command palette"><span class="btn-icon">⌘</span><span class="btn-text">Commands</span></button>
+        <button id="btn-menu" aria-label="More actions" class="mobile-only"><span class="btn-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg></span></button>
+        <div id="toolbar-group-extra">
+          <div class="toolbar-btn-group" id="grp-workspace">
+            <button class="group-header" type="button" aria-expanded="false"><span class="group-header-label">Workspace</span><span class="group-chevron">▸</span></button>
+            <button id="btn-prev-workspace" title="Previous workspace (Ctrl+Left or Cmd+Left)"><span class="btn-icon"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></span><span class="btn-text">Prev WS</span></button>
+            <button id="btn-next-workspace" title="Next workspace (Ctrl+Right or Cmd+Right)"><span class="btn-icon"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span><span class="btn-text">Next WS</span></button>
+          </div>
+          <div class="toolbar-btn-group" id="grp-pane">
+            <button class="group-header" type="button" aria-expanded="false"><span class="group-header-label">Pane</span><span class="group-chevron">▸</span></button>
+            <button id="btn-split-v" title="Split vertical (side by side)"><span class="btn-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="3" x2="12" y2="21"/></svg></span><span class="btn-text">Split V</span></button>
+            <button id="btn-split-h" title="Split horizontal (top/bottom)"><span class="btn-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="3" y1="12" x2="21" y2="12"/></svg></span><span class="btn-text">Split H</span></button>
+            <button id="btn-close-pane" title="Close active pane" class="btn-danger"><span class="btn-icon"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span><span class="btn-text">Close</span></button>
+          </div>
+          <div class="toolbar-btn-group" id="grp-tools">
+            <button class="group-header" type="button" aria-expanded="false"><span class="group-header-label">Tools</span><span class="group-chevron">▸</span></button>
+            <button id="btn-broadcast" title="Broadcast input to all visible terminals" aria-pressed="false"><span class="btn-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.93 19.07a10 10 0 0 1 0-14.14M19.07 4.93a10 10 0 0 1 0 14.14M7.76 16.24a6 6 0 0 1 0-8.48M16.24 7.76a6 6 0 0 1 0 8.48"/><circle cx="12" cy="12" r="2"/></svg></span><span class="btn-text">Broadcast</span></button>
+            <button id="btn-upload" title="Upload file(s) to the host (~/meowtrix)"><span class="btn-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span><span class="btn-text">Upload</span></button>
+            <button id="btn-schedule" title="Schedule an Enter key press in the active terminal (for when your quota resets)"><span class="btn-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 6 12 12 16 14"/></svg></span><span class="btn-text">Schedule</span></button>
+          </div>
+          <div class="toolbar-btn-group" id="grp-zoom">
+            <button class="group-header" type="button" aria-expanded="false"><span class="group-header-label">Zoom</span><span class="group-chevron">▸</span></button>
+            <button id="btn-zoom-out" title="Zoom out active tab (Ctrl+Shift+-)"><span class="btn-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/><line x1="8" y1="11" x2="14" y2="11"/></svg></span><span class="btn-text">Zoom −</span></button>
+            <button id="btn-zoom-reset" title="Reset zoom of active tab (Ctrl+Shift+0)"><span class="btn-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/><circle cx="11" cy="11" r="1.5"/></svg></span><span class="btn-text">Reset Zoom</span></button>
+            <button id="btn-zoom-in" title="Zoom in active tab (Ctrl+Shift++)"><span class="btn-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg></span><span class="btn-text">Zoom +</span></button>
+          </div>
+          <div class="toolbar-btn-group" id="grp-system">
+            <button class="group-header" type="button" aria-expanded="false"><span class="group-header-label">System</span><span class="group-chevron">▸</span></button>
+            <button id="btn-ports" title="Active local servers" hidden><span class="btn-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg></span><span class="btn-text">Servers (<span id="ports-count">0</span>)</span></button>
+            <button id="btn-gpu" title="GPU stats" hidden><span class="btn-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="2.5"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M9 2v3m6-3v3m-6 14v3m6-3v3M2 9h3m-3 6h3m14-6h3m-3 6h3"/></svg></span><span class="btn-text">GPU <span id="gpu-badge-text">–</span></span></button>
+            <button id="btn-fullscreen" title="Enter fullscreen"><span class="btn-icon"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg></span><span class="btn-text">Fullscreen</span></button>
+          </div>
+          <div class="toolbar-btn-group" id="grp-settings">
+            <button class="group-header" type="button" aria-expanded="false"><span class="group-header-label">Settings</span><span class="group-chevron">▸</span></button>
+            <button id="btn-settings" title="Settings"><span class="btn-icon"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></span><span class="btn-text">Settings</span></button>
+          </div>
+          <input type="file" id="upload-input" multiple hidden>
+        </div>
+      </div>
+    </div>
+    <input type="text" id="focus-trigger-prev-ws" style="position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; padding: 0; border: none; margin: 0;" aria-hidden="true" readonly tabindex="-1">
+    <div id="workspace"></div>
+    <input type="text" id="focus-trigger-next-ws" style="position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; padding: 0; border: none; margin: 0;" aria-hidden="true" readonly tabindex="-1">
+
+    <!-- Inactive session overlay -->
+    <div id="inactive-overlay" hidden>
+      <div id="inactive-box">
+        <div id="inactive-icon">🐾</div>
+        <div id="inactive-title">Session active elsewhere</div>
+        <div id="inactive-desc">Meowtrix is already open in another tab.</div>
+        <button id="btn-takeover">Move session here</button>
+      </div>
+    </div>
+
+    <!-- Settings panel -->
+    <div id="settings-overlay"></div>
+    <div id="settings-panel">
+      <div id="settings-header">
+        <span>Settings</span>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button id="settings-reset" title="Reset to defaults">Reset</button>
+          <button id="settings-close">✕</button>
+        </div>
+      </div>
+      <div id="settings-search-container">
+        <svg class="settings-search-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="settings-search" placeholder="Search settings..." autocomplete="off">
+        <button id="settings-search-clear" title="Clear search" hidden>✕</button>
+      </div>
+      <div id="settings-body">
+        <details class="settings-section" open>
+          <summary class="settings-section-title">
+            <span class="settings-chevron">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </span>
+            Appearance
+          </summary>
+          <div class="settings-section-content">
+            <div class="settings-row">
+              <label for="s-theme">Theme</label>
+              <div class="custom-select-wrap" id="theme-select-wrap">
+                <button type="button" class="custom-select-btn" id="s-theme-btn" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="custom-select-icon"></span>
+                  <span class="custom-select-label">Linear Slate (Dark)</span>
+                  <span class="custom-select-chevron"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+                </button>
+                <select id="s-theme">
+                  <!-- options populated from THEMES (app.js) by settings.js -->
+                  <option value="dark">Linear Slate (Dark)</option>
+                </select>
+              </div>
+            </div>
+            <div class="settings-row">
+              <label for="s-ui-mode">Interface mode</label>
+              <select id="s-ui-mode">
+                <option value="auto">Auto (Responsive)</option>
+                <option value="desktop">Desktop</option>
+                <option value="mobile">Mobile</option>
+              </select>
+            </div>
+            <div class="settings-row">
+              <label for="s-menu-button-mode">Menu button style</label>
+              <select id="s-menu-button-mode">
+                <option value="both">Icon and Text</option>
+                <option value="icon">Icon only</option>
+                <option value="text">Text only</option>
+              </select>
+            </div>
+            <div class="settings-row">
+              <label for="s-mobile-scrollbar">Mobile liquid scrollbar</label>
+              <input type="checkbox" id="s-mobile-scrollbar">
+            </div>
+            <div class="settings-row">
+              <label for="s-show-time">Show time in menu bar</label>
+              <input type="checkbox" id="s-show-time">
+            </div>
+            <div class="settings-row">
+              <label for="s-font-size">Terminal font size</label>
+              <div class="settings-row-right">
+                <input type="range" id="s-font-size" min="10" max="20" step="1">
+                <span id="s-font-size-val"></span>
+              </div>
+            </div>
+            <div class="settings-row">
+              <label for="s-font-family">Terminal font</label>
+              <select id="s-font-family">
+                <option value="Cascadia Code, monospace">Cascadia Code</option>
+                <option value="JetBrains Mono, monospace">JetBrains Mono</option>
+                <option value="SF Mono, Menlo, Monaco, monospace">SF Mono (macOS Native)</option>
+                <option value="Menlo, Monaco, monospace">Menlo / Monaco</option>
+                <option value="monospace">System monospace</option>
+              </select>
+            </div>
+            <div class="settings-row">
+              <div>
+                <label for="s-term-renderer">Terminal renderer</label>
+                <div id="s-webgl-indicator" class="settings-renderer-status">
+                  <span class="status-dot"></span>
+                  <span class="status-text">Detecting...</span>
+                </div>
+              </div>
+              <select id="s-term-renderer">
+                <option value="webgl">WebGL (GPU accelerated, sharpest)</option>
+                <option value="canvas">Canvas (Standard 2D)</option>
+                <option value="dom">DOM (Safe fallback)</option>
+              </select>
+            </div>
+            <div class="settings-row">
+              <label for="s-combo-fx">Keystroke combo FX</label>
+              <input type="checkbox" id="s-combo-fx">
+            </div>
+          </div>
+        </details>
+        <details class="settings-section" open>
+          <summary class="settings-section-title">
+            <span class="settings-chevron">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </span>
+            Menu Bar Buttons
+          </summary>
+          <div class="settings-section-content">
+            <div class="settings-row">
+              <label for="s-menu-workspace">Workspace actions (Prev/Next WS)</label>
+              <input type="checkbox" id="s-menu-workspace">
+            </div>
+            <div class="settings-row">
+              <label for="s-menu-pane">Pane actions (Split/Close)</label>
+              <input type="checkbox" id="s-menu-pane">
+            </div>
+            <div class="settings-row">
+              <label for="s-menu-tools">Tool actions (Broadcast/Upload/Schedule)</label>
+              <input type="checkbox" id="s-menu-tools">
+            </div>
+            <div class="settings-row">
+              <label for="s-menu-zoom">Zoom actions (In/Out/Reset)</label>
+              <input type="checkbox" id="s-menu-zoom">
+            </div>
+            <div class="settings-row">
+              <label for="s-menu-system">System actions (Servers/Fullscreen)</label>
+              <input type="checkbox" id="s-menu-system">
+            </div>
+          </div>
+        </details>
+        <details class="settings-section" open>
+          <summary class="settings-section-title">
+            <span class="settings-chevron">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </span>
+            Terminal
+          </summary>
+          <div class="settings-section-content">
+            <div class="settings-row">
+              <label for="s-shell">Shell</label>
+              <input type="text" id="s-shell" placeholder="/bin/zsh">
+            </div>
+            <div class="settings-row">
+              <label for="s-scrollback">Scrollback lines</label>
+              <select id="s-scrollback">
+                <option value="1000">1,000</option>
+                <option value="5000">5,000</option>
+                <option value="10000">10,000</option>
+                <option value="50000">50,000</option>
+              </select>
+            </div>
+          </div>
+        </details>
+        <details class="settings-section" id="sec-performance" open>
+          <summary class="settings-section-title">
+            <span class="settings-chevron">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </span>
+            Performance
+          </summary>
+          <div class="settings-section-content">
+            <div class="settings-row">
+              <label for="s-output-batching">Batch terminal output</label>
+              <input type="checkbox" id="s-output-batching">
+            </div>
+            <p class="settings-note">Groups floods of output (builds, logs, streaming agents) into fewer messages. Typing and prompts are never batched; during a flood, output may arrive up to 10&nbsp;ms later.</p>
+            <div class="settings-row">
+              <label for="s-resize-debounce">Smooth pane resizing</label>
+              <input type="checkbox" id="s-resize-debounce">
+            </div>
+            <p class="settings-note">Tells the shell about a new size once you pause dragging (~80&nbsp;ms) instead of every frame, so full-screen apps redraw once.</p>
+            <div class="settings-row">
+              <label for="s-port-poll">Detect new dev-server ports every</label>
+              <select id="s-port-poll">
+                <option value="2">2 seconds</option>
+                <option value="5">5 seconds</option>
+                <option value="10">10 seconds</option>
+                <option value="30">30 seconds</option>
+                <option value="60">60 seconds</option>
+              </select>
+            </div>
+            <p class="settings-note">Scanning pauses while no Meowtrix page is visible.</p>
+          </div>
+        </details>
+        <details class="settings-section" open>
+          <summary class="settings-section-title">
+            <span class="settings-chevron">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </span>
+            Code Editor
+          </summary>
+          <div class="settings-section-content">
+            <div class="settings-row">
+              <label for="s-editor-minimap">Show minimap</label>
+              <input type="checkbox" id="s-editor-minimap">
+            </div>
+          </div>
+        </details>
+        <details class="settings-section" open>
+          <summary class="settings-section-title">
+            <span class="settings-chevron">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </span>
+            Companion
+          </summary>
+          <div class="settings-section-content">
+            <div class="settings-row">
+              <label for="s-pet">Chat pet</label>
+              <input type="checkbox" id="s-pet">
+            </div>
+            <div class="settings-row">
+              <label for="s-pet-face">Pet look</label>
+              <select id="s-pet-face">
+                <!-- options populated from PET_FACES (pet.js) by settings.js -->
+              </select>
+            </div>
+            <div class="settings-row">
+              <label for="s-pet-stay">Stay put (drag to place)</label>
+              <input type="checkbox" id="s-pet-stay">
+            </div>
+            <div class="settings-row">
+              <label for="s-pet-speed">Movement speed</label>
+              <div class="settings-row-right">
+                <input type="range" id="s-pet-speed" min="1" max="10" step="1">
+                <span id="s-pet-speed-val"></span>
+              </div>
+            </div>
+            <p class="settings-note" id="s-pet-note" hidden></p>
+          </div>
+        </details>
+        <details class="settings-section" open>
+          <summary class="settings-section-title">
+            <span class="settings-chevron">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </span>
+            Browser & Local Servers
+          </summary>
+          <div class="settings-section-content">
+            <div class="settings-row">
+              <label for="s-homepage">Default homepage</label>
+              <input type="text" id="s-homepage" placeholder="Blank = start page">
+            </div>
+            <div class="settings-row">
+              <label for="s-browser-engine">Browser tabs (desktop app)</label>
+              <select id="s-browser-engine">
+                <option value="auto">Native webview (recommended)</option>
+                <option value="proxy">Embedded proxy</option>
+              </select>
+            </div>
+            <div class="settings-row">
+              <label for="s-hostbrowser-quality">Host browser stream quality</label>
+              <select id="s-hostbrowser-quality">
+                <option value="50">Low (faster over slow links)</option>
+                <option value="70">Balanced</option>
+                <option value="85">High</option>
+              </select>
+            </div>
+            <div class="settings-row">
+              <label for="s-hostbrowser-path">Host browser executable</label>
+              <input type="text" id="s-hostbrowser-path" placeholder="Blank = auto-detect Chrome / Chromium">
+            </div>
+            <div class="settings-row">
+              <label for="s-local-server-ip">Local server IP mapping</label>
+              <select id="s-local-server-ip">
+                <option value="127.0.0.1">127.0.0.1 (default)</option>
+                <option value="host.docker.internal">host.docker.internal (Docker)</option>
+              </select>
+            </div>
+          </div>
+        </details>
+        <details class="settings-section" open>
+          <summary class="settings-section-title">
+            <span class="settings-chevron">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </span>
+            AI & LLM Providers
+          </summary>
+          <div class="settings-section-content">
+            <div class="settings-row">
+              <label for="s-ai-engine">Default Engine</label>
+              <select id="s-ai-engine">
+                <option value="mistralrs">⚡ Mistral.rs (Native Rust on Metal/CUDA/CPU)</option>
+                <option value="ollama">🦙 Ollama (Local bridge / Custom host)</option>
+                <option value="cloud">☁️ Cloud / OpenAI-compatible endpoint</option>
+              </select>
+            </div>
+            
+            <div style="font-weight: 600; font-size: 11.5px; color: var(--accent); margin-top: 10px; margin-bottom: 2px;">Cloud / OpenAI-Compatible Endpoint</div>
+            <div class="settings-row">
+              <label for="s-ai-cloud-api-key">API Key</label>
+              <input type="password" id="s-ai-cloud-api-key" placeholder="sk-..." autocomplete="off">
+            </div>
+            <div class="settings-row">
+              <label for="s-ai-cloud-base-url">Base URL</label>
+              <input type="text" id="s-ai-cloud-base-url" placeholder="https://api.openai.com/v1">
+            </div>
+            <div class="settings-row">
+              <label for="s-ai-cloud-model">Model Name</label>
+              <input type="text" id="s-ai-cloud-model" placeholder="gpt-4o, claude-3-5-sonnet, deepseek-chat">
+            </div>
+
+            <div style="font-weight: 600; font-size: 11.5px; color: var(--accent); margin-top: 14px; margin-bottom: 2px;">Ollama Provider</div>
+            <div class="settings-row">
+              <label for="s-ai-ollama-url">Ollama Host / URL</label>
+              <input type="text" id="s-ai-ollama-url" placeholder="http://127.0.0.1:11434">
+            </div>
+            <div class="settings-row">
+              <label for="s-ai-ollama-model">Default Model</label>
+              <input type="text" id="s-ai-ollama-model" placeholder="e.g. qwen2.5-coder, llama3.2">
+            </div>
+            <div style="display: flex; justify-content: flex-end; margin-top: 6px;">
+              <button id="btn-test-ollama" type="button" style="padding: 5px 10px; border-radius: 7px; background: var(--bg4); border: 1px solid var(--border); color: var(--text); font-size: 11.5px; cursor: pointer;">Test Ollama Connection</button>
+            </div>
+            <div id="s-ollama-status" class="settings-note" style="margin-top: 4px; display: none;"></div>
+          </div>
+        </details>
+        <details class="settings-section" open>
+          <summary class="settings-section-title">
+            <span class="settings-chevron">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </span>
+            Saved Commands
+          </summary>
+          <div class="settings-section-content">
+            <div id="s-commands-list" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; max-height: 150px; overflow-y: auto; padding-right: 4px;"></div>
+            <div style="display: flex; flex-direction: column; align-items: stretch; gap: 8px;">
+              <div style="display: flex; gap: 6px;">
+                <input type="text" id="s-command-id" placeholder="ID (e.g. status)" style="flex: 1; min-width: 0; background: var(--bg3); border: 1px solid var(--border3); color: var(--text); border-radius: 9px; padding: 7px 10px; font-size: 12.5px; outline: none; font-family: inherit;">
+                <input type="text" id="s-command-cmd" placeholder="Command" style="flex: 2; min-width: 0; background: var(--bg3); border: 1px solid var(--border3); color: var(--text); border-radius: 9px; padding: 7px 10px; font-size: 12.5px; outline: none; font-family: inherit;">
+              </div>
+              <button id="btn-add-command" style="align-self: flex-end; padding: 6px 12px; border-radius: 8px; background: var(--accent); color: #fff; border: none; cursor: pointer; font-size: 12px; font-weight: 600; font-family: inherit;">Add Command</button>
+            </div>
+          </div>
+        </details>
+        <details class="settings-section" open>
+          <summary class="settings-section-title">
+            <span class="settings-chevron">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </span>
+            Mobile Utility Keys
+          </summary>
+          <div class="settings-section-content">
+            <div id="s-mobile-keys-list" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; max-height: 200px; overflow-y: auto; padding-right: 4px;"></div>
+            <div style="display: flex; flex-direction: column; align-items: stretch; gap: 8px;">
+              <div style="display: flex; gap: 6px;">
+                <input type="text" id="s-mobile-key-label" placeholder="Label (e.g. Ctrl+C)" style="flex: 1; min-width: 0; background: var(--bg3); border: 1px solid var(--border3); color: var(--text); border-radius: 9px; padding: 7px 10px; font-size: 12.5px; outline: none; font-family: inherit;">
+                <select id="s-mobile-key-kind" style="flex: 1; min-width: 0; background: var(--bg3); border: 1px solid var(--border3); color: var(--text); border-radius: 9px; padding: 7px 10px; font-size: 12.5px; outline: none; font-family: inherit; cursor: pointer;">
+                  <option value="send">Send sequence</option>
+                  <option value="mod">Modifier (sticky)</option>
+                  <option value="combo">Combo (e.g. ctrl+c)</option>
+                  <option value="hide">Hide Keyboard</option>
+                </select>
+                <input type="text" id="s-mobile-key-payload" placeholder="Payload (e.g. ctrl+c)" style="flex: 1.5; min-width: 0; background: var(--bg3); border: 1px solid var(--border3); color: var(--text); border-radius: 9px; padding: 7px 10px; font-size: 12.5px; outline: none; font-family: inherit;">
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <button id="btn-reset-mobile-keys" style="padding: 6px 12px; border-radius: 8px; background: var(--bg4); color: var(--text2); border: 1px solid var(--border); cursor: pointer; font-size: 12px; font-weight: 600; font-family: inherit;">Reset Keys</button>
+                <button id="btn-add-mobile-key" style="padding: 6px 12px; border-radius: 8px; background: var(--accent); color: #fff; border: none; cursor: pointer; font-size: 12px; font-weight: 600; font-family: inherit;">Add Key</button>
+              </div>
+            </div>
+          </div>
+        </details>
+        <details class="settings-section" open>
+          <summary class="settings-section-title">
+            <span class="settings-chevron">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </span>
+            Updates
+          </summary>
+          <div class="settings-section-content">
+            <div class="settings-row">
+              <label for="s-auto-update">Check for updates automatically</label>
+              <input type="checkbox" id="s-auto-update">
+            </div>
+            <div class="settings-row">
+              <label for="s-http-proxy">HTTP Proxy (optional)</label>
+              <input type="text" id="s-http-proxy" placeholder="e.g. http://127.0.0.1:7890">
+            </div>
+            <div class="settings-row">
+              <label for="s-https-proxy">HTTPS Proxy (optional)</label>
+              <input type="text" id="s-https-proxy" placeholder="e.g. http://127.0.0.1:7890">
+            </div>
+            <div class="settings-row">
+              <label>Manual check</label>
+              <div class="settings-row-right">
+                <span id="s-update-status" style="font-size: 11px; color: var(--text3); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
+                <button id="btn-check-update">Check Now</button>
+              </div>
+            </div>
+            <div class="settings-row" id="s-restart-row" style="display: none;">
+              <label>Restart app</label>
+              <div class="settings-row-right">
+                <span style="font-size: 11px; color: var(--text3);">Running as a service</span>
+                <button id="btn-restart-app">Restart now</button>
+              </div>
+            </div>
+          </div>
+        </details>
+        <details class="settings-section">
+          <summary class="settings-section-title">
+            <span class="settings-chevron">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </span>
+            Remote Web Access
+          </summary>
+          <div class="settings-section-content">
+            <div class="settings-row">
+              <label for="s-network-serving">Enable LAN / Web Serving</label>
+              <input type="checkbox" id="s-network-serving">
+            </div>
+            <p class="settings-note">Allows accessing this workspace from other devices (phone, iPad, laptop) on your local network.</p>
+            <div class="settings-row" id="s-lan-urls-row">
+              <label>LAN Access URLs</label>
+              <div class="settings-row-right">
+                <span id="s-lan-url-display" style="font-size: 11px; color: var(--text3); font-family: monospace;">127.0.0.1:9123</span>
+                <button id="btn-copy-lan-url" style="font-size: 11px;">Copy</button>
+              </div>
+            </div>
+          </div>
+        </details>
+        <details class="settings-section">
+          <summary class="settings-section-title">
+            <span class="settings-chevron">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </span>
+            GPU Monitor
+          </summary>
+          <div class="settings-section-content">
+            <div class="settings-row">
+              <label for="s-gpu-monitor">Show GPU stats (nvidia-smi)</label>
+              <input type="checkbox" id="s-gpu-monitor">
+            </div>
+            <p class="settings-note">Requires an NVIDIA GPU and <code>nvidia-smi</code> on the host. No effect otherwise.</p>
+          </div>
+        </details>
+        <details class="settings-section" id="sec-quick-overlay" open>
+          <summary class="settings-section-title">
+            <span class="settings-chevron">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </span>
+            Quick Overlay (Dynamic Island)
+          </summary>
+          <div class="settings-section-content">
+            <div class="settings-row">
+              <label for="s-quick-overlay-enabled">Enable Quick Overlay</label>
+              <input type="checkbox" id="s-quick-overlay-enabled">
+            </div>
+            <p class="settings-note">Summon Meowtrix anywhere with a global shortcut as a floating overlay from the MacBook notch / Dynamic Island.</p>
+
+            <div class="settings-row">
+              <label for="s-quick-overlay-shortcut">Global Shortcut</label>
+              <div class="settings-row-right">
+                <input type="text" id="s-quick-overlay-shortcut" placeholder="Option+Space" style="width: 140px; text-align: center; font-family: monospace; font-size: 12px; padding: 4px 8px;">
+              </div>
+            </div>
+            <div class="settings-row" style="margin-top: -4px;">
+              <label style="font-size: 11px; color: var(--text3);">Presets</label>
+              <div class="settings-row-right" style="gap: 4px; flex-wrap: wrap;">
+                <button type="button" class="btn-preset-shortcut" data-sc="Option+Space" style="font-size: 11px; padding: 2px 7px;">⌥ Space</button>
+                <button type="button" class="btn-preset-shortcut" data-sc="CommandOrControl+Shift+Space" style="font-size: 11px; padding: 2px 7px;">⌘⇧ Space</button>
+                <button type="button" class="btn-preset-shortcut" data-sc="Control+Alt+Space" style="font-size: 11px; padding: 2px 7px;">⌃⌥ Space</button>
+                <button type="button" class="btn-preset-shortcut" data-sc="CommandOrControl+Shift+M" style="font-size: 11px; padding: 2px 7px;">⌘⇧ M</button>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <label for="s-quick-overlay-autoclaim">Auto-claim session on summon</label>
+              <input type="checkbox" id="s-quick-overlay-autoclaim">
+            </div>
+            <p class="settings-note">Automatically makes this window the active session on summon so you can type immediately without clicking "Move session here".</p>
+
+            <div class="settings-row">
+              <label for="s-quick-overlay-dismiss-blur">Dismiss on blur (click outside)</label>
+              <input type="checkbox" id="s-quick-overlay-dismiss-blur">
+            </div>
+
+            <div class="settings-row">
+              <label for="s-quick-overlay-animation">Dynamic Island expansion animation</label>
+              <input type="checkbox" id="s-quick-overlay-animation">
+            </div>
+            <div class="settings-row">
+              <label for="s-quick-overlay-animation-style">Animation style</label>
+              <div class="settings-row-right" style="gap: 6px;">
+                <select id="s-quick-overlay-animation-style"></select>
+                <button type="button" id="s-quick-overlay-animation-preview" style="font-size: 11px; padding: 3px 9px;">Preview</button>
+              </div>
+            </div>
+            <p class="settings-note">How the overlay appears from the notch when called out by the global shortcut (and collapses back when dismissed).</p>
+
+            <div class="settings-row">
+              <label for="s-quick-overlay-opacity">Overlay Opacity</label>
+              <select id="s-quick-overlay-opacity">
+                <option value="1">100% (Solid)</option>
+                <option value="0.95">95%</option>
+                <option value="0.9">90%</option>
+                <option value="0.85">85%</option>
+                <option value="0.8">80%</option>
+                <option value="0.75">75%</option>
+                <option value="0.7">70%</option>
+                <option value="0.6">60%</option>
+              </select>
+            </div>
+            <p class="settings-note">Window opacity when called out by global shortcut as an overlay. Default is solid (100%).</p>
+
+            <div class="settings-row">
+              <label for="s-quick-overlay-width">Overlay Size</label>
+              <div class="settings-row-right" style="gap: 4px;">
+                <input type="number" id="s-quick-overlay-width" min="800" max="8000" step="10" placeholder="1120" aria-label="Overlay width" style="width: 72px; text-align: center; font-size: 12px; padding: 4px 6px;">
+                <span style="color: var(--text3);">×</span>
+                <input type="number" id="s-quick-overlay-height" min="500" max="8000" step="10" placeholder="700" aria-label="Overlay height" style="width: 72px; text-align: center; font-size: 12px; padding: 4px 6px;">
+              </div>
+            </div>
+            <div class="settings-row" style="margin-top: -4px;">
+              <label style="font-size: 11px; color: var(--text3);">Presets</label>
+              <div class="settings-row-right" style="gap: 4px; flex-wrap: wrap;">
+                <button type="button" class="btn-preset-overlay-size" data-w="960" data-h="600" style="font-size: 11px; padding: 2px 7px;">Compact</button>
+                <button type="button" class="btn-preset-overlay-size" data-w="1120" data-h="700" style="font-size: 11px; padding: 2px 7px;">Default</button>
+                <button type="button" class="btn-preset-overlay-size" data-w="1440" data-h="900" style="font-size: 11px; padding: 2px 7px;">Large</button>
+              </div>
+            </div>
+            <p class="settings-note">Default window size (width × height, in points) when called out by global shortcut. Minimum 800 × 500; capped to the screen it opens on. Applies on the next summon.</p>
+          </div>
+        </details>
+        <details class="settings-section">
+          <summary class="settings-section-title">
+            <span class="settings-chevron">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </span>
+            About
+          </summary>
+          <div class="settings-section-content">
+            <div class="settings-row">
+              <label>Meowtrix</label>
+              <span id="s-about-version" style="font-size: 12px; color: var(--text3);">Version —</span>
+            </div>
+            <div class="settings-row">
+              <label>Release notes</label>
+              <button type="button" id="s-whats-new" onclick="closeSettings(); openWhatsNew();">What's new</button>
+            </div>
+            <div class="about-doc" id="about-legal-content">
+              <!-- Dynamically populated from legal.json -->
+            </div>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+  <script src="meowtrix-version.js"></script>
+  <script src="/vendor/feedbackkit-web/feedbackkit.iife.js"></script>
+  <script>window.FeedbackKit || document.write('<script src="https://cdn.jsdelivr.net/npm/feedbackkit-web/dist/feedbackkit.iife.js"><\/script>')</script>
+  <script src="feedback.js"></script>
+  <!-- Vendor libs are served from node_modules (no CDN round-trip, works offline); the CDN is only a fallback.
+       The fallback must be an inline `window.X || document.write(…)` guard, not `onerror="this.src=…"`: a
+       script element never re-runs after its src changes, so that form silently leaves the global undefined.
+       It matters whenever the server lags public/ (e.g. a pulled-but-not-restarted server without the
+       /vendor routes), and without xterm no terminal can open. -->
+  <script src="/vendor/xterm/lib/xterm.js"></script>
+  <script>window.Terminal || document.write('<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"><\/script>')</script>
+  <script src="/vendor/xterm-addon-fit/xterm-addon-fit.js"></script>
+  <script>window.FitAddon || document.write('<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"><\/script>')</script>
+  <script src="/vendor/xterm-addon-search/addon-search.js"></script>
+  <script>window.SearchAddon || document.write('<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-search@0.15.0/lib/addon-search.js"><\/script>')</script>
+  <script src="/vendor/xterm-addon-web-links/addon-web-links.js"></script>
+  <script>window.WebLinksAddon || document.write('<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-web-links@0.12.0/lib/addon-web-links.min.js"><\/script>')</script>
+  <script src="/vendor/xterm-addon-webgl/xterm-addon-webgl.js"></script>
+  <script>window.WebglAddon || document.write('<script src="https://cdn.jsdelivr.net/npm/xterm-addon-webgl@0.16.0/lib/xterm-addon-webgl.js"><\/script>')</script>
+  <script src="/vendor/marked/marked.umd.js"></script>
+  <script>window.marked || document.write('<script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"><\/script>')</script>
+  <script src="demo.js"></script>
+  <script src="ws.js"></script>
+  <script src="agent.js"></script>
+  <script src="pane.js"></script>
+  <script src="editor.js"></script>
+  <script src="codesign.js"></script>
+  <script src="hostbrowser.js"></script>
+  <script src="nativebrowser.js"></script>
+  <script src="layout.js"></script>
+  <script src="app.js"></script>
+  <script src="mobile.js"></script>
+  <script src="overlay-animations.js"></script>
+  <script src="settings.js"></script>
+  <script src="overlay.js"></script>
+  <script src="palette.js"></script>
+  <script src="schedule.js"></script>
+  <script src="update.js"></script>
+  <script src="whats-new.js"></script>
+  <script src="mtx.js"></script>
+  <script src="gpu.js"></script>
+  <script src="combo.js"></script>
+  <script src="pet.js"></script>
+</body>
+</html>

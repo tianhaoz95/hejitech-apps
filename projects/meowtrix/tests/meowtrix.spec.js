@@ -1,0 +1,788 @@
+const { test, expect } = require('@playwright/test');
+
+test.describe('Meowtrix E2E Tests', () => {
+  test.beforeEach(async ({ page, request }) => {
+    // Reset settings to default before each test run
+    for (let i = 0; i < 3; i++) {
+      try {
+        await request.post('/api/settings/reset');
+        break;
+      } catch (err) {
+        if (i === 2) throw err;
+        await new Promise(r => setTimeout(r, 200));
+      }
+    }
+    // Reset layout state to a clean slate before each test run
+    for (let i = 0; i < 3; i++) {
+      try {
+        await request.post('/api/session', {
+          data: {
+            workspaces: [
+              { name: 'Workspace 1', layout: null },
+              { name: 'Workspace 2', layout: null },
+              { name: 'Workspace 3', layout: null },
+              { name: 'Workspace 4', layout: null }
+            ],
+            activeWorkspaceIndex: 0
+          }
+        });
+        break;
+      } catch (err) {
+        if (i === 2) throw err;
+        await new Promise(r => setTimeout(r, 200));
+      }
+    }
+
+
+    // Inject mock for LanguageModel/Prompt API to enable chat pet in settings
+    await page.addInitScript(() => {
+      // Mock the browser Prompt API for Gemini Nano
+      window.LanguageModel = {
+        availability: async () => 'available'
+      };
+      
+      // Also mock window.ai / window.model if any other files check it
+      if (!window.ai) {
+        window.ai = {
+          languageModel: {
+            availability: async () => 'readily'
+          }
+        };
+      }
+    });
+
+    // Open the app page
+    await page.goto('/');
+
+    // Check if the inactive session overlay appears and claim the session
+    const takeoverBtn = page.locator('#btn-takeover');
+    try {
+      await takeoverBtn.waitFor({ state: 'visible', timeout: 1500 });
+      await takeoverBtn.click();
+    } catch (e) {}
+
+    // Wait for the workspace to be visible and ready
+    await expect(page.locator('#workspace')).toBeVisible();
+  });
+
+  test('should load with correct title and logo', async ({ page }) => {
+    // Check page title
+    await expect(page).toHaveTitle(/Meowtrix/);
+
+    // Verify logo is visible
+    const logoText = page.locator('#logo-text');
+    await expect(logoText).toContainText('Meowtrix');
+  });
+
+  test('should split and close panes', async ({ page }) => {
+    const paneLocator = page.locator('.pane');
+    
+    // Initially, there should be exactly 1 pane
+    await expect(paneLocator).toHaveCount(1);
+
+    // Click vertical split button
+    await page.locator('#btn-split-v').click();
+    // Wait and verify we have 2 panes
+    await expect(paneLocator).toHaveCount(2);
+
+    // Click horizontal split button
+    await page.locator('#btn-split-h').click();
+    // Wait and verify we have 3 panes
+    await expect(paneLocator).toHaveCount(3);
+
+    // Close the active pane
+    await page.locator('#btn-close-pane').click();
+    // Verify count goes down to 2
+    await expect(paneLocator).toHaveCount(2);
+
+    // Close the active pane again
+    await page.locator('#btn-close-pane').click();
+    // Verify count goes back to 1
+    await expect(paneLocator).toHaveCount(1);
+  });
+
+  test('a maximized pane in a nested split fills the window', async ({ page }) => {
+    // Split side by side, then split the right column top/bottom: the active
+    // pane now sits two split containers deep.
+    await page.locator('#btn-split-v').click();
+    await page.locator('#btn-split-h').click();
+    await expect(page.locator('.pane')).toHaveCount(3);
+    await page.evaluate(() => toggleMaximizePane(activePane));
+    const pane = page.locator('.pane.maximized');
+    await expect(pane).toHaveCount(1);
+    const box = await pane.boundingBox();
+    const vp = page.viewportSize();
+    expect(box.x).toBe(0);
+    expect(box.y).toBe(0);
+    expect(Math.round(box.width)).toBe(vp.width);
+    expect(Math.round(box.height)).toBe(vp.height);
+  });
+
+  test('should support creating different types of tabs via picker', async ({ page }) => {
+    const addBtn = page.locator('.tab-add').first();
+    const tabLocator = page.locator('.tab');
+
+    // 1. Create Terminal Tab
+    await addBtn.click();
+    const picker = page.locator('.tab-type-picker');
+    await expect(picker).toBeVisible();
+
+    // Select Terminal
+    await picker.locator('button:has-text("Terminal")').click();
+    await expect(picker).not.toBeVisible();
+    
+    // Check tab list contains a new terminal tab (denoted by standard xterm classes or content)
+    await expect(tabLocator).toContainText(['Terminal']);
+
+    // 2. Create Browser Tab
+    await addBtn.click();
+    await expect(picker).toBeVisible();
+    await picker.getByRole('button', { name: 'Browser', exact: true }).click();
+    await expect(picker).not.toBeVisible();
+
+    // Check we have browser tab and an iframe navigation bar is loaded
+    await expect(tabLocator).toContainText(['Terminal', 'New Tab']);
+    const browserUrlInput = page.locator('input.browser-url').first();
+    await expect(browserUrlInput).toBeVisible();
+
+    // 3. Create Code Editor Tab
+    await addBtn.click();
+    await expect(picker).toBeVisible();
+    await picker.locator('button:has-text("Code editor")').click();
+    await expect(picker).not.toBeVisible();
+
+    // Check that folder prompt dialog is visible
+    const folderPrompt = page.locator('.folder-prompt-overlay');
+    await expect(folderPrompt).toBeVisible();
+
+    // Enter a workspace path and confirm
+    await folderPrompt.locator('.folder-prompt-input').fill('/workspace');
+    await folderPrompt.locator('button:has-text("Open")').click();
+
+    // Verify it closed and code tab was created
+    await expect(folderPrompt).not.toBeVisible();
+    await expect(tabLocator).toContainText(['Terminal', 'New Tab', 'workspace']);
+  });
+
+  test('should configure settings, themes, and pet companion', async ({ page }) => {
+    const settingsPanel = page.locator('#settings-panel');
+    
+    // Open settings panel
+    await page.locator('#btn-settings').click();
+    await expect(settingsPanel).toBeVisible();
+    await page.waitForTimeout(300); // Wait for sliding animation to complete
+
+    // 1. Toggle Chat Pet
+    const petCheckbox = page.locator('#s-pet');
+    const petElement = page.locator('#pet');
+
+    // Store initial checked state
+    const isChecked = await petCheckbox.isChecked();
+    
+    if (isChecked) {
+      // Toggle off
+      await petCheckbox.click();
+      await expect(petElement).not.toBeVisible();
+      // Toggle back on
+      await petCheckbox.click();
+      await expect(petElement).toBeVisible();
+    } else {
+      // Toggle on
+      await petCheckbox.click();
+      await expect(petElement).toBeVisible();
+      // Toggle back off
+      await petCheckbox.click();
+      await expect(petElement).not.toBeVisible();
+    }
+
+    // 2. Switch theme and verify DOM updates
+    const themeSelect = page.locator('#s-theme');
+    const htmlElement = page.locator('html');
+
+    // Switch to Light (Daylight)
+    await themeSelect.selectOption('light');
+    await expect(htmlElement).toHaveAttribute('data-theme', 'light');
+
+    // Switch to OLED (Retina OLED Jet Black)
+    await themeSelect.selectOption('oled');
+    await expect(htmlElement).toHaveAttribute('data-theme', 'oled');
+
+    // Switch to High Contrast Light
+    await themeSelect.selectOption('contrast-light');
+    await expect(htmlElement).toHaveAttribute('data-theme', 'contrast-light');
+
+    // Switch back to Midnight (dark)
+    await themeSelect.selectOption('dark');
+    await expect(htmlElement).toHaveAttribute('data-theme', 'dark');
+
+    // Switch to Auto and verify it resolves to either dark or light
+    await themeSelect.selectOption('auto');
+    const resolvedTheme = await htmlElement.getAttribute('data-theme');
+    expect(['dark', 'light']).toContain(resolvedTheme);
+
+    // Verify custom styled theme dropdown button and Linear Precision vector icons
+    const themeBtn = page.locator('#s-theme-btn');
+    await expect(themeBtn).toBeVisible();
+    await expect(themeBtn.locator('.custom-select-icon svg')).toBeVisible();
+
+    // Open custom dropdown menu
+    await themeBtn.click();
+    const themeMenu = page.locator('.custom-select-menu');
+    await expect(themeMenu).toBeVisible();
+    await expect(themeMenu.locator('.custom-select-item')).toHaveCount(5);
+    await expect(themeMenu.locator('.custom-select-item-icon svg')).toHaveCount(5);
+
+    // Select OLED from the custom dropdown menu
+    const oledItem = themeMenu.locator('.custom-select-item', { hasText: 'Retina OLED' });
+    await oledItem.click();
+    await expect(themeMenu).not.toBeVisible();
+    await expect(htmlElement).toHaveAttribute('data-theme', 'oled');
+    await expect(themeBtn.locator('.custom-select-label')).toContainText('Retina OLED');
+
+    // Verify WebGL renderer indicator in settings
+    const webglIndicator = page.locator('#s-webgl-indicator');
+    await expect(webglIndicator).toBeVisible();
+    await expect(webglIndicator).not.toContainText('Detecting...');
+    await expect(webglIndicator).toContainText(/WebGL/);
+
+    const rendererSelect = page.locator('#s-term-renderer');
+    await expect(rendererSelect).toBeVisible();
+
+    // Switch to Canvas 2D and verify indicator reflects it
+    await rendererSelect.selectOption('canvas');
+    await expect(webglIndicator).toContainText('Canvas 2D active');
+
+    // Switch to DOM and verify indicator reflects it
+    await rendererSelect.selectOption('dom');
+    await expect(webglIndicator).toContainText('DOM active');
+
+    // Switch back to WebGL
+    await rendererSelect.selectOption('webgl');
+    await expect(webglIndicator).toContainText(/WebGL/);
+
+    // Close settings
+    await page.locator('#settings-close').dispatchEvent('click');
+    await expect(settingsPanel).not.toBeVisible();
+  });
+
+  test("shows What's new once after an upgrade, then reopens from the palette", async ({ page, request }) => {
+    const sheet = page.locator('#whats-new');
+    // A reset counts the running version as seen, so nothing pops up.
+    await expect(sheet).toHaveCount(0);
+
+    // Pretend the last version this user saw is an older release.
+    await request.post('/api/settings', { data: { whatsNewSeen: '1.0.0' } });
+    await page.reload();
+    await expect(sheet).toBeVisible();
+    await expect(sheet.locator('.wn-card').first()).toBeVisible();
+    // Features are the main stage; fixes sit behind a footer button.
+    await expect(sheet.locator('.wn-fixes')).toHaveCount(0);
+    const fixesToggle = sheet.locator('.wn-fixes-toggle');
+    await expect(fixesToggle).toBeVisible();
+    await expect(fixesToggle).toContainText('Fixes & improvements');
+    await fixesToggle.click();
+    await expect(sheet.locator('.wn-fixes li').first()).toBeVisible();
+    await expect(sheet.locator('.wn-card')).toHaveCount(0);
+    await expect(sheet.locator('#wn-title')).toHaveText('Fixes & improvements');
+    await fixesToggle.click(); // back to features
+    await expect(sheet.locator('.wn-card').first()).toBeVisible();
+    // A fixes-only release shows just its fixes list.
+    await sheet.locator('.wn-versions button', { hasText: '1.33.3' }).click();
+    await expect(sheet.locator('.wn-fixes li')).toContainText(/corner of the pane/);
+    await expect(fixesToggle).toBeHidden();
+    // Timelines animate a live counter for each lane.
+    await sheet.locator('.wn-versions button', { hasText: '1.33.0' }).click();
+    await expect(sheet.locator('.wn-visual-timeline').first()).toBeVisible();
+
+    await sheet.locator('.wn-done').click();
+    await expect(sheet).toHaveCount(0);
+    const version = await page.evaluate(() => window.MEOWTRIX_VERSION);
+    await expect.poll(async () => (await (await request.get('/api/settings')).json()).whatsNewSeen).toBe(version);
+
+    // Seen: a reload stays quiet…
+    await page.reload();
+    await expect(page.locator('#workspace')).toBeVisible();
+    await page.waitForTimeout(800);
+    await expect(sheet).toHaveCount(0);
+
+    // …but the palette brings it back, and "Try it" jumps to the feature.
+    await page.locator('#btn-palette').click();
+    await page.locator('#palette-input').fill("What's new");
+    await expect(page.locator('.palette-item.active')).toContainText("What's new");
+    await page.keyboard.press('Enter');
+    await expect(sheet).toBeVisible();
+    await sheet.locator('.wn-versions button', { hasText: '1.33.0' }).click();
+    await sheet.locator('.wn-try', { hasText: 'Performance settings' }).click();
+    await expect(sheet).toHaveCount(0);
+    await expect(page.locator('#settings-panel')).toHaveClass(/open/);
+    await expect(page.locator('#s-output-batching')).toBeVisible();
+  });
+
+  test("an upgrade with only fixes shows a toast, not the sheet", async ({ page, request }) => {
+    const sheet = page.locator('#whats-new');
+    const version = await page.evaluate(() => window.MEOWTRIX_VERSION);
+    // Serve notes where everything after 1.0.0 is fixes-only.
+    await page.route('**/whats-new.json', r => r.fulfill({ json: { releases: [
+      { version, date: '2026-10-15', fixes: ['Fixed the thing that bugged you.'] },
+      { version: '1.0.0', date: '2026-01-01', title: 'Old', highlights: [{ title: 'Old feature', body: '…' }] },
+    ] } }));
+    await request.post('/api/settings', { data: { whatsNewSeen: '1.0.0' } });
+    await page.reload();
+    const toast = page.locator('#mtx-toast');
+    await expect(toast).toBeVisible();
+    await expect(toast).toContainText('1 fix');
+    await expect(sheet).toHaveCount(0);
+    await expect.poll(async () => (await (await request.get('/api/settings')).json()).whatsNewSeen).toBe(version);
+    await toast.click();
+    await expect(sheet).toBeVisible();
+    await expect(sheet.locator('.wn-fixes li')).toHaveText('Fixed the thing that bugged you.');
+  });
+
+  test('should control app commands via the keyboard command palette', async ({ page }) => {
+    const btnPalette = page.locator('#btn-palette');
+    const paletteOverlay = page.locator('#palette-overlay');
+    const paletteInput = page.locator('#palette-input');
+    const tabLocator = page.locator('.tab');
+
+    // Open palette
+    await btnPalette.click();
+    await expect(paletteOverlay).toBeVisible();
+
+    // Search and run 'New terminal tab'
+    await paletteInput.fill('New terminal tab');
+    await expect(page.locator('.palette-item.active')).toContainText('New terminal tab');
+    await page.keyboard.press('Enter');
+
+    // Verify palette closed and tab was added
+    await expect(paletteOverlay).not.toBeVisible();
+    await expect(tabLocator).toContainText(['Terminal']);
+
+    // Open palette again and run vertical split
+    await btnPalette.click();
+    await expect(paletteOverlay).toBeVisible();
+    await paletteInput.fill('Split pane vertically');
+    await expect(page.locator('.palette-item.active')).toContainText('Split pane vertically');
+    await page.keyboard.press('Enter');
+
+    // Verify layout is split into two panes
+    await expect(paletteOverlay).not.toBeVisible();
+    await expect(page.locator('.pane')).toHaveCount(2);
+
+    // Open palette and show the keyboard shortcuts overlay
+    const shortcutsOverlay = page.locator('#shortcuts-overlay');
+    await btnPalette.click();
+    await expect(paletteOverlay).toBeVisible();
+    await paletteInput.fill('Show keyboard shortcuts');
+    await expect(page.locator('.palette-item.active')).toContainText('Show keyboard shortcuts');
+    await page.keyboard.press('Enter');
+
+    await expect(paletteOverlay).not.toBeVisible();
+    await expect(shortcutsOverlay).toBeVisible();
+    await expect(shortcutsOverlay).toContainText('Split pane vertically');
+
+    // Escape closes it
+    await page.keyboard.press('Escape');
+    await expect(shortcutsOverlay).not.toBeVisible();
+  });
+
+  test('should customize top menu bar button groups visibility', async ({ page }) => {
+    // Open settings panel
+    await page.locator('#btn-settings').click();
+    await expect(page.locator('#settings-panel')).toBeVisible();
+    await page.waitForTimeout(300); // Wait for sliding animation to complete
+
+    const workspaceGroup = page.locator('#grp-workspace');
+    const paneGroup = page.locator('#grp-pane');
+    const systemGroup = page.locator('#grp-system');
+    const settingsGroup = page.locator('#grp-settings');
+    
+    // Initially they should be visible
+    await expect(workspaceGroup).toBeVisible();
+    await expect(paneGroup).toBeVisible();
+    await expect(systemGroup).toBeVisible();
+    await expect(settingsGroup).toBeVisible();
+
+    // Toggle Workspace buttons off
+    const wsCheckbox = page.locator('#s-menu-workspace');
+    await wsCheckbox.click({ force: true });
+    await expect(workspaceGroup).not.toBeVisible();
+
+    // Toggle Pane buttons off
+    const paneCheckbox = page.locator('#s-menu-pane');
+    await paneCheckbox.click({ force: true });
+    await expect(paneGroup).not.toBeVisible();
+
+    // Toggle System actions off (should hide grp-system but NOT grp-settings)
+    const systemCheckbox = page.locator('#s-menu-system');
+    await systemCheckbox.click({ force: true });
+    await expect(systemGroup).not.toBeVisible();
+    await expect(settingsGroup).toBeVisible(); // Excluded from system actions, cannot be disabled
+
+    // Toggle them back on
+    await wsCheckbox.click({ force: true });
+    await paneCheckbox.click({ force: true });
+    await systemCheckbox.click({ force: true });
+    await expect(workspaceGroup).toBeVisible();
+    await expect(paneGroup).toBeVisible();
+    await expect(systemGroup).toBeVisible();
+    await expect(settingsGroup).toBeVisible();
+
+    // Close settings
+    await page.locator('#settings-close').dispatchEvent('click');
+  });
+
+  test('settings button should never be disabled, even when session is inactive', async ({ page, context }) => {
+    // Open a second page to hijack the session and make the first page inactive
+    const page2 = await context.newPage();
+    await page2.goto('/');
+    
+    // The second page will claim the active session. Wait for page 2 to load.
+    const takeoverBtn = page2.locator('#btn-takeover');
+    if (await takeoverBtn.isVisible()) {
+      await takeoverBtn.click();
+    }
+    await expect(page2.locator('#workspace')).toBeVisible();
+
+    // Now verify the first page shows the inactive overlay
+    await page.bringToFront();
+    await expect(page.locator('#inactive-overlay')).toBeVisible();
+
+    // The settings button on the first page should still be clickable and open settings
+    const settingsPanel = page.locator('#settings-panel');
+    await expect(settingsPanel).not.toBeVisible();
+    await page.locator('#btn-settings').click();
+    await expect(settingsPanel).toBeVisible();
+    await page.waitForTimeout(300); // Wait for sliding animation to complete
+  });
+
+  test('should auto-collapse toolbar buttons on narrow viewport', async ({ page }) => {
+    const htmlElement = page.locator('html');
+    await expect(htmlElement).not.toHaveClass(/mobile-ui/);
+
+    // Resize viewport to narrow width where buttons don't fit
+    await page.setViewportSize({ width: 500, height: 720 });
+
+    // Should collapse and add mobile-ui class
+    await expect(htmlElement).toHaveClass(/mobile-ui/);
+    await expect(page.locator('#btn-menu')).toBeVisible();
+    await expect(page.locator('#toolbar-group-extra')).not.toBeVisible();
+
+    // Click menu button to open dropdown
+    await page.locator('#btn-menu').click();
+    const dropdown = page.locator('#toolbar-group-extra');
+    await expect(dropdown).toBeVisible();
+
+    // Click header to expand group in mobile accordion
+    await page.locator('#grp-workspace .group-header').click();
+
+    // Verify layout: button group should not be collapsed to desktop height (32px)
+    const grpWorkspace = page.locator('#grp-workspace');
+    const box = await grpWorkspace.boundingBox();
+    expect(box.height).toBeGreaterThan(50);
+
+    // Click outside or menu button again to close
+    await page.locator('#btn-menu').click();
+    await expect(dropdown).not.toBeVisible();
+
+    // Resize viewport back to wide
+    await page.setViewportSize({ width: 1920, height: 1080 });
+
+    // Should restore desktop view
+    await expect(htmlElement).not.toHaveClass(/mobile-ui/);
+    await expect(page.locator('#btn-menu')).not.toBeVisible();
+    await expect(page.locator('#toolbar-group-extra')).toBeVisible();
+  });
+
+  test('should allow collapsing and expanding the mobile utility key bar', async ({ page }) => {
+    // 1. Force mobile ui by making viewport narrow
+    await page.setViewportSize({ width: 500, height: 720 });
+
+    // 2. Open a terminal tab to ensure we can focus it and show the keybar
+    const addBtn = page.locator('.tab-add').first();
+    await addBtn.click();
+    await page.locator('.tab-type-picker button:has-text("Terminal")').click();
+    
+    // 3. Focus the terminal's hidden helper textarea to display the mobile-keybar
+    const terminalTextarea = page.locator('.xterm-helper-textarea').first();
+    await terminalTextarea.focus();
+    
+    const keybar = page.locator('#mobile-keybar');
+    await expect(keybar).toBeVisible();
+
+    // 4. Verify collapse button exists
+    const toggleBtn = page.locator('.keybar-toggle-collapse');
+    await expect(toggleBtn).toBeVisible();
+    await expect(toggleBtn).toHaveText('▼');
+
+    // 5. Click the toggle button to collapse the utility key bar
+    await toggleBtn.click();
+    await expect(keybar).toHaveClass(/collapsed/);
+    await expect(toggleBtn).toHaveText('📱');
+
+    // Verify other buttons are hidden
+    const escBtn = page.locator('.keybar-btn:has-text("Esc")');
+    await expect(escBtn).not.toBeVisible();
+
+    // 6. Click again to expand
+    await toggleBtn.click();
+    await expect(keybar).not.toHaveClass(/collapsed/);
+    await expect(toggleBtn).toHaveText('▼');
+    await expect(escBtn).toBeVisible();
+  });
+
+  test('should open, search, and close the terminal search bar', async ({ page }) => {
+    // 1. Create a terminal tab
+    const addBtn = page.locator('.tab-add').first();
+    await addBtn.click();
+    await page.locator('.tab-type-picker button:has-text("Terminal")').click();
+    
+    // 2. Open search bar using shortcut (Control+f)
+    const terminalEl = page.locator('.terminal-view.active').first();
+    await terminalEl.waitFor({ state: 'visible' });
+    await terminalEl.click();
+    
+    await page.keyboard.press('Control+f');
+    
+    // 3. Verify search container is visible
+    const searchContainer = page.locator('.term-search-container');
+    await expect(searchContainer).toBeVisible();
+    await expect(searchContainer).toHaveClass(/active/);
+    
+    // 4. Type a search query
+    const searchInput = page.locator('.term-search-input');
+    await expect(searchInput).toBeFocused();
+    await searchInput.fill('testquery');
+    
+    // 5. Toggle Match Case option
+    const caseBtn = page.locator('.term-search-case');
+    await caseBtn.click();
+    await expect(caseBtn).toHaveClass(/active-option/);
+    
+    // 6. Press Escape to close search bar
+    await page.keyboard.press('Escape');
+    await expect(searchContainer).not.toHaveClass(/active/);
+  });
+
+  test('should find text in the terminal buffer', async ({ page }) => {
+    // 1. Create a terminal tab
+    const addBtn = page.locator('.tab-add').first();
+    await addBtn.click();
+    await page.locator('.tab-type-picker button:has-text("Terminal")').click();
+    
+    // 2. Wait for terminal to be ready
+    const terminalEl = page.locator('.terminal-view.active').first();
+    await terminalEl.waitFor({ state: 'visible' });
+    // Wait for the shell to start up and render its prompt (e.g. $, #, %, >, :, /, ~)
+    const xtermRows = page.locator('.xterm-rows, [role="listitem"]').first();
+    await expect(xtermRows).toContainText(/[#$%>:/~]/);
+    await terminalEl.click();
+    
+    // 3. Write some text to terminal
+    await page.keyboard.type('echo hello-search-target');
+    await page.keyboard.press('Enter');
+    
+    // Wait for the text to render in xterm
+    await page.waitForTimeout(1000);
+    
+    // 4. Open search bar
+    await page.keyboard.press('Control+f');
+    const searchContainer = page.locator('.term-search-container');
+    await expect(searchContainer).toBeVisible();
+    
+    // 5. Search for target
+    const searchInput = page.locator('.term-search-input');
+    await expect(searchInput).toBeFocused();
+    await searchInput.fill('hello-search-target');
+    
+    // 6. Verify found (does not have no-results class)
+    await expect(searchInput).not.toHaveClass(/no-results/);
+    
+    // 7. Search for a non-existing term
+    await searchInput.fill('non-existent-search-term-12345');
+    await expect(searchInput).toHaveClass(/no-results/);
+  });
+
+  test('should open context menu on right click on tab and support renaming', async ({ page }) => {
+    // 1. Create a terminal tab
+    const addBtn = page.locator('.tab-add').first();
+    await addBtn.click();
+    await page.locator('.tab-type-picker button:has-text("Terminal")').click();
+    
+    const tabEl = page.locator('.tab').first();
+    await expect(tabEl).toBeVisible();
+    await expect(tabEl).toContainText('Terminal');
+
+    // 2. Right-click on the tab to open the context menu
+    await tabEl.click({ button: 'right' });
+    const contextMenu = page.locator('.tab-context-menu');
+    await expect(contextMenu).toBeVisible();
+
+    // 3. Click the Rename option
+    const renameOption = contextMenu.locator('.tab-context-menu-item:has-text("Rename")');
+    await expect(renameOption).toBeVisible();
+    await renameOption.click();
+
+    // 4. Verify context menu is closed and rename input is open inside the tab
+    await expect(contextMenu).not.toBeVisible();
+    const renameInput = tabEl.locator('.tab-rename-input');
+    await expect(renameInput).toBeVisible();
+
+    // 5. Fill new name and press Enter
+    await renameInput.fill('My Custom Shell');
+    await page.keyboard.press('Enter');
+
+    // 6. Verify input is removed and tab label has updated text
+    await expect(renameInput).not.toBeVisible();
+    await expect(tabEl).toContainText('My Custom Shell');
+  });
+
+  test('terminal image paste endpoint saves screenshot and returns path', async ({ request }) => {
+    // 1x1 PNG image buffer
+    const pngBuffer = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+    const res = await request.post('/api/terminal/paste-image?ext=png', {
+      headers: { 'Content-Type': 'application/octet-stream' },
+      data: pngBuffer
+    });
+    expect(res.ok()).toBeTruthy();
+    const json = await res.json();
+    expect(json.ok).toBe(true);
+    expect(json.path).toContain('.meowtrix');
+    expect(json.path).toContain('.png');
+  });
+
+  test('quick overlay dynamic island settings and summon/dismiss lifecycle', async ({ page, request }) => {
+    // Check overlay status endpoint
+    const statusRes = await request.get('/api/overlay/status');
+    expect(statusRes.ok()).toBeTruthy();
+    const statusJson = await statusRes.json();
+    expect(statusJson.enabled).toBe(true);
+    expect(statusJson.shortcut).toBeDefined();
+    expect(statusJson.opacity).toBe(1);
+
+    await page.goto('/');
+    await page.waitForSelector('.pane');
+
+    // 1. Verify Quick Overlay settings section in settings modal
+    await page.click('#btn-settings');
+    await page.waitForSelector('#settings-panel.open');
+
+    const overlaySection = page.locator('#sec-quick-overlay');
+    await expect(overlaySection).toBeVisible();
+
+    const shortcutInput = page.locator('#s-quick-overlay-shortcut');
+    await expect(shortcutInput).toBeVisible();
+
+    const opacitySelect = page.locator('#s-quick-overlay-opacity');
+    await expect(opacitySelect).toBeVisible();
+    await expect(opacitySelect).toHaveValue('1');
+
+    // Change opacity setting to 0.85
+    await opacitySelect.selectOption('0.85');
+    await expect(opacitySelect).toHaveValue('0.85');
+
+    // Overlay size: defaults, clamping to the minimum, and presets
+    const widthInput = page.locator('#s-quick-overlay-width');
+    const heightInput = page.locator('#s-quick-overlay-height');
+    await expect(widthInput).toHaveValue('1120');
+    await expect(heightInput).toHaveValue('700');
+    await widthInput.fill('300');
+    await widthInput.blur();
+    await expect(widthInput).toHaveValue('800');
+    await page.locator('.btn-preset-overlay-size[data-w="1440"]').click();
+    await expect(widthInput).toHaveValue('1440');
+    await expect(heightInput).toHaveValue('900');
+    await expect.poll(async () => {
+      const s = await (await page.request.get('/api/settings')).json();
+      return [s.quickOverlayWidth, s.quickOverlayHeight];
+    }).toEqual([1440, 900]);
+
+    // Click a preset button (e.g. ⌘⇧ Space)
+    const presetBtn = page.locator('.btn-preset-shortcut[data-sc="CommandOrControl+Shift+Space"]');
+    await presetBtn.click();
+    await expect(shortcutInput).toHaveValue('CommandOrControl+Shift+Space');
+
+    // Close settings modal
+    await page.click('#settings-close');
+    await page.waitForSelector('#settings-panel:not(.open)');
+
+    // 2. In normal mode, verify overlay pill is hidden and normal title is present
+    await expect(page.locator('.dynamic-island-pill')).toBeHidden();
+    await expect(page.locator('#header-btn-collapse')).toBeHidden();
+    await expect(page.locator('.window-header-traffic-spacer')).toBeAttached();
+    await expect(page.locator('#traffic-btn-close')).toHaveCount(0);
+
+    // Test overlay summon
+    await page.evaluate(() => window.summonQuickOverlay());
+    await expect(page.locator('body')).toHaveClass(/dynamic-island-active/);
+    await expect(page.locator('.dynamic-island-pill')).toBeVisible();
+    await expect(page.locator('#header-btn-collapse')).toBeVisible();
+
+    // Verify opacity is applied to CSS variable and #app
+    const customProp = await page.evaluate(() => document.documentElement.style.getPropertyValue('--overlay-opacity'));
+    expect(customProp).toBe('0.85');
+
+    // Verify session inactive overlay is suppressed
+    await expect(page.locator('#inactive-overlay')).toBeHidden();
+
+    // 3. Test overlay exit back to normal window mode
+    await page.evaluate(() => window.exitOverlayMode());
+    await expect(page.locator('body')).not.toHaveClass(/dynamic-island-active/);
+    await expect(page.locator('.dynamic-island-pill')).toBeHidden();
+    await expect(page.locator('#header-btn-collapse')).toBeHidden();
+
+    // 4. Test overlay dismiss via Esc
+    await page.evaluate(() => window.summonQuickOverlay());
+    await expect(page.locator('body')).toHaveClass(/dynamic-island-active/);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(300);
+    await expect(page.locator('body')).not.toHaveClass(/dynamic-island-active/);
+
+    // Verify opacity reset after dismiss
+    const dismissedProp = await page.evaluate(() => document.documentElement.style.getPropertyValue('--overlay-opacity'));
+    expect(dismissedProp).toBe('1');
+  });
+
+  test('every quick overlay animation style summons and dismisses cleanly', async ({ page }) => {
+    // Eleven summon/dismiss cycles: ~28s on Chromium, over the default 30s on WebKit.
+    test.setTimeout(90000);
+    const errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+    await page.goto('/');
+    await page.waitForSelector('.pane');
+
+    await page.click('#btn-settings');
+    await page.waitForSelector('#settings-panel.open');
+    const styleSelect = page.locator('#s-quick-overlay-animation-style');
+    await expect(styleSelect).toHaveValue('classic');
+    const styles = await styleSelect.locator('option').evaluateAll(opts => opts.map(o => o.value));
+    expect(styles.length).toBe(11);
+
+    for (const style of styles) {
+      await styleSelect.selectOption(style);
+      await page.locator('#settings-close').click();
+      await page.waitForSelector('#settings-panel:not(.open)');
+
+      await page.evaluate(() => window.summonQuickOverlay());
+      await expect(page.locator('body')).toHaveClass(/dynamic-island-active/);
+      await expect.poll(() => page.evaluate(() =>
+        !document.documentElement.classList.contains('overlay-animating')), { message: `${style} summon finishes` }).toBe(true);
+      expect(await page.evaluate(() => getComputedStyle(document.getElementById('app')).opacity)).toBe('1');
+      expect(await page.evaluate(() => document.getElementById('app').getAnimations().length)).toBe(0);
+
+      await page.evaluate(() => window.dismissQuickOverlay());
+      await expect(page.locator('body')).not.toHaveClass(/dynamic-island-active/, { timeout: 3000 });
+      await expect.poll(() => page.evaluate(() =>
+        !document.documentElement.classList.contains('overlay-animating')
+        && !document.documentElement.classList.contains('overlay-transparent')
+        && document.getElementById('app').getAnimations().length === 0)).toBe(true);
+
+      await page.click('#btn-settings');
+      await page.waitForSelector('#settings-panel.open');
+    }
+
+    // Choice persists to the server
+    const s = await (await page.request.get('/api/settings')).json();
+    expect(s.quickOverlayAnimationStyle).toBe(styles[styles.length - 1]);
+    expect(errors).toEqual([]);
+  });
+});
