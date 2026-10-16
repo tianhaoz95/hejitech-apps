@@ -102,11 +102,16 @@ final class AppModel: ObservableObject {
             await createHousehold(Household(babyName: baby, birthDate: Date().addingTimeInterval(-21 * 86400)), displayName: "Alex")
             return
         }
+        await route()
+        if localOnly, let email = UserDefaults.standard.string(forKey: "attachAccount") {   // automation
+            await attachAccount(email: email, password: "newborn-dev", create: true, inviteCode: nil)
+        }
+    }
+
+    /// Picks the screen from the current session and household: at launch and after every sign-in.
+    func route() async {
         if localOnly {
             if let h = SharedStore.household { await enter(h) } else { phase = .needsHousehold }
-            if let email = UserDefaults.standard.string(forKey: "attachAccount") {   // automation
-                await attachAccount(email: email, password: "newborn-dev", create: true, inviteCode: nil)
-            }
             return
         }
         if backend.session == nil { phase = .signedOut; return }
@@ -179,7 +184,7 @@ final class AppModel: ObservableObject {
         do {
             backend = makeBackend()
             _ = create ? try await backend.signUp(email: email, password: password) : try await backend.signIn(email: email, password: password)
-            await start()
+            await route()
         } catch { self.error = error.localizedDescription }
     }
 
@@ -198,7 +203,7 @@ final class AppModel: ObservableObject {
                 throw BackendError.decode(reason.replacingOccurrences(of: "+", with: " "))
             }
             _ = try await backend.exchangeCode(code, verifier: verifier)
-            await start()
+            await route()
         } catch let e as ASWebAuthenticationSessionError where e.code == .canceledLogin {
             return
         } catch { self.error = "Google sign-in failed: \(error.localizedDescription)" }
@@ -212,7 +217,7 @@ final class AppModel: ObservableObject {
                 return
             }
             _ = try await backend.signIn(provider: "apple", idToken: token)
-            await start()
+            await route()
         } catch { self.error = "Apple sign-in needs the hosted project configured: \(error.localizedDescription)" }
     }
 
