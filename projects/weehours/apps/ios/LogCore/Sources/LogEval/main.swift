@@ -5,7 +5,7 @@ import LogCore
 // utterances and reports type accuracy, auto-commit rate and wrong auto-commits, and can fit
 // per-question temperatures (written to spec/calibration.json).
 //
-//   swift run logeval --model http://127.0.0.1:8089 --design hierarchical --fit --out ../../eval/results
+//   swift run logeval --model http://127.0.0.1:8089 --design hierarchical --fit --out ../../../eval/results
 //   swift run logeval --model keywords            (deterministic, no model needed; used in CI)
 
 struct Row: Decodable {
@@ -17,7 +17,7 @@ struct Row: Decodable {
 struct Args {
     var model = "keywords"
     var design = VoiceInterpreter.Design.hierarchical
-    var data = "../../spec/utterances.jsonl"
+    var data = "../../../spec/utterances.jsonl"   // run from apps/ios/LogCore
     var calibration: String?
     var fit = false
     var out: String?
