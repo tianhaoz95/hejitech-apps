@@ -5,8 +5,8 @@ description: Move an existing app repository into this HEJI monorepo (projects/<
 
 # Migrating a project into the monorepo
 
-Distilled from moving Wee Hours (tianhaoz95/wee-hours) in on 2026-10-15/16, then FeedbackKit and
-Voxbrief (sections at the end). Read the root
+Distilled from moving Wee Hours (tianhaoz95/wee-hours) in on 2026-10-15/16, then FeedbackKit,
+Voxbrief and Meowtrix (sections at the end). Read the root
 `CLAUDE.md`, `README.md` ("Adding a project"), `supabase/README.md` and `supabase/GRADUATION.md`
 first: they are the rules; this is the order of work and the traps.
 
@@ -206,6 +206,37 @@ are ancestors of HEAD). Then restructure in follow-up commits with `git mv`.
 - **Release scripts:** test the paths CI never ran (`--no-upload`, no tag) with a
   `workflow_dispatch` validation run before the first release; macOS runners use bash 3.2, where
   `"${arr[@]}"` of an empty array fails under `set -u` (use `${arr[@]+"${arr[@]}"}`).
+
+## Self-hosted apps with installers and auto-updaters (from Meowtrix, 2026-10-16)
+
+- **Uncommitted work in the old checkout:** don't commit it there or drop it. Carry the diff into
+  the monorepo as its own commit after the import (`git diff > x.patch`, then
+  `git apply --directory=projects/<name>`), and make the old repo's cutover commit in a separate
+  `git worktree` so the owner's working tree stays as it was.
+- **Standalone npm apps** (native modules, packaging that ships their own `node_modules`) keep
+  their lockfile and stay out of the root workspaces: `projects/<name>` itself matches none of the
+  workspace globs. Say so in the project's CLAUDE.md.
+- **Static-URL updaters** (Tauri `endpoints`, `install.sh` downloads, servers that poll
+  `releases/latest`): give the project a rolling prerelease `<name>-latest`, never "latest", that
+  each release workflow refreshes through a small script (`projects/meowtrix/scripts/publish-latest.sh`):
+  assets under stable names, a `VERSION` file uploaded last, and only when the release is the
+  newest `<name>-v` (so re-running an old tag can't roll installs back). Point every reader at
+  `releases/download/<name>-latest/<asset>`.
+- **Several version files** (package.json, Cargo.toml, `tauri*.conf.json`): Tauri's
+  `"version": "../package.json"` makes package.json the only one `cut_release.sh` has to bump.
+- **Updater keys** belong to the project (`<NAME>_TAURI_SIGNING_PRIVATE_KEY`): find the original
+  (`~/.tauri/<name>-updater.key`), check its public half matches the configs, and sign a test file
+  before relying on it. A new key strands every installed app.
+- **Bridge release:** in the old repo, after disabling its workflows, publish one release whose
+  assets are everything installed copies fetch from `releases/latest` (tarballs, `latest.json`,
+  DMGs), copied from the first monorepo release. Old `install.sh` URLs keep working if the old
+  repo's `install.sh` forwards to the new one; old site URLs keep working with a JS `404.html` that
+  maps `/<repo>/<path>` to the same path on the new site.
+- **Verify like a user:** install from the rolling release into a throwaway `HOME`, run it, and
+  hit its update check/apply with an older version number. When the shell you test from runs
+  inside the app itself, clear its env (`MEOWTRIX_*`, daemon ports) or you query the installed copy.
+- **Open issues:** `gh issue transfer <n> <owner>/hejitech-apps` plus a `<name>` label before the
+  owner archives the old repo.
 
 ## Moving an already-live project's tables out of `public`
 
