@@ -9,6 +9,7 @@ dist/
 .env
 .env.*
 !.env.example
+!projects/weehours/services/web/.env.production
 test-results/
 playwright-report/
 supabase/functions/.env
@@ -30,3 +31,6 @@ projects/waypack/site/__waypack/
 # Android build output
 projects/waypack/apps/mobile/android/build/
 projects/waypack/brand/out/
+
+# --- Wee Hours (projects/weehours; more in projects/weehours/.gitignore)
+projects/weehours/services/web/.dev.vars

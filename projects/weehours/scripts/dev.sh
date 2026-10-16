@@ -5,13 +5,13 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-supabase start
+(cd ../.. && supabase start)     # the shared stack (repo root supabase/)
 scripts/sync-spec.sh
 scripts/build-llama-xcframework.sh
 scripts/fetch-models.sh            # bundles Laya + Whisper into the app (~600 MB, git-ignored)
-(cd ios && xcodegen generate)
+(cd apps/ios && xcodegen generate)
 if [[ -n "${LAYA_MODEL:-}" ]] && ! curl -s http://127.0.0.1:8089/health | grep -q ok; then
   "${LLAMA_SERVER_BIN:-llama-server}" -m "$LAYA_MODEL" --port 8089 -ub 2048 -b 2048 >/tmp/llama-server.log 2>&1 &
   echo "llama-server with Laya on :8089 (choose 'Laya on Mac' in Settings → Voice)"
 fi
-echo "Open ios/WeeHours.xcodeproj, run the App scheme. Glasses: scripts/glasses-sim.sh"
+echo "Open apps/ios/WeeHours.xcodeproj, run the App scheme. Glasses: scripts/glasses-sim.sh"

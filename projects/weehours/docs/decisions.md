@@ -29,6 +29,17 @@ The PRD ("Newborn Log — PRD") plus the changes agreed while planning, and the 
 | Local-only mode | "Use without an account" keeps the household on the phone (no Supabase); signing in later re-homes the never-synced rows and uploads them | The phone must stand alone; nothing is lost when moving to an account |
 | Consistency | `spec/` is the single source; Swift and TypeScript run the same derivation fixtures | Prevents status drift between the phone, glasses and MCP |
 
+## Monorepo (2026-10-15)
+
+| Topic | Decision | Why |
+|---|---|---|
+| Home | Wee Hours moved into the HEJI monorepo (`tianhaoz95/hejitech-apps`, `projects/weehours`) with its history; the old repo is archived | Share one Supabase project (one plan's quota) and CI plumbing across the HEJI apps; easier to build an ecosystem |
+| Database | Its own Postgres schema `weehours` and bucket `weehours` in the shared project, not `public` | Waypack predates the convention and owns `public` (it has its own `entitlements` table); accounts are shared, data isn't |
+| MCP OAuth | The site's Cloudflare Worker is the OAuth server (`@cloudflare/workers-oauth-provider`, like Waypack); the MCP server moved from a Supabase Edge Function into that Worker | Owner's choice (a). Supabase's OAuth server has one consent URL per project, relative to the Site URL, which Waypack owns. A neutral shared consent router stays an option for later projects |
+| Sign-up rows | Waypack's `on_auth_user_created` trigger is dropped; each app creates its rows on first use | Owner direction: one user pool for every app |
+| Signing | TestFlight CI uses the team-wide HEJI identities Waypack uses (same certificates) | Owner direction; one set of secrets, never minting certificates |
+| Build numbers | Stay UTC timestamps | Builds already uploaded use them; Waypack's 2000 + run number would go backwards |
+
 ## Not done yet
 
 See the report (`report/v0/site`, "What's verified") for what was verified in simulators and what still needs devices or the hosted project.

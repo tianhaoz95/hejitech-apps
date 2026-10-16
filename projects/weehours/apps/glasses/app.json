@@ -1,0 +1,14 @@
+{
+  "package_id": "com.hejitech.weehours.glasses",
+  "edition": "202601",
+  "name": "Wee Hours",
+  "version": "0.1.0",
+  "min_app_version": "2.2.10",
+  "min_sdk_version": "0.0.16",
+  "entrypoint": "index.html",
+  "permissions": [
+    { "name": "network", "desc": "Sync log entries and upload voice captures to your household", "whitelist": ["https://*.supabase.co", "http://127.0.0.1:55421"] },
+    { "name": "microphone", "desc": "Hold to speak a log entry; audio is processed on your phone" }
+  ],
+  "supported_languages": ["en"]
+}

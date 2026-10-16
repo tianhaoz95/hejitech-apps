@@ -2,7 +2,8 @@
 # Cut a release of one project: bump its version, push, and publish GitHub Release
 # <prefix><version> (e.g. waypack-v1.9.0), which starts that project's release workflows.
 # Each project describes itself in projects/<name>/release.env:
-#   NAME, TAG_PREFIX, LEGACY_TAG_PREFIX (optional), VERSION_FILE (pubspec.yaml or package.json),
+#   NAME, TAG_PREFIX, LEGACY_TAG_PREFIX (optional), VERSION_FILE (pubspec.yaml, package.json, or an
+#   XcodeGen project.yml whose MARKETING_VERSION is the version),
 #   CI_WORKFLOW + CI_PATHS, RELEASE_WORKFLOWS, REQUIRED_SECRETS, LATEST (true for one project only)
 # Pushes to main deploy Cloudflare Workers (Workers Builds), so the version-bump push ships them.
 #
@@ -13,7 +14,7 @@
 #   scripts/cut_release.sh waypack --watch         # wait for the release workflows and report
 #   scripts/cut_release.sh waypack --force         # skip the CI-is-green check
 #
-# Build numbers are assigned by CI (2000 + run number in the project's workflows); pubspec's +build is left alone.
+# Build numbers are assigned by CI (each project's release workflow); pubspec's +build is left alone.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -98,7 +99,11 @@ case "$VERSION_FILE" in
     [ "$FILE_BUILD" = "$FILE_LINE" ] && FILE_BUILD="" ;;
   *package.json)
     FILE_LINE="$(node -p "require('./$VERSION_FILE').version")" FILE_VERSION="$FILE_LINE" FILE_BUILD="" ;;
-  *) die "$CONFIG: VERSION_FILE must be a pubspec.yaml or package.json" ;;
+  *project.yml)
+    FILE_LINE="$(sed -nE 's/^[[:space:]]*MARKETING_VERSION:[[:space:]]*"?([0-9]+\.[0-9]+\.[0-9]+)"?.*/\1/p' "$VERSION_FILE" | head -1)"
+    [ -n "$FILE_LINE" ] || die "$VERSION_FILE has no MARKETING_VERSION: x.y.z"
+    FILE_VERSION="$FILE_LINE" FILE_BUILD="" ;;
+  *) die "$CONFIG: VERSION_FILE must be a pubspec.yaml, package.json or project.yml" ;;
 esac
 set_version() { # $1 = new x.y.z
   case "$VERSION_FILE" in
@@ -106,6 +111,8 @@ set_version() { # $1 = new x.y.z
       sed -i.bak -E "s/^version: .*/version: $1${FILE_BUILD:++$FILE_BUILD}/" "$VERSION_FILE" && rm -f "$VERSION_FILE.bak" ;;
     *package.json)
       node -e 'const f=process.argv[1],p=require("./"+f);p.version=process.argv[2];require("fs").writeFileSync(f,JSON.stringify(p,null,2)+"\n")' "$VERSION_FILE" "$1" ;;
+    *project.yml)
+      sed -i.bak -E "s/^([[:space:]]*MARKETING_VERSION:[[:space:]]*)\"?[0-9]+\.[0-9]+\.[0-9]+\"?/\1\"$1\"/" "$VERSION_FILE" && rm -f "$VERSION_FILE.bak" ;;
   esac
 }
 

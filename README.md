@@ -7,6 +7,7 @@ one npm workspace and the CI plumbing.
 | Project | What | README |
 |---|---|---|
 | Waypack | Offline trip bundles: MCP server + Worker site, Flutter app (iOS, Android, macOS) | [`projects/waypack`](projects/waypack/README.md) |
+| Wee Hours | Hands-free newborn log: iPhone + watch app with on-device voice (Swift), Even G2 glasses app, site + MCP Worker | [`projects/weehours`](projects/weehours/README.md) |
 
 ## Layout
 ```
@@ -17,24 +18,25 @@ scripts/cut_release.sh  releases one project: scripts/cut_release.sh <name> [pat
 scripts/db_migration.sh new migration for one project; check_supabase.mjs keeps projects apart
 .github/workflows/      <name>-*.yml per project
 .github/actions/        apple-signing (shared), <name>-toolchain
-package.json            npm workspaces: projects/*/packages/*, projects/*/services/*
+package.json            npm workspaces: projects/*/packages/*, projects/*/services/*, projects/*/apps/*
 tsconfig.base.json      shared TypeScript settings
 ```
 
 ```sh
 npm install                 # every project's workspaces
 supabase start              # shared local stack (ports 554xx)
-npm run build:waypack       # per-project scripts: build:<name>, test:<name>, typecheck:<name>
+npm run build:waypack       # per-project scripts: build:<name>, test:<name>, typecheck:<name> (waypack, weehours)
 ```
 
 ## Adding a project
-1. **Code** in `projects/<name>/`: Node packages under `packages/` or `services/` (picked up by the
-   workspaces; name them `@<name>/…`), Flutter apps under `apps/`. Add `build:`/`test:`/`typecheck:<name>`
+1. **Code** in `projects/<name>/`: Node packages under `packages/` or `services/`, apps under `apps/`
+   (any of them with a `package.json` is picked up by the workspaces; name them `@<name>/…`). Add `build:`/`test:`/`typecheck:<name>`
    scripts to the root `package.json`.
 2. **Database:** its own Postgres schema (named after the project, so the folder name must be a
    valid identifier) and Storage bucket. Tables go in `supabase/schemas/<name>/`; generate
    migrations with `scripts/db_migration.sh <name> <what>`. Read [`supabase/README.md`](supabase/README.md)
-   first: users, auth settings, the service key and the free-plan quota are shared.
+   first: users, auth settings, the service key and the plan's quota are shared (that's the point).
+   Wee Hours is the worked example of a non-legacy project.
 3. **CI:** `.github/workflows/<name>-ci.yml` with `paths:` covering `projects/<name>/**` and the
    shared root files (copy `waypack-ci.yml`). Release workflows trigger on `release: published`
    and must skip other projects' tags: `if: startsWith(github.event.release.tag_name, '<name>-v')`.

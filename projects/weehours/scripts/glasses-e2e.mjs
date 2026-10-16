@@ -30,7 +30,7 @@ const shot = async (name) => {
   writeFileSync(join(shots, `glasses-${name}.png`), Buffer.from(await res.arrayBuffer()));
 };
 const console_ = async () => (await (await fetch(`${sim}/api/console`)).json());
-const rest = async (path) => (await fetch(`http://127.0.0.1:54321/rest/v1/${path}`, { headers: { apikey: SERVICE, Authorization: `Bearer ${SERVICE}` } })).json();
+const rest = async (path) => (await fetch(`http://127.0.0.1:55421/rest/v1/${path}`, { headers: { apikey: SERVICE, Authorization: `Bearer ${SERVICE}` } })).json();
 
 const before = new Date().toISOString();
 await waitFor(async () => (await fetch(`${sim}/api/ping`)).ok, "simulator up");

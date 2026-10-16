@@ -1,0 +1,143 @@
+name: Wee Hours CI
+
+# Checks pushes and PRs that touch Wee Hours or what it shares with other projects (root
+# workspace files, supabase/, CI plumbing). Keep `paths` in sync with CI_PATHS in
+# projects/weehours/release.env: cut_release.sh requires this workflow to be green on the newest
+# commit that touched them. Deploys are separate: Cloudflare Workers Builds deploys the site +
+# MCP Worker on push to main; weehours-testflight.yml ships the iPhone app on a published GitHub
+# Release tagged weehours-v<version>.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "projects/weehours/**"
+      - "supabase/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - ".github/workflows/weehours-ci.yml"
+      - ".github/actions/**"
+  pull_request:
+    paths:
+      - "projects/weehours/**"
+      - "supabase/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - ".github/workflows/weehours-ci.yml"
+      - ".github/actions/**"
+  workflow_dispatch:
+
+concurrency:
+  group: weehours-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  spec:
+    name: Shared spec in sync
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: projects/weehours/scripts/sync-spec.sh --check
+
+  node:
+    name: Core, glasses, website + Worker (tests, typecheck, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck:weehours
+      - run: npm run test:weehours
+      - run: npm run build:weehours
+        env:
+          WEB_ALLOW_LOCAL: "1"
+
+  backend:
+    name: Shared Supabase schema + MCP/OAuth integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # Applies every project's migrations and the seeds: the whole shared history must replay.
+      - run: supabase start -x studio,imgproxy,vector,logflare,supavisor,mailpit
+      - name: Schema matches supabase/schemas/weehours (no undiffed changes)
+        run: |
+          supabase db schema declarative sync --schema weehours --name drift --no-apply 2>&1 | tee /tmp/drift.log
+          if ls supabase/migrations/*_drift.sql >/dev/null 2>&1; then cat supabase/migrations/*_drift.sql; exit 1; fi
+      - name: Site Worker against the local stack
+        working-directory: projects/weehours/services/web
+        run: |
+          echo "SUPABASE_SERVICE_ROLE_KEY=$(supabase status -o json | jq -r .SERVICE_ROLE_KEY)" > .dev.vars
+          npm run dev:worker > /tmp/worker.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf -o /dev/null http://127.0.0.1:8788/ && break; sleep 1; done
+          curl -sf -o /dev/null http://127.0.0.1:8788/ || { cat /tmp/worker.log; exit 1; }
+      - run: node projects/weehours/scripts/test-mcp.mjs
+      - if: failure()
+        run: cat /tmp/worker.log || true
+      - if: always()
+        run: supabase stop
+
+  logcore:
+    name: LogCore (Swift) tests + backend round trip + eval regression
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit tests (domain, decision layer, acceptance criteria)
+        working-directory: projects/weehours/apps/ios/LogCore
+        run: swift test
+      - name: Eval harness with the deterministic keyword model
+        working-directory: projects/weehours/apps/ios/LogCore
+        run: |
+          swift run -c release logeval --model keywords --out /tmp/eval | tee /tmp/eval.json
+          python3 - <<'PY'
+          import json
+          r = json.load(open("/tmp/eval/keywords-hierarchical.json"))
+          assert r["wrong_auto_commit_rate"] <= 2.0, r
+          assert r["type_accuracy"] >= 85, r
+          print("eval regression ok", r["type_accuracy"], r["wrong_auto_commit_rate"])
+          PY
+
+  ios:
+    name: iOS app, widgets, watch (simulator build)
+    runs-on: macos-26
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: projects/weehours/apps/ios
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache llama.xcframework
+        id: llama
+        uses: actions/cache@v4
+        with:
+          path: projects/weehours/apps/ios/Vendor/llama.xcframework
+          key: weehours-llama-xcframework-${{ hashFiles('projects/weehours/scripts/build-llama-xcframework.sh') }}
+      - name: Build llama.xcframework
+        if: steps.llama.outputs.cache-hit != 'true'
+        run: brew install cmake && ../../scripts/build-llama-xcframework.sh
+      - name: Generate project
+        run: brew install xcodegen && xcodegen generate
+      - name: Build for simulator
+        run: |
+          set -o pipefail
+          xcodebuild -project WeeHours.xcodeproj -scheme App \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath .derived \
+            build CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO | tail -40

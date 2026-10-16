@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fetches the on-device models into ios/App/Models (git-ignored), which the app bundles so voice
+# Fetches the on-device models into apps/ios/App/Models (git-ignored), which the app bundles so voice
 # works right after install, offline, with no download step:
 #   Laya-Q8_0.gguf                         decision model (~450 MB)
 #   whisper/openai_whisper-base.en/        WhisperKit Core ML speech model (~150 MB)
@@ -8,7 +8,7 @@
 # LAYA_MODEL=/path/Laya-Q8_0.gguf reuses a local copy instead of downloading.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OUT="$ROOT/ios/App/Models"
+OUT="$ROOT/apps/ios/App/Models"
 HF="https://huggingface.co"
 mkdir -p "$OUT/whisper/tokenizer"
 

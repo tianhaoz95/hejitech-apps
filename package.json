@@ -4,7 +4,8 @@
   "license": "SEE LICENSE IN LICENSE",
   "workspaces": [
     "projects/*/packages/*",
-    "projects/*/services/*"
+    "projects/*/services/*",
+    "projects/*/apps/*"
   ],
   "scripts": {
     "build": "npm run build:waypack",
@@ -13,6 +14,9 @@
     "build:waypack": "npm run build -w @waypack/bundle-schema -w @waypack/trip-sdk -w @waypack/cli",
     "test:waypack": "npm test -w projects/waypack/packages -w projects/waypack/services --if-present",
     "typecheck:waypack": "npm run typecheck -w projects/waypack/packages -w projects/waypack/services --if-present",
+    "build:weehours": "npm run build -w @weehours/web -w @weehours/glasses",
+    "test:weehours": "npm test -w projects/weehours/packages -w projects/weehours/apps -w projects/weehours/services --if-present",
+    "typecheck:weehours": "npm run typecheck -w projects/weehours/packages -w projects/weehours/apps -w projects/weehours/services --if-present",
     "docs:dev": "vitepress dev projects/waypack/docs",
     "docs:build": "vitepress build projects/waypack/docs"
   },

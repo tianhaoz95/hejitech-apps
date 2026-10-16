@@ -4,10 +4,10 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 pairs=(
-  "spec/event-types.json:ios/LogCore/Sources/LogCore/Resources/event-types.json"
-  "spec/calibration.json:ios/LogCore/Sources/LogCore/Resources/calibration.json"
-  "spec/fixtures/status.json:ios/LogCore/Tests/LogCoreTests/Fixtures/status.json"
-  "spec/event-types.json:supabase/functions/_shared/event-types.json"
+  "spec/event-types.json:apps/ios/LogCore/Sources/LogCore/Resources/event-types.json"
+  "spec/calibration.json:apps/ios/LogCore/Sources/LogCore/Resources/calibration.json"
+  "spec/fixtures/status.json:apps/ios/LogCore/Tests/LogCoreTests/Fixtures/status.json"
+  "spec/event-types.json:packages/core/src/event-types.json"
 )
 status=0
 for p in "${pairs[@]}"; do

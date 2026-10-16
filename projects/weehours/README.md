@@ -1,6 +1,8 @@
 # Wee Hours
 
-[![CI](https://github.com/tianhaoz95/wee-hours/actions/workflows/ci.yml/badge.svg)](https://github.com/tianhaoz95/wee-hours/actions/workflows/ci.yml)
+[![Wee Hours CI](https://github.com/tianhaoz95/hejitech-apps/actions/workflows/weehours-ci.yml/badge.svg)](https://github.com/tianhaoz95/hejitech-apps/actions/workflows/weehours-ci.yml)
+
+Part of the [HEJI monorepo](../../README.md): it shares one Supabase project, npm workspaces and CI plumbing with the other apps. Paths below are relative to `projects/weehours/`.
 
 A newborn log built for 3am. You log a feed, diaper or nap in under three seconds: by voice, with a one-tap button, from a widget, from Siri, from an Apple Watch, or with an Even Realities G2 + R1 ring. Every input becomes one typed, append-only event log shared by both parents. The log also answers "what's next" in one line:
 
@@ -17,60 +19,59 @@ Voice is understood **on the iPhone** by [Laya](https://huggingface.co/ggml-org/
 | Path | What |
 |---|---|
 | `spec/` | The shared source of truth: event types and decision questions (`event-types.json`), fitted calibration, the eval utterances, and fixtures that every implementation must pass |
-| `ios/LogCore` | Swift package: event model, append-only derivation (sessions, duplicates, status line), the decision layer (Laya prompt port, two-step questions, confidence policy, deterministic time and number parsers), reminders, billing rules, SQLite store, Supabase sync, plus the `logeval` CLI |
-| `ios/LayaRuntime` | Runs Laya in-process with llama.cpp: a Swift port of llama.cpp's server-side decision path, verified against llama-server |
-| `ios/App`, `ios/Widgets`, `ios/Watch` | iPhone app (SwiftUI), widgets, Live Activity, App Intents (Siri / Action Button), StoreKit 2 paywall with a dummy store, watch app |
-| `supabase/` | Postgres schema with RLS (append-only for clients), RPCs, seed data, capture audio bucket, and the **MCP server** edge function |
-| `glasses/` | Even Hub web app for G2 + R1: gesture logging, hold-to-speak capture, one-line HUD |
+| `apps/ios/LogCore` | Swift package: event model, append-only derivation (sessions, duplicates, status line), the decision layer (Laya prompt port, two-step questions, confidence policy, deterministic time and number parsers), reminders, billing rules, SQLite store, Supabase sync, plus the `logeval` CLI |
+| `apps/ios/LayaRuntime` | Runs Laya in-process with llama.cpp: a Swift port of llama.cpp's server-side decision path, verified against llama-server |
+| `apps/ios/App`, `Widgets`, `Watch` | iPhone app (SwiftUI), widgets, Live Activity, App Intents (Siri / Action Button), StoreKit 2 paywall with a dummy store, watch app |
+| `apps/glasses/` | Even Hub web app for G2 + R1: gesture logging, hold-to-speak capture, one-line HUD |
+| `packages/core/` | `@weehours/core`: the TypeScript twin of LogCore's derivation, shared by the site, the MCP Worker and the glasses |
+| `services/web/` | Website + Cloudflare Worker: landing, agent setup, account, legal pages, and the **MCP server** with its own OAuth endpoints |
+| `../../supabase/schemas/weehours/` | Postgres schema `weehours` in the shared project: tables with RLS (append-only for clients), RPCs; migrations in `../../supabase/migrations/*_weehours_*`, seed in `../../supabase/seeds/weehours.sql` |
 | `eval/` | Utterance generator and eval results (Laya flat vs. two-step, raw vs. calibrated) |
-| `scripts/` | Dev stack, glasses simulator (interactive and e2e), MCP test, eval, screenshots, llama.cpp xcframework build |
+| `scripts/` | Dev stack, glasses simulator (interactive and e2e), MCP test, eval, screenshots, llama.cpp xcframework build, TestFlight release |
 
 ## Quick start (macOS, Xcode 26+, Docker)
 
 ```bash
 brew install xcodegen cmake supabase/tap/supabase
-scripts/dev.sh                      # supabase start, spec sync, llama.xcframework, Xcode project
-open ios/WeeHours.xcodeproj         # run the "App" scheme on an iPhone simulator
+npm install                         # from the repo root: every project's workspaces
+scripts/dev.sh                      # shared supabase start, spec sync, llama.xcframework, Xcode project
+open apps/ios/WeeHours.xcodeproj    # run the "App" scheme on an iPhone simulator
 ```
 
 Sign in with `parent1@example.com` / `newborn-dev` (or `parent2@…`). Both accounts belong to the seeded household and share half a day of log.
 
 **No backend needed to try it:** tap *Use without an account*. The household then lives only on the phone, and logging, voice (bundled models), status, timeline, reminders, widgets, Siri and the watch all work. *Settings → Sign in to sync and share* later uploads the log, either as a new household or into your partner's with an invite code. Partner sync, the glasses relay and MCP need an account.
 
-- **Bundled models.** `scripts/fetch-models.sh` (run by `dev.sh`) puts Laya (~450 MB) and WhisperKit base.en (~150 MB) into `ios/App/Models`, which the app ships, so voice works offline right after install. Without them the app falls back to downloading. They are git-ignored; before the App Store, consider Apple-hosted Background Assets to keep the binary small and update the model without an app update.
+- **Bundled models.** `scripts/fetch-models.sh` (run by `dev.sh`) puts Laya (~450 MB) and WhisperKit base.en (~150 MB) into `apps/ios/App/Models`, which the app ships, so voice works offline right after install. Without them the app falls back to downloading. They are git-ignored; before the App Store, consider Apple-hosted Background Assets to keep the binary small and update the model without an app update.
 - **Voice in the simulator.** Hold the floating mic button (the simulator records from the Mac's microphone), or launch with `-demoText "finished, drank half"` to run a transcript through the same pipeline. With the bundled models, the default *On-device Laya* runs in the simulator on the CPU. You can also run `llama-server -m Laya-Q8_0.gguf --port 8089` and pick *Settings → Voice → Laya on Mac*.
 - **Glasses.** `scripts/glasses-sim.sh` opens the official Even Hub simulator, signed in. `scripts/glasses-sim.sh --e2e` drives the simulator through its automation API, checks the backend and saves HUD screenshots.
-- **MCP.** The endpoint is `http://127.0.0.1:54321/functions/v1/mcp` with `Authorization: Bearer wh_dev_local_token`. `node scripts/test-mcp.mjs` runs the integration checks.
+- **MCP.** `npm run dev:worker -w @weehours/web` serves the site and the MCP endpoint `http://127.0.0.1:8788/mcp` (use `Authorization: Bearer wh_dev_local_token`, or connect an OAuth-capable client and sign in as a seeded parent). It needs `services/web/.dev.vars` with the local `SUPABASE_SERVICE_ROLE_KEY` (`supabase status`). `node scripts/test-mcp.mjs` runs the integration checks, the OAuth flow included.
 - **Billing.** Run from Xcode to use `Subscriptions.storekit` (monthly, yearly, lifetime). Launched any other way, the paywall uses a built-in dummy store through the same entitlement path.
 - **Eval.** `LAYA_MODEL=… LLAMA_SERVER_BIN=… scripts/eval.sh` re-runs the decision eval and refits `spec/calibration.json`.
 
 ## Tests
 
 ```bash
-cd ios/LogCore && swift test                                      # 35 tests, incl. the PRD acceptance criteria
-SUPABASE_IT=1 swift test --filter BackendIntegrationTests         # against local supabase
-cd ios/LayaRuntime && LAYA_MODEL=… LAYA_SERVER=http://127.0.0.1:8089 swift test   # on-device port == llama-server
-cd glasses && npm test                                            # gestures, WAV, shared fixtures
-node scripts/test-mcp.mjs                                         # MCP server
+cd apps/ios/LogCore && swift test                                 # 37 tests, incl. the PRD acceptance criteria
+SUPABASE_IT=1 swift test --filter BackendIntegrationTests         # against the local stack
+cd apps/ios/LayaRuntime && LAYA_MODEL=… LAYA_SERVER=http://127.0.0.1:8089 swift test   # on-device port == llama-server
+npm run test:weehours                                             # (repo root) core fixtures, glasses
+node scripts/test-mcp.mjs                                         # MCP + OAuth against dev:worker
 scripts/glasses-sim.sh --e2e                                      # glasses in the Even Hub simulator
 ```
 
-CI (`.github/workflows/ci.yml`) runs the spec sync check, LogCore tests with an eval regression gate, the glasses tests and build, the Supabase + MCP integration, and the iOS simulator build (app, widgets, watch).
+CI (`.github/workflows/weehours-ci.yml`) runs the spec sync check, the TypeScript tests/typecheck/builds, LogCore tests with an eval regression gate, the shared Supabase schema (every project's migrations replayed, plus a drift check against `supabase/schemas/weehours`) with the MCP/OAuth integration against the Worker, and the iOS simulator build (app, widgets, watch).
 
-## Auth for the hosted project
+## Hosted backend
 
-Google and Apple sign-in go through Supabase Auth, using the same session for the app and for MCP agents that support OAuth. Before cloud launch:
+Wee Hours runs on the Supabase project every HEJI app shares (`jitdzllkxfhlrxxvljhp`; see `../../supabase/README.md`), in its own `weehours` schema and Storage bucket. Release builds of the app default to it (`BackendConfig.production`); Debug builds use the local stack, and *Sign in → Server* can point either elsewhere. Accounts are shared: the same Google or Apple sign-in is the same user in every HEJI app.
 
-1. Create the Supabase project and run `supabase link` then `supabase db push`, and deploy the function with `supabase functions deploy mcp`.
-2. Set `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID/SECRET` and the Apple service id (see `supabase/config.toml`), and enable the providers.
-3. Point the app at the project in *Sign in → Server*, or change `BackendConfig`.
-
-Agents that can't do OAuth use personal access tokens (`wh_…`) created in *Settings → AI agents*. Only hashes are stored, and each token can be read-only or allowed to log.
+The site and MCP server are one Cloudflare Worker (`services/web`, production `https://weehours.hejitech.workers.dev`), which is also the MCP OAuth server. Agents that can't do OAuth use personal access tokens (`wh_…`) created in *Settings → AI agents*. Only hashes are stored, and each token can be read-only or allowed to log. Setup and secrets: `docs/DEPLOY.md`.
 
 ## Releasing to TestFlight
 
-Locally, run `APPLE_TEAM_ID=68CTFST8W2 ./scripts/release_testflight.sh`. It needs the App Store Connect API key (`FA_ASC_*` / `FA_KEY_LOCATION`, or `ASC_KEY_ID`, `ASC_ISSUER_ID` and `ASC_KEY_PATH`), the bundled models (`scripts/fetch-models.sh`), and exactly one Apple Development and one Apple Distribution identity for HEJI in the keychain. Each upload uses a UTC timestamp as its build number.
+From the repo root: `scripts/cut_release.sh weehours --dry-run`, then `scripts/cut_release.sh weehours` (next patch; or `minor`, `major`, `x.y.z`). It bumps `MARKETING_VERSION` in `apps/ios/project.yml`, pushes, and publishes GitHub Release `weehours-v<version>`, which runs `.github/workflows/weehours-testflight.yml`. That workflow also runs every Wednesday at 17:00 UTC from `main` (TestFlight builds expire after 90 days) and from the Actions tab. Each upload uses a UTC timestamp as its build number. Releases from before the monorepo (`v0.1.0`…`v0.1.2`) are in the archived `tianhaoz95/wee-hours` repo.
 
-In CI, publishing a GitHub Release, a weekly run from `main` every Wednesday at 17:00 UTC, or running *Release to TestFlight* from the Actions tab all run the same script (`.github/workflows/testflight.yml`). The workflow imports the two existing HEJI certificates from repo secrets, so CI never creates certificates. The secrets are `APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8_BASE64`, `SIGNING_DEV_P12_BASE64` / `SIGNING_DEV_P12_PASSWORD` and `SIGNING_DIST_P12_BASE64` / `SIGNING_DIST_P12_PASSWORD`. Their sources are `~/.appstoreconnect/private_keys` and the `.p12` files listed in `~/Credentials/hejitech.env`.
+CI signs with the same team-wide HEJI identities as Waypack (`SIGNING_P12_*` = Apple Distribution, `DEV_SIGNING_P12_*` = the pinned Apple Development identity) through `.github/actions/apple-signing`, so it never creates certificates. `FEEDBACKKIT_RELEASE_TOKEN` (optional) lets the upload announce shipped FeedbackKit fixes.
 
-To ship a new version, bump `MARKETING_VERSION` in `ios/project.yml`.
+Locally, `APPLE_TEAM_ID=68CTFST8W2 scripts/release_testflight.sh` does the same upload. It needs the App Store Connect API key (`FA_ASC_*` / `FA_KEY_LOCATION`, or `ASC_KEY_ID`, `ASC_ISSUER_ID` and `ASC_KEY_PATH`), the bundled models (`scripts/fetch-models.sh`), and exactly one Apple Development and one Apple Distribution identity for HEJI in the keychain.

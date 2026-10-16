@@ -5,11 +5,11 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$ROOT/report/v0/site/screenshots"
-DD="${DERIVED_DATA:-$ROOT/ios/.derived}"
+DD="${DERIVED_DATA:-$ROOT/apps/ios/.derived}"
 DEVICE="${DEVICE:-iPhone 17}"
 mkdir -p "$OUT"
 
-cd "$ROOT/ios"
+cd "$ROOT/apps/ios"
 xcodegen generate >/dev/null
 xcodebuild -project WeeHours.xcodeproj -scheme App -destination "platform=iOS Simulator,name=$DEVICE" -derivedDataPath "$DD" \
   build CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO -quiet

@@ -1,57 +1,60 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this project. Wee Hours lives in `projects/weehours/` of the HEJI monorepo: read the root `CLAUDE.md` too (releases, the shared Supabase project). Paths below are relative to `projects/weehours/` unless they start at the repo root.
 
-Wee Hours is a newborn log (feeds, diapers, sleep) for iPhone, Apple Watch, widgets/Siri, Even Realities G2 glasses + R1 ring, and AI agents over MCP. Every input becomes one typed, append-only event log shared by a household. `docs/decisions.md` records product and architecture decisions the user made explicitly. Read it before proposing architectural changes, and don't reintroduce rejected options: no server-side inference, one unified on-device decision model, Supabase rather than CloudKit. The full design walkthrough is in `report/v0/site` (`report/v0/script/serve.sh`).
+Wee Hours is a newborn log (feeds, diapers, sleep) for iPhone, Apple Watch, widgets/Siri, Even Realities G2 glasses + R1 ring, and AI agents over MCP. Every input becomes one typed, append-only event log shared by a household. `docs/decisions.md` records product and architecture decisions the user made explicitly. Read it before proposing architectural changes, and don't reintroduce rejected options: no server-side inference, one unified on-device decision model, Supabase rather than CloudKit (now the Supabase project every HEJI app shares). The full design walkthrough is in `report/v0/site` (`report/v0/script/serve.sh`).
 
 ## Commands
 
 ```bash
-scripts/dev.sh                     # supabase start, spec sync, llama.xcframework, models, xcodegen
-cd ios && xcodegen generate        # WeeHours.xcodeproj is generated and git-ignored; edit ios/project.yml instead
+scripts/dev.sh                     # shared supabase start (repo root), spec sync, llama.xcframework, models, xcodegen
+cd apps/ios && xcodegen generate   # WeeHours.xcodeproj is generated and git-ignored; edit apps/ios/project.yml instead
 scripts/sync-spec.sh               # copy spec/ files into each consumer (CI runs --check)
 
 # Swift domain logic
-cd ios/LogCore && swift test
-cd ios/LogCore && swift test --filter InterpreterTests/testName   # or FixtureTests, AcceptanceTests, …
-SUPABASE_IT=1 swift test --filter BackendIntegrationTests       # needs `supabase start`
-cd ios/LogCore && swift run -c release logeval --model keywords --out /tmp/eval   # eval (CI gates on it)
+cd apps/ios/LogCore && swift test
+cd apps/ios/LogCore && swift test --filter InterpreterTests/testName   # or FixtureTests, AcceptanceTests, …
+SUPABASE_IT=1 swift test --filter BackendIntegrationTests            # needs the local stack
+cd apps/ios/LogCore && swift run -c release logeval --model keywords --out /tmp/eval   # eval (CI gates on it)
 
 # On-device Laya port vs. llama-server
-cd ios/LayaRuntime && LAYA_MODEL=… LAYA_SERVER=http://127.0.0.1:8089 swift test
+cd apps/ios/LayaRuntime && LAYA_MODEL=… LAYA_SERVER=http://127.0.0.1:8089 swift test
 
-# Glasses app (Vite + Vitest)
-cd glasses && npm test             # or: npx vitest run test/core.test.ts -t "name"
-cd glasses && npm run typecheck && npm run build
+# TypeScript (npm workspaces from the repo root: @weehours/core, @weehours/glasses, @weehours/web)
+npm run test:weehours && npm run typecheck:weehours
+npx vitest run --root packages/core -t "name"      # the shared status fixtures against core.ts
 
-# Website (landing, agent setup, account, OAuth consent, legal; Cloudflare static assets)
-cd web && npm run dev              # http://127.0.0.1:3000 against the local stack (email sign-in shown in dev)
-cd web && npm run build            # needs VITE_SUPABASE_URL etc. (web/.env.example) or WEB_ALLOW_LOCAL=1
+# Website + Worker (pages, /mcp, OAuth endpoints; Cloudflare)
+npm run dev -w @weehours/web           # pages only, Vite on http://127.0.0.1:3000 (email sign-in shown in dev)
+npm run dev:worker -w @weehours/web    # built pages + the Worker on http://127.0.0.1:8788 (needs services/web/.dev.vars)
+npm run deploy -w @weehours/web        # production (Cloudflare Workers Builds runs this on push to main)
 
-# Backend
-supabase start && node scripts/test-mcp.mjs     # MCP edge function integration checks
-scripts/glasses-sim.sh --e2e                    # drives the Even Hub simulator end to end
+# Backend (from the repo root: one Supabase project for every HEJI app)
+supabase start                                   # ports 554xx; applies all projects' migrations + seeds
+scripts/db_migration.sh weehours <what>          # after editing supabase/schemas/weehours/*.sql (repo root)
+node scripts/test-mcp.mjs                        # MCP + OAuth integration checks against dev:worker
+scripts/glasses-sim.sh --e2e                     # drives the Even Hub simulator end to end
 
 # iOS simulator build (as CI does)
-cd ios && xcodebuild -project WeeHours.xcodeproj -scheme App -destination 'generic/platform=iOS Simulator' build CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO
+cd apps/ios && xcodebuild -project WeeHours.xcodeproj -scheme App -destination 'generic/platform=iOS Simulator' build CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO
 ```
 
-Local dev sign-in: `parent1@example.com` / `newborn-dev` (seeded household). MCP locally: `http://127.0.0.1:54321/functions/v1/mcp` with `Bearer wh_dev_local_token`.
+Local dev sign-in: `parent1@example.com` / `newborn-dev` (seeded household, `supabase/seeds/weehours.sql`). MCP locally: `http://127.0.0.1:8788/mcp` with `Bearer wh_dev_local_token`.
 
 ## Architecture
 
-**`spec/` is the single source of truth.** `event-types.json` holds the event types, fields and decision questions. `calibration.json` holds the fitted per-question temperatures, and `fixtures/status.json` holds derivation fixtures. `scripts/sync-spec.sh` copies them into `ios/LogCore/.../Resources`, the LogCore test fixtures and `supabase/functions/_shared/`. Edit `spec/` and then sync; never edit the copies.
+**`spec/` is the single source of truth.** `event-types.json` holds the event types, fields and decision questions. `calibration.json` holds the fitted per-question temperatures, and `fixtures/status.json` holds derivation fixtures. `scripts/sync-spec.sh` copies them into `apps/ios/LogCore/.../Resources`, the LogCore test fixtures and `packages/core/src/`. Edit `spec/` and then sync; never edit the copies.
 
-**Derivation exists twice and is fixture-locked.** `ios/LogCore` (`Derive.swift`, `Status.swift`) and its TypeScript twin `supabase/functions/_shared/core.ts` both turn the event log into sessions, duplicates and the one-line status ("Fed 2h40m ago · left next · …"). The MCP function and the glasses app (`glasses/test/core.test.ts` imports it directly) use the TS copy. Both must pass `spec/fixtures/status.json`, so a behaviour change goes into both implementations and the fixtures.
+**Derivation exists twice and is fixture-locked.** `apps/ios/LogCore` (`Derive.swift`, `Status.swift`) and its TypeScript twin `packages/core/src/core.ts` (`@weehours/core`) both turn the event log into sessions, duplicates and the one-line status ("Fed 2h40m ago · left next · …"). The MCP Worker, the account page and the glasses app use the TS copy (`packages/core/test/core.test.ts` runs the fixtures). Both must pass `spec/fixtures/status.json`, so a behaviour change goes into both implementations and the fixtures.
 
-**Voice pipeline (on the phone only).** WhisperKit transcribes, then LogCore's decision layer (`Interpreter.swift`, `Decision.swift`, `LayaPrompt.swift`) asks Laya questions shaped as category × phase rather than one flat type question. Clock times, relative times and quantities are parsed deterministically, not by the model. Calibrated confidence picks a tier: auto-commit, pick from two, or full list. The `DecisionModel` backends are in `ios/App/Sources/Services.swift`: on-device Laya (`ios/LayaRuntime`, a Swift port of llama.cpp's server-side decision path that runs on `ios/Vendor/llama.xcframework`), a llama-server on the Mac for development, and a keyword fallback. Models are bundled from `ios/App/Models` (`scripts/fetch-models.sh`, git-ignored).
+**Voice pipeline (on the phone only).** WhisperKit transcribes, then LogCore's decision layer (`Interpreter.swift`, `Decision.swift`, `LayaPrompt.swift`) asks Laya questions shaped as category × phase rather than one flat type question. Clock times, relative times and quantities are parsed deterministically, not by the model. Calibrated confidence picks a tier: auto-commit, pick from two, or full list. The `DecisionModel` backends are in `apps/ios/App/Sources/Services.swift`: on-device Laya (`apps/ios/LayaRuntime`, a Swift port of llama.cpp's server-side decision path that runs on `apps/ios/Vendor/llama.xcframework`), a llama-server on the Mac for development, and a keyword fallback. Models are bundled from `apps/ios/App/Models` (`scripts/fetch-models.sh`, git-ignored).
 
-**Data and sync.** Events are append-only, with corrections written as new events. The phone keeps SQLite in the App Group container (`ios/Shared/SharedStore.swift`), which it shares with the widgets. Sync with Supabase (`Sync.swift`) uses an outbox plus a seq cursor; RLS makes the tables append-only for clients (`supabase/migrations`). Local-only mode keeps the household on the phone, and signing in later re-homes the rows. The glasses never run inference: gestures write events directly, and hold-to-speak uploads a *capture* that a household phone processes later. The event id is derived from the capture id, so two phones converge on the same result.
+**Data and sync.** Events are append-only, with corrections written as new events. The phone keeps SQLite in the App Group container (`apps/ios/Shared/SharedStore.swift`), which it shares with the widgets. Sync with Supabase (`Sync.swift`) uses an outbox plus a seq cursor; RLS makes the tables append-only for clients. The tables live in the `weehours` Postgres schema of the shared project (declarative source: repo root `supabase/schemas/weehours/`), so every PostgREST call sends `Accept-Profile`/`Content-Profile: weehours` (supabase-js: `db: { schema }`), and capture audio is in the `weehours` bucket. Accounts (`auth.users`) are shared with the other HEJI apps: create Wee Hours rows on first use, never from triggers on `auth.users`. Local-only mode keeps the household on the phone, and signing in later re-homes the rows. The glasses never run inference: gestures write events directly, and hold-to-speak uploads a *capture* that a household phone processes later. The event id is derived from the capture id, so two phones converge on the same result.
 
-**Website.** `web/` is a Vite multi-page static site served by Cloudflare (`web/wrangler.jsonc`, assets only). Pages share `src/partials` through a small Vite plugin. `/account` and `/oauth/consent` (Supabase's OAuth server `authorization_url_path`) use supabase-js with the same RPCs and RLS as the app, and the account page derives the status line with the TS `core.ts`. Pricing and feature claims on the landing page mirror `Subscriptions.storekit` and `Entitlement.allows`, so update both together.
+**Website and Worker.** `services/web/` is a Vite multi-page site served by a Cloudflare Worker (`wrangler.jsonc`, `src/worker/`). Pages share `src/partials` through a small Vite plugin. `/account` uses supabase-js with the same RPCs and RLS as the app and derives the status line with `@weehours/core`. Pricing and feature claims on the landing page mirror `Subscriptions.storekit` and `Entitlement.allows`, so update both together.
 
-**Agents.** The app records facts and the user's own agent interprets them: there is no in-app advice. `supabase/functions/mcp` serves the log over MCP with Supabase OAuth or `wh_…` personal access tokens (only hashes are stored).
+**Agents.** The app records facts and the user's own agent interprets them: there is no in-app advice. The Worker serves the log over MCP at `/mcp` (`src/worker/mcp.ts`) and is its own OAuth 2.1 server (`@cloudflare/workers-oauth-provider`, like Waypack): `/authorize` hands the browser to `/oauth/consent/`, which signs in with Supabase and approves with the session; grants live in the `OAUTH_KV` namespace and the account page lists them via `/api/grants`. Supabase's built-in OAuth server isn't used: it has one consent URL per Supabase project, which every HEJI app shares. Agents that can't do OAuth use `wh_…` personal access tokens (only hashes are stored).
 
 ## Releasing
 
-`APPLE_TEAM_ID=68CTFST8W2 ./scripts/release_testflight.sh` uploads to TestFlight. `.github/workflows/testflight.yml` runs the same script on a published GitHub Release, weekly on Wednesday from `main`, or on manual dispatch. Both reuse the existing HEJI Apple Development and Apple Distribution certificates; CI imports them from repo secrets. Never let signing mint new certificates. The app is iPhone-only and portrait. App Groups (`group.com.hejitech.weehours`) and Sign In with Apple are registered in the developer portal, and an API key can't create App Groups.
+Cut releases from the repo root with `scripts/cut_release.sh weehours` (settings: `release.env`): it bumps `MARKETING_VERSION` in `apps/ios/project.yml`, pushes (Cloudflare deploys the site + Worker), and publishes GitHub Release `weehours-v<version>`, which runs `.github/workflows/weehours-testflight.yml`. That workflow also runs weekly on Wednesday from `main` and on manual dispatch. It runs `scripts/release_testflight.sh` (also usable locally: `APPLE_TEAM_ID=68CTFST8W2 scripts/release_testflight.sh`) with the team-wide HEJI Apple Development and Apple Distribution identities Waypack uses (`SIGNING_P12_*`, `DEV_SIGNING_P12_*` via `.github/actions/apple-signing`). Never let signing mint new certificates. Build numbers are UTC timestamps. The app is iPhone-only and portrait. App Groups (`group.com.hejitech.weehours`) and Sign In with Apple are registered in the developer portal, and an API key can't create App Groups.

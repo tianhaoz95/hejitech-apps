@@ -7,12 +7,12 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PORT=5173
 AUTOMATION_PORT=9898
 
-if ! curl -s -o /dev/null http://127.0.0.1:54321/rest/v1/; then
+if ! curl -s -o /dev/null http://127.0.0.1:55421/rest/v1/; then
   echo "Starting local Supabase (Docker must be running)…"
-  (cd "$ROOT" && supabase start >/dev/null)
+  (cd "$ROOT/../.." && supabase start >/dev/null)
 fi
 
-cd "$ROOT/glasses"
+cd "$ROOT/apps/glasses"
 [ -d node_modules ] || npm install --no-audit --no-fund
 if ! curl -s -o /dev/null "http://127.0.0.1:${PORT}"; then
   npm run dev >/tmp/weehours-glasses-vite.log 2>&1 &

@@ -20,10 +20,10 @@ Paths are relative to `projects/waypack/` unless they start at the repo root (`s
 supabase link --project-ref <ref>
 supabase db push                                   # supabase/migrations
 ```
-Waypack's tables are in `public` (it predates the per-project schema convention), and its
-`on_auth_user_created` trigger creates a `profiles` + `entitlements` row for **every** new user of
-the shared project, including other projects' users. Harmless (a free-plan row), but move it to
-lazy creation before another project starts signing users up.
+Waypack's tables are in `public` (it predates the per-project schema convention). Users are shared
+with the other projects, so Waypack creates its rows lazily: there is no sign-up trigger (dropped
+by `20261016070000_waypack_lazy_user_rows.sql`); a missing `entitlements` row reads as the free
+plan and Stripe upserts one on purchase.
 Dashboard → Authentication → **Sign In / Providers**:
 - **Email: turn it off.** Waypack signs in only with Google and Apple.
 - **Google** (≈15 min): Google Cloud Console → APIs & Services → OAuth consent screen (External; app name, support email, logo, `waypack.app` as authorized domain; scopes `email`, `profile`, `openid`) → Publish. Credentials → Create OAuth client ID → *Web application* → authorized redirect URI `https://<ref>.supabase.co/auth/v1/callback`. Paste the client ID and secret into Supabase's Google provider. Basic scopes don't need Google's verification review.

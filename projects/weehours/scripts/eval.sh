@@ -9,7 +9,7 @@ if ! curl -s "http://127.0.0.1:${LAYA_PORT}/health" | grep -q ok; then
   trap 'kill %1 2>/dev/null || true' EXIT
   for _ in $(seq 1 60); do curl -s "http://127.0.0.1:${LAYA_PORT}/health" | grep -q ok && break; sleep 1; done
 fi
-cd "$ROOT/ios/LogCore"
+cd "$ROOT/apps/ios/LogCore"
 swift build -c release --product logeval
 for design in flat hierarchical; do
   .build/release/logeval --model "http://127.0.0.1:${LAYA_PORT}" --design $design --out "$ROOT/eval/results"

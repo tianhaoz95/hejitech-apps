@@ -19,10 +19,11 @@ if (!signin.ok) throw new Error(`dev sign-in failed (${signin.status}) — is wr
 const sess = await signin.json();
 sess.user = { id: sess.userId };
 const uid = sess.user.id;
-await fetch(`${SUPA}/rest/v1/entitlements?user_id=eq.${uid}`, {
-  method: "PATCH",
-  headers: svc,
-  body: JSON.stringify(free ? { tier: "free", expires_at: null } : { tier: "annual", active: true, expires_at: new Date(Date.now() + 365 * 86400000).toISOString(), source: "manual" }),
+// Upsert: entitlement rows are created on first need (no sign-up trigger in the shared project).
+await fetch(`${SUPA}/rest/v1/entitlements?on_conflict=user_id`, {
+  method: "POST",
+  headers: { ...svc, Prefer: "resolution=merge-duplicates,return=minimal" },
+  body: JSON.stringify({ user_id: uid, ...(free ? { tier: "free", expires_at: null } : { tier: "annual", active: true, expires_at: new Date(Date.now() + 365 * 86400000).toISOString(), source: "manual" }) }),
 });
 // One "seed" token at a time: revoke earlier runs' tokens so the portal's list doesn't grow.
 const auth = { Authorization: `Bearer ${sess.access_token}` };

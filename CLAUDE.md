@@ -1,6 +1,6 @@
 # HEJI projects monorepo
 
-Several products live in `projects/<name>/` (currently only `waypack`), sharing one Supabase
+Several products live in `projects/<name>/` (`waypack`, `weehours`), sharing one Supabase
 project (`supabase/`, read `supabase/README.md` before any schema change), npm workspaces and CI
 plumbing. Layout and how to add a project: `README.md`. Keep each project self-contained; put
 something at the root only when it is genuinely shared.
@@ -13,7 +13,7 @@ The script keeps every surface on the same version and refuses to ship from a di
 or CI-red `main`.
 
 ```sh
-scripts/cut_release.sh waypack --dry-run        # always look first
+scripts/cut_release.sh waypack --dry-run        # always look first (same for weehours)
 scripts/cut_release.sh waypack                  # next patch; or: minor | major | 1.4.0
 scripts/cut_release.sh waypack minor --notes "…" --watch
 ```
@@ -25,3 +25,8 @@ publishes GitHub Release `waypack-v<version>` (legacy tags were `v<version>`), w
 attached to the release, served at `/download/mac`). CI assigns build numbers. Only Waypack may
 mark its releases "latest": installed Mac apps update from `releases/latest`. Setup, secrets and
 recovery: `projects/waypack/docs/DEPLOY.md` §4b.
+
+For Wee Hours it bumps `MARKETING_VERSION` in `projects/weehours/apps/ios/project.yml`, pushes
+(Cloudflare deploys the site + MCP Worker), and publishes `weehours-v<version>`, which runs
+`weehours-testflight.yml` with the same team-wide Apple signing secrets. Setup:
+`projects/weehours/docs/DEPLOY.md`.

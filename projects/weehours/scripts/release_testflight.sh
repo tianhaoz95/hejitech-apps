@@ -7,7 +7,7 @@
 # re-signs with the existing HEJI Apple Distribution certificate). You need:
 #   1. An App Store Connect API key (App Manager or higher) for team 68CTFST8W2.
 #   2. The app record in App Store Connect (com.hejitech.weehours) -- this script doesn't create it.
-#   3. The on-device models in ios/App/Models (scripts/fetch-models.sh), or the build ships without them.
+#   3. The on-device models in apps/ios/App/Models (scripts/fetch-models.sh), or the build ships without them.
 #
 # Usage:
 #   APPLE_TEAM_ID=68CTFST8W2 ./scripts/release_testflight.sh
@@ -28,7 +28,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-IOS_DIR="$REPO_ROOT/ios"
+IOS_DIR="$REPO_ROOT/apps/ios"
 BUILD_DIR="$REPO_ROOT/build/release"
 ARCHIVE_PATH="$BUILD_DIR/WeeHours.xcarchive"
 EXPORT_PATH="$BUILD_DIR/export"
@@ -100,7 +100,7 @@ if [[ "$icon_ok" != "true" ]]; then
 fi
 
 if [[ ! -s "$IOS_DIR/App/Models/Laya-Q8_0.gguf" || ! -d "$IOS_DIR/App/Models/whisper/openai_whisper-base.en" ]]; then
-  echo "error: on-device models are missing from ios/App/Models. Run scripts/fetch-models.sh first," >&2
+  echo "error: on-device models are missing from apps/ios/App/Models. Run scripts/fetch-models.sh first," >&2
   echo "  or set ALLOW_NO_MODELS=1 to ship a build that downloads them on first use." >&2
   [[ "${ALLOW_NO_MODELS:-}" == "1" ]] || exit 1
 fi
