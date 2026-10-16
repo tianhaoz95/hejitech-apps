@@ -1,0 +1,30 @@
+{
+  "name": "Wee Hours",
+  "sidebar": [
+    {
+      "text": "Wee Hours",
+      "items": [
+        {
+          "text": "Overview",
+          "link": ""
+        },
+        {
+          "text": "Decisions",
+          "link": "decisions"
+        },
+        {
+          "text": "Deployment",
+          "link": "DEPLOY"
+        },
+        {
+          "text": "v0 design walkthrough ↗",
+          "link": "report/index.html",
+          "target": "_blank"
+        }
+      ]
+    }
+  ],
+  "static": {
+    "report": "../report/v0/site"
+  }
+}

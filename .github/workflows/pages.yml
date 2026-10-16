@@ -1,11 +1,17 @@
-name: Waypack docs → GitHub Pages
+name: HEJI Apps site → GitHub Pages
 
+# https://tianhaoz95.github.io/hejitech-apps/: the site for every HEJI app. Home and monorepo guide
+# in pages/; each project's docs (projects/<p>/docs, plus static sites listed in its pages.json)
+# are copied in by scripts/pages_sync.mjs at build time.
 on:
   push:
     branches: [main]
     paths:
-      - "projects/waypack/docs/**"
-      - ".github/workflows/waypack-docs.yml"
+      - "pages/**"
+      - "projects/*/docs/**"
+      - "projects/*/report/**"
+      - "scripts/pages_sync.mjs"
+      - ".github/workflows/pages.yml"
       - "package.json"
       - "package-lock.json"
   workflow_dispatch:
@@ -21,7 +27,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build VitePress Docs
+    name: Build the site
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,12 +36,11 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Build documentation
-        run: npm run docs:build
+      - run: npm run pages:build
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: projects/waypack/docs/.vitepress/dist
+          path: pages/.vitepress/dist
 
   deploy:
     name: Deploy to GitHub Pages

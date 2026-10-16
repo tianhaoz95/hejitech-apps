@@ -17,6 +17,7 @@ supabase/               the shared Supabase project: config, schemas/<name>/, on
 scripts/cut_release.sh  releases one project: scripts/cut_release.sh <name> [patch|minor|major|x.y.z]
 scripts/db_migration.sh new migration for one project; check_supabase.mjs keeps projects apart
 scripts/check_isolation.mjs, graduation_check.sh   each project can leave for its own Supabase (supabase/GRADUATION.md)
+pages/                  the GitHub Pages site for every app (npm run pages:dev); project docs come from projects/<name>/docs
 .github/workflows/      <name>-*.yml per project
 .github/actions/        apple-signing (shared), <name>-toolchain
 package.json            npm workspaces: projects/*/packages/*, projects/*/services/*, projects/*/apps/*
@@ -45,10 +46,12 @@ npm run build:waypack       # per-project scripts: build:<name>, test:<name>, ty
    shared root files (copy `waypack-ci.yml`). Release workflows trigger on `release: published`
    and must skip other projects' tags: `if: startsWith(github.event.release.tag_name, '<name>-v')`.
    Name its GitHub variables and secrets `<NAME>_…` (only the Apple team signing secrets are shared).
-4. **Releases:** `projects/<name>/release.env` (copy Waypack's) with `TAG_PREFIX="<name>-v"` and
+4. **Docs:** `projects/<name>/docs/` with an `index.md` (and optionally `pages.json` for the
+   sidebar) appears on the site as `/<name>/`; add a card for the app to `pages/index.md`.
+5. **Releases:** `projects/<name>/release.env` (copy Waypack's) with `TAG_PREFIX="<name>-v"` and
    `LATEST=false`. Waypack owns the repo's "latest" release: its installed Mac apps update from
    `releases/latest`.
-5. **Cloudflare:** a Workers Builds project per Worker, root directory = repo root, deploy command
+6. **Cloudflare:** a Workers Builds project per Worker, root directory = repo root, deploy command
    `cd projects/<name>/services/<worker> && npm run deploy`, build watch paths `projects/<name>/*`.
-6. **Apple/Google:** per-app bundle IDs under `com.hejitech.*`; signing secrets in `apple-signing`
+7. **Apple/Google:** per-app bundle IDs under `com.hejitech.*`; signing secrets in `apple-signing`
    are team-wide and reusable.

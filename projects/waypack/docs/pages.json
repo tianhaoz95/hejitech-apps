@@ -1,0 +1,21 @@
+{
+  "name": "Waypack",
+  "sidebar": [
+    {
+      "text": "System Overview",
+      "items": [
+        { "text": "Developer Guide & Architecture", "link": "" },
+        { "text": "System Design & Specification", "link": "design" },
+        { "text": "Project Status & Roadmap", "link": "STATUS" }
+      ]
+    },
+    {
+      "text": "Architecture & Operations",
+      "items": [
+        { "text": "Architectural Decisions (ADRs)", "link": "DECISIONS" },
+        { "text": "Deployment & Infrastructure", "link": "DEPLOY" },
+        { "text": "Store Listing & Distribution", "link": "store-listing" }
+      ]
+    }
+  ]
+}

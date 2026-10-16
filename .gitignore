@@ -15,10 +15,14 @@ playwright-report/
 supabase/functions/.env
 supabase/.env
 
-# VitePress cache and build output (any project's docs/)
+# GitHub Pages site: VitePress output, and the project docs scripts/pages_sync.mjs copies in
 /.vitepress/
-projects/*/docs/.vitepress/dist/
-projects/*/docs/.vitepress/cache/
+/pages/.vitepress/dist/
+/pages/.vitepress/cache/
+/pages/*/
+!/pages/.vitepress/
+!/pages/public/
+/pages/public/*/
 
 # --- Waypack (projects/waypack)
 projects/waypack/packages/trip-sdk/assets/

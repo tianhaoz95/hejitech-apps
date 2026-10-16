@@ -4,6 +4,9 @@ hero:
   name: "Waypack Architecture"
   text: "Developer & System Documentation"
   tagline: "Turn AI agent itineraries into self-contained bundles that work completely offline with vector maps on mobile devices."
+  image:
+    src: /waypack/favicon.svg
+    alt: Waypack
   actions:
     - theme: brand
       text: System Design & Architecture
