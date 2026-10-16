@@ -1,0 +1,185 @@
+name: Publish CLI Package
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Test packaging and publishing without writing to registry"
+        type: boolean
+        default: false
+      version:
+        description: "Explicit version to publish (defaults to release tag or package.json)"
+        required: false
+
+concurrency:
+  group: npm-publish-${{ github.event.release.tag_name || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish-npm:
+    name: Publish to npm
+    if: github.event_name != 'release' || (!startsWith(github.event.release.tag_name, 'beta-') && !startsWith(github.event.release.tag_name, 'react-native-') && !startsWith(github.event.release.tag_name, 'desktop-') && !startsWith(github.event.release.tag_name, 'mac-demo-') && !startsWith(github.event.release.tag_name, 'skills-') && !startsWith(github.event.release.tag_name, 'web-sdk-') && !startsWith(github.event.release.tag_name, 'portal-mac-'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      deployments: write
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/feedbackkit-cli
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js for npm
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: "https://registry.npmjs.org"
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+            VERSION="${TAG#cli-v}"
+            VERSION="${VERSION#mac-demo-v}"
+            VERSION="${VERSION#v}"
+          elif [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+            VERSION="${VERSION#v}"
+          else
+            TAG="$(git describe --tags --match 'v[0-9]*' --match 'cli-v[0-9]*' --abbrev=0 2>/dev/null || git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null | head -n1 || true)"
+            VERSION="${TAG#cli-v}"
+            VERSION="${VERSION#mac-demo-v}"
+            VERSION="${VERSION#v}"
+            if [ -z "$VERSION" ]; then
+              VERSION="$(node -p 'require("./cli/package.json").version')"
+            fi
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Resolved version: $VERSION"
+
+      - name: Install dependencies
+        working-directory: cli
+        run: npm ci
+
+      - name: Set package version
+        working-directory: cli
+        run: |
+          npm version "${{ steps.version.outputs.version }}" --no-git-tag-version --allow-same-version
+
+      - name: Lint, test and build
+        working-directory: cli
+        run: |
+          npm run lint
+          npm test
+          npm run build
+
+      - name: Publish package to npm
+        working-directory: cli
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          PKG_VERSION="${{ steps.version.outputs.version }}"
+          ALREADY_PUBLISHED="$(npm view feedbackkit-cli@"$PKG_VERSION" version 2>/dev/null || true)"
+          if [ "$ALREADY_PUBLISHED" = "$PKG_VERSION" ]; then
+            echo "feedbackkit-cli@$PKG_VERSION is already published on npm registry. Skipping."
+            exit 0
+          fi
+
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "Running dry-run publish to npm..."
+            npm publish --dry-run --access public
+          else
+            npm publish --access public --provenance
+          fi
+
+  publish-github-packages:
+    name: Publish to GitHub Packages
+    if: github.event_name != 'release' || (!startsWith(github.event.release.tag_name, 'beta-') && !startsWith(github.event.release.tag_name, 'react-native-') && !startsWith(github.event.release.tag_name, 'desktop-') && !startsWith(github.event.release.tag_name, 'mac-demo-') && !startsWith(github.event.release.tag_name, 'skills-') && !startsWith(github.event.release.tag_name, 'web-sdk-') && !startsWith(github.event.release.tag_name, 'portal-mac-'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      deployments: write
+    environment:
+      name: github-packages
+      url: https://github.com/${{ github.repository }}/packages
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js for GitHub Packages
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@${{ github.repository_owner }}"
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+            VERSION="${TAG#cli-v}"
+            VERSION="${VERSION#mac-demo-v}"
+            VERSION="${VERSION#v}"
+          elif [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+            VERSION="${VERSION#v}"
+          else
+            TAG="$(git describe --tags --match 'v[0-9]*' --match 'cli-v[0-9]*' --abbrev=0 2>/dev/null || git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null | head -n1 || true)"
+            VERSION="${TAG#cli-v}"
+            VERSION="${VERSION#mac-demo-v}"
+            VERSION="${VERSION#v}"
+            if [ -z "$VERSION" ]; then
+              VERSION="$(node -p 'require("./cli/package.json").version')"
+            fi
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Resolved version: $VERSION"
+
+      - name: Install dependencies
+        working-directory: cli
+        run: npm ci
+
+      - name: Configure package scope and version
+        working-directory: cli
+        run: |
+          SCOPE_OWNER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
+          npm pkg set name="@${SCOPE_OWNER}/feedbackkit-cli"
+          npm version "${{ steps.version.outputs.version }}" --no-git-tag-version --allow-same-version
+
+      - name: Lint, test and build
+        working-directory: cli
+        run: |
+          npm run lint
+          npm test
+          npm run build
+
+      - name: Publish package to GitHub Packages
+        working-directory: cli
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "Running dry-run publish to GitHub Packages..."
+            npm publish --dry-run --access public
+          else
+            OUTPUT="$(npm publish --access public 2>&1)" || {
+              if echo "$OUTPUT" | grep -qiE "already exists|previously published|409|400"; then
+                echo "Package is already published to GitHub Packages. Skipping."
+              else
+                echo "$OUTPUT" >&2
+                exit 1
+              fi
+            }
+            echo "$OUTPUT"
+          fi

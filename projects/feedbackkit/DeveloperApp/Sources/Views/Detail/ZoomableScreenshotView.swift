@@ -1,0 +1,396 @@
+import SwiftUI
+import AVKit
+import FeedbackKit
+
+public struct ZoomableScreenshotView: View {
+    public let item: PortalFeedbackItem
+
+    public enum DisplayMode: String, CaseIterable, Identifiable {
+        case annotated = "Annotated"
+        case raw = "Raw"
+        case markup = "Vector Markup"
+        /// After-fix previews a coding agent attached (0025).
+        case after = "After"
+
+        public var id: String { rawValue }
+
+        public var iconName: String {
+            switch self {
+            case .annotated: return "pencil.tip.crop.circle"
+            case .raw: return "photo"
+            case .markup: return "scribble"
+            case .after: return "sparkles"
+            }
+        }
+    }
+
+    @State private var displayMode: DisplayMode = .annotated
+    @State private var currentScale: CGFloat = 1.0
+    @State private var lastScale: CGFloat = 1.0
+    @State private var offset: CGSize = .zero
+    @State private var lastOffset: CGSize = .zero
+    @State private var isFullScreenPresented: Bool = false
+    @State private var previews: [PortalFeedbackEvent] = []
+    @State private var previewURLs: [String: URL] = [:]
+    /// nil = the latest preview.
+    @State private var previewIndex: Int?
+
+    private var availableModes: [DisplayMode] {
+        var modes: [DisplayMode] = [.annotated, .raw]
+        if !item.annotations.isEmpty { modes.append(.markup) }
+        if !previews.isEmpty { modes.append(.after) }
+        return modes
+    }
+
+    private var currentPreview: PortalFeedbackEvent? {
+        guard !previews.isEmpty else { return nil }
+        let index = min(previewIndex ?? previews.count - 1, previews.count - 1)
+        return previews[index]
+    }
+
+    public init(item: PortalFeedbackItem) {
+        self.item = item
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header with display mode picker and fullscreen button
+            HStack {
+                Text("Screenshot & Annotations")
+                    .font(.headline)
+                Spacer()
+
+                if availableModes.count > 2 {
+                    Picker("Mode", selection: $displayMode) {
+                        ForEach(availableModes) { mode in
+                            Image(systemName: mode.iconName)
+                                .tag(mode)
+                                .accessibilityLabel(mode.rawValue)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: CGFloat(availableModes.count) * 44)
+                }
+
+                Button {
+                    isFullScreenPresented = true
+                } label: {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .padding(6)
+                        .background(Color(UIColor.secondarySystemBackground))
+                        .clipShape(Circle())
+                }
+            }
+
+            // Image Container with Zoom & Pan Gestures
+            ZStack {
+                Color(UIColor.secondarySystemBackground)
+
+                if displayMode == .after, let preview = currentPreview {
+                    afterContent(preview)
+                } else {
+                imageContent(for: displayMode)
+                    .scaleEffect(currentScale)
+                    .offset(offset)
+                    .gesture(
+                        MagnificationGesture()
+                            .onChanged { value in
+                                let delta = value / lastScale
+                                lastScale = value
+                                currentScale = min(max(currentScale * delta, 1.0), 5.0)
+                            }
+                            .onEnded { _ in
+                                lastScale = 1.0
+                                if currentScale <= 1.0 {
+                                    withAnimation(.spring()) {
+                                        offset = .zero
+                                    }
+                                }
+                            }
+                            .simultaneously(with:
+                                DragGesture()
+                                    .onChanged { value in
+                                        if currentScale > 1.0 {
+                                            offset = CGSize(
+                                                width: lastOffset.width + value.translation.width,
+                                                height: lastOffset.height + value.translation.height
+                                            )
+                                        }
+                                    }
+                                    .onEnded { _ in
+                                        lastOffset = offset
+                                    }
+                            )
+                    )
+                    .onTapGesture(count: 2) {
+                        withAnimation(.spring()) {
+                            if currentScale > 1.0 {
+                                currentScale = 1.0
+                                offset = .zero
+                                lastOffset = .zero
+                            } else {
+                                currentScale = 2.5
+                            }
+                        }
+                    }
+                }
+
+                // Zoom reset badge if zoomed
+                if currentScale > 1.05 {
+                    VStack {
+                        HStack {
+                            Button {
+                                withAnimation(.spring()) {
+                                    currentScale = 1.0
+                                    offset = .zero
+                                    lastOffset = .zero
+                                }
+                            } label: {
+                                Label("Reset Zoom (\(Int(currentScale * 100))%)", systemImage: "arrow.counterclockwise")
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(Color.black.opacity(0.75))
+                                    .clipShape(Capsule())
+                            }
+                            Spacer()
+                        }
+                        .padding(10)
+                        Spacer()
+                    }
+                }
+            }
+            .frame(height: 380)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(Color(UIColor.separator).opacity(0.5), lineWidth: 0.5)
+            )
+
+            if displayMode == .after, let preview = currentPreview {
+                afterDetails(preview)
+            }
+
+            // Annotation chips breakdown
+            if !item.annotations.isEmpty && displayMode != .after {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        Text("Markup:")
+                            .font(.caption.weight(.medium))
+                            .foregroundColor(.secondary)
+
+                        ForEach(Array(item.annotations.enumerated()), id: \.offset) { idx, ann in
+                            HStack(spacing: 5) {
+                                Circle()
+                                    .fill(Color(hex: ann.colorHex) ?? .red)
+                                    .frame(width: 8, height: 8)
+
+                                Text(ann.kind.rawValue.capitalized)
+                                    .font(.caption2.weight(.semibold))
+
+                                if let label = ann.label, !label.isEmpty {
+                                    Text("\"\(label)\"")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color(UIColor.tertiarySystemFill))
+                            .clipShape(Capsule())
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+            }
+        }
+        .fullScreenCover(isPresented: $isFullScreenPresented) {
+            FullScreenImageViewer(
+                url: currentFullscreenURL,
+                title: currentFullscreenTitle,
+                caption: currentFullscreenCaption
+            )
+        }
+        .task(id: "\(item.id):\(item.fixStage ?? ""):\(item.status.rawValue)") {
+            await loadPreviews()
+        }
+    }
+
+    private var currentFullscreenURL: URL? {
+        switch displayMode {
+        case .after:
+            if let path = currentPreview?.mediaPath {
+                return previewURLs[path]
+            }
+            return nil
+        case .raw:
+            let str = item.signedRawScreenshotUrl ?? item.signedScreenshotUrl
+            return str.flatMap(URL.init(string:))
+        case .annotated, .markup:
+            return item.signedScreenshotUrl.flatMap(URL.init(string:))
+        }
+    }
+
+    private var currentFullscreenTitle: String {
+        switch displayMode {
+        case .after:
+            return currentPreview?.title ?? "After-Fix Preview"
+        case .raw:
+            return "Raw Screenshot"
+        case .annotated:
+            return "Screenshot"
+        case .markup:
+            return "Vector Markup"
+        }
+    }
+
+    private var currentFullscreenCaption: String? {
+        if displayMode == .after {
+            return currentPreview?.body
+        }
+        return nil
+    }
+
+    private func loadPreviews() async {
+        let client = SupabasePortalClient.shared
+        guard let events = try? await client.fetchFeedbackEvents(feedbackId: item.id) else { return }
+        let found = events.filter { $0.kind == "after_screenshot" }
+        var urls: [String: URL] = [:]
+        for path in Set(found.compactMap(\.mediaPath)) {
+            if let signed = try? await client.getSignedUrl(path: path), let url = URL(string: signed) {
+                urls[path] = url
+            }
+        }
+        previews = found
+        previewURLs = urls
+    }
+
+    @ViewBuilder
+    private func afterContent(_ preview: PortalFeedbackEvent) -> some View {
+        if preview.expiredAt != nil || preview.mediaPath == nil {
+            VStack(spacing: 8) {
+                Image(systemName: "clock.badge.xmark")
+                    .font(.largeTitle)
+                    .foregroundColor(.secondary)
+                Text("Preview expired: deleted \(AfterPreviewRetention.days) days after the report was resolved.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+            }
+        } else if let path = preview.mediaPath, let url = previewURLs[path] {
+            if preview.isVideo {
+                VideoPlayer(player: AVPlayer(url: url))
+            } else {
+                Button {
+                    isFullScreenPresented = true
+                } label: {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image.resizable().scaledToFit()
+                        case .failure:
+                            Text("Preview unavailable").font(.caption).foregroundColor(.secondary)
+                        default:
+                            ProgressView()
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .buttonStyle(.plain)
+            }
+        } else {
+            ProgressView()
+        }
+    }
+
+    private func afterDetails(_ preview: PortalFeedbackEvent) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
+                    if let caption = preview.body, !caption.isEmpty {
+                        Text(caption).font(.caption.weight(.semibold))
+                    }
+                    Text("Captured by \(preview.actorLabel ?? "a coding agent")\(preview.durationSeconds.map { " · \(Int($0.rounded()))s" } ?? "")")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                if previews.count > 1 {
+                    HStack(spacing: 4) {
+                        ForEach(Array(previews.enumerated()), id: \.element.id) { index, event in
+                            Button("\(index + 1)") { previewIndex = index }
+                                .font(.caption2.weight(.semibold))
+                                .buttonStyle(.bordered)
+                                .tint(event.id == preview.id ? .accentColor : .secondary)
+                        }
+                    }
+                }
+            }
+            Text("An agent's capture, not a confirmation: the report is only verified by its reporter or your team. \(AfterPreviewRetention.note(resolvedAt: item.resolvedAt))")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private func imageContent(for mode: DisplayMode) -> some View {
+        let shotUrl = (mode == .raw ? (item.signedRawScreenshotUrl ?? item.signedScreenshotUrl) : item.signedScreenshotUrl)
+            ?? item.signedScreenshotUrl
+            ?? "https://images.unsplash.com/photo-1555774698-0b77e0d5fac6?w=800&auto=format&fit=crop"
+
+        ZStack {
+            AsyncImage(url: URL(string: shotUrl)) { phase in
+                switch phase {
+                case .empty:
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                case .failure:
+                    VStack(spacing: 8) {
+                        Image(systemName: "photo.badge.exclamationmark")
+                            .font(.largeTitle)
+                            .foregroundColor(.secondary)
+                        Text("Screenshot unavailable")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                @unknown default:
+                    EmptyView()
+                }
+            }
+
+            // Dynamic vector markup overlay if mode is .markup
+            if mode == .markup {
+                AnnotationCanvasOverlayView(annotations: item.annotations)
+            }
+        }
+    }
+}
+
+
+// MARK: - Color Hex Initializer Helper
+
+private extension Color {
+    init?(hex: String) {
+        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
+
+        var rgb: UInt64 = 0
+        guard Scanner(string: hexSanitized).scanHexInt64(&rgb) else { return nil }
+
+        let r = Double((rgb & 0xFF0000) >> 16) / 255.0
+        let g = Double((rgb & 0x00FF00) >> 8) / 255.0
+        let b = Double(rgb & 0x0000FF) / 255.0
+
+        self.init(red: r, green: g, blue: b)
+    }
+}

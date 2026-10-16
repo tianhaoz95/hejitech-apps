@@ -1,0 +1,127 @@
+import Foundation
+
+public enum FeedbackSubmissionError: Error, Sendable, LocalizedError {
+    case notConfigured
+    case encodingFailed
+    case network(Error)
+    case server(statusCode: Int)
+
+    public var errorDescription: String? {
+        switch self {
+        case .notConfigured:
+            return "FeedbackKit is not configured with an API key and endpoint."
+        case .encodingFailed:
+            return "Failed to encode feedback payload."
+        case .network(let error):
+            return "Network error: \(error.localizedDescription)"
+        case .server(let statusCode):
+            if statusCode == 401 || statusCode == 403 {
+                return "Server rejected project key (HTTP \(statusCode)). Please verify your API key."
+            }
+            if statusCode == 402 {
+                // The project's plan reached its monthly report limit (0019_plan_limits.sql).
+                return "Feedback for this app is paused this month. Please try again later."
+            }
+            return "Server returned error (HTTP \(statusCode))."
+        }
+    }
+}
+
+/// Optional built-in transport that POSTs a `FeedbackReport` to the FeedbackKit
+/// dashboard's ingestion endpoint (a Supabase Edge Function). Entirely
+/// optional — this is just one way to consume a `FeedbackReport`; nothing
+/// about capture/annotation depends on it.
+public enum FeedbackSubmitter {
+    public static func submit(
+        _ report: FeedbackReport,
+        configuration: FeedbackKitConfiguration,
+        completion: @escaping @Sendable (Result<Void, FeedbackSubmissionError>) -> Void
+    ) {
+        var request = URLRequest(url: configuration.endpointURL)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let payload = IngestPayload(
+            report: report,
+            projectKey: configuration.projectKey,
+            reporterID: FeedbackReporterIdentity.current,
+            reporter: FeedbackKit.user
+        )
+        guard let body = try? IngestPayload.encoder.encode(payload) else {
+            completion(.failure(.encodingFailed))
+            return
+        }
+        request.httpBody = body
+
+        URLSession.shared.dataTask(with: request) { _, response, error in
+            if let error {
+                completion(.failure(.network(error)))
+                return
+            }
+            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+                let status = (response as? HTTPURLResponse)?.statusCode ?? -1
+                completion(.failure(.server(statusCode: status)))
+                return
+            }
+            completion(.success(()))
+        }.resume()
+    }
+}
+
+/// Wire format sent to the ingestion endpoint. Kept separate from the public
+/// `FeedbackReport` model (which uses idiomatic Swift camelCase) so the JSON
+/// contract can use conventional snake_case matching the Postgres schema,
+/// without leaking wire-format concerns into the SDK's public API.
+struct IngestPayload: Encodable {
+    let report: FeedbackReport
+    let projectKey: String
+    /// Anonymous per-install id (see `FeedbackReporterIdentity`) — lets this
+    /// device be asked "is it fixed?" once a fix for this report ships.
+    var reporterID: String?
+    /// `FeedbackKit.user`, if the host app set one.
+    var reporter: FeedbackUser?
+
+    static let encoder: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
+    }()
+
+    enum CodingKeys: String, CodingKey {
+        case projectKey = "project_key"
+        case id, text, annotations, environment
+        case createdAt = "created_at"
+        case screenshotRawPNG = "screenshot_raw_png_base64"
+        case screenshotAnnotatedPNG = "screenshot_annotated_png_base64"
+        case attachmentFilename = "attachment_filename"
+        case attachmentMimeType = "attachment_mime_type"
+        case attachmentDataBase64 = "attachment_data_base64"
+        case productKeys = "product_keys"
+        case products
+        case reporterID = "reporter_id"
+        case reporter
+        case notifyReporter = "notify_reporter"
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(projectKey, forKey: .projectKey)
+        try container.encode(report.id, forKey: .id)
+        try container.encode(report.createdAt, forKey: .createdAt)
+        try container.encode(report.text, forKey: .text)
+        try container.encodeIfPresent(report.screenshotRawPNG, forKey: .screenshotRawPNG)
+        try container.encodeIfPresent(report.screenshotAnnotatedPNG, forKey: .screenshotAnnotatedPNG)
+        try container.encode(report.annotations, forKey: .annotations)
+        try container.encode(report.environment, forKey: .environment)
+        try container.encodeIfPresent(report.attachment?.filename, forKey: .attachmentFilename)
+        try container.encodeIfPresent(report.attachment?.mimeType, forKey: .attachmentMimeType)
+        try container.encodeIfPresent(report.attachment?.data, forKey: .attachmentDataBase64)
+        if !report.products.isEmpty {
+            try container.encode(report.products.map(\.key), forKey: .productKeys)
+            try container.encode(report.products, forKey: .products)
+        }
+        try container.encodeIfPresent(reporterID, forKey: .reporterID)
+        try container.encodeIfPresent(reporter, forKey: .reporter)
+        try container.encode(report.notifyReporter, forKey: .notifyReporter)
+    }
+}

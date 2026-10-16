@@ -1,0 +1,308 @@
+#!/usr/bin/env node
+import { Command } from "commander";
+import { login } from "./commands/login.js";
+import { logout } from "./commands/logout.js";
+import { whoami } from "./commands/whoami.js";
+import { listProjects } from "./commands/projects.js";
+import { listFeedback } from "./commands/list.js";
+import { printPrompt } from "./commands/prompt.js";
+import { printDocs } from "./commands/docs.js";
+import { release } from "./commands/release.js";
+import { promote } from "./commands/promote.js";
+import { listReleases } from "./commands/releases.js";
+import { createToken, issueToken, listTokens, revokeToken } from "./commands/token.js";
+import { link } from "./commands/link.js";
+import { timeline } from "./commands/timeline.js";
+import { watch, type WatchOptions } from "./commands/watch.js";
+import { delivery } from "./commands/delivery.js";
+import { runMcpServer } from "./mcp/server.js";
+
+function handleError(err: unknown): void {
+  console.error(err instanceof Error ? err.message : String(err));
+  process.exitCode = 1;
+}
+
+const program = new Command();
+program
+  .name("feedbackkit")
+  .description("CLI + MCP server for reading FeedbackKit dashboard feedback from a coding agent.")
+  .version("0.1.0");
+
+program
+  .command("login")
+  .description("Log in via your browser (opens the dashboard to authorize this CLI).")
+  .option("--dashboard-url <url>", "Dashboard URL to authenticate against.")
+  .action(async (opts: { dashboardUrl?: string }) => {
+    try {
+      await login(opts);
+    } catch (err) {
+      handleError(err);
+    }
+  });
+
+program
+  .command("logout")
+  .description("Remove locally stored credentials.")
+  .action(async () => {
+    try {
+      await logout();
+    } catch (err) {
+      handleError(err);
+    }
+  });
+
+program
+  .command("whoami")
+  .description("Show the currently logged-in user.")
+  .action(async () => {
+    try {
+      await whoami();
+    } catch (err) {
+      handleError(err);
+    }
+  });
+
+program
+  .command("projects")
+  .description("List projects you're a member of.")
+  .action(async () => {
+    try {
+      await listProjects();
+    } catch (err) {
+      handleError(err);
+    }
+  });
+
+program
+  .command("list")
+  .description("List feedback reports.")
+  .option("--project <id>", "Only feedback for this project id.")
+  .option("--status <status>", "Only feedback with this status (new, in_progress, resolved, wont_fix).")
+  .option("--stage <stage>", "Only feedback at this fix stage (agent_working, pr_open, merged, shipped, verified, reopened).")
+  .action(async (opts: { project?: string; status?: string; stage?: string }) => {
+    try {
+      await listFeedback(opts);
+    } catch (err) {
+      handleError(err);
+    }
+  });
+
+program
+  .command("prompt")
+  .argument("<feedbackId>", "Feedback id to generate a coding-agent prompt for.")
+  .description("Print the generated coding-agent prompt for one feedback report.")
+  .action(async (feedbackId: string) => {
+    try {
+      await printPrompt(feedbackId);
+    } catch (err) {
+      handleError(err);
+    }
+  });
+
+program
+  .command("timeline")
+  .argument("<feedbackId>", "Feedback id.")
+  .description("Show a report's fix-loop activity: agent progress, PRs, releases, and the reporter's replies.")
+  .action(async (feedbackId: string) => {
+    try {
+      await timeline(feedbackId);
+    } catch (err) {
+      handleError(err);
+    }
+  });
+
+program
+  .command("link")
+  .argument("<feedbackId>", "Feedback id the fix is for.")
+  .description("Record the fix for a report by hand (automatic for commits/PRs with a `FeedbackKit: <id>` trailer when the GitHub App is connected).")
+  .option("--pr <url>", "Pull request URL.")
+  .option("--commit <sha>", "Fix commit (without --pr, treated as already merged).")
+  .option("--merged", "The PR is merged.")
+  .option("--summary <text>", "One sentence on what was fixed, shown to the reporter.")
+  .action(async (feedbackId: string, opts: { pr?: string; commit?: string; merged?: boolean; summary?: string }) => {
+    try {
+      await link(feedbackId, opts);
+    } catch (err) {
+      handleError(err);
+    }
+  });
+
+program
+  .command("release")
+  .description(
+    "Announce a build: marks merged fixes it contains as shipped, so their reporters get asked \"is it fixed?\" in the app.",
+  )
+  .requiredOption("--build <build>", "The build number reporters will run (CFBundleVersion / your web build id).")
+  // Not `--version`: the root command's `-V, --version` would swallow it.
+  .option("--app-version <version>", "Marketing version, e.g. 1.4.0 (shown with the release).")
+  .option("--commit <rev>", "Commit the build was made from (default HEAD). Fixes must be ancestors of it.")
+  .option("--product <key>", "Only ship fixes for this product (e.g. ios); reports with no product always ship.")
+  .option("--project <id>", "Project id (default: FEEDBACKKIT_PROJECT_ID, or your only project). Ignored with --token.")
+  .option("--channel <channel>", "beta (default), production, or preview (a build of one pull request; needs --pr).")
+  .option("--pr <number>", "With --channel preview: the pull request the build was made from. Ships the reports linked to it.")
+  .option("--token <token>", "Access token with releases:write, for CI (default: FEEDBACKKIT_RELEASE_TOKEN or FEEDBACKKIT_TOKEN). No login needed.")
+  .option("--api-url <url>", "FeedbackKit backend for --token (default: FEEDBACKKIT_API_URL, or the hosted one).")
+  .option("--include <ids...>", "Also ship these feedback ids, skipping the git check.")
+  .option("--dry-run", "Show what would ship without recording anything.")
+  .action(async (opts: { build: string; appVersion?: string; commit?: string; product?: string; project?: string; channel?: string; pr?: string; token?: string; apiUrl?: string; include?: string[]; dryRun?: boolean }) => {
+    try {
+      await release({ ...opts, version: opts.appVersion });
+    } catch (err) {
+      handleError(err);
+    }
+  });
+
+program
+  .command("releases")
+  .description("Release readiness: each build's fixes — verified, waiting on reporters, or reopened — and whether it's ready to promote.")
+  .option("--project <id>", "Project id (default: FEEDBACKKIT_PROJECT_ID, or your only project).")
+  .option("--limit <n>", "How many releases (default 20).")
+  .option("--json", "Machine-readable output.")
+  .action(async (opts: { project?: string; limit?: string; json?: boolean }) => {
+    try {
+      await listReleases(opts);
+    } catch (err) {
+      handleError(err);
+    }
+  });
+
+program
+  .command("promote")
+  .description("Mark a beta build as released to production (e.g. after promoting it in App Store Connect).")
+  .requiredOption("--build <build>", "The build that went to production.")
+  .option("--product <key>", "Only this product's release of the build.")
+  .option("--project <id>", "Project id (default: FEEDBACKKIT_PROJECT_ID, or your only project). Ignored with --token.")
+  .option("--token <token>", "Access token with releases:write (default: FEEDBACKKIT_RELEASE_TOKEN or FEEDBACKKIT_TOKEN).")
+  .option("--api-url <url>", "FeedbackKit backend for --token.")
+  .action(async (opts: { build: string; product?: string; project?: string; token?: string; apiUrl?: string }) => {
+    try {
+      await promote(opts);
+    } catch (err) {
+      handleError(err);
+    }
+  });
+
+const tokenCommand = program
+  .command("token")
+  .description("Project access tokens — how CI and agent runners use FeedbackKit without a login (set FEEDBACKKIT_TOKEN).");
+
+const collect = (value: string, previous: string[] = []) => [...previous, value];
+
+tokenCommand
+  .command("create")
+  .argument("<name>", "What it's for, e.g. github-actions.")
+  .option("--preset <preset>", "ci (announce releases; the default), agent (agent runner: read, update, ask, previews, issue run tokens), or read.")
+  .option("--scope <scope>", "Add a scope (repeatable): releases:write, feedback:read, feedback:write, reporter:ask, previews:write, tokens:issue.", collect)
+  .option("--expires <when>", "90d, 12h, 1y, a date (2027-01-31), or never (default).")
+  .option("--project <id>", "Project id (default: FEEDBACKKIT_PROJECT_ID, or your only project).")
+  .description("Create a token (printed once), e.g. `token create github-actions --preset ci | gh secret set FEEDBACKKIT_RELEASE_TOKEN`.")
+  .action(async (name: string, opts: { project?: string; preset?: string; scope?: string[]; expires?: string }) => {
+    try {
+      await createToken(name, opts);
+    } catch (err) {
+      handleError(err);
+    }
+  });
+
+tokenCommand
+  .command("list")
+  .option("--project <id>", "Project id.")
+  .description("List a project's access tokens with their scopes and expiry.")
+  .action(async (opts: { project?: string }) => {
+    try {
+      await listTokens(opts);
+    } catch (err) {
+      handleError(err);
+    }
+  });
+
+tokenCommand
+  .command("revoke")
+  .argument("<id>", "Token id (from `token list`).")
+  .description("Revoke an access token (and every run token it issued).")
+  .action(async (id: string) => {
+    try {
+      await revokeToken(id);
+    } catch (err) {
+      handleError(err);
+    }
+  });
+
+tokenCommand
+  .command("issue")
+  .requiredOption("--feedback <ids...>", "The report the new token is limited to; several (space- or comma-separated) for a merged batch.")
+  .option("--ttl <minutes>", "Minutes until it expires (5–720, default 60).")
+  .option("--name <name>", "Label shown in the token list.")
+  .description("Issue a short-lived token limited to one report (or a merged batch), for a coding agent's run (needs a token with tokens:issue, or a login).")
+  .action(async (opts: { feedback: string[]; ttl?: string; name?: string }) => {
+    try {
+      await issueToken(opts);
+    } catch (err) {
+      handleError(err);
+    }
+  });
+
+program
+  .command("docs")
+  .argument("[topic]", "Doc topic to print (omit to list available topics).")
+  .description("Print FeedbackKit's own documentation — e.g. how to add the SDK to an iOS app.")
+  .action(async (topic: string | undefined) => {
+    try {
+      await printDocs(topic);
+    } catch (err) {
+      handleError(err);
+    }
+  });
+
+program
+  .command("delivery")
+  .argument("[mode]", "batch or branch. Leave out to show the current mode.")
+  .description("Show or set how the project delivers fixes: batch (merge, then ship in a beta) or branch (verify on a PR preview, then merge).")
+  .option("--project <id>", "Project id (default: FEEDBACKKIT_PROJECT_ID, or your only project).")
+  .action(async (mode: string | undefined, opts: { project?: string }) => {
+    try {
+      await delivery(mode, opts);
+    } catch (err) {
+      handleError(err);
+    }
+  });
+
+program
+  .command("watch")
+  .description(
+    "Run your own coding agent on reports queued with \"Run on my machine\" in the dashboard: each run gets a git worktree, and the fix is pushed and opened as a PR that closes the loop. Run it inside the repo.",
+  )
+  .option("--project <id>", "Project id (default: FEEDBACKKIT_PROJECT_ID, or your only project).")
+  .option("--agent <agent>", "claude (default) or codex.")
+  .option("--agent-cmd <command>", "Any other agent: a shell command run in the worktree, with the prompt in $FEEDBACKKIT_PROMPT_FILE.")
+  .option("--allow <tools...>", "Extra Claude Code tools to allow without asking, e.g. \"Bash(make:*)\".")
+  .option("--auto", "Also run on every new report without a click. Report text is agent input: only for trusted reporters.")
+  .option("--max-runs <n>", "Runs per day before pausing (default 10).")
+  .option("--interval <seconds>", "How often to check for queued reports (default 30).")
+  .option("--timeout <minutes>", "Stop an agent run after this long (default 60).")
+  .option("--base <ref>", "Branch runs start from (default origin's default branch).")
+  .option("--no-pr", "Commit the fix on a local branch only; don't push or open a PR.")
+  .option("--once", "Handle what's queued now, then exit.")
+  .action(async (opts: WatchOptions) => {
+    try {
+      await watch(opts);
+    } catch (err) {
+      handleError(err);
+    }
+  });
+
+program
+  .command("mcp")
+  .description("Run an MCP server over stdio, exposing your feedback to a coding agent.")
+  .option("--project <id>", "Only allow access to this project id.")
+  .option("--project-id <id>", "Alias for --project.")
+  .action(async (opts: { project?: string; projectId?: string }) => {
+    try {
+      const projectId = opts.project || opts.projectId || process.env.FEEDBACKKIT_PROJECT_ID;
+      await runMcpServer({ projectId });
+    } catch (err) {
+      handleError(err);
+    }
+  });
+
+program.parseAsync(process.argv);

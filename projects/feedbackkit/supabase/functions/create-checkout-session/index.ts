@@ -1,0 +1,123 @@
+// Starts a Stripe Checkout session for an organization to subscribe to the
+// Indie plan: a flat price, monthly or annual (`interval`), quantity 1.
+// Promotion codes are accepted, for founding-member and other coupons
+// created in the Stripe Dashboard. Called by the dashboard's Billing page
+// (web/src/pages/BillingPage.tsx) with the signed-in user's own Supabase
+// session — `verify_jwt` is left at its default (true, see
+// supabase/config.toml), so the platform has already rejected the request
+// by the time this code runs if the JWT isn't valid.
+//
+// Returns `{ error: "billing_not_configured" }` (501) rather than failing
+// weirdly when STRIPE_SECRET_KEY/STRIPE_PRICE_ID_INDIE_MONTHLY/_ANNUAL aren't set yet — the
+// expected state until a real Stripe account exists. See
+// supabase/functions/_shared/stripe.ts.
+import { createClient } from "jsr:@supabase/supabase-js@2";
+import { corsHeaders, json, notConfigured } from "../_shared/http.ts";
+import { type BillingInterval, getIndiePriceId, getStripe } from "../_shared/stripe.ts";
+
+interface RequestBody {
+  organization_id: string;
+  success_url: string;
+  cancel_url: string;
+  /** Defaults to monthly. */
+  interval?: BillingInterval;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
+
+  let body: RequestBody;
+  try {
+    body = await req.json();
+  } catch {
+    return json({ error: "invalid JSON body" }, 400);
+  }
+  if (!body.organization_id || !body.success_url || !body.cancel_url) {
+    return json({ error: "missing required fields" }, 400);
+  }
+
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader) return json({ error: "missing Authorization header" }, 401);
+
+  // Scoped to the caller via their own JWT, not service role — RLS decides
+  // whether they can actually see this organization, the same way the
+  // dashboard's own queries are scoped. Nothing here duplicates that check
+  // in application code (see CLAUDE.md's note on RLS-vs-app-code checks).
+  const callerClient = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_ANON_KEY")!,
+    { global: { headers: { Authorization: authHeader } } },
+  );
+
+  const { data: org, error: orgError } = await callerClient
+    .from("organizations")
+    .select("id")
+    .eq("id", body.organization_id)
+    .single();
+  if (orgError || !org) {
+    return json({ error: "unknown organization, or you're not a member of it" }, 403);
+  }
+
+  // Subscribing commits the whole organization to paying, so it's an owner's call.
+  const { data: isOwner } = await callerClient.rpc("is_org_owner", { p_org_id: body.organization_id });
+  if (!isOwner) {
+    return json({ error: "only an owner can change the plan", message: "Only an owner can change the plan." }, 403);
+  }
+
+  const stripe = getStripe();
+  const priceId = getIndiePriceId(body.interval === "year" ? "year" : "month");
+  if (!stripe || !priceId) {
+    return notConfigured("Billing isn't set up yet — check back soon.");
+  }
+
+  const admin = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
+
+  const { data: billing, error: billingError } = await admin
+    .from("organization_billing")
+    .select("stripe_customer_id")
+    .eq("organization_id", body.organization_id)
+    .single();
+  if (billingError) {
+    return json({ error: "failed to load billing account", detail: billingError.message }, 500);
+  }
+
+  let customerId = billing.stripe_customer_id as string | null;
+  // A customer saved under another Stripe account or mode (the sandbox, before
+  // billing went live) doesn't exist here: start over with a new one.
+  if (customerId) {
+    const existing = await stripe.customers.retrieve(customerId).catch(() => null);
+    if (!existing || existing.deleted) customerId = null;
+  }
+  if (!customerId) {
+    const customer = await stripe.customers.create({
+      metadata: { organization_id: body.organization_id },
+    });
+    customerId = customer.id;
+    const { error: updateError } = await admin
+      .from("organization_billing")
+      .update({ stripe_customer_id: customerId })
+      .eq("organization_id", body.organization_id);
+    if (updateError) {
+      return json({ error: "failed to save Stripe customer", detail: updateError.message }, 500);
+    }
+  }
+
+  const session = await stripe.checkout.sessions.create({
+    mode: "subscription",
+    customer: customerId,
+    line_items: [{ price: priceId, quantity: 1 }],
+    allow_promotion_codes: true,
+    // A 100%-off code (the team's own developer code) needs no card.
+    payment_method_collection: "if_required",
+    success_url: body.success_url,
+    cancel_url: body.cancel_url,
+    metadata: { organization_id: body.organization_id },
+    subscription_data: { metadata: { organization_id: body.organization_id, plan: "indie" } },
+  });
+
+  return json({ url: session.url }, 200);
+});

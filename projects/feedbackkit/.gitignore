@@ -1,0 +1,41 @@
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# Xcode
+DemoApp/FeedbackKitDemo.xcodeproj/
+DemoApp/Generated/
+DemoApp/.build/
+DeveloperApp/FeedbackPortal.xcodeproj/
+DeveloperApp/Generated/
+DeveloperApp/.build/
+DeveloperApp/*.png
+*.xcuserstate
+xcuserdata/
+DerivedData/
+
+# Supabase local dev
+supabase/.branches/
+supabase/.temp/
+
+# scripts/release_testflight.sh archive/export output
+build/
+
+.DS_Store
+
+# Node
+node_modules/
+dist/
+
+# VitePress
+docs/.vitepress/cache
+docs/.vitepress/dist
+
+web-sdk/e2e/output/
+
+# scripts/agent-preview/ captures (inside the repo so a sandboxed agent can open them)
+.agent-preview/
+
+# FeedbackKit local artifacts
+.feedback/

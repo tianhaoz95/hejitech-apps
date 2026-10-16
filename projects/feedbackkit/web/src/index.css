@@ -1,0 +1,204 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* Hero background ambiance — drifting blurred blobs behind the grid. */
+@keyframes aurora-drift-1 {
+  0% { transform: translate(-50%, 0) scale(1); }
+  33% { transform: translate(-32%, 14%) scale(1.35); }
+  66% { transform: translate(-64%, -10%) scale(0.85); }
+  100% { transform: translate(-50%, 0) scale(1); }
+}
+@keyframes aurora-drift-2 {
+  0% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-22%, 18%) scale(1.3); }
+  66% { transform: translate(14%, -12%) scale(0.9); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+@keyframes aurora-drift-3 {
+  0% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(18%, -16%) scale(1.4); }
+  66% { transform: translate(-14%, 12%) scale(0.85); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+.animate-aurora-1 { animation: aurora-drift-1 13s ease-in-out infinite; }
+.animate-aurora-2 { animation: aurora-drift-2 16s ease-in-out infinite; }
+.animate-aurora-3 { animation: aurora-drift-3 11s ease-in-out infinite; }
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.6s ease-out both;
+}
+
+/* Modal and media overlay animations */
+@keyframes overlay-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes overlay-zoom {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-overlay-fade {
+  animation: overlay-fade 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-overlay-zoom {
+  animation: overlay-zoom 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Screenshot tab transition */
+@keyframes tab-fade {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-tab-fade {
+  animation: tab-fade 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Scroll-triggered reveal, used by <Reveal>. */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* A gentle continuous bob for the hero/dashboard mockups. */
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+.animate-float {
+  animation: float-y 6s ease-in-out infinite;
+}
+.animate-float-delayed {
+  animation: float-y 6.5s ease-in-out infinite;
+  animation-delay: -3s;
+}
+
+/* Underline that grows in from the left on hover. */
+.link-underline {
+  position: relative;
+}
+.link-underline::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 100%;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.25s ease-out;
+}
+.link-underline:hover::after {
+  transform: scaleX(1);
+}
+
+/* Lifecycle walkthrough (/docs/how-it-works). Each scene remounts per step,
+   which replays these; delays are set inline to sequence a scene. */
+@keyframes lc-draw {
+  from { stroke-dashoffset: var(--lc-len, 400); }
+  to { stroke-dashoffset: 0; }
+}
+.lc-draw { stroke-dasharray: var(--lc-len, 400); animation: lc-draw 0.9s ease-out both; }
+@keyframes lc-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.lc-in { animation: lc-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
+@keyframes lc-pop {
+  0% { opacity: 0; transform: scale(0.6); }
+  70% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.lc-pop { animation: lc-pop 0.45s ease-out both; }
+@keyframes lc-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+.lc-fade-out { animation: lc-fade-out 0.3s ease-in both; }
+.lc-word { animation: lc-fade-in 0.01s linear both; }
+@keyframes lc-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes lc-grow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.lc-grow { transform-origin: left; animation: lc-grow var(--lc-dur, 1s) linear both; }
+@keyframes lc-slide-up {
+  from { transform: translateY(100%); }
+  to { transform: none; }
+}
+.lc-slide-up { animation: lc-slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+@keyframes lc-tap {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55); transform: scale(1); }
+  30% { transform: scale(0.95); }
+  100% { box-shadow: 0 0 0 14px rgba(16, 185, 129, 0); transform: scale(1); }
+}
+.lc-tap { animation: lc-tap 0.8s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-aurora-1,
+  .animate-aurora-2,
+  .animate-aurora-3,
+  .animate-fade-up,
+  .animate-float,
+  .animate-float-delayed,
+  .lc-draw,
+  .lc-in,
+  .lc-pop,
+  .lc-word,
+  .lc-grow,
+  .lc-slide-up,
+  .lc-tap {
+    animation: none;
+  }
+  .lc-fade-out {
+    animation: none;
+    opacity: 0;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .link-underline::after {
+    transition: none;
+  }
+}

@@ -1,0 +1,145 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { compareBuilds, formatTimeline, loopInstructions } from "../dist/loop.js";
+import { createMcpServer } from "../dist/mcp/server.js";
+
+test("compareBuilds orders dotted numeric builds and refuses to guess otherwise", () => {
+  assert.equal(compareBuilds("42", "42"), 0);
+  assert.equal(compareBuilds("41", "42"), -1);
+  assert.equal(compareBuilds("1.2.10", "1.2.9"), 1);
+  assert.equal(compareBuilds("1.2", "1.2.0"), 0);
+  // UTC-timestamp builds from scripts/release_testflight.sh exceed 2^53.
+  assert.equal(compareBuilds("20260925101010", "20260925101011"), -1);
+  assert.equal(compareBuilds("99999999999999999999", "99999999999999999998"), 1);
+  assert.equal(compareBuilds("abc123", "abc124"), null);
+  assert.equal(compareBuilds("abc123", "abc123"), 0);
+  assert.equal(compareBuilds(null, "1"), null);
+  assert.equal(compareBuilds("", "1"), null);
+});
+
+test("loopInstructions tells the agent how to link its PR and flags reopened reports", () => {
+  const item = { id: "11111111-2222-3333-4444-555555555555", fix_stage: null };
+  const text = loopInstructions(item);
+  assert.match(text, /FeedbackKit: 11111111-2222-3333-4444-555555555555/);
+  assert.match(text, /claim_feedback/);
+  assert.doesNotMatch(text, /reopened/);
+  assert.match(loopInstructions({ ...item, fix_stage: "reopened", fixed_in_build: "7" }), /reopened.*build 7/s);
+});
+
+test("formatTimeline marks reporter-visible entries", () => {
+  const text = formatTimeline([
+    { kind: "question", actor_type: "agent", actor_label: "claude-code", body: "Which device?", visible_to_reporter: true, created_at: "2026-09-25T10:00:00Z" },
+  ]);
+  assert.match(text, /question.*claude-code \[reporter can see\]: Which device\?/);
+  assert.equal(formatTimeline([]), "(no activity yet)");
+});
+
+test("the MCP server registers the closed-loop tools", () => {
+  const tools = createMcpServer()._registeredTools;
+  for (const name of ["claim_feedback", "post_update", "ask_reporter", "link_fix", "attach_after_screenshot"]) {
+    assert.ok(tools[name], `${name} registered`);
+  }
+  // There is deliberately no tool that marks a fix verified.
+  assert.ok(!Object.keys(tools).some((n) => /verif/.test(n)));
+});
+
+test("link_fix requires a PR or a commit", async () => {
+  const res = await createMcpServer()._registeredTools["link_fix"].handler({ feedback_id: "x", merged: false });
+  assert.equal(res.isError, true);
+});
+
+test("classifyReleaseCandidates respects product scope and missing commits", async () => {
+  const { classifyReleaseCandidates } = await import("../dist/loop.js");
+  const out = classifyReleaseCandidates(
+    [
+      { id: "a", text: "a", fix_commit_sha: null, product_keys: [] },
+      { id: "b", text: "b", fix_commit_sha: null, product_keys: ["web"] },
+      { id: "c", text: "c", fix_commit_sha: "abc1234", product_keys: ["ios"] },
+    ],
+    { releaseCommit: null, productKey: "ios", cwd: process.cwd() },
+  );
+  assert.deepEqual(out.map((c) => c.included), [true, false, true]);
+  assert.match(out[1].reason, /for web, not ios/);
+});
+
+test("release token client refuses things that aren't release tokens", async () => {
+  const { CiReleaseClient } = await import("../dist/loop.js");
+  assert.throws(() => new CiReleaseClient("ghp_nope"), /release token/);
+  assert.ok(new CiReleaseClient("fkr_" + "a".repeat(48)));
+});
+
+test("--channel accepts beta (default), production and preview only", async () => {
+  const { parseChannel } = await import("../dist/commands/release.js");
+  assert.equal(parseChannel(undefined), "beta");
+  assert.equal(parseChannel("production"), "production");
+  assert.equal(parseChannel("preview"), "preview");
+  assert.throws(() => parseChannel("prod"), /beta, production or preview/);
+});
+
+test("a preview release needs the PR it was built from", async () => {
+  const { release } = await import("../dist/commands/release.js");
+  await assert.rejects(release({ build: "1", channel: "preview" }), /--pr <number>/);
+  await assert.rejects(release({ build: "1", channel: "beta", pr: "3" }), /only applies to --channel preview/);
+});
+
+test("loop instructions ask for a commit trailer", () => {
+  const text = loopInstructions({ id: "11111111-2222-3333-4444-555555555555", fix_stage: null });
+  assert.match(text, /trailer/);
+  assert.match(text, /FeedbackKit-Summary/);
+});
+
+test("readinessVerdict matches the dashboard's rules", async () => {
+  const { readinessVerdict } = await import("../dist/loop.js");
+  const beta = { channel: "beta" };
+  assert.equal(readinessVerdict({ ...beta, fixes: 2, verified: 1, reopened: 1, awaiting: 0 }), "blocked");
+  assert.equal(readinessVerdict({ ...beta, fixes: 2, verified: 1, reopened: 0, awaiting: 1 }), "waiting");
+  assert.equal(readinessVerdict({ ...beta, fixes: 2, verified: 2, reopened: 0, awaiting: 0 }), "ready");
+  assert.equal(readinessVerdict({ ...beta, fixes: 0, verified: 0, reopened: 0, awaiting: 0 }), "no_fixes");
+  assert.equal(readinessVerdict({ channel: "production", fixes: 1, verified: 0, reopened: 1, awaiting: 0 }), "production");
+});
+
+test("list_releases is registered and respects project scoping", async () => {
+  const server = createMcpServer({ projectId: "proj_abc123" });
+  const tool = server._registeredTools["list_releases"];
+  assert.ok(tool);
+  const res = await tool.handler({ project_id: "other", limit: 5 });
+  assert.equal(res.isError, true);
+});
+
+test("loopInstructions tells branch-delivery agents to open a PR and not merge it", () => {
+  const item = { id: "11111111-2222-3333-4444-555555555555", fix_stage: null };
+  const branch = loopInstructions(item, "branch");
+  assert.match(branch, /Open a pull request/);
+  assert.match(branch, /don't push to the default branch/);
+  assert.match(branch, /FeedbackKit: 11111111-2222-3333-4444-555555555555/);
+  assert.doesNotMatch(loopInstructions(item), /don't push to the default branch/);
+});
+
+test("token create: presets, scopes and expiry", async () => {
+  const { parseScopes, parseExpiry } = await import("../dist/commands/token.js");
+  assert.deepEqual(parseScopes(undefined, undefined), ["releases:write"]);
+  assert.deepEqual(parseScopes("agent", undefined), ["feedback:read", "feedback:write", "previews:write", "reporter:ask", "tokens:issue"]);
+  assert.deepEqual(parseScopes("read", ["previews:write"]), ["feedback:read", "previews:write"]);
+  assert.throws(() => parseScopes("admin", undefined), /--preset/);
+  assert.throws(() => parseScopes(undefined, ["everything"]), /Unknown scope/);
+  const now = new Date("2026-09-28T00:00:00Z");
+  assert.equal(parseExpiry(undefined, now), null);
+  assert.equal(parseExpiry("never", now), null);
+  assert.equal(parseExpiry("90d", now)?.toISOString(), "2026-12-27T00:00:00.000Z");
+  assert.equal(parseExpiry("12h", now)?.toISOString(), "2026-09-28T12:00:00.000Z");
+  assert.equal(parseExpiry("2027-01-31", now)?.toISOString().slice(0, 10), "2027-01-31");
+  assert.throws(() => parseExpiry("2020-01-01", now), /future/);
+  assert.throws(() => parseExpiry("soon", now), /--expires/);
+});
+
+test("the MCP server registers attach_preview and keeps attach_after_screenshot", () => {
+  const tools = createMcpServer()._registeredTools;
+  assert.ok(tools["attach_preview"]);
+  assert.ok(tools["attach_after_screenshot"]);
+});
+
+test("attach_preview refuses unsupported files before uploading", async () => {
+  const res = await createMcpServer()._registeredTools["attach_preview"].handler({ feedback_id: "x", path: "/tmp/notes.txt" });
+  assert.equal(res.isError, true);
+  assert.match(res.content[0].text, /PNG, JPEG, GIF or WebP image, or an MP4/);
+});

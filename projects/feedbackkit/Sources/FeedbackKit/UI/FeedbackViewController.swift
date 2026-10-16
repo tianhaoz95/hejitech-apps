@@ -1,0 +1,821 @@
+#if os(iOS)
+import AVFoundation
+import PhotosUI
+import UIKit
+import UniformTypeIdentifiers
+
+/// The full-screen capture/annotate/describe/submit flow. Not part of the
+/// public API — presented and dismissed by `FeedbackKit`.
+final class FeedbackViewController: UIViewController {
+    private let rawScreenshot: UIImage
+    private let screenNameOverride: String?
+    private let theme: FeedbackTheme?
+    private let onComplete: (FeedbackReport?) -> Void
+
+    /// `nil` whenever `theme` is `nil` or its hex string fails to parse —
+    /// callers fall back to the existing hardcoded default color in that
+    /// case, rather than this property itself picking the default, so each
+    /// call site's current default (which differs per control) stays
+    /// unchanged when no theme is set.
+    private var primaryColor: UIColor? {
+        theme.flatMap { UIColor(hex: $0.primaryColorHex) }
+    }
+    private var secondaryColor: UIColor? {
+        theme.flatMap { UIColor(hex: $0.secondaryColorHex) }
+    }
+
+    private let headerView = UIView()
+    private let titleLabel = UILabel()
+    // Not `private` — see the comment on `attachButton`/`sendButton` below;
+    // FeedbackViewControllerThemeTests reads this too.
+    let cancelButton = UIButton(type: .system)
+    /// The two report options, set from the attach button's menu (see
+    /// `makeAttachMenu()`) rather than switches in the composer row, which
+    /// had no room for a second one. Not `private` — the composer tests read them.
+    private(set) var includesScreenshot = true
+    /// "Notify me when it's fixed" — off by default. When off, the reporter
+    /// is never shown fix updates or questions for this report (see
+    /// `FeedbackReport.notifyReporter`).
+    private(set) var notifyReporter = false
+    /// Shows the options that differ from the defaults next to the send
+    /// button, so a hidden menu choice is still visible at a glance.
+    private let optionsSummaryLabel = UILabel()
+
+    private let screenshotBoundsView = UIView()
+    private let imageView = UIImageView()
+    private let deviceFrameView = UIView()
+    private let cameraIslandView = UIView()
+    private let canvasView = AnnotationCanvasView()
+
+    // Not `private` — FeedbackViewControllerThemeTests reads
+    // `toolbar.accentColor` to verify the primary theme color reaches it.
+    let toolbar = AnnotationToolbar()
+
+    // A compact, chat-style composer: an optional attachment chip, a
+    // single-line-by-default text view that grows as the user types, and a
+    // second row below it with an attach button and a send button — rather
+    // than a big fixed-height text box with a full-width submit button below.
+    private let composerContainer = UIView()
+    private let composerStack = UIStackView()
+    private let productsScrollView = UIScrollView()
+    private let productsStackView = UIStackView()
+    private var selectedProductKeys: Set<String> = []
+    private var productButtons: [String: UIButton] = [:]
+    private let attachmentChipView = UIView()
+    private let attachmentNameLabel = UILabel()
+    private let removeAttachmentButton = UIButton(type: .system)
+    private let placeholderLabel = UILabel()
+    // Not `private` — FeedbackViewControllerKeyboardTests drives first
+    // responder state on it directly (see the note on
+    // composerBottomConstraint above; same reasoning).
+    let textView = UITextView()
+    var textViewHeightConstraint: NSLayoutConstraint!
+    // Not `private` — FeedbackViewControllerThemeTests reads these tint
+    // colors directly to verify `FeedbackKit.theme` reaches the composer's
+    // controls (same reasoning as `textView`/`composerBottomConstraint`
+    // above).
+    let attachButton = UIButton(type: .system)
+    let sendButton = UIButton(type: .system)
+
+    private var pickedAttachment: (filename: String, mimeType: String, data: Data)?
+
+    /// Pinned to the safe area by default; `keyboardWillChangeFrame(_:)`
+    /// pushes it up by however much the keyboard overlaps the safe area, so
+    /// the composer's text input and second row (attach/screenshot/send)
+    /// stay above it instead of being covered.
+    // Not `private` — `@testable import` can't cross that boundary, and
+    // FeedbackViewControllerKeyboardTests reads this directly. The type
+    // itself is already internal-only (not part of the public SDK API), so
+    // this doesn't widen anything actually exposed to consumers.
+    var composerBottomConstraint: NSLayoutConstraint!
+
+    /// The composer's prompt — "What's still wrong?" when the flow is
+    /// reporting that a shipped fix didn't work (see `FixVerificationCoordinator`).
+    private let composerPlaceholder: String
+
+    init(
+        rawScreenshot: UIImage,
+        screenNameOverride: String?,
+        theme: FeedbackTheme? = nil,
+        composerPlaceholder: String = "What's the problem?",
+        onComplete: @escaping (FeedbackReport?) -> Void
+    ) {
+        self.rawScreenshot = rawScreenshot
+        self.screenNameOverride = screenNameOverride
+        self.theme = theme
+        self.composerPlaceholder = composerPlaceholder
+        self.onComplete = onComplete
+        super.init(nibName: nil, bundle: nil)
+        modalPresentationStyle = .fullScreen
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .systemBackground
+        imageView.image = rawScreenshot
+        imageView.contentMode = .scaleAspectFit
+        buildHeader()
+        buildScreenshotArea()
+        buildToolbar()
+        buildComposer()
+        layoutAll()
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardWillChangeFrame(_:)),
+            name: UIResponder.keyboardWillChangeFrameNotification,
+            object: nil
+        )
+
+        // Nothing else dismisses the keyboard once the text view is
+        // focused — a UITextView (unlike a single-line UITextField) has no
+        // built-in "return to dismiss", and the standard iPhone keyboard
+        // has no dismiss key of its own the way the iPad one does. Tapping
+        // anywhere outside the composer (the screenshot, the toolbar, empty
+        // space) resigns it, same as Messages/Mail. `cancelsTouchesInView =
+        // false` + the delegate below let taps still reach whatever's
+        // actually underneath (a toolbar button, a canvas draw gesture) —
+        // this only ever adds a dismiss, never blocks anything.
+        let dismissKeyboardTap = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
+        dismissKeyboardTap.cancelsTouchesInView = false
+        dismissKeyboardTap.delegate = self
+        view.addGestureRecognizer(dismissKeyboardTap)
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        let fittedRect = AVMakeRect(
+            aspectRatio: rawScreenshot.size,
+            insideRect: screenshotBoundsView.bounds
+        )
+
+        // A real bezel sits outside the screen, not painted over it, so the
+        // screenshot is inset within the frame rather than sharing its bounds
+        // — otherwise a bezel thick enough to read as a phone body would eat
+        // into the screenshot content instead of surrounding it.
+        //
+        // The screen area keeps the screenshot's exact aspect ratio (an even
+        // inset would make it relatively narrower). The canvas covers this
+        // same rect and annotations are normalized to it, so any letterboxing
+        // here would shift every saved annotation away from what the user
+        // drew on (the flattened PNG and the dashboard draw them against the
+        // screenshot itself).
+        let bezelWidth = fittedRect.width * 0.045
+        let innerRect = AVMakeRect(
+            aspectRatio: rawScreenshot.size,
+            insideRect: fittedRect.insetBy(dx: bezelWidth, dy: bezelWidth)
+        )
+        let outerRect = innerRect.insetBy(dx: -bezelWidth, dy: -bezelWidth)
+
+        imageView.frame = innerRect
+        canvasView.frame = innerRect
+
+        deviceFrameView.frame = outerRect
+        deviceFrameView.layer.borderWidth = bezelWidth
+        deviceFrameView.layer.cornerRadius = outerRect.width * 0.13
+
+        let innerCornerRadius = max(deviceFrameView.layer.cornerRadius - bezelWidth, 0)
+        imageView.layer.cornerRadius = innerCornerRadius
+        canvasView.layer.cornerRadius = innerCornerRadius
+
+        // Positioned/sized proportionally to the screen area so it tracks an
+        // iPhone's actual Dynamic Island proportions regardless of the
+        // screenshot's own resolution.
+        let islandWidth = innerRect.width * 0.32
+        let islandHeight = islandWidth * 0.29
+        cameraIslandView.frame = CGRect(
+            x: innerRect.minX + (innerRect.width - islandWidth) / 2,
+            y: innerRect.minY + islandHeight * 0.4,
+            width: islandWidth,
+            height: islandHeight
+        )
+        cameraIslandView.layer.cornerRadius = islandHeight / 2
+        updateTextViewHeight()
+    }
+
+    // MARK: - Building
+
+    private func buildHeader() {
+        titleLabel.text = "Report Feedback"
+        titleLabel.font = .preferredFont(forTextStyle: .headline)
+        cancelButton.setTitle("Cancel", for: .normal)
+        // Left untouched (inherits the view's default tint) when no theme
+        // is set, matching this button's pre-theming behavior exactly.
+        if let secondaryColor { cancelButton.tintColor = secondaryColor }
+        cancelButton.addAction(UIAction { [weak self] _ in self?.cancelTapped() }, for: .touchUpInside)
+
+        headerView.addSubview(titleLabel)
+        headerView.addSubview(cancelButton)
+        view.addSubview(headerView)
+    }
+
+    private func buildScreenshotArea() {
+        // An actual iPhone-shaped bezel — thick and dark, like a real device
+        // body — traced around the fitted screenshot, including a Dynamic
+        // Island cutout, so this genuinely reads as "a phone" rather than a
+        // faint outline, and shows where the screen/camera island would sit.
+        deviceFrameView.isUserInteractionEnabled = false
+        deviceFrameView.backgroundColor = .clear
+        deviceFrameView.layer.borderColor = UIColor.black.cgColor
+        deviceFrameView.layer.cornerCurve = .continuous
+
+        imageView.clipsToBounds = true
+        imageView.layer.cornerCurve = .continuous
+        canvasView.clipsToBounds = true
+        canvasView.layer.cornerCurve = .continuous
+
+        cameraIslandView.isUserInteractionEnabled = false
+        cameraIslandView.backgroundColor = .black
+
+        screenshotBoundsView.addSubview(imageView)
+        screenshotBoundsView.addSubview(deviceFrameView)
+        canvasView.onRequestTextInput = { [weak self] location, completion in
+            self?.presentTextPrompt(completion: completion)
+        }
+        screenshotBoundsView.addSubview(canvasView)
+        screenshotBoundsView.addSubview(cameraIslandView)
+        view.addSubview(screenshotBoundsView)
+    }
+
+    private func buildToolbar() {
+        toolbar.layer.cornerRadius = 12
+        toolbar.clipsToBounds = true
+        toolbar.accentColor = primaryColor ?? .systemBlue
+        toolbar.onToolSelected = { [weak self] tool in self?.canvasView.tool = tool }
+        toolbar.onColorSelected = { [weak self] color in self?.canvasView.strokeColor = color }
+        toolbar.onUndo = { [weak self] in self?.canvasView.undoLast() }
+        view.addSubview(toolbar)
+    }
+
+    private func buildComposer() {
+        composerContainer.layer.borderColor = UIColor.separator.cgColor
+        composerContainer.layer.borderWidth = 1
+        composerContainer.layer.cornerRadius = 16
+
+        buildAttachmentChip()
+
+        textView.font = .preferredFont(forTextStyle: .body)
+        textView.backgroundColor = .clear
+        textView.delegate = self
+        textView.isScrollEnabled = false
+        textView.showsVerticalScrollIndicator = true
+        textView.alwaysBounceVertical = false
+        textView.textContainerInset = .zero
+        textView.textContainer.lineFragmentPadding = 0
+
+        let heightConstraint = textView.heightAnchor.constraint(equalToConstant: 24)
+        heightConstraint.priority = .defaultHigh
+        heightConstraint.isActive = true
+        textViewHeightConstraint = heightConstraint
+        textView.heightAnchor.constraint(greaterThanOrEqualToConstant: 24).isActive = true
+        textView.heightAnchor.constraint(lessThanOrEqualToConstant: 120).isActive = true
+
+        placeholderLabel.text = composerPlaceholder
+        placeholderLabel.font = .preferredFont(forTextStyle: .body)
+        placeholderLabel.textColor = .placeholderText
+
+        let iconConfig = UIImage.SymbolConfiguration(pointSize: 26)
+        attachButton.setImage(UIImage(systemName: "plus.circle.fill"), for: .normal)
+        attachButton.setPreferredSymbolConfiguration(iconConfig, forImageIn: .normal)
+        attachButton.tintColor = secondaryColor ?? .secondaryLabel
+        attachButton.accessibilityLabel = "Options and attachments"
+        attachButton.showsMenuAsPrimaryAction = true
+        attachButton.menu = makeAttachMenu()
+
+        sendButton.setImage(UIImage(systemName: "arrow.up.circle.fill"), for: .normal)
+        sendButton.setPreferredSymbolConfiguration(iconConfig, forImageIn: .normal)
+        sendButton.tintColor = primaryColor ?? .systemBlue
+        sendButton.addAction(UIAction { [weak self] _ in self?.submitTapped() }, for: .touchUpInside)
+
+        optionsSummaryLabel.font = .preferredFont(forTextStyle: .footnote)
+        optionsSummaryLabel.textColor = .secondaryLabel
+        optionsSummaryLabel.adjustsFontForContentSizeCategory = true
+        updateOptionsSummary()
+
+        attachButton.setContentCompressionResistancePriority(.required, for: .vertical)
+        sendButton.setContentCompressionResistancePriority(.required, for: .vertical)
+        optionsSummaryLabel.setContentCompressionResistancePriority(.required, for: .vertical)
+
+        attachButton.translatesAutoresizingMaskIntoConstraints = false
+        sendButton.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            attachButton.widthAnchor.constraint(equalToConstant: 32),
+            attachButton.heightAnchor.constraint(equalToConstant: 32),
+            sendButton.widthAnchor.constraint(equalToConstant: 32),
+            sendButton.heightAnchor.constraint(equalToConstant: 32)
+        ])
+
+        // The options/attach menu on the left, a summary of non-default
+        // options and send on the right — the composer's "second row", under
+        // the text input.
+        let buttonRow = UIStackView(arrangedSubviews: [
+            attachButton, UIView(), optionsSummaryLabel, sendButton
+        ])
+        buttonRow.axis = .horizontal
+        buttonRow.alignment = .center
+        buttonRow.spacing = 6
+        buttonRow.setContentCompressionResistancePriority(.required, for: .vertical)
+        buttonRow.heightAnchor.constraint(greaterThanOrEqualToConstant: 32).isActive = true
+
+        buildProductsRow()
+
+        composerStack.axis = .vertical
+        composerStack.spacing = 8
+        composerStack.addArrangedSubview(attachmentChipView)
+        composerStack.addArrangedSubview(productsScrollView)
+        composerStack.addArrangedSubview(textView)
+        composerStack.addArrangedSubview(buttonRow)
+        composerContainer.addSubview(composerStack)
+        composerContainer.addSubview(placeholderLabel)
+        view.addSubview(composerContainer)
+    }
+
+    private func buildProductsRow() {
+        guard !FeedbackKit.products.isEmpty else {
+            productsScrollView.isHidden = true
+            return
+        }
+
+        if let defaultKey = FeedbackKit.defaultProductKey, FeedbackKit.products.contains(where: { $0.key == defaultKey }) {
+            selectedProductKeys.insert(defaultKey)
+        } else if let defaultProd = FeedbackKit.products.first(where: { $0.isDefault }) {
+            selectedProductKeys.insert(defaultProd.key)
+        }
+
+        productsScrollView.showsHorizontalScrollIndicator = false
+        productsScrollView.showsVerticalScrollIndicator = false
+        productsStackView.axis = .horizontal
+        productsStackView.spacing = 6
+        productsStackView.alignment = .center
+
+        for product in FeedbackKit.products {
+            let button = UIButton(type: .system)
+            button.layer.cornerRadius = 12
+            button.layer.masksToBounds = true
+            button.contentEdgeInsets = UIEdgeInsets(top: 4, left: 10, bottom: 4, right: 10)
+            button.titleLabel?.font = .systemFont(ofSize: 12, weight: .medium)
+            productButtons[product.key] = button
+            updateProductButtonStyle(button, product: product)
+            button.addAction(UIAction { [weak self] _ in
+                guard let self else { return }
+                if self.selectedProductKeys.contains(product.key) {
+                    self.selectedProductKeys.remove(product.key)
+                } else {
+                    self.selectedProductKeys.insert(product.key)
+                }
+                self.updateProductButtonStyle(button, product: product)
+            }, for: .touchUpInside)
+            productsStackView.addArrangedSubview(button)
+        }
+
+        productsScrollView.addSubview(productsStackView)
+        productsStackView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            productsStackView.leadingAnchor.constraint(equalTo: productsScrollView.contentLayoutGuide.leadingAnchor),
+            productsStackView.trailingAnchor.constraint(equalTo: productsScrollView.contentLayoutGuide.trailingAnchor),
+            productsStackView.topAnchor.constraint(equalTo: productsScrollView.contentLayoutGuide.topAnchor),
+            productsStackView.bottomAnchor.constraint(equalTo: productsScrollView.contentLayoutGuide.bottomAnchor),
+            productsStackView.heightAnchor.constraint(equalTo: productsScrollView.frameLayoutGuide.heightAnchor),
+        ])
+        productsScrollView.heightAnchor.constraint(equalToConstant: 26).isActive = true
+    }
+
+    private func updateProductButtonStyle(_ button: UIButton, product: FeedbackProduct) {
+        let isSelected = selectedProductKeys.contains(product.key)
+        let primary = primaryColor ?? .systemBlue
+        if isSelected {
+            button.setTitle("✓ \(product.name)", for: .normal)
+            button.backgroundColor = primary.withAlphaComponent(0.15)
+            button.setTitleColor(primary, for: .normal)
+            button.layer.borderColor = primary.withAlphaComponent(0.4).cgColor
+            button.layer.borderWidth = 1
+        } else {
+            button.setTitle(product.name, for: .normal)
+            button.backgroundColor = .secondarySystemBackground
+            button.setTitleColor(.secondaryLabel, for: .normal)
+            button.layer.borderColor = UIColor.separator.cgColor
+            button.layer.borderWidth = 0.5
+        }
+    }
+
+    private func buildAttachmentChip() {
+        attachmentChipView.backgroundColor = .secondarySystemBackground
+        attachmentChipView.layer.cornerRadius = 8
+        attachmentChipView.isHidden = true
+
+        let paperclip = UIImageView(image: UIImage(systemName: "paperclip"))
+        paperclip.tintColor = .secondaryLabel
+        paperclip.setContentHuggingPriority(.required, for: .horizontal)
+
+        attachmentNameLabel.font = .preferredFont(forTextStyle: .caption1)
+        attachmentNameLabel.textColor = .secondaryLabel
+        attachmentNameLabel.numberOfLines = 1
+        attachmentNameLabel.lineBreakMode = .byTruncatingMiddle
+
+        removeAttachmentButton.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
+        removeAttachmentButton.tintColor = .secondaryLabel
+        removeAttachmentButton.setContentHuggingPriority(.required, for: .horizontal)
+        removeAttachmentButton.addAction(UIAction { [weak self] _ in self?.clearAttachment() }, for: .touchUpInside)
+
+        let chipStack = UIStackView(arrangedSubviews: [paperclip, attachmentNameLabel, removeAttachmentButton])
+        chipStack.axis = .horizontal
+        chipStack.spacing = 6
+        chipStack.alignment = .center
+        chipStack.translatesAutoresizingMaskIntoConstraints = false
+        attachmentChipView.addSubview(chipStack)
+
+        NSLayoutConstraint.activate([
+            chipStack.leadingAnchor.constraint(equalTo: attachmentChipView.leadingAnchor, constant: 8),
+            chipStack.trailingAnchor.constraint(equalTo: attachmentChipView.trailingAnchor, constant: -8),
+            chipStack.topAnchor.constraint(equalTo: attachmentChipView.topAnchor, constant: 4),
+            chipStack.bottomAnchor.constraint(equalTo: attachmentChipView.bottomAnchor, constant: -4)
+        ])
+    }
+
+    private func layoutAll() {
+        [headerView, titleLabel, cancelButton,
+         screenshotBoundsView, toolbar, composerContainer, composerStack, textView, placeholderLabel].forEach {
+            $0.translatesAutoresizingMaskIntoConstraints = false
+        }
+
+        let safe = view.safeAreaLayoutGuide
+
+        composerBottomConstraint = composerContainer.bottomAnchor.constraint(equalTo: safe.bottomAnchor, constant: -12)
+
+        NSLayoutConstraint.activate([
+            headerView.topAnchor.constraint(equalTo: safe.topAnchor),
+            headerView.leadingAnchor.constraint(equalTo: safe.leadingAnchor),
+            headerView.trailingAnchor.constraint(equalTo: safe.trailingAnchor),
+            headerView.heightAnchor.constraint(equalToConstant: 44),
+
+            titleLabel.centerXAnchor.constraint(equalTo: headerView.centerXAnchor),
+            titleLabel.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
+            cancelButton.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+            cancelButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
+
+            // The toolbar sits beside the screenshot, not under it — a portrait
+            // screenshot's aspect-fit frame rarely uses the full width, so this
+            // reclaims that leftover horizontal margin as vertical space for
+            // the screenshot instead of spending a horizontal strip on it.
+            screenshotBoundsView.topAnchor.constraint(equalTo: headerView.bottomAnchor, constant: 8),
+            screenshotBoundsView.leadingAnchor.constraint(equalTo: safe.leadingAnchor, constant: 16),
+            screenshotBoundsView.trailingAnchor.constraint(equalTo: toolbar.leadingAnchor, constant: -4),
+            composerContainer.topAnchor.constraint(equalTo: screenshotBoundsView.bottomAnchor, constant: 8),
+
+            toolbar.topAnchor.constraint(equalTo: headerView.bottomAnchor, constant: 8),
+            toolbar.trailingAnchor.constraint(equalTo: safe.trailingAnchor, constant: -4),
+            toolbar.bottomAnchor.constraint(lessThanOrEqualTo: composerContainer.topAnchor, constant: -8),
+            toolbar.widthAnchor.constraint(equalToConstant: 56),
+
+            // No fixed height here on purpose: the composer sizes itself from
+            // its content (attachment chip + text view + button row), so it
+            // stays compact as a single line and only grows as the user types.
+            composerContainer.leadingAnchor.constraint(equalTo: safe.leadingAnchor, constant: 16),
+            composerContainer.trailingAnchor.constraint(equalTo: safe.trailingAnchor, constant: -16),
+            composerBottomConstraint,
+
+            composerStack.leadingAnchor.constraint(equalTo: composerContainer.leadingAnchor, constant: 12),
+            composerStack.trailingAnchor.constraint(equalTo: composerContainer.trailingAnchor, constant: -12),
+            composerStack.topAnchor.constraint(equalTo: composerContainer.topAnchor, constant: 10),
+            composerStack.bottomAnchor.constraint(equalTo: composerContainer.bottomAnchor, constant: -10),
+
+            placeholderLabel.topAnchor.constraint(equalTo: textView.topAnchor),
+            placeholderLabel.leadingAnchor.constraint(equalTo: textView.leadingAnchor),
+            placeholderLabel.trailingAnchor.constraint(lessThanOrEqualTo: textView.trailingAnchor)
+        ])
+    }
+
+    // MARK: - Actions
+
+    private func presentTextPrompt(completion: @escaping (String?) -> Void) {
+        let alert = UIAlertController(title: "Add a note", message: nil, preferredStyle: .alert)
+        alert.addTextField()
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in completion(nil) })
+        alert.addAction(UIAlertAction(title: "Add", style: .default) { _ in
+            completion(alert.textFields?.first?.text)
+        })
+        present(alert, animated: true)
+    }
+
+    private func cancelTapped() {
+        dismiss(animated: true) { [weak self] in self?.onComplete(nil) }
+    }
+
+    @objc func dismissKeyboard() {
+        view.endEditing(true)
+    }
+
+    /// The attach button's menu: the report options as checkmarked toggles,
+    /// then the ways to attach something. Rebuilt after every toggle so the
+    /// checkmarks stay current (`UIMenu` elements are immutable).
+    func makeAttachMenu() -> UIMenu {
+        let screenshot = UIAction(
+            title: "Include Screenshot",
+            image: UIImage(systemName: "photo"),
+            state: includesScreenshot ? .on : .off
+        ) { [weak self] _ in self?.setIncludesScreenshot(!(self?.includesScreenshot ?? true)) }
+        let notify = UIAction(
+            title: "Notify Me When It's Fixed",
+            subtitle: "You'll be asked in this app once a fix ships",
+            image: UIImage(systemName: "bell"),
+            state: notifyReporter ? .on : .off
+        ) { [weak self] _ in self?.setNotifyReporter(!(self?.notifyReporter ?? false)) }
+
+        var attach: [UIMenuElement] = [
+            UIAction(title: "Attach File…", image: UIImage(systemName: "paperclip")) { [weak self] _ in
+                self?.attachFileTapped()
+            },
+            UIAction(title: "Photo Library", image: UIImage(systemName: "photo.on.rectangle")) { [weak self] _ in
+                self?.pickPhotoTapped()
+            }
+        ]
+        if Self.canTakePhoto {
+            attach.append(UIAction(title: "Take Photo", image: UIImage(systemName: "camera")) { [weak self] _ in
+                self?.takePhotoTapped()
+            })
+        }
+        return UIMenu(children: [
+            UIMenu(options: .displayInline, children: attach),
+            UIMenu(options: .displayInline, children: [screenshot, notify]),
+        ])
+    }
+
+    /// The camera needs hardware and the host app's `NSCameraUsageDescription`
+    /// (without it, presenting the camera crashes the app) — the SDK can't add
+    /// that key itself, so the item only appears when the app has it.
+    static var canTakePhoto: Bool {
+        UIImagePickerController.isSourceTypeAvailable(.camera)
+            && Bundle.main.object(forInfoDictionaryKey: "NSCameraUsageDescription") != nil
+    }
+
+    func setIncludesScreenshot(_ included: Bool) {
+        includesScreenshot = included
+        toggleScreenshotChanged()
+        refreshOptions()
+    }
+
+    func setNotifyReporter(_ notify: Bool) {
+        notifyReporter = notify
+        refreshOptions()
+    }
+
+    private func refreshOptions() {
+        attachButton.menu = makeAttachMenu()
+        updateOptionsSummary()
+    }
+
+    private func updateOptionsSummary() {
+        var parts: [String] = []
+        if !includesScreenshot { parts.append("No screenshot") }
+        if notifyReporter { parts.append("Notify me") }
+        optionsSummaryLabel.text = parts.joined(separator: " · ")
+        optionsSummaryLabel.isHidden = parts.isEmpty
+    }
+
+    private func pickPhotoTapped() {
+        var configuration = PHPickerConfiguration()
+        configuration.selectionLimit = 1
+        configuration.filter = .images
+        let picker = PHPickerViewController(configuration: configuration)
+        picker.delegate = self
+        present(picker, animated: true)
+    }
+
+    private func attachFileTapped() {
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: true)
+        picker.delegate = self
+        present(picker, animated: true)
+    }
+
+    private func takePhotoTapped() {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.delegate = self
+        present(picker, animated: true)
+    }
+
+    private func setAttachment(filename: String, mimeType: String, data: Data) {
+        pickedAttachment = (filename: filename, mimeType: mimeType, data: data)
+        attachmentNameLabel.text = filename
+        attachmentChipView.isHidden = false
+    }
+
+    private func clearAttachment() {
+        pickedAttachment = nil
+        attachmentChipView.isHidden = true
+    }
+
+    /// Keeps the composer above the on-screen keyboard. Uses
+    /// `keyboardWillChangeFrameNotification` (fires for show, hide, *and*
+    /// resize — e.g. switching to an emoji keyboard, or an iPad
+    /// floating/undocked keyboard) rather than separate show/hide
+    /// notifications, matching Apple's current guidance. The overlap is
+    /// computed from the keyboard's actual end frame instead of assuming a
+    /// fixed height, so a floating iPad keyboard (which doesn't reach the
+    /// bottom of the screen) correctly doesn't push the composer at all.
+    @objc private func keyboardWillChangeFrame(_ notification: Notification) {
+        guard
+            let endFrameValue = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue,
+            let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double
+        else { return }
+
+        let endFrame = view.convert(endFrameValue.cgRectValue, from: nil)
+        let overlap = max(0, view.bounds.maxY - endFrame.minY - view.safeAreaInsets.bottom)
+        composerBottomConstraint.constant = -12 - overlap
+
+        UIView.animate(withDuration: duration) { [self] in
+            view.layoutIfNeeded()
+        }
+    }
+
+    private func toggleScreenshotChanged() {
+        // The screenshot stays visible either way — turning it off just dims
+        // it and disables drawing, rather than collapsing the layout, so the
+        // toggle can't be flipped back and forth mid-annotation without
+        // losing anything on screen.
+        let included = includesScreenshot
+        canvasView.isUserInteractionEnabled = included
+        toolbar.isUserInteractionEnabled = included
+        UIView.animate(withDuration: 0.2) { [self] in
+            screenshotBoundsView.alpha = included ? 1.0 : 0.4
+            toolbar.alpha = included ? 1.0 : 0.4
+        }
+    }
+
+    private func submitTapped() {
+        var rawPNG: Data?
+        var annotatedPNG: Data?
+        var annotations: [FeedbackAnnotation] = []
+
+        if includesScreenshot {
+            let flattened = canvasView.flattenedImage(baseImage: rawScreenshot)
+            let scale = AnnotationRenderer.encodingScale(for: rawScreenshot.size, displayScale: rawScreenshot.scale)
+            guard let raw = rawScreenshot.pngData(scale: scale), let annotated = flattened.pngData(scale: scale) else {
+                dismiss(animated: true) { [weak self] in self?.onComplete(nil) }
+                return
+            }
+            rawPNG = raw
+            annotatedPNG = annotated
+            annotations = canvasView.completedAnnotations
+        }
+
+        let attachment = pickedAttachment.map {
+            FeedbackAttachment(filename: $0.filename, mimeType: $0.mimeType, data: $0.data)
+        }
+
+        let selectedProducts = FeedbackKit.products.filter { selectedProductKeys.contains($0.key) }
+
+        let report = FeedbackReport(
+            text: textView.text ?? "",
+            screenshotRawPNG: rawPNG,
+            screenshotAnnotatedPNG: annotatedPNG,
+            annotations: annotations,
+            environment: EnvironmentInfo.current(screenName: screenNameOverride),
+            attachment: attachment,
+            products: selectedProducts,
+            notifyReporter: notifyReporter
+        )
+
+        dismiss(animated: true) { [weak self] in self?.onComplete(report) }
+    }
+
+    func updateTextViewHeight() {
+        placeholderLabel.isHidden = !textView.text.isEmpty
+        let width = textView.bounds.width > 0 ? textView.bounds.width : (view.bounds.width - 56)
+        let size = textView.sizeThatFits(CGSize(width: max(width, 100), height: .greatestFiniteMagnitude))
+        let targetHeight = min(max(size.height, 24), 120)
+        textViewHeightConstraint?.constant = targetHeight
+        let isMultiline = size.height > 28 || textView.text.contains("\n")
+        let exceedsBounds = textView.bounds.height > 0 && size.height > textView.bounds.height
+        let shouldScroll = isMultiline || exceedsBounds || size.height > 120
+        if textView.isScrollEnabled != shouldScroll {
+            textView.isScrollEnabled = shouldScroll
+        }
+        if shouldScroll {
+            textView.scrollRangeToVisible(textView.selectedRange)
+        }
+    }
+}
+
+extension FeedbackViewController: UITextViewDelegate {
+    func textViewDidChange(_ textView: UITextView) {
+        updateTextViewHeight()
+    }
+}
+
+extension FeedbackViewController: UIDocumentPickerDelegate {
+    func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+        guard let url = urls.first, let data = try? Data(contentsOf: url) else { return }
+        let filename = url.lastPathComponent
+        let mimeType = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
+        setAttachment(filename: filename, mimeType: mimeType, data: data)
+    }
+}
+
+extension FeedbackViewController: UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+        picker.dismiss(animated: true)
+        guard let image = info[.originalImage] as? UIImage, let data = image.attachmentJPEGData() else { return }
+        setAttachment(filename: "Photo.jpg", mimeType: "image/jpeg", data: data)
+    }
+
+    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+        picker.dismiss(animated: true)
+    }
+}
+
+extension FeedbackViewController: PHPickerViewControllerDelegate {
+    func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+        picker.dismiss(animated: true)
+        guard let provider = results.first?.itemProvider else { return }
+        if provider.canLoadObject(ofClass: UIImage.self) {
+            provider.loadObject(ofClass: UIImage.self) { [weak self] object, _ in
+                guard let image = object as? UIImage,
+                      let data = image.attachmentJPEGData() else { return }
+                let suggested = provider.suggestedName?.trimmingCharacters(in: .whitespacesAndNewlines)
+                let filename: String
+                if let suggested = suggested, !suggested.isEmpty {
+                    let ext = (suggested as NSString).pathExtension.lowercased()
+                    if ext == "jpg" || ext == "jpeg" {
+                        filename = suggested
+                    } else {
+                        let nameWithoutExt = (suggested as NSString).deletingPathExtension
+                        filename = "\(nameWithoutExt).jpg"
+                    }
+                } else {
+                    filename = "Photo.jpg"
+                }
+                DispatchQueue.main.async {
+                    self?.setAttachment(filename: filename, mimeType: "image/jpeg", data: data)
+                }
+            }
+        } else if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
+            provider.loadDataRepresentation(forTypeIdentifier: UTType.image.identifier) { [weak self] data, _ in
+                guard let data = data else { return }
+                let suggested = provider.suggestedName?.trimmingCharacters(in: .whitespacesAndNewlines)
+                let filename = (suggested?.isEmpty == false) ? "\(suggested!).jpg" : "Photo.jpg"
+                DispatchQueue.main.async {
+                    self?.setAttachment(filename: filename, mimeType: "image/jpeg", data: data)
+                }
+            }
+        }
+    }
+}
+
+extension FeedbackViewController: UIGestureRecognizerDelegate {
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        shouldDismissKeyboard(forTouchedView: touch.view)
+    }
+
+    /// Lets the dismiss-keyboard tap coexist with the composer's own
+    /// controls: a tap that lands inside `composerContainer` (the text
+    /// view itself, the attach/screenshot-toggle/send row) is left to that
+    /// control alone, so typing, tapping the toggle, or hitting send all
+    /// still behave exactly as they did before this gesture existed. A
+    /// plain function taking a `UIView?` rather than living inline in the
+    /// delegate method above — `UITouch` has no public initializer, so
+    /// FeedbackViewControllerKeyboardTests exercises this decision directly.
+    func shouldDismissKeyboard(forTouchedView touchedView: UIView?) -> Bool {
+        !(touchedView?.isDescendant(of: composerContainer) ?? false)
+    }
+}
+private extension UIImage {
+    /// PNG at `scale` pixels per point (see `AnnotationRenderer.encodingScale`).
+    /// Opaque: a screenshot has no transparency, and dropping the alpha
+    /// channel makes the file smaller.
+    func pngData(scale: CGFloat) -> Data? {
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = scale
+        format.opaque = true
+        return UIGraphicsImageRenderer(size: size, format: format).pngData { _ in
+            draw(at: .zero)
+        }
+    }
+
+    /// A picked or taken photo as JPEG, its longest edge capped at
+    /// `AnnotationRenderer.maxPhotoPixelDimension`.
+    func attachmentJPEGData() -> Data? {
+        let scale = AnnotationRenderer.encodingScale(
+            for: size,
+            displayScale: self.scale,
+            maxPixelDimension: AnnotationRenderer.maxPhotoPixelDimension,
+            minimumScale: 0
+        )
+        guard scale < self.scale else { return jpegData(compressionQuality: 0.85) }
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = scale
+        format.opaque = true
+        return UIGraphicsImageRenderer(size: size, format: format).jpegData(withCompressionQuality: 0.85) { _ in
+            draw(at: .zero)
+        }
+    }
+}
+#endif
