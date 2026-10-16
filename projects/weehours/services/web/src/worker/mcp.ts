@@ -14,7 +14,7 @@ export type Db = SupabaseClient<any, any, any>;
 import { derive, eventTypes, status, statusLine, typeSpec, validate, type LogEvent } from "@weehours/core";
 
 const PROTOCOL_VERSION = "2025-06-18";
-export const SERVER_VERSION = "0.1.0";
+export const SERVER_VERSION = "0.1.3";
 
 export interface Caller {
   userId: string;
