@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 public struct BackendConfig: Codable, Hashable, Sendable {
@@ -105,6 +106,31 @@ public final class SupabaseClient: @unchecked Sendable {
         var body = ["provider": provider, "id_token": idToken]
         if let nonce { body["nonce"] = nonce }
         return try await authRequest("token?grant_type=id_token", body: body)
+    }
+
+    /// Browser sign-in (Google) with PKCE: open `url` in a web authentication session that returns to
+    /// `redirect`, then hand the callback's `code` and this `verifier` to `exchangeCode`.
+    public func oauthStart(provider: String, redirect: String) -> (url: URL, verifier: String) {
+        let verifier = Self.randomURLSafe(bytes: 48)
+        let challenge = Data(SHA256.hash(data: Data(verifier.utf8))).base64URLEncoded
+        var c = URLComponents(url: config.url.appendingPathComponent("auth/v1/authorize"), resolvingAgainstBaseURL: false)!
+        c.queryItems = [
+            URLQueryItem(name: "provider", value: provider),
+            URLQueryItem(name: "redirect_to", value: redirect),
+            URLQueryItem(name: "code_challenge", value: challenge),
+            URLQueryItem(name: "code_challenge_method", value: "s256"),
+        ]
+        return (c.url!, verifier)
+    }
+
+    /// Finishes `oauthStart`: trades the callback's code for a session.
+    public func exchangeCode(_ code: String, verifier: String) async throws -> AuthSession {
+        try await authRequest("token?grant_type=pkce", body: ["auth_code": code, "code_verifier": verifier])
+    }
+
+    static func randomURLSafe(bytes: Int) -> String {
+        var rng = SystemRandomNumberGenerator()
+        return Data((0..<bytes).map { _ in UInt8.random(in: .min ... .max, using: &rng) }).base64URLEncoded
     }
 
     public func refreshIfNeeded() async throws {
@@ -312,5 +338,11 @@ public final class SupabaseClient: @unchecked Sendable {
         f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "yyyy-MM-dd"
         return f.string(from: d)
+    }
+}
+
+extension Data {
+    var base64URLEncoded: String {
+        base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
     }
 }

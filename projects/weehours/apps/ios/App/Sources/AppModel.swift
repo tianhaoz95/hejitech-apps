@@ -183,6 +183,27 @@ final class AppModel: ObservableObject {
         } catch { self.error = error.localizedDescription }
     }
 
+    /// Where Supabase sends the browser back after Google sign-in (allow-listed in the shared project).
+    static let authRedirect = "weehours://login-callback"
+
+    /// Google through Supabase in the system browser sheet (PKCE), with the shared HEJI Google client.
+    func signInWithGoogle(using session: WebAuthenticationSession) async {
+        do {
+            backend = makeBackend()
+            let (url, verifier) = backend.oauthStart(provider: "google", redirect: Self.authRedirect)
+            let callback = try await session.authenticate(using: url, callbackURLScheme: "weehours")
+            let items = URLComponents(url: callback, resolvingAgainstBaseURL: false)?.queryItems ?? []
+            guard let code = items.first(where: { $0.name == "code" })?.value else {
+                let reason = items.first(where: { $0.name == "error_description" })?.value ?? "no code in the callback"
+                throw BackendError.decode(reason.replacingOccurrences(of: "+", with: " "))
+            }
+            _ = try await backend.exchangeCode(code, verifier: verifier)
+            await start()
+        } catch let e as ASWebAuthenticationSessionError where e.code == .canceledLogin {
+            return
+        } catch { self.error = "Google sign-in failed: \(error.localizedDescription)" }
+    }
+
     func signInWithApple(_ result: Result<ASAuthorization, Error>) async {
         do {
             guard case .success(let auth) = result, let cred = auth.credential as? ASAuthorizationAppleIDCredential,

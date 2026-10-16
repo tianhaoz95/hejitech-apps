@@ -128,6 +128,7 @@ struct SignInView: View {
     @State private var email = "parent1@example.com"
     @State private var password = "newborn-dev"
     @State private var showServer = false
+    @Environment(\.webAuthenticationSession) private var webAuthenticationSession
 
     var body: some View {
         ScrollView {
@@ -143,7 +144,7 @@ struct SignInView: View {
                 .frame(height: 48)
                 .signInWithAppleButtonStyle(.whiteOutline)
                 Button {
-                    model.error = "Google sign-in is wired to Supabase but needs the hosted project's Google client id (see README → Auth). Use email for local testing."
+                    Task { await model.signInWithGoogle(using: webAuthenticationSession) }
                 } label: {
                     Label("Continue with Google", systemImage: "g.circle.fill").frame(maxWidth: .infinity, minHeight: 40)
                 }

@@ -23,11 +23,13 @@ Then, in this order (an exposed schema that doesn't exist yet breaks the Data AP
 - **Auth → Apple → Client IDs:** comma-separated list including `com.hejitech.weehours` (the app's
   native Sign in with Apple sheet).
 - **Auth → URL configuration → Redirect URLs:** add `https://weehours.hejitech.workers.dev/**`
-  (the site signs in with Google/Apple and returns to the page it started on). Leave Site URL
-  alone: it belongs to Waypack.
+  (the site signs in with Google/Apple and returns to the page it started on) and
+  `weehours://login-callback` (the app's Google sign-in). Leave Site URL alone: it belongs to
+  Waypack.
 - Email sign-in stays **off** (project-wide; the app shows email only in Debug builds).
-- **Google in the app** is still a placeholder button: native Google sign-in needs an iOS OAuth
-  client added to the Google provider's client IDs, and the GoogleSignIn flow in the app.
+- **Google** uses the project's existing Google provider (the shared HEJI web OAuth client) on the
+  site and in the app; the app runs it in the system browser sheet with PKCE (like Waypack's app),
+  so it needs no iOS OAuth client.
 
 ## 2. Cloudflare
 

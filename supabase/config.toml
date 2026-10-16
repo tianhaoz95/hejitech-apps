@@ -161,7 +161,7 @@ site_url = "http://127.0.0.1:8787"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
 additional_redirect_urls = [
   "http://127.0.0.1:8787/auth/callback", "com.hejitech.waypack://login-callback",  # Waypack
-  "http://127.0.0.1:3000/**", "http://127.0.0.1:8788/**",                          # Wee Hours site (Vite, Worker)
+  "http://127.0.0.1:3000/**", "http://127.0.0.1:8788/**", "weehours://login-callback",  # Wee Hours site, app
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600

@@ -38,6 +38,7 @@ The PRD ("Newborn Log — PRD") plus the changes agreed while planning, and the 
 | MCP OAuth | The site's Cloudflare Worker is the OAuth server (`@cloudflare/workers-oauth-provider`, like Waypack); the MCP server moved from a Supabase Edge Function into that Worker | Owner's choice (a). Supabase's OAuth server has one consent URL per project, relative to the Site URL, which Waypack owns. A neutral shared consent router stays an option for later projects |
 | Sign-up rows | Waypack's `on_auth_user_created` trigger is dropped; each app creates its rows on first use | Owner direction: one user pool for every app |
 | Signing | TestFlight CI uses the team-wide HEJI identities Waypack uses (same certificates) | Owner direction; one set of secrets, never minting certificates |
+| Google sign-in | The shared project's Google provider (HEJI web client) through Supabase in the system browser sheet with PKCE, returning to `weehours://login-callback`; the site uses the same provider | Owner request (2026-10-16). Reuses what Waypack set up, so no iOS OAuth client or GoogleSignIn SDK; Google shows the shared HEJI branding |
 | Build numbers | Stay UTC timestamps | Builds already uploaded use them; Waypack's 2000 + run number would go backwards |
 
 ## Not done yet
