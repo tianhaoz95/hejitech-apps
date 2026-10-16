@@ -12,8 +12,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 APP_SLUG="meowtrix"
-REPO_OWNER="tianhaoz95"
-REPO_NAME="meowtrix"
+# Releases are published in the HEJI monorepo as meowtrix-v<version>.
+REPO_SLUG="${GITHUB_REPOSITORY:-tianhaoz95/hejitech-apps}"
 TAURI_DIR="$ROOT/src-tauri"
 
 # Default to release bundle path unless provided via $1
@@ -90,15 +90,15 @@ if [ ! -f "$TARBALL.sig" ]; then
 fi
 echo "    Signed: $TARBALL.sig"
 
-# Extract version from tauri.conf.json
-VERSION="$(python3 -c "import json; print(json.load(open('$TAURI_DIR/tauri.conf.json'))['version'])")"
+# The app's version: tauri.conf.json takes it from package.json.
+VERSION="$(python3 -c "import json; print(json.load(open('$ROOT/package.json'))['version'])")"
 ARCH="$(uname -m)"
 [ "$ARCH" = "arm64" ] && ARCH="aarch64"
 [ "$ARCH" = "x86_64" ] && ARCH="x86_64"
 
 # GitHub Releases sanitizes spaces in filenames to dots (e.g. "My App" -> "My.App")
 DOTTED_NAME="$(echo "$APP_NAME" | tr ' ' '.')"
-DOWNLOAD_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/v${VERSION}/${DOTTED_NAME}.app.tar.gz"
+DOWNLOAD_URL="https://github.com/${REPO_SLUG}/releases/download/meowtrix-v${VERSION}/${DOTTED_NAME}.app.tar.gz"
 
 python3 - "$VERSION" "$ARCH" "$DOWNLOAD_URL" "$TARBALL.sig" "$UPDATER_DIR/latest.json" <<'PY'
 import json, sys, datetime, pathlib
@@ -126,5 +126,5 @@ echo "    Tarball:  $TARBALL"
 echo "    Sig:      $TARBALL.sig"
 echo "    Manifest: $UPDATER_DIR/latest.json"
 echo
-echo "Upload all three assets to GitHub Release tagged v${VERSION}."
+echo "Upload all three assets to GitHub Release meowtrix-v${VERSION} (and latest.json to meowtrix-latest)."
 echo "Note: The release MUST be published (not draft or pre-release) for clients to discover it."

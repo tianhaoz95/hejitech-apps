@@ -63,7 +63,7 @@ You can install and run Meowtrix in under a minute.
 ### The Quick Install (Zero-Dependency Binary)
 Run the automated installer on your macOS or Linux host:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/tianhaoz95/meowtrix/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/tianhaoz95/hejitech-apps/main/projects/meowtrix/install.sh | bash
 ```
 Once installed, start it up:
 ```bash
@@ -74,7 +74,7 @@ Open `http://localhost:9123` in your browser and you're ready to roll!
 ### Run in a Service Mode (Auto-start on Boot)
 If you want Meowtrix to act as a persistent daemon that launches on system boot:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/tianhaoz95/meowtrix/main/install.sh | bash -s -- --service
+curl -fsSL https://raw.githubusercontent.com/tianhaoz95/hejitech-apps/main/projects/meowtrix/install.sh | bash -s -- --service
 ```
 This configures a system service (`launchd` on macOS, `systemd` on Linux) that stays alive in the background and auto-restarts on crash.
 
@@ -91,8 +91,8 @@ This builds an isolated container, mounts the workspace, and maps settings to a 
 
 Meowtrix is open-source and ready for customization. Whether you want to configure one of its **10 premium visual themes** (like *Synthwave*, *Catppuccin*, or *Matrix*), trigger actions using the command palette (`⌘K`), or write custom plugins, it's designed to bend to your workflow.
 
-* **GitHub Repository:** [github.com/tianhaoz95/meowtrix](https://github.com/tianhaoz95/meowtrix)
-* **Official Website & Docs:** [tianhaoz95.github.io/meowtrix](https://tianhaoz95.github.io/meowtrix/)
-* **Live Demo (No Install):** [tianhaoz95.github.io/meowtrix/demo/?demo](https://tianhaoz95.github.io/meowtrix/demo/?demo)
+* **GitHub Repository:** [github.com/tianhaoz95/meowtrix](https://github.com/tianhaoz95/hejitech-apps/tree/main/projects/meowtrix)
+* **Official Website & Docs:** [tianhaoz95.github.io/meowtrix](https://tianhaoz95.github.io/hejitech-apps/meowtrix/site/)
+* **Live Demo (No Install):** [tianhaoz95.github.io/meowtrix/demo/?demo](https://tianhaoz95.github.io/hejitech-apps/meowtrix/site/demo/?demo)
 
 Give it a spin, customize your theme, and let Mochi accompany you on your next coding adventure. Happy vibe engineering! 🐾

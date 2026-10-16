@@ -1,12 +1,14 @@
 # 🐾 Meowtrix
 
-[![Deploy project site to GitHub Pages](https://github.com/tianhaoz95/meowtrix/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/tianhaoz95/meowtrix/actions/workflows/deploy-pages.yml)
-[![Build and Release](https://github.com/tianhaoz95/meowtrix/actions/workflows/release.yml/badge.svg)](https://github.com/tianhaoz95/meowtrix/actions/workflows/release.yml)
-[![E2E Tests](https://github.com/tianhaoz95/meowtrix/actions/workflows/e2e.yml/badge.svg)](https://github.com/tianhaoz95/meowtrix/actions/workflows/e2e.yml)
+[![Deploy project site to GitHub Pages](https://github.com/tianhaoz95/hejitech-apps/actions/workflows/pages.yml/badge.svg)](https://github.com/tianhaoz95/hejitech-apps/actions/workflows/pages.yml)
+[![Build and Release](https://github.com/tianhaoz95/hejitech-apps/actions/workflows/meowtrix-release.yml/badge.svg)](https://github.com/tianhaoz95/hejitech-apps/actions/workflows/meowtrix-release.yml)
+[![E2E Tests](https://github.com/tianhaoz95/hejitech-apps/actions/workflows/meowtrix-ci.yml/badge.svg)](https://github.com/tianhaoz95/hejitech-apps/actions/workflows/meowtrix-ci.yml)
+
+Part of the [HEJI apps monorepo](https://github.com/tianhaoz95/hejitech-apps) (`projects/meowtrix`); it moved here from `tianhaoz95/meowtrix` (archived, with the releases up to v1.34.1).
 
 Remote vibe engineering tool — a browser-based workspace with tiling split panes, each pane holding tabs: PTY-backed terminals (local or SSH), browsers, a Monaco code editor, and review tabs for your coding agents. Run it on a host machine and reach it from any browser on your network (or anywhere via a tunnel), or use the macOS desktop app; shells live on the server, so refreshes, device switches, and network blips don't kill your work.
 
-**[Website & docs](https://tianhaoz95.github.io/meowtrix/)** · **[Live demo](https://tianhaoz95.github.io/meowtrix/demo/?demo)** · **[User guide](https://tianhaoz95.github.io/meowtrix/docs/)** · **[Developer docs](https://tianhaoz95.github.io/meowtrix/dev/)**
+**[Website & docs](https://tianhaoz95.github.io/hejitech-apps/meowtrix/site/)** · **[Live demo](https://tianhaoz95.github.io/hejitech-apps/meowtrix/site/demo/?demo)** · **[User guide](https://tianhaoz95.github.io/hejitech-apps/meowtrix/site/docs/)** · **[Developer docs](https://tianhaoz95.github.io/hejitech-apps/meowtrix/site/dev/)**
 
 ![Meowtrix remote workspace](website/assets/screenshot-dark.png)
 
@@ -83,28 +85,24 @@ Depending on your preferred installation method, the prerequisites differ:
 
 Run the installer:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/tianhaoz95/meowtrix/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/tianhaoz95/hejitech-apps/main/projects/meowtrix/install.sh | bash
 ```
 *Note: If `git` or `node` are not detected on your system, the installer will automatically fall back to downloading a precompiled release. You can force this zero-dependency binary install by passing the `--binary` flag:*
 ```bash
-curl -fsSL https://raw.githubusercontent.com/tianhaoz95/meowtrix/main/install.sh | bash -s -- --binary
+curl -fsSL https://raw.githubusercontent.com/tianhaoz95/hejitech-apps/main/projects/meowtrix/install.sh | bash -s -- --binary
 ```
 
 ### 2. Source-Based Install
 
 If you prefer to compile from source and have Node.js, git, and a C/C++ toolchain installed:
 ```bash
-# Clone the repository manually
-git clone https://github.com/tianhaoz95/meowtrix.git ~/.meowtrix/app
-cd ~/.meowtrix/app
-
-# Run the installer from source
-./install.sh
+# Fetches projects/meowtrix of the HEJI monorepo and builds it in ~/.meowtrix/app
+curl -fsSL https://raw.githubusercontent.com/tianhaoz95/hejitech-apps/main/projects/meowtrix/install.sh | bash -s -- --source
 ```
 
 ### 3. Desktop app (macOS)
 
-Download the `.dmg` from the [latest release](https://github.com/tianhaoz95/meowtrix/releases/latest) (Apple Silicon, signed and notarized):
+Download a `.dmg` (Apple Silicon, signed and notarized): [Meowtrix Standalone](https://github.com/tianhaoz95/hejitech-apps/releases/download/meowtrix-latest/Meowtrix-Standalone-arm64.dmg) · [Meowtrix Lite](https://github.com/tianhaoz95/hejitech-apps/releases/download/meowtrix-latest/Meowtrix-Lite-arm64.dmg) (always the newest build; versioned releases are tagged [`meowtrix-v…`](https://github.com/tianhaoz95/hejitech-apps/releases?q=meowtrix-v&expanded=true)):
 
 - **Meowtrix Standalone** (~55MB) — self-contained: bundles Node and the server, so there's nothing else to install. It uses a Meowtrix server already running on port 9123 if there is one, otherwise it starts its own.
 - **Meowtrix Lite** (~5MB) — a lightweight shell for a Meowtrix server installed with options 1 or 2 above; it connects to the server on port 9123.
@@ -151,7 +149,7 @@ You can also pass a custom workspace path to mount:
 ### Install as a service (auto-start on login)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/tianhaoz95/meowtrix/main/install.sh | bash -s -- --service
+curl -fsSL https://raw.githubusercontent.com/tianhaoz95/hejitech-apps/main/projects/meowtrix/install.sh | bash -s -- --service
 ```
 
 Uses **launchd** on macOS and **systemd** on Linux. Meowtrix will start automatically on login and restart if it crashes.
@@ -187,7 +185,7 @@ To stop it from auto-starting on login: `systemctl --user disable meowtrix` (and
 Meowtrix checks for updates in the background and shows a banner when one is available; **Update & restart** (also in the command palette) pulls it and, for a `--service` install, restarts the server. Restarting ends running shells, so you pick the moment. You can also re-run the installer, which pulls the latest into `~/.meowtrix/app`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/tianhaoz95/meowtrix/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/tianhaoz95/hejitech-apps/main/projects/meowtrix/install.sh | bash
 ```
 
 ### Uninstall
@@ -268,7 +266,7 @@ npm run tauri:dev:standalone    # run Meowtrix Standalone
 npm run tauri:build             # build both editions (or tauri:build:lite / tauri:build:standalone)
 ```
 
-Releases are cut with `./scripts/cut_release.sh vX.Y.Z`; CI builds, signs, notarizes and attaches the DMGs.
+Releases are cut from the monorepo root with `scripts/cut_release.sh meowtrix <version>`; CI builds the server tarballs and the signed, notarized DMGs and refreshes the rolling `meowtrix-latest` release that installs and the desktop apps update from.
 
 ### Packaging a Release
 
@@ -289,7 +287,7 @@ A [Dev Container](https://containers.dev) config lives in `.devcontainer/`. Open
 
 Meowtrix can run entirely in the browser with no server — terminals become an in-browser JavaScript REPL, and layout/settings persist to `localStorage`.
 
-- **Online:** [tianhaoz95.github.io/meowtrix/demo/?demo](https://tianhaoz95.github.io/meowtrix/demo/?demo)
+- **Online:** [tianhaoz95.github.io/meowtrix/demo/?demo](https://tianhaoz95.github.io/hejitech-apps/meowtrix/site/demo/?demo)
 - **Locally:** `./demo.sh` (serves the static demo and opens it)
 
 In demo mode the browser pane loads URLs directly (no proxy), so only sites that allow embedding will appear.
@@ -358,4 +356,4 @@ The Host Browser needs a Chromium-based browser on the host; if none is found th
 
 ## How it works
 
-A single `server.js` hosts the static frontend, the settings/session REST API, and a WebSocket that multiplexes PTY sessions; PTYs are kept in memory and outlive WebSocket connections so reconnects are non-destructive. The frontend is plain global-scope ES scripts under `public/` (no bundler). See the [developer docs](https://tianhaoz95.github.io/meowtrix/dev/) and `CLAUDE.md` for the full architecture.
+A single `server.js` hosts the static frontend, the settings/session REST API, and a WebSocket that multiplexes PTY sessions; PTYs are kept in memory and outlive WebSocket connections so reconnects are non-destructive. The frontend is plain global-scope ES scripts under `public/` (no bundler). See the [developer docs](https://tianhaoz95.github.io/hejitech-apps/meowtrix/site/dev/) and `CLAUDE.md` for the full architecture.

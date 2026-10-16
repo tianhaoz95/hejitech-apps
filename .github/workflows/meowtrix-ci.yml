@@ -1,0 +1,44 @@
+name: Meowtrix CI
+
+# Playwright E2E suite (chromium, firefox, webkit) against the server in Docker, as before the
+# monorepo. scripts/cut_release.sh meowtrix requires it green.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "projects/meowtrix/**"
+      - ".github/workflows/meowtrix-ci.yml"
+  pull_request:
+    paths:
+      - "projects/meowtrix/**"
+      - ".github/workflows/meowtrix-ci.yml"
+  workflow_dispatch: {}
+
+concurrency:
+  group: meowtrix-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: projects/meowtrix
+
+jobs:
+  e2e:
+    name: Playwright E2E (Docker)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Run E2E tests in Docker Compose
+        run: docker compose -f docker-compose.test.yml up --build --exit-code-from playwright
+      - name: Upload the test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: meowtrix-playwright-report
+          path: projects/meowtrix/playwright-report/
+          retention-days: 30

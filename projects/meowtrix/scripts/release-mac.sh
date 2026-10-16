@@ -2,21 +2,25 @@
 # Build, sign, notarize, and attach both macOS desktop editions (Lite and Standalone)
 # to an existing GitHub release.
 #
-#   ./scripts/release-mac.sh                  # attach to the latest published release
-#   ./scripts/release-mac.sh --tag v0.3.0     # a specific tag
+#   ./scripts/release-mac.sh                  # attach to the newest meowtrix-v release
+#   ./scripts/release-mac.sh --tag meowtrix-v1.34.2   # a specific tag
 #   ./scripts/release-mac.sh --skip-build     # reuse the bundle already built
 #   ./scripts/release-mac.sh --no-upload      # build, sign, notarize only — don't attach
 #   ./scripts/release-mac.sh --check          # verify credentials resolve, build nothing
 #
-# The release itself is created by scripts/cut_release.sh -- this script only attaches
-# the signed, notarized DMGs to a release that already exists.
-# .github/workflows/release-mac.yml runs this same script in CI on `release: published`.
+# The release itself is created by the monorepo's scripts/cut_release.sh meowtrix -- this script
+# only attaches the signed, notarized DMGs and the updater artifacts to a release that already
+# exists, and refreshes the rolling meowtrix-latest release (scripts/publish-latest.sh) that
+# installed desktop apps poll for latest.json.
+# .github/workflows/meowtrix-mac-release.yml runs this same script in CI on `release: published`.
 
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 ROOT="$PWD"
-REPO="tianhaoz95/meowtrix"
+# The HEJI monorepo publishes releases for several apps: Meowtrix's are meowtrix-v<version>.
+REPO="${GITHUB_REPOSITORY:-tianhaoz95/hejitech-apps}"
+TAG_PREFIX="meowtrix-v"
 BUILD_DIR="$ROOT/build/release-mac"
 
 TAG=""; SKIP_BUILD=0; NO_UPLOAD=0; CHECK_ONLY=0
@@ -69,8 +73,10 @@ if [ "$NO_UPLOAD" -eq 0 ] && [ "$CHECK_ONLY" -eq 0 ]; then
   gh auth status >/dev/null 2>&1 || [ -n "$TOKEN" ] || die "not logged in to gh and no GH_TOKEN set"
 
   if [ -z "$TAG" ]; then
-    TAG="$(gh release view --repo "$REPO" --json tagName -q .tagName 2>/dev/null || true)"
-    [ -n "$TAG" ] || die "no tag given and no existing release found — pass --tag, or run scripts/cut_release.sh first."
+    # Not `gh release view` (the repo's latest release belongs to another app).
+    TAG="$(gh release list --repo "$REPO" --limit 100 --exclude-drafts --exclude-pre-releases --json tagName -q '.[].tagName' 2>/dev/null \
+      | grep "^$TAG_PREFIX[0-9]" | sort -V | tail -1 || true)"
+    [ -n "$TAG" ] || die "no tag given and no meowtrix-v release found — pass --tag, or run scripts/cut_release.sh meowtrix first."
   fi
   echo "    release tag     $TAG"
 fi
@@ -142,7 +148,7 @@ say "attaching both editions to $TAG"
 [ -n "$TOKEN" ] && export GH_TOKEN="$TOKEN"
 
 gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1 \
-  || die "release $TAG does not exist yet — run scripts/cut_release.sh first"
+  || die "release $TAG does not exist yet — run scripts/cut_release.sh meowtrix first"
 
 STAGE_DIR="$(mktemp -d)"
 cp "$LITE_DMG" "$STAGE_DIR/$LITE_DMG_NAME"
@@ -187,6 +193,19 @@ done
 if [ -f "$UPDATER_DIR/latest.json" ]; then
   json_code="$(curl -s -o /dev/null -w '%{http_code}' -L "https://github.com/$REPO/releases/download/$TAG/latest.json")"
   echo "    $json_code  latest.json"
+  # Installed desktop apps poll meowtrix-latest/latest.json (tauri*.conf.json endpoints); its
+  # platform URLs point at this release's updater tarball. Only for the newest release, so a
+  # re-run against an older tag doesn't roll installed apps back.
+  NEWEST="$(gh release list --repo "$REPO" --limit 100 --exclude-drafts --exclude-pre-releases --json tagName -q '.[].tagName' \
+    | grep "^$TAG_PREFIX[0-9]" | sort -V | tail -1)"
+  if [ "$NEWEST" = "$TAG" ]; then
+    say "publishing latest.json to meowtrix-latest"
+    "$ROOT/scripts/publish-latest.sh" "$UPDATER_DIR/latest.json" \
+      "$STAGE_DIR/$LITE_DMG_NAME=Meowtrix-Lite-arm64.dmg" \
+      "$STAGE_DIR/$STANDALONE_DMG_NAME=Meowtrix-Standalone-arm64.dmg"
+  else
+    echo "    $TAG isn't the newest release ($NEWEST): meowtrix-latest left alone"
+  fi
 fi
 
 cat <<EOF

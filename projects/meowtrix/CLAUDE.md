@@ -6,6 +6,46 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Meowtrix — a browser-based remote workspace ("vibe engineering tool"). The UI is a tiling pane layout where each pane holds tabs, and each tab is one of: a PTY-backed terminal (xterm.js), an embedded browser, or a code editor (Monaco + a file tree over the host filesystem). A single Node server hosts both the static frontend and a WebSocket that multiplexes PTY sessions. Meant to be run on a host machine and reached over the network (or a tunnel like ngrok).
 
+## In the HEJI monorepo (read first)
+
+Meowtrix lives in `projects/meowtrix` of [`tianhaoz95/hejitech-apps`](https://github.com/tianhaoz95/hejitech-apps)
+since 2026-10-16 (imported with its history from `tianhaoz95/meowtrix`, now archived with the
+releases up to v1.34.1). The root `CLAUDE.md` has the shared rules; what matters here:
+
+- **Paths:** everything below runs from `projects/meowtrix`. It is a standalone npm project with
+  its own `package-lock.json`, deliberately outside the root npm workspaces (node-pty compiles
+  natively and `package-release.sh`/the standalone payload ship its own `node_modules`). Never
+  reference another project's files.
+- **No backend:** `backend.env` says `BACKEND=none` (the FeedbackKit ingest host is listed as
+  external).
+- **Releases:** bump `package.json`'s version and add the `public/whats-new.json` entry in the
+  change, as before (the Tauri configs read their version from `package.json`; don't edit
+  `src-tauri/*.json` versions). Release from the repo root with
+  `scripts/cut_release.sh meowtrix <that version> --dry-run`, then without `--dry-run`. It
+  publishes GitHub Release `meowtrix-v<version>` (never "latest": that's Waypack's), which runs
+  `.github/workflows/meowtrix-release.yml` (server tarballs for darwin-arm64, linux-x64,
+  linux-arm64) and `meowtrix-mac-release.yml` (both desktop editions, Developer ID signed and
+  notarized, plus the Tauri updater tarball/.sig/latest.json). Don't create tags or releases
+  yourself, and don't run `scripts/release-mac.sh` by hand in place of it.
+- **The rolling `meowtrix-latest` release** is how installs find updates, since the repo's
+  `releases/latest` belongs to another app: both release workflows refresh it through
+  `scripts/publish-latest.sh` (tarballs, then `VERSION`; `latest.json`; DMGs under stable names
+  `Meowtrix-Standalone-arm64.dmg` / `Meowtrix-Lite-arm64.dmg`). Installed servers read `VERSION`
+  and download the tarball from it (`LATEST_RELEASE_URL` in `server.js`), the desktop apps poll its
+  `latest.json` (`src-tauri/tauri*.conf.json`), `install.sh` downloads from it. Builds up to
+  1.34.1 poll the archived repo, which got one last release carrying a monorepo build.
+- **Signing:** the team-wide HEJI Developer ID (`MAC_SIGNING_P12_*`) and App Store Connect key
+  (`ASC_*`) via `.github/actions/apple-signing`; the Tauri updater key is Meowtrix's own
+  (`MEOWTRIX_TAURI_SIGNING_PRIVATE_KEY`, from `~/.tauri/meowtrix-updater.key`, empty password).
+  Changing that key strands every installed desktop app.
+- **CI:** `.github/workflows/meowtrix-ci.yml` (the Playwright suite in Docker).
+- **Site:** `website/` (landing, user guide, developer docs) and the live demo (`public/`) publish
+  through the repo's `pages.yml` at https://tianhaoz95.github.io/hejitech-apps/meowtrix/site/
+  (demo: `site/demo/?demo`); the overview page is `docs/index.md`. Old
+  `tianhaoz95.github.io/meowtrix/…` URLs redirect there. Install command:
+  `curl -fsSL https://raw.githubusercontent.com/tianhaoz95/hejitech-apps/main/projects/meowtrix/install.sh | bash`.
+- **License:** Meowtrix keeps its MIT `LICENSE`.
+
 ## Commands
 
 ```bash
@@ -18,7 +58,7 @@ npm run tauri:build:lite # build Meowtrix Lite app (~5MB client shell)
 npm run tauri:build:standalone # build Meowtrix Standalone app (~55MB self-contained bundle)
 npm run tauri:build # build both desktop editions
 ./scripts/release-mac.sh --check # preflight check macOS code signing & notarization credentials
-./scripts/cut_release.sh vX.Y.Z  # cut GitHub release and trigger automated CI build/signing/DMG/notarization
+# releases: scripts/cut_release.sh meowtrix <version> from the repo root (see above)
 npm run test:e2e   # run playwright e2e tests
 npm run screenshots # generate showcase screenshots using playwright
 ./preview-website.sh # start local server for website (add --capture to recapture screenshots first)
@@ -28,7 +68,7 @@ Playwright E2E tests reside in `tests/`. The frontend is plain ES scripts served
 
 ## Development Guidelines
 
-- **Versioning**: When a change is made, boost the version in [package.json](file:///Users/tianhaozhou/experimental/web-vibe-eng-tool/package.json) accordingly (following semantic versioning). This version is used by the release workflow to determine the release draft tag name when pushed to `main`.
+- **Versioning**: When a change is made, boost the version in `package.json` accordingly (following semantic versioning); it is the version of the server, the tarballs and the desktop apps, and `scripts/cut_release.sh meowtrix <version>` releases it as `meowtrix-v<version>`.
 - **What's new**: Every release with anything users will notice gets an entry in [`public/whats-new.json`](public/whats-new.json) in the same change, keyed by the new `package.json` version, newest first. Features (a feature, a setting, a visible behavior change) go in `highlights`, the main stage, and a highlight can carry an animated `visual` and a `try` action. Bug fixes and small improvements go in `fixes`: one-line strings shown on a secondary page behind a footer button, so people can check whether their bug got fixed. Describe each fix by its symptom as the user saw it, not the code change. A fix-only release is an entry with just `version`, `date` and `fixes`, and gets a toast instead of opening the sheet. See the file's `_doc` and `whats-new.js`. The sheet is how upgraded users find out what changed, so a user-facing fix or feature with no entry goes unnoticed. Only refactors, internal tooling and release plumbing that users can't observe go without one.
 
 ## Architecture
@@ -102,4 +142,4 @@ Both live under `$HOME/.meowtrix/`. PTY state itself is in-memory only — resta
 
 ## Distribution
 
-`install.sh` clones/updates into `~/.meowtrix/app`, installs prod deps, and writes a `meowtrix` launcher to `~/.local/bin`. With `--service` it installs a launchd agent (macOS) or systemd user service (Linux) that auto-starts on login and restarts on crash. The service also sets `MEOWTRIX_SUPERVISED=1` (and uses launchd `KeepAlive` / systemd `Restart=always`) so the in-app self-update can `process.exit(0)` and be relaunched on the new code. The service unit also sets `HOST=0.0.0.0` so it binds to all interfaces by default (see "Network binding" above) — to scope a service install back to localhost, edit `HOST` to `127.0.0.1` in the unit and reload it. The README's install commands curl this script from GitHub.
+`install.sh` installs into `~/.meowtrix/app`: by default the release tarball for this OS/arch from the rolling `meowtrix-latest` release (bundled Node, prebuilt node-pty), or with `--source` a sparse, shallow clone of the monorepo's `projects/meowtrix` built with the local Node. Either way it writes a `meowtrix` launcher to `~/.local/bin`, and installs at `~/.meowtrix/app` self-update from the release tarballs (`shouldUpdateViaBinary` in `server.js`); git-based updates only apply to a checkout elsewhere. With `--service` it installs a launchd agent (macOS) or systemd user service (Linux) that auto-starts on login and restarts on crash. The service also sets `MEOWTRIX_SUPERVISED=1` (and uses launchd `KeepAlive` / systemd `Restart=always`) so the in-app self-update can `process.exit(0)` and be relaunched on the new code. The service unit also sets `HOST=0.0.0.0` so it binds to all interfaces by default (see "Network binding" above) — to scope a service install back to localhost, edit `HOST` to `127.0.0.1` in the unit and reload it. The README's install commands curl this script from the monorepo (`projects/meowtrix/install.sh` on `main`).

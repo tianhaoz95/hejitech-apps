@@ -24,8 +24,8 @@ Meowtrix runs on the **host machine** (macOS or Linux). A source checkout needs:
 ### Setup
 
 ```bash
-git clone https://github.com/tianhaoz95/meowtrix.git
-cd meowtrix
+git clone https://github.com/tianhaoz95/hejitech-apps.git
+cd hejitech-apps/projects/meowtrix
 npm install        # compiles node-pty natively
 npm start          # run on PORT (default 9123)
 ```

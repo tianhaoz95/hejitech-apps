@@ -3,7 +3,7 @@
 // The only trigger is ⌘⇧F / Ctrl+Shift+F, dispatched through runAppShortcut (app.js) → openFeedback().
 // FeedbackKit's own enableKeyboardShortcut() is left off so the key isn't handled twice.
 
-const FEEDBACK_FALLBACK_URL = 'https://github.com/tianhaoz95/meowtrix/issues/new';
+const FEEDBACK_FALLBACK_URL = 'https://github.com/tianhaoz95/hejitech-apps/issues/new?title=Meowtrix%3A%20';
 
 (function initFeedbackKit() {
   const FK = window.FeedbackKit;

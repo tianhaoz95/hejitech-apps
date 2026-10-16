@@ -50,7 +50,7 @@ built-in self-update keeps a service install current).
 **Please do not open a public issue for security problems.**
 
 Report privately via GitHub's **Security Advisories**:
-<https://github.com/tianhaoz95/meowtrix/security/advisories/new>
+<https://github.com/tianhaoz95/hejitech-apps/security/advisories/new>
 
 When reporting, please include:
 

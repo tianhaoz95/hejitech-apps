@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 set -e
 
-REPO="https://github.com/tianhaoz95/meowtrix"
+# Meowtrix lives in the HEJI monorepo (projects/meowtrix). Releases: the rolling meowtrix-latest
+# release carries the newest build at stable URLs (the repo's releases/latest is another app's).
+REPO="https://github.com/tianhaoz95/hejitech-apps"
+LATEST_URL="$REPO/releases/download/meowtrix-latest"
+INSTALL_URL="https://raw.githubusercontent.com/tianhaoz95/hejitech-apps/main/projects/meowtrix/install.sh"
 INSTALL_DIR="$HOME/.meowtrix/app"
 SERVICE=false
 
@@ -48,8 +52,7 @@ fi
 if [ "$USE_BINARY" = true ]; then
   echo "→ Performing zero-dependency binary installation..."
 
-  # GitHub Releases latest release tarball URL
-  RELEASE_URL="https://github.com/tianhaoz95/meowtrix/releases/latest/download/meowtrix-${OS}-${ARCH}.tar.gz"
+  RELEASE_URL="$LATEST_URL/meowtrix-${OS}-${ARCH}.tar.gz"
 
   echo "→ Downloading latest Meowtrix release ($OS-$ARCH)..."
   mkdir -p "$HOME/.meowtrix"
@@ -84,14 +87,20 @@ EOF
   chmod +x "$LAUNCHER"
 
 else
-  # Clone or update
-  if [ -d "$INSTALL_DIR/.git" ]; then
-    echo "→ Updating existing installation from source..."
-    git -C "$INSTALL_DIR" pull --ff-only
-  else
-    echo "→ Cloning repository from source..."
-    git clone "$REPO" "$INSTALL_DIR"
+  # The source is projects/meowtrix of the monorepo: fetch just that folder (sparse, shallow)
+  # and copy it in. Installs at ~/.meowtrix/app update from release tarballs afterwards (see
+  # shouldUpdateViaBinary in server.js); to work on Meowtrix, clone the monorepo instead.
+  echo "→ Fetching the source (projects/meowtrix of $REPO)..."
+  SRC_TMP="$(mktemp -d)"
+  git clone --quiet --depth 1 --filter=blob:none --sparse "$REPO" "$SRC_TMP"
+  git -C "$SRC_TMP" sparse-checkout set projects/meowtrix
+  if [ -d "$INSTALL_DIR" ]; then
+    echo "→ Replacing the existing installation (settings in ~/.meowtrix are kept)..."
+    rm -rf "$INSTALL_DIR"
   fi
+  mkdir -p "$(dirname "$INSTALL_DIR")"
+  mv "$SRC_TMP/projects/meowtrix" "$INSTALL_DIR"
+  rm -rf "$SRC_TMP"
 
   # Install dependencies
   echo "→ Installing dependencies..."
@@ -208,8 +217,8 @@ else
   echo "Then open http://localhost:9123 in your browser."
   echo ""
   echo "Tip: to install as an auto-starting service, re-run with --service:"
-  echo "   curl -fsSL https://raw.githubusercontent.com/tianhaoz95/meowtrix/main/install.sh | bash -s -- --service"
+  echo "   curl -fsSL $INSTALL_URL | bash -s -- --service"
   echo ""
   echo "Tip: to install from source instead of binary, re-run with --source:"
-  echo "   curl -fsSL https://raw.githubusercontent.com/tianhaoz95/meowtrix/main/install.sh | bash -s -- --source"
+  echo "   curl -fsSL $INSTALL_URL | bash -s -- --source"
 fi

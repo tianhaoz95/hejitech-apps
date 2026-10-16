@@ -1,0 +1,19 @@
+{
+  "name": "Meowtrix",
+  "sidebar": [
+    {
+      "text": "Meowtrix",
+      "items": [
+        { "text": "Overview", "link": "" },
+        { "text": "Website ↗", "link": "site/index.html", "target": "_blank" },
+        { "text": "User guide ↗", "link": "site/docs/index.html", "target": "_blank" },
+        { "text": "Developer docs ↗", "link": "site/dev/index.html", "target": "_blank" },
+        { "text": "Live demo ↗", "link": "site/demo/index.html?demo", "target": "_blank" }
+      ]
+    }
+  ],
+  "static": {
+    "site": "../website",
+    "site/demo": "../public"
+  }
+}

@@ -4,7 +4,7 @@ version = "1.34.1"
 description = "Meowtrix Desktop — browser-based remote workspace"
 authors = ["Tianhao Zhou"]
 license = "MIT"
-repository = "https://github.com/tianhaoz95/meowtrix"
+repository = "https://github.com/tianhaoz95/hejitech-apps"
 edition = "2021"
 rust-version = "1.77.2"
 

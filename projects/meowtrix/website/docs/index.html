@@ -35,7 +35,7 @@
       <a href="../">Home</a>
       <a href="../features/">Features</a>
       <a href="../dev/">Developers</a>
-      <a href="https://github.com/tianhaoz95/meowtrix" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/tianhaoz95/hejitech-apps/tree/main/projects/meowtrix" target="_blank" rel="noopener">GitHub</a>
       <a class="cta" href="../demo/?demo">Live demo →</a>
       <button class="theme-toggle" id="theme-toggle" type="button" data-mode="system" aria-label="Toggle theme" title="Toggle theme"><span class="ico ico-system">🌗</span><span class="ico ico-light">☀️</span><span class="ico ico-moon">🌙</span></button>
     </div>
@@ -82,9 +82,9 @@
       <p class="lead">Everything you need to install Meowtrix and get productive in the workspace.</p>
 
       <p class="badges">
-        <a href="https://github.com/tianhaoz95/meowtrix/actions/workflows/deploy-pages.yml"><img src="https://github.com/tianhaoz95/meowtrix/actions/workflows/deploy-pages.yml/badge.svg" alt="Deploy project site to GitHub Pages"></a>
-        <a href="https://github.com/tianhaoz95/meowtrix/actions/workflows/release.yml"><img src="https://github.com/tianhaoz95/meowtrix/actions/workflows/release.yml/badge.svg" alt="Build and Release"></a>
-        <a href="https://github.com/tianhaoz95/meowtrix/actions/workflows/e2e.yml"><img src="https://github.com/tianhaoz95/meowtrix/actions/workflows/e2e.yml/badge.svg" alt="E2E Tests"></a>
+        <a href="https://github.com/tianhaoz95/hejitech-apps/actions/workflows/pages.yml"><img src="https://github.com/tianhaoz95/hejitech-apps/actions/workflows/pages.yml/badge.svg" alt="Deploy project site to GitHub Pages"></a>
+        <a href="https://github.com/tianhaoz95/hejitech-apps/actions/workflows/meowtrix-release.yml"><img src="https://github.com/tianhaoz95/hejitech-apps/actions/workflows/meowtrix-release.yml/badge.svg" alt="Build and Release"></a>
+        <a href="https://github.com/tianhaoz95/hejitech-apps/actions/workflows/meowtrix-ci.yml"><img src="https://github.com/tianhaoz95/hejitech-apps/actions/workflows/meowtrix-ci.yml/badge.svg" alt="E2E Tests"></a>
       </p>
 
       <section id="overview">
@@ -197,7 +197,7 @@
               <span class="cb-out-title"><span class="dot"></span>Run this command</span>
               <button class="cb-copy" type="button" id="cb-copy">📋 Copy</button>
             </div>
-            <pre class="cb-code"><code id="cb-code">curl -fsSL https://raw.githubusercontent.com/tianhaoz95/meowtrix/main/install.sh | bash</code></pre>
+            <pre class="cb-code"><code id="cb-code">curl -fsSL https://raw.githubusercontent.com/tianhaoz95/hejitech-apps/main/projects/meowtrix/install.sh | bash</code></pre>
             <p class="cb-note" id="cb-note"></p>
           </div>
         </div>
@@ -461,7 +461,7 @@ HOST=0.0.0.0 npm start</code></pre>
       <a href="../privacy/">Privacy Notice</a>
       <a href="../agreement/">User Agreement</a>
       <a href="../demo/?demo" target="_blank" rel="noopener">Live Demo</a>
-      <a href="https://github.com/tianhaoz95/meowtrix" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/tianhaoz95/hejitech-apps/tree/main/projects/meowtrix" target="_blank" rel="noopener">GitHub</a>
     </div>
     <p>🐾 Meowtrix — a browser-based remote vibe engineering tool.</p>
   </footer>
@@ -474,7 +474,7 @@ HOST=0.0.0.0 npm start</code></pre>
       var codeEl = document.getElementById('cb-code');
       var noteEl = document.getElementById('cb-note');
       var copyBtn = document.getElementById('cb-copy');
-      var INSTALL = 'curl -fsSL https://raw.githubusercontent.com/tianhaoz95/meowtrix/main/install.sh | bash';
+      var INSTALL = 'curl -fsSL https://raw.githubusercontent.com/tianhaoz95/hejitech-apps/main/projects/meowtrix/install.sh | bash';
       var PLIST = '~/Library/LaunchAgents/com.meowtrix.plist';
 
       /* The currently-pressed button's data-value within a group. */
@@ -491,9 +491,7 @@ HOST=0.0.0.0 npm start</code></pre>
           var method = pick('method', 'data-method');
           var service = pick('service-flag', 'data-service') === 'true';
           if (method === 'source') {
-            cmd = 'git clone https://github.com/tianhaoz95/meowtrix.git ~/.meowtrix/app\n' +
-                  'cd ~/.meowtrix/app\n' +
-                  './install.sh' + (service ? ' --service' : '');
+            cmd = 'curl -fsSL https://raw.githubusercontent.com/tianhaoz95/hejitech-apps/main/projects/meowtrix/install.sh | bash -s -- --source' + (service ? ' --service' : '');
             note = '🛠 Source builds need Node 18+, git, and a C/C++ toolchain so <code>node-pty</code> can compile.';
           } else {
             var flags = [];

@@ -10,6 +10,10 @@ on:
       - "pages/**"
       - "projects/*/docs/**"
       - "projects/*/report/**"
+      # Static sites listed in a project's docs/pages.json
+      - "projects/voxbrief/site/**"
+      - "projects/meowtrix/website/**"
+      - "projects/meowtrix/public/**"
       - "scripts/pages_sync.mjs"
       - "projects/feedbackkit/docs/**"
       - ".github/workflows/pages.yml"

@@ -1,7 +1,7 @@
 # HEJI projects monorepo
 
-Several products live in `projects/<name>/` (`waypack`, `weehours`, `feedbackkit`, `voxbrief`), sharing one Supabase
-project (FeedbackKit keeps its own: `BACKEND=own`; Voxbrief has none: `BACKEND=none`) (`supabase/`, read `supabase/README.md` before any schema change), npm workspaces and CI
+Several products live in `projects/<name>/` (`waypack`, `weehours`, `feedbackkit`, `voxbrief`, `meowtrix`), sharing one
+Supabase project (FeedbackKit keeps its own: `BACKEND=own`; Voxbrief and Meowtrix have none: `BACKEND=none`) (`supabase/`, read `supabase/README.md` before any schema change), npm workspaces and CI
 plumbing. Layout and how to add a project: `README.md`. Keep each project self-contained; put
 something at the root only when it is genuinely shared. Each project has its own `CLAUDE.md`
 (`projects/<name>/CLAUDE.md`, loaded when you work there) for its commands, architecture and
@@ -46,3 +46,9 @@ in-app What's New describes the version), and publishes `voxbrief-v<version>`, w
 `voxbrief-testflight.yml` and `voxbrief-mac-release.yml` (notarized DMG on the release; the Mac
 app finds it by listing `voxbrief-v` releases, not `releases/latest`). See
 `projects/voxbrief/CLAUDE.md`.
+
+For Meowtrix it releases `package.json`'s version (pass it: `scripts/cut_release.sh meowtrix 1.35.0`)
+as `meowtrix-v<version>`, which runs `meowtrix-release.yml` (server tarballs) and
+`meowtrix-mac-release.yml` (DMGs + Tauri updater). Both refresh the rolling prerelease
+`meowtrix-latest`, the stable URLs installs and updaters read instead of `releases/latest`. See
+`projects/meowtrix/CLAUDE.md`.

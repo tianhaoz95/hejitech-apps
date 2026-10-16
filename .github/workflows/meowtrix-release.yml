@@ -1,0 +1,95 @@
+name: Meowtrix → server tarballs
+
+# On a published GitHub Release tagged meowtrix-v<version> (scripts/cut_release.sh meowtrix;
+# other projects' releases are skipped): builds the self-contained server tarballs (bundled Node +
+# node-pty) for macOS and Linux, attaches them to the release, and refreshes the rolling
+# meowtrix-latest release that install.sh and installed servers read (VERSION goes up last, so a
+# server never sees a version whose tarball isn't there yet). workflow_dispatch rebuilds a tag.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag (e.g. meowtrix-v1.34.2)
+        required: true
+
+concurrency:
+  group: meowtrix-release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    working-directory: projects/meowtrix
+
+env:
+  TAG: ${{ github.event.release.tag_name || inputs.tag }}
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'meowtrix-v')
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, name: linux-x64 }
+          - { os: ubuntu-24.04-arm, name: linux-arm64 }
+          - { os: macos-latest, name: darwin-arm64 }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Version matches the tag
+        run: |
+          V="$(node -p "require('./package.json').version")"
+          [ "meowtrix-v$V" = "$TAG" ] || { echo "::error::package.json says $V but the release is $TAG"; exit 1; }
+      - name: Package
+        run: ./package-release.sh
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for i in 1 2 3 4 5; do
+            gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" dist/*.tar.gz --clobber && break
+            [ "$i" -eq 5 ] && exit 1; sleep 5
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: meowtrix-${{ matrix.name }}
+          path: projects/meowtrix/dist/*.tar.gz
+          retention-days: 3
+
+  latest:
+    name: Refresh meowtrix-latest
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/tarballs
+          merge-multiple: true
+      - name: Newest release only
+        id: newest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NEWEST="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --exclude-drafts --exclude-pre-releases --json tagName -q '.[].tagName' | grep '^meowtrix-v[0-9]' | sort -V | tail -1)"
+          echo "newest=$NEWEST" >> "$GITHUB_OUTPUT"
+          [ "$NEWEST" = "$TAG" ] || echo "::notice::$TAG isn't the newest release ($NEWEST): meowtrix-latest left alone"
+      - name: Upload tarballs, then VERSION
+        if: steps.newest.outputs.newest == env.TAG
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ./scripts/publish-latest.sh "$RUNNER_TEMP"/tarballs/*.tar.gz
+          echo "${TAG#meowtrix-v}" > "$RUNNER_TEMP/VERSION"
+          ./scripts/publish-latest.sh "$RUNNER_TEMP/VERSION"

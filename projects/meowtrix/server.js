@@ -2107,6 +2107,11 @@ wss.on('connection', (ws) => {
 // remote-triggered pull is no new capability; the background check can still be
 // turned off via the `autoUpdate` setting.
 const APP_ROOT = __dirname;
+// Releases live in the HEJI monorepo (tianhaoz95/hejitech-apps, projects/meowtrix), whose
+// `releases/latest` belongs to another app. Every Meowtrix release refreshes the rolling
+// `meowtrix-latest` release: the platform tarballs, a VERSION file (written last) and the
+// desktop updater's latest.json, at stable URLs.
+const LATEST_RELEASE_URL = 'https://github.com/tianhaoz95/hejitech-apps/releases/download/meowtrix-latest';
 const IS_SUPERVISED = process.env.MEOWTRIX_SUPERVISED === '1';
 const UPDATE_CHECK_INTERVAL = 60 * 60 * 1000; // hourly background check
 let lastUpdateInfo = null; // cached result of the most recent check
@@ -2190,7 +2195,7 @@ function shouldUpdateViaBinary() {
 }
 
 // Check for updates. If a git checkout, compares HEAD to the upstream tracking ref.
-// If a binary release distribution, checks the GitHub Releases API.
+// If a binary release distribution, reads the rolling meowtrix-latest release's VERSION file.
 async function checkForUpdate({ fetch = true } = {}) {
   const info = {
     isRepo: false, supervised: IS_SUPERVISED, updateAvailable: false,
@@ -2212,7 +2217,7 @@ async function checkForUpdate({ fetch = true } = {}) {
       return info;
     }
 
-    const res = await appCurl('https://api.github.com/repos/tianhaoz95/meowtrix/releases/latest');
+    const res = await appCurl(`${LATEST_RELEASE_URL}/VERSION`);
     if (!res.ok) {
       info.error = 'Failed to check updates: ' + (res.stderr || 'unreachable');
       lastUpdateInfo = info;
@@ -2220,8 +2225,8 @@ async function checkForUpdate({ fetch = true } = {}) {
     }
 
     try {
-      const release = JSON.parse(res.stdout);
-      const remoteVer = release.tag_name ? release.tag_name.replace(/^v/, '') : '';
+      const remoteVer = res.stdout.trim().replace(/^meowtrix-v|^v/, '');
+      if (!/^\d+\.\d+\.\d+$/.test(remoteVer)) throw new Error(`unexpected VERSION "${remoteVer.slice(0, 40)}"`);
       info.remote = remoteVer;
 
       if (remoteVer && currentVer) {
@@ -2301,7 +2306,7 @@ async function applyUpdate() {
       return { ok: false, output: `Unsupported platform/architecture: ${process.platform}/${process.arch}` };
     }
 
-    const releaseUrl = `https://github.com/tianhaoz95/meowtrix/releases/latest/download/meowtrix-${osPlatform}-${osArch}.tar.gz`;
+    const releaseUrl = `${LATEST_RELEASE_URL}/meowtrix-${osPlatform}-${osArch}.tar.gz`;
     const tempTarball = path.join(os.tmpdir() || '/tmp', `meowtrix-update-${Date.now()}.tar.gz`);
 
     console.log(`[Update] Downloading binary update from ${releaseUrl}...`);
@@ -2510,7 +2515,7 @@ function probeDesktopDaemon(p) {
 // Inside the desktop app the app bundle is what gets updated (Tauri updater,
 // tray "Update & Restart"), so its updater is the source of truth: it compares
 // the *app's* version against the release's latest.json. The server's own check
-// compares this server's package.json against GitHub's latest release tag, which
+// compares this server's package.json against the latest release's version, which
 // disagrees with the app whenever the server isn't the app's own embedded copy
 // (Lite / a reused server on the default port) or a release is tagged before
 // its desktop builds are attached — leaving a stale "update available" banner

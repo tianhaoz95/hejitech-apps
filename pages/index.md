@@ -52,6 +52,16 @@ hero:
   </div>
 </a>
 
+<a class="heji-app" href="./meowtrix/">
+  <img src="/meowtrix/icon.png" alt="" width="64" height="64">
+  <div class="heji-app-body">
+    <h3>Meowtrix</h3>
+    <p>A remote workspace for vibe engineering: split panes of real terminals, browsers and a code editor, served from your own machine and reachable from any device. Shells survive refreshes and device switches.</p>
+    <span class="heji-tags"><span>Web</span><span>macOS app</span><span>Linux</span><span>Agent tools · MCP</span></span>
+    <span class="heji-links"><span>Developer docs →</span></span>
+  </div>
+</a>
+
 <a class="heji-app" href="https://tianhaoz95.github.io/hejitech-apps/feedbackkit/" target="_self">
   <img src="/feedbackkit-logo.png" alt="" width="64" height="64">
   <div class="heji-app-body">
@@ -64,7 +74,7 @@ hero:
 
 </div>
 
-<p class="heji-visit">Visit the apps: <a href="https://waypack.hejitech.workers.dev">waypack.hejitech.workers.dev</a> · <a href="https://weehours.hejitech.workers.dev">weehours.hejitech.workers.dev</a> · <a href="https://tianhaoz95.github.io/hejitech-apps/voxbrief/site/" target="_self">Voxbrief</a></p>
+<p class="heji-visit">Visit the apps: <a href="https://waypack.hejitech.workers.dev">waypack.hejitech.workers.dev</a> · <a href="https://weehours.hejitech.workers.dev">weehours.hejitech.workers.dev</a> · <a href="https://tianhaoz95.github.io/hejitech-apps/voxbrief/site/" target="_self">Voxbrief</a> · <a href="https://tianhaoz95.github.io/hejitech-apps/meowtrix/site/" target="_self">Meowtrix</a></p>
 
 </div>
 
