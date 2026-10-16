@@ -1,0 +1,354 @@
+name: Voxbrief
+options:
+  bundleIdPrefix: com.jacksonzhou666.voxbrief
+  createIntermediateGroups: true
+  xcodeVersion: "16.0"
+  defaultConfig: Debug
+
+settings:
+  SWIFT_VERSION: "5.0"
+  DEVELOPMENT_TEAM: ""
+  CODE_SIGNING_REQUIRED: "NO"
+  CODE_SIGN_IDENTITY: ""
+  CODE_SIGNING_ALLOWED: "NO"
+  MARKETING_VERSION: "1.1"
+  CURRENT_PROJECT_VERSION: "1"
+
+packages:
+  ArgmaxOSS:
+    url: https://github.com/argmaxinc/argmax-oss-swift
+    from: 1.1.0
+  MLXSwiftExamples:
+    url: https://github.com/ml-explore/mlx-swift-examples
+    exactVersion: 2.29.1
+  FeedbackKit:
+    url: https://github.com/tianhaoz95/feedback-kit
+    branch: main
+
+targets:
+  Voxbrief:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Shared
+      - path: VoxbriefApp
+        excludes:
+          - "Resources/Models/**"
+          # Codesign input (see entitlements.path below), not app data -- without this XcodeGen
+          # also adds it to Copy Bundle Resources.
+          - "Voxbrief.entitlements"
+      - path: VoxbriefApp/Resources/Models/Qwen3-0.6B-4bit
+        type: folder
+        buildPhase: resources
+    info:
+      path: VoxbriefApp/App/Info.plist
+      properties:
+        NSMicrophoneUsageDescription: "Voxbrief uses your microphone to record voice notes and capture ideas."
+        NSRemindersUsageDescription: "Voxbrief can export action items from your voice notes into Apple Reminders."
+        NSRemindersFullAccessUsageDescription: "Voxbrief can export action items from your voice notes into Apple Reminders."
+        NSCalendarsUsageDescription: "Voxbrief can export voice notes as scheduled events into Apple Calendar."
+        NSCalendarsFullAccessUsageDescription: "Voxbrief can export voice notes as scheduled events into Apple Calendar."
+        UIBackgroundModes:
+          - audio
+          - fetch
+        CFBundleURLTypes:
+          - CFBundleURLName: com.jacksonzhou666.voxbrief.app
+            CFBundleURLSchemes:
+              - voxbrief
+        UILaunchScreen: {}
+        ITSAppUsesNonExemptEncryption: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+    entitlements:
+      path: VoxbriefApp/Voxbrief.entitlements
+      # NOTE: XcodeGen owns/regenerates this file from `properties` below on every `xcodegen
+      # generate` -- like `info.properties` for Info.plist -- so don't hand-edit the checked-in
+      # .entitlements file directly, it'll be silently overwritten (this is exactly how the App
+      # Group entry here first went missing). Shared with VoxbriefKeyboard's entitlements below so
+      # the two can pass a finished recording's text via Shared/Services/KeyboardHandoff.swift.
+      properties:
+        com.apple.security.application-groups:
+          - group.com.jacksonzhou666.voxbrief
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.jacksonzhou666.voxbrief.app
+      TARGETED_DEVICE_FAMILY: "1,2"
+      ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+    dependencies:
+      - target: VoxbriefWidgets
+        embed: true
+      - target: VoxbriefWatch
+        embed: true
+      - target: VoxbriefKeyboard
+        embed: true
+      - package: ArgmaxOSS
+        product: WhisperKit
+      - package: MLXSwiftExamples
+        product: MLXLLM
+      - package: MLXSwiftExamples
+        product: MLXLMCommon
+      - package: FeedbackKit
+        product: FeedbackKit
+    frameworks:
+      - framework: AVFoundation.framework
+      - framework: WatchConnectivity.framework
+      - framework: ActivityKit.framework
+      - framework: EventKit.framework
+      - framework: AppIntents.framework
+    scheme:
+      testTargets:
+        - VoxbriefTests
+
+  VoxbriefWatch:
+    type: application
+    platform: watchOS
+    deploymentTarget: "10.0"
+    sources:
+      - path: Shared
+      - path: VoxbriefWatch
+    info:
+      path: VoxbriefWatch/App/Info.plist
+      properties:
+        NSMicrophoneUsageDescription: "Voxbrief records audio on your Apple Watch to capture thoughts on the go."
+        WKApplication: true
+        WKCompanionAppBundleIdentifier: com.jacksonzhou666.voxbrief.app
+        WKRunsIndependentlyOfCompanionApp: true
+        CFBundleURLTypes:
+          - CFBundleURLName: com.jacksonzhou666.voxbrief.app.watchkitapp
+            CFBundleURLSchemes:
+              - voxbrief
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.jacksonzhou666.voxbrief.app.watchkitapp
+      TARGETED_DEVICE_FAMILY: "4"
+      ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+    dependencies:
+      - target: VoxbriefWatchWidgets
+        embed: true
+    scheme: {}
+    frameworks:
+      - framework: AVFoundation.framework
+      - framework: WatchConnectivity.framework
+      - framework: WatchKit.framework
+
+  VoxbriefKeyboard:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      # Foundation-only files this extension needs directly (not the whole VoxbriefApp glob,
+      # which pulls in UIKit-app-lifecycle/AVAudioSession/WhisperKit/MLX code this lightweight
+      # extension has no business linking -- see CLAUDE.md on why ASR/LLM stay in the main app).
+      - path: Shared
+        excludes:
+          - "Models/VoiceNoteActivityAttributes.swift"
+          - "Views/CaptureWaveformView.swift"
+      - path: VoxbriefKeyboard
+    entitlements:
+      path: VoxbriefKeyboard/Keyboard.entitlements
+      # See the matching NOTE on Voxbrief's entitlements above -- XcodeGen owns this file's
+      # content from `properties` here, not from hand-editing the checked-in file.
+      properties:
+        com.apple.security.application-groups:
+          - group.com.jacksonzhou666.voxbrief
+    info:
+      path: VoxbriefKeyboard/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.keyboard-service
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).KeyboardViewController
+          NSExtensionAttributes:
+            IsASCIICapable: true
+            PrimaryLanguage: en-US
+            RequestsOpenAccess: true
+        CFBundleDisplayName: "Voxbrief Keyboard"
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.jacksonzhou666.voxbrief.app.keyboard
+      TARGETED_DEVICE_FAMILY: "1,2"
+
+  VoxbriefWidgets:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Shared/Models/VoiceNoteActivityAttributes.swift
+      # Control intents must be compiled into the app as well as this extension (see the file).
+      - path: VoxbriefApp/Intents/ControlLaunchIntent.swift
+      - path: VoxbriefWidgets
+    info:
+      path: VoxbriefWidgets/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        CFBundleDisplayName: "Voxbrief Widgets"
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.jacksonzhou666.voxbrief.app.widgets
+      INFOPLIST_KEY_NSExtensionPointIdentifier: com.apple.widgetkit-extension
+      TARGETED_DEVICE_FAMILY: "1,2"
+    frameworks:
+      - framework: WidgetKit.framework
+      - framework: ActivityKit.framework
+      - framework: AppIntents.framework
+
+  VoxbriefWatchWidgets:
+    type: app-extension
+    platform: watchOS
+    deploymentTarget: "10.0"
+    sources:
+      - path: VoxbriefWatchWidgets
+    info:
+      path: VoxbriefWatchWidgets/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        WKAppBundleIdentifier: com.jacksonzhou666.voxbrief.app.watchkitapp
+        CFBundleDisplayName: "Voxbrief Watch Widgets"
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.jacksonzhou666.voxbrief.app.watchkitapp.widgets
+      INFOPLIST_KEY_NSExtensionPointIdentifier: com.apple.widgetkit-extension
+      INFOPLIST_KEY_WKAppBundleIdentifier: com.jacksonzhou666.voxbrief.app.watchkitapp
+      TARGETED_DEVICE_FAMILY: "4"
+    frameworks:
+      - framework: WidgetKit.framework
+
+  VoxbriefMac:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: Shared
+        excludes:
+          # ActivityKit's `ActivityAttributes` (Live Activities) is unavailable on macOS.
+          - "Models/VoiceNoteActivityAttributes.swift"
+      - path: VoxbriefMac
+        excludes:
+          # Codesign input (see entitlements.path below and scripts/sign-desktop.sh), not app data
+          # -- without this XcodeGen also adds it to Copy Bundle Resources.
+          - "Entitlements.plist"
+      # Reused as-is from the iOS app: plain Foundation/WhisperKit/MLX, no UIKit or AVAudioSession,
+      # and already take their dependencies via injectable init params -- see CLAUDE.md.
+      - path: VoxbriefApp/Services/ASRService.swift
+      - path: VoxbriefApp/Services/LLMCopywriterService.swift
+      - path: VoxbriefApp/Services/AppleFoundationModelService.swift
+      - path: VoxbriefApp/Services/OnDeviceLLMService.swift
+      - path: VoxbriefApp/Services/NoteProcessingPipeline.swift
+      - path: VoxbriefApp/Services/NoteRepository.swift
+      - path: VoxbriefApp/Services/AudioFileManager.swift
+      - path: VoxbriefApp/Services/DictionaryCorrector.swift
+      - path: VoxbriefApp/Services/PersonalDictionaryStore.swift
+      - path: VoxbriefApp/Services/TemplateStore.swift
+      - path: VoxbriefApp/Services/AudioPlaybackService.swift
+      - path: VoxbriefApp/Services/VoiceCommandProcessor.swift
+      - path: VoxbriefApp/Services/RemindersExportService.swift
+      - path: VoxbriefApp/Services/CalendarExportService.swift
+      - path: VoxbriefApp/Services/NoteExportService.swift
+      - path: VoxbriefApp/Services/PDFExportService.swift
+      - path: VoxbriefApp/Services/DataBackupService.swift
+      - path: VoxbriefApp/Models
+      # Shared SwiftUI (feature parity with the iOS app, see CLAUDE.md's "macOS auto-update" /
+      # desktop-parity notes): these are the same view/viewmodel files the iOS app uses, guarded
+      # with `#if os(iOS)`/`#if os(macOS)` internally wherever they touch a platform-specific API
+      # (UIColor/NSColor, UIPasteboard/NSPasteboard, WatchConnectivity, navigationBarTitleDisplayMode).
+      - path: VoxbriefApp/Extensions/PlatformUI.swift
+      - path: VoxbriefApp/ViewModels/NoteListViewModel.swift
+      - path: VoxbriefApp/ViewModels/NoteDetailViewModel.swift
+      - path: VoxbriefApp/Views/NoteRowView.swift
+      - path: VoxbriefApp/Views/NoteDetailView.swift
+      - path: VoxbriefApp/Views/NoteMergePickerSheet.swift
+      - path: VoxbriefApp/Views/MarkdownLiteText.swift
+      - path: VoxbriefApp/Views/PersonalDictionaryView.swift
+      - path: VoxbriefApp/Views/DictionaryEntryEditView.swift
+      - path: VoxbriefApp/Views/TemplatesView.swift
+      - path: VoxbriefApp/Views/TemplateEditView.swift
+      - path: VoxbriefApp/Views/WhatsNewView.swift
+      - path: VoxbriefApp/Views/TemplateDetailView.swift
+      - path: VoxbriefApp/Resources/Models/Qwen3-0.6B-4bit
+        type: folder
+        buildPhase: resources
+    info:
+      path: VoxbriefMac/App/Info.plist
+      properties:
+        NSMicrophoneUsageDescription: "Voxbrief uses your microphone to capture what you dictate."
+        LSUIElement: true
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+    entitlements:
+      path: VoxbriefMac/Entitlements.plist
+      # XcodeGen treats VoxbriefMac/Entitlements.plist as a generated artifact: it rewrites that
+      # file from `properties` below on every `xcodegen generate` (called by scripts/run_mac.sh,
+      # release-mac.sh, etc.), silently discarding anything hand-edited directly into the checked-
+      # in file instead. So this `properties` block is the actual source of truth for what ships.
+      #
+      # com.apple.security.device.audio-input is required despite VoxbriefMac NOT being sandboxed:
+      # it's signed with the Hardened Runtime (`codesign --options runtime`, required for
+      # notarization -- see scripts/sign-desktop.sh), and Hardened Runtime enforces this
+      # entitlement for microphone access on its own, independent of App Sandbox. Without it,
+      # tccd refuses to even show the consent dialog -- confirmed via `log show --predicate
+      # 'eventMessage CONTAINS "kTCCServiceMicrophone"'`, which logged "Policy disallows prompt
+      # ...; access to kTCCServiceMicrophone denied" for every launch of the properly-signed,
+      # notarized app. No amount of toggling Microphone access in System Settings fixes that,
+      # since the OS never actually asks.
+      properties:
+        com.apple.security.device.audio-input: true
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.jacksonzhou666.voxbrief.mac
+      ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    dependencies:
+      - package: ArgmaxOSS
+        product: WhisperKit
+      - package: MLXSwiftExamples
+        product: MLXLLM
+      - package: MLXSwiftExamples
+        product: MLXLMCommon
+      - package: FeedbackKit
+        product: FeedbackKit
+    scheme:
+      testTargets:
+        - VoxbriefMacTests
+    frameworks:
+      - framework: AVFoundation.framework
+      - framework: ApplicationServices.framework
+      - framework: CoreGraphics.framework
+      - framework: EventKit.framework
+
+  VoxbriefMacTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: Tests/MacUnitTests
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.jacksonzhou666.voxbrief.mac.tests
+    dependencies:
+      - target: VoxbriefMac
+
+  VoxbriefTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Tests/UnitTests
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.jacksonzhou666.voxbrief.tests
+    dependencies:
+      - target: Voxbrief
+

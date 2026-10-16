@@ -1,0 +1,584 @@
+import Foundation
+import Combine
+
+@MainActor
+public final class NoteRepository: ObservableObject {
+    public static let shared = NoteRepository()
+
+    @Published public private(set) var notes: [VoiceNote] = []
+
+    private let storageURL: URL
+    private let audioFileManager: AudioFileManager
+    private let persistenceWriter = NotePersistenceWriter()
+    
+    public init(audioFileManager: AudioFileManager = .shared, customStorageURL: URL? = nil) {
+        self.audioFileManager = audioFileManager
+        if let customURL = customStorageURL {
+            self.storageURL = customURL
+        } else {
+            let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            if !FileManager.default.fileExists(atPath: appSupport.path) {
+                try? FileManager.default.createDirectory(at: appSupport, withIntermediateDirectories: true)
+            }
+            self.storageURL = appSupport.appendingPathComponent("notes_store.json")
+        }
+        
+        loadNotes()
+        
+        if notes.isEmpty {
+            seedSampleNotesIfEmpty()
+        }
+    }
+    
+    // MARK: - CRUD Operations
+    
+    public func save(_ note: VoiceNote) {
+        if let index = notes.firstIndex(where: { $0.id == note.id }) {
+            notes[index] = note
+        } else {
+            notes.insert(note, at: 0)
+        }
+        persistNotes()
+    }
+    
+    public func updateStatus(for noteId: UUID, status: NoteProcessingStatus, errorMessage: String? = nil) {
+        guard let index = notes.firstIndex(where: { $0.id == noteId }) else { return }
+        notes[index].status = status
+        if let errorMessage = errorMessage {
+            notes[index].errorMessage = errorMessage
+        }
+        persistNotes()
+    }
+    
+    public func delete(id: UUID) {
+        if let index = notes.firstIndex(where: { $0.id == id }) {
+            let note = notes[index]
+            var fileNames = Set(note.segments.map(\.audioFileName))
+            if let audioFileName = note.audioFileName {
+                fileNames.insert(audioFileName)
+            }
+            for fileName in fileNames where !fileName.isEmpty {
+                audioFileManager.deleteAudioFile(fileName: fileName)
+            }
+            notes.remove(at: index)
+            persistNotes()
+        }
+    }
+
+    /// Removes a note's record without touching its audio files on disk -- used when merging one
+    /// note's recording(s) into another (`NoteProcessingPipeline.mergeNote`), where the target
+    /// note's `segments` now reference those same files.
+    public func removeRecordOnly(id: UUID) {
+        guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
+        notes.remove(at: index)
+        persistNotes()
+    }
+    
+    public func toggleFavorite(id: UUID) {
+        guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
+        notes[index].isFavorite.toggle()
+        persistNotes()
+    }
+
+    public func togglePinned(id: UUID) {
+        guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
+        notes[index].isPinned.toggle()
+        persistNotes()
+    }
+
+    public func toggleArchived(id: UUID) {
+        guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
+        notes[index].isArchived.toggle()
+        persistNotes()
+    }
+
+    public func setColorTag(id: UUID, colorTag: String?) {
+        guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
+        notes[index].colorTag = colorTag
+        persistNotes()
+    }
+
+    public func toggleLocked(id: UUID) {
+        guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
+        notes[index].isLocked.toggle()
+        persistNotes()
+    }
+
+    public func updateTitle(id: UUID, title: String) {
+        guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        notes[index].title = trimmed.isEmpty ? "Untitled Note" : trimmed
+        persistNotes()
+    }
+
+    public func addTag(id: UUID, tag: String) {
+        guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
+        let cleanTag = tag.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanTag.isEmpty else { return }
+        let formattedTag = cleanTag.hasPrefix("#") ? cleanTag : "#\(cleanTag)"
+        if !notes[index].tags.contains(formattedTag) {
+            notes[index].tags.append(formattedTag)
+            persistNotes()
+        }
+    }
+
+    public func removeTag(id: UUID, tag: String) {
+        guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
+        notes[index].tags.removeAll(where: { $0 == tag })
+        persistNotes()
+    }
+
+    @discardableResult
+    public func duplicate(id: UUID) -> VoiceNote? {
+        guard let original = note(withId: id) else { return nil }
+        var copy = original
+        let newId = UUID()
+        copy = VoiceNote(
+            id: newId,
+            createdAt: Date(),
+            duration: original.duration,
+            audioFileName: original.audioFileName,
+            segments: original.segments,
+            title: "\(original.title) (Copy)",
+            summary: original.summary,
+            rawTranscript: original.rawTranscript,
+            cleanedNote: original.cleanedNote,
+            requirements: original.requirements,
+            conditions: original.conditions,
+            actionItems: original.actionItems,
+            completedActionItems: original.completedActionItems,
+            tags: original.tags,
+            status: original.status,
+            source: original.source,
+            isFavorite: false,
+            isPinned: false,
+            isArchived: false,
+            colorTag: original.colorTag,
+            isLocked: false,
+            errorMessage: original.errorMessage,
+            cleanupEngine: original.cleanupEngine,
+            lightCleanedNote: original.lightCleanedNote,
+            lightCleanupEngine: original.lightCleanupEngine,
+            templateSections: original.templateSections,
+            templateId: original.templateId,
+            templateName: original.templateName,
+            transcriptSegments: original.transcriptSegments
+        )
+        save(copy)
+        return copy
+    }
+
+    public func bulkDelete(ids: Set<UUID>) {
+        for id in ids {
+            delete(id: id)
+        }
+    }
+
+    public func bulkArchive(ids: Set<UUID>, archive: Bool = true) {
+        var modified = false
+        for id in ids {
+            if let index = notes.firstIndex(where: { $0.id == id }) {
+                notes[index].isArchived = archive
+                modified = true
+            }
+        }
+        if modified {
+            persistNotes()
+        }
+    }
+
+    public func bulkSetFavorite(ids: Set<UUID>, isFavorite: Bool) {
+        var modified = false
+        for id in ids {
+            if let index = notes.firstIndex(where: { $0.id == id }) {
+                notes[index].isFavorite = isFavorite
+                modified = true
+            }
+        }
+        if modified {
+            persistNotes()
+        }
+    }
+
+    public func bulkSetPinned(ids: Set<UUID>, isPinned: Bool) {
+        var modified = false
+        for id in ids {
+            if let index = notes.firstIndex(where: { $0.id == id }) {
+                notes[index].isPinned = isPinned
+                modified = true
+            }
+        }
+        if modified {
+            persistNotes()
+        }
+    }
+
+    public func bulkAddTag(ids: Set<UUID>, tag: String) {
+        let cleanTag = tag.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanTag.isEmpty else { return }
+        let formattedTag = cleanTag.hasPrefix("#") ? cleanTag : "#\(cleanTag)"
+        var modified = false
+        for id in ids {
+            if let index = notes.firstIndex(where: { $0.id == id }) {
+                if !notes[index].tags.contains(formattedTag) {
+                    notes[index].tags.append(formattedTag)
+                    modified = true
+                }
+            }
+        }
+        if modified {
+            persistNotes()
+        }
+    }
+
+    public func setActionItemPriority(id: UUID, actionItem: String, priority: String?) {
+        guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
+        if let priority = priority {
+            notes[index].actionItemPriorities[actionItem] = priority
+        } else {
+            notes[index].actionItemPriorities.removeValue(forKey: actionItem)
+        }
+        persistNotes()
+    }
+
+    public func appendContent(id: UUID, text: String, title: String? = nil) {
+        guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        let dateStr = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short)
+        let header = title.flatMap { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? $0 : nil } ?? "Addendum (\(dateStr))"
+        let addition = "\n\n### 📝 \(header)\n\(trimmed)"
+
+        notes[index].cleanedNote += addition
+        persistNotes()
+    }
+
+    /// Cleans up orphaned audio files on disk not referenced by any note or segment.
+    @discardableResult
+    public func cleanupOrphanedAudioFiles() -> Int {
+        var referenced = Set<String>()
+        for note in notes {
+            if let file = note.audioFileName, !file.isEmpty {
+                referenced.insert(file)
+            }
+            for segment in note.segments where !segment.audioFileName.isEmpty {
+                referenced.insert(segment.audioFileName)
+            }
+        }
+        return audioFileManager.cleanupOrphanedFiles(referencedFileNames: referenced)
+    }
+
+    public func restoreAllNotes(importedNotes: [VoiceNote]) {
+        // Merge without losing notes, deduping by id
+        for imported in importedNotes {
+            if let index = notes.firstIndex(where: { $0.id == imported.id }) {
+                notes[index] = imported
+            } else {
+                notes.append(imported)
+            }
+        }
+        notes.sort(by: { $0.createdAt > $1.createdAt })
+        persistNotes()
+    }
+
+    // MARK: - Library Analytics & Metrics
+
+    public var totalAudioDuration: TimeInterval {
+        notes.reduce(0) { $0 + $1.duration }
+    }
+
+    public var totalWordCount: Int {
+        notes.reduce(0) { $0 + $1.wordCount }
+    }
+
+    public var totalActionItemsStats: (completed: Int, total: Int) {
+        var completed = 0
+        var total = 0
+        for note in notes {
+            total += note.actionItems.count
+            completed += note.completedActionItems.filter { note.actionItems.contains($0) }.count
+        }
+        return (completed, total)
+    }
+
+    public func note(withId id: UUID) -> VoiceNote? {
+        return notes.first(where: { $0.id == id })
+    }
+
+    // MARK: - Persistence
+
+    private func loadNotes() {
+        guard FileManager.default.fileExists(atPath: storageURL.path) else { return }
+        do {
+            let data = try Data(contentsOf: storageURL)
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let loaded = try decoder.decode([VoiceNote].self, from: data)
+            self.notes = loaded.sorted(by: { $0.createdAt > $1.createdAt })
+        } catch {
+            print("[NoteRepository] Failed to load notes: \(error)")
+        }
+    }
+
+    /// `@Published notes` is always updated synchronously above, on the main actor, so the UI
+    /// reacts immediately -- only the disk write is deferred. Hands a value-type snapshot to
+    /// `NotePersistenceWriter` (a separate actor) so the JSON encode and the atomic file write --
+    /// both genuinely blocking work, and the encode re-serializes *every* note, not just the one
+    /// that changed -- never run on the main thread. `save`/`updateStatus`/etc. can fire several
+    /// of these in quick succession for a single note's pipeline (status transitions, then the
+    /// final save); the writer coalesces bursts like that into whichever snapshot is current by
+    /// the time it's actually able to write, rather than doing one full-array write per call.
+    private func persistNotes() {
+        let snapshot = notes
+        Task { await persistenceWriter.schedule(snapshot, to: storageURL) }
+    }
+
+    /// Waits for any in-flight/coalesced background write to finish. Not needed by normal app
+    /// code (the in-memory `notes`/`@Published` state is always current synchronously) -- exposed
+    /// for tests that need on-disk content to be deterministic rather than polled/slept for.
+    public func waitForPendingPersistence() async {
+        await persistenceWriter.waitUntilIdle()
+    }
+    
+    // MARK: - Sample Data
+    
+    private func seedSampleNotesIfEmpty() {
+        let sample1 = VoiceNote(
+            id: UUID(),
+            createdAt: Date().addingTimeInterval(-3600 * 3),
+            duration: 42.0,
+            audioFileName: nil,
+            title: "Voice Note Architecture & Live Activity",
+            summary: "Capture voice ideas instantly from Apple Watch complications and Live Activity, then sync to iOS for ASR and on-device LLM cleanup.",
+            rawTranscript: "um so basically we need to build an apple watch app with live activity and complication. first the user taps to record audio. second audio is saved locally. then background fetch syncs it to iphone. requirement is to run speech recognition stage one and then stage two on-device llm to format requirements as bullets and conditions as numbered list. make sure to handle offline mode.",
+            cleanedNote: """
+            # Voice Note Architecture & Live Activity
+            
+            > Capture voice ideas instantly from Apple Watch complications and Live Activity, then sync to iOS for ASR and on-device LLM cleanup.
+            
+            ### 🎯 Requirements
+            - Build an Apple Watch app with Live Activity and Watch complication support
+            - Stage 1: Run on-device ASR speech recognition to transcribe voice memos
+            - Stage 2: Run on-device LLM cleanup to format requirements into bullet points and enumerated conditions into numbered formatting
+            - Handle offline mode gracefully with persistent local caching
+            
+            ### 🔢 Sequential Conditions & Workflow
+            1. User initiates one-tap recording via Watch complication or Smart Stack Live Activity
+            2. Audio file is captured and stored locally on watchOS without blocking transcription
+            3. When background activity runs or periodic sync occurs, audio is transferred to iOS companion app
+            4. iOS companion app processes Stage 1 (ASR) followed by Stage 2 (LLM Copywriting)
+            
+            ### ✅ Action Items
+            - [ ] Test WatchConnectivity file transfer during background wakeups
+            - [ ] Verify on-device Whisper transcription accuracy
+            - [ ] Implement smart prompt templates for notes
+            """,
+            requirements: [
+                "Build an Apple Watch app with Live Activity and Watch complication support",
+                "Stage 1: Run on-device ASR speech recognition to transcribe voice memos",
+                "Stage 2: Run on-device LLM cleanup to format requirements into bullet points and enumerated conditions into numbered formatting",
+                "Handle offline mode gracefully with persistent local caching"
+            ],
+            conditions: [
+                "User initiates one-tap recording via Watch complication or Smart Stack Live Activity",
+                "Audio file is captured and stored locally on watchOS without blocking transcription",
+                "When background activity runs or periodic sync occurs, audio is transferred to iOS companion app",
+                "iOS companion app processes Stage 1 (ASR) followed by Stage 2 (LLM Copywriting)"
+            ],
+            actionItems: [
+                "Test WatchConnectivity file transfer during background wakeups",
+                "Verify on-device Whisper transcription accuracy",
+                "Implement smart prompt templates for notes"
+            ],
+            tags: ["#watchOS", "#iOS", "#architecture", "#LLM"],
+            status: .ready,
+            source: .watchComplication,
+            isFavorite: true
+        )
+        
+        let sample2 = VoiceNote(
+            id: UUID(),
+            createdAt: Date().addingTimeInterval(-86400),
+            duration: 28.5,
+            audioFileName: nil,
+            title: "Sprint Planning & Release Checklist",
+            summary: "Sprint roadmap items including push notifications and audio waveform visualizations.",
+            rawTranscript: "okay for sprint planning we need to test audio waveform rendering. also requirement is push notifications for when sync finishes. condition 1 if watch battery is under twenty percent delay sync. condition 2 if wifi is connected sync immediately. remember to review unit tests with team.",
+            cleanedNote: """
+            # Sprint Planning & Release Checklist
+            
+            > Sprint roadmap items including push notifications and audio waveform visualizations.
+            
+            ### 🎯 Requirements
+            - Test audio waveform rendering across varied memo lengths
+            - Send completion notification when background sync finishes processing
+            
+            ### 🔢 Conditions & Execution Logic
+            1. If Watch battery is under 20%, delay heavy background sync
+            2. If Wi-Fi is connected, trigger immediate high-speed sync
+            
+            ### ✅ Action Items
+            - [ ] Review unit test coverage with the engineering team
+            - [ ] Validate battery consumption metrics during audio recording
+            """,
+            requirements: [
+                "Test audio waveform rendering across varied memo lengths",
+                "Send completion notification when background sync finishes processing"
+            ],
+            conditions: [
+                "If Watch battery is under 20%, delay heavy background sync",
+                "If Wi-Fi is connected, trigger immediate high-speed sync"
+            ],
+            actionItems: [
+                "Review unit test coverage with the engineering team",
+                "Validate battery consumption metrics during audio recording"
+            ],
+            tags: ["#planning", "#sprint", "#release"],
+            status: .ready,
+            source: .watchLiveActivity,
+            isFavorite: false
+        )
+
+        let sample3 = VoiceNote(
+            id: UUID(),
+            createdAt: Date().addingTimeInterval(-86400 * 2),
+            duration: 54.2,
+            audioFileName: nil,
+            title: "On-Device AI Engine & Privacy Architecture",
+            summary: "Zero cloud transmission architecture running local Whisper CoreML ASR and MLX Swift Qwen3 on-device LLM.",
+            rawTranscript: "hey team so for the AI engine we need complete privacy. requirement one is speech recognition must run locally with whisperkit and coreml so no audio ever leaves the device. requirement two is stage two structured copywriting runs on-device using qwen3 with mlx swift. condition 1 if the device supports metal gpu acceleration execute directly on neural engine. condition 2 if user configures a local ollama endpoint route there instead. make sure to encrypt local storage with aes 256.",
+            cleanedNote: """
+            # On-Device AI Engine & Privacy Architecture
+
+            > Zero cloud transmission architecture running local Whisper CoreML ASR and MLX Swift Qwen3 on-device LLM.
+
+            ### 🎯 Requirements
+            - Run speech recognition locally via WhisperKit CoreML (no audio leaves device)
+            - Execute Stage 2 copywriting using on-device Qwen3 via MLX Swift Metal acceleration
+            - Encrypt local audio recordings and notes database on disk with AES-256
+            - Zero cloud accounts, telemetry, or external API requirements
+
+            ### 🔢 Execution Logic & Fallback Chain
+            1. If device supports Metal GPU, execute on-device Qwen3 model
+            2. If user explicitly opts into local LLM endpoint in Settings, route to private Ollama host
+            3. If on-device inference is unavailable, fall back to deterministic transformer
+
+            ### ✅ Action Items
+            - [ ] Benchmark CoreML neural engine inference latency on A17/A18 Pro
+            - [ ] Validate MLX Swift memory allocation and cache purge on backgrounding
+            - [ ] Confirm zero network requests during full note processing
+            """,
+            requirements: [
+                "Run speech recognition locally via WhisperKit CoreML (no audio leaves device)",
+                "Execute Stage 2 copywriting using on-device Qwen3 via MLX Swift Metal acceleration",
+                "Encrypt local audio recordings and notes database on disk with AES-256",
+                "Zero cloud accounts, telemetry, or external API requirements"
+            ],
+            conditions: [
+                "If device supports Metal GPU, execute on-device Qwen3 model",
+                "If user explicitly opts into local LLM endpoint in Settings, route to private Ollama host",
+                "If on-device inference is unavailable, fall back to deterministic transformer"
+            ],
+            actionItems: [
+                "Benchmark CoreML neural engine inference latency on A17/A18 Pro",
+                "Validate MLX Swift memory allocation and cache purge on backgrounding",
+                "Confirm zero network requests during full note processing"
+            ],
+            tags: ["#AI", "#privacy", "#CoreML", "#architecture"],
+            status: .ready,
+            source: .phoneApp,
+            isFavorite: true,
+            cleanupEngine: "On-Device LLM (Qwen3-0.6B)"
+        )
+
+        let sample4 = VoiceNote(
+            id: UUID(),
+            createdAt: Date().addingTimeInterval(-86400 * 3),
+            duration: 19.8,
+            audioFileName: nil,
+            title: "Apple Watch Complications & Offline Sync",
+            summary: "Instant 1-tap recording from watch face complications with background queue sync.",
+            rawTranscript: "make sure the watch app supports all watch face complication families circular corner rectangular and inline. condition 1 tapping complication starts capture immediately without launching full app UI. condition 2 background fetch sweeps un-synced memos every fifteen minutes.",
+            cleanedNote: """
+            # Apple Watch Complications & Offline Sync
+
+            > Instant 1-tap recording from watch face complications with background queue sync.
+
+            ### 🎯 Requirements
+            - Support all WidgetKit complication families: circular, corner, rectangular, inline
+            - Maintain offline queue on Apple Watch with zero phone dependency
+            - Background sync transfers AAC memos automatically when iPhone is nearby
+
+            ### 🔢 Workflow Conditions
+            1. Tapping complication immediately starts audio capture without UI delay
+            2. Background fetch sweeps un-synced memos every 15-30 minutes
+
+            ### ✅ Action Items
+            - [ ] Test complications across 42mm, 46mm, and 49mm Ultra displays
+            - [ ] Verify Smart Stack Live Activity timer accuracy
+            """,
+            requirements: [
+                "Support all WidgetKit complication families: circular, corner, rectangular, inline",
+                "Maintain offline queue on Apple Watch with zero phone dependency",
+                "Background sync transfers AAC memos automatically when iPhone is nearby"
+            ],
+            conditions: [
+                "Tapping complication immediately starts audio capture without UI delay",
+                "Background fetch sweeps un-synced memos every 15-30 minutes"
+            ],
+            actionItems: [
+                "Test complications across 42mm, 46mm, and 49mm Ultra displays",
+                "Verify Smart Stack Live Activity timer accuracy"
+            ],
+            tags: ["#watchOS", "#widgets", "#design"],
+            status: .ready,
+            source: .watchComplication,
+            isFavorite: false,
+            cleanupEngine: "On-Device LLM (Qwen3-0.6B)"
+        )
+        
+        self.notes = [sample1, sample2, sample3, sample4]
+        persistNotes()
+    }
+}
+
+/// Serializes `NoteRepository`'s disk writes onto their own actor (so the JSON encode + atomic
+/// write never run on the main thread) and coalesces bursts of rapid saves into a single write of
+/// whichever snapshot is current once a write actually starts -- an intermediate snapshot that
+/// gets superseded before its turn is simply skipped rather than separately encoded and written.
+private actor NotePersistenceWriter {
+    private var pendingSnapshot: [VoiceNote]?
+    private var drainTask: Task<Void, Never>?
+
+    func schedule(_ snapshot: [VoiceNote], to url: URL) {
+        pendingSnapshot = snapshot
+        guard drainTask == nil else { return }
+        drainTask = Task { await self.drain(to: url) }
+    }
+
+    /// Exposed only for `NoteRepository.waitForPendingPersistence()` (tests, mainly).
+    func waitUntilIdle() async {
+        await drainTask?.value
+    }
+
+    private func drain(to url: URL) async {
+        while let snapshot = pendingSnapshot {
+            pendingSnapshot = nil
+            Self.write(snapshot, to: url)
+        }
+        drainTask = nil
+    }
+
+    private static func write(_ notes: [VoiceNote], to url: URL) {
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            encoder.dateEncodingStrategy = .iso8601
+            let data = try encoder.encode(notes)
+            try data.write(to: url, options: .atomic)
+        } catch {
+            print("[NoteRepository] Failed to persist notes: \(error)")
+        }
+    }
+}
