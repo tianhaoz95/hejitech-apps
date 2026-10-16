@@ -202,6 +202,19 @@ struct HouseholdSetupView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    if model.localOnly {
+                        Label("On this iPhone only", systemImage: "iphone")
+                        Button("Sign in instead") { model.signOut() }
+                    } else {
+                        LabeledContent("Signed in as", value: model.email ?? "your account")
+                        Button("Use a different account") { model.signOut() }
+                    }
+                } footer: {
+                    Text(model.localOnly
+                         ? "Already use Wee Hours with an account? Sign in instead to get your household."
+                         : "This account has no household yet. Create one below or join your partner's with an invite code, or switch to the account you already use.")
+                }
                 Section("You") { TextField("Your name", text: $name) }
                 Section("Baby") {
                     TextField("Baby's name", text: $babyName)

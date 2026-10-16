@@ -68,8 +68,19 @@ final class AppModel: ObservableObject {
     var email: String? { backend.session?.email }
 
     init() {
+        Self.forgetSessionAfterReinstall()
         backend = SupabaseClient(config: BackendConfig.standard)
         backend = makeBackend()
+    }
+
+    /// The Keychain outlives the app, so a fresh install would otherwise pick up the previous
+    /// install's session and land on household setup for an account the user never chose here.
+    /// A fresh install has no launch marker and no cached household; updates keep their session.
+    private static func forgetSessionAfterReinstall() {
+        let marker = "launchedBefore"
+        guard !UserDefaults.standard.bool(forKey: marker) else { return }
+        UserDefaults.standard.set(true, forKey: marker)
+        if SharedStore.household == nil, !SharedStore.defaults.bool(forKey: "localOnly") { Keychain.set(nil, for: "session") }
     }
 
     private func makeBackend() -> SupabaseClient {
