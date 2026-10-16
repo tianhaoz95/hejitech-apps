@@ -5,10 +5,10 @@ export default withMermaid(
   defineConfig({
   title: "Waypack Developer Docs",
   description: "Architectural designs, data formats, offline vector maps, and backend pipelines for Waypack",
-  base: "/waypack/",
+  base: "/hejitech-apps/",
   head: [
-    ["link", { rel: "icon", href: "/waypack/favicon.svg?v=2", type: "image/svg+xml" }],
-    ["link", { rel: "icon", href: "/waypack/favicon.png?v=2", type: "image/png" }],
+    ["link", { rel: "icon", href: "/hejitech-apps/favicon.svg?v=2", type: "image/svg+xml" }],
+    ["link", { rel: "icon", href: "/hejitech-apps/favicon.png?v=2", type: "image/png" }],
   ],
   themeConfig: {
     logo: "/favicon.svg",
@@ -38,7 +38,7 @@ export default withMermaid(
         ],
       },
     ],
-    socialLinks: [{ icon: "github", link: "https://github.com/tianhaoz95/waypack" }],
+    socialLinks: [{ icon: "github", link: "https://github.com/tianhaoz95/hejitech-apps" }],
     search: {
       provider: "local",
     },

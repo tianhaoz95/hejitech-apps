@@ -16,7 +16,7 @@
 # Notarization auth, best first:
 #   WAYPACK_NOTARY_PROFILE                         a `xcrun notarytool store-credentials` profile
 #   FA_ASC_KEY_ID + FA_ASC_ISSUER_ID (+ FA_KEY_LOCATION or ~/.appstoreconnect/private_keys/AuthKey_<id>.p8)
-# Upload: a GitHub release `mac-v<version>` on WAYPACK_RELEASE_REPO (default tianhaoz95/waypack) with
+# Upload: a GitHub release `mac-v<version>` on WAYPACK_RELEASE_REPO (default tianhaoz95/hejitech-apps) with
 #   the DMG as `Waypack.dmg`, via `gh` (logged in with write access). The site's /download/mac
 #   redirects to .../releases/latest/download/Waypack.dmg.
 # Auto-updates (Sparkle, docs/DECISIONS.md #65): with --notarize, also writes Waypack.zip (from the
@@ -34,7 +34,7 @@ ROOT="$(cd ../.. && pwd)"
 ENTITLEMENTS="$MOBILE/macos/Runner/Release.entitlements"
 APP="$MOBILE/build/macos/Build/Products/Release/Waypack.app"
 OUT="$MOBILE/build/release"
-REPO="${WAYPACK_RELEASE_REPO:-tianhaoz95/waypack}"   # keep in sync with MAC_RELEASES_REPO in services/mcp
+REPO="${WAYPACK_RELEASE_REPO:-tianhaoz95/hejitech-apps}"   # keep in sync with MAC_RELEASES_REPO in services/mcp
 # Sparkle command-line tools (sign_update), pinned to the framework version in the Xcode project.
 SPARKLE_VERSION="2.9.6"
 SPARKLE_SHA256="52bf9e88cdd972fc0c81501377a880e90d47031bd8ca5462488f843e2609e192"

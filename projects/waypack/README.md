@@ -1,8 +1,8 @@
 # Waypack
 
-[![CI](https://github.com/tianhaoz95/waypack/actions/workflows/waypack-ci.yml/badge.svg)](https://github.com/tianhaoz95/waypack/actions/workflows/waypack-ci.yml)
-[![Release to TestFlight](https://github.com/tianhaoz95/waypack/actions/workflows/waypack-testflight.yml/badge.svg)](https://github.com/tianhaoz95/waypack/actions/workflows/waypack-testflight.yml)
-[![Release Mac app](https://github.com/tianhaoz95/waypack/actions/workflows/waypack-mac-release.yml/badge.svg)](https://github.com/tianhaoz95/waypack/actions/workflows/waypack-mac-release.yml)
+[![CI](https://github.com/tianhaoz95/hejitech-apps/actions/workflows/waypack-ci.yml/badge.svg)](https://github.com/tianhaoz95/hejitech-apps/actions/workflows/waypack-ci.yml)
+[![Release to TestFlight](https://github.com/tianhaoz95/hejitech-apps/actions/workflows/waypack-testflight.yml/badge.svg)](https://github.com/tianhaoz95/hejitech-apps/actions/workflows/waypack-testflight.yml)
+[![Release Mac app](https://github.com/tianhaoz95/hejitech-apps/actions/workflows/waypack-mac-release.yml/badge.svg)](https://github.com/tianhaoz95/hejitech-apps/actions/workflows/waypack-mac-release.yml)
 
 Turn any AI agent into a travel planner whose output works **fully offline on your phone**.
 

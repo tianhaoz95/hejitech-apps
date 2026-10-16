@@ -2,7 +2,7 @@
 import type { Env } from "../env.js";
 
 /** Repo whose latest release carries `Waypack.dmg`; override with the MAC_RELEASES_REPO var. */
-export const DEFAULT_MAC_RELEASES_REPO = "tianhaoz95/waypack";
+export const DEFAULT_MAC_RELEASES_REPO = "tianhaoz95/hejitech-apps";
 
 /** /download/mac → the newest release's DMG on GitHub (a stable link for the site's buttons). */
 export function handleMacDownload(_req: Request, env: Env, path: string): Response {

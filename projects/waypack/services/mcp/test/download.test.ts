@@ -9,7 +9,7 @@ describe("/download/mac", () => {
     for (const p of ["/download/mac", "/download/mac/"]) {
       const r = get({}, p);
       expect(r.status).toBe(302);
-      expect(r.headers.get("Location")).toBe("https://github.com/tianhaoz95/waypack/releases/latest/download/Waypack.dmg");
+      expect(r.headers.get("Location")).toBe("https://github.com/tianhaoz95/hejitech-apps/releases/latest/download/Waypack.dmg");
       expect(r.headers.get("Cache-Control")).toBe("no-store");
     }
   });
