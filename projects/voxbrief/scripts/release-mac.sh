@@ -120,7 +120,7 @@ if [ "$SKIP_BUILD" -eq 0 ]; then
     -destination 'platform=macOS' \
     -derivedDataPath "$BUILD_DIR" \
     CODE_SIGNING_ALLOWED=NO \
-    "${MARKETING_VERSION_ARGS[@]}"
+    ${MARKETING_VERSION_ARGS[@]+"${MARKETING_VERSION_ARGS[@]}"}
 else
   say "skipping build"
 fi
