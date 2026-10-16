@@ -36,10 +36,11 @@ Dashboard → Authentication → **Sign In / Providers**:
 
 ## 2. Cloudflare
 **Live setup (2026-10-05):** `env.production` in `services/mcp/wrangler.jsonc` → Worker `waypack` at https://waypack.hejitech.workers.dev (free plan, device maps, no container/queue/R2, previews off; KV auto-provisioned). Cloudflare Workers Builds deploys every push to `main`:
-- Root directory: the repo root. Build: `npm run build -w @waypack/bundle-schema -w @waypack/trip-sdk`
-- Deploy: `cd projects/waypack/services/mcp && npm run deploy -- --env production`
-- Other branches: `cd projects/waypack/services/mcp && npm run upload-version -- --env production` (preview URLs share production data)
-- Until the dashboard says that, it still runs the old `cd services/mcp && …`, which the temporary shim in the repo-root `services/mcp/` forwards. Optionally set build watch paths to `projects/waypack/*` so other projects' pushes don't redeploy Waypack.
+- Root directory: `/` (the repo root: the install needs the root lockfile and workspaces). Every command starts in the Worker's folder:
+  - Build: `cd projects/waypack/services/mcp && npm run build -w @waypack/bundle-schema -w @waypack/trip-sdk`
+  - Deploy: `cd projects/waypack/services/mcp && npm run deploy -- --env production`
+  - Version (other branches): `cd projects/waypack/services/mcp && npm run upload-version -- --env production` (preview URLs share production data)
+- Build watch paths: `projects/waypack/*`, `package.json`, `package-lock.json`, `tsconfig.base.json`, so other projects' pushes don't redeploy Waypack.
 - Secrets (`wrangler secret put <name> --env production`): `SUPABASE_SERVICE_ROLE_KEY` (the project's secret key), `SUPABASE_ANON_KEY` (publishable key), `SIGNING_SECRET`.
 
 The original paid-plan checklist (container, R2 mirror, custom domain) follows for when it's needed.

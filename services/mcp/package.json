@@ -1,9 +1,0 @@
-{
-  "name": "waypack-mcp-deploy-shim",
-  "private": true,
-  "description": "Temporary: Cloudflare Workers Builds still runs `cd services/mcp && npm run deploy -- --env production`. The Worker moved to projects/waypack/services/mcp; delete this folder once the dashboard's deploy commands point there (see services/mcp/README.md).",
-  "scripts": {
-    "deploy": "cd ../../projects/waypack/services/mcp && npm run deploy --",
-    "upload-version": "cd ../../projects/waypack/services/mcp && npm run upload-version --"
-  }
-}
