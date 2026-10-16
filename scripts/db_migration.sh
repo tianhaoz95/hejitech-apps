@@ -7,9 +7,6 @@
 # only that project's Postgres schema against the migration history and writes
 # supabase/migrations/<timestamp>_<project>_<what>.sql. Review it, then `supabase db reset` locally
 # and `supabase db push` for production. Needs the local stack (`supabase start`, i.e. Docker).
-#
-# Waypack predates this: its tables are in `public` and its migrations are hand-written, so for
-# waypack this only creates an empty, correctly named migration to fill in.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -19,12 +16,8 @@ die() { echo "!! $*" >&2; exit 1; }
 [ -d "projects/$PROJECT" ] || die "no projects/$PROJECT"
 [[ "$WHAT" =~ ^[a-z0-9_]+$ ]] || die "<what> must be lowercase letters, digits and _ (got $WHAT)"
 
-if [ "$PROJECT" = waypack ]; then
-  supabase migration new "waypack_$WHAT"
-else
-  [ -d "supabase/schemas/$PROJECT" ] || die "no supabase/schemas/$PROJECT/: put $PROJECT's tables there first (create schema $PROJECT; create table $PROJECT.…)"
-  # --schema keeps the diff to this project's schema: without it, every object missing from the
-  # declarative tree (all of Waypack's public tables) could be diffed as a drop.
-  supabase db schema declarative sync --schema "$PROJECT" --name "${PROJECT}_$WHAT" --no-apply
-fi
+[ -d "supabase/schemas/$PROJECT" ] || die "no supabase/schemas/$PROJECT/: put $PROJECT's tables there first (create schema $PROJECT; create table $PROJECT.…)"
+# --schema keeps the diff to this project's schema: without it, every other project's objects
+# (absent from this project's declarative tree) could be diffed as drops.
+supabase db schema declarative sync --schema "$PROJECT" --name "${PROJECT}_$WHAT" --no-apply
 node scripts/check_supabase.mjs

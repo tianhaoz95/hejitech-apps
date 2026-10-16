@@ -20,7 +20,9 @@ Paths are relative to `projects/waypack/` unless they start at the repo root (`s
 supabase link --project-ref <ref>
 supabase db push                                   # supabase/migrations
 ```
-Waypack's tables are in `public` (it predates the per-project schema convention). Users are shared
+Waypack's tables are in its own `waypack` schema (moved out of `public` on 2026-10-16; source:
+`supabase/schemas/waypack/`, migrations via `scripts/db_migration.sh waypack <what>`), and the
+Worker selects it per request (`Accept-Profile`/`Content-Profile` in `lib/db.ts`). Users are shared
 with the other projects, so Waypack creates its rows lazily: there is no sign-up trigger (dropped
 by `20261016070000_waypack_lazy_user_rows.sql`); a missing `entitlements` row reads as the free
 plan and Stripe upserts one on purchase.

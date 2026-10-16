@@ -6,7 +6,7 @@
 // mechanical edit, so the repo may never grow hidden ties between projects:
 //   - each project declares its backend in projects/<name>/backend.env, and its Supabase ref, URL
 //     and publishable key appear only in the files it lists there (BACKEND_FILES);
-//   - its schema and bucket are named after it (Waypack's schema is the grandfathered `public`);
+//   - its schema and bucket are named after it;
 //   - no project references another one: no paths into projects/<other>/, no @<other>/ packages,
 //     no other project's schema or bucket in Supabase calls;
 //   - its workflows (.github/workflows/<name>-*.yml) use only its own variables and secrets
@@ -17,7 +17,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, normalize, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { LEGACY_SCHEMA } from "./check_supabase.mjs";
+import { schemaOf } from "./check_supabase.mjs";
 
 /** Team-wide CI secrets every project may use (one Apple developer team). */
 export const SHARED_CI_NAMES = new Set([
@@ -93,7 +93,7 @@ export function checkRepo(root) {
     if (!["shared", "own"].includes(b.backend)) problems.push(`projects/${p}/backend.env: BACKEND must be shared or own`);
     for (const k of ["ref", "url", "key"]) if (!b[k]) problems.push(`projects/${p}/backend.env: SUPABASE_${k === "key" ? "PUBLISHABLE_KEY" : k.toUpperCase()} is empty`);
     if (b.url && b.ref && !b.url.includes(b.ref)) problems.push(`projects/${p}/backend.env: SUPABASE_URL doesn't match SUPABASE_REF`);
-    const schema = LEGACY_SCHEMA[p] ?? p;
+    const schema = schemaOf(p);
     if (b.schema !== schema) problems.push(`projects/${p}/backend.env: SCHEMA must be ${schema}`);
     if (b.bucket !== p) problems.push(`projects/${p}/backend.env: BUCKET must be ${p}`);
     for (const f of b.files) {

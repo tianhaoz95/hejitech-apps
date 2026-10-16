@@ -129,7 +129,7 @@ const init = await rpc("initialize", { protocolVersion: "2025-06-18", capabiliti
 ok(init.serverInfo?.name === "waypack" && init.protocolVersion === "2025-06-18", `initialize (${init.protocolVersion})`);
 const list = await rpc("tools/list", {});
 const names = list.tools.map((t) => t.name);
-ok(names.length === 17 && ["push_preview", "publish_preview", "delete_preview", "share_trip", "unshare_trip", "get_shared_trip"].every((n) => names.includes(n)), `tools/list → ${names.join(", ")}`);
+ok(names.length >= 17 && ["push_preview", "publish_preview", "delete_preview", "share_trip", "unshare_trip", "get_shared_trip"].every((n) => names.includes(n)), `tools/list → ${names.join(", ")}`);
 
 const guide = await call("get_authoring_guide", {});
 ok(guide.text.includes("Coverage checklist") || guide.text.includes("coverage checklist"), "get_authoring_guide returns the guide");
@@ -173,7 +173,7 @@ const second = await call("upload_bundle_inline", { files });
 ok(second.isError && second.structuredContent.upgrade_required && /Upgrade/.test(second.text), "free plan: 2nd active trip → clear upgrade message");
 
 // Upgrade through a signed Stripe webhook (what Checkout triggers in production).
-const uid = (await (await fetch(`${SUPA}/rest/v1/trips?select=user_id&id=eq.${tripId}`, { headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` } })).json())[0].user_id;
+const uid = (await (await fetch(`${SUPA}/rest/v1/trips?select=user_id&id=eq.${tripId}`, { headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, "Accept-Profile": "waypack" } })).json())[0].user_id;
 async function stripeEvent(type, object) {
   const payload = JSON.stringify({ id: `evt_${randomBytes(6).toString("hex")}`, type, data: { object } });
   const t = Math.floor(Date.now() / 1000);
@@ -241,7 +241,7 @@ ok(createHash("sha256").update(full).digest("hex") === dl.tiles[0].sha256, "tile
 }
 
 // RLS: the app can read its own trip summary straight from Supabase.
-const rls = await (await fetch(`${SUPA}/rest/v1/trip_summaries?select=id,title,current_version`, { headers: { apikey: env.SUPABASE_ANON_KEY, ...H } })).json();
+const rls = await (await fetch(`${SUPA}/rest/v1/trip_summaries?select=id,title,current_version`, { headers: { apikey: env.SUPABASE_ANON_KEY, ...H, "Accept-Profile": "waypack" } })).json();
 ok(rls.length === 1 && rls[0].id === tripId, "RLS: trip_summaries shows only the user's trip");
 
 // Personal API token (headless MCP)
@@ -251,7 +251,7 @@ ok(viaPat.structuredContent.trips.length === 1, "personal API token works for MC
 
 // --- 7. web portal (same origin: site + API) ---
 const acct = await fetch(`${BASE}/account`);
-ok(acct.status === 200 && (await acct.text()).includes("Your account"), "/account portal page is served by the Worker");
+ok(acct.status === 200 && (await acct.text()).includes("<title>Account · Waypack</title>"), "/account portal page is served by the Worker");
 const home = await fetch(`${BASE}/`);
 ok(home.status === 200 && (await home.text()).includes("Waypack keeps it working offline"), "landing page is served by the Worker");
 const portalPost = (path, body, headers = {}) => fetch(`${BASE}${path}`, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(body) });

@@ -14,8 +14,11 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
-/** Waypack predates per-project schemas: its tables are in public, its migrations unprefixed. */
-export const LEGACY_SCHEMA = { waypack: "public" };
+/**
+ * Migrations written while Waypack lived in `public` (unprefixed names, then the move out). They
+ * are history and can't change once applied, so they're checked against `public`, not `waypack`.
+ */
+export const LEGACY_MIGRATION_SCHEMA = { waypack: "public" };
 export const LEGACY_MIGRATIONS = {
   waypack: [
     "20261003000000_init.sql",
@@ -27,12 +30,17 @@ export const LEGACY_MIGRATIONS = {
     "20261009000000_file_storage.sql",
     "20261010000000_trip_templates.sql",
     "20261011000000_price_tracking.sql",
+    "20261016070000_waypack_lazy_user_rows.sql",
+    "20261016110000_waypack_move_to_schema.sql",
   ],
 };
 /** Platform schemas a project may reference (auth.uid(), FKs to auth.users, storage policies). */
 const SHARED = ["auth", "storage", "extensions", "pg_catalog", "information_schema", "vault", "cron", "net", "realtime", "graphql", "graphql_public", "pgsodium", "supabase_functions"];
 
-export const schemaOf = (project) => LEGACY_SCHEMA[project] ?? project;
+/** Every project's schema is named after it (Waypack moved out of `public` on 2026-10-16). */
+export const schemaOf = (project) => project;
+/** A project's schema as a given migration saw it (historical migrations keep their old schema). */
+const migrationSchema = (project, file) => (LEGACY_MIGRATIONS[project]?.includes(file) && LEGACY_MIGRATION_SCHEMA[project]) || schemaOf(project);
 
 /** The project a migration file belongs to (grandfathered list, else the longest name prefix), or null. */
 export function migrationProject(file, projects) {
@@ -44,9 +52,8 @@ export function migrationProject(file, projects) {
 const AUTH_TRIGGER = "trigger on auth.users runs for every project's sign-ups; create per-project rows lazily instead";
 
 /** Problems in one SQL text owned by `project`, given every project's name. */
-export function checkSql(sql, project, projects) {
+export function checkSql(sql, project, projects, own = schemaOf(project)) {
   const problems = [];
-  const own = schemaOf(project);
   const others = new Set(projects.filter((p) => p !== project).map(schemaOf));
   if (own !== "public") others.add("public");
   const text = stripComments(sql);
@@ -125,7 +132,7 @@ export function checkRepo(root) {
     // Longest matching project prefix, so `foo_bar` wins over `foo` for foo_bar_x.sql.
     const project = migrationProject(f, projects);
     if (!project) { report(file, [`must start with a project name after the timestamp (projects: ${projects.join(", ")})`]); continue; }
-    const found = checkSql(readFileSync(file, "utf8"), project, projects);
+    const found = checkSql(readFileSync(file, "utf8"), project, projects, migrationSchema(project, f));
     if (legacy.has(f)) found.filter((msg) => msg === AUTH_TRIGGER).forEach((msg) => warnings.push(`${relative(root, file)}: ${msg}`));
     report(file, legacy.has(f) ? found.filter((msg) => msg !== AUTH_TRIGGER) : found);
   }
@@ -135,7 +142,6 @@ export function checkRepo(root) {
     const dir = join(declDir, d);
     if (d.startsWith(".")) continue;
     if (!statSync(dir).isDirectory() || !projects.includes(d)) { report(dir, [`declarative files go in supabase/schemas/<project>/ (projects: ${projects.join(", ")})`]); continue; }
-    if (LEGACY_SCHEMA[d]) { report(dir, [`${d} lives in "${LEGACY_SCHEMA[d]}" and uses hand-written migrations`]); continue; }
     for (const file of walk(dir).filter((f) => f.endsWith(".sql"))) report(file, checkSql(readFileSync(file, "utf8"), d, projects));
   }
   return { problems, warnings };

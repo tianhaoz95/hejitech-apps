@@ -1,8 +1,10 @@
 /**
  * File storage on Supabase Storage, so data and files live in one place (DECISIONS #56).
  * Implements the slice of R2's bucket API the Worker uses, so call sites read the same.
- * Bucket `waypack` (private) and the `storage_list` RPC come from supabase/migrations.
+ * Bucket `waypack` (private) and the `storage_list` RPC (schema `waypack`) come from
+ * supabase/schemas/waypack and supabase/migrations.
  */
+import { restFetch } from "./db.js";
 
 export interface StoredObject {
   key: string;
@@ -118,7 +120,7 @@ export class SupabaseBucket implements Bucket {
 
   async list(opts: { prefix: string; cursor?: string }) {
     // Storage's own list is one folder deep; the RPC lists every key under the prefix.
-    const res = await fetch(`${this.url}/rest/v1/rpc/storage_list`, {
+    const res = await restFetch((i, n) => fetch(i, n), `${this.url}/rest/v1/rpc/storage_list`, {
       method: "POST",
       headers: { ...this.auth, "Content-Type": "application/json" },
       body: JSON.stringify({ p_bucket: this.bucket, p_prefix: opts.prefix, p_after: opts.cursor ?? "", p_limit: PAGE }),

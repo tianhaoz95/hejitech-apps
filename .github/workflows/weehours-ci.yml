@@ -76,11 +76,8 @@ jobs:
           cache: npm
       - run: npm ci
       # Applies every project's migrations and the seeds: the whole shared history must replay.
+      # (Schema drift per project: supabase-ci.yml's graduation jobs.)
       - run: supabase start -x studio,imgproxy,vector,logflare,supavisor,mailpit
-      - name: Schema matches supabase/schemas/weehours (no undiffed changes)
-        run: |
-          supabase db schema declarative sync --schema weehours --name drift --no-apply 2>&1 | tee /tmp/drift.log
-          if ls supabase/migrations/*_drift.sql >/dev/null 2>&1; then cat supabase/migrations/*_drift.sql; exit 1; fi
       - name: Site Worker against the local stack
         working-directory: projects/weehours/services/web
         run: |

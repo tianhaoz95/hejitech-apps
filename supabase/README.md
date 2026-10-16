@@ -40,14 +40,16 @@ SQL text, so it catches mistakes rather than proving isolation.
   table privileges to `authenticated`/`service_role` explicitly, and remember that `revoke …
   from public` on a function also takes it from `service_role` unless you grant it back.
   `supabase/schemas/weehours/` shows the pattern.
-  Waypack predates this: it lives in `public` with hand-written, unprefixed migrations (the
-  check grandfathers the nine files from before the monorepo).
+  `public` belongs to no project. (Waypack lived there until 2026-10-16; its migrations from
+  that time, unprefixed or written against `public`, are listed in `check_supabase.mjs` and checked
+  as history.)
 - **Own bucket.** One Storage bucket per project, named after it (Waypack's is `waypack`). Policies on
   `storage.objects` are shared by every project: prefix their names with the project. Storage
   refuses direct `delete from storage.objects`; delete files through the Storage API.
 - **Declarative schema** in `supabase/schemas/<project>/`; generate migrations with
   `scripts/db_migration.sh` rather than writing them by hand. It always passes `--schema <project>`:
-  an unscoped diff could read Waypack's `public` tables (absent from `schemas/`) as drops.
+  an unscoped diff could read every other project's objects (absent from its `schemas/` folder)
+  as drops.
 - **Migration names** start with the project: `<timestamp>_<project>_<what>.sql`. Never rename an
   applied migration: the version is what the remote history records.
 - **Data statements** (bucket inserts, storage policies) aren't part of a declarative schema: add

@@ -9,7 +9,7 @@ const BASE = args.includes("--url") ? args[args.indexOf("--url") + 1] : process.
 const SUPA = process.env.SUPABASE_URL ?? "http://127.0.0.1:55421";
 if (!/^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(SUPA)) throw new Error("seed-templates is for the local stack only");
 const env = Object.fromEntries(readFileSync(new URL("../.dev.vars", import.meta.url), "utf8").split("\n").filter((l) => l.includes("=")).map((l) => [l.slice(0, l.indexOf("=")), l.slice(l.indexOf("=") + 1)]));
-const svc = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, "Content-Type": "application/json", Prefer: "return=representation" };
+const svc = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, "Content-Type": "application/json", Prefer: "return=representation", "Accept-Profile": "waypack", "Content-Profile": "waypack" };
 
 // [title, region, lat, lon, start, days, crew, pace, move, preset/scene, accent, tags, plan, kept, cut, surprise, recheck, from, author, remixes, months]
 const SAMPLES = [

@@ -65,9 +65,21 @@ test("comments and string literals are not references", () => {
   `);
 });
 
-test("Waypack (legacy) owns public but not other projects' schemas", () => {
-  ok("create table public.x (id int); create table y (id int); insert into storage.buckets (id, name) values ('waypack', 'waypack');", "waypack");
-  bad("create view public.v as select * from foo.orders;", /another project's/, "waypack");
+test("Waypack owns `waypack`; nobody owns public any more", () => {
+  ok("create table waypack.x (id int); insert into storage.buckets (id, name) values ('waypack', 'waypack');", "waypack");
+  bad("create table public.x (id int);", /references schema "public"|not this project's schema/, "waypack");
+  bad("create view waypack.v as select * from foo.orders;", /another project's/, "waypack");
+  bad("create view foo.v as select * from waypack.trips;", /another project's/);
+});
+
+test("Waypack's historical migrations are judged against public", () => {
+  const { problems } = repo({
+    "supabase/migrations/20261003000000_init.sql": "create table public.trips (id int);",
+    "supabase/migrations/20261016110000_waypack_move_to_schema.sql": "alter table public.trips set schema waypack;",
+    "supabase/migrations/20261017000000_waypack_new.sql": "create table public.oops (id int);",
+  });
+  assert.equal(problems.length, 1, JSON.stringify(problems));
+  assert.match(problems[0], /20261017000000_waypack_new\.sql: references schema "public"/);
 });
 
 function repo(files, projectDirs = projects) {
@@ -103,17 +115,16 @@ test("the longest project prefix owns a migration", () => {
   assert.deepEqual(problems, []);
 });
 
-test("declarative files: supabase/schemas/<project>/, not Waypack, and the same SQL rules", () => {
+test("declarative files: supabase/schemas/<project>/ and the same SQL rules", () => {
   const { problems } = repo({
     "supabase/schemas/foo/tables/orders.sql": "create table foo.orders (id int);",
     "supabase/schemas/foo/views/v.sql": "create view foo.v as select * from public.trips;",
     "supabase/schemas/misc/x.sql": "select 1;",
-    "supabase/schemas/waypack/x.sql": "create table public.x (id int);",
+    "supabase/schemas/waypack/x.sql": "create table waypack.x (id int);",
   });
-  assert.equal(problems.length, 3, JSON.stringify(problems));
+  assert.equal(problems.length, 2, JSON.stringify(problems));
   assert.ok(problems.some((p) => /schemas\/foo\/views\/v\.sql: references schema "public"/.test(p)));
   assert.ok(problems.some((p) => /schemas\/misc: declarative files go in/.test(p)));
-  assert.ok(problems.some((p) => /schemas\/waypack: waypack lives in "public"/.test(p)));
 });
 
 test("project folder names must work as schema names", () => {

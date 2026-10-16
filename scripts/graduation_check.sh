@@ -42,4 +42,13 @@ if ! supabase start --workdir "$WORK" -x studio,imgproxy,vector,logflare,supavis
   echo "!! $PROJECT can't stand alone: its migrations depend on something outside them" >&2
   exit 1
 fi
+# Its declarative source must describe exactly what its migrations build (no undiffed changes).
+if [ -d "supabase/schemas/$PROJECT" ]; then
+  mkdir -p "$WORK/supabase/schemas" && cp -R "supabase/schemas/$PROJECT" "$WORK/supabase/schemas/"
+  supabase db schema declarative sync --workdir "$WORK" --schema "$SCHEMA" --name drift --no-apply > "$WORK/drift.log" 2>&1 || { cat "$WORK/drift.log" >&2; exit 1; }
+  if ls "$WORK"/supabase/migrations/*_drift.sql >/dev/null 2>&1; then
+    echo "!! supabase/schemas/$PROJECT differs from what its migrations build:" >&2; cat "$WORK"/supabase/migrations/*_drift.sql >&2; exit 1
+  fi
+  echo "==> supabase/schemas/$PROJECT matches its migrations"
+fi
 echo "==> $PROJECT stands alone: its migrations and seed replay on an empty Supabase project"
