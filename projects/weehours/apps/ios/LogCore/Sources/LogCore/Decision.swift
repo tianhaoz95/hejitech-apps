@@ -185,6 +185,8 @@ public struct KeywordDecisionModel: DecisionModel {
         "sleep.end": ["woke up", "awake", "is up", "woke", "up from nap"],
         "pump": ["pumped", "pumping", "pump"],
         "weight": ["weighs", "weighed", "weight", "kilos", "pounds", "kg", "lbs"],
+        "height": ["height", "tall", "length", "inches", "centimeters", "cm"],
+        "head": ["head", "circumference", "head size"],
     ]
 
     static let fieldLexicon: [String: [String: [String]]] = [
@@ -206,7 +208,7 @@ public struct KeywordDecisionModel: DecisionModel {
 
     static let categoryPrefixes: [String: [String]] = [
         "bottle": ["feed.bottle"], "breast": ["feed.breast"], "pumping": ["pump"], "solids": ["feed.solids"],
-        "diaper": ["diaper"], "sleep": ["sleep"], "growth": ["weight"],
+        "diaper": ["diaper"], "sleep": ["sleep"], "growth": ["weight", "height", "head"],
     ]
 
     static let phaseLexicon: [String: [String]] = [
@@ -317,6 +319,27 @@ public enum Parsers {
             let oz = number(before: ["oz", "ounces", "ounce"], in: t) ?? 0
             return ((lb * 16 + oz) * 28.3495).rounded()
         }
+        return nil
+    }
+
+    /// Length in centimeters from "52 cm", "52.5 centimeters", "20 inches", "1 foot 8 inches".
+    /// (A bare "in" is not a unit here: "4 in the morning".)
+    public static func centimeters(in text: String) -> Double? {
+        let t = text.lowercased()
+        if let cm = number(before: ["cm", "centimeters", "centimetres", "centimeter", "centimetre"], in: t) { return cm }
+        let feet = number(before: ["feet", "foot", "ft"], in: t)
+        let inches = number(before: ["inches", "inch"], in: t)
+        if feet != nil || inches != nil { return (((feet ?? 0) * 12 + (inches ?? 0)) * 2.54 * 10).rounded() / 10 }
+        return nil
+    }
+
+    /// Which growth measurement a sentence is about, from its words and units: head size when the
+    /// head is mentioned, height for a length, weight for a weight. Nil when it doesn't say.
+    public static func growthMeasure(in text: String) -> String? {
+        let t = text.lowercased()
+        if t.contains("head") || t.contains("circumference") { return "head" }
+        if grams(in: t) != nil { return "weight" }
+        if centimeters(in: t) != nil || t.contains("tall") || t.contains("length") || t.contains("height") { return "height" }
         return nil
     }
 

@@ -48,5 +48,8 @@ describe("validation", () => {
     expect(validate("feed.bottle.finish", { consumed_fraction: 1.5 })).toMatch(/consumed_fraction/);
     expect(validate("nope", {})).toMatch(/unknown type/);
     expect(validate("feed.bottle.start", {}, ["diaper"])).toMatch(/turned off/);
+    expect(validate("height", { height_cm: 52 })).toBeNull();
+    expect(validate("height", {})).toMatch(/needs height_cm/);
+    expect(validate("head", { head_cm: 0 })).toMatch(/head_cm/);
   });
 });

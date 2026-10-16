@@ -279,9 +279,11 @@ export function validate(type: string, fields: Record<string, FieldValue>, enabl
   for (const [k, v] of Object.entries(fields)) {
     if (ALLOWED[k] && !ALLOWED[k].includes(String(v))) return `invalid ${k}: ${v} (allowed: ${ALLOWED[k].join(", ")})`;
     if (k === "consumed_fraction" && !(typeof v === "number" && v > 0 && v <= 1)) return "consumed_fraction must be in (0, 1]";
-    if (["consumed_ml", "amount_ml", "grams"].includes(k) && !(typeof v === "number" && v > 0)) return `${k} must be a positive number`;
+    if (["consumed_ml", "amount_ml", "grams", "height_cm", "head_cm"].includes(k) && !(typeof v === "number" && v > 0)) return `${k} must be a positive number`;
   }
   if (type === "diaper" && fields.kind === undefined) return "diaper needs kind";
   if (type === "weight" && fields.grams === undefined) return "weight needs grams";
+  if (type === "height" && fields.height_cm === undefined) return "height needs height_cm";
+  if (type === "head" && fields.head_cm === undefined) return "head needs head_cm";
   return null;
 }

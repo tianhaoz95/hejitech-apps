@@ -189,6 +189,20 @@ final class InterpreterTests: XCTestCase {
         XCTAssertEqual(r.tier, .fullList)
     }
 
+    func testGrowthMeasurementsPickTheirType() async throws {
+        let i = VoiceInterpreter(model: KeywordDecisionModel())
+        let height = try await i.interpret("she is 52 cm tall", context: ctx())
+        XCTAssertEqual(height.best?.type, "height")
+        XCTAssertEqual(height.best?.fields["height_cm"]?.number, 52)
+        let head = try await i.interpret("head circumference is 35.5 cm", context: ctx())
+        XCTAssertEqual(head.best?.type, "head")
+        XCTAssertEqual(head.best?.fields["head_cm"]?.number, 35.5)
+        let weight = try await i.interpret("she weighs 4.2 kilos", context: ctx())
+        XCTAssertEqual(weight.best?.type, "weight")
+        XCTAssertEqual(weight.best?.fields["grams"]?.number, 4200)
+        XCTAssertEqual(VoiceInterpreter.label(type: "head", fields: ["head_cm": .number(35.5)]), "Head size · 35.5 cm")
+    }
+
     func testDiaperKindIsRequired() async throws {
         let r = try await VoiceInterpreter(model: KeywordDecisionModel()).interpret("changed his diaper", context: ctx())
         XCTAssertEqual(r.best?.type, "diaper")
@@ -241,6 +255,21 @@ final class ParserTests: XCTestCase {
         XCTAssertEqual(Parsers.grams(in: "she weighs 4.2 kilos"), 4200)
         XCTAssertEqual(Parsers.grams(in: "8 pounds 3 ounces"), 3714)
         XCTAssertEqual(Parsers.grams(in: "weight is 5100 grams"), 5100)
+    }
+
+    func testLengths() {
+        XCTAssertEqual(Parsers.centimeters(in: "she's 52 cm long"), 52)
+        XCTAssertEqual(Parsers.centimeters(in: "head is 35.5 centimeters"), 35.5)
+        XCTAssertEqual(Parsers.centimeters(in: "twenty inches"), 50.8)
+        XCTAssertEqual(Parsers.centimeters(in: "1 foot 8 inches tall"), 50.8)
+        XCTAssertNil(Parsers.centimeters(in: "fed at 4 in the morning"))
+    }
+
+    func testGrowthMeasure() {
+        XCTAssertEqual(Parsers.growthMeasure(in: "head circumference 35 cm"), "head")
+        XCTAssertEqual(Parsers.growthMeasure(in: "she's 52 cm tall"), "height")
+        XCTAssertEqual(Parsers.growthMeasure(in: "she weighs 4.2 kilos"), "weight")
+        XCTAssertNil(Parsers.growthMeasure(in: "changed a wet diaper"))
     }
 
     func testMinutesAgo() {
@@ -297,6 +326,17 @@ final class ServiceTests: XCTestCase {
             try await s.log(type: "diaper", fields: ["kind": .string("purple")], provenance: Provenance(surface: .phone, input: .tap))
             XCTFail("expected invalid field")
         } catch {}
+    }
+
+    func testGrowthMeasurementsNeedTheirNumber() async throws {
+        let s = try service(categories: ["growth"])
+        let p = Provenance(surface: .phone, input: .tap)
+        for (type, field) in [("height", "height_cm"), ("head", "head_cm")] {
+            do { try await s.log(type: type, provenance: p); XCTFail("expected \(field) required") } catch {}
+            do { try await s.log(type: type, fields: [field: .number(-3)], provenance: p); XCTFail("expected positive \(field)") } catch {}
+            let e = try await s.log(type: type, fields: [field: .number(50.5)], provenance: p)
+            XCTAssertEqual(e.fields[field]?.number, 50.5)
+        }
     }
 
     func testCaptureEventIdIsDeterministicAcrossPhones() async throws {

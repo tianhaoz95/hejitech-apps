@@ -90,10 +90,12 @@ public actor LogService {
         for (k, v) in fields {
             if let set = allowed[k], !(v.string.map(set.contains) ?? false) { throw LogError.invalidField(k) }
             if ["consumed_fraction"].contains(k), !((v.number ?? -1) > 0 && (v.number ?? 2) <= 1) { throw LogError.invalidField(k) }
-            if ["consumed_ml", "amount_ml", "grams"].contains(k), !((v.number ?? -1) > 0) { throw LogError.invalidField(k) }
+            if ["consumed_ml", "amount_ml", "grams", "height_cm", "head_cm"].contains(k), !((v.number ?? -1) > 0) { throw LogError.invalidField(k) }
         }
         if type == "diaper", fields["kind"] == nil { throw LogError.invalidField("kind") }
         if type == "weight", fields["grams"] == nil { throw LogError.invalidField("grams") }
+        if type == "height", fields["height_cm"] == nil { throw LogError.invalidField("height_cm") }
+        if type == "head", fields["head_cm"] == nil { throw LogError.invalidField("head_cm") }
     }
 
     @discardableResult

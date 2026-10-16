@@ -143,6 +143,7 @@ struct DuplicateRow: View {
 
 struct QuickActions: View {
     @EnvironmentObject var model: AppModel
+    @State private var measuring = false
     private let columns = [GridItem(.flexible()), GridItem(.flexible())]
 
     var body: some View {
@@ -195,6 +196,17 @@ struct QuickActions: View {
                     model.log("pump", ["side": .string("both")])
                 }
             }
+            if h.enabled.contains("growth") {
+                Button { measuring = true } label: {
+                    Tile(title: "Growth", subtitle: Growth.summary(model.log) ?? "weight · height · head", icon: "ruler.fill", color: Theme.growth)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("growthTile")
+            }
+        }
+        .sheet(isPresented: $measuring) { GrowthSheet().presentationDetents([.medium, .large]) }
+        .onAppear {   // automation: `-screen growth` opens the sheet (screenshots)
+            if model.screen == "growth" { model.screen = "home"; measuring = true }
         }
     }
 }
@@ -252,8 +264,7 @@ struct VoiceButton: View {
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             }
             ZStack {
-                Circle().fill(Theme.accent).frame(width: Self.size, height: Self.size)
-                    .shadow(color: .black.opacity(0.25), radius: 8, y: 4)
+                face
                     .scaleEffect(model.recording ? 1.15 : 1)
                     .animation(model.recording ? .easeInOut(duration: 0.6).repeatForever(autoreverses: true) : .default, value: model.recording)
                 if model.thinking {
@@ -271,6 +282,17 @@ struct VoiceButton: View {
             .accessibilityIdentifier("voiceButton")
         }
         .animation(.snappy, value: model.recording)
+    }
+
+    /// Liquid Glass tinted with the accent on iOS 26 and later; a solid accent circle before.
+    @ViewBuilder private var face: some View {
+        if #available(iOS 26.0, *) {
+            Circle().fill(.clear).frame(width: Self.size, height: Self.size)
+                .glassEffect(.regular.tint(Theme.accent.opacity(model.recording ? 0.95 : 0.75)).interactive(), in: .circle)
+        } else {
+            Circle().fill(Theme.accent).frame(width: Self.size, height: Self.size)
+                .shadow(color: .black.opacity(0.25), radius: 8, y: 4)
+        }
     }
 }
 

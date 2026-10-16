@@ -69,7 +69,7 @@ public struct VoiceInterpreter: Sendable {
     public let design: Design
 
     public static let noneKey = "none_of_these"
-    static let noneDescription = "something else, not a feed, diaper, sleep, pumping or weight entry"
+    static let noneDescription = "something else, not a feed, diaper, sleep, pumping or growth (weight, height, head size) entry"
 
     public init(model: DecisionModel, registry: EventRegistry = .shared, calibration: Calibration = .identity, design: Design = .hierarchical) {
         self.model = model
@@ -120,7 +120,7 @@ public struct VoiceInterpreter: Sendable {
     public func interpret(raw: [String: DecisionAnswer], transcript: String, context: InterpretContext) -> Interpretation {
         var answers: [String: DecisionAnswer] = [:]
         for (k, v) in raw { answers[k] = calibration.apply(v, question: k) }
-        if design == .hierarchical { answers["event_type"] = combine(answers, context: context) }
+        if design == .hierarchical { answers["event_type"] = combine(answers, context: context, transcript: transcript) }
         if context.useContextPrior, let a = answers["event_type"] {
             answers["event_type"] = ContextPrior.apply(a, log: context.log)
         }
@@ -132,8 +132,10 @@ public struct VoiceInterpreter: Sendable {
         return type.session?.role
     }
 
-    /// P(type) = P(category) × P(phase | the phases valid in that category).
-    func combine(_ answers: [String: DecisionAnswer], context: InterpretContext) -> DecisionAnswer {
+    /// P(type) = P(category) × P(phase | the phases valid in that category). Growth measurements have
+    /// no phase: the units and words pick weight, height or head size deterministically.
+    func combine(_ answers: [String: DecisionAnswer], context: InterpretContext, transcript: String = "") -> DecisionAnswer {
+        let measure = Parsers.growthMeasure(in: transcript)
         let types = registry.types(enabled: context.enabledCategories)
         guard let cat = answers["category"] else { return DecisionAnswer(options: [Self.noneKey], probabilities: [1]) }
         let phase = answers["phase"]
@@ -142,7 +144,9 @@ public struct VoiceInterpreter: Sendable {
         for c in cat.options where c != Self.noneKey {
             let inCat = types.filter { $0.category == c }
             let weights = inCat.map { t -> Double in
-                guard inCat.count > 1, let r = Self.role(of: t), let phase else { return 1 }
+                guard inCat.count > 1 else { return 1 }
+                if c == "growth" { return measure.map { $0 == t.id ? 1 : 1e-6 } ?? 1 }
+                guard let r = Self.role(of: t), let phase else { return 1 }
                 return max(phase.p(r), 1e-6)
             }
             let total = weights.reduce(0, +)
@@ -225,6 +229,8 @@ public struct VoiceInterpreter: Sendable {
                     if let ml = Parsers.milliliters(in: transcript) { fields["amount_ml"] = .number(ml) }
                 case "grams":
                     if let g = Parsers.grams(in: transcript) { fields["grams"] = .number(g) } else { ok = false }
+                case "height_cm", "head_cm":
+                    if let cm = Parsers.centimeters(in: transcript) { fields[n] = .number(cm) } else { ok = false }
                 default: break
                 }
             }
@@ -279,6 +285,7 @@ public struct VoiceInterpreter: Sendable {
         if let c = fields["contents"]?.string { details.append(c.replacingOccurrences(of: "_", with: " ")) }
         if let a = fields["amount"]?.string { details.append(a) }
         if let g = fields["grams"]?.number { details.append(String(format: "%.2f kg", g / 1000)) }
+        if let cm = fields["height_cm"]?.number ?? fields["head_cm"]?.number { details.append(String(format: "%.1f cm", cm)) }
         if !details.isEmpty { label += " · " + details.joined(separator: ", ") }
         return label
     }

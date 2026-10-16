@@ -216,6 +216,8 @@ function fieldDocs(type: string) {
   for (const n of (s as { numbers?: string[] } | undefined)?.numbers ?? []) {
     if (n === "ml") docs.amount_ml = "number";
     if (n === "grams") docs.grams = "number (required)";
+    if (n === "height_cm") docs.height_cm = "number, centimeters (required)";
+    if (n === "head_cm") docs.head_cm = "number, centimeters, head circumference (required)";
   }
   return docs;
 }

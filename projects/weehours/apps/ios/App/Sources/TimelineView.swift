@@ -35,6 +35,17 @@ struct TimelineView: View {
                     }
                 }
             }
+            .overlay {
+                if days.isEmpty {
+                    ContentUnavailableView {
+                        Label("Nothing logged yet", systemImage: "list.bullet.rectangle")
+                    } description: {
+                        Text(showUndone
+                             ? "There are no entries, undone or not."
+                             : "Feeds, diapers, sleep and measurements show up here as soon as they're logged: hold the mic and say it, or tap a button on Now.")
+                    }
+                }
+            }
             .navigationTitle("Timeline")
             .toolbar {
                 Toggle(isOn: $showUndone) { Image(systemName: "arrow.uturn.backward.circle") }
@@ -98,6 +109,8 @@ struct EventRow: View {
 }
 
 struct EditEventView: View {
+    /// Growth entries edit their one number (stored in grams or centimeters).
+    static let measureField = ["weight": "grams", "height": "height_cm", "head": "head_cm"]
     @EnvironmentObject var model: AppModel
     @Environment(\.dismiss) private var dismiss
     let event: LogEvent
@@ -105,6 +118,7 @@ struct EditEventView: View {
     @State private var fraction = 0.5
     @State private var kind = "wet"
     @State private var side = "left"
+    @State private var measure: Double?
 
     var body: some View {
         NavigationStack {
@@ -122,6 +136,15 @@ struct EditEventView: View {
                 }
                 if event.fields["side"] != nil {
                     Picker("Side", selection: $side) { Text("Left").tag("left"); Text("Right").tag("right") }.pickerStyle(.segmented)
+                }
+                if let field = Self.measureField[event.type] {
+                    LabeledContent(field == "grams" ? "Weight" : "Length") {
+                        HStack(spacing: 6) {
+                            TextField("—", value: $measure, format: .number.precision(.fractionLength(0...2)))
+                                .keyboardType(.decimalPad).multilineTextAlignment(.trailing)
+                            Text(field == "grams" ? "kg" : "cm").foregroundStyle(.secondary)
+                        }
+                    }
                 }
                 Section("Provenance") {
                     LabeledContent("Logged by", value: model.household.caregiverName(event.loggedBy))
@@ -147,6 +170,9 @@ struct EditEventView: View {
                         }
                         if event.type == "diaper" { f["kind"] = .string(kind) }
                         if f["side"] != nil { f["side"] = .string(side) }
+                        if let field = Self.measureField[event.type], let m = measure, m > 0 {
+                            f[field] = .number(field == "grams" ? (m * 1000).rounded() : (m * 10).rounded() / 10)
+                        }
                         model.edit(event, fields: f, at: at)
                         dismiss()
                     }
@@ -157,6 +183,7 @@ struct EditEventView: View {
                 fraction = event.number("consumed_fraction") ?? 0.5
                 kind = event.string("kind") ?? "wet"
                 side = event.string("side") ?? "left"
+                if let field = Self.measureField[event.type], let v = event.number(field) { measure = field == "grams" ? v / 1000 : v }
             }
         }
     }

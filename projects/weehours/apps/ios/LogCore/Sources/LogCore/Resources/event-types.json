@@ -7,7 +7,7 @@
     { "id": "solids", "voice": "eating solid food, puree, cereal", "label": "Solid food", "defaultEnabled": false },
     { "id": "diaper", "voice": "diaper or nappy change, pee, poop", "label": "Diapers", "defaultEnabled": true },
     { "id": "sleep", "voice": "sleeping, napping, falling asleep or waking up", "label": "Sleep", "defaultEnabled": true },
-    { "id": "growth", "voice": "weighing the baby, weight in kilos or pounds", "label": "Weight", "defaultEnabled": true }
+    { "id": "growth", "voice": "weighing or measuring the baby: weight in kilos or pounds, length or height, head size", "label": "Growth", "defaultEnabled": true }
   ],
   "types": [
     {
@@ -102,6 +102,22 @@
       "voice": "weighed the baby, baby weighs some kilos or pounds",
       "questions": ["when"],
       "numbers": ["grams"]
+    },
+    {
+      "id": "height",
+      "category": "growth",
+      "label": "Height",
+      "voice": "measured the baby's length or height in centimeters or inches",
+      "questions": ["when"],
+      "numbers": ["height_cm"]
+    },
+    {
+      "id": "head",
+      "category": "growth",
+      "label": "Head size",
+      "voice": "measured the baby's head circumference in centimeters or inches",
+      "questions": ["when"],
+      "numbers": ["head_cm"]
     }
   ],
   "systemTypes": ["note", "undo", "resolve", "duty", "settings"],

@@ -96,12 +96,14 @@ enum Theme {
     static let diaper = Color(red: 0.45, green: 0.75, blue: 0.95)
     static let sleep = Color(red: 0.62, green: 0.58, blue: 0.95)
     static let other = Color(red: 0.55, green: 0.85, blue: 0.65)
+    static let growth = Color(red: 0.96, green: 0.80, blue: 0.42)
     static let card = Color(.secondarySystemBackground)
 
     static func color(for type: String) -> Color {
         if type.hasPrefix("feed") { return feed }
         if type == "diaper" { return diaper }
         if type.hasPrefix("sleep") { return sleep }
+        if Growth.types.contains(type) { return growth }
         return other
     }
 
@@ -115,6 +117,8 @@ enum Theme {
         case "sleep.end": return "sun.max.fill"
         case "pump": return "drop.triangle.fill"
         case "weight": return "scalemass.fill"
+        case "height": return "ruler.fill"
+        case "head": return "face.dashed"
         case "note": return "text.bubble.fill"
         default: return "circle.fill"
         }
