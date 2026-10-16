@@ -1,0 +1,94 @@
+{
+  "$schema": "../../../../node_modules/wrangler/config-schema.json",
+  "name": "waypack-mcp",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+
+  // One deployment serves the landing page + account portal (site/), the app API and MCP.
+  "assets": {
+    "directory": "../../site",
+    "binding": "ASSETS",
+    "html_handling": "drop-trailing-slash",
+    "not_found_handling": "none",
+    // The Worker routes by host first: the preview origin (PREVIEW_URL) must serve previews only,
+    // never the site or portal. On the main host it falls through to these assets.
+    "run_worker_first": true
+  },
+
+  // Production custom domains (uncomment when deploying). Site, portal, API and MCP share one origin.
+  // "routes": [{ "pattern": "waypack.app", "custom_domain": true }, { "pattern": "waypackpreview.com", "custom_domain": true }],
+
+  "vars": {
+    "PUBLIC_URL": "http://127.0.0.1:8787",
+    // Live previews are served from a separate host (no cookies, no API). localhost ≠ 127.0.0.1 for cookies.
+    // Production: a separate registrable domain, e.g. https://waypackpreview.com (see docs/DEPLOY.md).
+    "PREVIEW_URL": "http://localhost:8787",
+    "SUPABASE_URL": "http://127.0.0.1:55421",
+    // Planet the tiler extracts from. Production: the monthly R2 mirror (see services/tiler).
+    "PLANET_URL": "latest",
+    "BASEMAP_MAX_ZOOM": "15",
+    // Leave TILER_URL empty to use the Cloudflare Container binding; set it to call a tiler over HTTP (local docker).
+    "TILER_URL": "http://127.0.0.1:8090",
+    // "server": the tiler cuts maps into R2. "device": the app cuts them from PLANET_URL itself
+    // (no container, queue or map storage; see docs/DEPLOY.md and DECISIONS #54).
+    "MAP_EXTRACTS": "server",
+    // Optional online basemap for free-tier users / previews (TileJSON or .pmtiles URL). Empty = none.
+    "ONLINE_TILES_URL": "",
+    "ENVIRONMENT": "development"
+  },
+
+  "kv_namespaces": [
+    { "binding": "OAUTH_KV", "id": "REPLACE_WITH_KV_ID" },
+    { "binding": "CACHE_KV", "id": "REPLACE_WITH_KV_ID_2" }
+  ],
+  // Files live in Supabase Storage (bucket "waypack", src/lib/bucket.ts), not R2. Don't bind BUCKET here.
+  // Container mode's planet mirror is the only R2 use; to enable it add:
+  // "r2_buckets": [{ "binding": "BASEMAP", "bucket_name": "waypack-basemap" }],
+  "queues": {
+    "producers": [{ "binding": "TILE_QUEUE", "queue": "waypack-tiles" }],
+    "consumers": [{ "queue": "waypack-tiles", "max_batch_size": 1, "max_retries": 3, "dead_letter_queue": "waypack-tiles-dlq" }]
+  },
+  "containers": [
+    { "class_name": "TilerContainer", "image": "../tiler/Dockerfile", "instance_type": "standard-2", "max_instances": 3 }
+  ],
+  "durable_objects": { "bindings": [{ "name": "TILER", "class_name": "TilerContainer" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["TilerContainer"] }],
+  "triggers": {
+    // 03:17 UTC daily: expire map extracts 30 days after end_date, clean stale uploads.
+    // 04:00 UTC on the 2nd: refresh the basemap planet mirror.
+    "crons": ["17 3 * * *", "0 4 2 * *"]
+  },
+
+  // Production (`wrangler deploy --env production`, run by Cloudflare Workers Builds on push to main).
+  // Free plan: device maps, no tiler container or queue, files in Supabase Storage, previews off.
+  // KV namespaces have no ids: wrangler creates them on the first deploy and reuses them after.
+  // Secrets (wrangler secret put … --env production): SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY, SIGNING_SECRET,
+  // STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET.
+  "env": {
+    "production": {
+      "name": "waypack",
+      "workers_dev": true,
+      "vars": {
+        "PUBLIC_URL": "https://waypack.hejitech.workers.dev",
+        "PREVIEW_URL": "",
+        "SUPABASE_URL": "https://jitdzllkxfhlrxxvljhp.supabase.co",
+        "PLANET_URL": "latest",
+        "BASEMAP_MAX_ZOOM": "15",
+        "TILER_URL": "",
+        "MAP_EXTRACTS": "device",
+        "ONLINE_TILES_URL": "",
+        "ENVIRONMENT": "production",
+        // Stripe (live, account shared with other HEJI products; see DEPLOY.md §4). Not secret.
+        "STRIPE_PRICE_ANNUAL": "price_1UNGGjJiNqYDPd3ocrYtlQOR",
+        "STRIPE_PRICE_LIFETIME": "price_1UNGGkJiNqYDPd3o2uawnedI",
+        "STRIPE_PORTAL_CONFIG": "bpc_1UNGGuJiNqYDPd3omLmtc9Tq"
+      },
+      "kv_namespaces": [{ "binding": "OAUTH_KV" }, { "binding": "CACHE_KV" }],
+      "containers": [],
+      "durable_objects": { "bindings": [] },
+      "triggers": { "crons": ["17 3 * * *"] }
+    }
+  }
+}

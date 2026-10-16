@@ -1,0 +1,75 @@
+name: Waypack → TestFlight
+
+# Publishing a GitHub Release tagged waypack-v<version> (e.g. waypack-v1.9.0) uploads that version
+# to TestFlight; waypack-mac-release.yml attaches the Mac DMG to the same release. Other projects'
+# releases are skipped. Also runnable from the Actions tab (then the version comes from
+# pubspec.yaml). Deliberately not on push: it uploads a real build.
+on:
+  release:
+    types: [published]
+  workflow_dispatch: {}
+
+concurrency:
+  group: waypack-testflight
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  ios:
+    name: Build & upload iOS
+    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'waypack-v')
+    runs-on: macos-26
+    timeout-minutes: 60
+    environment:
+      name: TestFlight
+      url: https://testflight.apple.com
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select the newest Xcode (local releases build with the newest too)
+        run: |
+          XCODE="$(find /Applications -maxdepth 1 -name "Xcode_*.app" | sort -V | tail -1)"
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+      - uses: ./.github/actions/waypack-toolchain
+      - uses: ./.github/actions/apple-signing
+        with:
+          p12-base64: ${{ secrets.SIGNING_P12_BASE64 }}
+          p12-password: ${{ secrets.SIGNING_P12_PASSWORD }}
+          asc-key-id: ${{ secrets.ASC_KEY_ID }}
+          asc-key-p8-base64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+          # Pinned Apple Development identity: the archive reuses it instead of minting a new one.
+          dev-p12-base64: ${{ secrets.DEV_SIGNING_P12_BASE64 }}
+          dev-p12-password: ${{ secrets.DEV_SIGNING_P12_PASSWORD }}
+      - name: Fail if the pinned development identity is missing
+        env:
+          HAS_DEV: ${{ secrets.DEV_SIGNING_P12_BASE64 != '' }}
+        run: |
+          [ "$HAS_DEV" = "true" ] || { echo "::error::DEV_SIGNING_P12_BASE64 is not set; the archive would mint a new Apple Development certificate (see projects/waypack/docs/DEPLOY.md §4b)"; exit 1; }
+          security find-identity -v -p codesigning "$SIGNING_KEYCHAIN_PATH" | grep -q "Apple Development" || { echo "::error::no Apple Development identity in the keychain"; exit 1; }
+      - name: Version
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if [ -n "$TAG" ]; then
+            V="${TAG#waypack-}"; V="${V#v}"
+            [[ "$V" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::release tag must look like waypack-v1.2.3 (got $TAG)"; exit 1; }
+            echo "BUILD_NAME=$V" >> "$GITHUB_ENV"
+          fi
+          # Unique and increasing across runs; well above the hand-made builds (1–4).
+          echo "BUILD_NUMBER=$((1000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+      - name: Build and upload
+        working-directory: projects/waypack/apps/mobile
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+          API_URL: ${{ vars.API_URL }}
+          FA_ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          FA_ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: tool/release_ios.sh
+      - name: Clean up signing material
+        if: always()
+        run: |
+          rm -rf "$RUNNER_TEMP/private_keys"
+          [ -n "${SIGNING_KEYCHAIN_PATH:-}" ] && security delete-keychain "$SIGNING_KEYCHAIN_PATH" || true

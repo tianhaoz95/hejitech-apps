@@ -3,15 +3,18 @@
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
   "workspaces": [
-    "packages/*",
-    "services/mcp"
+    "projects/*/packages/*",
+    "projects/*/services/*"
   ],
   "scripts": {
-    "build": "npm run build -w @waypack/bundle-schema -w @waypack/trip-sdk -w @waypack/cli",
-    "docs:dev": "vitepress dev docs",
-    "docs:build": "vitepress build docs",
+    "build": "npm run build:waypack",
     "test": "npm test --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "build:waypack": "npm run build -w @waypack/bundle-schema -w @waypack/trip-sdk -w @waypack/cli",
+    "test:waypack": "npm test -w projects/waypack/packages -w projects/waypack/services --if-present",
+    "typecheck:waypack": "npm run typecheck -w projects/waypack/packages -w projects/waypack/services --if-present",
+    "docs:dev": "vitepress dev projects/waypack/docs",
+    "docs:build": "vitepress build projects/waypack/docs"
   },
   "engines": {
     "node": ">=20"

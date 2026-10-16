@@ -1,0 +1,68 @@
+name: Waypack CI
+
+# Checks pushes and PRs that touch Waypack or what it shares with other projects (root
+# workspace files, supabase/, CI plumbing). Keep `paths` in sync with CI_PATHS in
+# projects/waypack/release.env: cut_release.sh requires this workflow to be green on the newest
+# commit that touched them. Deploys are separate: Cloudflare Workers Builds deploys the Worker
+# on push to main; waypack-testflight.yml and waypack-mac-release.yml ship apps on a published
+# GitHub Release tagged waypack-v<version>.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "projects/waypack/**"
+      - "supabase/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - ".github/workflows/waypack-ci.yml"
+      - ".github/actions/**"
+  pull_request:
+    paths:
+      - "projects/waypack/**"
+      - "supabase/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - ".github/workflows/waypack-ci.yml"
+      - ".github/actions/**"
+
+concurrency:
+  group: waypack-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  node:
+    name: Packages + Worker
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build:waypack
+      - run: npm run typecheck:waypack
+      - name: Browsers for the trip SDK's Playwright tests
+        run: npx playwright install --with-deps chromium
+      - run: npm run test:waypack
+
+  app:
+    name: Mobile app
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: projects/waypack/apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/waypack-toolchain
+      - name: Analyze
+        run: flutter analyze
+      - name: Test
+        run: flutter test
