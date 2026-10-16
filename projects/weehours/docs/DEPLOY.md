@@ -38,7 +38,9 @@ The `weehours` Worker (`services/web/wrangler.jsonc`, `env.production`):
 - KV `OAUTH_KV` holds OAuth clients and grants (provisioned by the first deploy).
 - **Workers Builds** (dashboard → Workers → `weehours` → Settings → Build): connect
   `tianhaoz95/hejitech-apps`, branch `main`, root directory = repo root, build command `npm ci`,
-  deploy command `npm run deploy -w @weehours/web`, build watch paths `projects/weehours/*`.
+  deploy command `npm run deploy -w @weehours/web`, non-production branch deploy command
+  `npm run upload-version -w @weehours/web` (a preview URL per branch; previews use the production
+  Supabase project and OAuth KV, like Waypack's), build watch paths `projects/weehours/*`.
 
 ## 3. TestFlight
 
