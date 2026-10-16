@@ -163,7 +163,10 @@ async function openWhatsNew(opts = {}) {
     else r.highlights.forEach((h, i) => cards.appendChild(buildWhatsNewCard(h, i)));
     cards.scrollTop = 0;
   }
-  renderRelease(0, !!opts.fixes);
+  // Land on the newest release with features (fixes-only releases newer than
+  // it are a tab away); opts.fixes, or a fixes-only list, opens the first.
+  const firstFeature = opts.fixes ? -1 : releases.findIndex(whatsNewHasFeatures);
+  renderRelease(Math.max(firstFeature, 0), !!opts.fixes);
 
   const close = () => { closeWhatsNew(); markWhatsNewSeen(); };
   overlay.querySelector('.wn-close').addEventListener('click', close);
