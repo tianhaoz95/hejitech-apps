@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- @head -->
+    <title>Connect an AI assistant · Wee Hours</title>
+    <meta name="description" content="Connect Claude, ChatGPT or any MCP client to your Wee Hours log." />
+  </head>
+  <body>
+    <!-- @header -->
+    <main class="doc">
+      <div class="wrap narrow">
+        <div class="kicker">AI agents</div>
+        <h1>Connect your AI assistant</h1>
+        <p class="lede">Wee Hours records facts. Your assistant interprets them: totals, patterns, a summary before the pediatrician visit, or "when should we expect the next feed?". It connects to your log over MCP (Model Context Protocol), an open standard supported by Claude, ChatGPT and many other tools.</p>
+
+        <h2>Your server URL</h2>
+        <div class="copybox">
+          <code id="mcp-url" data-mcp-url>…</code>
+          <button class="btn secondary small" data-copy="#mcp-url">Copy</button>
+        </div>
+        <p class="muted small" style="margin-top: 8px">The same for every household. Your sign-in or token decides whose log the assistant sees.</p>
+
+        <h2>Pick how to connect</h2>
+        <p>Assistants that support sign-in (OAuth) need only the URL: you sign in with your Wee Hours account and approve access. For tools that don't, create a personal access token and paste it in.</p>
+
+        <div data-tabs>
+          <div class="tabs" role="tablist">
+            <button data-tab="claude" role="tab">Claude</button>
+            <button data-tab="chatgpt" role="tab">ChatGPT</button>
+            <button data-tab="claude-code" role="tab">Claude Code</button>
+            <button data-tab="other" role="tab">Other clients</button>
+          </div>
+
+          <div data-panel="claude">
+            <ol class="steps">
+              <li><div>In Claude (web or desktop), open <b>Settings → Connectors</b> and choose <b>Add custom connector</b>.</div></li>
+              <li><div>Name it <b>Wee Hours</b> and paste the server URL above.</div></li>
+              <li><div>Choose <b>Connect</b>. Sign in with the account you use in the app, then choose <b>Allow</b>.</div></li>
+              <li><div>In a chat, turn on the Wee Hours connector and ask something like “When did the baby last eat?”</div></li>
+            </ol>
+          </div>
+
+          <div data-panel="chatgpt" hidden>
+            <ol class="steps">
+              <li><div>In ChatGPT, open <b>Settings → Apps &amp; Connectors</b>. Custom connectors need <b>Developer mode</b>, under <b>Advanced settings</b>.</div></li>
+              <li><div>Choose <b>Create</b>, name it <b>Wee Hours</b>, paste the server URL above and pick <b>OAuth</b> for authentication.</div></li>
+              <li><div>Sign in with the account you use in the app, then choose <b>Allow</b>.</div></li>
+              <li><div>Add the connector to a chat and ask away.</div></li>
+            </ol>
+            <p class="muted small" style="margin-top: 14px">ChatGPT moves these menus around. If they've changed, look for “connectors” or “MCP” in its settings.</p>
+          </div>
+
+          <div data-panel="claude-code" hidden>
+            <p>Create a token on your <a href="/account/">account page</a>, then run:</p>
+            <div class="codeblock">
+              <pre><code id="cc-cmd" data-mcp-url-in>claude mcp add --transport http wee-hours MCP_URL \
+  --header "Authorization: Bearer wh_your_token"</code></pre>
+              <button class="btn secondary small" data-copy="#cc-cmd">Copy</button>
+            </div>
+          </div>
+
+          <div data-panel="other" hidden>
+            <p>Most clients (Cursor, Windsurf, VS Code, Zed and others) take a JSON entry like this one. Create a token on your <a href="/account/">account page</a> and put it in place of <code>wh_your_token</code>.</p>
+            <div class="codeblock">
+              <pre><code id="json-cfg" data-mcp-url-in>{
+  "mcpServers": {
+    "wee-hours": {
+      "url": "MCP_URL",
+      "headers": { "Authorization": "Bearer wh_your_token" }
+    }
+  }
+}</code></pre>
+              <button class="btn secondary small" data-copy="#json-cfg">Copy</button>
+            </div>
+            <p class="muted small" style="margin-top: 10px">The transport is Streamable HTTP. Clients that support only stdio can connect through a bridge such as <code>mcp-remote</code>.</p>
+          </div>
+        </div>
+
+        <h2>Read or write</h2>
+        <p>A token is <b>read-only</b> unless you allow logging when you create it. A read-only assistant can answer questions but can't change the log. With <b>write</b> access it can also add entries, undo them and resolve duplicates, exactly as you could in the app. Every entry it makes is marked as coming from that assistant.</p>
+        <p>Assistants connected by sign-in get write access. You can disconnect them, or revoke a token, at any time on your <a href="/account/">account page</a> or in the app under <b>Settings → AI agents</b>.</p>
+
+        <h2>What your assistant can do</h2>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Tool</th><th>What it does</th><th>Access</th></tr></thead>
+            <tbody>
+              <tr><td><code>get_status</code></td><td>The one-line status (last feed, next side, last diaper, sleep), who's on duty and any duplicates to resolve</td><td>read</td></tr>
+              <tr><td><code>get_baby_profile</code></td><td>Name, birth date, enabled categories and household settings</td><td>read</td></tr>
+              <tr><td><code>list_event_types</code></td><td>The kinds of entries and their fields</td><td>read</td></tr>
+              <tr><td><code>list_events</code></td><td>Entries in a time range, optionally filtered by type</td><td>read</td></tr>
+              <tr><td><code>log_event</code></td><td>Add an entry, validated exactly like the app</td><td>write</td></tr>
+              <tr><td><code>undo_event</code></td><td>Undo an entry (it stays in history as undone)</td><td>write</td></tr>
+              <tr><td><code>resolve_duplicate</code></td><td>Merge a duplicate or keep both</td><td>write</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>Things to ask</h2>
+        <ul>
+          <li>“How many wet diapers in the last 24 hours?”</li>
+          <li>“Make a table of feeds since Monday with total ml per day.”</li>
+          <li>“Summarize this week for our pediatrician visit tomorrow.”</li>
+          <li>“How long are her night stretches getting?”</li>
+          <li>“Log a bottle, 90 ml, at 4:15.” <span class="muted">(needs write access)</span></li>
+        </ul>
+
+        <div class="note" style="margin-top: 32px">Assistants can be wrong. Wee Hours gives your assistant accurate records, but what it concludes from them is up to the assistant, and it isn't medical advice. Talk to your pediatrician about anything that worries you.</div>
+      </div>
+    </main>
+    <!-- @footer -->
+  </body>
+</html>

@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wee Hours · v0 walkthrough</title>
+<link rel="icon" href="icon.png">
+<style>
+:root {
+  --bg: #0f0d1f; --bg2: #16132b; --card: #1d1936; --line: #2d2850; --fg: #ece9ff; --muted: #a29dc6;
+  --accent: #f6a46a; --feed: #f9b273; --diaper: #74bff2; --sleep: #9e94f2; --ok: #6fe3a0; --warn: #f5c35b; --bad: #ff7a7a;
+  --hud: #3dff7a; --radius: 18px;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #fbf8f4; --bg2: #f3eee8; --card: #ffffff; --line: #e6dfd6; --fg: #1d1a2e; --muted: #6c6684;
+    --accent: #d9783b; --feed: #d98a3d; --diaper: #2f8fcf; --sleep: #6a5ed6; --ok: #1f9a5a; --warn: #b8860b; --bad: #d64545;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #fbf8f4; --bg2: #f3eee8; --card: #ffffff; --line: #e6dfd6; --fg: #1d1a2e; --muted: #6c6684;
+  --accent: #d9783b; --feed: #d98a3d; --diaper: #2f8fcf; --sleep: #6a5ed6; --ok: #1f9a5a; --warn: #b8860b; --bad: #d64545;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, system-ui, sans-serif; }
+a { color: var(--accent); }
+code, pre, .mono { font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: .88em; }
+nav { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 85%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+nav .in { max-width: 1120px; margin: 0 auto; display: flex; gap: 18px; padding: 10px 16px; overflow-x: auto; white-space: nowrap; font-size: 14px; }
+nav a { color: var(--muted); text-decoration: none; }
+nav a:hover { color: var(--fg); }
+nav .brand { color: var(--fg); font-weight: 700; }
+main { max-width: 1120px; margin: 0 auto; padding: 0 16px 80px; }
+section { padding: 56px 0 8px; }
+h1 { font-size: clamp(36px, 6vw, 64px); line-height: 1.05; margin: 0 0 12px; letter-spacing: -.02em; }
+h2 { font-size: clamp(26px, 3.4vw, 36px); margin: 0 0 6px; letter-spacing: -.01em; }
+h3 { margin: 20px 0 6px; font-size: 19px; }
+.lede { color: var(--muted); font-size: 18px; max-width: 760px; }
+.kicker { color: var(--accent); font-weight: 700; text-transform: uppercase; letter-spacing: .12em; font-size: 12px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+.grid { display: grid; gap: 16px; }
+.g2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.g3 { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+.g4 { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.stat b { display: block; font-size: 32px; letter-spacing: -.02em; }
+.stat span { color: var(--muted); font-size: 14px; }
+.pill { display: inline-block; padding: 2px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; border: 1px solid var(--line); color: var(--muted); }
+.pill.ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
+.pill.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
+.pill.bad { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
+table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: 13px; }
+.scroll { overflow-x: auto; }
+.statusline { font: 600 clamp(18px, 2.6vw, 26px)/1.35 -apple-system, system-ui, sans-serif; min-height: 2.8em; }
+.caret { display: inline-block; width: 2px; height: 1em; background: var(--accent); vertical-align: -2px; animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.hero { padding-top: 64px; display: grid; gap: 28px; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: center; }
+@media (max-width: 860px) { .hero { grid-template-columns: 1fr; } }
+.hero img.icon { width: 72px; height: 72px; border-radius: 18px; box-shadow: 0 10px 40px rgba(0,0,0,.35); }
+.phones { display: flex; gap: 18px; overflow-x: auto; padding: 8px 2px 18px; scroll-snap-type: x mandatory; }
+.phone { flex: 0 0 auto; width: 230px; scroll-snap-align: start; }
+.phone img { width: 100%; border-radius: 30px; border: 6px solid #0b0a14; box-shadow: 0 18px 50px rgba(0,0,0,.35); display: block; background: #000; }
+.phone p { color: var(--muted); font-size: 13.5px; margin: 10px 4px 0; }
+.hudshot { background: #000; border-radius: 14px; padding: 6px; border: 1px solid #1d3a24; }
+.hudshot img { width: 100%; display: block; filter: drop-shadow(0 0 6px rgba(61,255,122,.5)); }
+svg text { fill: var(--fg); font-family: -apple-system, system-ui, sans-serif; }
+svg .muted { fill: var(--muted); }
+.flow { stroke-dasharray: 6 8; animation: dash 1.2s linear infinite; }
+@keyframes dash { to { stroke-dashoffset: -28; } }
+.bar { height: 22px; border-radius: 6px; background: var(--accent); width: 0; transition: width 1.1s cubic-bezier(.2,.8,.2,1); }
+.barrow { display: grid; grid-template-columns: 210px 1fr 64px; gap: 10px; align-items: center; margin: 6px 0; font-size: 14px; }
+@media (max-width: 600px) { .barrow { grid-template-columns: 120px 1fr 54px; font-size: 12.5px; } }
+.track { background: var(--bg2); border-radius: 6px; overflow: hidden; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 13px; margin: 8px 0; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.log { display: flex; flex-direction: column; gap: 8px; min-height: 330px; }
+.ev { display: flex; gap: 10px; align-items: center; padding: 9px 12px; border-radius: 12px; background: var(--bg2); border: 1px solid var(--line);
+      animation: pop .45s cubic-bezier(.2,.8,.2,1); font-size: 14.5px; }
+.ev .dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+.ev .meta { margin-left: auto; color: var(--muted); font-size: 12.5px; }
+.ev.undone { opacity: .45; text-decoration: line-through; }
+.ev.sys { border-style: dashed; }
+@keyframes pop { from { transform: translateY(8px); opacity: 0; } }
+.hud { background: #000; color: var(--hud); font: 17px/1.55 ui-monospace, Menlo, monospace; padding: 18px; border-radius: 14px; white-space: pre-wrap;
+       min-height: 92px; text-shadow: 0 0 8px rgba(61,255,122,.6); border: 1px solid #1d3a24; }
+.ring { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+button { font: inherit; font-size: 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg2); color: var(--fg); padding: 8px 12px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button:active { transform: scale(.97); }
+.feed-log { font-size: 13px; color: var(--muted); margin-top: 10px; min-height: 60px; }
+.steps { counter-reset: s; list-style: none; padding: 0; margin: 0; }
+.steps li { counter-increment: s; position: relative; padding: 8px 0 8px 40px; }
+.steps li::before { content: counter(s); position: absolute; left: 0; top: 8px; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+                    background: var(--accent); color: #1d1a2e; font-weight: 700; font-size: 13px; }
+details { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: var(--card); }
+summary { cursor: pointer; font-weight: 600; }
+pre { background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 14px; overflow-x: auto; }
+.reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s, transform .7s; }
+.reveal.in { opacity: 1; transform: none; }
+.theme { margin-left: auto; }
+footer { color: var(--muted); font-size: 13px; text-align: center; padding: 40px 16px; }
+</style>
+</head>
+<body>
+<nav><div class="in">
+  <a class="brand" href="#top">Wee Hours</a>
+  <a href="#summary">Summary</a><a href="#design">Design</a><a href="#architecture">Architecture</a><a href="#log">Event log</a>
+  <a href="#decision">Decision model</a><a href="#surfaces">Surfaces</a><a href="#glasses">Glasses</a><a href="#mcp">MCP</a>
+  <a href="#billing">Billing</a><a href="#quality">Tests &amp; CI</a><a href="#status">What's verified</a><a href="#run">Run it</a>
+  <button class="theme" id="theme" aria-label="Toggle theme">◐</button>
+</div></nav>
+<main id="top">
+
+<section class="hero">
+  <div>
+    <img class="icon" src="icon.png" alt="">
+    <p class="kicker" style="margin-top:18px">v0 walkthrough · built overnight</p>
+    <h1>Wee Hours</h1>
+    <p class="lede">A newborn log for 3am. You log a feed, diaper or nap in under three seconds, by voice, a tap, Siri, a widget, an Apple Watch or an Even G2 ring. Every surface writes the same typed, append-only log, and every surface shows the next decision in one line.</p>
+  </div>
+  <div class="card">
+    <div class="kicker">The one line</div>
+    <div class="statusline" id="typed"></div>
+    <p style="color:var(--muted);font-size:14px;margin:8px 0 0">Same text on the phone, the widget, the Live Activity, the watch, the glasses HUD and the MCP <code>get_status</code> tool. It comes from one derivation, implemented in Swift and TypeScript and checked against shared fixtures.</p>
+  </div>
+</section>
+
+<section id="summary" class="reveal">
+  <p class="kicker">Summary</p>
+  <h2>What is in the repo</h2>
+  <div class="grid g4" style="margin-top:16px">
+    <div class="card stat"><b id="c-tests">0</b><span>automated tests and checks, all passing locally</span></div>
+    <div class="card stat"><b>0%</b><span>wrong auto-commits for Laya with the two-step questions (held-out half)</span></div>
+    <div class="card stat"><b>0.56 s</b><span>Laya in-process on a Mac for 6 questions, identical to llama-server</span></div>
+    <div class="card stat"><b>5</b><span>input surfaces: phone, watch, glasses + ring, Siri/widgets, MCP agents</span></div>
+  </div>
+  <div class="card scroll" style="margin-top:16px">
+    <table>
+      <tr><th>Your decision</th><th>What it became</th></tr>
+      <tr><td>One unified decision model; Laya</td><td>Laya Q8 (449 MB) runs <b>on the iPhone</b> through a Swift port of llama.cpp's decision path (<code>ios/LayaRuntime</code>), with outputs identical to <code>llama-server</code>. A deterministic keyword model with the same interface is the fallback until the model is downloaded.</td></tr>
+      <tr><td>Supabase; Android later</td><td>Postgres schema with row-level security and append-only policies, RPCs for household, invites, billing and tokens, and a capture audio bucket. The status derivation also exists in TypeScript for MCP and the glasses (a future Android client can reuse it).</td></tr>
+      <tr><td>MCP for agent questions; the agent advises, not us</td><td>An MCP edge function returning raw facts (events, baby profile with age, status). It never aggregates or advises. Auth: the app's Supabase session, or personal access tokens (<code>wh_…</code>, hashed, read or write scope).</td></tr>
+      <tr><td>All voice processing on the phone; glasses audio relayed</td><td>Every voice entry is a <b>capture</b>. Glasses upload audio with its capture time, a household phone processes it when it opens (or on background refresh), the event id is derived from the capture id so two phones converge, and the audio is deleted.</td></tr>
+      <tr><td>All feeding modes, each optional; track weight</td><td>A type registry (<code>spec/event-types.json</code>) with toggleable categories (bottle, breast, pumping, solids, diaper, sleep, weight). Only enabled categories become model options.</td></tr>
+      <tr><td>Subscription + lifetime, dummy billing</td><td>StoreKit 2 with a local <code>.storekit</code> configuration (monthly, yearly, lifetime) plus a built-in dummy store when StoreKit has no products. One purchase covers the household; 14-day trial.</td></tr>
+      <tr><td>Easy glasses testing</td><td><code>scripts/glasses-sim.sh</code> opens the official Even Hub simulator signed in; <code>--e2e</code> drives it through the simulator's automation API and checks the database.</td></tr>
+    </table>
+  </div>
+</section>
+
+<section id="design" class="reveal">
+  <p class="kicker">Design</p>
+  <h2>Three seconds, no navigation, never a silent guess</h2>
+  <p class="lede">The PRD's principles, unchanged except one: "On-device by default" became <b>"processing on-device; glasses audio relayed temporarily"</b>, following your call on glasses voice.</p>
+  <div class="card" style="margin-top:16px">
+    <svg viewBox="0 0 1040 250" width="100%" role="img" aria-label="Voice pipeline from speech to every surface">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="var(--muted)"/></marker>
+      </defs>
+      <g font-size="14">
+        <rect x="10" y="80" width="140" height="70" rx="14" fill="var(--bg2)" stroke="var(--line)"/><text x="80" y="110" text-anchor="middle" font-weight="700">“finished,</text><text x="80" y="130" text-anchor="middle" font-weight="700">drank half”</text>
+        <rect x="200" y="80" width="140" height="70" rx="14" fill="var(--bg2)" stroke="var(--line)"/><text x="270" y="110" text-anchor="middle" font-weight="700">WhisperKit</text><text x="270" y="130" text-anchor="middle" class="muted">on-device ASR</text>
+        <rect x="390" y="40" width="190" height="150" rx="14" fill="var(--bg2)" stroke="var(--accent)"/><text x="485" y="68" text-anchor="middle" font-weight="700">Laya decision model</text>
+        <text x="405" y="98" class="muted">category → bottle 0.71</text><text x="405" y="120" class="muted">phase → finish 0.82</text><text x="405" y="142" class="muted">amount → half 0.77</text><text x="405" y="168" class="muted">+ time &amp; ml parsers</text>
+        <rect x="630" y="80" width="150" height="70" rx="14" fill="var(--bg2)" stroke="var(--line)"/><text x="705" y="110" text-anchor="middle" font-weight="700">Policy</text><text x="705" y="130" text-anchor="middle" class="muted">auto · pick · list</text>
+        <rect x="830" y="80" width="200" height="70" rx="14" fill="var(--bg2)" stroke="var(--line)"/><text x="930" y="108" text-anchor="middle" font-weight="700">feed.bottle.finish</text><text x="930" y="128" text-anchor="middle" class="muted">consumed 0.5 → 60 ml</text>
+        <path d="M150 115H195M340 115H385M580 115H625M780 115H825" stroke="var(--muted)" stroke-width="2" marker-end="url(#arr)" fill="none"/>
+        <circle r="7" fill="var(--accent)"><animateMotion dur="3.4s" repeatCount="indefinite" path="M80 115H270H485H705H930"/></circle>
+        <text x="520" y="232" text-anchor="middle" class="muted">≥ 0.85 on every relevant question → commit with a 10 s undo · 0.5–0.85 → top two, one tap · below → full list; dismiss keeps a note</text>
+      </g>
+    </svg>
+  </div>
+  <div class="grid g3" style="margin-top:16px">
+    <div class="card"><h3>The model classifies, code calculates</h3><p style="color:var(--muted)">Laya only picks options. "A quarter left" maps to 0.75 consumed; ml = fraction × the household bottle size. Clock times (<code>at 2:10</code>), relative times (<code>half an hour ago</code>), ml/oz and kg/lb come from deterministic parsers.</p></div>
+    <div class="card"><h3>Every correction is data</h3><p style="color:var(--muted)">A pick, an edit or an undo is an event with provenance (surface, input, transcript, per-question confidence, tier, model version, capture id). That's the labeled set for the fine-tuning you planned.</p></div>
+    <div class="card"><h3>Duplicates are flagged, never merged</h3><p style="color:var(--muted)">Same type within 5 min (10 for starts) from another caregiver or surface is flagged. It doesn't count toward the status line until a parent picks Merge or Keep both, on any device.</p></div>
+  </div>
+</section>
+
+<section id="architecture" class="reveal">
+  <p class="kicker">Architecture</p>
+  <h2>Many surfaces, one log</h2>
+  <div class="card" style="margin-top:16px">
+    <svg viewBox="0 0 1040 520" width="100%" role="img" aria-label="Architecture diagram">
+      <g font-size="13.5">
+        <!-- surfaces -->
+        <g>
+          <rect x="20" y="30" width="200" height="64" rx="14" fill="var(--bg2)" stroke="var(--feed)"/><text x="120" y="58" text-anchor="middle" font-weight="700">iPhone app</text><text x="120" y="78" text-anchor="middle" class="muted">voice · tiles · timeline</text>
+          <rect x="20" y="110" width="200" height="64" rx="14" fill="var(--bg2)" stroke="var(--line)"/><text x="120" y="138" text-anchor="middle" font-weight="700">Widgets · Live Activity</text><text x="120" y="158" text-anchor="middle" class="muted">Siri · Action Button (App Intents)</text>
+          <rect x="20" y="190" width="200" height="64" rx="14" fill="var(--bg2)" stroke="var(--line)"/><text x="120" y="218" text-anchor="middle" font-weight="700">Apple Watch</text><text x="120" y="238" text-anchor="middle" class="muted">taps · records audio</text>
+          <rect x="20" y="330" width="200" height="64" rx="14" fill="var(--bg2)" stroke="var(--hud)"/><text x="120" y="358" text-anchor="middle" font-weight="700">Even G2 + R1 ring</text><text x="120" y="378" text-anchor="middle" class="muted">gestures · hold to speak</text>
+          <rect x="20" y="420" width="200" height="64" rx="14" fill="var(--bg2)" stroke="var(--sleep)"/><text x="120" y="448" text-anchor="middle" font-weight="700">AI agents (MCP)</text><text x="120" y="468" text-anchor="middle" class="muted">facts in, facts out</text>
+        </g>
+        <!-- phone core -->
+        <rect x="300" y="20" width="360" height="250" rx="18" fill="none" stroke="var(--feed)" stroke-dasharray="4 4"/>
+        <text x="480" y="44" text-anchor="middle" class="muted">on the iPhone</text>
+        <rect x="320" y="60" width="320" height="60" rx="12" fill="var(--bg2)" stroke="var(--line)"/><text x="480" y="86" text-anchor="middle" font-weight="700">LogService</text><text x="480" y="106" text-anchor="middle" class="muted">validate → append locally first → outbox</text>
+        <rect x="320" y="130" width="155" height="60" rx="12" fill="var(--bg2)" stroke="var(--line)"/><text x="397" y="156" text-anchor="middle" font-weight="700">WhisperKit</text><text x="397" y="176" text-anchor="middle" class="muted">base.en</text>
+        <rect x="485" y="130" width="155" height="60" rx="12" fill="var(--bg2)" stroke="var(--accent)"/><text x="562" y="156" text-anchor="middle" font-weight="700">Laya (llama.cpp)</text><text x="562" y="176" text-anchor="middle" class="muted">VoiceInterpreter</text>
+        <rect x="320" y="200" width="320" height="56" rx="12" fill="var(--bg2)" stroke="var(--line)"/><text x="480" y="225" text-anchor="middle" font-weight="700">SQLite in the App Group</text><text x="480" y="244" text-anchor="middle" class="muted">shared with widgets and intents</text>
+        <!-- supabase -->
+        <rect x="740" y="120" width="280" height="290" rx="18" fill="var(--bg2)" stroke="var(--diaper)"/>
+        <text x="880" y="148" text-anchor="middle" font-weight="700">Supabase</text>
+        <text x="760" y="180">events  <tspan class="muted">append-only, seq cursor</tspan></text>
+        <text x="760" y="206">captures  <tspan class="muted">pending → done</tspan></text>
+        <text x="760" y="232">storage/captures  <tspan class="muted">wav, deleted after use</tspan></text>
+        <text x="760" y="258">households · members · invites</text>
+        <text x="760" y="284">entitlements · access_tokens</text>
+        <text x="760" y="310" class="muted">RLS: members of one household</text>
+        <rect x="760" y="330" width="240" height="56" rx="12" fill="var(--card)" stroke="var(--sleep)"/><text x="880" y="354" text-anchor="middle" font-weight="700">Edge function: /mcp</text><text x="880" y="373" text-anchor="middle" class="muted">TypeScript core (same fixtures)</text>
+        <!-- second phone -->
+        <rect x="740" y="20" width="280" height="64" rx="14" fill="var(--bg2)" stroke="var(--feed)"/><text x="880" y="48" text-anchor="middle" font-weight="700">Partner's iPhone</text><text x="880" y="68" text-anchor="middle" class="muted">same pipeline, same log</text>
+        <!-- flows -->
+        <path class="flow" d="M220 62H320" stroke="var(--feed)" stroke-width="2.5" fill="none"/>
+        <path class="flow" d="M220 142C270 142 280 100 320 95" stroke="var(--muted)" stroke-width="2" fill="none"/>
+        <path class="flow" d="M220 222C270 222 280 170 320 160" stroke="var(--muted)" stroke-width="2" fill="none"/>
+        <path class="flow" d="M640 228C700 228 700 200 740 200" stroke="var(--diaper)" stroke-width="2.5" fill="none"/>
+        <path class="flow" d="M880 120V84" stroke="var(--diaper)" stroke-width="2.5" fill="none"/>
+        <path class="flow" d="M220 362C480 362 600 300 740 230" stroke="var(--hud)" stroke-width="2.5" fill="none"/>
+        <path class="flow" d="M220 452C480 452 620 380 760 360" stroke="var(--sleep)" stroke-width="2.5" fill="none"/>
+        <path class="flow" d="M740 210C690 260 620 270 562 190" stroke="var(--hud)" stroke-width="1.6" fill="none" opacity=".7"/>
+        <text x="300" y="300" class="muted">glasses: typed gestures go straight to events;</text>
+        <text x="300" y="318" class="muted">audio becomes a capture a phone processes</text>
+        <text x="520" y="510" text-anchor="middle" class="muted">Every arrow carries one event shape: id · type · fields · occurred_at · logged_by · provenance · supersedes</text>
+      </g>
+    </svg>
+  </div>
+  <div class="grid g2" style="margin-top:16px">
+    <div class="card"><h3>Offline first</h3><p style="color:var(--muted)">An entry is written to SQLite before any confirmation is shown. Sync pushes the outbox (upsert by id, ignore duplicates), then pulls by a server sequence cursor. Because the log is append-only, merging means taking the union; conflicts surface as duplicate flags, never as overwrites.</p></div>
+    <div class="card"><h3>One spec, two implementations</h3><p style="color:var(--muted)"><code>spec/event-types.json</code> drives the Swift registry, the TypeScript core and the eval harness. <code>spec/fixtures/status.json</code> holds 14 derivation cases that both <code>swift test</code> and <code>vitest</code> must pass. CI fails if a copy of the spec drifts.</p></div>
+  </div>
+</section>
+
+<section id="log" class="reveal">
+  <p class="kicker">Event log</p>
+  <h2>Append-only, with every state derived</h2>
+  <p class="lede">Watch a night unfold. Nothing is updated in place: an undo, an edit or a resolution is another event, and the status line is recomputed from all of them.</p>
+  <div class="grid g2" style="margin-top:16px">
+    <div class="card"><div class="log" id="logdemo"></div></div>
+    <div class="card">
+      <div class="kicker">Derived status</div>
+      <div class="statusline" id="logstatus" style="margin-top:6px">No feeds yet</div>
+      <div id="lognote" style="color:var(--muted);font-size:14px;margin-top:8px"></div>
+      <h3>Sessions</h3>
+      <p style="color:var(--muted);font-size:14.5px">Start and finish events pair by time order, per kind (bottle, breast, sleep). A finish with no start becomes a session with an unknown start. A start that arrives late (an offline phone) re-pairs on the next derivation. Two starts in a row abandon the first rather than inventing an end.</p>
+      <button id="replay">Replay</button>
+    </div>
+  </div>
+</section>
+
+<section id="decision" class="reveal">
+  <p class="kicker">Decision model</p>
+  <h2>Laya, measured</h2>
+  <p class="lede">Laya is a 0.4B ModernBERT that answers typed questions with probabilities. llama.cpp serves it only through <code>llama-server</code>, so I ported the decision path (prompt template, head-budget truncation, marker scoring, temperature buckets) to Swift on top of the C API. The parity test passes against the server on the same GGUF, at 0.56 s for 6 questions on a Mac.</p>
+  <h3>One 13-way question vs. two short ones</h3>
+  <p style="color:var(--muted)">Zero-shot, Laya is weak with many options and sensitive to option order. Splitting the event type into <b>category</b> (≤ 8 options) × <b>phase</b> (start / switch / finish / single) was the biggest win. 178 synthetic utterances; "calibrated" rows fit temperatures on half and report the other half.</p>
+  <div class="card" style="margin-top:12px">
+    <div class="legend"><span><i style="background:var(--accent)"></i>type accuracy</span><span><i style="background:var(--diaper)"></i>fully correct (type + fields)</span><span><i style="background:var(--ok)"></i>auto-commit rate</span><span><i style="background:var(--bad)"></i>wrong among auto-commits</span></div>
+    <div id="chart"></div>
+  </div>
+  <div class="grid g3" style="margin-top:16px">
+    <div class="card"><span class="pill ok">safe</span><h3>No silent wrong entries</h3><p style="color:var(--muted)">With the two-step design, Laya's wrong-auto-commit rate is 0%: when it's unsure, it asks. The flat design auto-committed 93% of entries and 89% of those were wrong, which is exactly what "never guess silently" exists to prevent.</p></div>
+    <div class="card"><span class="pill warn">friction</span><h3>Few auto-commits for now</h3><p style="color:var(--muted)">Zero-shot confidence is low, so most entries are one tap (pick) or a short list. The PRD's ≥ 80% auto-commit target needs the fine-tuning you planned. The corrections parents make are already recorded as training data.</p></div>
+    <div class="card"><span class="pill">baseline</span><h3>Keyword model</h3><p style="color:var(--muted)">The deterministic fallback scores 93% on this set, but I wrote both the set and the keywords, so treat it as a regression test (CI gates on it), not as evidence. Real utterances will be messier.</p></div>
+  </div>
+  <details><summary>Per-question accuracy and fitted temperatures</summary><div class="scroll" id="perq"></div></details>
+  <details><summary>Why "when" is not a model question</summary><p style="color:var(--muted)">Asked as a 5-option question ("now / ~5 / ~15 / ~30 / ~60 min ago"), Laya got 21% right. Since every entry includes it, one weak question pushed everything into full-list mode. Relative phrases are as mechanical as the clock times the PRD already parses, so they are parsed too, which raised Laya's fully-correct rate from 24% to 66%.</p></details>
+  <details><summary>The two screenshots below, honestly</summary><p style="color:var(--muted)">"She's done, drank half a bottle" put the right entry first. "Finished, a quarter left" (on-device Laya in the simulator) put Diaper first, because nothing in it says "bottle". Both went to review rather than committing, which is the policy working as intended.</p></details>
+</section>
+
+<section id="surfaces" class="reveal">
+  <p class="kicker">iPhone</p>
+  <h2>The phone stands alone</h2>
+  <p class="lede">Real screenshots from the iOS simulator against the local backend and seed data (<code>scripts/ios-screenshots.sh</code>). The review sheet ran Laya on-device in the simulator (CPU).</p>
+  <div class="phones">
+    <div class="phone"><img src="screenshots/ios-home.png" alt="Home"><p><b>Now.</b> The status line, things to review (voice picks, duplicate flags), context-aware tiles (Finish bottle with ¼ ½ ¾ all; Switch side while nursing), hold-to-speak, and type-instead.</p></div>
+    <div class="phone"><img src="screenshots/ios-review.png" alt="Review"><p><b>Review.</b> Pick mode shows the top two, the full list shows all; dismissing keeps the transcript as a note. Shows the capture's device, time and model version.</p></div>
+    <div class="phone"><img src="screenshots/ios-timeline.png" alt="Timeline"><p><b>Timeline.</b> Who, which device, the transcript, the confidence tier, ml from fraction × bottle size, duplicate flags, swipe to undo, tap to edit (an edit supersedes).</p></div>
+    <div class="phone"><img src="screenshots/ios-settings.png" alt="Settings"><p><b>Settings.</b> Tracking toggles, bottle size, reminders (your intervals, with an adaptive suggestion from your last 3 days), invite QR, decision model choice. Laya and Whisper now ship inside the app (<code>scripts/fetch-models.sh</code>), so there is no download step.</p></div>
+    <div class="phone"><img src="screenshots/ios-agents.png" alt="Agents"><p><b>AI agents.</b> MCP URL, personal tokens (read or write, shown once, revocable, last-used time).</p></div>
+    <div class="phone"><img src="screenshots/ios-paywall.png" alt="Paywall"><p><b>Plus.</b> Trial status and monthly / yearly / lifetime. In this run the dummy store is shown because the app wasn't launched from Xcode.</p></div>
+  </div>
+  <div class="grid g3">
+    <div class="card"><h3>Out of the app</h3><p style="color:var(--muted)">App Intents: start or finish a feed, finish a bottle with an amount, log a diaper by kind, sleep toggle, switch side, "what's next" (Siri speaks the line), and speak-a-log-entry for the Action Button. The same intents power interactive widget buttons and Live Activity buttons.</p></div>
+    <div class="card"><h3>Widgets &amp; Live Activity</h3><p style="color:var(--muted)">Home and lock-screen widgets show the line, with Feed / Wet / Dirty buttons. During an open feed or sleep, a Live Activity shows a running timer with Finish, Switch side and Woke up.</p></div>
+    <div class="card"><h3>Watch</h3><p style="color:var(--muted)">Status from the phone's application context; Feed, Diaper (kind picker), Sleep and Undo as messages; Speak records 16 kHz audio and transfers it to the phone, which transcribes and decides with the capture time.</p>
+      <img src="screenshots/watch-home.png" alt="Watch app" style="width:150px;border-radius:28px;border:5px solid #0b0a14;margin-top:6px">
+      <p style="color:var(--muted);font-size:12.5px">Running in a paired watch simulator. The status line had not arrived from the phone (WatchConnectivity context) when captured, so this is unverified.</p></div>
+  </div>
+</section>
+
+<section id="glasses" class="reveal">
+  <p class="kicker">Even G2 + R1</p>
+  <h2>Log without looking</h2>
+  <p class="lede">The R1 supports press, double press, swipe and hold (start and release). Ring and temple share one map, and the source is recorded. Try it below; this is the same state machine as <code>glasses/src/controller.ts</code>, ported to the page.</p>
+  <div class="grid g2" style="margin-top:16px">
+    <div class="card">
+      <div class="hud" id="hud"></div>
+      <div class="ring">
+        <button data-i="click">Press</button><button data-i="double_click">Double press</button>
+        <button data-i="up">Swipe ↑</button><button data-i="down">Swipe ↓</button>
+        <button data-i="long_press">Hold</button><button data-i="long_press_release">Release</button>
+      </div>
+      <div class="feed-log" id="hudlog"></div>
+    </div>
+    <div class="card">
+      <table>
+        <tr><th>Gesture</th><th>Effect</th></tr>
+        <tr><td>Press</td><td>Start the household's default feed (next side for nursing) · finish the open feed</td></tr>
+        <tr><td>Double press</td><td>Diaper → swipe to the kind → press (double press cancels)</td></tr>
+        <tr><td>Swipe</td><td>Menu: asleep/awake, switch side, on duty, undo last, back</td></tr>
+        <tr><td>Hold → release</td><td>Records while held; the capture is attached to the entry you just made (within 2 min), so press-finish + "drank half" becomes one bottle entry</td></tr>
+      </table>
+      <p style="color:var(--muted);font-size:14px">Typed gestures go straight to <code>events</code> (through an offline outbox in the bridge's local storage). Audio becomes a WAV in the capture bucket plus a <code>captures</code> row for a household phone to process.</p>
+    </div>
+  </div>
+  <h3>In the official simulator</h3>
+  <p style="color:var(--muted)">Captured by <code>scripts/glasses-sim.sh --e2e</code>, which drives the simulator through its automation API, then checks that the backend received <code>feed.bottle.start</code>, <code>feed.bottle.finish</code>, a dirty <code>diaper</code> and one pending capture attached to the finish entry.</p>
+  <div class="grid g3">
+    <div><div class="hudshot"><img src="screenshots/glasses-1-status.png" alt=""></div><p style="color:var(--muted);font-size:13px">Signed in: the status line and gesture hints</p></div>
+    <div><div class="hudshot"><img src="screenshots/glasses-2-feed-started.png" alt=""></div><p style="color:var(--muted);font-size:13px">Press: bottle started</p></div>
+    <div><div class="hudshot"><img src="screenshots/glasses-3-listening.png" alt=""></div><p style="color:var(--muted);font-size:13px">Hold: listening</p></div>
+    <div><div class="hudshot"><img src="screenshots/glasses-4-captured.png" alt=""></div><p style="color:var(--muted);font-size:13px">Release: captured for the phone</p></div>
+    <div><div class="hudshot"><img src="screenshots/glasses-5-diaper-picker.png" alt=""></div><p style="color:var(--muted);font-size:13px">Double press, swipe: diaper kind</p></div>
+    <div><div class="hudshot"><img src="screenshots/glasses-6-after.png" alt=""></div><p style="color:var(--muted);font-size:13px">After: pending capture counted in the line</p></div>
+  </div>
+</section>
+
+<section id="mcp" class="reveal">
+  <p class="kicker">MCP</p>
+  <h2>Facts for your agent</h2>
+  <p class="lede">A Streamable-HTTP MCP server as a Supabase edge function. Tools return raw events and the profile; interpretation (e.g. "at her age, should we increase the volume?") is left to the user's own agent, as you decided.</p>
+  <div class="grid g2" style="margin-top:16px">
+    <div class="card scroll"><table>
+      <tr><th>Tool</th><th>Returns</th></tr>
+      <tr><td><code>get_status</code></td><td>The line, open feed, next side, last diaper, on duty, pending captures, duplicate flags</td></tr>
+      <tr><td><code>get_baby_profile</code></td><td>Name, birth date, age in days, bottle size, tracking categories, caregivers</td></tr>
+      <tr><td><code>list_events</code></td><td>Active entries in a time range with ml computed per row, who and via what. No totals.</td></tr>
+      <tr><td><code>list_event_types</code></td><td>The closed vocabulary and field docs</td></tr>
+      <tr><td><code>log_event</code> · <code>undo_event</code> · <code>resolve_duplicate</code></td><td>Writes with the same validation as the phone (write-scoped token)</td></tr>
+    </table></div>
+<pre>$ curl -s $MCP -H "Authorization: Bearer wh_dev_local_token" \
+    -d '{"jsonrpc":"2.0","id":2,"method":"tools/call",
+         "params":{"name":"get_status","arguments":{}}}'
+{
+  "line": "Fed 2h30m ago · left next · diaper 1h10m ago · 1 to review",
+  "next_side": "left",
+  "last_diaper": { "at": "…", "kind": "wet" },
+  "duplicates_to_review": [ { "original": "d50b…", "duplicate": "3cd9…" } ]
+}</pre>
+  </div>
+  <p style="color:var(--muted)">Auth: a Supabase session JWT (OAuth-capable agents find the auth server through <code>/.well-known/oauth-protected-resource</code>), or a personal access token. Tokens are stored as SHA-256 hashes, scoped to read or write, revocable, with a last-used time.</p>
+</section>
+
+<section id="billing" class="reveal">
+  <p class="kicker">Billing</p>
+  <h2>Subscription or lifetime, per household</h2>
+  <div class="grid g3" style="margin-top:16px">
+    <div class="card"><h3>Products</h3><p style="color:var(--muted)">Monthly $4.99, yearly $39.99 (one subscription group), lifetime $79.99 (non-consumable), all family-shareable, in <code>Subscriptions.storekit</code>, which the App scheme uses when run from Xcode.</p></div>
+    <div class="card"><h3>Entitlement rules</h3><p style="color:var(--muted)">14-day trial from household creation, then subscribed until expiry, or lifetime. One purchase unlocks both parents (stored per household in <code>entitlements</code>).</p></div>
+    <div class="card"><h3>A judgment call to review</h3><p style="color:var(--muted)">You said "everything requires a subscription after the trial". I kept <b>tap logging free</b> (the log is the parents' data and locking it out felt wrong); voice, watch, glasses, reminders, MCP and export are gated by <code>Entitlement.allows</code>. It's one line to change.</p></div>
+  </div>
+  <p style="color:var(--muted)">Dummy path: the client reports the verified StoreKit sandbox transaction through <code>record_purchase</code>. Production needs App Store Server Notifications or signed-transaction verification on the server. That gap is marked in the migration.</p>
+</section>
+
+<section id="quality" class="reveal">
+  <p class="kicker">Tests &amp; CI</p>
+  <h2>What runs, and where</h2>
+  <div class="card scroll" style="margin-top:16px"><table>
+    <tr><th>Suite</th><th>What it checks</th><th>Count</th><th>Local</th><th>CI</th></tr>
+    <tr><td>LogCore <code>swift test</code></td><td>The 14 shared fixtures, the PRD acceptance criteria (start→finish half = one session at 50% with the right duration; "a quarter left" = 75%; undo stays in history; complete provenance; reminder fires and logging dismisses it), policy tiers, parsers, Laya prompt/layout, store, capture id convergence, voice attaching to a gesture, billing, CSV, on-duty routing</td><td>34</td><td><span class="pill ok">pass</span></td><td>macOS</td></tr>
+    <tr><td>Backend integration</td><td>Sign-in, my_household, push and pull between two phones, a capture processed by a phone</td><td>1</td><td><span class="pill ok">pass</span></td><td>opt-in</td></tr>
+    <tr><td>LayaRuntime parity</td><td>The in-process Swift port equals llama-server's <code>/v1/systemone</code> (±0.02) on the same GGUF</td><td>1</td><td><span class="pill ok">pass</span></td><td>needs model</td></tr>
+    <tr><td>Glasses <code>vitest</code></td><td>The gesture state machine, WAV encoding, the same 14 fixtures against the TS core, validation</td><td>23</td><td><span class="pill ok">pass</span></td><td>Linux</td></tr>
+    <tr><td>MCP integration</td><td>401 + discovery, initialize, tools/list, profile, validated log_event, status, list_events, undo</td><td>8</td><td><span class="pill ok">pass</span></td><td>Linux + supabase</td></tr>
+    <tr><td>Glasses e2e</td><td>Official simulator via its automation API → the database</td><td>1 flow</td><td><span class="pill ok">pass</span></td><td>local (GUI)</td></tr>
+    <tr><td>Eval regression</td><td>Keyword model on 178 utterances: type ≥ 85%, wrong auto ≤ 2%</td><td>1</td><td><span class="pill ok">pass</span></td><td>macOS</td></tr>
+    <tr><td>iOS build</td><td>App + widgets + watch for the simulator, with llama.xcframework built from a pinned llama.cpp commit (cached)</td><td>1</td><td><span class="pill ok">pass</span></td><td>macOS</td></tr>
+  </table></div>
+</section>
+
+<section id="status" class="reveal">
+  <p class="kicker">Honest status</p>
+  <h2>What's verified, what isn't</h2>
+  <div class="grid g2" style="margin-top:16px">
+    <div class="card"><h3><span class="pill ok">verified here</span></h3><ul style="color:var(--muted)">
+      <li>All the suites above, and the app running in the iOS simulator against local Supabase</li>
+      <li>Laya on-device runtime: on macOS (parity) and in the iOS simulator (CPU)</li>
+      <li>The voice pipeline end to end from typed text; Laya via llama-server and on-device</li>
+      <li>The glasses app in the official Even Hub simulator, with backend checks</li>
+      <li>MCP over HTTP with tokens; sync between two signed-in clients</li>
+      <li>Local-only mode with Supabase stopped (on-device Laya + bundled models), then attaching an account and uploading the log</li>
+    </ul></div>
+    <div class="card"><h3><span class="pill warn">built, not verified</span></h3><ul style="color:var(--muted)">
+      <li>Real microphone → WhisperKit on a device (the simulator has no mic input in automation)</li>
+      <li>Laya on an iPhone GPU (Metal) and the 1.5 s latency target on iPhone 13</li>
+      <li>Widgets, Live Activity and Siri phrases at runtime (they compile; not screenshotted). The watch app launches in the simulator, but phone↔watch messaging is unverified</li>
+      <li>Glasses on hardware: audio frames, ring source tagging, the Even app's network whitelist</li>
+      <li>Google / Apple sign-in (needs the hosted project), the StoreKit sheet (needs Xcode), real push</li>
+    </ul></div>
+  </div>
+  <h3>Known gaps and next steps</h3>
+  <ol class="steps">
+    <li><b>Fine-tune Laya</b> on real household utterances (corrections are already logged), then re-run <code>scripts/eval.sh</code>. The 80% auto-commit target depends on it.</li>
+    <li><b>Device pass</b>: on an iPhone, check latency and memory (Laya + Whisper), a whispered-utterance test, and widget and Live Activity behavior.</li>
+    <li><b>Hosted Supabase</b>: create the project, Google and Apple providers, deploy the migrations and <code>mcp</code>, App Store server verification for purchases.</li>
+    <li><b>Glasses on hardware</b>, and whether to wake the phone with a silent push when a capture is uploaded (free; not implemented yet).</li>
+    <li><b>Android</b>: the spec, fixtures, Supabase API and TS core are ready to mirror; Laya runs on Android's llama.cpp unchanged.</li>
+  </ol>
+</section>
+
+<section id="run" class="reveal">
+  <p class="kicker">Run it</p>
+  <h2>Five commands</h2>
+<pre>brew install xcodegen cmake supabase/tap/supabase
+scripts/dev.sh                       # supabase start, spec sync, llama.xcframework, Xcode project
+open ios/WeeHours.xcodeproj          # run "App" on an iPhone simulator · parent1@example.com / newborn-dev
+scripts/glasses-sim.sh               # glasses in the Even Hub simulator (add --e2e for the scripted run)
+node scripts/test-mcp.mjs            # MCP checks · endpoint http://127.0.0.1:54321/functions/v1/mcp</pre>
+</section>
+</main>
+<footer>Wee Hours · v0 report · generated with the code in this repository</footer>
+
+<script>
+// theme toggle (per viewer)
+(() => {
+  const root = document.documentElement;
+  try { const t = localStorage.getItem("theme"); if (t) root.dataset.theme = t; } catch {}
+  document.getElementById("theme").onclick = () => {
+    const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+    const cur = root.dataset.theme || (dark ? "dark" : "light");
+    root.dataset.theme = cur === "dark" ? "light" : "dark";
+    try { localStorage.setItem("theme", root.dataset.theme); } catch {}
+  };
+})();
+
+// typed status lines
+(() => {
+  const lines = ["Fed 2h40m ago · left next · diaper 1h10m ago", "Feeding 12m · right next", "Sleeping 45m · diaper 30m ago", "Fed just now · 1 pending · 1 to review"];
+  const el = document.getElementById("typed");
+  let li = 0, ci = 0, dir = 1;
+  function step() {
+    const s = lines[li];
+    ci += dir;
+    el.innerHTML = s.slice(0, ci) + '<span class="caret"></span>';
+    if (dir === 1 && ci >= s.length) { dir = -1; return setTimeout(step, 1800); }
+    if (dir === -1 && ci <= 0) { dir = 1; li = (li + 1) % lines.length; }
+    setTimeout(step, dir === 1 ? 38 : 14);
+  }
+  step();
+})();
+
+// reveal on scroll + test counter
+(() => {
+  const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), { threshold: .12 });
+  document.querySelectorAll(".reveal").forEach((s) => io.observe(s));
+  const c = document.getElementById("c-tests"), total = 34 + 1 + 1 + 23 + 8 + 1 + 1 + 1;
+  let n = 0; const t = setInterval(() => { n += 2; c.textContent = Math.min(n, total); if (n >= total) clearInterval(t); }, 30);
+})();
+
+// eval chart (numbers from eval/results/*.json)
+(() => {
+  const rows = [
+    { label: "Laya · flat · raw", type: 12.9, full: 11.8, auto: 93.3, wrong: 89.2 },
+    { label: "Laya · flat · calibrated", type: 18.0, full: 19.1, auto: 77.5, wrong: 82.6 },
+    { label: "Laya · two-step · raw", type: 80.9, full: 65.7, auto: 2.8, wrong: 0 },
+    { label: "Laya · two-step · calibrated (shipped)", type: 76.4, full: 65.2, auto: 1.1, wrong: 0 },
+    { label: "Keyword fallback", type: 93.3, full: 92.7, auto: 51.1, wrong: 1.1 },
+  ];
+  const colors = { type: "var(--accent)", full: "var(--diaper)", auto: "var(--ok)", wrong: "var(--bad)" };
+  const el = document.getElementById("chart");
+  el.innerHTML = rows.map((r) => `<div style="margin:14px 0 4px;font-weight:600;font-size:14px">${r.label}</div>` +
+    Object.keys(colors).map((k) => `<div class="barrow"><span style="color:var(--muted)">${{ type: "type accuracy", full: "fully correct", auto: "auto-commit", wrong: "wrong of auto" }[k]}</span>
+      <div class="track"><div class="bar" data-w="${r[k]}" style="background:${colors[k]}"></div></div><span class="mono">${r[k].toFixed(1)}%</span></div>`).join("")).join("");
+  const io = new IntersectionObserver((es) => es.forEach((e) => {
+    if (!e.isIntersecting) return;
+    e.target.querySelectorAll(".bar").forEach((b, i) => setTimeout(() => (b.style.width = b.dataset.w + "%"), i * 25));
+    io.disconnect();
+  }), { threshold: .2 });
+  io.observe(el);
+  const perq = { "Laya two-step calibrated": { category: 38.2, phase: 67.9, amount: 68.2, side: 76.9, contents: 33.3, diaper_kind: 76.5, solids_amount: 100 },
+                 "Laya flat raw": { event_type: 12.9, amount: 66.7, side: 83.9, contents: 22.2, diaper_kind: 84.8, solids_amount: 75 } };
+  const temps = { amount: 1.05, category: 2.35, contents: 4, diaper_kind: 0.3, phase: 0.7, side: 0.3 };
+  const qs = ["event_type", "category", "phase", "amount", "side", "contents", "diaper_kind", "solids_amount"];
+  document.getElementById("perq").innerHTML = `<table><tr><th>Question</th>${Object.keys(perq).map((k) => `<th>${k}</th>`).join("")}<th>fitted T</th></tr>` +
+    qs.map((q) => `<tr><td class="mono">${q}</td>${Object.values(perq).map((v) => `<td>${v[q] !== undefined ? v[q] + "%" : "—"}</td>`).join("")}<td>${temps[q] ?? "—"}</td></tr>`).join("") +
+    `</table><p style="color:var(--muted);font-size:13.5px">Category's top-1 is weak on its own, but combined with phase and the context prior (finishing is likelier while a session is open), the type is right 76–81% of the time. T &gt; 1 flattens over-confident questions; T &lt; 1 sharpens under-confident ones.</p>`;
+})();
+
+// append-only log animation
+(() => {
+  const el = document.getElementById("logdemo"), st = document.getElementById("logstatus"), note = document.getElementById("lognote");
+  const C = { feed: "var(--feed)", diaper: "var(--diaper)", sleep: "var(--sleep)", sys: "var(--muted)" };
+  const script = [
+    { t: "2:10", text: "Start bottle", by: "Alex · ring", c: "feed", status: "Feeding 0m", note: "A ring press opens a bottle session." },
+    { t: "2:24", text: "Finish bottle", by: "Alex · ring", c: "feed", status: "Fed just now", note: "Press again: the session closes; no amount yet." },
+    { t: "2:24", text: "Edit → drank ½ (60 ml)", by: "Alex · glasses voice", c: "feed", sys: true, supersedes: 1, status: "Fed just now", note: "Hold + “drank half”: a phone processes the capture into an edit that supersedes the finish." },
+    { t: "2:31", text: "Diaper · wet", by: "Alex · phone", c: "diaper", status: "Fed 7m ago · diaper just now" },
+    { t: "2:32", text: "Diaper · wet", by: "Sam · watch", c: "diaper", status: "Fed 8m ago · diaper 1m ago · 1 to review", note: "Same type within 5 minutes from another caregiver: flagged and not counted." },
+    { t: "2:40", text: "Resolve → merge", by: "Sam · watch", c: "sys", sys: true, merges: 4, status: "Fed 16m ago · diaper 9m ago", note: "Two-option pick on the watch. The duplicate is marked merged; nothing was deleted." },
+    { t: "2:41", text: "Fell asleep", by: "Sam · Siri", c: "sleep", status: "Sleeping 0m · diaper 10m ago" },
+    { t: "2:42", text: "Undo “Fell asleep”", by: "Sam · phone", c: "sys", sys: true, undoes: 6, status: "Fed 18m ago · diaper 11m ago", note: "Undo is an event too: the entry stays in history as undone." },
+  ];
+  let i = 0, timer;
+  function render() {
+    if (i === 0) el.innerHTML = "";
+    const s = script[i];
+    const d = document.createElement("div");
+    d.className = "ev" + (s.sys ? " sys" : "");
+    d.innerHTML = `<span class="dot" style="background:${C[s.c]}"></span><span>${s.text}</span><span class="meta">${s.t} · ${s.by}</span>`;
+    el.appendChild(d);
+    const nodes = el.children;
+    if (s.undoes !== undefined) nodes[s.undoes].classList.add("undone");
+    if (s.merges !== undefined) nodes[s.merges].classList.add("undone");
+    if (s.supersedes !== undefined) nodes[s.supersedes].style.opacity = .55;
+    st.textContent = s.status;
+    if (s.note) note.textContent = s.note;
+    i++;
+    if (i < script.length) timer = setTimeout(render, 1700); else timer = setTimeout(() => { i = 0; render(); }, 5000);
+  }
+  const io = new IntersectionObserver((es) => { if (es[0].isIntersecting) { render(); io.disconnect(); } }, { threshold: .3 });
+  io.observe(el);
+  document.getElementById("replay").onclick = () => { clearTimeout(timer); i = 0; render(); };
+})();
+
+// glasses controller (port of glasses/src/controller.ts)
+(() => {
+  const hud = document.getElementById("hud"), log = document.getElementById("hudlog");
+  const DIAPER = ["wet", "dirty", "both", "dry"];
+  const w = { openFeed: null, sleeping: false, nextSide: "left", fedAt: Date.now() - 2.6 * 3600e3, diaperAt: Date.now() - 70 * 60e3 };
+  const c = { mode: "status", menu: 0, diaper: 0, msg: null, last: null };
+  const dur = (ms) => { const m = Math.max(0, Math.floor(ms / 60000)); if (m < 60) return m + "m"; const h = Math.floor(m / 60); return m % 60 ? `${h}h${m % 60}m` : `${h}h`; };
+  const line = () => {
+    const n = Date.now(), p = [];
+    if (w.sleeping) p.push("Sleeping " + dur(n - w.sleepAt)); else if (w.openFeed) p.push("Feeding " + dur(n - w.openAt)); else p.push(n - w.fedAt < 60000 ? "Fed just now" : "Fed " + dur(n - w.fedAt) + " ago");
+    p.push(w.nextSide + " next");
+    p.push(n - w.diaperAt < 60000 ? "diaper just now" : "diaper " + dur(n - w.diaperAt) + " ago");
+    return p.join(" · ");
+  };
+  const menu = () => [w.sleeping ? "Woke up" : "Fell asleep", "I'm on duty", ...(c.last ? ["Undo last"] : []), "Back"];
+  const flash = (t) => (c.msg = { t, until: Date.now() + 3500 });
+  const did = (t) => { log.textContent = `${new Date().toLocaleTimeString()} → ${t}\n` + log.textContent; c.last = t; flash("✓ " + t); };
+  function input(i) {
+    if (c.mode === "recording") { if (i === "long_press_release") { c.mode = "status"; flash("Captured ✓ · your phone will log it"); log.textContent = `${new Date().toLocaleTimeString()} → capture uploaded${c.last ? " (attached to " + c.last + ")" : ""}\n` + log.textContent; } }
+    else if (c.mode === "diaper") {
+      if (i === "up") c.diaper = (c.diaper + 3) % 4; else if (i === "down") c.diaper = (c.diaper + 1) % 4;
+      else if (i === "double_click") c.mode = "status";
+      else if (i === "click") { c.mode = "status"; w.diaperAt = Date.now(); did("Diaper · " + DIAPER[c.diaper]); }
+    } else if (c.mode === "menu") {
+      const m = menu();
+      if (i === "up") c.menu = (c.menu + m.length - 1) % m.length; else if (i === "down") c.menu = (c.menu + 1) % m.length;
+      else if (i === "double_click") c.mode = "status";
+      else if (i === "click") {
+        c.mode = "status"; const item = m[c.menu];
+        if (item === "Fell asleep") { w.sleeping = true; w.sleepAt = Date.now(); did("Asleep"); }
+        else if (item === "Woke up") { w.sleeping = false; did("Awake"); }
+        else if (item === "I'm on duty") did("On duty");
+        else if (item === "Undo last") { flash("✓ Undone"); log.textContent = `${new Date().toLocaleTimeString()} → undo ${c.last}\n` + log.textContent; c.last = null; }
+      }
+    } else {
+      if (i === "long_press") c.mode = "recording";
+      else if (i === "click") {
+        if (w.openFeed) { w.openFeed = null; w.fedAt = w.openAt; did("Bottle finished · hold to say how much"); }
+        else { w.openFeed = "bottle"; w.openAt = Date.now(); did("Bottle started"); }
+      } else if (i === "double_click") { c.mode = "diaper"; c.diaper = 0; }
+      else if (i === "up" || i === "down") { c.mode = "menu"; c.menu = 0; }
+    }
+    draw();
+  }
+  function draw() {
+    let b;
+    if (c.mode === "recording") b = "● Listening… release to send";
+    else if (c.mode === "diaper") b = "Diaper: " + DIAPER.map((d, j) => (j === c.diaper ? `[${d}]` : d)).join(" ");
+    else if (c.mode === "menu") { const m = menu(); b = `‹ ${m[c.menu]} ›  ${c.menu + 1}/${m.length}`; }
+    else b = c.msg && c.msg.until > Date.now() ? c.msg.t : (w.openFeed ? "press: finish feed · hold: speak" : "press: feed · 2×: diaper · hold: speak");
+    hud.textContent = line() + "\n" + b;
+  }
+  document.querySelectorAll("[data-i]").forEach((btn) => btn.addEventListener("click", () => input(btn.dataset.i)));
+  setInterval(draw, 1000);
+  draw();
+})();
+</script>
+</body>
+</html>

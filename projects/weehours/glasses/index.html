@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wee Hours · Glasses</title>
+    <style>
+      :root { color-scheme: dark; --bg: #0b0f0c; --fg: #d6f5dc; --hud: #3dff7a; --muted: #7d9483; --card: #141b16; }
+      body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.45 -apple-system, system-ui, sans-serif; padding: 16px; }
+      h1 { font-size: 17px; margin: 0 0 12px; }
+      .hud { background: #000; color: var(--hud); font: 18px/1.5 ui-monospace, Menlo, monospace; padding: 18px; border-radius: 14px;
+             white-space: pre-wrap; min-height: 64px; border: 1px solid #1d3a24; text-shadow: 0 0 6px rgba(61,255,122,.55); }
+      .card { background: var(--card); border-radius: 12px; padding: 12px; margin-top: 12px; }
+      .row { display: flex; gap: 8px; flex-wrap: wrap; }
+      button, input { font: inherit; border-radius: 8px; border: 1px solid #2c3a30; background: #1b241e; color: var(--fg); padding: 8px 10px; }
+      button { cursor: pointer; }
+      input { flex: 1; min-width: 120px; }
+      pre { color: var(--muted); font-size: 12px; white-space: pre-wrap; margin: 0; max-height: 180px; overflow: auto; }
+      .muted { color: var(--muted); font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <h1>Wee Hours · glasses</h1>
+    <div id="hud" class="hud">Wee Hours</div>
+    <div class="card">
+      <div class="muted">Ring / temple (same as the simulator inputs)</div>
+      <div class="row" style="margin-top:8px">
+        <button data-input="click">Press</button>
+        <button data-input="double_click">Double press</button>
+        <button data-input="up">Swipe up</button>
+        <button data-input="down">Swipe down</button>
+        <button data-input="long_press">Hold</button>
+        <button data-input="long_press_release">Release</button>
+      </div>
+    </div>
+    <form id="signin" class="card">
+      <div class="muted" id="who">Sign in with your household account</div>
+      <div class="row" style="margin-top:8px">
+        <input id="email" type="email" placeholder="email" value="parent1@example.com" />
+        <input id="password" type="password" placeholder="password" value="newborn-dev" />
+        <button>Sign in</button>
+      </div>
+    </form>
+    <div class="card"><pre id="log"></pre></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

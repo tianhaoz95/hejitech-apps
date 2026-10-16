@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  spec:
+    name: Shared spec in sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: scripts/sync-spec.sh --check
+
+  logcore:
+    name: LogCore (Swift) tests + eval regression
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit tests (domain, decision layer, acceptance criteria)
+        working-directory: ios/LogCore
+        run: swift test
+      - name: Eval harness with the deterministic keyword model
+        working-directory: ios/LogCore
+        run: |
+          swift run -c release logeval --model keywords --out /tmp/eval | tee /tmp/eval.json
+          python3 - <<'PY'
+          import json
+          r = json.load(open("/tmp/eval/keywords-hierarchical.json"))
+          assert r["wrong_auto_commit_rate"] <= 2.0, r
+          assert r["type_accuracy"] >= 85, r
+          print("eval regression ok", r["type_accuracy"], r["wrong_auto_commit_rate"])
+          PY
+
+  glasses:
+    name: Glasses app (tests, typecheck, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: glasses
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: glasses/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+  web:
+    name: Website (typecheck, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run build
+        env:
+          WEB_ALLOW_LOCAL: "1"
+
+  backend:
+    name: Supabase schema + MCP integration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: supabase start -x studio,imgproxy,vector,logflare,supavisor,mailpit
+      - run: node scripts/test-mcp.mjs
+      - if: always()
+        run: supabase stop
+
+  ios:
+    name: iOS app, widgets, watch (simulator build)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache llama.xcframework
+        id: llama
+        uses: actions/cache@v4
+        with:
+          path: ios/Vendor/llama.xcframework
+          key: llama-xcframework-${{ hashFiles('scripts/build-llama-xcframework.sh') }}
+      - name: Build llama.xcframework
+        if: steps.llama.outputs.cache-hit != 'true'
+        run: brew install cmake && scripts/build-llama-xcframework.sh
+      - name: Generate project
+        run: brew install xcodegen && cd ios && xcodegen generate
+      - name: Build for simulator
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild -project WeeHours.xcodeproj -scheme App \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath .derived \
+            build CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO | tail -40

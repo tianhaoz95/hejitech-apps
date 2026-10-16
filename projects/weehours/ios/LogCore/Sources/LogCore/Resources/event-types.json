@@ -1,0 +1,187 @@
+{
+  "version": 1,
+  "categories": [
+    { "id": "bottle", "voice": "bottle feeding, drinking from a bottle of formula or milk", "label": "Bottle feeding", "defaultEnabled": true },
+    { "id": "breast", "voice": "breastfeeding, nursing, latching, switching breast sides", "label": "Breastfeeding", "defaultEnabled": true },
+    { "id": "pumping", "voice": "pumping breast milk with a pump", "label": "Pumping", "defaultEnabled": false },
+    { "id": "solids", "voice": "eating solid food, puree, cereal", "label": "Solid food", "defaultEnabled": false },
+    { "id": "diaper", "voice": "diaper or nappy change, pee, poop", "label": "Diapers", "defaultEnabled": true },
+    { "id": "sleep", "voice": "sleeping, napping, falling asleep or waking up", "label": "Sleep", "defaultEnabled": true },
+    { "id": "growth", "voice": "weighing the baby, weight in kilos or pounds", "label": "Weight", "defaultEnabled": true }
+  ],
+  "types": [
+    {
+      "id": "feed.bottle.start",
+      "category": "bottle",
+      "label": "Start bottle",
+      "voice": "started giving a bottle, baby began drinking",
+      "session": { "kind": "feed", "role": "start" },
+      "questions": ["contents", "when"]
+    },
+    {
+      "id": "feed.bottle.finish",
+      "category": "bottle",
+      "label": "Finish bottle",
+      "voice": "finished a bottle, baby is done drinking, says how much was drunk or left",
+      "session": { "kind": "feed", "role": "finish" },
+      "questions": ["amount", "when"]
+    },
+    {
+      "id": "feed.bottle.single",
+      "category": "bottle",
+      "label": "Bottle (one entry)",
+      "voice": "baby had a bottle earlier, a whole bottle feed logged at once",
+      "questions": ["contents", "amount", "when"]
+    },
+    {
+      "id": "feed.breast.start",
+      "category": "breast",
+      "label": "Start breastfeeding",
+      "voice": "started nursing or breastfeeding on a side",
+      "session": { "kind": "feed", "role": "start" },
+      "questions": ["side", "when"]
+    },
+    {
+      "id": "feed.breast.switch",
+      "category": "breast",
+      "label": "Switch side",
+      "voice": "switched breast to the other side while nursing",
+      "session": { "kind": "feed", "role": "switch" },
+      "questions": ["side", "when"]
+    },
+    {
+      "id": "feed.breast.finish",
+      "category": "breast",
+      "label": "Finish breastfeeding",
+      "voice": "finished nursing or breastfeeding",
+      "session": { "kind": "feed", "role": "finish" },
+      "questions": ["when"]
+    },
+    {
+      "id": "feed.solids",
+      "category": "solids",
+      "label": "Solids",
+      "voice": "ate solid food, puree, cereal",
+      "questions": ["solids_amount", "when"]
+    },
+    {
+      "id": "diaper",
+      "category": "diaper",
+      "label": "Diaper",
+      "voice": "diaper change, wet or dirty or poop diaper",
+      "questions": ["diaper_kind", "when"]
+    },
+    {
+      "id": "sleep.start",
+      "category": "sleep",
+      "label": "Fell asleep",
+      "voice": "baby fell asleep, went down for a nap or for the night",
+      "session": { "kind": "sleep", "role": "start" },
+      "questions": ["when"]
+    },
+    {
+      "id": "sleep.end",
+      "category": "sleep",
+      "label": "Woke up",
+      "voice": "baby woke up",
+      "session": { "kind": "sleep", "role": "finish" },
+      "questions": ["when"]
+    },
+    {
+      "id": "pump",
+      "category": "pumping",
+      "label": "Pump",
+      "voice": "pumped breast milk",
+      "questions": ["side", "when"],
+      "numbers": ["ml"]
+    },
+    {
+      "id": "weight",
+      "category": "growth",
+      "label": "Weight",
+      "voice": "weighed the baby, baby weighs some kilos or pounds",
+      "questions": ["when"],
+      "numbers": ["grams"]
+    }
+  ],
+  "systemTypes": ["note", "undo", "resolve", "duty", "settings"],
+  "questions": {
+    "event_type": {
+      "instructions": "Which baby log entry does the parent's sentence describe?"
+    },
+    "category": {
+      "instructions": "What is the parent's sentence about?"
+    },
+    "phase": {
+      "instructions": "Is it starting, switching, finishing, or a complete entry logged afterwards?",
+      "options": {
+        "start": { "description": "starting, beginning, falling asleep, going down" },
+        "switch": { "description": "switching to the other side" },
+        "finish": { "description": "finished, done, ended, waking up, says how much was drunk" },
+        "single": { "description": "a whole feed that already happened, logged at once" }
+      }
+    },
+    "amount": {
+      "instructions": "How much of the bottle did the baby drink?",
+      "options": {
+        "quarter": { "description": "drank a quarter", "fraction": 0.25 },
+        "half": { "description": "drank half", "fraction": 0.5 },
+        "three_quarters": { "description": "drank three quarters", "fraction": 0.75 },
+        "full": { "description": "drank all of it, the whole bottle", "fraction": 1.0 },
+        "quarter_left": { "description": "a quarter is left over", "fraction": 0.75 },
+        "half_left": { "description": "half is left over", "fraction": 0.5 },
+        "three_quarters_left": { "description": "three quarters left over", "fraction": 0.25 },
+        "not_stated": { "description": "amount not mentioned" }
+      }
+    },
+    "side": {
+      "instructions": "Which breast side is mentioned?",
+      "options": {
+        "left": { "description": "left side" },
+        "right": { "description": "right side" },
+        "both": { "description": "both sides" },
+        "not_stated": { "description": "no side mentioned" }
+      }
+    },
+    "contents": {
+      "instructions": "What is in the bottle?",
+      "options": {
+        "formula": { "description": "formula" },
+        "breast_milk": { "description": "breast milk, pumped milk, expressed milk" },
+        "not_stated": { "description": "not mentioned" }
+      }
+    },
+    "diaper_kind": {
+      "instructions": "What kind of diaper was it?",
+      "options": {
+        "wet": { "description": "wet, pee" },
+        "dirty": { "description": "dirty, poop, poopy, soiled" },
+        "both": { "description": "both wet and dirty" },
+        "dry": { "description": "dry, clean" },
+        "not_stated": { "description": "kind not mentioned" }
+      }
+    },
+    "solids_amount": {
+      "instructions": "How much solid food did the baby eat?",
+      "options": {
+        "taste": { "description": "just a taste, a bite or two" },
+        "some": { "description": "some, a little" },
+        "most": { "description": "most of it" },
+        "all": { "description": "all of it" },
+        "not_stated": { "description": "amount not mentioned" }
+      }
+    },
+    "when": {
+      "instructions": "When did it happen?",
+      "options": {
+        "now": { "description": "just now, right now, no time mentioned", "minutesAgo": 0 },
+        "5": { "description": "a few minutes ago, five minutes ago", "minutesAgo": 5 },
+        "15": { "description": "fifteen minutes ago, a little while ago", "minutesAgo": 15 },
+        "30": { "description": "half an hour ago, thirty minutes ago", "minutesAgo": 30 },
+        "60": { "description": "an hour ago", "minutesAgo": 60 }
+      }
+    }
+  },
+  "policy": { "auto": 0.85, "pick": 0.5 },
+  "duplicateWindowsMinutes": { "default": 5, "start": 10 }
+}

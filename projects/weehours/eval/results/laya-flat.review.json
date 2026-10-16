@@ -1,0 +1,1282 @@
+[
+  {
+    "expected" : "feed.breast.start",
+    "tier" : "auto",
+    "text" : "started nursing on the right five minutes ago",
+    "deciding" : "event_type",
+    "ok" : "no",
+    "got" : "Fell asleep"
+  },
+  {
+    "text" : "just pee",
+    "got" : "Fell asleep",
+    "deciding" : "event_type",
+    "tier" : "full_list",
+    "expected" : "diaper",
+    "ok" : "no"
+  },
+  {
+    "ok" : "no",
+    "text" : "nursing on the right",
+    "expected" : "feed.breast.start",
+    "got" : "Fell asleep",
+    "tier" : "auto",
+    "deciding" : "event_type"
+  },
+  {
+    "text" : "fed a bottle, drank a quarter",
+    "tier" : "auto",
+    "ok" : "no",
+    "expected" : "feed.bottle.single",
+    "deciding" : "event_type",
+    "got" : "Fell asleep"
+  },
+  {
+    "expected" : "feed.bottle.finish",
+    "deciding" : "event_type",
+    "text" : "all done, drank all of it",
+    "tier" : "auto",
+    "ok" : "no",
+    "got" : "Fell asleep"
+  },
+  {
+    "ok" : "no",
+    "text" : "awake again",
+    "expected" : "sleep.end",
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "got" : "Fell asleep"
+  },
+  {
+    "got" : "Fell asleep",
+    "ok" : "no",
+    "deciding" : "event_type",
+    "text" : "he's awake",
+    "tier" : "auto",
+    "expected" : "sleep.end"
+  },
+  {
+    "tier" : "pick",
+    "text" : "began feeding him a bottle about fifteen minutes ago",
+    "deciding" : "contents",
+    "ok" : "no",
+    "expected" : "feed.bottle.start",
+    "got" : "Start bottle · formula"
+  },
+  {
+    "text" : "began a bottle of formula",
+    "got" : "Fell asleep",
+    "expected" : "feed.bottle.start",
+    "tier" : "auto",
+    "ok" : "no",
+    "deciding" : "event_type"
+  },
+  {
+    "text" : "dirty diaper",
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "ok" : "no",
+    "expected" : "diaper",
+    "got" : "Fell asleep"
+  },
+  {
+    "got" : "Fell asleep",
+    "deciding" : "event_type",
+    "expected" : "feed.bottle.finish",
+    "text" : "she's done, drank three quarters",
+    "tier" : "auto",
+    "ok" : "no"
+  },
+  {
+    "ok" : "no",
+    "text" : "woke up at 3:45",
+    "tier" : "auto",
+    "expected" : "sleep.end",
+    "got" : "Fell asleep",
+    "deciding" : "event_type"
+  },
+  {
+    "got" : "Fell asleep",
+    "tier" : "auto",
+    "text" : "diaper change, both pee and poop",
+    "deciding" : "event_type",
+    "expected" : "diaper",
+    "ok" : "no"
+  },
+  {
+    "got" : "Fell asleep",
+    "text" : "start drinking",
+    "deciding" : "event_type",
+    "tier" : "auto",
+    "expected" : "feed.bottle.start",
+    "ok" : "no"
+  },
+  {
+    "text" : "she started drinking her bottle about fifteen minutes ago",
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "got" : "Fell asleep",
+    "expected" : "feed.bottle.start",
+    "ok" : "no"
+  },
+  {
+    "text" : "diaper change, both pee and poop about fifteen minutes ago",
+    "expected" : "diaper",
+    "deciding" : "event_type",
+    "ok" : "no",
+    "tier" : "auto",
+    "got" : "Fell asleep"
+  },
+  {
+    "ok" : "no",
+    "got" : "Fell asleep",
+    "tier" : "auto",
+    "text" : "starting breastfeeding right side",
+    "expected" : "feed.breast.start",
+    "deciding" : "event_type"
+  },
+  {
+    "text" : "done with the bottle, finished the whole thing",
+    "tier" : "auto",
+    "expected" : "feed.bottle.finish",
+    "ok" : "no",
+    "got" : "Fell asleep",
+    "deciding" : "event_type"
+  },
+  {
+    "deciding" : "event_type",
+    "expected" : "feed.bottle.start",
+    "tier" : "auto",
+    "got" : "Fell asleep",
+    "ok" : "no",
+    "text" : "she started drinking her bottle an hour ago"
+  },
+  {
+    "tier" : "auto",
+    "ok" : "no",
+    "text" : "blowout, poop everywhere five minutes ago",
+    "got" : "Fell asleep",
+    "expected" : "diaper",
+    "deciding" : "event_type"
+  },
+  {
+    "ok" : "no",
+    "expected" : "diaper",
+    "got" : "Fell asleep",
+    "deciding" : "event_type",
+    "text" : "nappy was wet",
+    "tier" : "auto"
+  },
+  {
+    "ok" : "no",
+    "text" : "bottle started",
+    "tier" : "auto",
+    "got" : "Fell asleep",
+    "deciding" : "event_type",
+    "expected" : "feed.bottle.start"
+  },
+  {
+    "got" : "Fell asleep",
+    "tier" : "auto",
+    "ok" : "no",
+    "deciding" : "event_type",
+    "text" : "she's done, three quarters left over",
+    "expected" : "feed.bottle.finish"
+  },
+  {
+    "got" : "Fell asleep",
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "text" : "changed a wet one",
+    "expected" : "diaper",
+    "ok" : "no"
+  },
+  {
+    "text" : "she has a little rash on her cheek",
+    "tier" : "auto",
+    "got" : "Fell asleep",
+    "expected" : "none_of_these",
+    "deciding" : "event_type",
+    "ok" : "no"
+  },
+  {
+    "deciding" : "event_type",
+    "ok" : "no",
+    "got" : "Fell asleep",
+    "text" : "he finished his bottle",
+    "expected" : "feed.bottle.finish",
+    "tier" : "auto"
+  },
+  {
+    "deciding" : "event_type",
+    "got" : "Fell asleep",
+    "text" : "started a bottle half an hour ago",
+    "expected" : "feed.bottle.start",
+    "ok" : "no",
+    "tier" : "auto"
+  },
+  {
+    "ok" : "no",
+    "expected" : "feed.breast.start",
+    "got" : "Fell asleep",
+    "text" : "nursing on the left",
+    "deciding" : "event_type",
+    "tier" : "auto"
+  },
+  {
+    "expected" : "pump",
+    "deciding" : "side",
+    "text" : "pumped 120 ml",
+    "got" : "Pump · 120 ml",
+    "tier" : "full_list",
+    "ok" : "yes"
+  },
+  {
+    "tier" : "auto",
+    "ok" : "no",
+    "text" : "starting a bottle",
+    "deciding" : "event_type",
+    "expected" : "feed.bottle.start",
+    "got" : "Fell asleep"
+  },
+  {
+    "text" : "done, three quarters gone",
+    "got" : "Fell asleep",
+    "expected" : "feed.bottle.finish",
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "ok" : "no"
+  },
+  {
+    "text" : "hiccups again",
+    "deciding" : "event_type",
+    "tier" : "auto",
+    "expected" : "none_of_these",
+    "got" : "Fell asleep",
+    "ok" : "no"
+  },
+  {
+    "text" : "she had some banana puree",
+    "expected" : "feed.solids",
+    "got" : "Fell asleep",
+    "ok" : "no",
+    "deciding" : "event_type",
+    "tier" : "auto"
+  },
+  {
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "expected" : "diaper",
+    "ok" : "no",
+    "text" : "poopy diaper an hour ago",
+    "got" : "Fell asleep"
+  },
+  {
+    "text" : "what time is the appointment",
+    "expected" : "none_of_these",
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "ok" : "no",
+    "got" : "Fell asleep"
+  },
+  {
+    "text" : "diaper change",
+    "expected" : "diaper",
+    "deciding" : "event_type",
+    "got" : "Fell asleep",
+    "tier" : "auto",
+    "ok" : "no"
+  },
+  {
+    "expected" : "feed.breast.switch",
+    "tier" : "auto",
+    "text" : "switched sides",
+    "got" : "Fell asleep",
+    "deciding" : "event_type",
+    "ok" : "no"
+  },
+  {
+    "tier" : "auto",
+    "ok" : "no",
+    "got" : "Fell asleep",
+    "text" : "she started drinking her bottle half an hour ago",
+    "deciding" : "event_type",
+    "expected" : "feed.bottle.start"
+  },
+  {
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "expected" : "feed.bottle.start",
+    "ok" : "no",
+    "text" : "gave her a bottle of formula about fifteen minutes ago",
+    "got" : "Fell asleep"
+  },
+  {
+    "text" : "diaper was dry",
+    "ok" : "no",
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "got" : "Fell asleep",
+    "expected" : "diaper"
+  },
+  {
+    "tier" : "auto",
+    "ok" : "no",
+    "expected" : "feed.bottle.start",
+    "text" : "gave her a bottle of formula five minutes ago",
+    "got" : "Fell asleep",
+    "deciding" : "event_type"
+  },
+  {
+    "got" : "Fell asleep",
+    "deciding" : "event_type",
+    "text" : "all done, drank a quarter",
+    "expected" : "feed.bottle.finish",
+    "ok" : "no",
+    "tier" : "auto"
+  },
+  {
+    "expected" : "diaper",
+    "deciding" : "event_type",
+    "ok" : "no",
+    "tier" : "auto",
+    "got" : "Fell asleep",
+    "text" : "changed a wet one five minutes ago"
+  },
+  {
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "ok" : "no",
+    "expected" : "diaper",
+    "text" : "poop and pee",
+    "got" : "Fell asleep"
+  },
+  {
+    "text" : "bottle's done",
+    "deciding" : "event_type",
+    "ok" : "no",
+    "tier" : "auto",
+    "got" : "Fell asleep",
+    "expected" : "feed.bottle.finish"
+  },
+  {
+    "tier" : "full_list",
+    "deciding" : "event_type",
+    "expected" : "sleep.end",
+    "ok" : "no",
+    "text" : "eyes open, she's awake",
+    "got" : "Fell asleep"
+  },
+  {
+    "text" : "finished drinking, drank three quarters half an hour ago",
+    "got" : "Fell asleep",
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "ok" : "no",
+    "expected" : "feed.bottle.finish"
+  },
+  {
+    "expected" : "feed.solids",
+    "got" : "Fell asleep",
+    "tier" : "auto",
+    "ok" : "no",
+    "deciding" : "event_type",
+    "text" : "just a taste of avocado"
+  },
+  {
+    "tier" : "pick",
+    "got" : "Fell asleep",
+    "deciding" : "event_type",
+    "expected" : "feed.solids",
+    "text" : "ate most of the cereal",
+    "ok" : "no"
+  },
+  {
+    "ok" : "no",
+    "tier" : "auto",
+    "text" : "switched to the right",
+    "expected" : "feed.breast.switch",
+    "got" : "Fell asleep",
+    "deciding" : "event_type"
+  },
+  {
+    "expected" : "feed.bottle.finish",
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "text" : "finished, drank all of it",
+    "got" : "Fell asleep",
+    "ok" : "no"
+  },
+  {
+    "ok" : "no",
+    "deciding" : "event_type",
+    "got" : "Fell asleep",
+    "expected" : "feed.breast.switch",
+    "tier" : "auto",
+    "text" : "switched to the left"
+  },
+  {
+    "ok" : "no",
+    "got" : "Fell asleep",
+    "expected" : "diaper",
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "text" : "diaper was dry an hour ago"
+  },
+  {
+    "text" : "finished, quarter of the bottle left",
+    "expected" : "feed.bottle.finish",
+    "got" : "Fell asleep",
+    "tier" : "auto",
+    "deciding" : "when",
+    "ok" : "no"
+  },
+  {
+    "tier" : "auto",
+    "expected" : "diaper",
+    "got" : "Fell asleep",
+    "deciding" : "event_type",
+    "ok" : "no",
+    "text" : "big poop"
+  },
+  {
+    "ok" : "no",
+    "got" : "Fell asleep",
+    "deciding" : "event_type",
+    "tier" : "auto",
+    "text" : "finished, finished the whole thing half an hour ago",
+    "expected" : "feed.bottle.finish"
+  },
+  {
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "ok" : "no",
+    "expected" : "feed.bottle.start",
+    "text" : "giving him a bottle now",
+    "got" : "Fell asleep"
+  },
+  {
+    "got" : "Diaper · dirty",
+    "text" : "wet and dirty diaper half an hour ago",
+    "deciding" : "diaper_kind",
+    "expected" : "diaper",
+    "tier" : "full_list",
+    "ok" : "no"
+  },
+  {
+    "got" : "Fell asleep",
+    "text" : "up from the nap",
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "expected" : "sleep.end",
+    "ok" : "no"
+  },
+  {
+    "ok" : "no",
+    "text" : "start feeding left side",
+    "deciding" : "event_type",
+    "tier" : "auto",
+    "expected" : "feed.breast.start",
+    "got" : "Fell asleep"
+  },
+  {
+    "ok" : "no",
+    "got" : "Fell asleep",
+    "expected" : "none_of_these",
+    "text" : "temperature is 37.2",
+    "tier" : "auto",
+    "deciding" : "event_type"
+  },
+  {
+    "ok" : "no",
+    "expected" : "feed.bottle.start",
+    "tier" : "auto",
+    "text" : "she's starting her bottle",
+    "got" : "Fell asleep",
+    "deciding" : "event_type"
+  },
+  {
+    "expected" : "feed.breast.switch",
+    "text" : "swapped to left",
+    "tier" : "auto",
+    "got" : "Fell asleep",
+    "deciding" : "event_type",
+    "ok" : "no"
+  },
+  {
+    "got" : "Fell asleep",
+    "tier" : "auto",
+    "ok" : "no",
+    "text" : "she's up now",
+    "deciding" : "event_type",
+    "expected" : "sleep.end"
+  },
+  {
+    "tier" : "auto",
+    "got" : "Fell asleep",
+    "deciding" : "event_type",
+    "ok" : "no",
+    "text" : "pumped both sides",
+    "expected" : "pump"
+  },
+  {
+    "text" : "changed a dirty nappy half an hour ago",
+    "ok" : "yes",
+    "deciding" : "diaper_kind",
+    "expected" : "diaper",
+    "tier" : "pick",
+    "got" : "Diaper · dirty"
+  },
+  {
+    "tier" : "pick",
+    "deciding" : "when",
+    "ok" : "no",
+    "expected" : "feed.bottle.single",
+    "text" : "gave him a full bottle earlier",
+    "got" : "Fell asleep"
+  },
+  {
+    "text" : "starting a bottle of breast milk",
+    "got" : "Fell asleep",
+    "tier" : "auto",
+    "ok" : "no",
+    "deciding" : "event_type",
+    "expected" : "feed.bottle.start"
+  },
+  {
+    "text" : "just pee",
+    "got" : "Fell asleep",
+    "tier" : "full_list",
+    "deciding" : "event_type",
+    "ok" : "no",
+    "expected" : "diaper"
+  },
+  {
+    "ok" : "no",
+    "expected" : "feed.breast.finish",
+    "text" : "she unlatched, done",
+    "got" : "Fell asleep",
+    "tier" : "auto",
+    "deciding" : "event_type"
+  },
+  {
+    "deciding" : "event_type",
+    "expected" : "feed.breast.start",
+    "ok" : "no",
+    "text" : "started nursing on the left about fifteen minutes ago",
+    "got" : "Fell asleep",
+    "tier" : "auto"
+  },
+  {
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "text" : "started nursing on the left an hour ago",
+    "expected" : "feed.breast.start",
+    "got" : "Fell asleep",
+    "ok" : "no"
+  },
+  {
+    "ok" : "no",
+    "expected" : "feed.bottle.start",
+    "got" : "Fell asleep",
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "text" : "start bottle"
+  },
+  {
+    "text" : "remember to buy more formula",
+    "got" : "Fell asleep",
+    "tier" : "auto",
+    "ok" : "no",
+    "deciding" : "event_type",
+    "expected" : "none_of_these"
+  },
+  {
+    "ok" : "no",
+    "text" : "the bath water was too cold",
+    "expected" : "none_of_these",
+    "tier" : "auto",
+    "got" : "Fell asleep",
+    "deciding" : "event_type"
+  },
+  {
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "text" : "wet one again",
+    "got" : "Fell asleep",
+    "ok" : "no",
+    "expected" : "diaper"
+  },
+  {
+    "tier" : "auto",
+    "text" : "changed a dirty nappy",
+    "deciding" : "event_type",
+    "ok" : "no",
+    "got" : "Fell asleep",
+    "expected" : "diaper"
+  },
+  {
+    "got" : "Fell asleep",
+    "deciding" : "event_type",
+    "ok" : "no",
+    "text" : "latched on the left",
+    "expected" : "feed.breast.start",
+    "tier" : "auto"
+  },
+  {
+    "ok" : "no",
+    "expected" : "none_of_these",
+    "got" : "Fell asleep",
+    "text" : "she smiled for the first time",
+    "tier" : "auto",
+    "deciding" : "event_type"
+  },
+  {
+    "tier" : "auto",
+    "got" : "Fell asleep",
+    "text" : "wet and dirty diaper",
+    "deciding" : "event_type",
+    "ok" : "no",
+    "expected" : "diaper"
+  },
+  {
+    "deciding" : "event_type",
+    "tier" : "auto",
+    "ok" : "no",
+    "text" : "woke up from the nap",
+    "got" : "Fell asleep",
+    "expected" : "sleep.end"
+  },
+  {
+    "got" : "Fell asleep",
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "text" : "changed her diaper, it was wet",
+    "ok" : "no",
+    "expected" : "diaper"
+  },
+  {
+    "deciding" : "event_type",
+    "got" : "Fell asleep",
+    "ok" : "no",
+    "text" : "okay starting the bottle",
+    "expected" : "feed.bottle.start",
+    "tier" : "auto"
+  },
+  {
+    "ok" : "no",
+    "text" : "all done nursing",
+    "deciding" : "event_type",
+    "got" : "Fell asleep",
+    "expected" : "feed.breast.finish",
+    "tier" : "auto"
+  },
+  {
+    "expected" : "feed.bottle.finish",
+    "tier" : "auto",
+    "text" : "finished, drank a quarter an hour ago",
+    "deciding" : "event_type",
+    "got" : "Fell asleep",
+    "ok" : "no"
+  },
+  {
+    "ok" : "no",
+    "expected" : "diaper",
+    "tier" : "auto",
+    "got" : "Fell asleep",
+    "text" : "pee diaper",
+    "deciding" : "event_type"
+  },
+  {
+    "deciding" : "event_type",
+    "expected" : "feed.bottle.finish",
+    "ok" : "no",
+    "tier" : "auto",
+    "text" : "all done, finished the whole thing",
+    "got" : "Fell asleep"
+  },
+  {
+    "expected" : "feed.breast.start",
+    "got" : "Fell asleep",
+    "deciding" : "event_type",
+    "tier" : "auto",
+    "ok" : "no",
+    "text" : "start feeding right side"
+  },
+  {
+    "deciding" : "event_type",
+    "text" : "wet diaper",
+    "ok" : "no",
+    "tier" : "auto",
+    "expected" : "diaper",
+    "got" : "Fell asleep"
+  },
+  {
+    "got" : "Fell asleep",
+    "expected" : "feed.bottle.start",
+    "deciding" : "event_type",
+    "ok" : "no",
+    "text" : "she started drinking her bottle five minutes ago",
+    "tier" : "auto"
+  },
+  {
+    "expected" : "diaper",
+    "got" : "Fell asleep",
+    "tier" : "auto",
+    "ok" : "no",
+    "text" : "wet diaper about fifteen minutes ago",
+    "deciding" : "event_type"
+  },
+  {
+    "deciding" : "event_type",
+    "got" : "Fell asleep",
+    "expected" : "feed.bottle.start",
+    "tier" : "auto",
+    "ok" : "no",
+    "text" : "began feeding him a bottle half an hour ago"
+  },
+  {
+    "got" : "Fell asleep",
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "text" : "wet diaper at 1:30 am",
+    "expected" : "diaper",
+    "ok" : "no"
+  },
+  {
+    "expected" : "feed.bottle.finish",
+    "deciding" : "event_type",
+    "ok" : "no",
+    "tier" : "auto",
+    "text" : "she only drank a quarter of it",
+    "got" : "Fell asleep"
+  },
+  {
+    "expected" : "feed.breast.start",
+    "got" : "Fell asleep",
+    "deciding" : "event_type",
+    "tier" : "auto",
+    "ok" : "no",
+    "text" : "starting breastfeeding left side"
+  },
+  {
+    "tier" : "auto",
+    "text" : "started nursing",
+    "ok" : "no",
+    "deciding" : "event_type",
+    "expected" : "feed.breast.start",
+    "got" : "Fell asleep"
+  },
+  {
+    "ok" : "no",
+    "got" : "Fell asleep",
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "text" : "poopy diaper",
+    "expected" : "diaper"
+  },
+  {
+    "text" : "we're out of wipes",
+    "expected" : "none_of_these",
+    "got" : "Fell asleep",
+    "deciding" : "event_type",
+    "tier" : "auto",
+    "ok" : "no"
+  },
+  {
+    "ok" : "no",
+    "expected" : "diaper",
+    "text" : "changed her diaper, it was wet",
+    "got" : "Fell asleep",
+    "tier" : "auto",
+    "deciding" : "event_type"
+  },
+  {
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "text" : "finished drinking, drank half a bottle",
+    "expected" : "feed.bottle.finish",
+    "got" : "Fell asleep",
+    "ok" : "no"
+  },
+  {
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "expected" : "none_of_these",
+    "text" : "grandma is coming at noon",
+    "got" : "Fell asleep",
+    "ok" : "no"
+  },
+  {
+    "ok" : "no",
+    "text" : "started a bottle five minutes ago",
+    "got" : "Fell asleep",
+    "tier" : "auto",
+    "expected" : "feed.bottle.start",
+    "deciding" : "event_type"
+  },
+  {
+    "ok" : "no",
+    "expected" : "diaper",
+    "tier" : "auto",
+    "text" : "changed his diaper",
+    "deciding" : "event_type",
+    "got" : "Fell asleep"
+  },
+  {
+    "got" : "Fell asleep",
+    "expected" : "diaper",
+    "deciding" : "event_type",
+    "tier" : "auto",
+    "text" : "soiled diaper",
+    "ok" : "no"
+  },
+  {
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "ok" : "no",
+    "text" : "started nursing on the right half an hour ago",
+    "expected" : "feed.breast.start",
+    "got" : "Fell asleep"
+  },
+  {
+    "expected" : "feed.bottle.finish",
+    "got" : "Fell asleep",
+    "text" : "finished the bottle at 4:05, drank half",
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "ok" : "no"
+  },
+  {
+    "got" : "Fell asleep",
+    "ok" : "no",
+    "expected" : "none_of_these",
+    "deciding" : "event_type",
+    "text" : "need to wash the bottles",
+    "tier" : "auto"
+  },
+  {
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "ok" : "no",
+    "text" : "gave her a bottle of formula half an hour ago",
+    "expected" : "feed.bottle.start",
+    "got" : "Fell asleep"
+  },
+  {
+    "deciding" : "event_type",
+    "ok" : "no",
+    "text" : "done nursing",
+    "tier" : "auto",
+    "expected" : "feed.breast.finish",
+    "got" : "Fell asleep"
+  },
+  {
+    "deciding" : "event_type",
+    "got" : "Fell asleep",
+    "ok" : "no",
+    "expected" : "none_of_these",
+    "tier" : "auto",
+    "text" : "call the pediatrician tomorrow"
+  },
+  {
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "ok" : "no",
+    "text" : "started a bottle at 11:50 pm",
+    "got" : "Fell asleep",
+    "expected" : "feed.bottle.start"
+  },
+  {
+    "deciding" : "event_type",
+    "tier" : "auto",
+    "expected" : "feed.breast.finish",
+    "text" : "finished breastfeeding",
+    "got" : "Fell asleep",
+    "ok" : "no"
+  },
+  {
+    "got" : "Fell asleep",
+    "expected" : "feed.bottle.single",
+    "text" : "had a bottle half an hour ago and drank three quarters",
+    "ok" : "no",
+    "tier" : "auto",
+    "deciding" : "event_type"
+  },
+  {
+    "ok" : "no",
+    "expected" : "sleep.end",
+    "got" : "Fell asleep",
+    "text" : "she woke up",
+    "tier" : "auto",
+    "deciding" : "event_type"
+  },
+  {
+    "deciding" : "side",
+    "ok" : "yes",
+    "expected" : "pump",
+    "got" : "Pump · 118 ml, left",
+    "text" : "pumped four ounces",
+    "tier" : "full_list"
+  },
+  {
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "text" : "started a bottle about fifteen minutes ago",
+    "expected" : "feed.bottle.start",
+    "ok" : "no",
+    "got" : "Fell asleep"
+  },
+  {
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "expected" : "feed.breast.start",
+    "got" : "Fell asleep",
+    "ok" : "no",
+    "text" : "latched on the right"
+  },
+  {
+    "expected" : "feed.bottle.finish",
+    "got" : "Fell asleep",
+    "deciding" : "event_type",
+    "text" : "finished drinking, three quarters left over five minutes ago",
+    "tier" : "auto",
+    "ok" : "no"
+  },
+  {
+    "text" : "drank the whole bottle",
+    "deciding" : "event_type",
+    "ok" : "no",
+    "expected" : "feed.bottle.finish",
+    "got" : "Fell asleep",
+    "tier" : "auto"
+  },
+  {
+    "got" : "Fell asleep",
+    "text" : "switching sides, now left",
+    "tier" : "full_list",
+    "deciding" : "event_type",
+    "expected" : "feed.breast.switch",
+    "ok" : "no"
+  },
+  {
+    "ok" : "no",
+    "got" : "Fell asleep",
+    "text" : "she's done, drank half a bottle",
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "expected" : "feed.bottle.finish"
+  },
+  {
+    "ok" : "no",
+    "text" : "she's nursing, left side",
+    "deciding" : "event_type",
+    "got" : "Fell asleep",
+    "tier" : "auto",
+    "expected" : "feed.breast.start"
+  },
+  {
+    "deciding" : "event_type",
+    "text" : "dirty diaper half an hour ago",
+    "expected" : "diaper",
+    "got" : "Fell asleep",
+    "tier" : "auto",
+    "ok" : "no"
+  },
+  {
+    "text" : "bottle done, a quarter left",
+    "got" : "Fell asleep",
+    "tier" : "auto",
+    "expected" : "feed.bottle.finish",
+    "ok" : "no",
+    "deciding" : "event_type"
+  },
+  {
+    "tier" : "auto",
+    "ok" : "no",
+    "text" : "began feeding him a bottle five minutes ago",
+    "got" : "Fell asleep",
+    "deciding" : "event_type",
+    "expected" : "feed.bottle.start"
+  },
+  {
+    "text" : "done drinking",
+    "expected" : "feed.bottle.finish",
+    "got" : "Fell asleep",
+    "tier" : "auto",
+    "ok" : "no",
+    "deciding" : "event_type"
+  },
+  {
+    "tier" : "auto",
+    "got" : "Fell asleep",
+    "deciding" : "event_type",
+    "ok" : "no",
+    "text" : "blowout, poop everywhere",
+    "expected" : "diaper"
+  },
+  {
+    "text" : "finished drinking",
+    "tier" : "auto",
+    "ok" : "no",
+    "deciding" : "event_type",
+    "expected" : "feed.bottle.finish",
+    "got" : "Fell asleep"
+  },
+  {
+    "got" : "Fell asleep",
+    "expected" : "feed.breast.start",
+    "text" : "started nursing on the left five minutes ago",
+    "deciding" : "event_type",
+    "tier" : "auto",
+    "ok" : "no"
+  },
+  {
+    "tier" : "auto",
+    "text" : "done with the bottle, drank a quarter",
+    "deciding" : "event_type",
+    "ok" : "no",
+    "expected" : "feed.bottle.finish",
+    "got" : "Fell asleep"
+  },
+  {
+    "text" : "switching sides, now right",
+    "deciding" : "event_type",
+    "tier" : "full_list",
+    "ok" : "no",
+    "expected" : "feed.breast.switch",
+    "got" : "Fell asleep"
+  },
+  {
+    "text" : "finished drinking 90 ml",
+    "deciding" : "event_type",
+    "got" : "Fell asleep",
+    "ok" : "no",
+    "expected" : "feed.bottle.finish",
+    "tier" : "auto"
+  },
+  {
+    "deciding" : "event_type",
+    "got" : "Fell asleep",
+    "ok" : "no",
+    "text" : "he sneezed a lot today",
+    "tier" : "auto",
+    "expected" : "none_of_these"
+  },
+  {
+    "got" : "Fell asleep",
+    "text" : "started nursing on the right about fifteen minutes ago",
+    "tier" : "auto",
+    "expected" : "feed.breast.start",
+    "deciding" : "event_type",
+    "ok" : "no"
+  },
+  {
+    "ok" : "no",
+    "text" : "ugh another poop",
+    "expected" : "diaper",
+    "tier" : "auto",
+    "got" : "Fell asleep",
+    "deciding" : "event_type"
+  },
+  {
+    "deciding" : "event_type",
+    "expected" : "feed.bottle.finish",
+    "got" : "Fell asleep",
+    "tier" : "auto",
+    "text" : "finished the bottle, about half left",
+    "ok" : "no"
+  },
+  {
+    "ok" : "no",
+    "deciding" : "event_type",
+    "text" : "swapped to right",
+    "expected" : "feed.breast.switch",
+    "tier" : "auto",
+    "got" : "Fell asleep"
+  },
+  {
+    "deciding" : "event_type",
+    "text" : "finished, half left five minutes ago",
+    "expected" : "feed.bottle.finish",
+    "got" : "Fell asleep",
+    "ok" : "no",
+    "tier" : "auto"
+  },
+  {
+    "expected" : "feed.breast.start",
+    "ok" : "no",
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "got" : "Fell asleep",
+    "text" : "started nursing on the left half an hour ago"
+  },
+  {
+    "ok" : "no",
+    "text" : "all done, half left",
+    "expected" : "feed.bottle.finish",
+    "deciding" : "event_type",
+    "got" : "Fell asleep",
+    "tier" : "auto"
+  },
+  {
+    "tier" : "auto",
+    "text" : "done pumping right side",
+    "deciding" : "event_type",
+    "ok" : "no",
+    "got" : "Fell asleep",
+    "expected" : "pump"
+  },
+  {
+    "ok" : "no",
+    "expected" : "feed.bottle.start",
+    "got" : "Fell asleep",
+    "text" : "began feeding him a bottle an hour ago",
+    "tier" : "auto",
+    "deciding" : "event_type"
+  },
+  {
+    "expected" : "feed.bottle.finish",
+    "ok" : "no",
+    "text" : "done with the bottle, half left",
+    "got" : "Fell asleep",
+    "deciding" : "event_type",
+    "tier" : "auto"
+  },
+  {
+    "tier" : "auto",
+    "ok" : "no",
+    "got" : "Fell asleep",
+    "text" : "finished nursing a few minutes ago",
+    "deciding" : "event_type",
+    "expected" : "feed.breast.finish"
+  },
+  {
+    "expected" : "feed.bottle.finish",
+    "got" : "Fell asleep",
+    "text" : "done with the bottle, drank all of it",
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "ok" : "no"
+  },
+  {
+    "ok" : "no",
+    "tier" : "auto",
+    "text" : "ate all of her oatmeal",
+    "got" : "Fell asleep",
+    "expected" : "feed.solids",
+    "deciding" : "event_type"
+  },
+  {
+    "expected" : "feed.bottle.finish",
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "got" : "Fell asleep",
+    "text" : "finished drinking, a quarter left about fifteen minutes ago",
+    "ok" : "no"
+  },
+  {
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "ok" : "no",
+    "text" : "he's drinking now",
+    "expected" : "feed.bottle.start",
+    "got" : "Fell asleep"
+  },
+  {
+    "tier" : "auto",
+    "deciding" : "event_type",
+    "expected" : "feed.breast.start",
+    "got" : "Fell asleep",
+    "ok" : "no",
+    "text" : "she's nursing, right side"
+  },
+  {
+    "expected" : "feed.bottle.start",
+    "got" : "Fell asleep",
+    "text" : "started a bottle an hour ago",
+    "ok" : "no",
+    "tier" : "auto",
+    "deciding" : "event_type"
+  },
+  {
+    "ok" : "no",
+    "deciding" : "event_type",
+    "text" : "she's done, a quarter left",
+    "expected" : "feed.bottle.finish",
+    "tier" : "auto",
+    "got" : "Fell asleep"
+  },
+  {
+    "tier" : "auto",
+    "ok" : "no",
+    "text" : "started nursing on the right an hour ago",
+    "expected" : "feed.breast.start",
+    "got" : "Fell asleep",
+    "deciding" : "event_type"
+  },
+  {
+    "tier" : "auto",
+    "ok" : "no",
+    "expected" : "feed.bottle.finish",
+    "text" : "bottle done, three quarters left over",
+    "deciding" : "event_type",
+    "got" : "Fell asleep"
+  },
+  {
+    "deciding" : "event_type",
+    "ok" : "no",
+    "expected" : "feed.bottle.start",
+    "got" : "Fell asleep",
+    "tier" : "auto",
+    "text" : "gave her a bottle of formula an hour ago"
+  },
+  {
+    "ok" : "no",
+    "expected" : "feed.bottle.finish",
+    "got" : "Fell asleep",
+    "tier" : "auto",
+    "text" : "bottle done, drank half a bottle",
+    "deciding" : "event_type"
+  },
+  {
+    "tier" : "auto",
+    "text" : "bottle done, drank three quarters",
+    "ok" : "no",
+    "expected" : "feed.bottle.finish",
+    "got" : "Fell asleep",
+    "deciding" : "event_type"
+  },
+  {
+    "text" : "he woke from his nap",
+    "expected" : "sleep.end",
+    "deciding" : "event_type",
+    "got" : "Fell asleep",
+    "tier" : "auto",
+    "ok" : "no"
+  },
+  {
+    "expected" : "sleep.end",
+    "got" : "Fell asleep",
+    "deciding" : "event_type",
+    "tier" : "auto",
+    "ok" : "no",
+    "text" : "baby's up"
+  },
+  {
+    "expected" : "feed.bottle.single",
+    "got" : "Fell asleep",
+    "deciding" : "event_type",
+    "text" : "she had a bottle an hour ago, drank half",
+    "ok" : "no",
+    "tier" : "auto"
+  },
+  {
+    "tier" : "auto",
+    "ok" : "no",
+    "text" : "big poop about fifteen minutes ago",
+    "expected" : "diaper",
+    "deciding" : "event_type",
+    "got" : "Fell asleep"
+  }
+]
