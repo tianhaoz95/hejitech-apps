@@ -5,7 +5,8 @@
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tianhaoz95/feedback-kit.git"
+    "url": "git+https://github.com/tianhaoz95/hejitech-apps.git",
+    "directory": "projects/feedbackkit"
   },
   "homepage": "https://github.com/tianhaoz95/feedback-kit#readme",
   "bugs": {

@@ -51,7 +51,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-GH_REPO="tianhaoz95/feedback-kit"
+GH_REPO="${GITHUB_REPOSITORY:-tianhaoz95/hejitech-apps}"   # releases live in the monorepo (tags feedbackkit-…)
 BUILD_DIR="$REPO_ROOT/build/release-portal-macos"
 DERIVED_DATA="$BUILD_DIR/DerivedData"
 APP_NAME="FeedbackKit Portal.app"

@@ -19,8 +19,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tianhaoz95/feedback-kit.git",
-    "directory": "cli"
+    "url": "git+https://github.com/tianhaoz95/hejitech-apps.git",
+    "directory": "projects/feedbackkit/cli"
   },
   "homepage": "https://github.com/tianhaoz95/feedback-kit#readme",
   "bugs": {

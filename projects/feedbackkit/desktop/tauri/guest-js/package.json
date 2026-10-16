@@ -6,10 +6,17 @@
   "homepage": "https://github.com/tianhaoz95/feedback-kit/tree/main/desktop/tauri#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tianhaoz95/feedback-kit.git",
-    "directory": "desktop/tauri/guest-js"
+    "url": "git+https://github.com/tianhaoz95/hejitech-apps.git",
+    "directory": "projects/feedbackkit/desktop/tauri/guest-js"
   },
-  "keywords": ["tauri", "feedback", "bug-report", "screenshot", "annotation", "feedbackkit"],
+  "keywords": [
+    "tauri",
+    "feedback",
+    "bug-report",
+    "screenshot",
+    "annotation",
+    "feedbackkit"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -19,7 +26,9 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "lint": "tsc --noEmit",

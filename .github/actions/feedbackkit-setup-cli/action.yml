@@ -16,4 +16,4 @@ runs:
         cd projects/feedbackkit/cli
         npm ci --no-audit --no-fund
         npm run build
-        echo "FEEDBACKKIT_CLI=node $GITHUB_WORKSPACE/cli/dist/index.js" >> "$GITHUB_ENV"
+        echo "FEEDBACKKIT_CLI=node $GITHUB_WORKSPACE/projects/feedbackkit/cli/dist/index.js" >> "$GITHUB_ENV"
