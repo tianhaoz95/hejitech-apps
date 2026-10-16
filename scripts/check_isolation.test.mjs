@@ -7,6 +7,7 @@ const backends = {
   waypack: { schema: "public", bucket: "waypack" },
   weehours: { schema: "weehours", bucket: "weehours" },
   foo: { schema: "foo", bucket: "foo" },
+  ondevice: { schema: "", bucket: "" }, // BACKEND=none
 };
 const found = (path, text, project = "foo") => checkFile(path, text, project, backends);
 const ok = (path, text, project) => assert.deepEqual(found(path, text, project), []);
@@ -45,4 +46,9 @@ test("workflows use only their own CI names or the Apple team ones", () => {
   assert.equal(checkWorkflow("${{ vars.SUPABASE_URL }}", "foo").length, 1);
   assert.equal(checkWorkflow("${{ secrets.WEEHOURS_TOKEN }}", "foo").length, 1);
   assert.deepEqual(checkWorkflow("${{ secrets.SPARKLE_PRIVATE_KEY }}", "waypack"), [], "grandfathered");
+});
+
+test("a project without a backend claims no schema or bucket", () => {
+  ok("projects/foo/a.ts", `fetch(url + "/storage/v1/object/foo/a.wav", { headers: { "Accept-Profile": "foo" } })`);
+  bad("projects/foo/README.md", "see projects/ondevice/README.md", /projects\/ondevice/);
 });

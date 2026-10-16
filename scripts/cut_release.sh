@@ -5,6 +5,8 @@
 #   NAME, TAG_PREFIX, LEGACY_TAG_PREFIX (optional), VERSION_FILE (pubspec.yaml, package.json, or an
 #   XcodeGen project.yml whose MARKETING_VERSION is the version),
 #   CI_WORKFLOW + CI_PATHS, RELEASE_WORKFLOWS, REQUIRED_SECRETS, LATEST (true for one project only)
+#   and optionally a bash function release_check <version> that must pass first (e.g. Voxbrief's
+#   in-app What's New has to describe the version being released)
 # Pushes to main deploy Cloudflare Workers (Workers Builds), so the version-bump push ships them.
 #
 #   scripts/cut_release.sh waypack                 # next patch (first release: the version file's)
@@ -146,6 +148,10 @@ fi
 # Never go below what the version file (and so TestFlight) already has.
 if [ "$NEXT" != "$FILE_VERSION" ] && ! newer "$NEXT" "$FILE_VERSION"; then
   die "$NEXT is older than $VERSION_FILE's $FILE_VERSION"
+fi
+
+if declare -F release_check >/dev/null; then
+  release_check "$NEXT" || die "$CONFIG: release_check $NEXT failed"
 fi
 
 echo "==> releasing $NAME $TAG (last: ${LAST_TAG:-none}; $VERSION_FILE $FILE_LINE)"

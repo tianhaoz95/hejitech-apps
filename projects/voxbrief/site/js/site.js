@@ -359,7 +359,7 @@
   // 04. DEVELOPER CLI TERMINAL TAB SWITCHER
   // ==========================================================================
   const CLI_COMMANDS = {
-    setup: `# 1. Clone repository\ngit clone https://github.com/tianhaoz95/voxbrief.git\ncd voice-note\n\n# 2. Generate Xcode project via XcodeGen\nxcodegen generate\n\n# 3. Resolve WhisperKit & MLX dependencies\nxcodebuild -resolvePackageDependencies -project Voxbrief.xcodeproj -scheme Voxbrief`,
+    setup: `# 1. Clone repository\ngit clone https://github.com/tianhaoz95/hejitech-apps.git\ncd hejitech-apps/projects/voxbrief\n\n# 2. Generate Xcode project via XcodeGen\nxcodegen generate\n\n# 3. Resolve WhisperKit & MLX dependencies\nxcodebuild -resolvePackageDependencies -project Voxbrief.xcodeproj -scheme Voxbrief`,
     test: `# Run full test suite across macOS & iOS\n./scripts/run_unit_tests.sh\n\n# Or run specific test directly:\nxcodebuild test \\\n  -project Voxbrief.xcodeproj \\\n  -scheme VoxbriefMac \\\n  -destination 'platform=macOS' \\\n  CODE_SIGNING_ALLOWED=NO`,
     mac: `# Run native macOS menu bar app with ⌥ Space global hotkey:\n./scripts/run_mac.sh\n\n# Or build release archive locally:\n./scripts/release-mac.sh`
   };

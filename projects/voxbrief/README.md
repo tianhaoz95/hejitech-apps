@@ -1,9 +1,12 @@
 # Voxbrief: iOS & watchOS Voice Idea Capture & On-Device AI Cleanup
 
-[![Unit Tests](https://github.com/tianhaoz95/voxbrief/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/tianhaoz95/voxbrief/actions/workflows/unit-tests.yml)
-[![Release to TestFlight](https://github.com/tianhaoz95/voxbrief/actions/workflows/testflight.yml/badge.svg)](https://github.com/tianhaoz95/voxbrief/actions/workflows/testflight.yml)
-[![Release (macOS)](https://github.com/tianhaoz95/voxbrief/actions/workflows/release-mac.yml/badge.svg)](https://github.com/tianhaoz95/voxbrief/actions/workflows/release-mac.yml)
-[![Deploy Landing Page to GitHub Pages](https://github.com/tianhaoz95/voxbrief/actions/workflows/deploy_pages.yml/badge.svg)](https://github.com/tianhaoz95/voxbrief/actions/workflows/deploy_pages.yml)
+[![Voxbrief CI](https://github.com/tianhaoz95/hejitech-apps/actions/workflows/voxbrief-ci.yml/badge.svg)](https://github.com/tianhaoz95/hejitech-apps/actions/workflows/voxbrief-ci.yml)
+[![TestFlight](https://github.com/tianhaoz95/hejitech-apps/actions/workflows/voxbrief-testflight.yml/badge.svg)](https://github.com/tianhaoz95/hejitech-apps/actions/workflows/voxbrief-testflight.yml)
+[![Mac DMG](https://github.com/tianhaoz95/hejitech-apps/actions/workflows/voxbrief-mac-release.yml/badge.svg)](https://github.com/tianhaoz95/hejitech-apps/actions/workflows/voxbrief-mac-release.yml)
+
+Part of the [HEJI apps monorepo](https://github.com/tianhaoz95/hejitech-apps) (`projects/voxbrief`); it
+moved here from `tianhaoz95/voxbrief` (archived, with the releases up to v1.26.3). Site:
+https://tianhaoz95.github.io/hejitech-apps/voxbrief/site/
 
 **Voxbrief** is a companion product for iOS and Apple Watch designed to effortlessly capture thoughts and ideas on the go.
 

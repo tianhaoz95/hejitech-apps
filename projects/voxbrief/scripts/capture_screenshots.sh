@@ -314,7 +314,7 @@ if [[ "$CAPTURE_WATCH" == "true" ]]; then
   echo "Apple Watch Screenshots ($WATCH_OUTPUT_DIR):"
   ls -lh "$WATCH_OUTPUT_DIR"/*.png 2>/dev/null | awk '{print "  - " $9 " (" $5 ")"}' || true
 fi
-if [[ "$SKIP_PROMO" != "true" && -d "$REPO_ROOT/docs/assets/promo" ]]; then
-  echo "Promotional Graphics ($REPO_ROOT/docs/assets/promo):"
-  ls -lh "$REPO_ROOT/docs/assets/promo"/*.png 2>/dev/null | awk '{print "  - " $9 " (" $5 ")"}' || true
+if [[ "$SKIP_PROMO" != "true" && -d "$REPO_ROOT/site/assets/promo" ]]; then
+  echo "Promotional Graphics ($REPO_ROOT/site/assets/promo):"
+  ls -lh "$REPO_ROOT/site/assets/promo"/*.png 2>/dev/null | awk '{print "  - " $9 " (" $5 ")"}' || true
 fi

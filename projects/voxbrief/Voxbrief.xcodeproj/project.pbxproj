@@ -64,6 +64,7 @@
 		4DBFA9233C26DDEB7049630D /* Qwen3-0.6B-4bit in Resources */ = {isa = PBXBuildFile; fileRef = E7C3731F89B9CAC7ECDD9D86 /* Qwen3-0.6B-4bit */; };
 		4F7C18686C7D1DC467E52161 /* AudioRecordingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E37077EC9E2F16A4D7C2E54 /* AudioRecordingService.swift */; };
 		51CC7CC68DBE2F229C298885 /* MLXLLM in Frameworks */ = {isa = PBXBuildFile; productRef = 5217B63305D7FA96D559DE40 /* MLXLLM */; };
+		51DD55546D795135739D6785 /* UpdateCheckerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B333509FBA0A166F5102396F /* UpdateCheckerTests.swift */; };
 		5208B51DEF855BC15E07468D /* WatchAudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BF494983C29E89D921ABACA /* WatchAudioRecorder.swift */; };
 		5475D21B8623146368E81F53 /* VoxbriefLogoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEAB8ED548C10EF91501EFE9 /* VoxbriefLogoView.swift */; };
 		55E5EF8D8F25F9CB2F004DF9 /* KeyboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 479CB7D3F321802C49EF5564 /* KeyboardView.swift */; };
@@ -366,6 +367,7 @@
 		B1862EF9B360D46D07DCD314 /* PlatformUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatformUI.swift; sourceTree = "<group>"; };
 		B2CE21315E374FACF9C681E9 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		B32C11C7D6037937A9F59B01 /* VoxbriefWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoxbriefWatchApp.swift; sourceTree = "<group>"; };
+		B333509FBA0A166F5102396F /* UpdateCheckerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateCheckerTests.swift; sourceTree = "<group>"; };
 		B4D8DB31CA5D5DAFA4A7FB0A /* DictionaryCorrectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryCorrectorTests.swift; sourceTree = "<group>"; };
 		B890732A2E9F6A9C8361C2B2 /* TemplatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplatesView.swift; sourceTree = "<group>"; };
 		B8DA59D4AB6880238B419BA0 /* GlobalHotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalHotkeyManager.swift; sourceTree = "<group>"; };
@@ -692,6 +694,7 @@
 			isa = PBXGroup;
 			children = (
 				45BC8B9500EFFF14E2F325BD /* FeedbackShortcutTests.swift */,
+				B333509FBA0A166F5102396F /* UpdateCheckerTests.swift */,
 			);
 			path = MacUnitTests;
 			sourceTree = "<group>";
@@ -1309,6 +1312,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				EB714002C57569EB559FA748 /* FeedbackShortcutTests.swift in Sources */,
+				51DD55546D795135739D6785 /* UpdateCheckerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1549,7 +1553,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.26.3;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1649,7 +1653,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.26.3;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

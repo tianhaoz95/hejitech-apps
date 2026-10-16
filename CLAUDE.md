@@ -1,7 +1,7 @@
 # HEJI projects monorepo
 
-Several products live in `projects/<name>/` (`waypack`, `weehours`, `feedbackkit`), sharing one Supabase
-project (FeedbackKit keeps its own: `BACKEND=own`) (`supabase/`, read `supabase/README.md` before any schema change), npm workspaces and CI
+Several products live in `projects/<name>/` (`waypack`, `weehours`, `feedbackkit`, `voxbrief`), sharing one Supabase
+project (FeedbackKit keeps its own: `BACKEND=own`; Voxbrief has none: `BACKEND=none`) (`supabase/`, read `supabase/README.md` before any schema change), npm workspaces and CI
 plumbing. Layout and how to add a project: `README.md`. Keep each project self-contained; put
 something at the root only when it is genuinely shared. Each project has its own `CLAUDE.md`
 (`projects/<name>/CLAUDE.md`, loaded when you work there) for its commands, architecture and
@@ -23,7 +23,7 @@ The script keeps every surface on the same version and refuses to ship from a di
 or CI-red `main`.
 
 ```sh
-scripts/cut_release.sh waypack --dry-run        # always look first (same for weehours)
+scripts/cut_release.sh waypack --dry-run        # always look first (same for the others)
 scripts/cut_release.sh waypack                  # next patch; or: minor | major | 1.4.0
 scripts/cut_release.sh waypack minor --notes "…" --watch
 ```
@@ -40,3 +40,9 @@ For Wee Hours it bumps `MARKETING_VERSION` in `projects/weehours/apps/ios/projec
 (Cloudflare deploys the site + MCP Worker), and publishes `weehours-v<version>`, which runs
 `weehours-testflight.yml` with the same team-wide Apple signing secrets. Setup:
 `projects/weehours/docs/DEPLOY.md`.
+
+For Voxbrief it bumps `MARKETING_VERSION` in `projects/voxbrief/project.yml` (refusing until the
+in-app What's New describes the version), and publishes `voxbrief-v<version>`, which runs
+`voxbrief-testflight.yml` and `voxbrief-mac-release.yml` (notarized DMG on the release; the Mac
+app finds it by listing `voxbrief-v` releases, not `releases/latest`). See
+`projects/voxbrief/CLAUDE.md`.

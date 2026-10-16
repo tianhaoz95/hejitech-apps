@@ -13,7 +13,7 @@ Enforced (CI fails):
 |---|---|
 | Tables, views, functions in the project's own schema (`<project>`), its own bucket (`<project>`); nothing in `public`; no references to other projects' schemas; nothing created in `auth`/`storage`; no triggers on `auth.users`; foreign keys only to its own schema and `auth.users` | `scripts/check_supabase.mjs` |
 | Its migrations (`<ts>_<project>_*.sql`) and seed (`seeds/<project>.sql`) replay **alone** on an empty Supabase project | `scripts/graduation_check.sh <project>` |
-| Its backend is declared in `projects/<project>/backend.env`; the Supabase ref, URL and publishable key appear only in the files listed there (`BACKEND_FILES`, all inside the project) | `scripts/check_isolation.mjs` |
+| Its backend is declared in `projects/<project>/backend.env`; the Supabase ref, URL and publishable key appear only in the files listed there (`BACKEND_FILES`, all inside the project). `BACKEND=shared` (this project), `own` (graduated, e.g. FeedbackKit) or `none` (no backend, e.g. Voxbrief: on-device only, nothing to graduate) | `scripts/check_isolation.mjs` |
 | No paths into `projects/<other>/`, no `@<other>/` packages, no other project's schema or bucket in Supabase calls (`Accept-Profile`, `db.schema`, `.schema()`, `storage.from()`, `/storage/v1/object/…`) | `scripts/check_isolation.mjs` |
 | Its workflows (`<project>-*.yml`) use only `<PROJECT>_…` variables/secrets plus the team-wide Apple signing ones: backend settings can't be shared by accident | `scripts/check_isolation.mjs` |
 

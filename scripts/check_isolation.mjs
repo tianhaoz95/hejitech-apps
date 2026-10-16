@@ -48,6 +48,7 @@ export function checkFile(path, text, project, backends) {
     if (new RegExp(String.raw`["'\s(]@${q}/[\w-]`).test(text)) problems.push(`uses @${q}/ packages (another project)`);
     const { schema, bucket } = backends[q];
     const names = [...new Set([schema !== "public" && schema, bucket].filter(Boolean))].join("|");
+    if (!names) continue; // BACKEND=none: nothing of theirs to misuse
     const supa = [
       String.raw`(?:Accept|Content)-Profile["']?\s*[:,]\s*["']?(?:${names})\b`,
       String.raw`\bschema\s*[:=]\s*["'](?:${names})["']`,
@@ -90,7 +91,13 @@ export function checkRepo(root) {
     const file = join(root, "projects", p, "backend.env");
     if (!existsSync(file)) { problems.push(`projects/${p}: missing backend.env (copy projects/weehours/backend.env)`); continue; }
     const b = (backends[p] = readBackend(file));
-    if (!["shared", "own"].includes(b.backend)) problems.push(`projects/${p}/backend.env: BACKEND must be shared or own`);
+    if (!["shared", "own", "none"].includes(b.backend)) problems.push(`projects/${p}/backend.env: BACKEND must be shared, own or none`);
+    // none: no backend at all (on-device apps); it may still call third-party services.
+    if (b.backend === "none") {
+      for (const k of ["ref", "url", "key", "schema", "bucket"]) if (b[k]) problems.push(`projects/${p}/backend.env: BACKEND=none but ${k} is set`);
+      if (b.files.length) problems.push(`projects/${p}/backend.env: BACKEND=none lists BACKEND_FILES`);
+      continue;
+    }
     for (const k of ["ref", "url", "key"]) if (!b[k]) problems.push(`projects/${p}/backend.env: SUPABASE_${k === "key" ? "PUBLISHABLE_KEY" : k.toUpperCase()} is empty`);
     if (b.url && b.ref && !b.url.includes(b.ref)) problems.push(`projects/${p}/backend.env: SUPABASE_URL doesn't match SUPABASE_REF`);
     // On the shared project, schema and bucket are named after the project; an own project is free.
@@ -131,7 +138,7 @@ export function checkRepo(root) {
     if (owner && backends[owner]) {
       const b = backends[owner];
       for (const m of text.matchAll(SUPABASE_HOST)) {
-        if (m[1] !== b.ref && !b.external.includes(m[1])) problems.push(`${f}: Supabase project ${m[1]} isn't ${owner}'s backend (${b.ref}); list third-party services in EXTERNAL_SUPABASE_HOSTS`);
+        if ((!b.ref || m[1] !== b.ref) && !b.external.includes(m[1])) problems.push(`${f}: Supabase project ${m[1]} isn't ${owner}'s backend (${b.ref || "none"}); list third-party services in EXTERNAL_SUPABASE_HOSTS`);
       }
       checkFile(f, text, owner, backends).forEach((msg) => problems.push(`${f}: ${msg}`));
     }

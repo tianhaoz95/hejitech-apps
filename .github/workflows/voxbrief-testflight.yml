@@ -1,0 +1,94 @@
+name: Voxbrief → TestFlight
+
+# Publishing a GitHub Release tagged voxbrief-v<version> (scripts/cut_release.sh voxbrief) uploads
+# that version (iPhone app with the watch app, widgets and keyboard embedded) to TestFlight; other
+# projects' releases are skipped. Also from the Actions tab (then the version is whatever
+# projects/voxbrief/project.yml says). Deliberately not on push: it uploads a real build.
+on:
+  release:
+    types: [published]
+  workflow_dispatch: {}
+
+concurrency:
+  group: voxbrief-testflight
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: projects/voxbrief
+
+jobs:
+  ios:
+    name: Build & upload iOS
+    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'voxbrief-v')
+    runs-on: macos-26
+    timeout-minutes: 60
+    environment:
+      name: TestFlight
+      url: https://testflight.apple.com
+    steps:
+      - uses: actions/checkout@v4
+
+      # App Store Connect requires the iOS 26 SDK (Xcode 26+).
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "26"
+
+      - name: Version matches the release tag
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          V="$(sed -nE 's/^[[:space:]]*MARKETING_VERSION:[[:space:]]*"?([0-9.]+)"?.*/\1/p' project.yml | head -1)"
+          echo "MARKETING_VERSION $V"
+          if [ -n "$TAG" ] && [ "voxbrief-v$V" != "$TAG" ]; then
+            echo "::error::project.yml says $V but the release is $TAG (cut releases with scripts/cut_release.sh voxbrief)"; exit 1
+          fi
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      # The bundled Qwen3-0.6B-4bit on-device LLM (~337MB) is git-ignored; without it the archive
+      # would silently ship without its always-available bundled model tier.
+      - name: Cache bundled on-device model
+        id: model-cache
+        uses: actions/cache@v4
+        with:
+          path: projects/voxbrief/VoxbriefApp/Resources/Models/Qwen3-0.6B-4bit
+          key: voxbrief-qwen3-0.6b-4bit-mlx-community-v1
+
+      - name: Download bundled on-device model (Qwen3-0.6B-4bit)
+        if: steps.model-cache.outputs.cache-hit != 'true'
+        run: |
+          python3 -m pip install --break-system-packages --quiet -U "huggingface_hub"
+          hf download mlx-community/Qwen3-0.6B-4bit \
+            --local-dir VoxbriefApp/Resources/Models/Qwen3-0.6B-4bit
+
+      # The team-wide HEJI identities every app ships with: Apple Distribution (export) plus the
+      # pinned Apple Development one (the archive step signs SPM targets as development). Never let
+      # -allowProvisioningUpdates mint new certificates on an empty runner keychain.
+      - uses: ./.github/actions/apple-signing
+        with:
+          p12-base64: ${{ secrets.SIGNING_P12_BASE64 }}
+          p12-password: ${{ secrets.SIGNING_P12_PASSWORD }}
+          asc-key-id: ${{ secrets.ASC_KEY_ID }}
+          asc-key-p8-base64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+          dev-p12-base64: ${{ secrets.DEV_SIGNING_P12_BASE64 }}
+          dev-p12-password: ${{ secrets.DEV_SIGNING_P12_PASSWORD }}
+
+      # Build numbers are UTC timestamps (as before the monorepo).
+      - name: Build and upload to TestFlight
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: ASC_KEY_PATH="$FA_KEY_LOCATION" ./scripts/release_testflight.sh
+
+      - name: Clean up signing material
+        if: always()
+        run: |
+          rm -rf "$RUNNER_TEMP/private_keys"
+          [ -n "${SIGNING_KEYCHAIN_PATH:-}" ] && security delete-keychain "$SIGNING_KEYCHAIN_PATH" || true

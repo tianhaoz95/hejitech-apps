@@ -9,6 +9,7 @@ import "./custom.css";
 const FEEDBACK: Record<string, { projectKey: string; color: string }> = {
   waypack: { projectKey: "pk_88dcc559540fd5cea57354c41dc455fcfd13", color: "#1D6FE0" },
   weehours: { projectKey: "pk_bdbb442ad21b2c2b2a6d63bdbd8621aa1b79", color: "#6d5bd0" },
+  voxbrief: { projectKey: "pk_ffa7308d843fd670a9bbd1d67ad0ebf54597", color: "#1D4ED8" },
 };
 const ENDPOINT = "https://gpucoladcyvijefdjudf.supabase.co/functions/v1/ingest-feedback";
 

@@ -4,12 +4,14 @@ import Foundation
 ///
 /// Deliberately not Sparkle: at this app's current size, hitting GitHub's public Releases API
 /// directly and opening the `.dmg`/release page in the browser is far less to set up and maintain
-/// than an appcast feed plus EdDSA signing keys, for a "click to download" experience that's good
-/// enough before this app has its own release pipeline. See `scripts/cut_release.sh` for how a
-/// release (tag `vX.Y.Z`, e.g. the existing `v0.1.0`/`v0.2.0`) gets published today, driving the
-/// iOS TestFlight workflow -- once a future Mac release step attaches a `.dmg` asset to one of
-/// those same releases, `checkNow()` starts finding it with no changes needed here. Until then,
-/// this will only ever report `.upToDate` (no macOS asset to offer), exactly as expected.
+/// than an appcast feed plus EdDSA signing keys.
+///
+/// Voxbrief lives in the HEJI monorepo (`tianhaoz95/hejitech-apps`), which publishes releases for
+/// several apps: the repo's "latest" release belongs to another app, so this lists recent releases
+/// and takes the newest published `voxbrief-v<version>` one with a `.dmg` attached (the root
+/// `scripts/cut_release.sh voxbrief` creates it; `voxbrief-mac-release.yml` attaches the DMG).
+/// Builds up to 1.26.3 still check the archived `tianhaoz95/voxbrief` repo, which got a final
+/// release pointing them here.
 @MainActor
 public final class UpdateChecker: ObservableObject {
     public static let shared = UpdateChecker()
@@ -36,7 +38,7 @@ public final class UpdateChecker: ObservableObject {
     private let session: URLSession
 
     public init(
-        repoSlug: String = "tianhaoz95/voxbrief",
+        repoSlug: String = "tianhaoz95/hejitech-apps",
         currentVersion: String = (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "0.0.0",
         session: URLSession = .shared
     ) {
@@ -48,7 +50,7 @@ public final class UpdateChecker: ObservableObject {
     public func checkNow() async {
         state = .checking
         do {
-            let url = URL(string: "https://api.github.com/repos/\(repoSlug)/releases/latest")!
+            let url = URL(string: "https://api.github.com/repos/\(repoSlug)/releases?per_page=100")!
             var request = URLRequest(url: url)
             request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
 
@@ -57,17 +59,17 @@ public final class UpdateChecker: ObservableObject {
                 throw URLError(.badServerResponse)
             }
 
-            let release = try JSONDecoder().decode(GitHubRelease.self, from: data)
-            let latestVersion = Self.stripLeadingV(release.tagName)
-
-            guard let dmgAsset = release.assets.first(where: { $0.name.lowercased().hasSuffix(".dmg") }),
+            let releases = try JSONDecoder().decode([GitHubRelease].self, from: data)
+            guard let release = Self.newestMacRelease(in: releases),
+                  let dmgAsset = release.assets.first(where: { $0.name.lowercased().hasSuffix(".dmg") }),
                   let downloadURL = URL(string: dmgAsset.browserDownloadUrl),
                   let releasePageURL = URL(string: release.htmlUrl) else {
-                // No macOS build attached to the latest release yet -- nothing to offer.
+                // No Voxbrief release with a macOS build attached yet -- nothing to offer.
                 state = .upToDate
                 lastCheckedAt = Date()
                 return
             }
+            let latestVersion = Self.stripTagPrefix(release.tagName)
 
             if Self.isVersion(latestVersion, newerThan: currentVersion) {
                 state = .updateAvailable(AvailableUpdate(version: latestVersion, releasePageURL: releasePageURL, downloadURL: downloadURL))
@@ -97,27 +99,44 @@ public final class UpdateChecker: ObservableObject {
     }
 
     static func versionComponents(_ version: String) -> [Int] {
-        stripLeadingV(version).split(separator: ".").map { Int($0) ?? 0 }
+        stripTagPrefix(version).split(separator: ".").map { Int($0) ?? 0 }
     }
 
-    static func stripLeadingV(_ tag: String) -> String {
-        tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
+    /// Voxbrief's release tags in the monorepo: `voxbrief-v1.26.4`.
+    static let tagPrefix = "voxbrief-v"
+
+    /// The newest published (not draft, not prerelease) Voxbrief release that has a `.dmg`.
+    static func newestMacRelease(in releases: [GitHubRelease]) -> GitHubRelease? {
+        releases
+            .filter { $0.tagName.hasPrefix(tagPrefix) && !$0.draft && !$0.prerelease }
+            .filter { $0.assets.contains { $0.name.lowercased().hasSuffix(".dmg") } }
+            .max { isVersion($1.tagName, newerThan: $0.tagName) }
+    }
+
+    /// `voxbrief-v1.2.3` (monorepo tags) or `v1.2.3` (the archived repo's) → `1.2.3`.
+    static func stripTagPrefix(_ tag: String) -> String {
+        var t = tag
+        if t.hasPrefix(tagPrefix) { t = String(t.dropFirst(tagPrefix.count)) }
+        return t.hasPrefix("v") ? String(t.dropFirst()) : t
     }
 }
 
-private struct GitHubRelease: Decodable {
+struct GitHubRelease: Decodable {
     let tagName: String
     let htmlUrl: String
+    let draft: Bool
+    let prerelease: Bool
     let assets: [GitHubReleaseAsset]
 
     enum CodingKeys: String, CodingKey {
         case tagName = "tag_name"
         case htmlUrl = "html_url"
+        case draft, prerelease
         case assets
     }
 }
 
-private struct GitHubReleaseAsset: Decodable {
+struct GitHubReleaseAsset: Decodable {
     let name: String
     let browserDownloadUrl: String
 

@@ -42,6 +42,16 @@ hero:
   </div>
 </a>
 
+<a class="heji-app" href="./voxbrief/">
+  <img src="/voxbrief/icon.png" alt="" width="64" height="64">
+  <div class="heji-app-body">
+    <h3>Voxbrief</h3>
+    <p>Speak an idea, get a clean note. One tap on Apple Watch records it; the iPhone or Mac turns it into structured Markdown with Whisper and Qwen3 running on the device. No account, no server.</p>
+    <span class="heji-tags"><span>iPhone</span><span>Apple Watch</span><span>Mac</span><span>On-device AI</span></span>
+    <span class="heji-links"><span>Developer docs →</span></span>
+  </div>
+</a>
+
 <a class="heji-app" href="https://tianhaoz95.github.io/hejitech-apps/feedbackkit/" target="_self">
   <img src="/feedbackkit-logo.png" alt="" width="64" height="64">
   <div class="heji-app-body">
@@ -54,7 +64,7 @@ hero:
 
 </div>
 
-<p class="heji-visit">Visit the apps: <a href="https://waypack.hejitech.workers.dev">waypack.hejitech.workers.dev</a> · <a href="https://weehours.hejitech.workers.dev">weehours.hejitech.workers.dev</a></p>
+<p class="heji-visit">Visit the apps: <a href="https://waypack.hejitech.workers.dev">waypack.hejitech.workers.dev</a> · <a href="https://weehours.hejitech.workers.dev">weehours.hejitech.workers.dev</a> · <a href="https://tianhaoz95.github.io/hejitech-apps/voxbrief/site/" target="_self">Voxbrief</a></p>
 
 </div>
 

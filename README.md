@@ -9,6 +9,7 @@ one npm workspace and the CI plumbing.
 | Waypack | Offline trip bundles: MCP server + Worker site, Flutter app (iOS, Android, macOS) | [`projects/waypack`](projects/waypack/README.md) |
 | Wee Hours | Hands-free newborn log: iPhone + watch app with on-device voice (Swift), Even G2 glasses app, site + MCP Worker | [`projects/weehours`](projects/weehours/README.md) |
 | FeedbackKit | In-app feedback with a closed fix loop: SDKs (iOS/macOS/watchOS, Android, web, Flutter, React Native, desktop), dashboard, Portal apps, CLI + MCP. Own Supabase project (`BACKEND=own`) | [`projects/feedbackkit`](projects/feedbackkit/README.md) |
+| Voxbrief | Voice memos on Apple Watch → clean Markdown notes on iPhone/Mac, transcribed and rewritten on the device (Swift, Whisper + Qwen3). No backend (`BACKEND=none`) | [`projects/voxbrief`](projects/voxbrief/README.md) |
 
 ## Layout
 ```

@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # Build, sign, notarize, and attach the VoxbriefMac .dmg to an existing GitHub release.
 #
-#   ./scripts/release-mac.sh                  # attach to the latest published release
-#   ./scripts/release-mac.sh --tag v0.3.0     # a specific tag
+#   ./scripts/release-mac.sh                  # attach to the newest voxbrief-v release
+#   ./scripts/release-mac.sh --tag voxbrief-v1.26.4   # a specific tag
 #   ./scripts/release-mac.sh --skip-build     # reuse the bundle already built
 #   ./scripts/release-mac.sh --no-upload      # build, sign, notarize only — don't attach
 #   ./scripts/release-mac.sh --check          # verify credentials resolve, build nothing
 #
-# The release itself is created by scripts/cut_release.sh (the same `vX.Y.Z` tag that triggers
-# .github/workflows/testflight.yml) -- this script only attaches the signed, notarized DMG to a
-# release that already exists, the same division of labor as scripts/release_testflight.sh
-# (which also never creates a release, just uploads a build in response to one that already
-# fired). .github/workflows/release-mac.yml runs this same script in CI on `release: published`.
+# The release itself is created by the monorepo's scripts/cut_release.sh voxbrief (the same
+# `voxbrief-vX.Y.Z` tag that triggers .github/workflows/voxbrief-testflight.yml) -- this script only
+# attaches the signed, notarized DMG to a release that already exists, the same division of labor
+# as scripts/release_testflight.sh. .github/workflows/voxbrief-mac-release.yml runs this same script
+# in CI on `release: published`.
 #
 # Signing identity: a "Developer ID Application" certificate in the keychain (FA_MAC_IDENTITY
 # overrides). Notarization credentials: see scripts/sign-desktop.sh's header -- this script only
@@ -23,7 +23,9 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 ROOT="$PWD"
-REPO="tianhaoz95/voxbrief"
+# The HEJI monorepo publishes releases for several apps: Voxbrief's are the voxbrief-v ones.
+REPO="${GITHUB_REPOSITORY:-tianhaoz95/hejitech-apps}"
+TAG_PREFIX="voxbrief-v"
 BUILD_DIR="$ROOT/build/release-mac"
 APP="$BUILD_DIR/Build/Products/Release/VoxbriefMac.app"
 
@@ -80,8 +82,10 @@ if [ "$NO_UPLOAD" -eq 0 ] && [ "$CHECK_ONLY" -eq 0 ]; then
   gh auth status >/dev/null 2>&1 || [ -n "$TOKEN" ] || die "not logged in to gh and no GH_TOKEN set"
 
   if [ -z "$TAG" ]; then
-    TAG="$(gh release view --repo "$REPO" --json tagName -q .tagName 2>/dev/null || true)"
-    [ -n "$TAG" ] || die "no tag given and no existing release found — pass --tag, or run scripts/cut_release.sh first."
+    # Not `gh release view` (the repo's latest release belongs to another app).
+    TAG="$(gh release list --repo "$REPO" --limit 100 --exclude-drafts --exclude-pre-releases --json tagName -q '.[].tagName' 2>/dev/null \
+      | grep "^$TAG_PREFIX[0-9]" | sort -V | tail -1 || true)"
+    [ -n "$TAG" ] || die "no tag given and no voxbrief-v release found — pass --tag, or run scripts/cut_release.sh voxbrief first."
   fi
   echo "    release tag     $TAG"
 fi
@@ -97,19 +101,16 @@ if [ "$SKIP_BUILD" -eq 0 ]; then
   say "regenerating the Xcode project and building VoxbriefMac (Release)"
   (cd "$ROOT" && xcodegen generate)
 
-  # project.yml's MARKETING_VERSION is a static "1.1" placeholder never bumped release to
-  # release -- it's what UpdateChecker.swift compares against the latest GitHub release tag to
-  # decide whether an update is available, and what scripts/release-mac.sh's own DMG-naming step
-  # below reads back out. Left at "1.1" it made every "0.x.y" release look OLDER than what's
-  # already installed (SemVer-ish comparison: major 0 < major 1), so the in-app update check
-  # silently never found anything newer, no matter how many releases were cut. Overriding it here
-  # to the actual release tag being built keeps CFBundleShortVersionString in sync with the tag
-  # that names it.
+  # project.yml's MARKETING_VERSION is bumped by cut_release.sh, so it already matches the tag;
+  # passing the tag's version too keeps a re-run against an older tag (workflow_dispatch) honest.
+  # UpdateChecker.swift compares CFBundleShortVersionString against the newest voxbrief-v tag, and
+  # the DMG-naming step below reads it back out.
   MARKETING_VERSION_ARGS=()
   if [ -n "$TAG" ]; then
-    MARKETING_VERSION_ARGS=(MARKETING_VERSION="${TAG#v}")
+    V="${TAG#"$TAG_PREFIX"}"; V="${V#v}"
+    MARKETING_VERSION_ARGS=(MARKETING_VERSION="$V")
   else
-    echo "!! no release tag known at build time (only possible with --no-upload and no --tag) -- MARKETING_VERSION stays at project.yml's placeholder." >&2
+    echo "!! no release tag known at build time (only possible with --no-upload and no --tag) -- MARKETING_VERSION is project.yml's." >&2
   fi
 
   xcodebuild build \
@@ -148,7 +149,7 @@ say "attaching to $TAG"
 [ -n "$TOKEN" ] && export GH_TOKEN="$TOKEN"
 
 gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1 \
-  || die "release $TAG does not exist yet — run scripts/cut_release.sh first"
+  || die "release $TAG does not exist yet — run scripts/cut_release.sh voxbrief first"
 
 # `gh release upload path#label` only sets a display label — the asset's real name (and its
 # download URL) is the local file's own basename, so stage a renamed copy under the name we want

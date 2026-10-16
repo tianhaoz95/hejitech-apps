@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.26.3"
+    public static let currentVersion = "1.26.4"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,28 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.26.4",
+            date: "October 2026",
+            tagline: "A New Home",
+            features: [
+                WhatsNewItem(
+                    icon: "number.circle.fill",
+                    tint: .blue,
+                    title: "One Version Everywhere",
+                    description: "The iPhone, Apple Watch and Mac apps, TestFlight and the Mac download now all show the same version number."
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "arrow.down.app.fill",
+                    tint: .gray,
+                    title: "Mac Updates From the New Home",
+                    description: "Voxbrief moved into the HEJI apps repository; the Mac app now checks there for updates.",
+                    kind: .improvement
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.26.3",
             date: "October 2026",

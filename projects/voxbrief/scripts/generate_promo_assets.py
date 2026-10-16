@@ -6,7 +6,7 @@ gradients, typography, and feature callouts.
 
 Outputs:
   metadata/promotional/
-  docs/assets/promo/
+  site/assets/promo/
 """
 
 import os
@@ -18,7 +18,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 IPHONE_DIR = REPO_ROOT / "metadata" / "screenshots" / "iphone"
 WATCH_DIR = REPO_ROOT / "metadata" / "screenshots" / "watch"
 PROMO_DIR = REPO_ROOT / "metadata" / "promotional"
-DOCS_PROMO_DIR = REPO_ROOT / "docs" / "assets" / "promo"
+DOCS_PROMO_DIR = REPO_ROOT / "site" / "assets" / "promo"
 
 PROMO_DIR.mkdir(parents=True, exist_ok=True)
 DOCS_PROMO_DIR.mkdir(parents=True, exist_ok=True)
@@ -294,7 +294,7 @@ def main():
     parser.add_argument("--iphone-dir", type=Path, default=REPO_ROOT / "metadata" / "screenshots" / "iphone", help="Directory with iPhone screenshots")
     parser.add_argument("--watch-dir", type=Path, default=REPO_ROOT / "metadata" / "screenshots" / "watch", help="Directory with Apple Watch screenshots")
     parser.add_argument("--promo-dir", type=Path, default=REPO_ROOT / "metadata" / "promotional", help="Output directory for promotional composites")
-    parser.add_argument("--docs-dir", type=Path, default=REPO_ROOT / "docs" / "assets" / "promo", help="Docs directory to copy promotional assets to")
+    parser.add_argument("--docs-dir", type=Path, default=REPO_ROOT / "site" / "assets" / "promo", help="Docs directory to copy promotional assets to")
     args = parser.parse_args()
 
     args.promo_dir.mkdir(parents=True, exist_ok=True)

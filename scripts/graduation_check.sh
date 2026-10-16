@@ -12,6 +12,7 @@ PROJECT="${1:-}"
 # shellcheck source=/dev/null
 source "projects/$PROJECT/backend.env"
 if [ "$BACKEND" = own ]; then echo "==> $PROJECT has graduated: its migrations live in projects/$PROJECT/supabase"; exit 0; fi
+if [ "$BACKEND" = none ]; then echo "==> $PROJECT has no backend: nothing to graduate"; exit 0; fi
 
 WORK="$(mktemp -d)"
 trap 'supabase stop --workdir "$WORK" --no-backup >/dev/null 2>&1 || true; rm -rf "$WORK"' EXIT

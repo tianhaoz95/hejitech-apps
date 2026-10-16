@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parent.parent
 # Destinations
 IOS_ICON = ROOT / "VoxbriefApp/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png"
 WATCH_ICON = ROOT / "VoxbriefWatch/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png"
-DOCS_ICON = ROOT / "docs/assets/icon.png"
+DOCS_ICON = ROOT / "site/assets/icon.png"
 
 def render_vwave_icon(size: int = 1024) -> Image.Image:
     # 4x supersampling for razor sharp vector antialiasing
@@ -72,7 +72,7 @@ def main():
     
     DOCS_ICON.parent.mkdir(parents=True, exist_ok=True)
     icon.save(DOCS_ICON, "PNG")
-    print(f"Saved docs icon to {DOCS_ICON}")
+    print(f"Saved site icon to {DOCS_ICON}")
 
 if __name__ == "__main__":
     main()

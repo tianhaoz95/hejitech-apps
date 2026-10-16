@@ -1,0 +1,101 @@
+name: Voxbrief → Mac DMG
+
+# On a published GitHub Release tagged voxbrief-v<version> (other projects' releases are skipped):
+# builds VoxbriefMac, signs it with Developer ID, notarizes + staples it, and attaches
+# Voxbrief-<version>-arm64.dmg to that release. Installed Mac apps find it through
+# UpdateChecker.swift (newest voxbrief-v release with a .dmg). workflow_dispatch re-runs it for an
+# existing tag, or (no_upload) only builds, signs and notarizes to validate the pipeline.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to attach the DMG to, e.g. voxbrief-v1.26.4 (blank = newest voxbrief-v)"
+        required: false
+      no_upload:
+        description: "Build, sign and notarize only; don't attach to a release"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ inputs.no_upload == true && format('voxbrief-mac-validate-{0}', github.run_id) || 'voxbrief-mac-release' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write # attach the DMG to the release
+
+defaults:
+  run:
+    working-directory: projects/voxbrief
+
+jobs:
+  mac:
+    name: Build, notarize & attach DMG
+    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'voxbrief-v')
+    runs-on: macos-26
+    timeout-minutes: 45
+    environment:
+      name: GitHub Releases
+      url: https://github.com/${{ github.repository }}/releases
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "26"
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      # VoxbriefMac bundles the Qwen3-0.6B-4bit model too (see project.yml).
+      - name: Cache bundled on-device model
+        id: model-cache
+        uses: actions/cache@v4
+        with:
+          path: projects/voxbrief/VoxbriefApp/Resources/Models/Qwen3-0.6B-4bit
+          key: voxbrief-qwen3-0.6b-4bit-mlx-community-v1
+
+      - name: Download bundled on-device model (Qwen3-0.6B-4bit)
+        if: steps.model-cache.outputs.cache-hit != 'true'
+        run: |
+          python3 -m pip install --break-system-packages --quiet -U "huggingface_hub"
+          hf download mlx-community/Qwen3-0.6B-4bit \
+            --local-dir VoxbriefApp/Resources/Models/Qwen3-0.6B-4bit
+
+      # The team-wide HEJI Developer ID Application identity (imported, never created by CI) and the
+      # App Store Connect key, which notarizes (apple-signing sets FA_KEY_LOCATION).
+      - uses: ./.github/actions/apple-signing
+        with:
+          p12-base64: ${{ secrets.MAC_SIGNING_P12_BASE64 }}
+          p12-password: ${{ secrets.MAC_SIGNING_P12_PASSWORD }}
+          asc-key-id: ${{ secrets.ASC_KEY_ID }}
+          asc-key-p8-base64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+
+      - name: Build, sign, notarize and attach the DMG
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FA_ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          FA_ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+          NO_UPLOAD: ${{ inputs.no_upload }}
+        run: |
+          ARGS=()
+          [ -n "$TAG" ] && ARGS+=(--tag "$TAG")
+          [ "$NO_UPLOAD" = "true" ] && ARGS+=(--no-upload)
+          ./scripts/release-mac.sh "${ARGS[@]}"
+
+      - name: Upload the DMG as a workflow artifact
+        if: ${{ inputs.no_upload == true }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: voxbrief-macos-installer
+          path: projects/voxbrief/build/release-mac/dmg/*.dmg
+          if-no-files-found: error
+
+      - name: Clean up signing material
+        if: always()
+        run: |
+          rm -rf "$RUNNER_TEMP/private_keys"
+          [ -n "${SIGNING_KEYCHAIN_PATH:-}" ] && security delete-keychain "$SIGNING_KEYCHAIN_PATH" || true
