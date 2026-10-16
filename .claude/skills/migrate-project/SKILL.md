@@ -153,6 +153,35 @@ are ancestors of HEAD). Then restructure in follow-up commits with `git mv`.
   docs site.
 - Stop the old local stack; tell the user what's left that only they can do (dashboards, logins).
 
+## Projects with their own backend and release machinery (from FeedbackKit, 2026-10-16)
+
+- **Own backend:** `backend.env` with `BACKEND=own` (its `supabase/` stays in the project; the
+  shared-project schema/bucket and coordinate rules don't apply; `BACKEND_FILES` may be
+  `"projects/<name>/**"`). Projects that call it list its host in `EXTERNAL_SUPABASE_HOSTS`.
+- **Workflows:** script the port, then review: prefix `paths:`, set workflow-level
+  `defaults.run.working-directory: projects/<name>` *and* prefix every step-level
+  `working-directory` (it's relative to the workspace, not the default) and path inputs
+  (`cache-dependency-path`, artifact `path`, `hashFiles`, rust-cache `workspaces`); move local
+  actions to `.github/actions/<name>-*`; namespace concurrency groups and generic agent labels
+  (`claude` → `<name>-claude`). Validate every file with a YAML parser: a careless regex glues
+  lines together and GitHub only says the workflow is invalid.
+- **Tags:** every family gets the project prefix (`<name>-v…`, `<name>-cli-v…`, rolling betas).
+  Release jobs must require it (an "anything except these families" condition also matches other
+  projects' tags), strip it before parsing versions, and `git describe --match 'v*'` fallbacks must
+  match the prefixed tags (`v*` here are Waypack's). Every `gh release create` gets `--latest=false`.
+- **Repo identity is baked in:** grep for the old `owner/repo`. Release scripts that publish to a
+  hardcoded repo get `${GITHUB_REPOSITORY}`; npm `--provenance` rejects packages whose
+  `repository.url` isn't the publishing repo (set `directory` too); user-facing install links can
+  keep pointing at the archived repo while it still serves old versions.
+- **Signing:** check which identity each release workflow imports (FeedbackKit's TestFlight archive
+  used the Apple *Development* cert) before mapping it onto `SIGNING_P12_*` (distribution) or
+  `DEV_SIGNING_P12_*`.
+- **Cutover:** import with history (no tags), freeze the old repo, port CI with publishes guarded,
+  then in one sitting: push, rotate secrets both repos hold (e.g. a maintenance secret), disable
+  every old workflow (`gh workflow disable`), repoint external services (FeedbackKit `github_repo`
+  and dispatch labels, Supabase's GitHub integration directory, Cloudflare Workers Builds), add a
+  "moved" notice to the old README, then the owner archives it.
+
 ## Moving an already-live project's tables out of `public`
 
 Done for Waypack on 2026-10-16 without downtime: (1) migration creating the empty schema + grants,
