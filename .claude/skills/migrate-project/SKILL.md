@@ -132,8 +132,9 @@ are ancestors of HEAD). Then restructure in follow-up commits with `git mv`.
 - `projects/<name>/docs/index.md` (VitePress home layout) + `pages.json` (sidebar, static sites)
   appear at `https://tianhaoz95.github.io/hejitech-apps/<name>/`; add the app's card to
   `pages/index.md` and its FeedbackKit key to `pages/.vitepress/theme/index.ts`.
-- Update the project's README/CLAUDE.md for the new paths, record the user's decisions in its
-  decisions log, and add it to the root README table and CLAUDE.md.
+- Update the project's README/CLAUDE.md for the new paths (create `projects/<name>/CLAUDE.md` if it
+  has none, plus an `AGENTS.md` symlink to it), record the user's decisions in its decisions log,
+  and add it to the root README table and CLAUDE.md.
 
 ## 8. Production, in this order
 

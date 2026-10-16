@@ -37,6 +37,9 @@ projects/<name>/
 - Copy and adapt rather than invent: `projects/weehours/backend.env`, `release.env`,
   `services/web/{wrangler.jsonc,src/worker,vite.config.ts,.env.production}`, `scripts/test-mcp.mjs`.
 - Start `docs/decisions.md` with the user's choices and why; keep it current.
+- `projects/<name>/CLAUDE.md` (commands, architecture, decided options, pitfalls, releasing; see
+  `projects/weehours/CLAUDE.md`) and `ln -s CLAUDE.md projects/<name>/AGENTS.md` for other agents.
+  Update it whenever a change makes it wrong.
 
 ## 3. Database (shared Supabase project, own schema)
 

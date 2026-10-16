@@ -3,7 +3,10 @@
 Several products live in `projects/<name>/` (`waypack`, `weehours`), sharing one Supabase
 project (`supabase/`, read `supabase/README.md` before any schema change), npm workspaces and CI
 plumbing. Layout and how to add a project: `README.md`. Keep each project self-contained; put
-something at the root only when it is genuinely shared.
+something at the root only when it is genuinely shared. Each project has its own `CLAUDE.md`
+(`projects/<name>/CLAUDE.md`, loaded when you work there) for its commands, architecture and
+decisions; keep this file about what they share. `AGENTS.md` files are symlinks to the `CLAUDE.md`
+next to them, for Codex, Antigravity and other agents.
 
 Sharing the Supabase project is temporary: a project moves to its own once its revenue pays for it,
 and that must stay possible at any time. Never tie projects together: no references to another
