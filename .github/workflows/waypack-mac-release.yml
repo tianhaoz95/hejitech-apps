@@ -60,7 +60,9 @@ jobs:
         run: |
           V="${TAG#waypack-}"; V="${V#v}"
           [[ "$V" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::release tag must look like waypack-v1.2.3 (got $TAG)"; exit 1; }
-          { echo "TAG=$TAG"; echo "BUILD_NAME=$V"; echo "BUILD_NUMBER=$((1000 + GITHUB_RUN_NUMBER))"; } >> "$GITHUB_ENV"
+          # Sparkle offers an update only for a higher build number. 2000 + run number: this workflow
+          # was renamed from mac-release.yml (whose runs reached 1028), so its run count restarted.
+          { echo "TAG=$TAG"; echo "BUILD_NAME=$V"; echo "BUILD_NUMBER=$((2000 + GITHUB_RUN_NUMBER))"; } >> "$GITHUB_ENV"
       - name: Build, notarize, attach
         working-directory: projects/waypack/apps/mobile
         env:

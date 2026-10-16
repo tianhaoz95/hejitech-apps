@@ -57,8 +57,9 @@ jobs:
             [[ "$V" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::release tag must look like waypack-v1.2.3 (got $TAG)"; exit 1; }
             echo "BUILD_NAME=$V" >> "$GITHUB_ENV"
           fi
-          # Unique and increasing across runs; well above the hand-made builds (1–4).
-          echo "BUILD_NUMBER=$((1000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+          # Unique and increasing across runs: 2000 + run number stays above the hand-made builds (1–4)
+          # and testflight.yml's 1000 + run number (this workflow was renamed, so its count restarted).
+          echo "BUILD_NUMBER=$((2000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
       - name: Build and upload
         working-directory: projects/waypack/apps/mobile
         env:

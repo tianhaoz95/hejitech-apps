@@ -13,7 +13,7 @@
 #   scripts/cut_release.sh waypack --watch         # wait for the release workflows and report
 #   scripts/cut_release.sh waypack --force         # skip the CI-is-green check
 #
-# Build numbers are assigned by CI (1000 + run number); pubspec's +build is left alone.
+# Build numbers are assigned by CI (2000 + run number in the project's workflows); pubspec's +build is left alone.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
