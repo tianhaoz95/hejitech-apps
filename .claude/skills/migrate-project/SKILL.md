@@ -5,7 +5,8 @@ description: Move an existing app repository into this HEJI monorepo (projects/<
 
 # Migrating a project into the monorepo
 
-Distilled from moving Wee Hours (tianhaoz95/wee-hours) in on 2026-10-15/16. Read the root
+Distilled from moving Wee Hours (tianhaoz95/wee-hours) in on 2026-10-15/16, then FeedbackKit and
+Voxbrief (sections at the end). Read the root
 `CLAUDE.md`, `README.md` ("Adding a project"), `supabase/README.md` and `supabase/GRADUATION.md`
 first: they are the rules; this is the order of work and the traps.
 
@@ -181,6 +182,30 @@ are ancestors of HEAD). Then restructure in follow-up commits with `git mv`.
   every old workflow (`gh workflow disable`), repoint external services (FeedbackKit `github_repo`
   and dispatch labels, Supabase's GitHub integration directory, Cloudflare Workers Builds), add a
   "moved" notice to the old README, then the owner archives it.
+
+## Apps without a backend, with their own updater or site (from Voxbrief, 2026-10-16)
+
+- **No backend:** `backend.env` with `BACKEND=none` (empty coordinates, no `BACKEND_FILES`;
+  third-party hosts such as FeedbackKit's still go in `EXTERNAL_SUPABASE_HOSTS`). Skip steps 3, 4,
+  6 and 8.2–8.4; `graduation_check.sh` passes trivially.
+- **In-app updaters:** grep for `releases/latest`, `api.github.com/repos/`, appcast URLs. In the
+  monorepo `releases/latest` is Waypack's, so an app's updater must list releases and take its own
+  newest `<name>-v` one (Voxbrief's `UpdateChecker.swift`), with a unit test. Installed copies still
+  poll the old repo: after the first monorepo release, publish one last release there (old
+  workflows disabled first) whose asset is the new build, so they hop over.
+- **Version placeholders:** if the version file holds a constant (Voxbrief's `MARKETING_VERSION`
+  was always `1.1`, the tag carried the version), set it to the last released version so
+  `cut_release.sh` bumps from there; App Store Connect only needs higher versions. Project-specific
+  release gates (Voxbrief's What's New) go in a `release_check` function in `release.env`.
+- **Static sites:** a hand-written site (landing, privacy, support) moves to `projects/<name>/site/`
+  and publishes through `docs/pages.json` `"static": {"site": "../site"}` at
+  `/hejitech-apps/<name>/site/`. App Store Connect's privacy/support URLs point at the old
+  `<user>.github.io/<repo>/` pages: replace the old repo's site with meta-refresh redirect stubs
+  (plus a `404.html`), let its Pages workflow deploy once, then disable it. Archived repos keep
+  serving Pages.
+- **Release scripts:** test the paths CI never ran (`--no-upload`, no tag) with a
+  `workflow_dispatch` validation run before the first release; macOS runners use bash 3.2, where
+  `"${arr[@]}"` of an empty array fails under `set -u` (use `${arr[@]+"${arr[@]}"}`).
 
 ## Moving an already-live project's tables out of `public`
 
