@@ -164,7 +164,8 @@ xcodebuild -exportArchive \
 echo "✅ Build $BUILD_NUMBER uploaded to App Store Connect."
 
 echo "-> Announcing build $BUILD_NUMBER to FeedbackKit..."
-if ! (cd "$REPO_ROOT" && npx -y feedbackkit-cli release --build "$BUILD_NUMBER"); then
+APP_VERSION="$(sed -nE 's/^[[:space:]]*MARKETING_VERSION:[[:space:]]*"?([0-9.]+)"?.*/\1/p' "$IOS_DIR/project.yml" | head -1)"
+if ! (cd "$REPO_ROOT" && npx -y feedbackkit-cli release --build "$BUILD_NUMBER" --app-version "$APP_VERSION"); then
   echo "warning: feedbackkit release failed; run it by hand: npx feedbackkit-cli release --build $BUILD_NUMBER" >&2
 fi
 echo "   It will appear in TestFlight once Apple finishes processing (usually a few minutes)."
