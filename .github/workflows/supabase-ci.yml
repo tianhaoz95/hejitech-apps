@@ -1,8 +1,10 @@
 name: Supabase conventions
 
-# The shared supabase/ folder holds every project's migrations and declarative schemas. This
-# checks they stay apart (scripts/check_supabase.mjs; rules in supabase/README.md). Project
-# folders are watched too: their names are the schema names migrations must use.
+# The shared supabase/ folder holds every project's migrations and declarative schemas, and every
+# project must be able to move to its own Supabase project at any time (supabase/GRADUATION.md).
+# This checks that they stay apart: SQL (check_supabase.mjs), code, config and workflows
+# (check_isolation.mjs), and that each project's migrations replay alone (graduation_check.sh).
+# Project folders are watched too: their names are the schema names migrations must use.
 on:
   push:
     branches: [main]
@@ -10,13 +12,17 @@ on:
       - "supabase/**"
       - "projects/**"
       - "scripts/check_supabase*"
-      - ".github/workflows/supabase-ci.yml"
+      - "scripts/check_isolation*"
+      - "scripts/graduation_check.sh"
+      - ".github/workflows/**"
   pull_request:
     paths:
       - "supabase/**"
       - "projects/**"
       - "scripts/check_supabase*"
-      - ".github/workflows/supabase-ci.yml"
+      - "scripts/check_isolation*"
+      - "scripts/graduation_check.sh"
+      - ".github/workflows/**"
 
 permissions:
   contents: read
@@ -26,10 +32,34 @@ jobs:
     name: Per-project separation
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    outputs:
+      projects: ${{ steps.projects.outputs.list }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - run: node --test scripts/check_supabase.test.mjs
+      - run: node --test scripts/check_supabase.test.mjs scripts/check_isolation.test.mjs
       - run: node scripts/check_supabase.mjs
+      - run: node scripts/check_isolation.mjs
+      - id: projects
+        run: echo "list=$(ls -d projects/*/ | xargs -n1 basename | jq -R . | jq -sc .)" >> "$GITHUB_OUTPUT"
+
+  graduation:
+    name: ${{ matrix.project }} stands alone
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ${{ fromJson(needs.check.outputs.projects) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: scripts/graduation_check.sh ${{ matrix.project }}

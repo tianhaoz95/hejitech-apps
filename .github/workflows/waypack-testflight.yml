@@ -63,9 +63,9 @@ jobs:
       - name: Build and upload
         working-directory: projects/waypack/apps/mobile
         env:
-          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
-          API_URL: ${{ vars.API_URL }}
+          SUPABASE_URL: ${{ vars.WAYPACK_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.WAYPACK_SUPABASE_ANON_KEY }}
+          API_URL: ${{ vars.WAYPACK_API_URL }}
           FA_ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           FA_ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         run: tool/release_ios.sh

@@ -5,6 +5,13 @@ project (`supabase/`, read `supabase/README.md` before any schema change), npm w
 plumbing. Layout and how to add a project: `README.md`. Keep each project self-contained; put
 something at the root only when it is genuinely shared.
 
+Sharing the Supabase project is temporary: a project moves to its own once its revenue pays for it,
+and that must stay possible at any time. Never tie projects together: no references to another
+project's code, packages, schema, bucket or CI settings, no shared sessions, and backend
+coordinates only in the files a project lists in its `backend.env`. Products talk through public
+APIs, never the database. Rules, checks (`check_isolation.mjs`, `graduation_check.sh`, run by
+`supabase-ci.yml`) and the move itself: `supabase/GRADUATION.md`.
+
 ## Releases
 
 Cut every release with `scripts/cut_release.sh <project>`. Don't improvise: no hand-made tags, no

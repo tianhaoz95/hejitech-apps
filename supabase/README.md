@@ -1,7 +1,8 @@
 # Shared Supabase project
 
 Every project in this repo uses one Supabase project (production ref `jitdzllkxfhlrxxvljhp`;
-locally `supabase start` from the repo root, ports 554xx). This folder is the only migration
+locally `supabase start` from the repo root, ports 554xx) until it graduates to its own:
+[`GRADUATION.md`](GRADUATION.md) has the rules that keep that possible and the procedure. This folder is the only migration
 history, so all schema changes for all projects land here.
 
 ```

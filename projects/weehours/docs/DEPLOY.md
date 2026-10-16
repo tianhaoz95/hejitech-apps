@@ -48,7 +48,7 @@ The `weehours` Worker (`services/web/wrangler.jsonc`, `env.production`):
 repo secrets Waypack uses: `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8_BASE64`, `SIGNING_P12_BASE64` /
 `SIGNING_P12_PASSWORD` (Apple Distribution: HEJI TECHNOLOGY LLC), `DEV_SIGNING_P12_BASE64` /
 `DEV_SIGNING_P12_PASSWORD` (Apple Development: Tianhao Zhou, SHA-1 `2CF449D6…`, which the script
-pins). Optional: `FEEDBACKKIT_RELEASE_TOKEN`, created with
-`npx feedbackkit-cli token create github-actions --preset ci | gh secret set FEEDBACKKIT_RELEASE_TOKEN`
+pins). Optional: `WEEHOURS_FEEDBACKKIT_RELEASE_TOKEN`, created with
+`npx feedbackkit-cli token create github-actions --preset ci | gh secret set WEEHOURS_FEEDBACKKIT_RELEASE_TOKEN`
 after `npx feedbackkit-cli login`. The workflow imports the existing identities, so CI never
 creates certificates.

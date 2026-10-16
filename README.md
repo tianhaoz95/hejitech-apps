@@ -16,6 +16,7 @@ projects/<name>/        everything one product owns (apps, services, packages, s
 supabase/               the shared Supabase project: config, schemas/<name>/, one migrations/ history
 scripts/cut_release.sh  releases one project: scripts/cut_release.sh <name> [patch|minor|major|x.y.z]
 scripts/db_migration.sh new migration for one project; check_supabase.mjs keeps projects apart
+scripts/check_isolation.mjs, graduation_check.sh   each project can leave for its own Supabase (supabase/GRADUATION.md)
 .github/workflows/      <name>-*.yml per project
 .github/actions/        apple-signing (shared), <name>-toolchain
 package.json            npm workspaces: projects/*/packages/*, projects/*/services/*, projects/*/apps/*
@@ -32,7 +33,10 @@ npm run build:waypack       # per-project scripts: build:<name>, test:<name>, ty
 1. **Code** in `projects/<name>/`: Node packages under `packages/` or `services/`, apps under `apps/`
    (any of them with a `package.json` is picked up by the workspaces; name them `@<name>/…`). Add `build:`/`test:`/`typecheck:<name>`
    scripts to the root `package.json`.
-2. **Database:** its own Postgres schema (named after the project, so the folder name must be a
+2. **Backend:** `projects/<name>/backend.env` (copy Wee Hours'): which Supabase project it uses and
+   the only files allowed to contain its coordinates. Projects share the HEJI project until they
+   graduate to their own; keep that possible ([`supabase/GRADUATION.md`](supabase/GRADUATION.md)).
+   **Database:** its own Postgres schema (named after the project, so the folder name must be a
    valid identifier) and Storage bucket. Tables go in `supabase/schemas/<name>/`; generate
    migrations with `scripts/db_migration.sh <name> <what>`. Read [`supabase/README.md`](supabase/README.md)
    first: users, auth settings, the service key and the plan's quota are shared (that's the point).
@@ -40,6 +44,7 @@ npm run build:waypack       # per-project scripts: build:<name>, test:<name>, ty
 3. **CI:** `.github/workflows/<name>-ci.yml` with `paths:` covering `projects/<name>/**` and the
    shared root files (copy `waypack-ci.yml`). Release workflows trigger on `release: published`
    and must skip other projects' tags: `if: startsWith(github.event.release.tag_name, '<name>-v')`.
+   Name its GitHub variables and secrets `<NAME>_…` (only the Apple team signing secrets are shared).
 4. **Releases:** `projects/<name>/release.env` (copy Waypack's) with `TAG_PREFIX="<name>-v"` and
    `LATEST=false`. Waypack owns the repo's "latest" release: its installed Mac apps update from
    `releases/latest`.

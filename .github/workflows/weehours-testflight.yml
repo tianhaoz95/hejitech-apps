@@ -93,7 +93,7 @@ jobs:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           APPLE_TEAM_ID: 68CTFST8W2
-          FEEDBACKKIT_RELEASE_TOKEN: ${{ secrets.FEEDBACKKIT_RELEASE_TOKEN }}
+          FEEDBACKKIT_RELEASE_TOKEN: ${{ secrets.WEEHOURS_FEEDBACKKIT_RELEASE_TOKEN }}
         run: projects/weehours/scripts/release_testflight.sh
 
       - name: Clean up signing material

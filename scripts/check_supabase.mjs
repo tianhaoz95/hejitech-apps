@@ -33,6 +33,14 @@ export const LEGACY_MIGRATIONS = {
 const SHARED = ["auth", "storage", "extensions", "pg_catalog", "information_schema", "vault", "cron", "net", "realtime", "graphql", "graphql_public", "pgsodium", "supabase_functions"];
 
 export const schemaOf = (project) => LEGACY_SCHEMA[project] ?? project;
+
+/** The project a migration file belongs to (grandfathered list, else the longest name prefix), or null. */
+export function migrationProject(file, projects) {
+  for (const [p, files] of Object.entries(LEGACY_MIGRATIONS)) if (files.includes(file)) return p;
+  const m = /^\d{14}_([a-z][a-z0-9_]*)\.sql$/.exec(file);
+  if (!m) return null;
+  return projects.filter((p) => m[1].startsWith(p + "_")).sort((a, b) => b.length - a.length)[0] ?? null;
+}
 const AUTH_TRIGGER = "trigger on auth.users runs for every project's sign-ups; create per-project rows lazily instead";
 
 /** Problems in one SQL text owned by `project`, given every project's name. */
@@ -114,12 +122,9 @@ export function checkRepo(root) {
     if (!m) { report(file, ["name must be <14-digit timestamp>_<project>_<what>.sql"]); continue; }
     if (seen.has(m[1])) report(file, [`timestamp ${m[1]} also used by ${seen.get(m[1])}`]);
     seen.set(m[1], f);
-    let project = legacy.get(f);
-    if (!project) {
-      // Longest matching project prefix, so `foo_bar` wins over `foo` for foo_bar_x.sql.
-      project = projects.filter((p) => m[2].startsWith(p + "_")).sort((a, b) => b.length - a.length)[0];
-      if (!project) { report(file, [`must start with a project name after the timestamp (projects: ${projects.join(", ")})`]); continue; }
-    }
+    // Longest matching project prefix, so `foo_bar` wins over `foo` for foo_bar_x.sql.
+    const project = migrationProject(f, projects);
+    if (!project) { report(file, [`must start with a project name after the timestamp (projects: ${projects.join(", ")})`]); continue; }
     const found = checkSql(readFileSync(file, "utf8"), project, projects);
     if (legacy.has(f)) found.filter((msg) => msg === AUTH_TRIGGER).forEach((msg) => warnings.push(`${relative(root, file)}: ${msg}`));
     report(file, legacy.has(f) ? found.filter((msg) => msg !== AUTH_TRIGGER) : found);
