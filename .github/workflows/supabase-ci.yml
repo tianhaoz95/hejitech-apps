@@ -1,0 +1,35 @@
+name: Supabase conventions
+
+# The shared supabase/ folder holds every project's migrations and declarative schemas. This
+# checks they stay apart (scripts/check_supabase.mjs; rules in supabase/README.md). Project
+# folders are watched too: their names are the schema names migrations must use.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/**"
+      - "projects/**"
+      - "scripts/check_supabase*"
+      - ".github/workflows/supabase-ci.yml"
+  pull_request:
+    paths:
+      - "supabase/**"
+      - "projects/**"
+      - "scripts/check_supabase*"
+      - ".github/workflows/supabase-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Per-project separation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node --test scripts/check_supabase.test.mjs
+      - run: node scripts/check_supabase.mjs

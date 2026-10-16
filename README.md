@@ -12,8 +12,9 @@ one npm workspace and the CI plumbing.
 ```
 projects/<name>/        everything one product owns (apps, services, packages, site, docs)
   release.env           how scripts/cut_release.sh releases it
-supabase/               the shared Supabase project: config + every project's migrations
+supabase/               the shared Supabase project: config, schemas/<name>/, one migrations/ history
 scripts/cut_release.sh  releases one project: scripts/cut_release.sh <name> [patch|minor|major|x.y.z]
+scripts/db_migration.sh new migration for one project; check_supabase.mjs keeps projects apart
 .github/workflows/      <name>-*.yml per project
 .github/actions/        apple-signing (shared), <name>-toolchain
 package.json            npm workspaces: projects/*/packages/*, projects/*/services/*
@@ -30,9 +31,10 @@ npm run build:waypack       # per-project scripts: build:<name>, test:<name>, ty
 1. **Code** in `projects/<name>/`: Node packages under `packages/` or `services/` (picked up by the
    workspaces; name them `@<name>/…`), Flutter apps under `apps/`. Add `build:`/`test:`/`typecheck:<name>`
    scripts to the root `package.json`.
-2. **Database:** its own schema and Storage bucket, migrations named `<timestamp>_<name>_<what>.sql`
-   in the shared `supabase/migrations`. Read [`supabase/README.md`](supabase/README.md) first: users,
-   auth settings, the service key and the free-plan quota are shared.
+2. **Database:** its own Postgres schema (named after the project, so the folder name must be a
+   valid identifier) and Storage bucket. Tables go in `supabase/schemas/<name>/`; generate
+   migrations with `scripts/db_migration.sh <name> <what>`. Read [`supabase/README.md`](supabase/README.md)
+   first: users, auth settings, the service key and the free-plan quota are shared.
 3. **CI:** `.github/workflows/<name>-ci.yml` with `paths:` covering `projects/<name>/**` and the
    shared root files (copy `waypack-ci.yml`). Release workflows trigger on `release: published`
    and must skip other projects' tags: `if: startsWith(github.event.release.tag_name, '<name>-v')`.
