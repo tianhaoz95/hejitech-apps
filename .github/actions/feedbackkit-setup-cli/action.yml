@@ -10,10 +10,10 @@ runs:
       with:
         node-version: "22"
         cache: npm
-        cache-dependency-path: cli/package-lock.json
+        cache-dependency-path: projects/feedbackkit/cli/package-lock.json
     - shell: bash
       run: |
-        cd cli
+        cd projects/feedbackkit/cli
         npm ci --no-audit --no-fund
         npm run build
         echo "FEEDBACKKIT_CLI=node $GITHUB_WORKSPACE/cli/dist/index.js" >> "$GITHUB_ENV"

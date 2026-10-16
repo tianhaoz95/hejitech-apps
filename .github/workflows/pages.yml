@@ -11,6 +11,7 @@ on:
       - "projects/*/docs/**"
       - "projects/*/report/**"
       - "scripts/pages_sync.mjs"
+      - "projects/feedbackkit/docs/**"
       - ".github/workflows/pages.yml"
       - "package.json"
       - "package-lock.json"
@@ -37,6 +38,13 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run pages:build
+      # FeedbackKit's docs are their own VitePress site (base /hejitech-apps/feedbackkit/).
+      - name: Build FeedbackKit docs into the site
+        working-directory: projects/feedbackkit/docs
+        run: |
+          npm ci
+          npm run build
+          cp -R .vitepress/dist ../../../pages/.vitepress/dist/feedbackkit
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:

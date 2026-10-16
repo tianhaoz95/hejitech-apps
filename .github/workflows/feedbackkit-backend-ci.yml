@@ -1,30 +1,34 @@
-name: Backend CI
+name: FeedbackKit · Backend CI
 
 # Supabase (migrations + Edge Functions) and the Agent Skills catalog.
 on:
   push:
     branches: [main]
     paths:
-      - "supabase/**"
-      - "skills/**"
-      - "scripts/validate-skills.mjs"
-      - "package.json"
-      - ".github/workflows/backend-ci.yml"
+      - "projects/feedbackkit/supabase/**"
+      - "projects/feedbackkit/skills/**"
+      - "projects/feedbackkit/scripts/validate-skills.mjs"
+      - "projects/feedbackkit/package.json"
+      - ".github/workflows/feedbackkit-backend-ci.yml"
   pull_request:
     paths:
-      - "supabase/**"
-      - "skills/**"
-      - "scripts/validate-skills.mjs"
-      - "package.json"
-      - ".github/workflows/backend-ci.yml"
+      - "projects/feedbackkit/supabase/**"
+      - "projects/feedbackkit/skills/**"
+      - "projects/feedbackkit/scripts/validate-skills.mjs"
+      - "projects/feedbackkit/package.json"
+      - ".github/workflows/feedbackkit-backend-ci.yml"
   workflow_dispatch: {}
 
 permissions:
   contents: read
 
 concurrency:
-  group: backend-ci-${{ github.ref }}
+  group: feedbackkit-backend-ci-${{ github.ref }}
   cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: projects/feedbackkit
 
 jobs:
   functions:
@@ -37,10 +41,10 @@ jobs:
         with:
           deno-version: v2.x
       - name: deno check
-        working-directory: supabase/functions
+        working-directory: projects/feedbackkit/supabase/functions
         run: deno check --node-modules-dir=auto */index.ts
       - name: deno test
-        working-directory: supabase/functions
+        working-directory: projects/feedbackkit/supabase/functions
         run: deno test --allow-env --node-modules-dir=auto _shared/
 
   migrations:

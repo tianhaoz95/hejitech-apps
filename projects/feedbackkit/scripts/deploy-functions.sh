@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Deploys Supabase Edge Functions to the hosted project.
-# Also automated in CI via .github/workflows/deploy-functions.yml on push to main.
+# Also automated in CI via .github/workflows/feedbackkit-deploy-functions.yml on push to main.
 #
 # Usage:
 #   ./scripts/deploy-functions.sh              # deploy every function

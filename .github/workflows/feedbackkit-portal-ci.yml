@@ -1,4 +1,4 @@
-name: Portal CI
+name: FeedbackKit · Portal CI
 
 # The Developer Portal apps (DeveloperApp/), which also compile the SDK from
 # source. The Mac target runs the same test file as iOS without a simulator.
@@ -7,16 +7,16 @@ on:
   push:
     branches: [main]
     paths:
-      - "DeveloperApp/**"
-      - "Sources/**"
-      - "Package.swift"
-      - ".github/workflows/portal-ci.yml"
+      - "projects/feedbackkit/DeveloperApp/**"
+      - "projects/feedbackkit/Sources/**"
+      - "projects/feedbackkit/Package.swift"
+      - ".github/workflows/feedbackkit-portal-ci.yml"
   pull_request:
     paths:
-      - "DeveloperApp/**"
-      - "Sources/**"
-      - "Package.swift"
-      - ".github/workflows/portal-ci.yml"
+      - "projects/feedbackkit/DeveloperApp/**"
+      - "projects/feedbackkit/Sources/**"
+      - "projects/feedbackkit/Package.swift"
+      - ".github/workflows/feedbackkit-portal-ci.yml"
   workflow_call: {}
   workflow_dispatch: {}
 
@@ -24,8 +24,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: portal-ci-${{ github.workflow }}-${{ github.ref }}
+  group: feedbackkit-portal-ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: projects/feedbackkit
 
 jobs:
   test:
@@ -39,7 +43,7 @@ jobs:
           xcode-version: "latest-stable"
       - run: brew install xcodegen
       - name: Test
-        working-directory: DeveloperApp
+        working-directory: projects/feedbackkit/DeveloperApp
         run: |
           xcodegen generate
           xcodebuild test \

@@ -1,6 +1,40 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this project.
+
+## In the HEJI monorepo (read first)
+
+FeedbackKit lives in `projects/feedbackkit/` of `tianhaoz95/hejitech-apps` (moved from
+`tianhaoz95/feedback-kit` on 2026-10-16, with its history; that repo is archived). Read the root
+`CLAUDE.md` too. Paths in this file are relative to `projects/feedbackkit/`, and where it names a
+workflow such as `sdk-ci.yml`, the file is now `.github/workflows/feedbackkit-sdk-ci.yml` at the
+repo root (local action: `.github/actions/feedbackkit-setup-cli`). Every workflow runs its steps in
+`projects/feedbackkit` by default.
+
+- **Tags all carry the project prefix**: `feedbackkit-v1.2.3` (unified), `feedbackkit-cli-v…`,
+  `feedbackkit-web-sdk-v…`, `feedbackkit-react-native-v…`, `feedbackkit-desktop-v…`,
+  `feedbackkit-skills-v…`, `feedbackkit-mac-demo-v…`, `feedbackkit-portal-mac-v…`, and the rolling
+  `feedbackkit-beta-portal-mac` prerelease. Release workflows only react to those, and no release
+  may become the repo's "latest" (Waypack's Mac app updates from it): scripts pass
+  `--latest=false`.
+- **Releases**: unified ones with `scripts/cut_release.sh feedbackkit` from the repo root (settings
+  in `release.env`; version file: the Flutter plugin's `pubspec.yaml`), single components with
+  `scripts/cut_release.sh X.Y.Z --cli` etc. from this folder.
+- **Backend**: FeedbackKit keeps its own Supabase project (`backend.env`: `BACKEND=own`), so
+  `supabase/` stays here and the shared-project rules in the root `supabase/` don't apply. Edge
+  Functions deploy through `feedbackkit-deploy-functions.yml`; migrations through Supabase's GitHub
+  integration, whose Supabase directory must be `projects/feedbackkit/supabase`.
+- **Docs** (`docs/`, VitePress) are built by the root `.github/workflows/pages.yml` into the HEJI
+  site at https://tianhaoz95.github.io/hejitech-apps/feedbackkit/.
+- **Agent dispatch labels** are `feedbackkit-claude` and `feedbackkit-antigravity` (other projects
+  share this repo's issues).
+- **CI secrets** follow the monorepo's naming: FeedbackKit-only ones are `FEEDBACKKIT_*`
+  (`FEEDBACKKIT_NPM_TOKEN`, `FEEDBACKKIT_SUPABASE_ACCESS_TOKEN`, …); Apple signing uses the
+  team-wide `ASC_*`, `APPLE_TEAM_ID`, `DEV_SIGNING_P12_*` (the Apple Development identity the
+  TestFlight scripts archive with) and `MAC_SIGNING_P12_*` (Developer ID).
+- **Swift Package / CocoaPods / JitPack** resolve from a repository root, so they still point at the
+  archived `tianhaoz95/feedback-kit` (versions up to 1.0.62). The npm packages (and the Tauri
+  crate on crates.io) keep publishing from here.
 
 ## What this is
 
@@ -54,7 +88,7 @@ file is about how to build/test/run things day to day.
 | `DemoApp/` | Sample apps exercising the SDK on iOS, macOS, and watchOS (one XcodeGen project, three targets; the `.xcodeproj` is generated — not committed) |
 | `DeveloperApp/` | Native Developer Portal companion apps for iOS and macOS (one XcodeGen project `FeedbackPortal.xcodeproj`, SwiftUI; the Mac app shares the iOS views — see `DeveloperApp/README.md`). Triages feedback, renders annotations, follows fix loops, dispatches AI coding prompts, and dogfoods FeedbackKit on itself |
 | `web/` | Static SPA dashboard (Vite + React + React Router), deployed to Cloudflare Workers Static Assets (`https://feedback-kit.hejitech.workers.dev`) |
-| `docs/` | Contributor developer documentation (VitePress), deployed to GitHub Pages (`https://tianhaoz95.github.io/feedback-kit/`) |
+| `docs/` | Contributor developer documentation (VitePress), deployed to GitHub Pages (`https://tianhaoz95.github.io/hejitech-apps/feedbackkit/`) |
 | `supabase/` | Postgres migrations, storage policies, the ingestion Edge Function, billing (Stripe) Edge Functions |
 | `cli/` | `feedbackkit` CLI + MCP server (Node/TypeScript) — reads feedback/prompts as a logged-in user |
 | `skills/` | Agent Skills catalog (`vercel-labs/skills`) for automated setup via AI coding agents |
@@ -279,7 +313,7 @@ serves `index.html` for page navigations — without it every deep link on a
 preview, including `/login` after GitHub sign-in, is a bare "Not found".
 
 **Developer Documentation (`docs/`)** is built with VitePress and deployed to
-GitHub Pages (`https://tianhaoz95.github.io/feedback-kit/`) via
+GitHub Pages (`https://tianhaoz95.github.io/hejitech-apps/feedbackkit/`) via
 `.github/workflows/deploy-docs.yml` (`actions/deploy-pages`) on every push to
 `main` touching `docs/**`. To develop contributor docs locally:
 ```bash
@@ -695,7 +729,7 @@ Rules for skills:
   with `GITHUB_WEBHOOK_SECRET=testsecret`; header comment has the steps).
 - **Push-to-main delivery (`0015_push_to_main_releases.sql`, DESIGN.md §8).**
   Every push to main touching the SDK/Portal runs `beta.yml`: tests, then
-  TestFlight (iOS Portal) and the rolling `beta-portal-mac` prerelease
+  TestFlight (iOS Portal) and the rolling `feedbackkit-beta-portal-mac` prerelease
   (macOS Portal). Each release script ends with `scripts/feedbackkit_announce.sh`,
   which records the build with `FEEDBACKKIT_RELEASE_TOKEN` (CI) or a login
   session. The web dashboard deploys through Cloudflare, not a workflow, so

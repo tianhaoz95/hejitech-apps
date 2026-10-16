@@ -2,7 +2,7 @@ name: FeedbackKit agent (Antigravity)
 
 # Runs Google Antigravity's CLI (`agy`) on a self-hosted Mac whenever
 # FeedbackKit hands it a report: FeedbackKit creates a GitHub issue and adds
-# the `antigravity` label (project Settings → Coding agent loop).
+# the `feedbackkit-antigravity` label (project Settings → Coding agent loop).
 # Actions does the checkout; the agent only edits files and runs the build and
 # test commands allowed in the runner user's Antigravity settings; this
 # workflow commits (with the `FeedbackKit: <id>` trailer), pushes a branch and
@@ -42,10 +42,14 @@ permissions:
   # Starts CI on the agent's PR (see the last step).
   actions: write
 
+defaults:
+  run:
+    working-directory: projects/feedbackkit
+
 jobs:
   agent:
     if: >-
-      github.event.label.name == 'antigravity' &&
+      github.event.label.name == 'feedbackkit-antigravity' &&
       (github.event_name == 'issues' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: [self-hosted, macOS, feedbackkit-agent]
     timeout-minutes: 60

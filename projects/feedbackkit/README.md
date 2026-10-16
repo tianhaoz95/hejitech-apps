@@ -24,7 +24,7 @@ Android, Flutter and React Native wrappers run the native iOS and Android
 SDKs under the hood, and packages for Tauri and Electron cover desktop apps on
 Windows, Linux and macOS.
 
-> 📖 **Developer Documentation & Contributor Guide**: [https://tianhaoz95.github.io/feedback-kit/](https://tianhaoz95.github.io/feedback-kit/)  
+> 📖 **Developer Documentation & Contributor Guide**: [https://tianhaoz95.github.io/hejitech-apps/feedbackkit/](https://tianhaoz95.github.io/hejitech-apps/feedbackkit/)  
 > 🚀 **Live Web Dashboard**: [https://feedback-kit.hejitech.workers.dev](https://feedback-kit.hejitech.workers.dev)
 
 See [DESIGN.md](DESIGN.md) for how it's put together and why.
@@ -272,7 +272,7 @@ The hosted web dashboard is deployed on **Cloudflare Workers Static Assets** at 
 
 ## Developer Documentation on GitHub Pages
 
-The contributor developer documentation is hosted on GitHub Pages at [`https://tianhaoz95.github.io/feedback-kit/`](https://tianhaoz95.github.io/feedback-kit/).
+The contributor developer documentation is hosted on GitHub Pages at [`https://tianhaoz95.github.io/hejitech-apps/feedbackkit/`](https://tianhaoz95.github.io/hejitech-apps/feedbackkit/).
 
 `.github/workflows/deploy-docs.yml` builds `docs/` (powered by VitePress) and deploys it to GitHub Pages via GitHub Actions (`actions/deploy-pages`) on every push to `main` that touches `docs/**`. One-time setup:
 

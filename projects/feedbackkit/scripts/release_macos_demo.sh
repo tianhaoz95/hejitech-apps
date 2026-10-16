@@ -6,7 +6,7 @@
 # export (Apple manages certs/profiles via the ASC API key), this is a
 # direct Developer ID distribution: a real "Developer ID Application"
 # certificate has to already be in the keychain (or importable — see
-# .github/workflows/release-macos-demo.yml for how CI gets one from
+# .github/workflows/feedbackkit-release-macos-demo.yml for how CI gets one from
 # MACOS_CERTIFICATE/MACOS_CERTIFICATE_PASSWORD), and the result gets
 # notarized before Gatekeeper will run it on anyone else's Mac.
 #
@@ -52,24 +52,24 @@ done
 
 if [[ "$CHECK_ONLY" -eq 0 ]]; then
   if [[ -z "$TAG" && -z "$VERSION" ]]; then
-    TAG="$(git describe --tags --match 'v[0-9]*' --abbrev=0 2>/dev/null || git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null | head -n1 || true)"
-    VERSION="${TAG#v}"
+    TAG="$(git describe --tags --match 'feedbackkit-v[0-9]*' --abbrev=0 2>/dev/null || git tag --list 'feedbackkit-v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null | head -n1 || true)"
+    VERSION="${TAG#feedbackkit-v}"
   fi
   if [[ -z "$VERSION" ]]; then
     VERSION="$(sed -n 's/^ *MARKETING_VERSION: *"\{0,1\}\([0-9.]*\)"\{0,1\}.*$/\1/p' "$REPO_ROOT/DemoApp/project.yml" | tail -1)"
   fi
   if [[ -n "$TAG" ]]; then
-    if [[ "$TAG" =~ ^mac-demo-v ]]; then
-      VERSION="${TAG#mac-demo-v}"
-    elif [[ "$TAG" =~ ^v ]]; then
-      VERSION="${TAG#v}"
+    if [[ "$TAG" =~ ^feedbackkit-mac-demo-v ]]; then
+      VERSION="${TAG#feedbackkit-mac-demo-v}"
+    elif [[ "$TAG" =~ ^feedbackkit-v ]]; then
+      VERSION="${TAG#feedbackkit-v}"
     else
       VERSION="$TAG"
-      TAG="v${VERSION}"
+      TAG="feedbackkit-v${VERSION}"
     fi
   elif [[ -n "$VERSION" ]]; then
     VERSION="${VERSION#v}"
-    TAG="v${VERSION}"
+    TAG="feedbackkit-v${VERSION}"
   fi
   [[ -n "$VERSION" ]] || { echo "error: --version X.Y.Z or --tag vX.Y.Z is required" >&2; exit 1; }
   echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "error: version must be X.Y.Z, got: $VERSION" >&2; exit 1; }
@@ -245,8 +245,8 @@ if gh release view "$TAG" --repo "$GH_REPO" >/dev/null 2>&1; then
   echo "   release $TAG already exists — attaching to it"
 else
   TITLE="FeedbackKit $VERSION"
-  [[ "$TAG" =~ ^mac-demo-v ]] && TITLE="macOS Demo $VERSION"
-  gh release create "$TAG" --repo "$GH_REPO" --title "$TITLE" --notes "$NOTES"
+  [[ "$TAG" =~ ^feedbackkit-mac-demo-v ]] && TITLE="macOS Demo $VERSION"
+  gh release create "$TAG" --repo "$GH_REPO" --title "$TITLE" --notes "$NOTES" --latest=false
 fi
 gh release upload "$TAG" --repo "$GH_REPO" --clobber "$OUT_DMG#$DMG_NAME"
 

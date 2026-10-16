@@ -1,4 +1,4 @@
-name: SDK CI
+name: FeedbackKit · SDK CI
 
 # FeedbackKit's Swift package (Sources/, Tests/) on all three platforms it
 # supports. Also the gate for beta builds: beta.yml calls this workflow.
@@ -6,16 +6,16 @@ on:
   push:
     branches: [main]
     paths:
-      - "Sources/**"
-      - "Tests/**"
-      - "Package.swift"
-      - ".github/workflows/sdk-ci.yml"
+      - "projects/feedbackkit/Sources/**"
+      - "projects/feedbackkit/Tests/**"
+      - "projects/feedbackkit/Package.swift"
+      - ".github/workflows/feedbackkit-sdk-ci.yml"
   pull_request:
     paths:
-      - "Sources/**"
-      - "Tests/**"
-      - "Package.swift"
-      - ".github/workflows/sdk-ci.yml"
+      - "projects/feedbackkit/Sources/**"
+      - "projects/feedbackkit/Tests/**"
+      - "projects/feedbackkit/Package.swift"
+      - ".github/workflows/feedbackkit-sdk-ci.yml"
   workflow_call: {}
   workflow_dispatch: {}
 
@@ -25,8 +25,12 @@ permissions:
 # Keyed on the calling workflow too, so beta.yml's call doesn't cancel (or get
 # cancelled by) this workflow's own run for the same push.
 concurrency:
-  group: sdk-ci-${{ github.workflow }}-${{ github.ref }}
+  group: feedbackkit-sdk-ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: projects/feedbackkit
 
 jobs:
   macos:

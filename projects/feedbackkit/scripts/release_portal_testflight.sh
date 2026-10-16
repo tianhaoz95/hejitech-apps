@@ -40,8 +40,8 @@ if [[ "$VERSION" == "--version" ]]; then
 fi
 VERSION="${VERSION#v}"
 if [[ -z "$VERSION" ]]; then
-  TAG="$(git describe --tags --match 'v[0-9]*' --abbrev=0 2>/dev/null || git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null | head -n1 || true)"
-  VERSION="${TAG#v}"
+  TAG="$(git describe --tags --match 'feedbackkit-v[0-9]*' --abbrev=0 2>/dev/null || git tag --list 'feedbackkit-v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null | head -n1 || true)"
+  VERSION="${TAG#feedbackkit-v}"
 fi
 if [[ -z "$VERSION" ]]; then
   VERSION="$(sed -n 's/^ *MARKETING_VERSION: *"\{0,1\}\([0-9.]*\)"\{0,1\}.*$/\1/p' "$REPO_ROOT/DeveloperApp/project.yml" | tail -1)"

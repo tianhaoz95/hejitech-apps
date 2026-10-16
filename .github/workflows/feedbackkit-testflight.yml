@@ -1,30 +1,34 @@
-name: Release Portal to TestFlight
+name: FeedbackKit · Release to TestFlight
 
-# Also called by beta.yml on every push to main (after tests pass): TestFlight
-# is the Portal's beta channel, and the owner promotes a verified build to
-# the App Store in App Store Connect (DESIGN.md §8).
+# Runs on a published GitHub Release (tag a version, publish the release, this ships it to
+# TestFlight automatically) or on-demand from the Actions tab. Deliberately NOT wired to
+# push/tag events -- this uploads a real build to App Store Connect, so it only ever fires on an
+# explicit release or an explicit manual click.
 on:
   release:
     types: [published]
   workflow_dispatch: {}
-  workflow_call: {}
 
 permissions:
   contents: read
   deployments: write
 
 concurrency:
-  group: testflight-portal-${{ github.event.release.tag_name || github.ref }}
+  group: feedbackkit-testflight-${{ github.event.release.tag_name || github.ref }}
   cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: projects/feedbackkit
 
 jobs:
   release:
-    name: Build & Upload FeedbackPortal to TestFlight
-    if: github.event_name != 'release' || (!startsWith(github.event.release.tag_name, 'beta-') && !startsWith(github.event.release.tag_name, 'react-native-') && !startsWith(github.event.release.tag_name, 'desktop-') && !startsWith(github.event.release.tag_name, 'mac-demo-') && !startsWith(github.event.release.tag_name, 'cli-') && !startsWith(github.event.release.tag_name, 'skills-') && !startsWith(github.event.release.tag_name, 'web-sdk-') && !startsWith(github.event.release.tag_name, 'portal-mac-'))
+    name: Build & Upload to TestFlight
+    if: github.event_name != 'release' || (startsWith(github.event.release.tag_name, 'feedbackkit-') && !startsWith(github.event.release.tag_name, 'feedbackkit-beta-') && !startsWith(github.event.release.tag_name, 'feedbackkit-react-native-') && !startsWith(github.event.release.tag_name, 'feedbackkit-desktop-') && !startsWith(github.event.release.tag_name, 'feedbackkit-mac-demo-') && !startsWith(github.event.release.tag_name, 'feedbackkit-cli-') && !startsWith(github.event.release.tag_name, 'feedbackkit-skills-') && !startsWith(github.event.release.tag_name, 'feedbackkit-web-sdk-') && !startsWith(github.event.release.tag_name, 'feedbackkit-portal-mac-'))
     runs-on: macos-15
     timeout-minutes: 45
     environment:
-      name: testflight-portal
+      name: testflight
       url: https://appstoreconnect.apple.com/apps
     steps:
       - name: Checkout
@@ -44,8 +48,8 @@ jobs:
 
       - name: Write App Store Connect API key
         env:
-          ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 || secrets.APPLE_API_KEY }}
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID || secrets.APPLE_API_KEY_ID }}
+          ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 || secrets.FEEDBACKKIT_APPLE_API_KEY }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID || secrets.FEEDBACKKIT_APPLE_API_KEY_ID }}
         run: |
           mkdir -p "$RUNNER_TEMP/private_keys"
           KEY_PATH="$RUNNER_TEMP/private_keys/AuthKey_${ASC_KEY_ID}.p8"
@@ -53,10 +57,16 @@ jobs:
           chmod 600 "$KEY_PATH"
           echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
 
+      # Imports the single pinned signing identity exported from the release machine (see
+      # github-actions-testflight/SKILL.md) into a dedicated keychain, instead of letting
+      # -allowProvisioningUpdates mint a brand-new certificate on every run. A fresh runner's
+      # empty keychain has no matching private key to reuse, so without this, every run would
+      # silently create (and never clean up) a new certificate until the account hits Apple's
+      # per-team certificate cap and every subsequent build -- local and CI -- fails.
       - name: Import signing certificate
         env:
-          SIGNING_P12_BASE64: ${{ secrets.SIGNING_P12_BASE64 }}
-          SIGNING_P12_PASSWORD: ${{ secrets.SIGNING_P12_PASSWORD }}
+          SIGNING_P12_BASE64: ${{ secrets.DEV_SIGNING_P12_BASE64 }}
+          SIGNING_P12_PASSWORD: ${{ secrets.DEV_SIGNING_P12_PASSWORD }}
         run: |
           KEYCHAIN_PATH="$RUNNER_TEMP/signing.keychain-db"
           KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"
@@ -86,31 +96,33 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "release" ]; then
             TAG="${{ github.event.release.tag_name }}"
+            TAG="${TAG#feedbackkit-}"   # monorepo tags carry the project prefix
             VERSION="${TAG#v}"
           else
-            TAG="$(git describe --tags --match 'v[0-9]*' --abbrev=0 2>/dev/null || git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null | head -n1 || true)"
+            TAG="$(git describe --tags --match 'feedbackkit-v[0-9]*' --abbrev=0 2>/dev/null || git tag --list 'feedbackkit-v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null | head -n1 || true)"
+            TAG="${TAG#feedbackkit-}"
             VERSION="${TAG#v}"
           fi
           if [ -z "$VERSION" ]; then
-            VERSION="$(sed -n 's/^ *MARKETING_VERSION: *"\{0,1\}\([0-9.]*\)"\{0,1\}.*$/\1/p' DeveloperApp/project.yml | tail -1)"
+            VERSION="$(sed -n 's/^ *MARKETING_VERSION: *"\{0,1\}\([0-9.]*\)"\{0,1\}.*$/\1/p' DemoApp/project.yml | tail -1)"
           fi
           if [ -n "$VERSION" ]; then
             echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-            echo "Resolved version: $VERSION (from ${TAG:-DeveloperApp/project.yml})"
+            echo "Resolved version: $VERSION (from ${TAG:-DemoApp/project.yml})"
           fi
 
       - name: Set up FeedbackKit CLI (build announcement)
-        uses: ./.github/actions/setup-feedbackkit-cli
+        uses: ./.github/actions/feedbackkit-setup-cli
 
-      - name: Build and upload FeedbackPortal to TestFlight
+      - name: Build and upload to TestFlight
         env:
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID || secrets.APPLE_API_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID || secrets.APPLE_API_ISSUER }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID || secrets.FEEDBACKKIT_APPLE_API_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID || secrets.FEEDBACKKIT_APPLE_API_ISSUER }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           VERSION: ${{ env.VERSION }}
           # Announces the build to FeedbackKit reporters when set (optional).
           FEEDBACKKIT_RELEASE_TOKEN: ${{ secrets.FEEDBACKKIT_RELEASE_TOKEN }}
-        run: ./scripts/release_portal_testflight.sh
+        run: ./scripts/release_testflight.sh
 
       - name: Clean up secrets
         if: always()

@@ -1,4 +1,4 @@
-name: Publish React Native Module
+name: FeedbackKit · Publish React Native Module
 
 # Publishes react-native/ to npm as feedbackkit-react-native on unified
 # vX.Y.Z releases (and react-native-vX.Y.Z for this package alone). The
@@ -18,13 +18,17 @@ on:
         required: false
 
 concurrency:
-  group: react-native-publish-${{ github.event.release.tag_name || github.ref }}
+  group: feedbackkit-react-native-publish-${{ github.event.release.tag_name || github.ref }}
   cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: projects/feedbackkit
 
 jobs:
   publish-npm:
     name: Publish to npm
-    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'v') || startsWith(github.event.release.tag_name, 'react-native-v')
+    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'feedbackkit-v') || startsWith(github.event.release.tag_name, 'feedbackkit-react-native-v')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -34,7 +38,7 @@ jobs:
       url: https://www.npmjs.com/package/feedbackkit-react-native
     defaults:
       run:
-        working-directory: react-native
+        working-directory: projects/feedbackkit/react-native
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -46,7 +50,7 @@ jobs:
         id: version
         run: |
           if [ "${{ github.event_name }}" = "release" ]; then
-            VERSION="${{ github.event.release.tag_name }}"
+            VERSION="${{ github.event.release.tag_name }}"; VERSION="${VERSION#feedbackkit-}"
           else
             VERSION="${{ inputs.version }}"
           fi
@@ -68,7 +72,7 @@ jobs:
 
       - name: Publish package to npm
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.FEEDBACKKIT_NPM_TOKEN }}
         run: |
           PKG_VERSION="${{ steps.version.outputs.version }}"
           if [ "$(npm view feedbackkit-react-native@"$PKG_VERSION" version 2>/dev/null || true)" = "$PKG_VERSION" ]; then

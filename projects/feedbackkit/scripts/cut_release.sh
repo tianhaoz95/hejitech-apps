@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Cuts a GitHub Release, triggering all CI release pipelines:
-#   - TestFlight upload (.github/workflows/testflight.yml)
-#   - Portal TestFlight upload (.github/workflows/testflight-portal.yml)
-#   - macOS Demo DMG build, sign, notarize & attach (.github/workflows/release-macos-demo.yml)
-#   - macOS Portal DMG build, sign, notarize & attach (.github/workflows/release-portal-macos.yml)
-#   - CLI package publish to npm & GitHub Packages (.github/workflows/publish-cli.yml)
-#   - Skills package publish to npm & GitHub Packages (.github/workflows/publish-skills.yml)
-#   - Web SDK package publish to npm & GitHub Packages (.github/workflows/publish-web-sdk.yml)
-#   - React Native module publish to npm (.github/workflows/publish-react-native.yml)
-#   - Desktop packages: feedbackkit-electron/-tauri to npm, tauri-plugin-feedbackkit to crates.io (.github/workflows/publish-desktop.yml)
+#   - TestFlight upload (.github/workflows/feedbackkit-testflight.yml)
+#   - Portal TestFlight upload (.github/workflows/feedbackkit-testflight-portal.yml)
+#   - macOS Demo DMG build, sign, notarize & attach (.github/workflows/feedbackkit-release-macos-demo.yml)
+#   - macOS Portal DMG build, sign, notarize & attach (.github/workflows/feedbackkit-release-portal-macos.yml)
+#   - CLI package publish to npm & GitHub Packages (.github/workflows/feedbackkit-publish-cli.yml)
+#   - Skills package publish to npm & GitHub Packages (.github/workflows/feedbackkit-publish-skills.yml)
+#   - Web SDK package publish to npm & GitHub Packages (.github/workflows/feedbackkit-publish-web-sdk.yml)
+#   - React Native module publish to npm (.github/workflows/feedbackkit-publish-react-native.yml)
+#   - Desktop packages: feedbackkit-electron/-tauri to npm, tauri-plugin-feedbackkit to crates.io (.github/workflows/feedbackkit-publish-desktop.yml)
 #   - Android SDK: nothing to run — JitPack builds a tag on first request (jitpack.yml)
 #
 # Usage:
@@ -25,8 +25,8 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-CURRENT_TAG="$(git describe --tags --match 'v[0-9]*' --abbrev=0 2>/dev/null || git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null | head -n1 || echo 'v1.0.54')"
-CURRENT_VER="${CURRENT_TAG#v}"
+CURRENT_TAG="$(git describe --tags --match 'feedbackkit-v[0-9]*' --abbrev=0 2>/dev/null || git tag --list 'feedbackkit-v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null | head -n1 || echo 'v1.0.54')"
+CURRENT_VER="${CURRENT_TAG#feedbackkit-v}"
 IFS="." read -r C_MAJOR C_MINOR C_PATCH <<< "${CURRENT_VER:-1.0.54}"
 NEXT_PATCH="${C_MAJOR:-1}.${C_MINOR:-0}.$(( ${C_PATCH:-54} + 1 ))"
 NEXT_MINOR="${C_MAJOR:-1}.$(( ${C_MINOR:-0} + 1 )).0"
@@ -146,18 +146,18 @@ done
 [[ -z "$VERSION" ]] && usage
 
 # Normalize version according to prefix type if not already prefixed
-if [[ "$VERSION" =~ ^(mac-demo-v|portal-mac-v|cli-v|skills-v|web-sdk-v|react-native-v|desktop-v|v)[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  TAG="$VERSION"
+if [[ "$VERSION" =~ ^(feedbackkit-)?(mac-demo-v|portal-mac-v|cli-v|skills-v|web-sdk-v|react-native-v|desktop-v|v)[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  TAG="feedbackkit-${VERSION#feedbackkit-}"   # monorepo tags carry the project prefix
 elif [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   case "$PREFIX_TYPE" in
-    mac-demo) TAG="mac-demo-v$VERSION" ;;
-    mac-portal) TAG="portal-mac-v$VERSION" ;;
-    cli)      TAG="cli-v$VERSION" ;;
-    skills)   TAG="skills-v$VERSION" ;;
-    web-sdk)  TAG="web-sdk-v$VERSION" ;;
-    react-native) TAG="react-native-v$VERSION" ;;
-    desktop)  TAG="desktop-v$VERSION" ;;
-    *)        TAG="v$VERSION" ;;
+    mac-demo) TAG="feedbackkit-mac-demo-v$VERSION" ;;
+    mac-portal) TAG="feedbackkit-portal-mac-v$VERSION" ;;
+    cli)      TAG="feedbackkit-cli-v$VERSION" ;;
+    skills)   TAG="feedbackkit-skills-v$VERSION" ;;
+    web-sdk)  TAG="feedbackkit-web-sdk-v$VERSION" ;;
+    react-native) TAG="feedbackkit-react-native-v$VERSION" ;;
+    desktop)  TAG="feedbackkit-desktop-v$VERSION" ;;
+    *)        TAG="feedbackkit-v$VERSION" ;;
   esac
 else
   echo "error: invalid version format: $VERSION" >&2
@@ -202,27 +202,27 @@ if git rev-parse "$TAG" >/dev/null 2>&1 || gh release view "$TAG" --repo "$REPO_
 fi
 
 # Determine title and target workflow
-if [[ "$TAG" =~ ^cli-v(.*)$ ]]; then
+if [[ "$TAG" =~ ^feedbackkit-cli-v(.*)$ ]]; then
   TITLE="CLI v${BASH_REMATCH[1]}"
-  WORKFLOW="publish-cli.yml"
-elif [[ "$TAG" =~ ^mac-demo-v(.*)$ ]]; then
+  WORKFLOW="feedbackkit-publish-cli.yml"
+elif [[ "$TAG" =~ ^feedbackkit-mac-demo-v(.*)$ ]]; then
   TITLE="macOS Demo ${BASH_REMATCH[1]}"
-  WORKFLOW="release-macos-demo.yml"
-elif [[ "$TAG" =~ ^portal-mac-v(.*)$ ]]; then
+  WORKFLOW="feedbackkit-release-macos-demo.yml"
+elif [[ "$TAG" =~ ^feedbackkit-portal-mac-v(.*)$ ]]; then
   TITLE="macOS Portal ${BASH_REMATCH[1]}"
-  WORKFLOW="release-portal-macos.yml"
-elif [[ "$TAG" =~ ^skills-v(.*)$ ]]; then
+  WORKFLOW="feedbackkit-release-portal-macos.yml"
+elif [[ "$TAG" =~ ^feedbackkit-skills-v(.*)$ ]]; then
   TITLE="Skills v${BASH_REMATCH[1]}"
-  WORKFLOW="publish-skills.yml"
-elif [[ "$TAG" =~ ^web-sdk-v(.*)$ ]]; then
+  WORKFLOW="feedbackkit-publish-skills.yml"
+elif [[ "$TAG" =~ ^feedbackkit-web-sdk-v(.*)$ ]]; then
   TITLE="Web SDK v${BASH_REMATCH[1]}"
-  WORKFLOW="publish-web-sdk.yml"
-elif [[ "$TAG" =~ ^react-native-v(.*)$ ]]; then
+  WORKFLOW="feedbackkit-publish-web-sdk.yml"
+elif [[ "$TAG" =~ ^feedbackkit-react-native-v(.*)$ ]]; then
   TITLE="React Native v${BASH_REMATCH[1]}"
-  WORKFLOW="publish-react-native.yml"
-elif [[ "$TAG" =~ ^desktop-v(.*)$ ]]; then
+  WORKFLOW="feedbackkit-publish-react-native.yml"
+elif [[ "$TAG" =~ ^feedbackkit-desktop-v(.*)$ ]]; then
   TITLE="Desktop v${BASH_REMATCH[1]}"
-  WORKFLOW="publish-desktop.yml"
+  WORKFLOW="feedbackkit-publish-desktop.yml"
 else
   TITLE="$TAG"
   WORKFLOW="unified"
@@ -230,7 +230,7 @@ fi
 
 # --- Create the release ------------------------------------------------------
 
-RELEASE_ARGS=(release create "$TAG" --repo "$REPO_SLUG" --title "$TITLE")
+RELEASE_ARGS=(release create "$TAG" --repo "$REPO_SLUG" --title "$TITLE" --latest=false)   # Waypack owns the repo's "latest"
 
 if [[ -n "$NOTES" ]]; then
   RELEASE_ARGS+=(--notes "$NOTES")
@@ -254,15 +254,15 @@ if [[ "$DRAFT" == "true" ]]; then
 else
   if [[ "$WORKFLOW" == "unified" ]]; then
     echo "✅ Release $TAG published -- this triggers all release pipelines:"
-    echo "   1. TestFlight upload (.github/workflows/testflight.yml)"
-    echo "   2. Portal TestFlight upload (.github/workflows/testflight-portal.yml)"
-    echo "   3. macOS Demo DMG build, sign, notarize & attach (.github/workflows/release-macos-demo.yml)"
-    echo "   4. macOS Portal DMG build, sign, notarize & attach (.github/workflows/release-portal-macos.yml)"
-    echo "   5. FeedbackKit CLI publish to npm & GitHub Packages (.github/workflows/publish-cli.yml)"
-    echo "   6. FeedbackKit Skills publish to npm & GitHub Packages (.github/workflows/publish-skills.yml)"
-    echo "   7. FeedbackKit Web SDK publish to npm & GitHub Packages (.github/workflows/publish-web-sdk.yml)"
-    echo "   8. FeedbackKit React Native module publish to npm (.github/workflows/publish-react-native.yml)"
-    echo "   9. FeedbackKit desktop packages: npm feedbackkit-electron/-tauri, crates.io tauri-plugin-feedbackkit (.github/workflows/publish-desktop.yml)"
+    echo "   1. TestFlight upload (.github/workflows/feedbackkit-testflight.yml)"
+    echo "   2. Portal TestFlight upload (.github/workflows/feedbackkit-testflight-portal.yml)"
+    echo "   3. macOS Demo DMG build, sign, notarize & attach (.github/workflows/feedbackkit-release-macos-demo.yml)"
+    echo "   4. macOS Portal DMG build, sign, notarize & attach (.github/workflows/feedbackkit-release-portal-macos.yml)"
+    echo "   5. FeedbackKit CLI publish to npm & GitHub Packages (.github/workflows/feedbackkit-publish-cli.yml)"
+    echo "   6. FeedbackKit Skills publish to npm & GitHub Packages (.github/workflows/feedbackkit-publish-skills.yml)"
+    echo "   7. FeedbackKit Web SDK publish to npm & GitHub Packages (.github/workflows/feedbackkit-publish-web-sdk.yml)"
+    echo "   8. FeedbackKit React Native module publish to npm (.github/workflows/feedbackkit-publish-react-native.yml)"
+    echo "   9. FeedbackKit desktop packages: npm feedbackkit-electron/-tauri, crates.io tauri-plugin-feedbackkit (.github/workflows/feedbackkit-publish-desktop.yml)"
     echo "   (The Android SDK needs no workflow: JitPack builds $TAG on first request.)"
     echo
     echo "Check active runs with:"

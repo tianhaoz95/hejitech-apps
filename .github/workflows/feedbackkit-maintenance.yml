@@ -1,4 +1,4 @@
-name: Maintenance
+name: FeedbackKit · Maintenance
 
 # Daily housekeeping for the hosted backend: deletes after-fix previews past
 # their retention (14 days after the report resolved, 90 days at most) and
@@ -14,6 +14,10 @@ on:
 
 permissions: {}
 
+defaults:
+  run:
+    working-directory: projects/feedbackkit
+
 jobs:
   cleanup-previews:
     runs-on: ubuntu-latest
@@ -21,7 +25,7 @@ jobs:
     steps:
       - name: Delete expired previews and run tokens
         env:
-          MAINTENANCE_SECRET: ${{ secrets.MAINTENANCE_SECRET }}
+          MAINTENANCE_SECRET: ${{ secrets.FEEDBACKKIT_MAINTENANCE_SECRET }}
           API_URL: ${{ vars.FEEDBACKKIT_API_URL || 'https://gpucoladcyvijefdjudf.supabase.co' }}
         run: |
           set -euo pipefail

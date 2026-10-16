@@ -1,4 +1,4 @@
-name: Android SDK CI
+name: FeedbackKit · Android SDK CI
 
 # Unit tests and builds for the native Android SDK (android/feedbackkit) and
 # its demo app (android/demo).
@@ -6,17 +6,21 @@ on:
   push:
     branches: [main]
     paths:
-      - "android/**"
-      - ".github/workflows/android-ci.yml"
+      - "projects/feedbackkit/android/**"
+      - ".github/workflows/feedbackkit-android-ci.yml"
   pull_request:
     paths:
-      - "android/**"
-      - ".github/workflows/android-ci.yml"
+      - "projects/feedbackkit/android/**"
+      - ".github/workflows/feedbackkit-android-ci.yml"
   workflow_dispatch:
 
 concurrency:
-  group: android-ci-${{ github.ref }}
+  group: feedbackkit-android-ci-${{ github.ref }}
   cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: projects/feedbackkit
 
 jobs:
   android:
@@ -26,7 +30,7 @@ jobs:
       contents: read
     defaults:
       run:
-        working-directory: android
+        working-directory: projects/feedbackkit/android
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -43,5 +47,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: android-test-reports
-          path: android/feedbackkit/build/reports/tests
+          path: projects/feedbackkit/android/feedbackkit/build/reports/tests
           retention-days: 7

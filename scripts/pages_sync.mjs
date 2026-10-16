@@ -7,6 +7,8 @@
 // Project docs are written as if their folder were the site root: links like `/design` or a hero
 // `link: /DEPLOY` are rewritten to `/<p>/design`. Optional projects/<p>/docs/pages.json:
 //   { "static": { "<path under /<p>/>": "<dir relative to docs/>" } }   publishes a static site as-is
+// A project whose docs/ is its own VitePress site (docs/.vitepress) is built separately by pages.yml
+// into /<p>/ (FeedbackKit), so it's skipped here.
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -32,7 +34,7 @@ function walk(dir) {
 }
 
 export function sync() {
-  const projects = readdirSync(join(root, "projects")).filter((p) => existsSync(join(root, "projects", p, "docs")));
+  const projects = readdirSync(join(root, "projects")).filter((p) => existsSync(join(root, "projects", p, "docs")) && !existsSync(join(root, "projects", p, "docs", ".vitepress")));
   for (const p of projects) {
     const src = join(root, "projects", p, "docs");
     if (!existsSync(join(src, "index.md"))) throw new Error(`projects/${p}/docs/index.md is missing (the section's landing page)`);

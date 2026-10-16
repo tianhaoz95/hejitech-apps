@@ -28,12 +28,16 @@ permissions:
   # Starts CI on the agent's PR (see "Open a pull request").
   actions: write
 
+defaults:
+  run:
+    working-directory: projects/feedbackkit
+
 jobs:
   agent:
     # Label from FeedbackKit (or a person), or an @claude comment from someone with write access.
     # Public repo: anyone can comment, so outsiders' comments never reach the runner.
     if: >-
-      (github.event_name == 'issues' && github.event.label.name == 'claude') ||
+      (github.event_name == 'issues' && github.event.label.name == 'feedbackkit-claude') ||
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') &&
        (contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) ||
         github.event.comment.user.login == 'feedbackkit-app[bot]'))
@@ -84,9 +88,9 @@ jobs:
           FEEDBACKKIT_TOKEN: ${{ env.FEEDBACKKIT_RUN_TOKEN }}
           FEEDBACKKIT_ACTOR_LABEL: Claude (FeedbackKit)
         with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          # anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          label_trigger: claude
+          claude_code_oauth_token: ${{ secrets.FEEDBACKKIT_CLAUDE_CODE_OAUTH_TOKEN }}
+          # anthropic_api_key: ${{ secrets.FEEDBACKKIT_ANTHROPIC_API_KEY }}
+          label_trigger: feedbackkit-claude
           # FeedbackKit's GitHub App adds the label; the action rejects bot
           # actors unless they're listed here.
           allowed_bots: feedbackkit-app

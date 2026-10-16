@@ -1,19 +1,14 @@
-name: Release macOS Portal
+name: FeedbackKit · Release macOS Demo
 
-# Builds, signs (Developer ID Application), notarizes and publishes the macOS
-# Developer Portal ("FeedbackKit Portal", DeveloperApp/ FeedbackPortalMac) as a
-# GitHub Release asset — the Portal's counterpart of release-macos-demo.yml,
-# driving scripts/release_portal_macos.sh. Uses the same `macos-demo`
-# environment (and so the same Developer ID + App Store Connect secrets).
+# Builds, signs (Developer ID Application), notarizes and publishes the
+# FeedbackKitDemoMac demo app as a GitHub Release asset — the macOS
+# counterpart to testflight.yml, except this ships a DMG to a GitHub
+# Release instead of an .ipa to App Store Connect, since a demo app has no
+# App Store listing.
 #
-# Fires on (same scheme as every release pipeline — see scripts/cut_release.sh):
-#   - Publishing a unified release vX.Y.Z (attaches the DMG alongside the
-#     other pipelines' artifacts), or a Portal-only release portal-mac-vX.Y.Z
+# Fires on:
+#   - Publishing a release (attaches notarized DMG to the release)
 #   - Manual trigger from the Actions tab (workflow_dispatch)
-#
-# The dogfood "close the loop" step (`feedbackkit release`) needs a logged-in
-# FeedbackKit session, so it only runs from a developer's machine — see
-# DESIGN.md §7's known gaps.
 
 on:
   release:
@@ -24,17 +19,10 @@ on:
         description: "Version to release (X.Y.Z) — creates/attaches to tag vX.Y.Z"
         required: false
       tag:
-        description: "Release tag to attach to (e.g. v1.0.0 or portal-mac-v1.0.0)"
+        description: "Release tag to attach to (e.g. v1.0.0)"
         required: false
       no_upload:
         description: "Build, sign and notarize only — don't create/attach to a release (pipeline validation)"
-        type: boolean
-        default: false
-  # beta.yml calls this on every push to main with beta: true — the rolling
-  # beta-portal-mac prerelease (scripts/release_portal_macos.sh --beta).
-  workflow_call:
-    inputs:
-      beta:
         type: boolean
         default: false
 
@@ -43,13 +31,17 @@ permissions:
   deployments: write
 
 concurrency:
-  group: ${{ inputs.no_upload == true && format('release-portal-macos-validate-{0}', github.run_id) || format('release-portal-macos-{0}', github.event.release.tag_name || github.ref_name || inputs.tag || inputs.version || 'latest') }}
+  group: feedbackkit-${{ inputs.no_upload == true && format('release-macos-demo-validate-{0}', github.run_id) || format('release-macos-demo-{0}', github.event.release.tag_name || github.ref_name || inputs.tag || inputs.version || 'latest') }}
   cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: projects/feedbackkit
 
 jobs:
   release:
     name: Build, Sign, Notarize & Publish
-    if: github.event_name != 'release' || (!startsWith(github.event.release.tag_name, 'beta-') && !startsWith(github.event.release.tag_name, 'react-native-') && !startsWith(github.event.release.tag_name, 'desktop-') && !startsWith(github.event.release.tag_name, 'mac-demo-') && !startsWith(github.event.release.tag_name, 'cli-') && !startsWith(github.event.release.tag_name, 'skills-') && !startsWith(github.event.release.tag_name, 'web-sdk-'))
+    if: github.event_name != 'release' || (startsWith(github.event.release.tag_name, 'feedbackkit-') && !startsWith(github.event.release.tag_name, 'feedbackkit-beta-') && !startsWith(github.event.release.tag_name, 'feedbackkit-react-native-') && !startsWith(github.event.release.tag_name, 'feedbackkit-desktop-') && !startsWith(github.event.release.tag_name, 'feedbackkit-cli-') && !startsWith(github.event.release.tag_name, 'feedbackkit-skills-') && !startsWith(github.event.release.tag_name, 'feedbackkit-web-sdk-') && !startsWith(github.event.release.tag_name, 'feedbackkit-portal-mac-'))
     runs-on: macos-15
     timeout-minutes: 45
     environment:
@@ -58,10 +50,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          # Full history: `feedbackkit release` checks each fix commit is an
-          # ancestor of this build's commit (scripts/feedbackkit_announce.sh).
-          fetch-depth: 0
 
       - name: Select Xcode
         uses: maxim-lobanov/setup-xcode@v1
@@ -73,8 +61,8 @@ jobs:
 
       - name: Write App Store Connect API key
         env:
-          ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 || secrets.APPLE_API_KEY }}
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID || secrets.APPLE_API_KEY_ID }}
+          ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 || secrets.FEEDBACKKIT_APPLE_API_KEY }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID || secrets.FEEDBACKKIT_APPLE_API_KEY_ID }}
         run: |
           mkdir -p "$RUNNER_TEMP/private_keys"
           KEY_PATH="$RUNNER_TEMP/private_keys/AuthKey_${ASC_KEY_ID}.p8"
@@ -91,10 +79,10 @@ jobs:
       # hence separate secrets (MACOS_CERTIFICATE*, not SIGNING_P12*).
       - name: Import Developer ID signing certificate
         env:
-          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
-          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_CERTIFICATE: ${{ secrets.MAC_SIGNING_P12_BASE64 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MAC_SIGNING_P12_PASSWORD }}
         run: |
-          KEYCHAIN_PATH="$RUNNER_TEMP/release-portal-macos.keychain-db"
+          KEYCHAIN_PATH="$RUNNER_TEMP/release-macos-demo.keychain-db"
           KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"
           CERT_PATH="$RUNNER_TEMP/signing.p12"
 
@@ -117,25 +105,22 @@ jobs:
           rm -f "$CERT_PATH"
           echo "SIGNING_KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
 
-      - name: Set up FeedbackKit CLI (build announcement)
-        uses: ./.github/actions/setup-feedbackkit-cli
-
       - name: Resolve version/tag
         id: version
-        if: ${{ inputs.beta != true }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           if [ "${{ github.event_name }}" = "release" ]; then
             TAG="${{ github.event.release.tag_name }}"
-            VERSION="${TAG#portal-mac-v}"
+            TAG="${TAG#feedbackkit-}"   # monorepo tags carry the project prefix
+            VERSION="${TAG#mac-demo-v}"
             VERSION="${VERSION#v}"
           else
             INPUT_TAG="${{ inputs.tag }}"
             INPUT_VER="${{ inputs.version }}"
             if [ -n "$INPUT_TAG" ]; then
               TAG="$INPUT_TAG"
-              VERSION="${TAG#portal-mac-v}"
+              VERSION="${TAG#mac-demo-v}"
               VERSION="${VERSION#v}"
             elif [ -n "$INPUT_VER" ]; then
               VERSION="${INPUT_VER#v}"
@@ -144,9 +129,9 @@ jobs:
               VERSION="0.0.0"
               TAG="v0.0.0"
             else
-              TAG="$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName -q .tagName 2>/dev/null || git describe --tags --match 'v[0-9]*' --abbrev=0 2>/dev/null || git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null | head -n1 || true)"
+              TAG="$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName -q .tagName 2>/dev/null || git describe --tags --match 'feedbackkit-v[0-9]*' --abbrev=0 2>/dev/null || git tag --list 'feedbackkit-v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null | head -n1 || true)"
               [ -n "$TAG" ] || { echo "error: couldn't resolve release tag" >&2; exit 1; }
-              VERSION="${TAG#portal-mac-v}"
+              VERSION="${TAG#mac-demo-v}"
               VERSION="${VERSION#v}"
             fi
           fi
@@ -156,26 +141,20 @@ jobs:
       - name: Build, sign, notarize and publish
         env:
           GH_TOKEN: ${{ github.token }}
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID || secrets.APPLE_API_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID || secrets.APPLE_API_ISSUER }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID || secrets.FEEDBACKKIT_APPLE_API_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID || secrets.FEEDBACKKIT_APPLE_API_ISSUER }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          # Announces the build to FeedbackKit reporters when set (optional).
-          FEEDBACKKIT_RELEASE_TOKEN: ${{ secrets.FEEDBACKKIT_RELEASE_TOKEN }}
         run: |
-          if [ "${{ inputs.beta }}" = "true" ]; then
-            ARGS=(--beta)
-          else
-            ARGS=(--version "${{ steps.version.outputs.version }}" --tag "${{ steps.version.outputs.tag }}")
-          fi
+          ARGS=(--version "${{ steps.version.outputs.version }}" --tag "${{ steps.version.outputs.tag }}")
           [ "${{ inputs.no_upload }}" = "true" ] && ARGS+=(--no-upload)
-          ./scripts/release_portal_macos.sh "${ARGS[@]}"
+          ./scripts/release_macos_demo.sh "${ARGS[@]}"
 
       - name: Upload the DMG as a workflow artifact
         if: ${{ inputs.no_upload == true }}
         uses: actions/upload-artifact@v4
         with:
-          name: macos-portal-dmg
-          path: build/release-portal-macos/*.dmg
+          name: macos-demo-dmg
+          path: projects/feedbackkit/build/release-macos-demo/*.dmg
           if-no-files-found: error
 
       - name: Clean up secrets

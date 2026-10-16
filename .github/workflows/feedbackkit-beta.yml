@@ -1,4 +1,4 @@
-name: Beta
+name: FeedbackKit · Beta
 
 # Push-to-main delivery (DESIGN.md §8): coding agents commit fixes straight to
 # main with a `FeedbackKit: <id>` trailer, and every such push — once the tests
@@ -21,15 +21,15 @@ on:
   push:
     branches: [main]
     paths:
-      - "Sources/**"
-      - "Package.swift"
-      - "DeveloperApp/**"
-      - "scripts/release_portal_testflight.sh"
-      - "scripts/release_portal_macos.sh"
-      - "scripts/feedbackkit_announce.sh"
-      - ".github/workflows/beta.yml"
-      - ".github/workflows/testflight-portal.yml"
-      - ".github/workflows/release-portal-macos.yml"
+      - "projects/feedbackkit/Sources/**"
+      - "projects/feedbackkit/Package.swift"
+      - "projects/feedbackkit/DeveloperApp/**"
+      - "projects/feedbackkit/scripts/release_portal_testflight.sh"
+      - "projects/feedbackkit/scripts/release_portal_macos.sh"
+      - "projects/feedbackkit/scripts/feedbackkit_announce.sh"
+      - ".github/workflows/feedbackkit-beta.yml"
+      - ".github/workflows/feedbackkit-testflight-portal.yml"
+      - ".github/workflows/feedbackkit-release-portal-macos.yml"
   workflow_dispatch: {}
 
 permissions:
@@ -38,30 +38,34 @@ permissions:
 
 # A newer push supersedes a beta that's still building.
 concurrency:
-  group: beta-${{ github.ref }}
+  group: feedbackkit-beta-${{ github.ref }}
   cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: projects/feedbackkit
 
 jobs:
   # The gate: no beta unless the SDK (macOS, iOS, watchOS) and Portal tests
   # pass. Same workflows that run on pull requests. CLI tests live in cli-ci.yml.
   sdk:
     name: SDK tests
-    uses: ./.github/workflows/sdk-ci.yml
+    uses: ./.github/workflows/feedbackkit-sdk-ci.yml
 
   portal:
     name: Portal tests
-    uses: ./.github/workflows/portal-ci.yml
+    uses: ./.github/workflows/feedbackkit-portal-ci.yml
 
   testflight-portal:
     name: iOS Portal → TestFlight
     needs: [sdk, portal]
-    uses: ./.github/workflows/testflight-portal.yml
+    uses: ./.github/workflows/feedbackkit-testflight-portal.yml
     secrets: inherit
 
   macos-portal:
     name: macOS Portal → beta prerelease
     needs: [sdk, portal]
-    uses: ./.github/workflows/release-portal-macos.yml
+    uses: ./.github/workflows/feedbackkit-release-portal-macos.yml
     with:
       beta: true
     secrets: inherit

@@ -1,4 +1,4 @@
-name: Announce web deploy
+name: FeedbackKit · Announce web deploy
 
 # The dashboard/website (web/, which bundles web-sdk/ from source) is deployed
 # by Cloudflare's Workers Builds Git integration, not by a workflow here, so
@@ -16,11 +16,11 @@ on:
   push:
     branches: [main]
     paths:
-      - "web/**"
-      - "web-sdk/src/**"
-      - "wrangler.jsonc"
-      - "scripts/feedbackkit_announce.sh"
-      - ".github/workflows/announce-web.yml"
+      - "projects/feedbackkit/web/**"
+      - "projects/feedbackkit/web-sdk/src/**"
+      - "projects/feedbackkit/wrangler.jsonc"
+      - "projects/feedbackkit/scripts/feedbackkit_announce.sh"
+      - ".github/workflows/feedbackkit-announce-web.yml"
   workflow_dispatch: {}
 
 permissions:
@@ -29,8 +29,12 @@ permissions:
 
 # A newer deploy contains every older commit, so it supersedes a pending one.
 concurrency:
-  group: announce-web-${{ github.ref }}
+  group: feedbackkit-announce-web-${{ github.ref }}
   cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: projects/feedbackkit
 
 jobs:
   announce:
@@ -69,7 +73,7 @@ jobs:
 
       - name: Set up FeedbackKit CLI (build announcement)
         if: steps.deploy.outputs.live == 'true'
-        uses: ./.github/actions/setup-feedbackkit-cli
+        uses: ./.github/actions/feedbackkit-setup-cli
 
       - name: Announce to FeedbackKit reporters
         if: steps.deploy.outputs.live == 'true'

@@ -1,4 +1,4 @@
-name: Desktop (Tauri + Electron) CI
+name: FeedbackKit · Desktop (Tauri + Electron) CI
 
 # feedbackkit-electron and tauri-plugin-feedbackkit / feedbackkit-tauri, with
 # their demo apps' end-to-end tests on all three desktop OSes. Both layer on
@@ -7,19 +7,23 @@ on:
   push:
     branches: [main]
     paths:
-      - "desktop/**"
-      - "web-sdk/src/**"
-      - ".github/workflows/desktop-ci.yml"
+      - "projects/feedbackkit/desktop/**"
+      - "projects/feedbackkit/web-sdk/src/**"
+      - ".github/workflows/feedbackkit-desktop-ci.yml"
   pull_request:
     paths:
-      - "desktop/**"
-      - "web-sdk/src/**"
-      - ".github/workflows/desktop-ci.yml"
+      - "projects/feedbackkit/desktop/**"
+      - "projects/feedbackkit/web-sdk/src/**"
+      - ".github/workflows/feedbackkit-desktop-ci.yml"
   workflow_dispatch:
 
 concurrency:
-  group: desktop-ci-${{ github.ref }}
+  group: feedbackkit-desktop-ci-${{ github.ref }}
   cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: projects/feedbackkit
 
 jobs:
   electron:
@@ -37,17 +41,17 @@ jobs:
         with:
           node-version: 22
       - name: Build the web SDK (the packages compile against its types)
-        working-directory: web-sdk
+        working-directory: projects/feedbackkit/web-sdk
         run: npm ci && npm run build
       - name: Package (types, unit tests)
-        working-directory: desktop/electron
+        working-directory: projects/feedbackkit/desktop/electron
         run: |
           npm install --no-audit --no-fund
           npm run lint
           npm run build
           npm test
       - name: Demo app end-to-end
-        working-directory: desktop/electron-demo
+        working-directory: projects/feedbackkit/desktop/electron-demo
         shell: bash
         run: |
           npm install --no-audit --no-fund
@@ -61,7 +65,7 @@ jobs:
         if: always()
         with:
           name: electron-e2e-${{ matrix.os }}
-          path: desktop/electron-demo/e2e/output
+          path: projects/feedbackkit/desktop/electron-demo/e2e/output
           if-no-files-found: ignore
           retention-days: 7
 
@@ -83,31 +87,31 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: |
-            desktop/tauri
-            desktop/tauri-demo/src-tauri
+            projects/feedbackkit/desktop/tauri
+            projects/feedbackkit/desktop/tauri-demo/src-tauri
       - name: Linux system libraries
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev xvfb dbus-x11
       - name: Plugin unit tests
-        working-directory: desktop/tauri
+        working-directory: projects/feedbackkit/desktop/tauri
         run: cargo test
       - name: Build the web SDK (the packages compile against its types)
-        working-directory: web-sdk
+        working-directory: projects/feedbackkit/web-sdk
         run: npm ci && npm run build
       - name: feedbackkit-tauri (types)
-        working-directory: desktop/tauri/guest-js
+        working-directory: projects/feedbackkit/desktop/tauri/guest-js
         run: |
           npm install --no-audit --no-fund
           npm run lint
       - name: Build the demo app
-        working-directory: desktop/tauri-demo
+        working-directory: projects/feedbackkit/desktop/tauri-demo
         run: |
           npm install --no-audit --no-fund
           npx tauri build --debug --no-bundle
       - name: Demo app end-to-end self-test
-        working-directory: desktop/tauri-demo
+        working-directory: projects/feedbackkit/desktop/tauri-demo
         shell: bash
         run: |
           if [ "$RUNNER_OS" = "Linux" ]; then
@@ -119,6 +123,6 @@ jobs:
         if: always()
         with:
           name: tauri-selftest-${{ matrix.os }}
-          path: desktop/tauri-demo/e2e/output
+          path: projects/feedbackkit/desktop/tauri-demo/e2e/output
           if-no-files-found: ignore
           retention-days: 7

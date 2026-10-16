@@ -1,4 +1,4 @@
-name: React Native Module CI
+name: FeedbackKit · React Native Module CI
 
 # The React Native module (react-native/) compiles the Android SDK from this
 # repo and links the Swift SDK as the FeedbackKit pod, so changes to either
@@ -7,23 +7,27 @@ on:
   push:
     branches: [main]
     paths:
-      - "react-native/**"
-      - "android/feedbackkit/**"
-      - "Sources/**"
-      - "FeedbackKit.podspec"
-      - ".github/workflows/react-native-ci.yml"
+      - "projects/feedbackkit/react-native/**"
+      - "projects/feedbackkit/android/feedbackkit/**"
+      - "projects/feedbackkit/Sources/**"
+      - "projects/feedbackkit/FeedbackKit.podspec"
+      - ".github/workflows/feedbackkit-react-native-ci.yml"
   pull_request:
     paths:
-      - "react-native/**"
-      - "android/feedbackkit/**"
-      - "Sources/**"
-      - "FeedbackKit.podspec"
-      - ".github/workflows/react-native-ci.yml"
+      - "projects/feedbackkit/react-native/**"
+      - "projects/feedbackkit/android/feedbackkit/**"
+      - "projects/feedbackkit/Sources/**"
+      - "projects/feedbackkit/FeedbackKit.podspec"
+      - ".github/workflows/feedbackkit-react-native-ci.yml"
   workflow_dispatch:
 
 concurrency:
-  group: react-native-ci-${{ github.ref }}
+  group: feedbackkit-react-native-ci-${{ github.ref }}
   cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: projects/feedbackkit
 
 jobs:
   js-and-android:
@@ -33,7 +37,7 @@ jobs:
       contents: read
     defaults:
       run:
-        working-directory: react-native
+        working-directory: projects/feedbackkit/react-native
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -49,7 +53,7 @@ jobs:
       - run: yarn test
       - run: yarn prepare
       - name: Build the demo app (Android)
-        working-directory: react-native/example/android
+        working-directory: projects/feedbackkit/react-native/example/android
         run: ./gradlew assembleDebug -PreactNativeArchitectures=x86_64 --no-daemon
 
   ios:
@@ -59,7 +63,7 @@ jobs:
       contents: read
     defaults:
       run:
-        working-directory: react-native
+        working-directory: projects/feedbackkit/react-native
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -68,10 +72,10 @@ jobs:
       - run: corepack enable
       - run: yarn install --immutable
       - name: Install pods
-        working-directory: react-native/example/ios
+        working-directory: projects/feedbackkit/react-native/example/ios
         run: pod install
       - name: Build the demo app for the iOS Simulator
-        working-directory: react-native/example/ios
+        working-directory: projects/feedbackkit/react-native/example/ios
         run: |
           xcodebuild build \
             -workspace FeedbackkitReactNativeExample.xcworkspace \

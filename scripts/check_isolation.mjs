@@ -21,7 +21,7 @@ import { schemaOf } from "./check_supabase.mjs";
 
 /** Team-wide CI secrets every project may use (one Apple developer team). */
 export const SHARED_CI_NAMES = new Set([
-  "GITHUB_TOKEN", "ASC_KEY_ID", "ASC_ISSUER_ID", "ASC_KEY_P8_BASE64",
+  "GITHUB_TOKEN", "APPLE_TEAM_ID", "ASC_KEY_ID", "ASC_ISSUER_ID", "ASC_KEY_P8_BASE64",
   "SIGNING_P12_BASE64", "SIGNING_P12_PASSWORD", "DEV_SIGNING_P12_BASE64", "DEV_SIGNING_P12_PASSWORD",
   "MAC_SIGNING_P12_BASE64", "MAC_SIGNING_P12_PASSWORD",
 ]);
@@ -93,19 +93,24 @@ export function checkRepo(root) {
     if (!["shared", "own"].includes(b.backend)) problems.push(`projects/${p}/backend.env: BACKEND must be shared or own`);
     for (const k of ["ref", "url", "key"]) if (!b[k]) problems.push(`projects/${p}/backend.env: SUPABASE_${k === "key" ? "PUBLISHABLE_KEY" : k.toUpperCase()} is empty`);
     if (b.url && b.ref && !b.url.includes(b.ref)) problems.push(`projects/${p}/backend.env: SUPABASE_URL doesn't match SUPABASE_REF`);
-    const schema = schemaOf(p);
-    if (b.schema !== schema) problems.push(`projects/${p}/backend.env: SCHEMA must be ${schema}`);
-    if (b.bucket !== p) problems.push(`projects/${p}/backend.env: BUCKET must be ${p}`);
+    // On the shared project, schema and bucket are named after the project; an own project is free.
+    if (b.backend === "shared") {
+      const schema = schemaOf(p);
+      if (b.schema !== schema) problems.push(`projects/${p}/backend.env: SCHEMA must be ${schema}`);
+      if (b.bucket !== p) problems.push(`projects/${p}/backend.env: BUCKET must be ${p}`);
+    }
     for (const f of b.files) {
-      if (!existsSync(join(root, f))) problems.push(`projects/${p}/backend.env: BACKEND_FILES lists missing ${f}`);
-      else if (!f.startsWith(`projects/${p}/`)) problems.push(`projects/${p}/backend.env: BACKEND_FILES may only list files in projects/${p}/ (${f})`);
+      if (!f.startsWith(`projects/${p}/`)) problems.push(`projects/${p}/backend.env: BACKEND_FILES may only list files in projects/${p}/ (${f})`);
+      else if (!f.endsWith("/**") && !existsSync(join(root, f))) problems.push(`projects/${p}/backend.env: BACKEND_FILES lists missing ${f}`);
     }
   }
 
-  // Where each coordinate may appear: the declaring projects' BACKEND_FILES, plus supabase/ for
-  // the shared project (its config and docs).
+  // Where each shared-backend coordinate may appear: the declaring projects' BACKEND_FILES, plus
+  // supabase/ (its config and docs). An own backend (BACKEND=own) is that project's business, and
+  // other projects calling it (e.g. FeedbackKit's ingest endpoint) list it as an external host.
   const allowed = new Map();
   for (const [p, b] of Object.entries(backends)) {
+    if (b.backend !== "shared") continue;
     for (const v of [b.ref, b.key].filter(Boolean)) {
       const set = allowed.get(v) ?? new Set();
       b.files.forEach((f) => set.add(f));
@@ -120,7 +125,7 @@ export function checkRepo(root) {
     const owner = projects.find((p) => f.startsWith(`projects/${p}/`));
     for (const [v, set] of allowed) {
       if (!text.includes(v)) continue;
-      const ok = set.has(f) || [...set].some((s) => s.endsWith("/") && f.startsWith(s));
+      const ok = set.has(f) || [...set].some((s) => (s.endsWith("/") && f.startsWith(s)) || (s.endsWith("/**") && f.startsWith(s.slice(0, -2))));
       if (!ok) problems.push(`${f}: contains backend coordinate ${v.slice(0, 16)}… outside BACKEND_FILES${owner ? ` (add it to projects/${owner}/backend.env, or read the value from there)` : ""}`);
     }
     if (owner && backends[owner]) {

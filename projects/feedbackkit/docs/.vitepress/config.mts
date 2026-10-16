@@ -3,11 +3,11 @@ import { defineConfig } from "vitepress";
 export default defineConfig({
   title: "FeedbackKit",
   description: "Developer guide, architecture notes, and contributor documentation for FeedbackKit",
-  base: "/feedback-kit/",
+  base: "/hejitech-apps/feedbackkit/",   // served inside the HEJI apps site (repo root pages/, .github/workflows/pages.yml)
   lastUpdated: true,
   head: [
-    ["link", { rel: "icon", type: "image/svg+xml", href: "/feedback-kit/logo.svg" }],
-    ["link", { rel: "icon", type: "image/png", href: "/feedback-kit/logo.png" }],
+    ["link", { rel: "icon", type: "image/svg+xml", href: "/hejitech-apps/feedbackkit/logo.svg" }],
+    ["link", { rel: "icon", type: "image/png", href: "/hejitech-apps/feedbackkit/logo.png" }],
     ["meta", { name: "theme-color", content: "#171717" }],
     ["meta", { property: "og:type", content: "website" }],
     ["meta", { property: "og:title", content: "FeedbackKit — Contributor Docs" }],
@@ -66,7 +66,7 @@ export default defineConfig({
       },
     ],
     socialLinks: [
-      { icon: "github", link: "https://github.com/tianhaoz95/feedback-kit" },
+      { icon: "github", link: "https://github.com/tianhaoz95/hejitech-apps/tree/main/projects/feedbackkit" },
     ],
     search: {
       provider: "local",
@@ -76,7 +76,7 @@ export default defineConfig({
       copyright: "Copyright © 2026 FeedbackKit Contributors",
     },
     editLink: {
-      pattern: "https://github.com/tianhaoz95/feedback-kit/edit/main/docs/:path",
+      pattern: "https://github.com/tianhaoz95/hejitech-apps/edit/main/projects/feedbackkit/docs/:path",
       text: "Edit this page on GitHub",
     },
   },

@@ -15,7 +15,7 @@ interface ProjectPages {
   sidebar?: DefaultTheme.SidebarItem[];
 }
 
-const projects = readdirSync(join(root, "projects")).filter((p) => existsSync(join(root, "projects", p, "docs", "index.md")));
+const projects = readdirSync(join(root, "projects")).filter((p) => existsSync(join(root, "projects", p, "docs", "index.md")) && !existsSync(join(root, "projects", p, "docs", ".vitepress")));
 
 function pagesJson(p: string): ProjectPages {
   const f = join(root, "projects", p, "docs", "pages.json");
@@ -55,6 +55,8 @@ export default withMermaid(
       nav: [
         { text: "Apps", link: "/#apps" },
         ...projects.map((p) => ({ text: pagesJson(p).name, link: `/${p}/`, activeMatch: `^/${p}/` })),
+        // Its own VitePress site, built into /feedbackkit/ by pages.yml: a full page load, not a route.
+        { text: "FeedbackKit", link: "https://tianhaoz95.github.io/hejitech-apps/feedbackkit/", target: "_self" },
         { text: "Monorepo", link: "/monorepo" },
       ],
       sidebar: Object.fromEntries(projects.map((p) => [`/${p}/`, sidebarFor(p)])),

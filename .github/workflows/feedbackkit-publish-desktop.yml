@@ -1,4 +1,4 @@
-name: Publish Desktop Packages
+name: FeedbackKit · Publish Desktop Packages
 
 # Publishes the desktop packages on unified vX.Y.Z releases (and
 # desktop-vX.Y.Z for these alone): feedbackkit-electron and
@@ -19,19 +19,23 @@ on:
         required: false
 
 concurrency:
-  group: desktop-publish-${{ github.event.release.tag_name || github.ref }}
+  group: feedbackkit-desktop-publish-${{ github.event.release.tag_name || github.ref }}
   cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: projects/feedbackkit
 
 jobs:
   version:
-    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'v') || startsWith(github.event.release.tag_name, 'desktop-v')
+    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'feedbackkit-v') || startsWith(github.event.release.tag_name, 'feedbackkit-desktop-v')
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.resolve.outputs.version }}
     steps:
       - id: resolve
         run: |
-          if [ "${{ github.event_name }}" = "release" ]; then VERSION="${{ github.event.release.tag_name }}"; else VERSION="${{ inputs.version }}"; fi
+          if [ "${{ github.event_name }}" = "release" ]; then VERSION="${{ github.event.release.tag_name }}"; VERSION="${VERSION#feedbackkit-}"; else VERSION="${{ inputs.version }}"; fi
           VERSION="${VERSION#desktop-v}"
           VERSION="${VERSION#v}"
           if [ -z "$VERSION" ]; then echo "No version: pass one when running by hand." >&2; exit 1; fi
@@ -53,11 +57,11 @@ jobs:
           node-version: 22
           registry-url: "https://registry.npmjs.org"
       - name: Build the web SDK (the packages compile against its types)
-        working-directory: web-sdk
+        working-directory: projects/feedbackkit/web-sdk
         run: npm ci && npm run build
       - name: Publish
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.FEEDBACKKIT_NPM_TOKEN }}
           VERSION: ${{ needs.version.outputs.version }}
         run: |
           for dir in desktop/electron desktop/tauri/guest-js; do
@@ -92,12 +96,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
       - name: Set the crate version
-        working-directory: desktop/tauri
+        working-directory: projects/feedbackkit/desktop/tauri
         run: sed -i -E "0,/^version = \".*\"/s//version = \"${{ needs.version.outputs.version }}\"/" Cargo.toml
       - name: Publish (or verify the package when there's no token)
-        working-directory: desktop/tauri
+        working-directory: projects/feedbackkit/desktop/tauri
         env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ secrets.FEEDBACKKIT_CARGO_REGISTRY_TOKEN }}
         run: |
           if [ -z "$CARGO_REGISTRY_TOKEN" ] || [ "${{ inputs.dry_run }}" = "true" ]; then
             echo "::notice::No CARGO_REGISTRY_TOKEN (or dry run) — verifying the package only."

@@ -1,4 +1,4 @@
-name: Web SDK CI
+name: FeedbackKit · Web SDK CI
 
 # Unit + cross-browser end-to-end tests for web-sdk/, plus a dashboard build
 # from a clean checkout — the dashboard (web/) imports the SDK from source
@@ -7,19 +7,23 @@ on:
   push:
     branches: [main]
     paths:
-      - "web-sdk/**"
-      - "web/**"
-      - ".github/workflows/web-sdk-ci.yml"
+      - "projects/feedbackkit/web-sdk/**"
+      - "projects/feedbackkit/web/**"
+      - ".github/workflows/feedbackkit-web-sdk-ci.yml"
   pull_request:
     paths:
-      - "web-sdk/**"
-      - "web/**"
-      - ".github/workflows/web-sdk-ci.yml"
+      - "projects/feedbackkit/web-sdk/**"
+      - "projects/feedbackkit/web/**"
+      - ".github/workflows/feedbackkit-web-sdk-ci.yml"
   workflow_dispatch:
 
 concurrency:
-  group: web-sdk-ci-${{ github.ref }}
+  group: feedbackkit-web-sdk-ci-${{ github.ref }}
   cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: projects/feedbackkit
 
 jobs:
   web-sdk:
@@ -29,14 +33,14 @@ jobs:
       contents: read
     defaults:
       run:
-        working-directory: web-sdk
+        working-directory: projects/feedbackkit/web-sdk
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: web-sdk/package-lock.json
+          cache-dependency-path: projects/feedbackkit/web-sdk/package-lock.json
       - run: npm ci
       - run: npm run lint
       - run: npm test
@@ -50,7 +54,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: web-sdk-e2e-screenshots
-          path: web-sdk/e2e/output
+          path: projects/feedbackkit/web-sdk/e2e/output
           if-no-files-found: ignore
           retention-days: 7
 
@@ -61,14 +65,14 @@ jobs:
       contents: read
     defaults:
       run:
-        working-directory: web
+        working-directory: projects/feedbackkit/web
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: projects/feedbackkit/web/package-lock.json
       # Deliberately *not* installing web-sdk/node_modules: this mirrors the
       # Cloudflare build, which only installs web/.
       - run: npm ci

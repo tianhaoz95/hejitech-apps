@@ -1,4 +1,4 @@
-name: Publish CLI Package
+name: FeedbackKit · Publish Web SDK Package
 
 on:
   release:
@@ -14,13 +14,17 @@ on:
         required: false
 
 concurrency:
-  group: npm-publish-${{ github.event.release.tag_name || github.ref }}
+  group: feedbackkit-web-sdk-publish-${{ github.event.release.tag_name || github.ref }}
   cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: projects/feedbackkit
 
 jobs:
   publish-npm:
     name: Publish to npm
-    if: github.event_name != 'release' || (!startsWith(github.event.release.tag_name, 'beta-') && !startsWith(github.event.release.tag_name, 'react-native-') && !startsWith(github.event.release.tag_name, 'desktop-') && !startsWith(github.event.release.tag_name, 'mac-demo-') && !startsWith(github.event.release.tag_name, 'skills-') && !startsWith(github.event.release.tag_name, 'web-sdk-') && !startsWith(github.event.release.tag_name, 'portal-mac-'))
+    if: github.event_name != 'release' || (startsWith(github.event.release.tag_name, 'feedbackkit-') && !startsWith(github.event.release.tag_name, 'feedbackkit-beta-') && !startsWith(github.event.release.tag_name, 'feedbackkit-react-native-') && !startsWith(github.event.release.tag_name, 'feedbackkit-desktop-') && !startsWith(github.event.release.tag_name, 'feedbackkit-mac-demo-') && !startsWith(github.event.release.tag_name, 'feedbackkit-cli-') && !startsWith(github.event.release.tag_name, 'feedbackkit-skills-') && !startsWith(github.event.release.tag_name, 'feedbackkit-portal-mac-'))
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -28,7 +32,7 @@ jobs:
       deployments: write
     environment:
       name: npm
-      url: https://www.npmjs.com/package/feedbackkit-cli
+      url: https://www.npmjs.com/package/feedbackkit-web
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -39,56 +43,61 @@ jobs:
           node-version: 22
           registry-url: "https://registry.npmjs.org"
           cache: npm
-          cache-dependency-path: cli/package-lock.json
+          cache-dependency-path: projects/feedbackkit/web-sdk/package-lock.json
 
       - name: Resolve version
         id: version
         run: |
           if [ "${{ github.event_name }}" = "release" ]; then
             TAG="${{ github.event.release.tag_name }}"
-            VERSION="${TAG#cli-v}"
-            VERSION="${VERSION#mac-demo-v}"
+            TAG="${TAG#feedbackkit-}"   # monorepo tags carry the project prefix
+            VERSION="${TAG#web-sdk-v}"
             VERSION="${VERSION#v}"
           elif [ -n "${{ inputs.version }}" ]; then
             VERSION="${{ inputs.version }}"
             VERSION="${VERSION#v}"
           else
-            TAG="$(git describe --tags --match 'v[0-9]*' --match 'cli-v[0-9]*' --abbrev=0 2>/dev/null || git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null | head -n1 || true)"
-            VERSION="${TAG#cli-v}"
-            VERSION="${VERSION#mac-demo-v}"
+            TAG="$(git describe --tags --match 'feedbackkit-v[0-9]*' --match 'feedbackkit-web-sdk-v[0-9]*' --abbrev=0 2>/dev/null || git tag --list 'feedbackkit-v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null | head -n1 || true)"
+            TAG="${TAG#feedbackkit-}"
+            VERSION="${TAG#web-sdk-v}"
             VERSION="${VERSION#v}"
             if [ -z "$VERSION" ]; then
-              VERSION="$(node -p 'require("./cli/package.json").version')"
+              VERSION="$(node -p 'require("./web-sdk/package.json").version')"
             fi
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Resolved version: $VERSION"
 
       - name: Install dependencies
-        working-directory: cli
+        working-directory: projects/feedbackkit/web-sdk
         run: npm ci
 
       - name: Set package version
-        working-directory: cli
-        run: |
-          npm version "${{ steps.version.outputs.version }}" --no-git-tag-version --allow-same-version
+        working-directory: projects/feedbackkit/web-sdk
+        run: npm version "${{ steps.version.outputs.version }}" --no-git-tag-version --allow-same-version
 
       - name: Lint, test and build
-        working-directory: cli
+        working-directory: projects/feedbackkit/web-sdk
         run: |
           npm run lint
           npm test
           npm run build
 
+      - name: End-to-end test in Chromium
+        working-directory: projects/feedbackkit/web-sdk
+        run: |
+          npx playwright install --with-deps chromium
+          BROWSERS=chromium node e2e/run.mjs
+
       - name: Publish package to npm
-        working-directory: cli
+        working-directory: projects/feedbackkit/web-sdk
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.FEEDBACKKIT_NPM_TOKEN }}
         run: |
           PKG_VERSION="${{ steps.version.outputs.version }}"
-          ALREADY_PUBLISHED="$(npm view feedbackkit-cli@"$PKG_VERSION" version 2>/dev/null || true)"
+          ALREADY_PUBLISHED="$(npm view feedbackkit-web@"$PKG_VERSION" version 2>/dev/null || true)"
           if [ "$ALREADY_PUBLISHED" = "$PKG_VERSION" ]; then
-            echo "feedbackkit-cli@$PKG_VERSION is already published on npm registry. Skipping."
+            echo "feedbackkit-web@$PKG_VERSION is already published on npm registry. Skipping."
             exit 0
           fi
 
@@ -101,7 +110,7 @@ jobs:
 
   publish-github-packages:
     name: Publish to GitHub Packages
-    if: github.event_name != 'release' || (!startsWith(github.event.release.tag_name, 'beta-') && !startsWith(github.event.release.tag_name, 'react-native-') && !startsWith(github.event.release.tag_name, 'desktop-') && !startsWith(github.event.release.tag_name, 'mac-demo-') && !startsWith(github.event.release.tag_name, 'skills-') && !startsWith(github.event.release.tag_name, 'web-sdk-') && !startsWith(github.event.release.tag_name, 'portal-mac-'))
+    if: github.event_name != 'release' || (startsWith(github.event.release.tag_name, 'feedbackkit-') && !startsWith(github.event.release.tag_name, 'feedbackkit-beta-') && !startsWith(github.event.release.tag_name, 'feedbackkit-react-native-') && !startsWith(github.event.release.tag_name, 'feedbackkit-desktop-') && !startsWith(github.event.release.tag_name, 'feedbackkit-mac-demo-') && !startsWith(github.event.release.tag_name, 'feedbackkit-cli-') && !startsWith(github.event.release.tag_name, 'feedbackkit-skills-') && !startsWith(github.event.release.tag_name, 'feedbackkit-portal-mac-'))
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -121,51 +130,50 @@ jobs:
           registry-url: "https://npm.pkg.github.com"
           scope: "@${{ github.repository_owner }}"
           cache: npm
-          cache-dependency-path: cli/package-lock.json
+          cache-dependency-path: projects/feedbackkit/web-sdk/package-lock.json
 
       - name: Resolve version
         id: version
         run: |
           if [ "${{ github.event_name }}" = "release" ]; then
             TAG="${{ github.event.release.tag_name }}"
-            VERSION="${TAG#cli-v}"
-            VERSION="${VERSION#mac-demo-v}"
+            TAG="${TAG#feedbackkit-}"   # monorepo tags carry the project prefix
+            VERSION="${TAG#web-sdk-v}"
             VERSION="${VERSION#v}"
           elif [ -n "${{ inputs.version }}" ]; then
             VERSION="${{ inputs.version }}"
             VERSION="${VERSION#v}"
           else
-            TAG="$(git describe --tags --match 'v[0-9]*' --match 'cli-v[0-9]*' --abbrev=0 2>/dev/null || git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null | head -n1 || true)"
-            VERSION="${TAG#cli-v}"
-            VERSION="${VERSION#mac-demo-v}"
+            TAG="$(git describe --tags --match 'feedbackkit-v[0-9]*' --match 'feedbackkit-web-sdk-v[0-9]*' --abbrev=0 2>/dev/null || git tag --list 'feedbackkit-v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null | head -n1 || true)"
+            TAG="${TAG#feedbackkit-}"
+            VERSION="${TAG#web-sdk-v}"
             VERSION="${VERSION#v}"
             if [ -z "$VERSION" ]; then
-              VERSION="$(node -p 'require("./cli/package.json").version')"
+              VERSION="$(node -p 'require("./web-sdk/package.json").version')"
             fi
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Resolved version: $VERSION"
 
       - name: Install dependencies
-        working-directory: cli
+        working-directory: projects/feedbackkit/web-sdk
         run: npm ci
 
       - name: Configure package scope and version
-        working-directory: cli
+        working-directory: projects/feedbackkit/web-sdk
         run: |
           SCOPE_OWNER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
-          npm pkg set name="@${SCOPE_OWNER}/feedbackkit-cli"
+          npm pkg set name="@${SCOPE_OWNER}/feedbackkit-web"
           npm version "${{ steps.version.outputs.version }}" --no-git-tag-version --allow-same-version
 
-      - name: Lint, test and build
-        working-directory: cli
+      - name: Lint and build
+        working-directory: projects/feedbackkit/web-sdk
         run: |
           npm run lint
-          npm test
           npm run build
 
       - name: Publish package to GitHub Packages
-        working-directory: cli
+        working-directory: projects/feedbackkit/web-sdk
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

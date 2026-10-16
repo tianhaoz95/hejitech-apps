@@ -42,6 +42,16 @@ hero:
   </div>
 </a>
 
+<a class="heji-app" href="https://tianhaoz95.github.io/hejitech-apps/feedbackkit/" target="_self">
+  <img src="/feedbackkit-logo.png" alt="" width="64" height="64">
+  <div class="heji-app-body">
+    <h3>FeedbackKit</h3>
+    <p>In-app feedback that closes the loop: users report with a screenshot, a coding agent fixes it, and the reporter is asked "is it fixed?" in the next build. The tool every HEJI app ships with.</p>
+    <span class="heji-tags"><span>iOS · macOS · watchOS</span><span>Android</span><span>Web</span><span>Flutter · RN · desktop</span><span>MCP</span></span>
+    <span class="heji-links"><span>Developer docs →</span></span>
+  </div>
+</a>
+
 </div>
 
 <p class="heji-visit">Visit the apps: <a href="https://waypack.hejitech.workers.dev">waypack.hejitech.workers.dev</a> · <a href="https://weehours.hejitech.workers.dev">weehours.hejitech.workers.dev</a></p>

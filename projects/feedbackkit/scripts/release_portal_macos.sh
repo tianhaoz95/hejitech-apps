@@ -11,7 +11,7 @@
 # export (Apple manages certs/profiles via the ASC API key), this is a
 # direct Developer ID distribution: a real "Developer ID Application"
 # certificate has to already be in the keychain (or importable — see
-# .github/workflows/release-portal-macos.yml for how CI gets one from
+# .github/workflows/feedbackkit-release-portal-macos.yml for how CI gets one from
 # MACOS_CERTIFICATE/MACOS_CERTIFICATE_PASSWORD), and the result gets
 # notarized before Gatekeeper will run it on anyone else's Mac.
 #
@@ -21,7 +21,7 @@
 #   ./scripts/release_portal_macos.sh --tag portal-mac-v1.0.0        # a Portal-only release
 #   ./scripts/release_portal_macos.sh --beta                         # rolling beta prerelease (CI, every push to main)
 #
-# --beta replaces the `beta-portal-mac` GitHub prerelease with this build (one
+# --beta replaces the `feedbackkit-beta-portal-mac` GitHub prerelease with this build (one
 # always-current beta download rather than a prerelease per push) and
 # announces it on FeedbackKit's beta channel. A tagged release is the Mac's
 # production channel — the owner cuts it with scripts/cut_release.sh.
@@ -62,7 +62,7 @@ BUILD_NUMBER=""
 BETA=0
 NO_UPLOAD=0
 CHECK_ONLY=0
-BETA_TAG="beta-portal-mac"
+BETA_TAG="feedbackkit-beta-portal-mac"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --version)   VERSION="${2:-}"; shift 2 ;;
@@ -79,8 +79,8 @@ done
 if [[ "$CHECK_ONLY" -eq 0 && "$BETA" -eq 1 ]]; then
   # Betas keep the current release version; only the build number moves.
   if [[ -z "$VERSION" ]]; then
-    TAG="$(git describe --tags --match 'v[0-9]*' --abbrev=0 2>/dev/null || git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null | head -n1 || true)"
-    VERSION="${TAG#v}"
+    TAG="$(git describe --tags --match 'feedbackkit-v[0-9]*' --abbrev=0 2>/dev/null || git tag --list 'feedbackkit-v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null | head -n1 || true)"
+    VERSION="${TAG#feedbackkit-v}"
   fi
   if [[ -z "$VERSION" ]]; then
     VERSION="$(sed -n 's/^ *MARKETING_VERSION: *"\{0,1\}\([0-9.]*\)"\{0,1\}.*$/\1/p' "$REPO_ROOT/DeveloperApp/project.yml" | tail -1)"
@@ -89,21 +89,21 @@ if [[ "$CHECK_ONLY" -eq 0 && "$BETA" -eq 1 ]]; then
   TAG="$BETA_TAG"
 elif [[ "$CHECK_ONLY" -eq 0 ]]; then
   if [[ -z "$TAG" && -z "$VERSION" ]]; then
-    TAG="$(git describe --tags --match 'v[0-9]*' --abbrev=0 2>/dev/null || git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null | head -n1 || true)"
-    VERSION="${TAG#v}"
+    TAG="$(git describe --tags --match 'feedbackkit-v[0-9]*' --abbrev=0 2>/dev/null || git tag --list 'feedbackkit-v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null | head -n1 || true)"
+    VERSION="${TAG#feedbackkit-v}"
   fi
   if [[ -n "$TAG" ]]; then
-    if [[ "$TAG" =~ ^portal-mac-v ]]; then
-      VERSION="${TAG#portal-mac-v}"
-    elif [[ "$TAG" =~ ^v ]]; then
-      VERSION="${TAG#v}"
+    if [[ "$TAG" =~ ^feedbackkit-portal-mac-v ]]; then
+      VERSION="${TAG#feedbackkit-portal-mac-v}"
+    elif [[ "$TAG" =~ ^feedbackkit-v ]]; then
+      VERSION="${TAG#feedbackkit-v}"
     else
       VERSION="$TAG"
-      TAG="v${VERSION}"
+      TAG="feedbackkit-v${VERSION}"
     fi
   elif [[ -n "$VERSION" ]]; then
     VERSION="${VERSION#v}"
-    TAG="v${VERSION}"
+    TAG="feedbackkit-v${VERSION}"
   fi
   [[ -n "$VERSION" ]] || { echo "error: --version X.Y.Z or --tag vX.Y.Z is required" >&2; exit 1; }
   echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "error: version must be X.Y.Z, got: $VERSION" >&2; exit 1; }
@@ -301,8 +301,8 @@ open without a Gatekeeper warning. Found a problem? Help › Report a Problem…
     echo "   release $TAG already exists — attaching to it"
   else
     TITLE="FeedbackKit $VERSION"
-    [[ "$TAG" =~ ^portal-mac-v ]] && TITLE="macOS Portal $VERSION"
-    gh release create "$TAG" --repo "$GH_REPO" --title "$TITLE" --notes "$NOTES"
+    [[ "$TAG" =~ ^feedbackkit-portal-mac-v ]] && TITLE="macOS Portal $VERSION"
+    gh release create "$TAG" --repo "$GH_REPO" --title "$TITLE" --notes "$NOTES" --latest=false
   fi
 fi
 gh release upload "$TAG" --repo "$GH_REPO" --clobber "$OUT_DMG#$DMG_NAME"
