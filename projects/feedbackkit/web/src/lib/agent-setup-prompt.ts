@@ -288,11 +288,11 @@ Please inspect the project, find the Application class (or add one), add the dep
 Please inspect the project, add the dependency, configure FeedbackKit in main(), wire up triggers and screen tracking, and verify that the app builds for both Android and iOS.`;
 
     case "react-native":
-      return `Please integrate FeedbackKit ${projectContext}into this React Native app. The feedback-kit-react-native module runs the native FeedbackKit iOS and Android SDKs. It needs the New Architecture (React Native 0.76+).
+      return `Please integrate FeedbackKit ${projectContext}into this React Native app. The feedbackkit-rn module runs the native FeedbackKit iOS and Android SDKs. It needs the New Architecture (React Native 0.76+).
 
 1. Install the package:
    \`\`\`bash
-   npm install feedback-kit-react-native
+   npm install feedbackkit-rn
    \`\`\`
    - iOS: add the native SDK to ios/Podfile inside the app target, then run \`pod install\`:
      \`\`\`ruby
@@ -303,7 +303,7 @@ Please inspect the project, add the dependency, configure FeedbackKit in main(),
 
 2. Configure FeedbackKit once at startup (e.g. in index.js or the root component's module scope):
    \`\`\`ts
-   import { FeedbackKit } from 'feedback-kit-react-native';
+   import { FeedbackKit } from 'feedbackkit-rn';
 
    FeedbackKit.configure({
      endpointUrl: '${endpointUrl}',

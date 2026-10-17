@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, StatusBar, StyleSheet, Text, View, useColorScheme } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FeedbackKit } from 'feedback-kit-react-native';
+import { FeedbackKit } from 'feedbackkit-rn';
 import { HomeScreen } from './HomeScreen';
 import { CartScreen } from './CartScreen';
 import { SettingsScreen } from './SettingsScreen';

@@ -1,5 +1,5 @@
 import { Alert, FlatList, Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
-import { FeedbackKit } from 'feedback-kit-react-native';
+import { FeedbackKit } from 'feedbackkit-rn';
 import { CartStore, formatPrice, useCart } from './store';
 import { palette } from './theme';
 

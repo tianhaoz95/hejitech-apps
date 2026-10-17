@@ -1,4 +1,4 @@
-# feedback-kit-react-native
+# feedbackkit-rn
 
 In-app feedback for React Native apps: the user captures a screenshot, marks
 it up, describes the problem, and you get a structured `FeedbackReport`.
@@ -18,7 +18,7 @@ Requires the New Architecture (React Native 0.76+), iOS 15.1+, Android `minSdk` 
 ## Install
 
 ```sh
-npm install feedback-kit-react-native
+npm install feedbackkit-rn
 ```
 
 **iOS.** The Swift SDK isn't on the CocoaPods trunk yet, so add it to `ios/Podfile`
@@ -37,7 +37,7 @@ its editor activity through manifest merging.
 ## Use
 
 ```tsx
-import { FeedbackKit } from 'feedback-kit-react-native';
+import { FeedbackKit } from 'feedbackkit-rn';
 
 // Optional: deliver reports to the hosted dashboard.
 FeedbackKit.configure({

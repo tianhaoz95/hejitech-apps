@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, Vibration, View, useColorScheme } from 'react-native';
-import { FeedbackKit } from 'feedback-kit-react-native';
+import { FeedbackKit } from 'feedbackkit-rn';
 import { CartStore, formatPrice } from './store';
 import { palette } from './theme';
 

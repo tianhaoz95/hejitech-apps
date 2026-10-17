@@ -134,7 +134,7 @@ npm run test:e2e   # the full flow in real Chromium, Firefox and WebKit
   cd example && flutter run
   ```
 
-- **React Native** (`react-native/`, npm `feedback-kit-react-native`): a New
+- **React Native** (`react-native/`, npm `feedbackkit-rn`): a New
   Architecture TurboModule over the native SDKs, with the demo app in
   `example/`.
 
@@ -222,7 +222,7 @@ Claude Code, Cursor, Antigravity, Gemini CLI, and other AI coding assistants to 
 | [`setup/`](skills/setup/README.md) | [`setup-web-sdk`](skills/setup/setup-web-sdk/SKILL.md) | Integrate the FeedbackKit web SDK into a website or web app. |
 | [`setup/`](skills/setup/README.md) | [`setup-android-sdk`](skills/setup/setup-android-sdk/SKILL.md) | Integrate the native FeedbackKit Android SDK into an Android app (Compose or Views) with JitPack setup, triggers, and screen tracking. |
 | [`setup/`](skills/setup/README.md) | [`setup-flutter-sdk`](skills/setup/setup-flutter-sdk/SKILL.md) | Integrate FeedbackKit into a Flutter app with `feedbackkit_flutter`, which runs the native iOS and Android SDKs. |
-| [`setup/`](skills/setup/README.md) | [`setup-react-native-sdk`](skills/setup/setup-react-native-sdk/SKILL.md) | Integrate FeedbackKit into a React Native app with `feedback-kit-react-native`, which runs the native iOS and Android SDKs. |
+| [`setup/`](skills/setup/README.md) | [`setup-react-native-sdk`](skills/setup/setup-react-native-sdk/SKILL.md) | Integrate FeedbackKit into a React Native app with `feedbackkit-rn`, which runs the native iOS and Android SDKs. |
 | [`setup/`](skills/setup/README.md) | [`setup-tauri-sdk`](skills/setup/setup-tauri-sdk/SKILL.md) | Integrate FeedbackKit into a Tauri 2 desktop app with `tauri-plugin-feedbackkit` and `feedbackkit-tauri`. |
 | [`setup/`](skills/setup/README.md) | [`setup-electron-sdk`](skills/setup/setup-electron-sdk/SKILL.md) | Integrate FeedbackKit into an Electron desktop app with `feedbackkit-electron`. |
 | [`setup/`](skills/setup/README.md) | [`setup-mcp-server`](skills/setup/setup-mcp-server/SKILL.md) | Configure FeedbackKit CLI and MCP server for AI coding agents. |
@@ -465,7 +465,7 @@ This publishes the GitHub release (tag `v1.0.0`) and triggers all release pipeli
 5. **`.github/workflows/publish-cli.yml`**: Builds, tests, and publishes `feedbackkit-cli` to both the public npm registry (`feedbackkit-cli`) and GitHub Packages (`@tianhaoz95/feedbackkit-cli`).
 6. **`.github/workflows/publish-skills.yml`**: Validates and publishes `feedback-kit-skills` to both the public npm registry (`feedback-kit-skills`) and GitHub Packages (`@tianhaoz95/feedback-kit-skills`).
 7. **`.github/workflows/publish-web-sdk.yml`**: Publishes `feedbackkit-web` to npm and GitHub Packages.
-8. **`.github/workflows/publish-react-native.yml`**: Publishes `feedback-kit-react-native` to npm. Its prepack step bundles the Android SDK.
+8. **`.github/workflows/publish-react-native.yml`**: Publishes `feedbackkit-rn` to npm. Its prepack step bundles the Android SDK.
 9. **`.github/workflows/publish-desktop.yml`**: Publishes `feedbackkit-electron` and `feedbackkit-tauri` to npm, and `tauri-plugin-feedbackkit` to crates.io once a `CARGO_REGISTRY_TOKEN` secret exists. Until then it only verifies the crate packages.
 
 The Android SDK has no pipeline: JitPack builds `android/feedbackkit` from the tag the first time someone requests it (`jitpack.yml`). The Flutter plugin isn't on pub.dev yet; apps depend on it from GitHub with a `git:` dependency. See `flutter/feedbackkit_flutter/README.md`.
@@ -518,7 +518,7 @@ API key with access to the team, the same one works for both.
 | `Tests/FeedbackKitTests/` | SDK unit tests |
 | `android/` | Native Android SDK (`feedbackkit`) and its demo app (`demo`), one Gradle project |
 | `flutter/feedbackkit_flutter/` | Flutter plugin over the native iOS/Android SDKs, demo app in `example/` |
-| `react-native/` | React Native module (npm `feedback-kit-react-native`) over the native SDKs, demo app in `example/` |
+| `react-native/` | React Native module (npm `feedbackkit-rn`) over the native SDKs, demo app in `example/` |
 | `desktop/` | Tauri (`tauri/`: Rust plugin + npm `feedbackkit-tauri`) and Electron (`electron/`: npm `feedbackkit-electron`) packages over the web SDK, their demo apps, and the shared demo UI |
 | `DemoApp/` | Sample apps exercising the SDK on iOS, macOS, and watchOS (one XcodeGen project, three targets) |
 | `web/` | Static SPA dashboard (Vite + React), deployed to Cloudflare Workers Static Assets |

@@ -372,7 +372,7 @@ A native Android SDK (\`android/feedbackkit\`, Kotlin, no dependencies beyond th
 |---|---|---|
 | Native Android | \`com.github.tianhaoz95.feedback-kit:feedbackkit:<tag>\` (JitPack) | minSdk 24 |
 | Flutter | \`feedbackkit_flutter\` (pubspec git dependency, \`path: flutter/feedbackkit_flutter\`) | minSdk 24, iOS 15 |
-| React Native | \`feedback-kit-react-native\` (npm) + the \`FeedbackKit\` pod | RN 0.76+ New Architecture, minSdk 24, iOS 15.1 |
+| React Native | \`feedbackkit-rn\` (npm) + the \`FeedbackKit\` pod | RN 0.76+ New Architecture, minSdk 24, iOS 15.1 |
 
 ## Android
 
@@ -420,13 +420,13 @@ iOS resolves the Swift SDK through Swift Package Manager automatically; apps tha
 ## React Native
 
 \`\`\`bash
-npm install feedback-kit-react-native
+npm install feedbackkit-rn
 # ios/Podfile, in the app target (same version as the npm package):
 pod 'FeedbackKit', :git => 'https://github.com/tianhaoz95/feedback-kit.git', :tag => 'v<version>'
 \`\`\`
 
 \`\`\`ts
-import { FeedbackKit } from 'feedback-kit-react-native';
+import { FeedbackKit } from 'feedbackkit-rn';
 FeedbackKit.configure({ endpointUrl: '...', projectKey: 'pk_live_...' });
 FeedbackKit.showFloatingTriggerButton();
 FeedbackKit.enableShakeToReport();
@@ -1114,7 +1114,7 @@ FeedbackKit packages Agent Skills compliant with the vercel-labs/skills open sta
 - \`setup-web-sdk\` — Integrates the web SDK (\`feedbackkit-web\`) into a website or web app.
 - \`setup-android-sdk\` — Integrates the native Android SDK (JitPack) into an Android app.
 - \`setup-flutter-sdk\` — Integrates \`feedbackkit_flutter\` into a Flutter app.
-- \`setup-react-native-sdk\` — Integrates \`feedback-kit-react-native\` into a React Native app.
+- \`setup-react-native-sdk\` — Integrates \`feedbackkit-rn\` into a React Native app.
 - \`setup-tauri-sdk\` — Integrates \`tauri-plugin-feedbackkit\` + \`feedbackkit-tauri\` into a Tauri app.
 - \`setup-electron-sdk\` — Integrates \`feedbackkit-electron\` into an Electron app.
 - \`setup-mcp-server\` — Configures the FeedbackKit CLI and MCP server for Claude Code, Cursor, Antigravity, or Codex.

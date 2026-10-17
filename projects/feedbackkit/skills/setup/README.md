@@ -12,7 +12,7 @@ This category contains [Agent Skills](https://github.com/vercel-labs/skills) tha
 | [`setup-web-sdk`](setup-web-sdk/SKILL.md) | Integrate the FeedbackKit web SDK (`feedbackkit-web`) into a website or web app (React, Next.js, Vue, plain HTML). |
 | [`setup-android-sdk`](setup-android-sdk/SKILL.md) | Integrate the native FeedbackKit Android SDK into an Android app (Compose or Views) with JitPack setup, triggers, and screen tracking. |
 | [`setup-flutter-sdk`](setup-flutter-sdk/SKILL.md) | Integrate FeedbackKit into a Flutter app with `feedbackkit_flutter`, which runs the native iOS and Android SDKs. |
-| [`setup-react-native-sdk`](setup-react-native-sdk/SKILL.md) | Integrate FeedbackKit into a React Native app with `feedback-kit-react-native`, which runs the native iOS and Android SDKs. |
+| [`setup-react-native-sdk`](setup-react-native-sdk/SKILL.md) | Integrate FeedbackKit into a React Native app with `feedbackkit-rn`, which runs the native iOS and Android SDKs. |
 | [`setup-tauri-sdk`](setup-tauri-sdk/SKILL.md) | Integrate FeedbackKit into a Tauri 2 desktop app with `tauri-plugin-feedbackkit` and `feedbackkit-tauri`. |
 | [`setup-electron-sdk`](setup-electron-sdk/SKILL.md) | Integrate FeedbackKit into an Electron desktop app with `feedbackkit-electron`. |
 | [`setup-mcp-server`](setup-mcp-server/SKILL.md) | Configure the FeedbackKit CLI and MCP server for Claude Code, Cursor, Antigravity, and Codex. |
