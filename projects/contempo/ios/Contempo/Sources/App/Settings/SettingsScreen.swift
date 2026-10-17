@@ -27,39 +27,11 @@ struct SettingsScreen: View {
             }
 
             Section {
-                Text("Controls whether entries and questions are parsed on-device (free, no network) or in the cloud.")
+                Text("Everything is understood on your phone — nothing is sent to a server. A small model comes with the app; download the larger one for better answers and to read photos.")
                     .font(ContempoFont.labelSmall())
                     .foregroundStyle(palette.inkFaint)
 
-                ForEach(InferencePreference.allCases, id: \.self) { option in
-                    Button {
-                        viewModel.setInferencePreference(option)
-                    } label: {
-                        HStack {
-                            Text(label(for: option))
-                                .foregroundStyle(isDisabled(option) ? palette.inkFaint : palette.inkSoft)
-                            Spacer()
-                            if viewModel.inferencePreference == option {
-                                Image(systemName: "checkmark").foregroundStyle(palette.pine)
-                            }
-                        }
-                    }
-                    .disabled(isDisabled(option))
-                }
-
-                if !viewModel.hasProEntitlement {
-                    Text("Free accounts always process on-device. This is a Contempo Pro feature — your plan is managed from your Contempo account on the web.")
-                        .font(ContempoFont.labelSmall())
-                        .foregroundStyle(palette.brass)
-                } else if !viewModel.cloudAiEnabled {
-                    Text("Cloud AI is temporarily unavailable — only on-device processing works right now.")
-                        .font(ContempoFont.labelSmall())
-                        .foregroundStyle(palette.brass)
-                }
-
-                if viewModel.inferencePreference != .cloudOnly {
-                    onDeviceStatusPanel
-                }
+                onDeviceStatusPanel
 
                 tokenUsageSection
             } header: {
@@ -308,22 +280,6 @@ struct SettingsScreen: View {
         }
     }
 
-    private func label(for option: InferencePreference) -> String {
-        switch option {
-        case .onDeviceOnly: return "On-device only"
-        case .preferOnDevice: return "Prefer on-device (Contempo Pro)"
-        case .cloudOnly: return "Cloud only (Contempo Pro)"
-        }
-    }
-
-    private func isDisabled(_ option: InferencePreference) -> Bool {
-        switch option {
-        case .onDeviceOnly: return false
-        case .preferOnDevice: return !viewModel.hasProEntitlement
-        case .cloudOnly: return !viewModel.hasProEntitlement || !viewModel.cloudAiEnabled
-        }
-    }
-
     private func captureModeLabel(_ mode: CaptureMode) -> String {
         mode == .audioFirst ? "Audio-first" : "Typing"
     }
@@ -346,7 +302,6 @@ struct SettingsScreen: View {
     // — and is Pro-only, so the row is hidden entirely for free accounts
     // rather than shown locked/empty.
     private static let onDeviceCreditReference = 10_000.0
-    private static let cloudCreditQuota = 20.0
 
     @ViewBuilder
     /// On-device counters are client-written (see EntryRepository.
@@ -369,15 +324,6 @@ struct SettingsScreen: View {
                 quotaLabel: { credits in "\(credits) / Unlimited" },
                 tint: palette.pine,
             )
-            if viewModel.hasProEntitlement {
-                tokenUsageProgressRow(
-                    label: "Cloud",
-                    usage: viewModel.cloudTokenUsage,
-                    quota: Self.cloudCreditQuota,
-                    quotaLabel: { credits in "\(credits) / \(Int(Self.cloudCreditQuota)) credits" },
-                    tint: palette.brass,
-                )
-            }
         }
     }
 

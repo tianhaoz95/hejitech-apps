@@ -17,13 +17,11 @@ enum ServiceLocator {
     static let mileageTripCoordinator = MileageTripCoordinator(entryRepository: entryRepository)
     static let mileageTracker = MileageTracker()
     static let authManager = AuthManager()
-    static let aiSettingsStore = AiSettingsStore()
-    static let remoteConfigStore = RemoteConfigStore()
     static let subscriptionStore = SubscriptionStore()
     static let modelDownloader = ModelDownloader()
     // LiteRtLlm (Gemma 4 E2B via LiteRT-LM) is the active OnDeviceLlm.
     // Swapping runtimes means changing only this line.
-    static let onDeviceLlm: OnDeviceLlm = LiteRtLlm(downloader: modelDownloader, aiSettingsStore: aiSettingsStore)
+    static let onDeviceLlm: OnDeviceLlm = LiteRtLlm(downloader: modelDownloader)
     static let audioRecorder = AudioRecorder()
     static let whisperTranscriber = WhisperTranscriber()
     static let captureLanguageStore = CaptureLanguageStore()
@@ -34,20 +32,6 @@ enum ServiceLocator {
     static let shakeToReportSettingsStore = ShakeToReportSettingsStore()
     static let onboardingStore = OnboardingStore()
     static let currentScreenTracker = CurrentScreenTracker()
-    static let agentClient = AgentClient(
-        onDeviceLlm: onDeviceLlm,
-        entryRepository: entryRepository,
-        // Remotely disabling cloud AI, or not currently holding a Pro
-        // entitlement (reports/pricing-proposal-v0.html §3.2), overrides the
-        // user's own stored preference rather than just gating it in
-        // Settings — a user who picked .cloudOnly or .preferOnDevice while
-        // on Pro, then downgrades to Free, shouldn't need to touch Settings
-        // for the downgrade to actually take effect.
-        inferencePreference: {
-            let stored = aiSettingsStore.preference
-            let allowedByEntitlement = subscriptionStore.hasProEntitlement || stored == .onDeviceOnly
-            let allowedByRemoteConfig = remoteConfigStore.cloudAiEnabled || stored == .onDeviceOnly
-            return (allowedByEntitlement && allowedByRemoteConfig) ? stored : .onDeviceOnly
-        }
-    )
+    static let agentClient = AgentClient(onDeviceLlm: onDeviceLlm, entryRepository: entryRepository)
+
 }

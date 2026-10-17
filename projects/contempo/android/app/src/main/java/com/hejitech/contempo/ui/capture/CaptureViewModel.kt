@@ -142,7 +142,6 @@ private const val LOCATION_TIMEOUT_MS = 1_500L
 class CaptureViewModel : ViewModel() {
     private val agentClient = ServiceLocator.agentClient
     private val entryRepository = ServiceLocator.entryRepository
-    private val aiSettingsStore = ServiceLocator.aiSettingsStore
     private val onDeviceLlm = ServiceLocator.onDeviceLlm
     private val audioRecorder = ServiceLocator.audioRecorder
     private val whisperTranscriber = ServiceLocator.whisperTranscriber
@@ -162,13 +161,13 @@ class CaptureViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(CaptureUiState())
     val uiState: StateFlow<CaptureUiState> = combine(
         _uiState,
-        aiSettingsStore.preference,
+        onDeviceLlm.bundledModelReady,
         onDeviceLlm.status,
         quickCaptureSettingsStore.enabled,
         captureLanguageStore.selected,
-    ) { state, preference, modelStatus, quickCaptureEnabled, captureLanguage ->
+    ) { state, bundledReady, modelStatus, quickCaptureEnabled, captureLanguage ->
         state.copy(
-            aiAvailability = aiAvailability(preference, modelStatus),
+            aiAvailability = aiAvailability(bundledReady, modelStatus),
             quickCaptureEnabled = quickCaptureEnabled,
             captureLanguage = captureLanguage,
         )
@@ -481,7 +480,7 @@ class CaptureViewModel : ViewModel() {
         when (val outcome = agentClient.draftEntryFromPhoto(bitmap, knownProperties)) {
             is ParseOutcome.Success -> {
                 val draft = outcome.result.draft
-                val source = if (outcome.result.source == ParseSource.ON_DEVICE) "on_device" else "cloud"
+                val source = if (outcome.result.source == ParseSource.ON_DEVICE) "on_device" else "rules"
                 val location = captureLocation()
                 _uiState.value = CaptureUiState()
                 onDraftReady(CaptureResult(draft, source, CaptureSource.PHOTO, photoUri, location?.first, location?.second))
@@ -632,7 +631,7 @@ class CaptureViewModel : ViewModel() {
                     // like a normal capture rather than silently dropping it.
                 }
 
-                val source = if (outcome.result.source == ParseSource.ON_DEVICE) "on_device" else "cloud"
+                val source = if (outcome.result.source == ParseSource.ON_DEVICE) "on_device" else "rules"
                 // A photo captured earlier in this session failed to draft
                 // (see processPhoto's Failure branch) and the user is
                 // completing the entry by typing/speaking instead — the

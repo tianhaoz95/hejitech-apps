@@ -18,7 +18,6 @@ import com.google.ai.edge.litertlm.MessageCallback
 import com.google.ai.edge.litertlm.ToolCall
 import com.google.ai.edge.litertlm.ToolProvider
 import com.google.ai.edge.litertlm.tool
-import com.hejitech.contempo.data.AiSettingsStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -32,6 +31,8 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.ByteArrayOutputStream
+import java.io.File
+import org.json.JSONObject
 import java.time.Duration
 import java.time.Instant
 
@@ -65,9 +66,18 @@ private const val TAG = "LiteRtLlm"
  * ETA" UX the app already had for AICore, just backed by a real HTTP
  * download this time instead of an OS-managed one.
  */
+/** Bundled tier: Qwen3-0.6B, shipped in the install-time `qwen_model` asset pack (scripts/fetch-models.sh). */
+private const val BUNDLED_MODEL_ASSET = "Qwen3-0.6B.litertlm"
+
+/**
+ * Two tiers, the way Voxbrief does it: a small bundled model that works offline from first launch
+ * (Qwen3-0.6B, copied once out of the asset pack because LiteRT-LM needs a file path), and the
+ * larger Gemma model the user can download from Settings, which takes over once present and is
+ * the only one that can read photos. The bundled tier is prompted for JSON (parsed by our own
+ * code); tool calling stays on the large model.
+ */
 class LiteRtLlm(
     context: Context,
-    aiSettingsStore: AiSettingsStore,
     private val scope: CoroutineScope,
 ) : OnDeviceLlm {
     private val appContext = context.applicationContext
@@ -99,7 +109,15 @@ class LiteRtLlm(
     // process lifetime, guarded by a mutex since generate() calls can race
     // the first load.
     private var engine: Engine? = null
+    private var bundledEngine: Engine? = null
     private val engineMutex = Mutex()
+    private val bundledModelFile = File(appContext.filesDir, "models/$BUNDLED_MODEL_ASSET")
+
+    private val _bundledModelReady = MutableStateFlow(false)
+    override val bundledModelReady: StateFlow<Boolean> = _bundledModelReady.asStateFlow()
+
+    /** True while the downloaded large model is the one answering. */
+    private val usingLargeModel: Boolean get() = downloader.isDownloaded()
 
     // Schemas derived once via reflection over EntryTools — see that file's kdoc for
     // why its function bodies are never actually invoked.
@@ -107,27 +125,43 @@ class LiteRtLlm(
 
     init {
         scope.launch {
-            aiSettingsStore.preference.collect { preference ->
-                if (preference != InferencePreference.CLOUD_ONLY) {
-                    checkAndMaybeDownload()
-                    // Pre-warm in the background right away, rather than
-                    // paying this multi-second model-load cost on the user's
-                    // first actual prompt — ensureEngine() is a no-op if the
-                    // model isn't downloaded yet (checked internally), so
-                    // this is safe to call unconditionally here, and it
-                    // re-fires (harmlessly — engine is already non-null by
-                    // then) whenever the preference flow re-collects, e.g.
-                    // right after switching away from Cloud only.
-                    ensureEngine()
-                }
+            prepareBundledModel()
+            // The large model is opt-in (Settings → Download); resume one already under way.
+            when {
+                downloader.isDownloaded() -> _status.value = OnDeviceModelUiStatus.Available
+                downloader.activeDownloadId() != null -> trackDownload(downloader.activeDownloadId()!!)
+                else -> _status.value = OnDeviceModelUiStatus.NotDownloaded
             }
         }
     }
 
+    /** Copies the bundled model out of the asset pack once (or after an app update changes its size). */
+    private suspend fun prepareBundledModel() = withContext(Dispatchers.IO) {
+        runCatching {
+            val expected = appContext.assets.openFd(BUNDLED_MODEL_ASSET).use { it.length }
+            if (!bundledModelFile.exists() || bundledModelFile.length() != expected) {
+                bundledModelFile.parentFile?.mkdirs()
+                val tmp = File(bundledModelFile.path + ".tmp")
+                appContext.assets.open(BUNDLED_MODEL_ASSET).use { input -> tmp.outputStream().use { input.copyTo(it, 1 shl 20) } }
+                tmp.renameTo(bundledModelFile)
+            }
+            _bundledModelReady.value = true
+        }.onFailure {
+            // openFd fails for compressed assets; fall back to a plain copy check.
+            runCatching {
+                if (!bundledModelFile.exists()) {
+                    bundledModelFile.parentFile?.mkdirs()
+                    appContext.assets.open(BUNDLED_MODEL_ASSET).use { input -> bundledModelFile.outputStream().use { input.copyTo(it, 1 shl 20) } }
+                }
+                _bundledModelReady.value = true
+            }.onFailure { e -> Log.w(TAG, "bundled model unavailable", e) }
+        }
+    }
+
+    /** Starts (or retries) the opt-in download of the large model. */
     override fun retry() {
         scope.launch {
             checkAndMaybeDownload()
-            ensureEngine()
         }
     }
 
@@ -138,12 +172,8 @@ class LiteRtLlm(
                 engine = null
             }
             downloader.deleteDownloadedModel()
-            // Immediately re-check rather than leaving status sitting at
-            // NotDownloaded until something else happens to call retry() —
-            // without this, deleting used to strand the UI with no
-            // indication anything could be done next.
-            checkAndMaybeDownload()
-            ensureEngine()
+            // Back to the bundled model; NotDownloaded shows the Download button again.
+            _status.value = OnDeviceModelUiStatus.NotDownloaded
         }
     }
 
@@ -221,36 +251,63 @@ class LiteRtLlm(
         }
     }
 
+    /**
+     * The engine for the best available tier: the downloaded large model, else the bundled one.
+     * [needsVision] calls (photos) only ever get the large model.
+     */
     @OptIn(ExperimentalApi::class)
-    private suspend fun ensureEngine(): Engine? = engineMutex.withLock {
-        engine?.let { return@withLock it }
-        if (!downloader.isDownloaded()) return@withLock null
+    private suspend fun ensureEngine(needsVision: Boolean = false): Engine? = engineMutex.withLock {
+        if (downloader.isDownloaded()) {
+            engine?.let { return@withLock it }
+            bundledEngine?.close()
+            bundledEngine = null
+            return@withLock try {
+                withContext(Dispatchers.IO) {
+                    ExperimentalFlags.enableBenchmark = true
+                    val config = EngineConfig(
+                        modelPath = downloader.modelFile.absolutePath,
+                        backend = Backend.CPU(),
+                        visionBackend = Backend.CPU(),
+                        audioBackend = null,
+                        maxNumTokens = null,
+                        maxNumImages = 1,
+                        cacheDir = appContext.cacheDir.absolutePath,
+                    )
+                    Engine(config).also { it.initialize() }
+                }.also { engine = it }
+            } catch (e: Exception) {
+                _status.value = OnDeviceModelUiStatus.Failed(e.message ?: "Couldn't load the on-device model")
+                null
+            }
+        }
+        if (needsVision) return@withLock null
+        bundledEngine?.let { return@withLock it }
+        if (!_bundledModelReady.value) return@withLock null
         try {
             withContext(Dispatchers.IO) {
-                // Must be set before Engine(...) below — it's baked into the
-                // engine's native settings at construction time, not read
-                // per-call, so setting it later (e.g. right before
-                // getBenchmarkInfo()) would silently do nothing and leave
-                // token usage uncaptured for this engine's whole lifetime.
                 ExperimentalFlags.enableBenchmark = true
                 val config = EngineConfig(
-                    modelPath = downloader.modelFile.absolutePath,
+                    modelPath = bundledModelFile.absolutePath,
                     backend = Backend.CPU(),
-                    visionBackend = Backend.CPU(),
+                    visionBackend = null,
                     audioBackend = null,
-                    maxNumTokens = null,
-                    maxNumImages = 1,
+                    // Converted with a 1280-token KV cache; capping keeps memory small.
+                    maxNumTokens = 1280,
+                    maxNumImages = null,
                     cacheDir = appContext.cacheDir.absolutePath,
                 )
                 Engine(config).also { it.initialize() }
-            }.also { engine = it }
+            }.also { bundledEngine = it }
         } catch (e: Exception) {
-            _status.value = OnDeviceModelUiStatus.Failed(e.message ?: "Couldn't load the on-device model")
+            Log.w(TAG, "couldn't load the bundled model", e)
             null
         }
     }
 
-    override suspend fun generateText(prompt: String): String? = generate(Contents.of(prompt))
+    /** Qwen3 thinks out loud unless told not to; strip whatever thinking block it emits. */
+    private fun forBundled(prompt: String): String = if (usingLargeModel) prompt else "/no_think\n$prompt"
+
+    override suspend fun generateText(prompt: String): String? = generate(Contents.of(forBundled(prompt)))?.let(::stripThinking)
 
     /**
      * Uses the plain MessageCallback overload of sendMessageAsync, not the
@@ -269,7 +326,9 @@ class LiteRtLlm(
             withContext(Dispatchers.Default) {
                 eng.createConversation().use { conversation ->
                     onEvent(GenerationEvent.Prefilling)
-                    conversation.sendMessageAsyncBounded(prompt, onEvent).also { recordTokenUsage(conversation) }
+                    conversation.sendMessageAsyncBounded(forBundled(prompt)) { event ->
+                        onEvent(if (event is GenerationEvent.Streaming) event.copy(textSoFar = stripThinking(event.textSoFar)) else event)
+                    }?.let(::stripThinking).also { recordTokenUsage(conversation) }
                 }
             }
         } catch (e: Exception) {
@@ -284,11 +343,12 @@ class LiteRtLlm(
                 stream.toByteArray()
             }
         }
-        return generate(Contents.of(Content.ImageBytes(jpegBytes), Content.Text(prompt)))
+        return generate(Contents.of(Content.ImageBytes(jpegBytes), Content.Text(prompt)), needsVision = true)
     }
 
     @OptIn(ExperimentalApi::class)
     override suspend fun extractEntryDraft(rawText: String, knownProperties: List<String>): EntryDraft? {
+        if (!usingLargeModel) return extractEntryDraftAsJson(rawText, knownProperties)
         val eng = ensureEngine() ?: return null
         return try {
             withContext(Dispatchers.Default) {
@@ -411,8 +471,41 @@ class LiteRtLlm(
         appendLine("Once you have everything you can determine, call record_entry exactly once with the final result.")
     }
 
-    private suspend fun generate(contents: Contents): String? {
-        val eng = ensureEngine() ?: return null
+    /**
+     * The bundled tier's entry parse: one JSON object back, our own code builds the draft (the
+     * Voxbrief way). Time references are resolved against the given current time rather than tools.
+     */
+    private suspend fun extractEntryDraftAsJson(rawText: String, knownProperties: List<String>): EntryDraft? {
+        val prompt = buildString {
+            append(buildEntryToolSystemPrompt(knownProperties).lineSequence().filterNot { "call " in it || "tool" in it }.joinToString("\n"))
+            appendLine()
+            appendLine("Current time: ${Instant.now()}. Resolve any time reference to an absolute ISO-8601 timestamp yourself.")
+            appendLine("Reply with only one JSON object with these keys: property, task, duration_minutes, category (one of maintenance, turnover, guest_communication, supply_run, admin, other), event_type (start, stop or null), miles, resolved_activity_date_iso. Use null for anything you can't determine.")
+            appendLine("Host's message: \"$rawText\"")
+        }
+        val text = generateText(prompt) ?: return null
+        val start = text.indexOf('{')
+        val end = text.lastIndexOf('}')
+        if (start < 0 || end <= start) return null
+        val modelDraft = runCatching {
+            val o = JSONObject(text.substring(start, end + 1))
+            fun str(k: String) = o.optString(k).takeIf { o.has(k) && !o.isNull(k) && it.isNotBlank() && it != "null" }
+            fun num(k: String) = if (o.has(k) && !o.isNull(k)) o.optDouble(k).takeIf { !it.isNaN() } else null
+            EntryDraft(
+                property = str("property"),
+                task = str("task"),
+                durationMinutes = num("duration_minutes")?.toInt()?.takeIf { it > 0 },
+                category = str("category"),
+                eventType = str("event_type")?.takeIf { it == "start" || it == "stop" },
+                miles = num("miles")?.takeIf { it >= 0 },
+                resolvedActivityDateIso = str("resolved_activity_date_iso"),
+            )
+        }.getOrNull() ?: return null
+        return RuleBasedEntryParser.refineSmallModelDraft(modelDraft, rawText, knownProperties)
+    }
+
+    private suspend fun generate(contents: Contents, needsVision: Boolean = false): String? {
+        val eng = ensureEngine(needsVision) ?: return null
         return try {
             withContext(Dispatchers.Default) {
                 eng.createConversation().use { conversation ->
@@ -495,3 +588,7 @@ private suspend fun Conversation.sendMessageAsyncBounded(
     }
     return result
 }
+
+/** Removes Qwen3's `<think>…</think>` block (empty with /no_think) from a response. */
+internal fun stripThinking(text: String): String =
+    text.replace(Regex("(?s)<think>.*?(</think>|$)"), "").trim()

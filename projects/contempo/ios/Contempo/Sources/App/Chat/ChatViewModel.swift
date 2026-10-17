@@ -15,7 +15,6 @@ final class ChatViewModel {
     private let audioRecorder = ServiceLocator.audioRecorder
     private let whisperTranscriber = ServiceLocator.whisperTranscriber
     private let captureLanguageStore = ServiceLocator.captureLanguageStore
-    private let aiSettingsStore = ServiceLocator.aiSettingsStore
     private let onDeviceLlm = ServiceLocator.onDeviceLlm
 
     var messages: [ChatMessage] = []
@@ -51,7 +50,7 @@ final class ChatViewModel {
 
     var recordingAmplitude: Float { audioRecorder.amplitude }
     var currentAiAvailability: AiAvailability {
-        aiAvailability(preference: aiSettingsStore.preference, onDeviceStatus: onDeviceLlm.status)
+        aiAvailability(bundledModelReady: onDeviceLlm.bundledModelReady, onDeviceStatus: onDeviceLlm.status)
     }
     var canSend: Bool {
         (!inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || pendingImageData != nil || !pendingEntries.isEmpty)

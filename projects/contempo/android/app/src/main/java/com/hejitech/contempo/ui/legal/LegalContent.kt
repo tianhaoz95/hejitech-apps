@@ -61,8 +61,8 @@ val PrivacyPolicy = LegalDocument(
             "How we use your information",
             listOf(
                 "To parse natural-language text or voice entries into structured fields " +
-                    "(property, task, duration, category), using either on-device AI or a cloud " +
-                    "AI model depending on your Settings preference (see below).",
+                    "(property, task, duration, category), using an AI model that runs on your " +
+                    "phone (see below).",
                 "To compute contemporaneity and vague-entry risk flags (a deterministic check, " +
                     "not an AI model), and to generate your pacing dashboard and CSV/print exports.",
                 "To answer legal-question chat messages you choose to send — see the disclaimer " +
@@ -72,19 +72,13 @@ val PrivacyPolicy = LegalDocument(
             ),
         ),
         LegalSection(
-            "On-device vs. cloud AI processing",
+            "On-device AI processing",
             listOf(
-                "The Android and iOS apps' Settings screens let you choose how entries get " +
-                    "parsed: On-device only, Prefer on-device, or Cloud only.",
-                "On-device processing (voice transcription and language-model parsing) happens " +
-                    "entirely on your phone — that audio or text is never sent anywhere for this " +
-                    "step.",
-                "Cloud processing sends the entry's text (never audio — voice is always " +
-                    "transcribed to text on-device first, even when cloud parsing is used for the " +
-                    "text itself) to our server (a Cloudflare Worker), which has it parsed by a cloud AI model (Cloudflare Workers AI, or Google's Gemini API) so it can be parsed there. " +
-                    "If you choose \"On-device only\" and on-device processing isn't available on " +
-                    "your phone, parsing falls back to manual entry rather than silently using the " +
-                    "cloud.",
+                "Entry parsing and the legal-question chat run on your phone, with an AI model " +
+                    "that comes with the app (or a larger one you can choose to download). Your " +
+                    "voice, text and photos are never sent to an AI service or to our servers for this.",
+                "Voice is transcribed on the device too. Only the finished entries you save are " +
+                    "stored in your account (see below).",
             ),
         ),
         LegalSection(
@@ -111,8 +105,7 @@ val PrivacyPolicy = LegalDocument(
             listOf(
                 "We do not sell your personal information, and we don't use any third-party " +
                     "advertising networks.",
-                "Your data is processed by Supabase, Cloudflare and, for cloud parsing, Google's " +
-                    "Gemini API as our infrastructure " +
+                "Your data is processed by Supabase and Cloudflare as our infrastructure " +
                     "providers, under their own data-processing terms — this is what makes the app " +
                     "function, not sharing for their independent purposes.",
                 "CSV or print exports you generate are shared only when and however you choose to " +

@@ -54,7 +54,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hejitech.contempo.R
-import com.hejitech.contempo.agent.InferencePreference
 import com.hejitech.contempo.agent.OnDeviceModelUiStatus
 import com.hejitech.contempo.ui.capture.CaptureMode
 import com.hejitech.contempo.ui.export.ExportViewModel
@@ -74,9 +73,6 @@ fun SettingsScreen(
     onOpenLegalDoc: (LegalDoc) -> Unit = {},
 ) {
     val account = viewModel.currentAccount()
-    val preference by viewModel.inferencePreference.collectAsState()
-    val cloudAiEnabled by viewModel.cloudAiEnabled.collectAsState()
-    val hasProEntitlement by viewModel.hasProEntitlement.collectAsState()
     val onDeviceStatus by viewModel.onDeviceModelStatus.collectAsState()
     val quickCaptureEnabled by viewModel.quickCaptureEnabled.collectAsState()
     val shakeToReportEnabled by viewModel.shakeToReportEnabled.collectAsState()
@@ -119,63 +115,19 @@ fun SettingsScreen(
             )
             Spacer(Modifier.height(8.dp))
 
-            Column(Modifier.selectableGroup()) {
-                InferenceOptionRow(
-                    label = stringResource(R.string.settings_ai_on_device_only),
-                    selected = preference == InferencePreference.ON_DEVICE_ONLY,
-                    onClick = { viewModel.setInferencePreference(InferencePreference.ON_DEVICE_ONLY) },
-                )
-                InferenceOptionRow(
-                    label = stringResource(R.string.settings_ai_prefer_on_device),
-                    selected = preference == InferencePreference.PREFER_ON_DEVICE,
-                    enabled = hasProEntitlement,
-                    onClick = { viewModel.setInferencePreference(InferencePreference.PREFER_ON_DEVICE) },
-                )
-                InferenceOptionRow(
-                    label = stringResource(R.string.settings_ai_cloud_only),
-                    selected = preference == InferencePreference.CLOUD_ONLY,
-                    enabled = hasProEntitlement && cloudAiEnabled,
-                    onClick = { viewModel.setInferencePreference(InferencePreference.CLOUD_ONLY) },
-                )
-            }
-
-            if (!hasProEntitlement) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    stringResource(R.string.settings_ai_pro_required_notice),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            } else if (!cloudAiEnabled) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    stringResource(R.string.settings_ai_cloud_disabled_notice),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
             val asrModelAvailable by viewModel.asrModelAvailable.collectAsState()
 
-            if (preference != InferencePreference.CLOUD_ONLY) {
-                Spacer(Modifier.height(16.dp))
-                OnDeviceModelStatusPanel(
-                    asrAvailable = asrModelAvailable,
-                    status = onDeviceStatus,
-                    onRetry = viewModel::retryOnDeviceModelCheck,
-                    onDeleteModel = { showDeleteModelConfirmation = true },
-                )
-            }
+            Spacer(Modifier.height(16.dp))
+            OnDeviceModelStatusPanel(
+                asrAvailable = asrModelAvailable,
+                status = onDeviceStatus,
+                onRetry = viewModel::retryOnDeviceModelCheck,
+                onDeleteModel = { showDeleteModelConfirmation = true },
+            )
 
             val deviceTokenUsage by viewModel.deviceTokenUsage.collectAsState()
-            val cloudTokenUsage by viewModel.cloudTokenUsage.collectAsState()
-            val hasProEntitlementForUsage by viewModel.hasProEntitlement.collectAsState()
             Spacer(Modifier.height(16.dp))
-            TokenUsageSection(
-                deviceUsage = deviceTokenUsage,
-                cloudUsage = cloudTokenUsage,
-                showCloud = hasProEntitlementForUsage,
-            )
+            TokenUsageSection(deviceUsage = deviceTokenUsage)
 
             Spacer(Modifier.height(32.dp))
             HorizontalDivider()
@@ -599,10 +551,9 @@ fun SettingsScreen(
 // Remote Config kill switch) — and is Pro-only, so the row is hidden
 // entirely for free accounts rather than shown locked/empty.
 private const val ON_DEVICE_CREDIT_REFERENCE = 10_000.0
-private const val CLOUD_CREDIT_QUOTA = 20.0
 
 @Composable
-private fun TokenUsageSection(deviceUsage: TokenUsageWeek?, cloudUsage: TokenUsageWeek?, showCloud: Boolean) {
+private fun TokenUsageSection(deviceUsage: TokenUsageWeek?) {
     Column {
         Text(
             stringResource(R.string.settings_token_usage_title),
@@ -616,18 +567,6 @@ private fun TokenUsageSection(deviceUsage: TokenUsageWeek?, cloudUsage: TokenUsa
             quotaLabel = { credits -> stringResource(R.string.settings_token_usage_credits_unlimited, credits) },
             color = MaterialTheme.colorScheme.tertiary,
         )
-        if (showCloud) {
-            Spacer(Modifier.height(12.dp))
-            TokenUsageProgressRow(
-                label = stringResource(R.string.settings_token_usage_cloud),
-                usage = cloudUsage,
-                quota = CLOUD_CREDIT_QUOTA,
-                quotaLabel = { credits ->
-                    stringResource(R.string.settings_token_usage_credits_quota, credits, CLOUD_CREDIT_QUOTA.toInt())
-                },
-                color = MaterialTheme.colorScheme.primary,
-            )
-        }
     }
 }
 

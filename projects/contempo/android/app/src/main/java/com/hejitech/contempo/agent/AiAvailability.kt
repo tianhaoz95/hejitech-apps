@@ -18,8 +18,12 @@ sealed interface AiAvailability {
     data class Failed(val message: String) : AiAvailability
 }
 
-fun aiAvailability(preference: InferencePreference, onDeviceStatus: OnDeviceModelUiStatus): AiAvailability {
-    if (preference != InferencePreference.ON_DEVICE_ONLY) return AiAvailability.Ready
+/**
+ * Ready as soon as either tier can answer: the bundled model (normally moments after first launch)
+ * or the downloaded large one. Otherwise reports the large model's state.
+ */
+fun aiAvailability(bundledModelReady: Boolean, onDeviceStatus: OnDeviceModelUiStatus): AiAvailability {
+    if (bundledModelReady) return AiAvailability.Ready
     return when (onDeviceStatus) {
         is OnDeviceModelUiStatus.Available -> AiAvailability.Ready
         is OnDeviceModelUiStatus.Checking, is OnDeviceModelUiStatus.NotDownloaded -> AiAvailability.Checking

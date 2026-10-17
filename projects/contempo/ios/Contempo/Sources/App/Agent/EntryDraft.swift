@@ -57,7 +57,8 @@ public struct EntryDraft: Codable, Equatable, Sendable {
     }
 }
 
-public enum ParseSource: Sendable { case onDevice, cloud }
+/// Who produced a draft: an on-device model, or the rule-based fallback (`RuleBasedEntryParser`).
+public enum ParseSource: Sendable { case onDevice, rules }
 
 public struct ParseResult: Sendable {
     public let draft: EntryDraft

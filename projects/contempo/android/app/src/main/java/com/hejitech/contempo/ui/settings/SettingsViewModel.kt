@@ -2,7 +2,6 @@ package com.hejitech.contempo.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.hejitech.contempo.agent.InferencePreference
 import com.hejitech.contempo.agent.OnDeviceModelUiStatus
 import com.hejitech.contempo.data.ServiceLocator
 import com.hejitech.contempo.ui.capture.CaptureMode
@@ -33,17 +32,14 @@ data class DeleteAccountUiState(
 )
 
 class SettingsViewModel : ViewModel() {
-    private val aiSettingsStore = ServiceLocator.aiSettingsStore
     private val authManager = ServiceLocator.authManager
     private val onDeviceLlm = ServiceLocator.onDeviceLlm
     private val captureLanguageStore = ServiceLocator.captureLanguageStore
     private val quickCaptureSettingsStore = ServiceLocator.quickCaptureSettingsStore
     private val shakeToReportSettingsStore = ServiceLocator.shakeToReportSettingsStore
     private val captureModeStore = ServiceLocator.captureModeStore
-    private val remoteConfigStore = ServiceLocator.remoteConfigStore
     private val entryRepository = ServiceLocator.entryRepository
 
-    val inferencePreference: StateFlow<InferencePreference> = aiSettingsStore.preference
     val onDeviceModelStatus: StateFlow<OnDeviceModelUiStatus> = onDeviceLlm.status
     val asrModelAvailable: StateFlow<Boolean> = MutableStateFlow(ServiceLocator.whisperTranscriber.isAvailable).asStateFlow()
     /** App-level now, not per-capture-session — see CaptureScreen's kdoc on why this moved here. */
@@ -52,26 +48,15 @@ class SettingsViewModel : ViewModel() {
     val captureLanguage: StateFlow<CaptureLanguage> = captureLanguageStore.selected
     /** Which mode a *fresh* Capture-tab visit opens into — see CaptureViewModel.captureMode's kdoc. */
     val defaultCaptureMode: StateFlow<CaptureMode> = captureModeStore.defaultMode
-    /** See RemoteConfigStore's kdoc — "Cloud only" shouldn't be selectable (or read as available) while this is false. */
-    val cloudAiEnabled: StateFlow<Boolean> = remoteConfigStore.cloudAiEnabled
 
-    /**
-     * Backed by users/{uid}/billing/subscription via ServiceLocator's
-     * SubscriptionRepository (synced by the stripeWebhook Cloud Function).
-     * Per reports/pricing-proposal-v0.html §3.2, Free accounts are
-     * hard-locked to ON_DEVICE_ONLY — "Prefer on-device" and "Cloud only"
-     * both have real recurring cloud-LLM cost and must require Pro before
-     * they're selectable.
-     */
+    /** Pro subscription (contempo.subscriptions, synced by the Worker's Stripe webhook). */
     val hasProEntitlement: StateFlow<Boolean> = ServiceLocator.hasProEntitlement
 
     val roles: StateFlow<List<Role>> = entryRepository.observeRoles()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    /** This week's on-device/cloud LLM usage — see EntryRepository's observeDeviceTokenUsage/observeCloudTokenUsage kdocs. */
+    /** This week's on-device LLM usage. */
     val deviceTokenUsage: StateFlow<TokenUsageWeek?> = entryRepository.observeDeviceTokenUsage()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
-    val cloudTokenUsage: StateFlow<TokenUsageWeek?> = entryRepository.observeCloudTokenUsage()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     private val _roleError = MutableStateFlow<String?>(null)
@@ -113,10 +98,6 @@ class SettingsViewModel : ViewModel() {
         val user = ContempoBackend.client.auth.currentUserOrNull()
         val name = (user?.userMetadata?.get("full_name") as? JsonPrimitive)?.content
         return SettingsUiState(displayName = name, email = user?.email)
-    }
-
-    fun setInferencePreference(preference: InferencePreference) {
-        aiSettingsStore.setPreference(preference)
     }
 
     fun setQuickCaptureEnabled(value: Boolean) {

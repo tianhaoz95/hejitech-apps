@@ -70,8 +70,6 @@ public final class SupabaseEntryRepository: EntryRepository, Sendable {
         ).execute()
     }
 
-    public func observeCloudTokenUsage() -> AsyncThrowingStream<TokenUsageWeek?, Error> { observeTokenUsage(kind: "cloud") }
-
     private struct UsageRow: Decodable, Sendable {
         let kind: String
         let week_id: String

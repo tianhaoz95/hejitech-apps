@@ -131,7 +131,6 @@
     <string name="capture_finalized_tap_hint">Tap to continue</string>
     <string name="capture_stage_reading">Reading your words…</string>
     <string name="capture_stage_trying_on_device">Structuring on-device…</string>
-    <string name="capture_stage_falling_back_to_cloud">Double-checking with the cloud…</string>
     <string name="capture_stage_structuring">Structuring your entry…</string>
     <string name="capture_parsing_reassurance">Still working — almost there…</string>
 
@@ -166,8 +165,8 @@
     <string name="confirm_edit_hint">Edit any field — it carries the same weight either way.</string>
     <string name="confirm_risk_vague">This description is a little thin — consider adding one more detail.</string>
     <string name="confirm_risk_backfilled">Logged %1$d days after the activity — still fine, just noting it.</string>
-    <string name="confirm_source_on_device">Parsed on-device — no cloud call made.</string>
-    <string name="confirm_source_cloud">Parsed via cloud.</string>
+    <string name="confirm_source_on_device">Parsed on-device — nothing left your phone.</string>
+    <string name="confirm_source_rules">Filled in from your words (no AI model was ready) — check the fields.</string>
     <string name="confirm_photo_description">Photo evidence for this entry</string>
     <string name="confirm_add_new_property_chip">Add new</string>
     <string name="confirm_new_property_label">Property name</string>
@@ -333,15 +332,9 @@
     <string name="settings_delete_account_confirm_body">This permanently deletes your account and all your logged entries, properties, photos, and voice recordings. This cannot be undone.</string>
     <string name="settings_delete_account_confirm_button">Delete permanently</string>
     <string name="settings_ai_section">AI model</string>
-    <string name="settings_ai_section_hint">Controls whether entries and questions are parsed on-device (free, no network) or in the cloud.</string>
-    <string name="settings_ai_on_device_only">On-device only</string>
-    <string name="settings_ai_prefer_on_device">Prefer on-device (Contempo Pro)</string>
-    <string name="settings_ai_cloud_only">Cloud only (Contempo Pro)</string>
-    <string name="settings_ai_cloud_disabled_notice">Cloud AI is temporarily unavailable — only on-device processing works right now.</string>
-    <string name="settings_ai_pro_required_notice">Free accounts always process on-device. This is a Contempo Pro feature — your plan is managed from your Contempo account on the web.</string>
+    <string name="settings_ai_section_hint">Everything is understood on your phone — nothing is sent to a server. A small model comes with the app; download the larger one for better answers and to read photos.</string>
     <string name="settings_token_usage_title">AI credits (this week)</string>
     <string name="settings_token_usage_on_device">On-device</string>
-    <string name="settings_token_usage_cloud">Cloud</string>
     <string name="settings_token_usage_empty">No usage yet</string>
     <string name="settings_token_usage_summary">%1$d in / %2$d out · %3$d requests</string>
     <string name="settings_token_usage_credits_unlimited">%1$s / Unlimited</string>
@@ -392,10 +385,10 @@
     <string name="settings_danger_zone_hint">These actions are permanent or hard to undo.</string>
 
     <string name="on_device_status_checking">Checking on-device model…</string>
-    <string name="on_device_status_not_downloaded">On-device language model not downloaded.</string>
+    <string name="on_device_status_not_downloaded">Using the built-in model. The larger model (about 2.6 GB) gives better results and can read photos.</string>
     <string name="on_device_status_download">Download</string>
-    <string name="on_device_status_unavailable">Not supported on this device — cloud will be used instead.</string>
-    <string name="on_device_status_ready">On-device model ready.</string>
+    <string name="on_device_status_unavailable">The larger model isn\'t supported on this device — the built-in model is used.</string>
+    <string name="on_device_status_ready">Larger on-device model ready.</string>
     <string name="on_device_status_downloading">Downloading on-device model…</string>
     <string name="on_device_status_downloading_percent">Downloading on-device model… %1$d%%</string>
     <string name="on_device_status_downloading_with_size">Downloading on-device model… %1$d%% (%2$s of %3$s)</string>
@@ -411,6 +404,6 @@
 
     <string name="ai_blocked_checking">Checking the on-device model — try again in a moment.</string>
     <string name="ai_blocked_downloading">On-device model is downloading — see Settings for progress.</string>
-    <string name="ai_blocked_unavailable">On-device model isn\'t supported on this device. Switch to Cloud in Settings.</string>
+    <string name="ai_blocked_unavailable">The on-device model isn\'t ready on this device yet — you can still fill in entries manually.</string>
     <string name="ai_blocked_failed">On-device model isn\'t ready (%1$s). Retry from Settings.</string>
 </resources>

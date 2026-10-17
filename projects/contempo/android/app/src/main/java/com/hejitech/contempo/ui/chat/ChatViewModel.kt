@@ -56,7 +56,6 @@ data class ChatUiState(
 class ChatViewModel : ViewModel() {
     private val agentClient = ServiceLocator.agentClient
     private val entryRepository = ServiceLocator.entryRepository
-    private val aiSettingsStore = ServiceLocator.aiSettingsStore
     private val onDeviceLlm = ServiceLocator.onDeviceLlm
 
     // Same shared recorder/transcriber Capture uses — safe to reuse since
@@ -72,10 +71,10 @@ class ChatViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = combine(
         _uiState,
-        aiSettingsStore.preference,
+        onDeviceLlm.bundledModelReady,
         onDeviceLlm.status,
-    ) { state, preference, modelStatus ->
-        state.copy(aiAvailability = aiAvailability(preference, modelStatus))
+    ) { state, bundledReady, modelStatus ->
+        state.copy(aiAvailability = aiAvailability(bundledReady, modelStatus))
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ChatUiState())
 
     /**

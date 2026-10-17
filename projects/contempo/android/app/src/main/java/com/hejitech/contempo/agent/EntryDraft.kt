@@ -73,7 +73,8 @@ data class EntryDraft(
         get() = property.isNullOrEmpty() && task.isNullOrEmpty() && durationMinutes == null && eventType == null && miles == null
 }
 
-enum class ParseSource { ON_DEVICE, CLOUD }
+/** Who produced a draft: an on-device model, or the rule-based fallback (RuleBasedEntryParser). */
+enum class ParseSource { ON_DEVICE, RULES }
 
 data class ParseResult(
     val draft: EntryDraft,

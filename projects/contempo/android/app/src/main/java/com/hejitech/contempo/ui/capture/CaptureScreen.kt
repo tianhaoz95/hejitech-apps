@@ -1615,7 +1615,6 @@ private fun parsingStageLabel(stage: ParsingStage): String = stringResource(
     when (stage) {
         ParsingStage.IDLE, ParsingStage.READING -> R.string.capture_stage_reading
         ParsingStage.TRYING_ON_DEVICE -> R.string.capture_stage_trying_on_device
-        ParsingStage.FALLING_BACK_TO_CLOUD -> R.string.capture_stage_falling_back_to_cloud
         ParsingStage.STRUCTURING -> R.string.capture_stage_structuring
     }
 )

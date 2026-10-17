@@ -5,14 +5,6 @@ import com.hejitech.contempo.data.traced
 import com.hejitech.core.data.EntryRepository
 import com.hejitech.core.model.Entry
 import com.hejitech.core.model.EntryCategory
-import com.hejitech.core.supabase.ContempoBackend
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.doubleOrNull
-import kotlinx.serialization.json.intOrNull
 import kotlinx.coroutines.tasks.await
 import kotlinx.serialization.json.Json
 import java.time.Instant
@@ -31,183 +23,67 @@ import java.time.Instant
  *     the former best-effort-parsed as JSON, so neither goes through the
  *     tool-calling path.
  *
- *  2. Cloud fallback: the parseEntry / askAgent Genkit flows in
- *     backend/functions/src/flows, which do get a real enforced
- *     response schema server-side (parseEntry) or a controllable prompt
- *     (askAgent).
- *
- * Which tier actually runs is governed by the caller-supplied
- * [inferencePreference] (backed by AiSettingsStore, user-controlled from
- * Settings) — see InferencePreference's kdoc. Notably, ON_DEVICE_ONLY does
- * NOT fall back to cloud on failure: a silent fallback can never prove the
- * on-device model actually works, which is the whole point of that setting.
+ * Everything runs on the device (no cloud inference, by product decision 2026-10-16): the bundled
+ * Qwen3-0.6B model is always available from first launch, and the larger downloadable Gemma
+ * model takes over once present — it's also the only tier that can read photos (see LiteRtLlm).
+ * When the model can't help, callers fall back to manual entry; nothing leaves the device.
  */
+private const val PHOTO_MODEL_MISSING =
+    "Reading photos needs the larger on-device model — download it in Settings → On-device AI."
+
 class AgentClient(
     private val onDeviceLlm: OnDeviceLlm,
     private val entryRepository: EntryRepository,
-    private val inferencePreference: () -> InferencePreference,
 ) {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
-    /**
-     * Writes whatever [OnDeviceLlm.lastCallTokenUsage] holds right now to
-     * this account's weekly on-device counters — called at the end of every
-     * private onDevice* wrapper below, right after a successful (non-null)
-     * result, so it always reflects the call that just happened. Cloud
-     * usage needs no client-side equivalent — see EntryRepository.
-     * observeCloudTokenUsage's kdoc — it's written server-side instead.
-     */
+    /** Writes [OnDeviceLlm.lastCallTokenUsage] to this account's weekly on-device counters. */
     private suspend fun recordOnDeviceUsageIfAvailable() {
         onDeviceLlm.lastCallTokenUsage.value?.let {
             runCatching { entryRepository.recordOnDeviceTokenUsage(it.inputTokens, it.outputTokens) }
         }
     }
 
-    /**
-     * [onStage] is a best-effort progress signal for the caller to render
-     * (see ParsingStage) — tied to which branch is actually being taken,
-     * not a synthetic timer, so it stays honest about a slow on-device→
-     * cloud fallback instead of just reading as hung.
-     */
+    /** [onStage] is a best-effort progress signal for the caller to render (see ParsingStage). */
     suspend fun parseEntry(
         rawText: String,
         knownProperties: List<String>,
         onStage: (ParsingStage) -> Unit = {},
-    ): ParseOutcome = traced("llm_parse_entry", mapOf("inference_preference" to inferencePreference().name)) {
-        val outcome = when (inferencePreference()) {
-            InferencePreference.CLOUD_ONLY -> {
-                onStage(ParsingStage.STRUCTURING)
-                putAttribute("path_taken", "cloud")
-                cloudParseEntry(rawText, knownProperties)
-            }
-
-            InferencePreference.ON_DEVICE_ONLY -> {
-                onStage(ParsingStage.TRYING_ON_DEVICE)
-                putAttribute("path_taken", "on_device")
-                onDeviceExtractEntry(rawText, knownProperties)
-                    ?: ParseOutcome.Failure("On-device model unavailable — no cloud fallback (On-device only is selected in Settings).")
-            }
-
-            InferencePreference.PREFER_ON_DEVICE -> {
-                onStage(ParsingStage.TRYING_ON_DEVICE)
-                val onDeviceResult = onDeviceExtractEntry(rawText, knownProperties)
-                    ?.takeUnless { (it as? ParseOutcome.Success)?.result?.draft?.isEffectivelyEmpty == true }
-                onDeviceResult?.also { putAttribute("path_taken", "on_device") } ?: run {
-                    onStage(ParsingStage.FALLING_BACK_TO_CLOUD)
-                    putAttribute("path_taken", "cloud_fallback")
-                    cloudParseEntry(rawText, knownProperties)
-                }
-            }
-        }
+    ): ParseOutcome = traced("llm_parse_entry") {
+        onStage(ParsingStage.TRYING_ON_DEVICE)
+        val outcome = onDeviceExtractEntry(rawText, knownProperties)
+            ?.takeUnless { (it as? ParseOutcome.Success)?.result?.draft?.isEffectivelyEmpty == true }
+            ?: RuleBasedEntryParser.parse(rawText, knownProperties)?.let { ParseOutcome.Success(ParseResult(it, ParseSource.RULES)) }
+            ?: ParseOutcome.Failure("Couldn't read this one — fill in the entry manually.")
         putAttribute("outcome", if (outcome is ParseOutcome.Success) "success" else "failure")
         outcome
     }
 
-    /**
-     * Drafts an entry from a just-taken photo — the on-device model's
-     * multimodal (image) input via OnDeviceLlm.generateFromImage. There is
-     * deliberately no cloud vision fallback yet (see reports/prd-status-v0
-     * — "multimodal input" is flagged not-started backend-side too): a photo
-     * a host takes is exactly the kind of thing that should never leave the
-     * device silently, and building a real cloud vision flow is future work.
-     * CLOUD_ONLY and a failed PREFER_ON_DEVICE both surface an honest
-     * message instead of guessing.
-     */
-    suspend fun draftEntryFromPhoto(bitmap: Bitmap, knownProperties: List<String>): ParseOutcome {
-        val prompt = buildPhotoEntryPrompt(knownProperties)
-        return when (inferencePreference()) {
-            InferencePreference.CLOUD_ONLY ->
-                ParseOutcome.Failure("Photo drafting isn't available in Cloud-only mode yet — switch to On-device only or Prefer on-device in Settings, or fill in the entry manually.")
+    /** Drafts an entry from a just-taken photo (needs the downloaded multimodal model). */
+    suspend fun draftEntryFromPhoto(bitmap: Bitmap, knownProperties: List<String>): ParseOutcome =
+        onDeviceDraftFromPhoto(bitmap, buildPhotoEntryPrompt(knownProperties))
+            ?: ParseOutcome.Failure(PHOTO_MODEL_MISSING + " Fill in the entry manually; the photo is still attached as evidence.")
 
-            InferencePreference.ON_DEVICE_ONLY ->
-                onDeviceDraftFromPhoto(bitmap, prompt)
-                    ?: ParseOutcome.Failure("On-device model unavailable for photo drafting — no cloud fallback (On-device only is selected in Settings).")
+    /** Reads one odometer number from a photo (mileage trips' photo method). */
+    suspend fun readOdometerFromPhoto(bitmap: Bitmap): OdometerReadOutcome =
+        onDeviceReadOdometer(bitmap, buildOdometerPrompt())
+            ?: OdometerReadOutcome.Failure(PHOTO_MODEL_MISSING + " Enter the mileage manually.")
 
-            InferencePreference.PREFER_ON_DEVICE ->
-                onDeviceDraftFromPhoto(bitmap, prompt)
-                    ?: ParseOutcome.Failure("This device's on-device model isn't ready for photo understanding yet, and cloud photo drafting isn't built yet — fill in the entry manually; the photo is still attached as evidence.")
-        }
-    }
+    /** Odometer reading or general work evidence — decides which photo flow runs next. */
+    suspend fun classifyPhotoIntent(bitmap: Bitmap): PhotoIntentOutcome =
+        onDeviceClassifyPhotoIntent(bitmap, buildPhotoIntentPrompt())
+            ?: PhotoIntentOutcome.Failure(PHOTO_MODEL_MISSING + " Fill in the entry manually; the photo is still attached as evidence.")
 
-    /**
-     * Reads a single odometer number from a photo — used by the mileage-
-     * trip photo capture method (see MileageTripCoordinator): the first
-     * photo of a trip becomes odometerStart, the next one becomes
-     * odometerEnd, and the two are diffed. Same CLOUD_ONLY/ON_DEVICE_ONLY/
-     * PREFER_ON_DEVICE honesty policy as draftEntryFromPhoto — no cloud
-     * vision fallback yet, so a failed attempt says so rather than guessing.
-     * Deliberately its own method rather than reusing draftEntryFromPhoto:
-     * this reads one plain number, not a structured EntryDraft.
-     */
-    suspend fun readOdometerFromPhoto(bitmap: Bitmap): OdometerReadOutcome {
-        val prompt = buildOdometerPrompt()
-        return when (inferencePreference()) {
-            InferencePreference.CLOUD_ONLY ->
-                OdometerReadOutcome.Failure("Odometer reading isn't available in Cloud-only mode yet — switch to On-device only or Prefer on-device in Settings, or enter the mileage manually.")
-
-            InferencePreference.ON_DEVICE_ONLY ->
-                onDeviceReadOdometer(bitmap, prompt)
-                    ?: OdometerReadOutcome.Failure("On-device model unavailable for odometer reading — no cloud fallback (On-device only is selected in Settings).")
-
-            InferencePreference.PREFER_ON_DEVICE ->
-                onDeviceReadOdometer(bitmap, prompt)
-                    ?: OdometerReadOutcome.Failure("This device's on-device model isn't ready for photo understanding yet, and cloud odometer reading isn't built yet — enter the mileage manually.")
-        }
-    }
-
-    /**
-     * Classifies a just-taken photo as an odometer reading or general work
-     * evidence — a fast, single-word-response call that decides which of
-     * readOdometerFromPhoto/draftEntryFromPhoto to run next (see
-     * CaptureViewModel.processCapturedPhoto), so the host no longer has to
-     * pick the right capture button before taking the photo. Same
-     * CLOUD_ONLY/ON_DEVICE_ONLY/PREFER_ON_DEVICE honesty policy as the other
-     * two photo methods — no cloud vision fallback yet.
-     */
-    suspend fun classifyPhotoIntent(bitmap: Bitmap): PhotoIntentOutcome {
-        val prompt = buildPhotoIntentPrompt()
-        return when (inferencePreference()) {
-            InferencePreference.CLOUD_ONLY ->
-                PhotoIntentOutcome.Failure("Photo capture isn't available in Cloud-only mode yet — switch to On-device only or Prefer on-device in Settings, or fill in the entry manually.")
-
-            InferencePreference.ON_DEVICE_ONLY ->
-                onDeviceClassifyPhotoIntent(bitmap, prompt)
-                    ?: PhotoIntentOutcome.Failure("On-device model unavailable for photo capture — no cloud fallback (On-device only is selected in Settings).")
-
-            InferencePreference.PREFER_ON_DEVICE ->
-                onDeviceClassifyPhotoIntent(bitmap, prompt)
-                    ?: PhotoIntentOutcome.Failure("This device's on-device model isn't ready for photo understanding yet — fill in the entry manually; the photo is still attached as evidence.")
-        }
-    }
-
-    /**
-     * Text-only variant of askQuestion that reports live generation progress
-     * via [onEvent] on the on-device path (see OnDeviceLlm.generateTextStream)
-     * — no image param, since photo questions don't have a verified streaming
-     * story yet (see askQuestion's own image handling). Cloud calls (CLOUD_ONLY,
-     * or PREFER_ON_DEVICE's fallback) never stream — [onEvent] simply won't
-     * fire for those, same as an ordinary non-streaming answer.
-     */
+    /** Text chat with live generation progress via [onEvent]. */
     suspend fun askQuestionStream(
         history: List<ChatMessage>,
         question: String,
         stats: UserStats,
         attachedEntries: List<Entry> = emptyList(),
         onEvent: (GenerationEvent) -> Unit,
-    ): AskOutcome {
-        val prompt = buildChatPrompt(history, question, stats, attachedEntries)
-        return when (inferencePreference()) {
-            InferencePreference.CLOUD_ONLY ->
-                cloudAskQuestion(history, question, stats, attachedEntries)
-
-            InferencePreference.ON_DEVICE_ONLY ->
-                onDeviceAskQuestionStream(prompt, onEvent)
-                    ?: AskOutcome.Failure("On-device model unavailable — no cloud fallback (On-device only is selected in Settings).")
-
-            InferencePreference.PREFER_ON_DEVICE ->
-                onDeviceAskQuestionStream(prompt, onEvent) ?: cloudAskQuestion(history, question, stats, attachedEntries)
-        }
-    }
+    ): AskOutcome =
+        onDeviceAskQuestionStream(buildChatPrompt(history, question, stats, attachedEntries), onEvent)
+            ?: AskOutcome.Failure("The on-device model isn't available right now — try again in a moment.")
 
     suspend fun askQuestion(
         history: List<ChatMessage>,
@@ -218,35 +94,10 @@ class AgentClient(
     ): AskOutcome {
         val prompt = buildChatPrompt(history, question, stats, attachedEntries)
         if (image != null) {
-            // Same honesty policy as draftEntryFromPhoto: no cloud vision
-            // fallback yet, so CLOUD_ONLY and a failed on-device attempt both
-            // surface an explicit message instead of silently dropping the
-            // photo and answering text-only.
-            return when (inferencePreference()) {
-                InferencePreference.CLOUD_ONLY ->
-                    AskOutcome.Failure("Photo questions aren't available in Cloud-only mode yet — switch to On-device only or Prefer on-device in Settings.")
-
-                InferencePreference.ON_DEVICE_ONLY ->
-                    onDeviceAskQuestionWithImage(image, prompt)
-                        ?: AskOutcome.Failure("On-device model unavailable for photo questions — no cloud fallback (On-device only is selected in Settings).")
-
-                InferencePreference.PREFER_ON_DEVICE ->
-                    onDeviceAskQuestionWithImage(image, prompt)
-                        ?: AskOutcome.Failure("This device's on-device model isn't ready for photo questions yet, and cloud photo questions aren't built yet.")
-            }
+            return onDeviceAskQuestionWithImage(image, prompt) ?: AskOutcome.Failure(PHOTO_MODEL_MISSING)
         }
-        return when (inferencePreference()) {
-            InferencePreference.CLOUD_ONLY ->
-                cloudAskQuestion(history, question, stats, attachedEntries)
-
-            InferencePreference.ON_DEVICE_ONLY ->
-                onDeviceAskQuestion(prompt)
-                    ?: AskOutcome.Failure("On-device model unavailable — no cloud fallback (On-device only is selected in Settings).")
-
-            InferencePreference.PREFER_ON_DEVICE ->
-                onDeviceAskQuestion(prompt)
-                    ?: cloudAskQuestion(history, question, stats, attachedEntries)
-        }
+        return onDeviceAskQuestion(prompt)
+            ?: AskOutcome.Failure("The on-device model isn't available right now — try again in a moment.")
     }
 
     /**
@@ -386,74 +237,6 @@ class AgentClient(
         recordOnDeviceUsageIfAvailable()
         return AskOutcome.Success(text, ParseSource.ON_DEVICE)
     }
-
-    private suspend fun cloudParseEntry(rawText: String, knownProperties: List<String>): ParseOutcome {
-        return try {
-            val payload = mapOf(
-                "rawText" to rawText,
-                "knownProperties" to knownProperties,
-                "nowIso" to Instant.now().toString(),
-            )
-            val result = ContempoBackend.api("parse-entry", toJson(payload) as JsonObject)
-            val draft = parseCallableResult(result)
-                ?: return ParseOutcome.Failure("Cloud parse returned an unexpected shape")
-            ParseOutcome.Success(ParseResult(draft, ParseSource.CLOUD))
-        } catch (e: Exception) {
-            ParseOutcome.Failure(e.message ?: "Cloud parsing failed")
-        }
-    }
-
-    private suspend fun cloudAskQuestion(
-        history: List<ChatMessage>,
-        question: String,
-        stats: UserStats,
-        attachedEntries: List<Entry> = emptyList(),
-    ): AskOutcome {
-        return try {
-            val payload = mapOf(
-                "history" to history.map {
-                    mapOf("role" to it.role.name.lowercase(), "text" to it.text)
-                },
-                "question" to question,
-                "confirmedHours" to stats.confirmedHours,
-                "thresholdHours" to stats.thresholdHours,
-                "testName" to stats.testName,
-                "attachedEntries" to attachedEntries.map { it.toChatContextMap() },
-            )
-            val result = ContempoBackend.api("ask-agent", toJson(payload) as JsonObject)
-            val answer = (result["answer"] as? JsonPrimitive)?.takeIf { it !is JsonNull }?.content
-                ?: return AskOutcome.Failure("Cloud answer returned an unexpected shape")
-            AskOutcome.Success(answer, ParseSource.CLOUD)
-        } catch (e: Exception) {
-            AskOutcome.Failure(e.message ?: "Cloud request failed")
-        }
-    }
-
-    /** The Worker's parse-entry response (same shape as the old Genkit flow's EntryDraft). */
-    private fun parseCallableResult(map: JsonObject): EntryDraft? {
-        fun str(k: String) = (map[k] as? JsonPrimitive)?.takeIf { it !is JsonNull }?.content
-        return EntryDraft(
-            property = str("property"),
-            task = str("task"),
-            durationMinutes = (map["durationMinutes"] as? JsonPrimitive)?.intOrNull,
-            category = str("category"),
-            eventType = str("eventType"),
-            miles = (map["miles"] as? JsonPrimitive)?.doubleOrNull,
-            resolvedActivityDateIso = str("resolvedActivityDateIso"),
-        )
-    }
-
-    /** Plain Kotlin maps/lists/primitives → JSON for the Worker API. */
-    private fun toJson(value: Any?): JsonElement = when (value) {
-        null -> JsonNull
-        is JsonElement -> value
-        is Map<*, *> -> JsonObject(value.entries.associate { (k, v) -> k.toString() to toJson(v) })
-        is Iterable<*> -> JsonArray(value.map(::toJson))
-        is Number -> JsonPrimitive(value)
-        is Boolean -> JsonPrimitive(value)
-        else -> JsonPrimitive(value.toString())
-    }
-
 
     private fun buildPhotoEntryPrompt(knownProperties: List<String>): String = buildString {
         appendLine("You extract a short-term-rental work-log entry from a photo a host just took of work they did.")

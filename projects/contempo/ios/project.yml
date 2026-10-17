@@ -43,6 +43,10 @@ targets:
       - path: Contempo/Resources/sherpa-onnx-whisper-tiny.en
         type: folder
         resourceTags: [whisper-tiny-en]
+      # The bundled on-device model (Qwen3-0.6B, ~345MB, scripts/fetch-models.sh; not in git).
+      - path: Contempo/Resources/Models
+        optional: true
+        buildPhase: resources
       - path: Contempo/Resources/sherpa-onnx-whisper-tiny
         type: folder
         resourceTags: [whisper-tiny-multilingual]

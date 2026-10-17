@@ -565,7 +565,6 @@ private func stageLabel(_ stage: ParsingStage) -> String {
     case .idle: return ""
     case .reading: return "Reading…"
     case .tryingOnDevice: return "Trying on-device…"
-    case .fallingBackToCloud: return "Falling back to cloud…"
     case .structuring: return "Structuring…"
     }
 }

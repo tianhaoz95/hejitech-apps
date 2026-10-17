@@ -8,8 +8,6 @@ import Observation
 @MainActor
 final class SettingsViewModel {
     private let authManager = ServiceLocator.authManager
-    private let aiSettingsStore = ServiceLocator.aiSettingsStore
-    private let remoteConfigStore = ServiceLocator.remoteConfigStore
     private let onDeviceLlm = ServiceLocator.onDeviceLlm
     private let whisperTranscriber = ServiceLocator.whisperTranscriber
     private let captureLanguageStore = ServiceLocator.captureLanguageStore
@@ -21,8 +19,6 @@ final class SettingsViewModel {
     var displayName: String { ContempoBackend.client.auth.currentUser?.userMetadata["full_name"]?.stringValue ?? "Signed in" }
     var email: String { ContempoBackend.email ?? "" }
 
-    var inferencePreference: InferencePreference { aiSettingsStore.preference }
-    var cloudAiEnabled: Bool { remoteConfigStore.cloudAiEnabled }
     /// Backed by users/{uid}/billing/subscription via ServiceLocator's
     /// SubscriptionStore (synced by the stripeWebhook Cloud Function). Per
     /// reports/pricing-proposal-v0.html §3.2, Free accounts are hard-locked
@@ -51,7 +47,6 @@ final class SettingsViewModel {
     /// This week's on-device/cloud LLM usage — see EntryRepository's
     /// observeDeviceTokenUsage/observeCloudTokenUsage doc comments.
     var deviceTokenUsage: TokenUsageWeek?
-    var cloudTokenUsage: TokenUsageWeek?
 
     init() {
         let repository = entryRepository
@@ -85,25 +80,6 @@ final class SettingsViewModel {
                 // Stream ended with a non-auth error — nothing else to do here.
             }
         }
-        Task { [weak self] in
-            let stream = AuthAwareStream.make(
-                fallback: { nil },
-                onAuthFailure: { try? await ServiceLocator.authManager.signOut() },
-                factory: { repository.observeCloudTokenUsage() }
-            )
-            do {
-                for try await usage in stream {
-                    guard let self else { return }
-                    self.cloudTokenUsage = usage
-                }
-            } catch {
-                // Stream ended with a non-auth error — nothing else to do here.
-            }
-        }
-    }
-
-    func setInferencePreference(_ value: InferencePreference) {
-        aiSettingsStore.setPreference(value)
     }
 
     func setQuickCaptureEnabled(_ value: Bool) {

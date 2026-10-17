@@ -46,13 +46,28 @@ lists the only files allowed to hold the project's URL/key. Rules for schema cha
   iOS) or the page itself (web). No Google SDKs or client ids in the apps. The watch signs in
   with a one-time pairing code from the phone (`POST /api/watch/pair` → `verifyOTP` with the
   token hash), replacing the Firebase custom token.
+- **AI is on-device only** (product decision 2026-10-16; no cloud inference anywhere), the
+  Voxbrief way: a small model ships with the app and works offline from first launch
+  (Qwen3-0.6B no-think Q4 for LiteRT-LM, ~347 MB: Android install-time asset pack `:qwen_model`,
+  copied once to a file; iOS bundle resource). It isn't in git (GitHub's file limit): run
+  `scripts/fetch-models.sh` before building. The larger Gemma model (~2.6 GB, multimodal) is an
+  opt-in download from Settings and takes over once present; it's the only tier that reads
+  photos. The small model is prompted for JSON and its fields are cross-checked by
+  `RuleBasedEntryParser.refineSmallModelDraft` (stated durations/miles and known property names
+  win, timer intent from `TimerIntentClassifier`, dates dropped); `RuleBasedEntryParser.parse` is
+  the fallback when no model can run (`ParseSource.RULES`). Both engines get `maxNumTokens = 1280`
+  and a writable cache dir; without those iOS killed the app at 2.2 GB. `ContempoTests/
+  BundledModelTests` runs the real model on the attached iPhone. Plain `installRelease` APKs
+  don't contain Play asset packs (Whisper's included), so sideloaded Android builds parse with
+  the rule-based fallback; Play installs get the model.
 - **Worker API** (`services/web/src/worker/index.ts`, bearer = Supabase access token):
-  `parse-entry` and `ask-agent` (cloud AI: Gemini when the `GOOGLE_GENAI_API_KEY` secret is set,
-  otherwise Cloudflare Workers AI), `flag-risk`, `account/delete`, `watch/pair`,
+  `flag-risk`, `account/delete`, `watch/pair`,
   `billing/checkout` / `billing/portal` / `stripe/webhook` / `admin/coupons/*` (Stripe over
   fetch; needs `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`), and `feedback` (anonymous).
-  Secrets: `SUPABASE_SERVICE_ROLE_KEY` (required). The cloud-AI kill switch is
-  `services/web/public/app-config.json` (`cloud_ai_enabled`), read by both apps.
+  Secrets: `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY` (the shared HEJI Stripe account's
+  key) and `STRIPE_WEBHOOK_SECRET` (endpoint `we_1URNe…`, see `~/Credentials/stripe.env`).
+  Contempo Pro is product `prod_V0smC72BLmnFUb`; the webhook ignores other apps' subscriptions.
+  Billing stays even though Pro no longer unlocks cloud AI (what Pro sells is open).
 - **Clients:** Android `core/.../supabase/ContempoBackend.kt` (supabase-kt 3.6; live lists =
   select + Realtime reload) and `SupabaseEntryRepository`; iOS
   `ContempoCore/.../Data/ContempoBackend.swift` (supabase-swift) and `ContempoData`'s
@@ -274,10 +289,8 @@ a progress Tile and an hours Complication; see its `capture`/`tile`/
   `ContempoBackend.signedIn`. supabase-kt is pinned to 3.6 (3.7+ needs Kotlin 2.4), and
   `androidx.browser` is forced to 1.8.0 in the root `build.gradle.kts` (1.10 needs AGP 8.9.1+).
 - No crash/performance SDKs: `data/PerformanceTrace.kt` logs timings to logcat (tag
-  `ContempoTrace`) with the old call-site API; `data/RemoteConfigStore.kt` reads the
-  `cloud_ai_enabled` kill switch from the Worker's `/app-config.json`, gated centrally in
-  `ServiceLocator`'s `AgentClient.inferencePreference` lambda. Cloud parsing/chat, account
-  deletion and watch pairing call the Worker (`ContempoBackend.api`).
+  `ContempoTrace`) with the old call-site API. Account deletion and watch pairing call the Worker
+  (`ContempoBackend.api`); AI is on-device only (`agent/LiteRtLlm.kt`, see above).
 - **`data/AuthAwareFlow.kt`'s `recoverFromAuthRaceOrSignOut()`** is the
   standard way every eagerly-collected live query (Capture/Dashboard/
   Confirm ViewModels) handles a 401/403 from Supabase — retries

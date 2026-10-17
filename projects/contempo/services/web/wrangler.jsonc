@@ -12,8 +12,6 @@
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*", "/admin", "/admin/*"]
   },
-  // Workers AI: the cloud model when no Gemini key is set (src/worker/index.ts).
-  "ai": { "binding": "AI" },
   "vars": {
     "PUBLIC_URL": "http://127.0.0.1:8789",
     "SUPABASE_URL": "http://127.0.0.1:55421",
@@ -22,13 +20,11 @@
   "dev": { "port": 8789, "ip": "127.0.0.1" },
 
   // Production: wrangler deploy --env production (Workers Builds on push to main). Secrets:
-  // SUPABASE_SERVICE_ROLE_KEY (required); GOOGLE_GENAI_API_KEY (optional: Gemini instead of
-  // Workers AI); STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET (billing).
+  // SUPABASE_SERVICE_ROLE_KEY (required); STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET (billing).
   "env": {
     "production": {
       "name": "contempo",
       "workers_dev": true,
-      "ai": { "binding": "AI" },
       "vars": {
         "PUBLIC_URL": "https://contempo.hejitech.workers.dev",
         "SUPABASE_URL": "https://jitdzllkxfhlrxxvljhp.supabase.co",

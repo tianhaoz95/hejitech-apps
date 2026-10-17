@@ -10,9 +10,6 @@ struct ContempoApp: App {
                     // Google sign-in through Supabase returns to com.hejitech.contempoapp://login-callback.
                     ContempoBackend.client.handle(url)
                 }
-                .task {
-                    await ServiceLocator.remoteConfigStore.refresh()
-                }
         }
     }
 }

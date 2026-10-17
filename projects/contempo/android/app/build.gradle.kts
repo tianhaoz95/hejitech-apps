@@ -85,7 +85,7 @@ android {
     // app/src/main/assets/ — moved out so routine app updates that don't
     // touch these ~99MB-each, essentially-static files don't re-transfer
     // them. Still delivered with the very first install, same as before.
-    assetPacks += listOf(":whisper_models")
+    assetPacks += listOf(":whisper_models", ":qwen_model")
 
     signingConfigs {
         create("release") {

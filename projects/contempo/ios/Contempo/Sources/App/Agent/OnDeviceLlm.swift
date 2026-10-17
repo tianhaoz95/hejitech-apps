@@ -38,7 +38,10 @@ public enum GenerationEvent: Sendable {
 /// directly. Swapping the underlying runtime means writing a new conformance
 /// and changing one line in `ServiceLocator`.
 public protocol OnDeviceLlm: AnyObject, Sendable {
+    /// The large, downloadable model's state (Settings → On-device AI).
     @MainActor var status: OnDeviceModelUiStatus { get }
+    /// The small model bundled with the app is present.
+    @MainActor var bundledModelReady: Bool { get }
 
     /// Token counts (prefill/decode) from the most recently completed
     /// generate call — nil if this runtime doesn't expose usage, or no call
@@ -81,6 +84,7 @@ public final class NoOpOnDeviceLlm: OnDeviceLlm {
     public init() {}
 
     @MainActor public var status: OnDeviceModelUiStatus { .unavailable }
+    @MainActor public var bundledModelReady: Bool { false }
     @MainActor public var lastCallTokenUsage: TokenUsage? { nil }
     public func retry() {}
     public func deleteDownloadedModel() {}

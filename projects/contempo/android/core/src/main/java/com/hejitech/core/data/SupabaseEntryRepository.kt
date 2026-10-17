@@ -107,8 +107,6 @@ class SupabaseEntryRepository(private val context: Context) : EntryRepository {
         )
     }
 
-    override fun observeCloudTokenUsage(): Flow<TokenUsageWeek?> = observeTokenUsageWeek("cloud")
-
     private fun observeTokenUsageWeek(kind: String): Flow<TokenUsageWeek?> {
         val week = currentIsoWeekId()
         return ContempoBackend.liveRows("token_usage", "week_id", ascending = true) { row ->

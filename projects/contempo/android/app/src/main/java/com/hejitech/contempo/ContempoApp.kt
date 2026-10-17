@@ -42,7 +42,6 @@ class ContempoApp : Application() {
         schedulePendingAudioProcessing()
         schedulePendingCaptureSync()
         resumeOngoingWorkNotificationIfNeeded()
-        refreshRemoteConfig()
     }
 
     /**
@@ -68,12 +67,6 @@ class ContempoApp : Application() {
      * console-side kill switch take effect as soon as reasonably possible
      * after launch rather than waiting for AgentClient's first call.
      */
-    private fun refreshRemoteConfig() {
-        CoroutineScope(Dispatchers.Default).launch {
-            ServiceLocator.remoteConfigStore.refresh()
-        }
-    }
-
     /**
      * Covers the case where the process was killed (or the app wasn't
      * running yet) while a work timer was still open — OngoingWorkNotificationService

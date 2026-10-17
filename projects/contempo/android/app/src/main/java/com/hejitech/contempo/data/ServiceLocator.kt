@@ -3,7 +3,6 @@ package com.hejitech.contempo.data
 import android.content.Context
 import com.hejitech.contempo.agent.AgentClient
 import com.hejitech.contempo.agent.AudioRecorder
-import com.hejitech.contempo.agent.InferencePreference
 import com.hejitech.contempo.agent.LiteRtLlm
 import com.hejitech.contempo.agent.OnDeviceLlm
 import com.hejitech.contempo.agent.WhisperTranscriber
@@ -46,10 +45,6 @@ object ServiceLocator {
     lateinit var agentClient: AgentClient
         private set
     lateinit var authManager: AuthManager
-        private set
-    lateinit var aiSettingsStore: AiSettingsStore
-        private set
-    lateinit var remoteConfigStore: RemoteConfigStore
         private set
     lateinit var onDeviceLlm: OnDeviceLlm
         private set
@@ -111,8 +106,6 @@ object ServiceLocator {
         quickCaptureStatsStore = QuickCaptureStatsStore(context)
         captureLanguageStore = CaptureLanguageStore(context)
         captureModeStore = CaptureModeStore(context)
-        aiSettingsStore = AiSettingsStore(context)
-        remoteConfigStore = RemoteConfigStore()
         subscriptionRepository = SubscriptionRepository()
         appScope.launch {
             subscriptionRepository.observeHasProEntitlement().collect { _hasProEntitlement.value = it }
@@ -121,7 +114,7 @@ object ServiceLocator {
         // see OnDeviceLlm's kdoc for why this replaced Gemini Nano/AICore
         // (GeminiNanoLlm, kept but unused). Swapping back, or to a future
         // runtime, means changing only this line.
-        onDeviceLlm = LiteRtLlm(context, aiSettingsStore, appScope)
+        onDeviceLlm = LiteRtLlm(context, appScope)
         agentClient = AgentClient(
             onDeviceLlm = onDeviceLlm,
             entryRepository = entryRepository,
@@ -131,12 +124,6 @@ object ServiceLocator {
             // just gating it in Settings — a user who picked CLOUD_ONLY or
             // PREFER_ON_DEVICE while on Pro, then downgrades to Free, shouldn't
             // need to touch Settings for the downgrade to actually take effect.
-            inferencePreference = {
-                val stored = aiSettingsStore.preference.value
-                val allowedByEntitlement = hasProEntitlement.value || stored == InferencePreference.ON_DEVICE_ONLY
-                val allowedByRemoteConfig = remoteConfigStore.cloudAiEnabled.value || stored == InferencePreference.ON_DEVICE_ONLY
-                if (allowedByEntitlement && allowedByRemoteConfig) stored else InferencePreference.ON_DEVICE_ONLY
-            },
         )
         authManager = AuthManager(context.applicationContext)
         WatchAuthTokenRelay(context.applicationContext, appScope).start()

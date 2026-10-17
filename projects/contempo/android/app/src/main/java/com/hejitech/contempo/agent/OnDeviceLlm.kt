@@ -24,7 +24,10 @@ import kotlinx.coroutines.flow.StateFlow
  *    unused (not wired into ServiceLocator).
  */
 interface OnDeviceLlm {
+    /** The large, downloadable model's state (Settings → On-device AI). */
     val status: StateFlow<OnDeviceModelUiStatus>
+    /** The small model bundled with the app is ready (true shortly after first launch). */
+    val bundledModelReady: StateFlow<Boolean>
 
     /**
      * Token counts (prefill/decode) from the most recently completed

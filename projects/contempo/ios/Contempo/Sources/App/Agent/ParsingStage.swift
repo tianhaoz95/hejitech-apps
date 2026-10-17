@@ -5,26 +5,7 @@ public enum ParsingStage: Sendable {
     case idle
     case reading
     case tryingOnDevice
-    case fallingBackToCloud
     case structuring
-}
-
-/// User-controlled choice of how `AgentClient` splits work between the
-/// on-device model (free, no network) and the cloud parseEntry/askAgent
-/// Genkit flows (costs money, always available).
-public enum InferencePreference: String, Sendable, CaseIterable {
-    /// Default for Free accounts (see reports/pricing-proposal-v0.html §3.2) —
-    /// never calls the cloud, fails loudly if on-device inference doesn't
-    /// work, so this is a true test of the local model, not silently-billed
-    /// cloud usage.
-    case onDeviceOnly
-    /// Try on-device first, fall back to cloud silently on any failure —
-    /// gated behind Contempo Pro (SettingsViewModel.hasProEntitlement), since
-    /// the fallback has real recurring cloud cost.
-    case preferOnDevice
-    /// Skip on-device entirely — gated behind Contempo Pro, same reasoning as
-    /// preferOnDevice.
-    case cloudOnly
 }
 
 /// Whether AI-dependent actions (parse, chat) should be enabled right now.
@@ -38,8 +19,9 @@ public enum AiAvailability: Equatable, Sendable {
     case failed(message: String)
 }
 
-public func aiAvailability(preference: InferencePreference, onDeviceStatus: OnDeviceModelUiStatus) -> AiAvailability {
-    guard preference == .onDeviceOnly else { return .ready }
+/// Ready as soon as either tier can answer: the bundled model, or the downloaded large one.
+public func aiAvailability(bundledModelReady: Bool, onDeviceStatus: OnDeviceModelUiStatus) -> AiAvailability {
+    if bundledModelReady { return .ready }
     switch onDeviceStatus {
     case .available: return .ready
     case .checking, .notDownloaded: return .checking

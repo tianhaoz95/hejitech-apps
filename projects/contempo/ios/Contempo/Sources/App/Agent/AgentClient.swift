@@ -2,123 +2,59 @@ import ContempoCore
 import ContempoData
 import Foundation
 
-/// Two-tier entry parsing + chat, mirroring Android's `AgentClient`:
-///
-///  1. Try the on-device model (`OnDeviceLlm` — Gemma 4 E2B via LiteRT-LM,
-///     see task #5) — free, no network round trip.
-///  2. Cloud fallback: the `parseEntry`/`askAgent` Genkit flows in
-///     backend/functions/src/flows.
-///
-/// Which tier actually runs is governed by the caller-supplied
-/// `inferencePreference` (backed by AI settings, user-controlled from
-/// Settings). Notably, `.onDeviceOnly` does NOT fall back to cloud on
-/// failure: a silent fallback can never prove the on-device model actually
-/// works, which is the whole point of that setting.
+/// Entry parsing + chat, mirroring Android's `AgentClient`. Everything runs on the device (no
+/// cloud inference, by product decision 2026-10-16): the bundled Qwen3-0.6B model is available from
+/// first launch, the larger downloadable Gemma model takes over once present (and is the only tier
+/// that reads photos), and `RuleBasedEntryParser` turns a capture into a draft when no model can run.
 @MainActor
 final class AgentClient {
+    private static let photoModelMissing = "Reading photos needs the larger on-device model — download it in Settings → On-device AI."
+    private static let modelBusy = "The on-device model isn't available right now — try again in a moment."
+
     private let onDeviceLlm: OnDeviceLlm
     private let entryRepository: EntryRepository
-    private let inferencePreference: () -> InferencePreference
 
-    init(
-        onDeviceLlm: OnDeviceLlm,
-        entryRepository: EntryRepository,
-        inferencePreference: @escaping () -> InferencePreference
-    ) {
+    init(onDeviceLlm: OnDeviceLlm, entryRepository: EntryRepository) {
         self.onDeviceLlm = onDeviceLlm
         self.entryRepository = entryRepository
-        self.inferencePreference = inferencePreference
     }
 
-    /// Writes whatever `OnDeviceLlm.lastCallTokenUsage` holds right now to
-    /// this account's weekly on-device counters — called right after every
-    /// successful (non-nil) on-device call below, so it always reflects the
-    /// call that just happened. Cloud usage needs no client-side equivalent
-    /// — see `EntryRepository.observeCloudTokenUsage`'s doc comment — it's
-    /// written server-side instead.
+    /// Writes `OnDeviceLlm.lastCallTokenUsage` to this account's weekly on-device counters.
     private func recordOnDeviceUsageIfAvailable() async {
         guard let usage = onDeviceLlm.lastCallTokenUsage else { return }
         try? await entryRepository.recordOnDeviceTokenUsage(inputTokens: usage.inputTokens, outputTokens: usage.outputTokens)
     }
 
-    /// `onStage` is a best-effort progress signal for the caller to render
-    /// (see `ParsingStage`) — tied to which branch is actually being taken.
+    /// `onStage` is a best-effort progress signal for the caller to render (see `ParsingStage`).
     func parseEntry(rawText: String, knownProperties: [String], onStage: (ParsingStage) -> Void = { _ in }) async -> ParseOutcome {
-        switch inferencePreference() {
-        case .cloudOnly:
-            onStage(.structuring)
-            return await cloudParseEntry(rawText: rawText, knownProperties: knownProperties)
-
-        case .onDeviceOnly:
-            onStage(.tryingOnDevice)
-            if let result = await onDeviceExtractEntry(rawText: rawText, knownProperties: knownProperties) {
-                return result
-            }
-            return .failure(message: "On-device model unavailable — no cloud fallback (On-device only is selected in Settings).")
-
-        case .preferOnDevice:
-            onStage(.tryingOnDevice)
-            if let result = await onDeviceExtractEntry(rawText: rawText, knownProperties: knownProperties),
-               case .success(let parseResult) = result,
-               !parseResult.draft.isEffectivelyEmpty {
-                return result
-            }
-            onStage(.fallingBackToCloud)
-            return await cloudParseEntry(rawText: rawText, knownProperties: knownProperties)
+        onStage(.tryingOnDevice)
+        if let result = await onDeviceExtractEntry(rawText: rawText, knownProperties: knownProperties),
+           case .success(let parseResult) = result, !parseResult.draft.isEffectivelyEmpty {
+            return result
         }
+        if let draft = RuleBasedEntryParser.parse(rawText: rawText, knownProperties: knownProperties) {
+            return .success(ParseResult(draft: draft, source: .rules))
+        }
+        return .failure(message: "Couldn't read this one — fill in the entry manually.")
     }
 
-    /// Drafts an entry from a just-taken photo. Deliberately no cloud vision
-    /// fallback yet — a photo a host takes shouldn't leave the device
-    /// silently, and a real cloud vision flow is future work.
+    /// Drafts an entry from a just-taken photo (needs the downloaded multimodal model).
     func draftEntryFromPhoto(imageData: Data, knownProperties: [String]) async -> ParseOutcome {
         let prompt = Self.buildPhotoEntryPrompt(knownProperties: knownProperties)
-        switch inferencePreference() {
-        case .cloudOnly:
-            return .failure(message: "Photo drafting isn't available in Cloud-only mode yet — switch to On-device only or Prefer on-device in Settings, or fill in the entry manually.")
-        case .onDeviceOnly:
-            if let result = await onDeviceDraftFromPhoto(imageData: imageData, prompt: prompt) { return result }
-            return .failure(message: "On-device model unavailable for photo drafting — no cloud fallback (On-device only is selected in Settings).")
-        case .preferOnDevice:
-            if let result = await onDeviceDraftFromPhoto(imageData: imageData, prompt: prompt) { return result }
-            return .failure(message: "This device's on-device model isn't ready for photo understanding yet, and cloud photo drafting isn't built yet — fill in the entry manually; the photo is still attached as evidence.")
-        }
+        if let result = await onDeviceDraftFromPhoto(imageData: imageData, prompt: prompt) { return result }
+        return .failure(message: Self.photoModelMissing + " Fill in the entry manually; the photo is still attached as evidence.")
     }
 
     /// Reads a single odometer number from a photo — used by the mileage-trip photo capture method.
     func readOdometerFromPhoto(imageData: Data) async -> OdometerReadOutcome {
-        let prompt = Self.buildOdometerPrompt()
-        switch inferencePreference() {
-        case .cloudOnly:
-            return .failure(message: "Odometer reading isn't available in Cloud-only mode yet — switch to On-device only or Prefer on-device in Settings, or enter the mileage manually.")
-        case .onDeviceOnly:
-            if let result = await onDeviceReadOdometer(imageData: imageData, prompt: prompt) { return result }
-            return .failure(message: "On-device model unavailable for odometer reading — no cloud fallback (On-device only is selected in Settings).")
-        case .preferOnDevice:
-            if let result = await onDeviceReadOdometer(imageData: imageData, prompt: prompt) { return result }
-            return .failure(message: "This device's on-device model isn't ready for photo understanding yet, and cloud odometer reading isn't built yet — enter the mileage manually.")
-        }
+        if let result = await onDeviceReadOdometer(imageData: imageData, prompt: Self.buildOdometerPrompt()) { return result }
+        return .failure(message: Self.photoModelMissing + " Enter the mileage manually.")
     }
 
-    /// Classifies a just-taken photo as an odometer reading or general work
-    /// evidence — a fast, single-word-response call that decides which of
-    /// `readOdometerFromPhoto`/`draftEntryFromPhoto` to run next (see
-    /// `CaptureViewModel.processCapturedPhoto`), so the host no longer has to
-    /// pick the right capture button before taking the photo. Same
-    /// cloudOnly/onDeviceOnly/preferOnDevice honesty policy as the other two
-    /// photo methods — no cloud vision fallback yet.
+    /// Odometer reading or general work evidence — decides which photo flow runs next.
     func classifyPhotoIntent(imageData: Data) async -> PhotoIntentOutcome {
-        let prompt = Self.buildPhotoIntentPrompt()
-        switch inferencePreference() {
-        case .cloudOnly:
-            return .failure(message: "Photo capture isn't available in Cloud-only mode yet — switch to On-device only or Prefer on-device in Settings, or fill in the entry manually.")
-        case .onDeviceOnly:
-            if let result = await onDeviceClassifyPhotoIntent(imageData: imageData, prompt: prompt) { return result }
-            return .failure(message: "On-device model unavailable for photo capture — no cloud fallback (On-device only is selected in Settings).")
-        case .preferOnDevice:
-            if let result = await onDeviceClassifyPhotoIntent(imageData: imageData, prompt: prompt) { return result }
-            return .failure(message: "This device's on-device model isn't ready for photo understanding yet — fill in the entry manually; the photo is still attached as evidence.")
-        }
+        if let result = await onDeviceClassifyPhotoIntent(imageData: imageData, prompt: Self.buildPhotoIntentPrompt()) { return result }
+        return .failure(message: Self.photoModelMissing + " Fill in the entry manually; the photo is still attached as evidence.")
     }
 
     func askQuestionStream(
@@ -129,22 +65,11 @@ final class AgentClient {
         onEvent: @escaping (GenerationEvent) -> Void
     ) async -> AskOutcome {
         let prompt = Self.buildChatPrompt(history: history, question: question, stats: stats, attachedEntries: attachedEntries)
-        switch inferencePreference() {
-        case .cloudOnly:
-            return await cloudAskQuestion(history: history, question: question, stats: stats, attachedEntries: attachedEntries)
-        case .onDeviceOnly:
-            if let text = await onDeviceLlm.generateTextStream(prompt, onEvent: onEvent) {
-                await recordOnDeviceUsageIfAvailable()
-                return .success(answer: text, source: .onDevice)
-            }
-            return .failure(message: "On-device model unavailable — no cloud fallback (On-device only is selected in Settings).")
-        case .preferOnDevice:
-            if let text = await onDeviceLlm.generateTextStream(prompt, onEvent: onEvent) {
-                await recordOnDeviceUsageIfAvailable()
-                return .success(answer: text, source: .onDevice)
-            }
-            return await cloudAskQuestion(history: history, question: question, stats: stats, attachedEntries: attachedEntries)
+        if let text = await onDeviceLlm.generateTextStream(prompt, onEvent: onEvent) {
+            await recordOnDeviceUsageIfAvailable()
+            return .success(answer: text, source: .onDevice)
         }
+        return .failure(message: Self.modelBusy)
     }
 
     func askQuestion(
@@ -156,39 +81,17 @@ final class AgentClient {
     ) async -> AskOutcome {
         let prompt = Self.buildChatPrompt(history: history, question: question, stats: stats, attachedEntries: attachedEntries)
         if let imageData {
-            switch inferencePreference() {
-            case .cloudOnly:
-                return .failure(message: "Photo questions aren't available in Cloud-only mode yet — switch to On-device only or Prefer on-device in Settings.")
-            case .onDeviceOnly:
-                if let text = await onDeviceLlm.generateFromImage(imageData, prompt: prompt) {
-                    await recordOnDeviceUsageIfAvailable()
-                    return .success(answer: text, source: .onDevice)
-                }
-                return .failure(message: "On-device model unavailable for photo questions — no cloud fallback (On-device only is selected in Settings).")
-            case .preferOnDevice:
-                if let text = await onDeviceLlm.generateFromImage(imageData, prompt: prompt) {
-                    await recordOnDeviceUsageIfAvailable()
-                    return .success(answer: text, source: .onDevice)
-                }
-                return .failure(message: "This device's on-device model isn't ready for photo questions yet, and cloud photo questions aren't built yet.")
-            }
-        }
-        switch inferencePreference() {
-        case .cloudOnly:
-            return await cloudAskQuestion(history: history, question: question, stats: stats, attachedEntries: attachedEntries)
-        case .onDeviceOnly:
-            if let text = await onDeviceLlm.generateText(prompt) {
+            if let text = await onDeviceLlm.generateFromImage(imageData, prompt: prompt) {
                 await recordOnDeviceUsageIfAvailable()
                 return .success(answer: text, source: .onDevice)
             }
-            return .failure(message: "On-device model unavailable — no cloud fallback (On-device only is selected in Settings).")
-        case .preferOnDevice:
-            if let text = await onDeviceLlm.generateText(prompt) {
-                await recordOnDeviceUsageIfAvailable()
-                return .success(answer: text, source: .onDevice)
-            }
-            return await cloudAskQuestion(history: history, question: question, stats: stats, attachedEntries: attachedEntries)
+            return .failure(message: Self.photoModelMissing)
         }
+        if let text = await onDeviceLlm.generateText(prompt) {
+            await recordOnDeviceUsageIfAvailable()
+            return .success(answer: text, source: .onDevice)
+        }
+        return .failure(message: Self.modelBusy)
     }
 
     /// Cleans up a raw Whisper transcript before it's shown to the user or
@@ -266,56 +169,6 @@ final class AgentClient {
         await recordOnDeviceUsageIfAvailable()
         guard let draft = try? JSONDecoder().decode(EntryDraft.self, from: Data(Self.extractJsonObject(text).utf8)) else { return nil }
         return .success(ParseResult(draft: draft, source: .onDevice))
-    }
-
-    private func cloudParseEntry(rawText: String, knownProperties: [String]) async -> ParseOutcome {
-        do {
-            let payload: [String: Any] = [
-                "rawText": rawText,
-                "knownProperties": knownProperties,
-                "nowIso": ISO8601DateFormatter().string(from: Date()),
-            ]
-            let result = try await ContempoBackend.api("parse-entry", body: payload)
-            guard let draft = Self.parseCallableResult(result) else {
-                return .failure(message: "Cloud parse returned an unexpected shape")
-            }
-            return .success(ParseResult(draft: draft, source: .cloud))
-        } catch {
-            return .failure(message: error.localizedDescription)
-        }
-    }
-
-    private func cloudAskQuestion(history: [ChatMessage], question: String, stats: UserStats, attachedEntries: [Entry] = []) async -> AskOutcome {
-        do {
-            let payload: [String: Any] = [
-                "history": history.map { ["role": $0.role.rawValue, "text": $0.text] },
-                "question": question,
-                "confirmedHours": stats.confirmedHours,
-                "thresholdHours": stats.thresholdHours,
-                "testName": stats.testName,
-                "attachedEntries": attachedEntries.map { $0.chatContextPayload() },
-            ]
-            let data = try await ContempoBackend.api("ask-agent", body: payload)
-            guard let answer = data["answer"] as? String else {
-                return .failure(message: "Cloud answer returned an unexpected shape")
-            }
-            return .success(answer: answer, source: .cloud)
-        } catch {
-            return .failure(message: error.localizedDescription)
-        }
-    }
-
-    private static func parseCallableResult(_ data: Any?) -> EntryDraft? {
-        guard let map = data as? [String: Any] else { return nil }
-        return EntryDraft(
-            property: map["property"] as? String,
-            task: map["task"] as? String,
-            durationMinutes: (map["durationMinutes"] as? NSNumber)?.intValue,
-            category: map["category"] as? String,
-            eventType: map["eventType"] as? String,
-            miles: (map["miles"] as? NSNumber)?.doubleValue,
-            resolvedActivityDateIso: map["resolvedActivityDateIso"] as? String
-        )
     }
 
     private static func buildPhotoEntryPrompt(knownProperties: [String]) -> String {

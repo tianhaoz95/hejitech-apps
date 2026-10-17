@@ -33,7 +33,7 @@ public protocol EntryRepository: Sendable {
     /// current ISO week (resets automatically — a new week is just a new
     /// doc — see `TokenUsageWeek`). Nil until the current week has any
     /// usage recorded. Client-written (see `recordOnDeviceTokenUsage`),
-    /// unlike `observeCloudTokenUsage` below.
+    /// (cloud inference was removed 2026-10-16; only on-device usage exists).
     func observeDeviceTokenUsage() -> AsyncThrowingStream<TokenUsageWeek?, Error>
 
     /// Increments this device's current-week on-device usage counters —
@@ -42,11 +42,6 @@ public protocol EntryRepository: Sendable {
     /// every call site agrees on the same week-boundary logic.
     func recordOnDeviceTokenUsage(inputTokens: Int, outputTokens: Int) async throws
 
-    /// Live stream of this account's cloud LLM token usage for the current
-    /// ISO week — server-written only (askAgentFlow/parseEntryFlow via the
-    /// Admin SDK), so unlike `observeDeviceTokenUsage` there's no
-    /// corresponding client write method here.
-    func observeCloudTokenUsage() -> AsyncThrowingStream<TokenUsageWeek?, Error>
 
     /// Writes a new entry (typically status = pending_review) and returns its assigned id.
     func createEntry(_ entry: Entry) async throws -> String

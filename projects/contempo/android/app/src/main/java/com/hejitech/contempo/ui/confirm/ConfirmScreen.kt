@@ -78,7 +78,7 @@ fun ConfirmScreen(
     task: String,
     durationMinutes: Int,
     category: String,
-    /** "on_device" / "cloud" / empty (manual entry, no AI parse happened) — see ConfirmRoute. */
+    /** "on_device" / "rules" / empty (manual entry, no AI parse happened) — see ConfirmRoute. */
     source: String = "",
     /** CaptureSource enum name (MANUAL/TEXT/VOICE/PHOTO) — see ConfirmRoute. */
     captureSource: String = "",
@@ -242,8 +242,8 @@ fun ConfirmScreen(
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
             )
-            "cloud" -> Text(
-                stringResource(R.string.confirm_source_cloud),
+            "rules" -> Text(
+                stringResource(R.string.confirm_source_rules),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

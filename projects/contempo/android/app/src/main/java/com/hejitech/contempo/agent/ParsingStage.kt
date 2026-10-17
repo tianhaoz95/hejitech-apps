@@ -10,6 +10,5 @@ enum class ParsingStage {
     IDLE,
     READING,
     TRYING_ON_DEVICE,
-    FALLING_BACK_TO_CLOUD,
     STRUCTURING,
 }

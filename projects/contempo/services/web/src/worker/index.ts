@@ -3,9 +3,7 @@
  * feedback form (/feedback/) from static assets, and the API that replaced the Firebase Cloud
  * Functions (projects/contempo/backend/ before 2026-10-16):
  *
- *   POST /api/parse-entry        cloud fallback for entry parsing (was parseEntry)
  *   POST /api/flag-risk          contemporaneity/vagueness heuristics, no LLM (was flagRisk)
- *   POST /api/ask-agent          the legal-grounding copilot chat (was askAgent)
  *   POST /api/account/delete     wipe the user's files and account (was deleteAccount)
  *   POST /api/watch/pair         one-time code that signs a watch in as the phone's user (was mintWatchAuthToken)
  *   POST /api/billing/checkout   Stripe Checkout (was createCheckoutSession)
@@ -19,8 +17,7 @@
  * clients read and write their own rows directly (RLS), the Worker only does what needs the
  * service role or a secret.
  *
- * Cloud AI: Gemini (gemini-flash-latest, same model as before) when CONTEMPO_GOOGLE_GENAI_API_KEY
- * is set, otherwise Cloudflare Workers AI (the AI binding), so cloud parsing works with no key.
+ * No AI runs here: Contempo's parsing and chat are on-device only (product decision 2026-10-16).
  */
 import { createClient, type User } from "@supabase/supabase-js";
 
@@ -29,18 +26,14 @@ type SupabaseClient = ReturnType<typeof createClient<any, "contempo">>;
 
 export interface Env {
   ASSETS: Fetcher;
-  AI: Ai;
   PUBLIC_URL: string;
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
-  GOOGLE_GENAI_API_KEY?: string;
   STRIPE_SECRET_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
 }
 
-const WORKERS_AI_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
-const GEMINI_MODEL = "gemini-flash-latest";
 const BUCKET = "contempo";
 
 class HttpError extends Error {
@@ -85,12 +78,8 @@ async function api(request: Request, env: Env, route: string): Promise<Response>
   const admin = serviceClient(env);
 
   switch (route) {
-    case "parse-entry":
-      return json(await parseEntry(env, admin, user, body));
     case "flag-risk":
       return json(flagRisk(body));
-    case "ask-agent":
-      return json(await askAgent(env, admin, user, body));
     case "account/delete":
       await deleteAccount(admin, user);
       return json({ success: true });
@@ -132,152 +121,7 @@ async function assertAdmin(admin: SupabaseClient, user: User): Promise<void> {
   if (!data) throw new HttpError(403, "Admin access required.");
 }
 
-// ---------------------------------------------------------------------------------- cloud AI
-
-type ChatTurn = { role: "system" | "user" | "assistant"; content: string };
-type Usage = { inputTokens: number; outputTokens: number };
-
-async function generate(env: Env, turns: ChatTurn[], schema?: Record<string, unknown>): Promise<{ text: string; usage: Usage }> {
-  if (env.GOOGLE_GENAI_API_KEY) {
-    const system = turns.filter((t) => t.role === "system").map((t) => t.content).join("\n");
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${env.GOOGLE_GENAI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
-          contents: turns
-            .filter((t) => t.role !== "system")
-            .map((t) => ({ role: t.role === "assistant" ? "model" : "user", parts: [{ text: t.content }] })),
-          ...(schema ? { generationConfig: { responseMimeType: "application/json", responseSchema: geminiSchema(schema) } } : {}),
-        }),
-      },
-    );
-    if (!res.ok) throw new Error(`Gemini ${res.status}: ${(await res.text()).slice(0, 300)}`);
-    const out = (await res.json()) as {
-      candidates?: { content?: { parts?: { text?: string }[] } }[];
-      usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
-    };
-    return {
-      text: out.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "",
-      usage: { inputTokens: out.usageMetadata?.promptTokenCount ?? 0, outputTokens: out.usageMetadata?.candidatesTokenCount ?? 0 },
-    };
-  }
-  const out = (await env.AI.run(WORKERS_AI_MODEL as keyof AiModels, {
-    messages: turns,
-    ...(schema ? { response_format: { type: "json_schema", json_schema: schema } } : {}),
-    max_tokens: 1024,
-  } as never)) as { response?: unknown; usage?: { prompt_tokens?: number; completion_tokens?: number } };
-  const text = typeof out.response === "string" ? out.response : JSON.stringify(out.response ?? "");
-  return { text, usage: { inputTokens: out.usage?.prompt_tokens ?? 0, outputTokens: out.usage?.completion_tokens ?? 0 } };
-}
-
-/** JSON Schema → Gemini's OpenAPI subset (nullable instead of ["x","null"] unions). */
-function geminiSchema(s: Record<string, unknown>): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(s)) {
-    if (k === "type" && Array.isArray(v)) {
-      out.type = v.find((t) => t !== "null");
-      if (v.includes("null")) out.nullable = true;
-    } else if (k === "properties" && v && typeof v === "object") {
-      out.properties = Object.fromEntries(Object.entries(v).map(([p, ps]) => [p, geminiSchema(ps as Record<string, unknown>)]));
-    } else if (k !== "additionalProperties") {
-      out[k] = v;
-    }
-  }
-  return out;
-}
-
-function parseJsonObject(text: string): Record<string, unknown> {
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start < 0 || end < start) throw new HttpError(502, "The model didn't return an entry.");
-  return JSON.parse(text.slice(start, end + 1));
-}
-
-async function recordCloudUsage(admin: SupabaseClient, user: User, usage: Usage): Promise<void> {
-  const now = new Date();
-  const { error } = await admin.rpc("add_token_usage", {
-    p_user: user.id,
-    p_kind: "cloud",
-    p_week_id: isoWeekId(now),
-    p_week_start: isoWeekStart(now).toISOString(),
-    p_input: usage.inputTokens,
-    p_output: usage.outputTokens,
-  });
-  if (error) console.warn("recordCloudUsage failed", error.message); // best effort, never blocks the answer
-}
-
-export function isoWeekId(date: Date = new Date()): string {
-  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-  const day = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - day);
-  const year = d.getUTCFullYear();
-  const week = Math.ceil(((d.getTime() - Date.UTC(year, 0, 1)) / 86400000 + 1) / 7);
-  return `${year}-W${String(week).padStart(2, "0")}`;
-}
-
-export function isoWeekStart(date: Date = new Date()): Date {
-  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-  d.setUTCDate(d.getUTCDate() - (d.getUTCDay() || 7) + 1);
-  return d;
-}
-
-const CATEGORIES = ["maintenance", "turnover", "guest_communication", "supply_run", "admin", "other"];
-
-const ENTRY_DRAFT_SCHEMA = {
-  type: "object",
-  properties: {
-    property: { type: ["string", "null"] },
-    task: { type: ["string", "null"] },
-    durationMinutes: { type: ["integer", "null"] },
-    category: { type: ["string", "null"], enum: [...CATEGORIES, null] },
-    eventType: { type: ["string", "null"], enum: ["start", "stop", null] },
-    miles: { type: ["number", "null"] },
-    resolvedActivityDateIso: { type: ["string", "null"] },
-  },
-  required: ["property", "task", "durationMinutes", "category", "eventType", "miles", "resolvedActivityDateIso"],
-};
-
-async function parseEntry(env: Env, admin: SupabaseClient, user: User, body: Record<string, unknown>) {
-  const rawText = String(body.rawText ?? "").trim();
-  if (!rawText) throw new HttpError(400, "rawText is required.");
-  const knownProperties = Array.isArray(body.knownProperties) ? body.knownProperties.map(String) : [];
-  const nowIso = String(body.nowIso ?? new Date().toISOString());
-  // Same prompt as the Genkit flow it replaces (backend/functions/src/flows/parseEntry.ts).
-  const prompt = [
-    "You extract short-term-rental work-log entries from a host's own words.",
-    `Current time: ${nowIso}.`,
-    knownProperties.length
-      ? `The host's known properties: ${knownProperties.join(", ")}. Match to one of these if the text clearly refers to it; do not invent a new property name unless none of these plausibly match.`
-      : "The host has no properties on file yet — use whatever property name (if any) is mentioned.",
-    `Extract: property, task (short, specific — not vague like 'worked on house'), durationMinutes, and category (one of ${CATEGORIES.join(", ")}).`,
-    'The host\'s message is dictated speech, not typed text — clean it up before extracting "task": remove filler words and disfluencies ("uh", "um", false starts, mid-sentence restarts) that carry no information, and fix likely transcription errors, punctuation, and capitalization. Never change the meaning or drop a real detail.',
-    'Format "task" as plain prose by default. Only use a markdown bullet list (lines starting with "- ") when the host clearly describes multiple distinct sub-tasks in one capture — a single task never needs a bullet. Never use headers, tables, or bold.',
-    "Also set eventType if the host is opening or closing a start/stop timer rather than describing a complete task: \"start\" for phrasing like 'I'm starting to work on X' / 'beginning work now' / 'clocking in', \"stop\" for phrasing like 'I just finished' / 'wrapping up' / 'clocking out'. Leave eventType null for a normal complete description of work already done. When eventType is \"start\", durationMinutes should be null.",
-    "Also set miles if the host states a distance driven (e.g. 'drove 12 miles to pick up supplies') — a separate business-mileage deduction; extract it whenever a distance is mentioned. Leave miles null if no distance is mentioned.",
-    `Also set resolvedActivityDateIso if the host mentions when the work happened relative to now (${nowIso}) or at a specific clock time — resolve it to a single absolute ISO-8601 timestamp. Leave it null if the host mentions no time reference at all.`,
-    "Fill in every field you can confidently determine and leave the rest null. Never ask a question — a partial entry is the correct output.",
-    "Reply with only a JSON object with keys property, task, durationMinutes, category, eventType, miles, resolvedActivityDateIso.",
-    `Host's message: "${rawText}"`,
-  ].join("\n");
-  const { text, usage } = await generate(env, [{ role: "user", content: prompt }], ENTRY_DRAFT_SCHEMA);
-  const raw = parseJsonObject(text);
-  await recordCloudUsage(admin, user, usage);
-  const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
-  const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
-  const duration = num(raw.durationMinutes);
-  return {
-    property: str(raw.property),
-    task: str(raw.task),
-    durationMinutes: duration != null && duration > 0 ? Math.round(duration) : null,
-    category: CATEGORIES.includes(String(raw.category)) ? String(raw.category) : null,
-    eventType: raw.eventType === "start" || raw.eventType === "stop" ? raw.eventType : null,
-    miles: num(raw.miles) != null && (raw.miles as number) >= 0 ? (raw.miles as number) : null,
-    resolvedActivityDateIso: str(raw.resolvedActivityDateIso),
-  };
-}
+// --------------------------------------------------------------------------------- risk flags
 
 const BACKFILL_THRESHOLD_DAYS = 14;
 const VAGUE_TASK_MIN_LENGTH = 12;
@@ -299,41 +143,6 @@ export function flagRisk(body: Record<string, unknown>) {
   if (isVague) reasons.push("Description is short or generic — add one concrete detail.");
   if (durationMinutes > 8 * 60) reasons.push("Unusually long single entry — double-check the duration.");
   return { isVague, isBackfilled, daysLate, reasons };
-}
-
-async function askAgent(env: Env, admin: SupabaseClient, user: User, body: Record<string, unknown>) {
-  const question = String(body.question ?? "").trim();
-  if (!question) throw new HttpError(400, "question is required.");
-  const history = (Array.isArray(body.history) ? body.history : []) as { role?: string; text?: string }[];
-  const attached = (Array.isArray(body.attachedEntries) ? body.attachedEntries : []) as Record<string, unknown>[];
-  const entriesContext = attached.length
-    ? "The host attached these specific logged entries to ask about — ground your answer in them, don't ask which entry they mean:\n" +
-      attached
-        .map((e, i) => `${i + 1}. ${e.propertyName || "(no property)"} — ${e.task || "(no task)"} (${e.durationMinutes} min, ${e.category}, ${e.activityDate})`)
-        .join("\n")
-    : "";
-  const system = [
-    "You are the in-app copilot for an app that helps short-term-rental hosts",
-    "log hours toward IRS material-participation tests (e.g. the 100-hour or",
-    "500-hour STR tests, or the 750-hour real-estate-professional test), grounded",
-    "in IRS Pub 925 and Treas. Reg. §1.469-5T.",
-    `This host is tracking toward the ${body.testName ?? "STR"} test: ${body.confirmedHours ?? 0} of ${body.thresholdHours ?? 100} hours confirmed so far.`,
-    entriesContext,
-    "Answer the host's question directly and concisely using that context.",
-    "You are not a lawyer or CPA and this is not tax or legal advice — say so",
-    "plainly whenever a question turns on a genuinely unsettled or fact-specific",
-    "legal judgment call, and suggest they confirm with their tax professional.",
-    "Do not fabricate case law, IRS rulings, or numbers you weren't given.",
-  ].join(" ");
-  const turns: ChatTurn[] = [
-    { role: "system", content: system },
-    ...history.map((m) => ({ role: (m.role === "agent" ? "assistant" : "user") as ChatTurn["role"], content: String(m.text ?? "") })),
-    { role: "user", content: question },
-  ];
-  const { text, usage } = await generate(env, turns);
-  if (!text.trim()) throw new HttpError(502, "The model returned no answer.");
-  await recordCloudUsage(admin, user, usage);
-  return { answer: text.trim() };
 }
 
 // ------------------------------------------------------------------------- public feedback

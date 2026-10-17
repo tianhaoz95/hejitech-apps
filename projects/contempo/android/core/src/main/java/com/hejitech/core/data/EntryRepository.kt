@@ -46,7 +46,7 @@ interface EntryRepository {
      * current ISO week (resets automatically — a new week is just a new
      * doc — see [TokenUsageWeek]). Null until the current week has any
      * usage recorded. Client-written (see [recordOnDeviceTokenUsage]),
-     * unlike [observeCloudTokenUsage] below.
+     * (cloud inference was removed 2026-10-16; only on-device usage exists).
      */
     fun observeDeviceTokenUsage(): Flow<TokenUsageWeek?>
 
@@ -58,13 +58,6 @@ interface EntryRepository {
      */
     suspend fun recordOnDeviceTokenUsage(inputTokens: Int, outputTokens: Int)
 
-    /**
-     * Live stream of this account's cloud LLM token usage for the current
-     * ISO week — server-written only (askAgentFlow/parseEntryFlow via the
-     * Admin SDK), so unlike [observeDeviceTokenUsage] there's no
-     * corresponding client write method here.
-     */
-    fun observeCloudTokenUsage(): Flow<TokenUsageWeek?>
 
     /** Writes a new entry (typically status = pending_review) and returns its assigned id. */
     suspend fun createEntry(entry: Entry): String
