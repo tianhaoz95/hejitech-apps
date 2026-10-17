@@ -28,7 +28,7 @@ hero:
     <h3><a class="no-icon" href="./waypack/">Waypack</a></h3>
     <p>Your trip, packed. Your AI assistant plans it; Waypack turns the plan into a self-contained bundle with offline vector maps that works with no signal at all.</p>
     <span class="heji-tags"><span>iPhone</span><span>Android</span><span>Mac</span><span>MCP</span></span>
-    <span class="heji-links"><a class="heji-btn brand no-icon" href="https://waypack.hejitech.workers.dev">Visit app</a><a class="heji-btn no-icon" href="./waypack/">Docs →</a></span>
+    <span class="heji-links"><a class="heji-btn brand no-icon" target="_blank" rel="noopener" href="https://waypack.hejitech.workers.dev">Visit app</a><a class="heji-btn no-icon" target="_blank" rel="noopener" href="./waypack/">Docs →</a></span>
   </div>
 </div>
 
@@ -38,7 +38,7 @@ hero:
     <h3><a class="no-icon" href="./weehours/">Wee Hours</a></h3>
     <p>A newborn log built for 3am. Log a feed, diaper or nap in three seconds by voice, a tap, your watch or your glasses; the voice model runs on the phone.</p>
     <span class="heji-tags"><span>iPhone</span><span>Apple Watch</span><span>Even G2 glasses</span><span>MCP</span></span>
-    <span class="heji-links"><a class="heji-btn brand no-icon" href="https://weehours.hejitech.workers.dev">Visit app</a><a class="heji-btn no-icon" href="./weehours/">Docs →</a></span>
+    <span class="heji-links"><a class="heji-btn brand no-icon" target="_blank" rel="noopener" href="https://weehours.hejitech.workers.dev">Visit app</a><a class="heji-btn no-icon" target="_blank" rel="noopener" href="./weehours/">Docs →</a></span>
   </div>
 </div>
 
@@ -48,7 +48,7 @@ hero:
     <h3><a class="no-icon" href="./voxbrief/">Voxbrief</a></h3>
     <p>Speak an idea, get a clean note. One tap on Apple Watch records it; the iPhone or Mac turns it into structured Markdown with Whisper and Qwen3 running on the device. No account, no server.</p>
     <span class="heji-tags"><span>iPhone</span><span>Apple Watch</span><span>Mac</span><span>On-device AI</span></span>
-    <span class="heji-links"><a class="heji-btn brand no-icon" href="https://tianhaoz95.github.io/hejitech-apps/voxbrief/site/" target="_self">Visit app</a><a class="heji-btn no-icon" href="./voxbrief/">Docs →</a></span>
+    <span class="heji-links"><a class="heji-btn brand no-icon" target="_blank" rel="noopener" href="https://tianhaoz95.github.io/hejitech-apps/voxbrief/site/">Visit app</a><a class="heji-btn no-icon" target="_blank" rel="noopener" href="./voxbrief/">Docs →</a></span>
   </div>
 </div>
 
@@ -58,7 +58,7 @@ hero:
     <h3><a class="no-icon" href="./meowtrix/">Meowtrix</a></h3>
     <p>A remote workspace for vibe engineering: split panes of real terminals, browsers and a code editor, served from your own machine and reachable from any device. Shells survive refreshes and device switches.</p>
     <span class="heji-tags"><span>Web</span><span>macOS app</span><span>Linux</span><span>Agent tools · MCP</span></span>
-    <span class="heji-links"><a class="heji-btn brand no-icon" href="https://tianhaoz95.github.io/hejitech-apps/meowtrix/site/" target="_self">Visit app</a><a class="heji-btn no-icon" href="./meowtrix/">Docs →</a></span>
+    <span class="heji-links"><a class="heji-btn brand no-icon" target="_blank" rel="noopener" href="https://tianhaoz95.github.io/hejitech-apps/meowtrix/site/">Visit app</a><a class="heji-btn no-icon" target="_blank" rel="noopener" href="./meowtrix/">Docs →</a></span>
   </div>
 </div>
 
@@ -68,7 +68,7 @@ hero:
     <h3><a class="no-icon" href="./contempo/">Contempo</a></h3>
     <p>Hours that survive an audit. Short-term-rental hosts log work by voice on the phone or watch; Contempo turns it into contemporaneous, risk-checked records for the IRS material-participation tests.</p>
     <span class="heji-tags"><span>Android · Wear OS</span><span>iPhone · Apple Watch</span><span>Web</span><span>On-device AI</span></span>
-    <span class="heji-links"><a class="heji-btn brand no-icon" href="https://contempo.hejitech.workers.dev">Visit app</a><a class="heji-btn no-icon" href="./contempo/">Docs →</a></span>
+    <span class="heji-links"><a class="heji-btn brand no-icon" target="_blank" rel="noopener" href="https://contempo.hejitech.workers.dev">Visit app</a><a class="heji-btn no-icon" target="_blank" rel="noopener" href="./contempo/">Docs →</a></span>
   </div>
 </div>
 
@@ -78,7 +78,7 @@ hero:
     <h3><a class="no-icon" href="https://tianhaoz95.github.io/hejitech-apps/feedbackkit/" target="_self">FeedbackKit</a></h3>
     <p>In-app feedback that closes the loop: users report with a screenshot, a coding agent fixes it, and the reporter is asked "is it fixed?" in the next build. The tool every HEJI app ships with.</p>
     <span class="heji-tags"><span>iOS · macOS · watchOS</span><span>Android</span><span>Web</span><span>Flutter · RN · desktop</span><span>MCP</span></span>
-    <span class="heji-links"><a class="heji-btn no-icon" href="https://tianhaoz95.github.io/hejitech-apps/feedbackkit/" target="_self">Docs →</a></span>
+    <span class="heji-links"><a class="heji-btn no-icon" target="_blank" rel="noopener" href="https://tianhaoz95.github.io/hejitech-apps/feedbackkit/">Docs →</a></span>
   </div>
 </div>
 
