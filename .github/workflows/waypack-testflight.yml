@@ -7,6 +7,10 @@ name: Waypack → TestFlight
 on:
   release:
     types: [published]
+  # Weekly from main: same version, new build number. Keeps TestFlight builds from expiring (90
+  # days) and proves the whole delivery path (signing, model fetch, upload) still works.
+  schedule:
+    - cron: "15 17 * * 3" # Wednesdays 17:15 UTC (staggered after weehours-testflight.yml's 17:00)
   workflow_dispatch: {}
 
 concurrency:

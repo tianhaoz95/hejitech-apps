@@ -36,6 +36,10 @@ scripts/cut_release.sh waypack                  # next patch; or: minor | major 
 scripts/cut_release.sh waypack minor --notes "…" --watch
 ```
 
+Every iOS app's TestFlight workflow also runs weekly on Wednesday from `main` (staggered from
+17:00 UTC): same version, new build number, so builds never expire and the delivery path is tested
+end to end. A new iOS project's workflow gets the same `schedule:`.
+
 Per-project settings are in `projects/<name>/release.env`. For Waypack it bumps
 `projects/waypack/apps/mobile/pubspec.yaml`, pushes (Cloudflare deploys the Worker + site), and
 publishes GitHub Release `waypack-v<version>` (legacy tags were `v<version>`), which runs

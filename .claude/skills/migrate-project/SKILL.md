@@ -112,6 +112,9 @@ are ancestors of HEAD). Then restructure in follow-up commits with `git mv`.
   `.github/actions/apple-signing` with the shared identities (verify the cert fingerprints match
   what the project's scripts pin before switching), and keep the project's build-number scheme
   if it's already higher than the repo's (Wee Hours keeps UTC timestamps).
+- Every iOS TestFlight workflow also gets a weekly Wednesday `schedule:` (staggered 15 min from
+  the others, after Wee Hours' 17:00 UTC); its version step must work without a tag (current
+  version, new build number).
 - `projects/<name>/release.env`: `TAG_PREFIX="<name>-v"`, `LATEST=false`, no legacy prefix that
   collides (`v` is Waypack's). `cut_release.sh` reads pubspec.yaml, package.json or XcodeGen
   `project.yml` (`MARKETING_VERSION`); extend it for a new format. Old releases stay in the old repo.
