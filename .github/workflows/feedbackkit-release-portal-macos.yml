@@ -21,7 +21,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to release (X.Y.Z) — creates/attaches to tag vX.Y.Z"
+        description: "Version to release (X.Y.Z) — attaches to tag feedbackkit-vX.Y.Z"
         required: false
       tag:
         description: "Release tag to attach to (e.g. v1.0.0 or portal-mac-v1.0.0)"
@@ -130,31 +130,26 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # TAG is always the full feedbackkit-… tag: the release script attaches the DMG to it and
+          # derives the version from it (a bare v1.2.3 it reads as the version itself).
           if [ "${{ github.event_name }}" = "release" ]; then
             TAG="${{ github.event.release.tag_name }}"
-            TAG="${TAG#feedbackkit-}"   # monorepo tags carry the project prefix
-            VERSION="${TAG#portal-mac-v}"
-            VERSION="${VERSION#v}"
-          else
-            INPUT_TAG="${{ inputs.tag }}"
+          elif [ -n "${{ inputs.tag }}" ]; then
+            TAG="${{ inputs.tag }}"
+            [[ "$TAG" == feedbackkit-* ]] || TAG="feedbackkit-$TAG"
+          elif [ -n "${{ inputs.version }}" ]; then
             INPUT_VER="${{ inputs.version }}"
-            if [ -n "$INPUT_TAG" ]; then
-              TAG="$INPUT_TAG"
-              VERSION="${TAG#portal-mac-v}"
-              VERSION="${VERSION#v}"
-            elif [ -n "$INPUT_VER" ]; then
-              VERSION="${INPUT_VER#v}"
-              TAG="v${VERSION}"
-            elif [ "${{ inputs.no_upload }}" = "true" ]; then
-              VERSION="0.0.0"
-              TAG="v0.0.0"
-            else
-              TAG="$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName -q .tagName 2>/dev/null || git describe --tags --match 'feedbackkit-v[0-9]*' --abbrev=0 2>/dev/null || git tag --list 'feedbackkit-v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null | head -n1 || true)"
-              [ -n "$TAG" ] || { echo "error: couldn't resolve release tag" >&2; exit 1; }
-              VERSION="${TAG#portal-mac-v}"
-              VERSION="${VERSION#v}"
-            fi
+            TAG="feedbackkit-v${INPUT_VER#v}"
+          elif [ "${{ inputs.no_upload }}" = "true" ]; then
+            TAG="feedbackkit-v0.0.0"
+          else
+            # Newest unified FeedbackKit release; the repo's "latest" belongs to Waypack.
+            TAG="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName -q '.[].tagName' | grep -E '^feedbackkit-v[0-9]' | head -n1 || true)"
+            [ -n "$TAG" ] || { echo "error: couldn't resolve release tag" >&2; exit 1; }
           fi
+          VERSION="${TAG#feedbackkit-}"
+          VERSION="${VERSION#portal-mac-v}"
+          VERSION="${VERSION#v}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
