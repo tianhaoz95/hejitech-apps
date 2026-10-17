@@ -79,3 +79,10 @@ backend/.firebase/
 scratch/
 ios/Build/
 Build/
+
+# Android upload keystores and their passwords: never in git (this repo is public). Kept in
+# ~/Credentials/contempo/ and copied here for local release builds; CI gets them from secrets.
+android/keystore.properties*
+android/wear-keystore.properties
+android/*.jks
+android/*.jks.*
