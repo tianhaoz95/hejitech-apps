@@ -14,10 +14,6 @@ on:
 
 permissions: {}
 
-defaults:
-  run:
-    working-directory: projects/feedbackkit
-
 jobs:
   cleanup-previews:
     runs-on: ubuntu-latest
