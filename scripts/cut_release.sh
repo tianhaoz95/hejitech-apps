@@ -64,7 +64,9 @@ REPO="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
 
 [ "$(git branch --show-current)" = main ] || die "release from main (on $(git branch --show-current))"
 [ -z "$(git status --porcelain)" ] || die "working tree has uncommitted changes"
-git fetch -q origin main --tags
+# --force: rolling tags (feedbackkit-beta-portal-mac, meowtrix-latest) move on every CI run, and a
+# stale local copy would otherwise reject the whole fetch.
+git fetch -q --force origin main --tags || die "git fetch origin main --tags failed"
 [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || die "main differs from origin/main: pull or push first"
 HEAD_SHA="$(git rev-parse HEAD)"
 
