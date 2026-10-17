@@ -8,6 +8,11 @@ something at the root only when it is genuinely shared. Each project has its own
 decisions; keep this file about what they share. `AGENTS.md` files are symlinks to the `CLAUDE.md`
 next to them, for Codex, Antigravity and other agents.
 
+Repo skills live in `.claude/skills/<name>/`. Every skill, including any added later, also gets a
+symlink `.agents/skills/<name> -> ../../.claude/skills/<name>` (`ln -s ../../.claude/skills/<name>
+.agents/skills/<name>`) so Codex, Antigravity, Gemini CLI, Cursor and other agents can use it, and
+a mention in the `README.md` layout.
+
 Sharing the Supabase project is temporary: a project moves to its own once its revenue pays for it,
 and that must stay possible at any time. Never tie projects together: no references to another
 project's code, packages, schema, bucket or CI settings, no shared sessions, and backend
