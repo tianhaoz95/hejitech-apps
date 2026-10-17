@@ -114,7 +114,11 @@ node scripts/fetch-feedback.mjs
 # Build & install production/release builds (hosted Supabase):
 ./scripts/install-android-prod.sh                           # Android + Wear OS
 ./scripts/install-ios-prod.sh                               # iOS + watchOS
+# Debug builds are com.hejitech.contempoapp.debug, so they install next to a Play Store copy.
 
+
+# Ship iOS to TestFlight: from the monorepo root, scripts/cut_release.sh contempo [--dry-run]
+# (publishes contempo-v<version> → contempo-testflight.yml → scripts/release_testflight.sh).
 
 # Ship a new Android build to the Play Console internal testing track
 # (bump versionCode in android/app/build.gradle.kts first — see "Play Store

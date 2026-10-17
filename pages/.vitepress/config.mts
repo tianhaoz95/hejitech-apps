@@ -46,7 +46,10 @@ export default withMermaid(
     base,
     cleanUrls: true,
     head: [
-      ["link", { rel: "icon", href: `${base}heji.svg`, type: "image/svg+xml" }],
+      // ?v=2: until 2026-10-16 this address was Waypack's docs, and browsers keep a site's old icon.
+      ["link", { rel: "icon", href: `${base}heji.svg?v=2`, type: "image/svg+xml" }],
+      ["link", { rel: "icon", href: `${base}heji-192.png?v=2`, type: "image/png", sizes: "192x192" }],
+      ["link", { rel: "apple-touch-icon", href: `${base}apple-touch-icon.png?v=2` }],
       ["meta", { name: "theme-color", content: "#2f5bea" }],
     ],
     themeConfig: {

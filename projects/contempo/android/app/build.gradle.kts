@@ -109,8 +109,9 @@ android {
             }
         }
         debug {
-            // Lets the app use Firebase's debug App Check provider against the
-            // emulator without needing real attestation — see backend/README.md.
+            // Own package so a debug/test build installs next to the Play Store copy
+            // (whose signature differs) instead of requiring an uninstall.
+            applicationIdSuffix = ".debug"
             buildConfigField("boolean", "USE_FIREBASE_EMULATOR", "false")
         }
     }

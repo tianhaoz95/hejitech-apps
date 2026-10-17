@@ -299,7 +299,7 @@ final class LiteRtLlm: OnDeviceLlm {
         prompt += """
         The message is dictated speech: drop filler words and fix obvious transcription errors in "task", never change the meaning.
         Current time: \(ISO8601DateFormatter().string(from: Date())). Resolve any time reference to an absolute ISO-8601 timestamp.
-        Reply with only one JSON object with these keys: property, task, duration_minutes, category (one of maintenance, turnover, guest_communication, supply_run, admin, other), event_type (start, stop or null), miles, resolved_activity_date_iso. Use null for anything you can't determine.
+        Reply with only one JSON object with these keys: property, task, duration_minutes, category (one of maintenance, turnover, guest_communication, supply_run, admin, other), event_type (start, stop or null), miles, resolved_activity_date_iso. Use null for anything you can't determine. task is a short plain-English description of the work, in the host's words (e.g. \"Fixed the dishwasher\"), not an identifier.
         Host's message: "\(rawText)"
         """
         guard let text = await generateText(prompt),

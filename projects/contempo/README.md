@@ -47,16 +47,18 @@ step — just a local server:
 ./scripts/serve-feedback.sh
 ```
 
-Shipping a build to Play Console / TestFlight goes through:
+Shipping a build to TestFlight / Play Console:
 
 ```bash
-cd android && ./gradlew :app:publishReleaseBundle   # bump versionCode in app/build.gradle.kts first
-./scripts/ship-ios-testflight.sh
+scripts/cut_release.sh contempo --dry-run   # from the monorepo root; then without --dry-run
+cd android && ./gradlew :app:publishReleaseBundle   # Android: bump versionCode in app/build.gradle.kts first
 ```
 
-**Always stop the Firebase emulator suite when you're done with it** — a
-leftover instance silently occupies ports 8080/9099/9199/5001/4400/4500 and
-blocks the next run.
+`cut_release.sh contempo` bumps `MARKETING_VERSION` in `ios/project.yml` and publishes
+`contempo-v<version>`, which runs `contempo-testflight.yml` (`scripts/release_testflight.sh`:
+fetches the bundled model, signs with the team's identities, UTC build numbers).
+`NO_UPLOAD=1 APPLE_TEAM_ID=68CTFST8W2 scripts/release_testflight.sh` checks the archive and
+export locally without uploading.
 
 ## Full details
 

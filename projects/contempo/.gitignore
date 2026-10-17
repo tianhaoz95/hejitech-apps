@@ -94,3 +94,6 @@ services/web/.dev.vars
 # Bundled on-device model (Qwen3-0.6B, ~345MB): fetched by scripts/fetch-models.sh, too big for git.
 android/qwen_model/src/main/assets/*.litertlm
 ios/Contempo/Resources/Models/
+
+# scripts/release_testflight.sh output (archive, export, DerivedData)
+/build/

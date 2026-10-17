@@ -2,7 +2,6 @@ package com.hejitech.contempo
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.hejitech.contempo.agent.EntryDraft
-import com.hejitech.contempo.agent.InferencePreference
 import com.hejitech.contempo.agent.OnDeviceModelUiStatus
 import com.hejitech.contempo.agent.ParseOutcome
 import com.hejitech.contempo.data.ServiceLocator
@@ -75,18 +74,15 @@ class EntryToolCallingTest {
     }
 
     /**
-     * Forces ON_DEVICE_ONLY (so a cloud fallback can never mask a real
-     * on-device failure — same reasoning as InferencePreference.ON_DEVICE_ONLY's
-     * own kdoc) and returns the parsed draft, or null if this device's
-     * hardware/storage genuinely can't run the model — matching
+     * Returns the draft parsed by the large (opt-in, downloaded) model, or null
+     * if it isn't downloaded or this device's hardware/storage genuinely can't
+     * run it — matching
      * OnDeviceModelStatusTest's precedent of asserting whichever outcome is
      * honestly true rather than failing on something hardware support isn't
      * in control of. A real failure once the model is confirmed ready (a
      * ParseOutcome.Failure, an exception, or a hang) is NOT swallowed here.
      */
     private fun onDeviceParseOrNull(rawText: String): EntryDraft? = runBlocking {
-        ServiceLocator.aiSettingsStore.setPreference(InferencePreference.ON_DEVICE_ONLY)
-
         // 300s, not 180s: observed live that a cold Engine load (mmap + XNNPack
         // weight-cache rebuild for a ~2.6GB model) can take meaningfully longer
         // than 180s under real device load/thermal variance — same "genuinely
@@ -95,12 +91,13 @@ class EntryToolCallingTest {
         val status = withTimeoutOrNull(300_000) {
             ServiceLocator.onDeviceLlm.status.first {
                 it is OnDeviceModelUiStatus.Available ||
+                    it is OnDeviceModelUiStatus.NotDownloaded ||
                     it is OnDeviceModelUiStatus.Unavailable ||
                     it is OnDeviceModelUiStatus.Failed
             }
         }
         checkNotNull(status) {
-            "On-device model status never resolved to Available/Unavailable/Failed within the timeout " +
+            "On-device model status never resolved to Available/NotDownloaded/Unavailable/Failed within the timeout " +
                 "(stuck Checking/Downloading) — that's a real bug, not a hardware limitation."
         }
         if (status !is OnDeviceModelUiStatus.Available) return@runBlocking null
@@ -117,7 +114,7 @@ class EntryToolCallingTest {
         when (outcome) {
             is ParseOutcome.Success -> outcome.result.draft
             is ParseOutcome.Failure -> error(
-                "parseEntry failed under ON_DEVICE_ONLY even though the model reported Available: ${outcome.message}"
+                "parseEntry failed even though the model reported Available: ${outcome.message}"
             )
         }
     }

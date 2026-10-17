@@ -17,7 +17,7 @@ final class BundledModelTests: XCTestCase {
         print("bundled draft:", parsed)
         XCTAssertEqual(parsed.durationMinutes, 120)
         XCTAssertEqual(parsed.property, "Lake House")
-        XCTAssertFalse((parsed.task ?? "").isEmpty)
+        XCTAssertTrue((parsed.task ?? "").localizedCaseInsensitiveContains("dishwasher"), "task=\(parsed.task ?? "nil")")
         XCTAssertNil(parsed.eventType, "no timer phrasing in this capture")
         XCTAssertNil(parsed.miles, "no distance mentioned")
     }

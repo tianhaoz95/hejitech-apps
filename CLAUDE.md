@@ -60,3 +60,7 @@ as `meowtrix-v<version>`, which runs `meowtrix-release.yml` (server tarballs) an
 `meowtrix-mac-release.yml` (DMGs + Tauri updater). Both refresh the rolling prerelease
 `meowtrix-latest`, the stable URLs installs and updaters read instead of `releases/latest`. See
 `projects/meowtrix/CLAUDE.md`.
+
+For Contempo it bumps `MARKETING_VERSION` in `projects/contempo/ios/project.yml` and publishes
+`contempo-v<version>`, which runs `contempo-testflight.yml` (bundled model fetched in CI, same
+team-wide signing secrets). Android goes to Play Console by hand. See `projects/contempo/CLAUDE.md`.
