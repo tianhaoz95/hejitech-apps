@@ -1,0 +1,176 @@
+[versions]
+# Verify these against current stable releases before your first sync —
+# written mid-2026, this stack moves fast. Android Studio will flag anything
+# stale via the Gradle version catalog inspection.
+agp = "8.7.2"
+# Bumped from 2.1.0: litertlm-android:0.14.0's classes carry Kotlin 2.3.0
+# metadata, unreadable by older compilers ("compiled with an incompatible
+# version of Kotlin" at build time otherwise).
+kotlin = "2.3.0"
+coreKtx = "1.15.0"
+lifecycle = "2.8.7"
+activityCompose = "1.9.3"
+composeBom = "2025.01.00"
+navigationCompose = "2.8.5"
+firebaseBom = "33.7.0"
+firebaseAi = "17.13.0"
+firebaseAiOnDevice = "16.0.0-beta03"
+appCheckDebug = "19.2.0"
+# Gradle plugin, not a BoM-managed library — the plugin/SDK versions are
+# independent (see google-services below, same situation). Verify like the
+# rest of this file before first sync.
+firebaseCrashlyticsPlugin = "3.0.2"
+firebasePerfPlugin = "1.4.2"
+kotlinxCoroutinesPlayServices = "1.9.0"
+kotlinxCoroutinesGuava = "1.9.0"
+kotlinxSerializationJson = "1.7.3"
+credentials = "1.5.0"
+googleid = "1.1.1"
+wearCompose = "1.4.1"
+playServicesWearable = "19.0.0"
+playServicesLocation = "21.3.0"
+wearTiles = "1.4.1"
+wearProtolayout = "1.2.0"
+wearWatchfaceComplications = "1.2.1"
+androidxTestExtJunit = "1.2.1"
+androidxTestRunner = "1.7.0"
+espressoCore = "3.6.1"
+uiautomator = "2.3.0"
+liteRtLm = "0.14.0"
+workManager = "2.10.0"
+coreSplashscreen = "1.0.1"
+coil = "3.4.0"
+media3 = "1.10.1"
+osmdroid = "6.1.20"
+
+[libraries]
+core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
+lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycle" }
+activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
+compose-ui = { group = "androidx.compose.ui", name = "ui" }
+compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
+compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
+navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
+
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+firebase-auth = { group = "com.google.firebase", name = "firebase-auth-ktx" }
+firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore-ktx" }
+firebase-storage = { group = "com.google.firebase", name = "firebase-storage-ktx" }
+firebase-functions = { group = "com.google.firebase", name = "firebase-functions-ktx" }
+firebase-appcheck = { group = "com.google.firebase", name = "firebase-appcheck" }
+firebase-appcheck-playintegrity = { group = "com.google.firebase", name = "firebase-appcheck-playintegrity" }
+firebase-appcheck-debug = { group = "com.google.firebase", name = "firebase-appcheck-debug", version.ref = "appCheckDebug" }
+# Crash + non-fatal-exception reporting — see ContempoApp.kt (collection
+# toggled off for USE_FIREBASE_EMULATOR builds, same pattern as App Check)
+# and AuthAwareFlow.kt (records a non-fatal on the auth-race fallback path).
+firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics-ktx" }
+# Custom traces around the app's actual slow operations (on-device
+# transcription/parsing, Firestore save) — see PerformanceTrace.kt and its
+# three call sites. Automatic screen-render/network instrumentation comes
+# free with just this dependency; the custom traces are the point though,
+# since this app's real bottlenecks are on-device ML work, not classic
+# HTTP/UI jank.
+firebase-performance = { group = "com.google.firebase", name = "firebase-perf-ktx" }
+# Remote kill switch for cloud AI usage — see RemoteConfigStore.kt. No
+# Gradle plugin needed (unlike Crashlytics/Performance above) — plain
+# runtime SDK, BoM-managed like auth/firestore/storage/functions.
+firebase-remoteconfig = { group = "com.google.firebase", name = "firebase-config-ktx" }
+# Not in the Firebase BoM yet as of this writing (per Firebase AI Logic hybrid
+# docs) — pinned directly rather than via the BoM.
+firebase-ai = { group = "com.google.firebase", name = "firebase-ai", version.ref = "firebaseAi" }
+firebase-ai-ondevice = { group = "com.google.firebase", name = "firebase-ai-ondevice", version.ref = "firebaseAiOnDevice" }
+
+# On-device LLM runtime (Gemma 4 E2B) — the active on-device path as of this
+# writing, chosen over Firebase AI Logic/Gemini Nano (AICore) for device
+# coverage: AICore only supports a narrow slice of flagship hardware, this
+# runs the bundled/downloaded model directly. See agent/OnDeviceLlm.kt.
+litertlm-android = { group = "com.google.ai.edge.litertlm", name = "litertlm-android", version.ref = "liteRtLm" }
+
+kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "kotlinxCoroutinesPlayServices" }
+# ListenableFuture <-> coroutine bridge for TileService.onTileRequest (see wear/tile).
+kotlinx-coroutines-guava = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-guava", version.ref = "kotlinxCoroutinesGuava" }
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
+
+# Current (non-deprecated) Google Sign-In stack: Credential Manager +
+# Google Identity Services, replacing the old GoogleSignInClient/play-services-auth API.
+credentials = { group = "androidx.credentials", name = "credentials", version.ref = "credentials" }
+credentials-play-services-auth = { group = "androidx.credentials", name = "credentials-play-services-auth", version.ref = "credentials" }
+googleid = { group = "com.google.android.libraries.identity.googleid", name = "googleid", version.ref = "googleid" }
+
+wear-compose-material = { group = "androidx.wear.compose", name = "compose-material", version.ref = "wearCompose" }
+wear-compose-foundation = { group = "androidx.wear.compose", name = "compose-foundation", version.ref = "wearCompose" }
+play-services-wearable = { group = "com.google.android.gms", name = "play-services-wearable", version.ref = "playServicesWearable" }
+# FusedLocationProviderClient for GPS mileage-trip tracking (MileageTrackingService).
+play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
+
+# Watch face complication (Ours logged" glanceable) + Tile (swipeable
+# progress card) — see wear/complication and wear/tile.
+wear-watchface-complications-data-source-ktx = { group = "androidx.wear.watchface", name = "watchface-complications-data-source-ktx", version.ref = "wearWatchfaceComplications" }
+wear-tiles = { group = "androidx.wear.tiles", name = "tiles", version.ref = "wearTiles" }
+wear-protolayout = { group = "androidx.wear.protolayout", name = "protolayout", version.ref = "wearProtolayout" }
+wear-protolayout-material = { group = "androidx.wear.protolayout", name = "protolayout-material", version.ref = "wearProtolayout" }
+
+# Instrumented tests (androidTest) — run against a real device/emulator so
+# the debug-only USE_FIREBASE_EMULATOR path (see AuthManager.kt) applies,
+# same as a manual dev run. No separate mocking layer.
+androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestExtJunit" }
+# Declared explicitly (not left to androidx-test-ext-junit's transitive
+# resolution) — androidx.test.runner.AndroidJUnitRunner was missing from the
+# test APK's runtime classpath without this, crashing every connectedAndroidTest
+# run with a ClassNotFoundException before a single test could execute.
+androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }
+# GrantPermissionRule — pre-grants runtime permissions before the app under
+# test launches, so a first-run-after-install system permission dialog (e.g.
+# POST_NOTIFICATIONS) can't steal window focus mid-test and silently break
+# performTextInput on later steps. See CoreFlowTest.kt.
+androidx-test-rules = { group = "androidx.test", name = "rules", version.ref = "androidxTestRunner" }
+espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+androidx-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "uiautomator" }
+
+# Periodic background sync of recordings the phone relay couldn't reach
+# immediately — see wear/capture/PendingCaptureSyncWorker.kt.
+androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workManager" }
+# TestListenableWorkerBuilder — exercises PendingCaptureSyncWorker.doWork()
+# directly (see wear/src/androidTest/.../PendingCaptureSyncWorkerTest.kt)
+# without needing a real WorkManager scheduler/constraints engine.
+androidx-work-testing = { group = "androidx.work", name = "work-testing", version.ref = "workManager" }
+
+# Cold-start splash screen (animated brand mark) — see MainActivity.kt and
+# res/values/themes.xml's Theme.Contempo.Starting.
+androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashscreen" }
+
+# Full-screen image viewing for entry attachments — see EntryDetailScreen.kt's
+# attachment preview. Attachments are always previewed from a local
+# (already-downloaded) File, so no network fetcher artifact is needed here.
+coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
+
+# Video playback for video/* entry attachments — see EntryDetailScreen.kt's
+# attachment preview Dialog (ExoPlayer + PlayerView, released in
+# DisposableEffect like AudioPlayerRow's MediaPlayer).
+media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", version.ref = "media3" }
+media3-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "media3" }
+
+# Mini-map on the Entry Detail screen (captured location pin / trip start-end
+# line) — OpenStreetMap tiles via osmdroid instead of Google Maps SDK: no API
+# key, no billed usage, this isn't a feature worth spending Maps Platform
+# money on. See EntryLocationMap.kt.
+osmdroid-android = { group = "org.osmdroid", name = "osmdroid-android", version.ref = "osmdroid" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
+android-asset-pack = { id = "com.android.asset-pack", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+google-services = { id = "com.google.gms.google-services", version = "4.4.2" }
+firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "firebaseCrashlyticsPlugin" }
+firebase-perf = { id = "com.google.firebase.firebase-perf", version.ref = "firebasePerfPlugin" }
+play-publisher = { id = "com.github.triplet.play", version = "3.13.0" }

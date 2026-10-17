@@ -1,0 +1,257 @@
+/* Small admin-only additions on top of tokens.css's shared palette — kept
+   separate from web/'s charts.css since none of that file's chart-specific
+   rules apply here, and admin/ is meant to stay a self-contained site like
+   feedback/ (no cross-package imports between the Hosting sites). */
+
+.btn-link {
+  font-size: 0.85rem;
+  color: var(--pine);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.btn-primary {
+  background: var(--pine);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: var(--paper-raised);
+  color: var(--ink);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-md);
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.btn-danger {
+  background: none;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-md);
+  padding: 0.4rem 0.8rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.admin-table th {
+  text-align: left;
+  color: var(--ink-faint);
+  font-weight: 600;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--hairline-strong);
+}
+
+.admin-table td {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--hairline);
+  vertical-align: top;
+}
+
+.card {
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.badge-pending {
+  background: var(--brass-tint);
+  color: var(--brass);
+}
+
+.badge-triaged {
+  background: var(--navy-tint);
+  color: var(--navy);
+}
+
+.badge-resolved {
+  background: var(--pine-tint);
+  color: var(--pine);
+}
+
+.badge-inactive {
+  background: var(--danger-tint);
+  color: var(--danger);
+}
+
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-sm);
+  background: var(--paper-raised);
+  color: var(--ink);
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 10;
+}
+
+.modal {
+  background: var(--paper-raised);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  max-width: 640px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+/* App shell — wraps to a second row instead of crushing nav/user/sign-out
+   into the title's row once they no longer fit side by side. */
+.admin-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.5rem;
+  padding: 0.9rem 1.5rem;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--paper-raised);
+}
+
+.admin-header-nav {
+  display: flex;
+  gap: 1.25rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.admin-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-left: auto;
+}
+
+.admin-header-user {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+.admin-main {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+/* A row of side-by-side form fields (see CouponsPage's new-coupon form) —
+   stacks on a narrow phone width instead of squeezing 2-3 inputs into a few
+   dozen pixels each. */
+.form-row {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* A feedback report's screenshot-thumbnail-beside-details layout (see
+   FeedbackPage's AppFeedbackCard) — stacks on a narrow phone width instead
+   of leaving the details column too cramped to read. */
+.feedback-card {
+  display: flex;
+  gap: 1rem;
+}
+
+.feedback-card-thumb {
+  width: 160px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .admin-header {
+    padding: 0.75rem 1rem;
+  }
+
+  .admin-header-actions {
+    margin-left: 0;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .admin-header-user {
+    max-width: 50vw;
+  }
+
+  .admin-main {
+    padding: 1rem;
+  }
+
+  .modal-backdrop {
+    padding: 0.75rem;
+  }
+
+  .modal {
+    padding: 1rem;
+    max-height: 90vh;
+  }
+}
+
+@media (max-width: 520px) {
+  .form-row {
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .feedback-card {
+    flex-direction: column;
+  }
+
+  .feedback-card-thumb {
+    width: 100%;
+    max-width: 220px;
+  }
+}

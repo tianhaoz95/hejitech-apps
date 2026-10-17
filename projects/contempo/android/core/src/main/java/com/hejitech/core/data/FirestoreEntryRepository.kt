@@ -1,0 +1,393 @@
+package com.hejitech.core.data
+
+import android.net.Uri
+import com.hejitech.core.model.AppFeedback
+import com.hejitech.core.model.Attachment
+import com.hejitech.core.model.Category
+import com.hejitech.core.model.Entry
+import com.hejitech.core.model.FeedbackRegion
+import com.hejitech.core.model.Property
+import com.hejitech.core.model.Role
+import com.hejitech.core.model.TokenUsageWeek
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.CollectionReference
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.SetOptions
+import com.google.firebase.firestore.Source
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.storageMetadata
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.tasks.await
+import java.io.File
+
+private const val FIRESTORE_BATCH_LIMIT = 500
+
+class FirestoreEntryRepository(
+    private val firestore: FirebaseFirestore,
+    private val auth: FirebaseAuth,
+    private val storage: FirebaseStorage,
+) : EntryRepository {
+
+    private val uid: String
+        get() = auth.currentUser?.uid ?: error("FirestoreEntryRepository used before sign-in")
+
+    private fun userDoc() = firestore.collection("users").document(uid)
+    private fun entriesCollection() = userDoc().collection("entries")
+    private fun propertiesCollection() = userDoc().collection("properties")
+    private fun rolesCollection() = userDoc().collection("roles")
+    private fun categoriesCollection() = userDoc().collection("categories")
+    private fun deviceTokenUsageCollection() = userDoc().collection("deviceTokenUsage")
+    private fun cloudTokenUsageCollection() = userDoc().collection("cloudTokenUsage")
+    private fun correctionsCollection() = userDoc().collection("corrections")
+    private fun attachmentsCollection(entryId: String) = entriesCollection().document(entryId).collection("attachments")
+    private fun appFeedbackCollection() = userDoc().collection("appFeedback")
+
+    // Storage path components (and cached local filenames, see
+    // downloadAttachment) can't safely reuse an arbitrary original filename
+    // verbatim — it may contain spaces, slashes, or other characters that
+    // are invalid in a Storage object path or on-disk filename.
+    private fun sanitizeFileNameComponent(fileName: String) = fileName.replace(Regex("[^A-Za-z0-9.\\-_]"), "_")
+
+    override fun observeEntries(): Flow<List<Entry>> = callbackFlow {
+        val registration = entriesCollection()
+            .orderBy("activityDate", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                val entries = snapshot?.documents.orEmpty().mapNotNull { doc ->
+                    doc.toObject(Entry::class.java)?.copy(id = doc.id)
+                }
+                trySend(entries)
+            }
+        awaitClose { registration.remove() }
+    }
+
+    override fun observeProperties(): Flow<List<Property>> = callbackFlow {
+        val registration = propertiesCollection()
+            .orderBy("createdAt", Query.Direction.ASCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                val properties = snapshot?.documents.orEmpty().mapNotNull { doc ->
+                    doc.toObject(Property::class.java)?.copy(id = doc.id)
+                }
+                trySend(properties)
+            }
+        awaitClose { registration.remove() }
+    }
+
+    override suspend fun createProperty(name: String): Property {
+        val property = Property(name = name)
+        val ref = propertiesCollection().add(property).await()
+        return property.copy(id = ref.id)
+    }
+
+    override suspend fun deleteProperty(propertyId: String) {
+        propertiesCollection().document(propertyId).delete().await()
+    }
+
+    override fun observeRoles(): Flow<List<Role>> = callbackFlow {
+        val registration = rolesCollection()
+            .orderBy("createdAt", Query.Direction.ASCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                val roles = snapshot?.documents.orEmpty().mapNotNull { doc ->
+                    doc.toObject(Role::class.java)?.copy(id = doc.id)
+                }
+                trySend(roles)
+            }
+        awaitClose { registration.remove() }
+    }
+
+    override suspend fun createRole(name: String): Role {
+        val role = Role(name = name)
+        val ref = rolesCollection().add(role).await()
+        return role.copy(id = ref.id)
+    }
+
+    override suspend fun renameRole(roleId: String, name: String) {
+        rolesCollection().document(roleId).update("name", name).await()
+    }
+
+    override suspend fun deleteRole(roleId: String) {
+        rolesCollection().document(roleId).delete().await()
+    }
+
+    override fun observeCategories(): Flow<List<Category>> = callbackFlow {
+        val registration = categoriesCollection()
+            .orderBy("createdAt", Query.Direction.ASCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                val categories = snapshot?.documents.orEmpty().mapNotNull { doc ->
+                    doc.toObject(Category::class.java)?.copy(id = doc.id)
+                }
+                trySend(categories)
+            }
+        awaitClose { registration.remove() }
+    }
+
+    override suspend fun createCategory(name: String): Category {
+        val category = Category(name = name)
+        val ref = categoriesCollection().add(category).await()
+        return category.copy(id = ref.id)
+    }
+
+    override fun observeDeviceTokenUsage(): Flow<TokenUsageWeek?> = observeTokenUsageWeek(deviceTokenUsageCollection())
+
+    override suspend fun recordOnDeviceTokenUsage(inputTokens: Int, outputTokens: Int) {
+        deviceTokenUsageCollection().document(currentIsoWeekId()).set(
+            mapOf(
+                "inputTokens" to FieldValue.increment(inputTokens.toLong()),
+                "outputTokens" to FieldValue.increment(outputTokens.toLong()),
+                "requestCount" to FieldValue.increment(1),
+                "weekStart" to currentIsoWeekStart(),
+                "updatedAt" to FieldValue.serverTimestamp(),
+            ),
+            SetOptions.merge(),
+        ).await()
+    }
+
+    override fun observeCloudTokenUsage(): Flow<TokenUsageWeek?> = observeTokenUsageWeek(cloudTokenUsageCollection())
+
+    // Re-resolves the current week's document reference each time the
+    // listener (re)attaches (e.g. WhileSubscribed re-collection after
+    // Settings is revisited) rather than once at Flow-creation time, so a
+    // long-lived process that crosses a week boundary while backgrounded
+    // still lands on the right doc the next time this is collected.
+    private fun observeTokenUsageWeek(collection: CollectionReference): Flow<TokenUsageWeek?> = callbackFlow {
+        val registration = collection.document(currentIsoWeekId())
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                trySend(snapshot?.toObject(TokenUsageWeek::class.java))
+            }
+        awaitClose { registration.remove() }
+    }
+
+    override suspend fun createEntry(entry: Entry): String {
+        val ref = entriesCollection().add(entry).await()
+        return ref.id
+    }
+
+    override fun newEntryId(): String = entriesCollection().document().id
+
+    override suspend fun getEntry(entryId: String): Entry? {
+        // Explicit Source.SERVER — confirmed live: a plain get() using the
+        // default source (server, falling back to cache) can hang
+        // indefinitely on some devices, unlike listener-based reads, which
+        // keep working fine on the same connection. Forcing SERVER sidesteps
+        // whatever ambiguous state that fallback resolution gets stuck in.
+        val doc = entriesCollection().document(entryId).get(Source.SERVER).await()
+        return doc.toObject(Entry::class.java)?.copy(id = doc.id)
+    }
+
+    override suspend fun findOpenEntry(isTrip: Boolean): Entry? {
+        val snapshot = entriesCollection()
+            .whereEqualTo("inProgress", true)
+            // Entry.isTrip carries explicit @PropertyName("isTrip")
+            // annotations specifically so this literal field name is what's
+            // actually stored — see Entry.kt's kdoc on that field for why
+            // (Firestore's default Kotlin-boolean-getter convention would
+            // otherwise silently store/query the wrong field name).
+            .whereEqualTo("isTrip", isTrip)
+            .limit(1)
+            .get()
+            .await()
+        val doc = snapshot.documents.firstOrNull() ?: return null
+        return doc.toObject(Entry::class.java)?.copy(id = doc.id)
+    }
+
+    override suspend fun updateEntry(entryId: String, entry: Entry) {
+        entriesCollection().document(entryId).set(entry).await()
+    }
+
+    override suspend fun deleteEntry(entryId: String) {
+        entriesCollection().document(entryId).delete().await()
+    }
+
+    override suspend fun deleteEntries(entryIds: List<String>) {
+        entryIds.chunked(FIRESTORE_BATCH_LIMIT).forEach { chunk ->
+            val batch = firestore.batch()
+            chunk.forEach { entryId -> batch.delete(entriesCollection().document(entryId)) }
+            batch.commit().await()
+        }
+    }
+
+    override suspend fun attachPhoto(entryId: String, localUri: Uri): String {
+        val photoRef = storage.reference.child("users/$uid/entries/$entryId/${System.currentTimeMillis()}.jpg")
+        // Explicit rather than relying on putFile's ContentResolver-based
+        // inference — storage.rules now validates contentType matches
+        // image/*, and this guarantees that check has something real to
+        // match regardless of the source URI's provider.
+        val metadata = storageMetadata { contentType = "image/jpeg" }
+        photoRef.putFile(localUri, metadata).await()
+        val downloadUrl = photoRef.downloadUrl.await().toString()
+        entriesCollection().document(entryId)
+            .update("photoUrls", FieldValue.arrayUnion(downloadUrl))
+            .await()
+        return downloadUrl
+    }
+
+    override suspend fun recordCorrection(
+        entryId: String,
+        fieldName: String,
+        aiValue: String,
+        finalValue: String,
+    ) {
+        val correction = mapOf(
+            "entryId" to entryId,
+            "fieldName" to fieldName,
+            "aiValue" to aiValue,
+            "finalValue" to finalValue,
+            "recordedAt" to com.google.firebase.Timestamp.now(),
+        )
+        correctionsCollection().add(correction).await()
+    }
+
+    override suspend fun listAttachments(entryId: String): List<Attachment> {
+        val snapshot = attachmentsCollection(entryId)
+            .orderBy("uploadedAt", Query.Direction.ASCENDING)
+            .get()
+            .await()
+        return snapshot.documents.mapNotNull { doc ->
+            doc.toObject(Attachment::class.java)?.copy(id = doc.id)
+        }
+    }
+
+    override suspend fun uploadAttachment(
+        entryId: String,
+        localUri: Uri,
+        fileName: String,
+        contentType: String,
+        onProgress: (Float) -> Unit,
+    ): Attachment {
+        val storagePath = "users/$uid/entries/$entryId/attachments/" +
+            "${System.currentTimeMillis()}_${sanitizeFileNameComponent(fileName)}"
+        val attachmentRef = storage.reference.child(storagePath)
+        val metadata = storageMetadata { this.contentType = contentType }
+        val uploadTask = attachmentRef.putFile(localUri, metadata)
+        uploadTask.addOnProgressListener { snapshot ->
+            onProgress(snapshot.bytesTransferred.toFloat() / snapshot.totalByteCount.toFloat())
+        }
+        // The upload task already knows the real byte count transferred —
+        // trust that rather than separately stat-ing the content:// Uri via
+        // ContentResolver, which isn't guaranteed to expose a size at all.
+        val fileSize = uploadTask.await().totalByteCount
+        val downloadUrl = attachmentRef.downloadUrl.await().toString()
+        val uploadedAt = com.google.firebase.Timestamp.now()
+        val doc = mapOf(
+            "fileName" to fileName,
+            "contentType" to contentType,
+            "fileSize" to fileSize,
+            "storagePath" to storagePath,
+            "downloadURL" to downloadUrl,
+            "uploadedAt" to uploadedAt,
+            "note" to "",
+        )
+        val ref = attachmentsCollection(entryId).add(doc).await()
+        return Attachment(
+            id = ref.id,
+            fileName = fileName,
+            contentType = contentType,
+            fileSize = fileSize,
+            storagePath = storagePath,
+            downloadURL = downloadUrl,
+            uploadedAt = uploadedAt,
+            note = "",
+        )
+    }
+
+    override suspend fun deleteAttachment(entryId: String, attachment: Attachment) {
+        storage.reference.child(attachment.storagePath).delete().await()
+        attachmentsCollection(entryId).document(attachment.id).delete().await()
+    }
+
+    override suspend fun updateAttachmentNote(entryId: String, attachmentId: String, note: String) {
+        attachmentsCollection(entryId).document(attachmentId).update("note", note).await()
+    }
+
+    override suspend fun downloadAttachment(
+        entryId: String,
+        attachment: Attachment,
+        destinationDir: File,
+        onProgress: (Float) -> Unit,
+    ): File {
+        destinationDir.mkdirs()
+        val destination = File(destinationDir, "${attachment.id}_${sanitizeFileNameComponent(attachment.fileName)}")
+        if (destination.exists()) return destination
+        val downloadTask = storage.reference.child(attachment.storagePath).getFile(destination)
+        downloadTask.addOnProgressListener { snapshot ->
+            onProgress(snapshot.bytesTransferred.toFloat() / snapshot.totalByteCount.toFloat())
+        }
+        downloadTask.await()
+        return destination
+    }
+
+    override suspend fun submitFeedback(
+        imageFile: File,
+        region: FeedbackRegion?,
+        description: String,
+        screenName: String,
+        appVersion: String,
+        buildNumber: String,
+        osVersion: String,
+        deviceModel: String,
+        locale: String,
+    ): AppFeedback {
+        val feedbackRef = appFeedbackCollection().document()
+        val storagePath = "users/$uid/appFeedback/${feedbackRef.id}/screenshot.jpg"
+        val screenshotRef = storage.reference.child(storagePath)
+        val metadata = storageMetadata { contentType = "image/jpeg" }
+        screenshotRef.putFile(Uri.fromFile(imageFile), metadata).await()
+        val downloadUrl = screenshotRef.downloadUrl.await().toString()
+
+        val doc = mutableMapOf<String, Any>(
+            "description" to description,
+            "screenshotPath" to storagePath,
+            "downloadURL" to downloadUrl,
+            "appVersion" to appVersion,
+            "buildNumber" to buildNumber,
+            "osVersion" to osVersion,
+            "deviceModel" to deviceModel,
+            "screenName" to screenName,
+            "locale" to locale,
+            "status" to "pending",
+            "createdAt" to FieldValue.serverTimestamp(),
+        )
+        if (region != null) {
+            doc["region"] = mapOf("x" to region.x, "y" to region.y, "w" to region.w, "h" to region.h)
+        }
+        feedbackRef.set(doc).await()
+
+        return AppFeedback(
+            id = feedbackRef.id,
+            description = description,
+            screenshotPath = storagePath,
+            downloadURL = downloadUrl,
+            region = region,
+            appVersion = appVersion,
+            buildNumber = buildNumber,
+            osVersion = osVersion,
+            deviceModel = deviceModel,
+            screenName = screenName,
+            locale = locale,
+            status = "pending",
+        )
+    }
+}

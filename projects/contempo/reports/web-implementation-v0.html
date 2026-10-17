@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Web App Implementation Walkthrough v0 — Contempo</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="dot"></span> STR Tracker Reports</div>
+    <nav>
+      <a href="index.html">All reports</a>
+    </nav>
+  </header>
+
+  <div class="report-shell">
+    <aside class="toc-col">
+      <div class="toc-title">On this page</div>
+      <ul id="toc-list"></ul>
+    </aside>
+
+    <main class="report-main">
+      <div class="report-header">
+        <div class="eyebrow">Implementation Walkthrough &middot; v0 &middot; Draft</div>
+        <h1>Web App Implementation Walkthrough</h1>
+        <p class="subtitle">
+          What got built for <code>web/</code> — scope, how it's wired to the same
+          Firebase project as the Android app, what was actually clicked through and
+          verified (screenshots included), and what's still a TODO.
+        </p>
+        <div class="doc-meta">
+          <span><strong>Status:</strong> Draft, unreviewed</span>
+          <span><strong>Version:</strong> v0</span>
+          <span><strong>Date:</strong> July 16, 2026</span>
+          <span><strong>Owner:</strong> Jackson Zhou</span>
+          <span><strong>Depends on:</strong> MVP Scope v0, MVP Implementation Walkthrough v0</span>
+        </div>
+      </div>
+
+      <article class="report-content">
+
+        <h2>1. Scope: Why Web Grew Beyond "Export and Settings"</h2>
+        <p>
+          MVP Scope v0 originally described the web app as a minimal back-office:
+          export and account settings only, never a capture surface. Two decisions
+          changed the shape of that scope before any code was written:
+        </p>
+        <ul>
+          <li>
+            <strong>Subscriptions are sold on web only, never via in-app purchase.</strong>
+            Skipping IAP entirely on Android/iOS avoids Apple/Google's platform fee on
+            subscription revenue. Neither mobile app will ever contain a purchase flow
+            or pricing mention — they only read entitlement status.
+          </li>
+          <li>
+            <strong>Web also becomes the analysis-dashboard surface</strong>, using the
+            bigger screen for the kind of charting (trends, per-property/category
+            breakdowns) that doesn't fit the phone's simple pacing view.
+          </li>
+        </ul>
+        <p>
+          Net effect: web is now three things — subscription/billing, an analysis
+          dashboard, and CPA back-office/export — still never a capture surface. This
+          report, the MVP Scope report (Section 4.4), <code>CLAUDE.md</code>, and
+          <code>web/README.md</code> were all updated to reflect this before any
+          scaffolding started.
+        </p>
+
+        <h2>2. What's Built</h2>
+        <p>
+          A Vite + React + TypeScript single-page app, talking to the same real
+          Firebase project (<code>contempo-platform</code>) and the same Firestore
+          data as <code>android/</code> — same <code>users/{uid}/entries</code> and
+          <code>users/{uid}/properties</code> collections, same security rules, no
+          backend changes needed.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Path</th><th>What it is</th></tr></thead>
+            <tbody>
+              <tr><td><code>web/src/lib/firebase.ts</code></td><td>App/Auth/Firestore init, same emulator-vs-real dual path as Android (<code>VITE_USE_FIREBASE_EMULATOR</code>, defaults on in <code>vite dev</code>)</td></tr>
+              <tr><td><code>web/src/lib/entryModel.ts</code></td><td>TypeScript types mirroring the Kotlin <code>Entry</code>/<code>Property</code> models field-for-field (Section 3 has the detail)</td></tr>
+              <tr><td><code>web/src/hooks/useEntries.ts</code>, <code>useProperties.ts</code></td><td>Realtime <code>onSnapshot</code> subscriptions, same collection paths and ordering as <code>FirestoreEntryRepository</code> on Android</td></tr>
+              <tr><td><code>web/src/auth/AuthContext.tsx</code></td><td>Google Sign-In (popup) + auth-state listener + sign-out, exposed via a <code>useAuth()</code> hook</td></tr>
+              <tr><td><code>web/src/billing/subscription.ts</code></td><td>Stripe integration stub — see Section 6</td></tr>
+              <tr><td><code>web/src/components/charts/</code></td><td><code>BarChart</code>, <code>ThresholdProgress</code>, <code>TrendSparkline</code> — hand-rolled SVG/HTML, no charting library (Section 4)</td></tr>
+              <tr><td><code>web/src/pages/</code></td><td><code>DashboardPage</code>, <code>EntriesPage</code>, <code>BillingPage</code>, <code>SettingsPage</code>, <code>SignInPage</code></td></tr>
+              <tr><td><code>web/src/styles/tokens.css</code>, <code>charts.css</code></td><td>Design tokens, ported from the landing page (Section 4)</td></tr>
+              <tr><td><code>scripts/run-web-with-emulators.sh</code></td><td>Local dev loop — emulators + Vite dev server, torn down together (Section 5)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>3. Data Model: Read From the Real Android Schema, Not Guessed</h2>
+        <p>
+          Before writing any TypeScript types, the exact Firestore document shape was
+          pulled from <code>android/core/src/main/java/com/hejitech/core/model/Entry.kt</code>
+          and <code>Property.kt</code> — not from <code>backend/functions/src/schemas.ts</code>,
+          which is a narrower AI-parsing shape, not what's actually stored once the app
+          layers on bookkeeping fields.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Path</th><th>Fields</th></tr></thead>
+            <tbody>
+              <tr><td><code>users/{uid}/entries/{id}</code></td><td><code>propertyId</code>, <code>propertyName</code>, <code>task</code>, <code>durationMinutes</code>, <code>category</code>, <code>status</code>, <code>source</code>, <code>activityDate</code>, <code>loggedAt</code>, <code>confirmedAt</code>, <code>isVague</code>, <code>isBackfilled</code>, <code>daysLate</code>, <code>riskReasons[]</code>, <code>photoUrls[]</code></td></tr>
+              <tr><td><code>users/{uid}/properties/{id}</code></td><td><code>name</code>, <code>createdAt</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout warn">
+          <span class="callout-label">The app hardcodes one test, not three</span>
+          Planning docs mention the 100hr/500hr STR tests and the 750hr REPS test, but
+          <code>MaterialParticipationTest.kt</code> only implements the 100-hour STR
+          test — there's no REPS/500hr variant in the app yet, and no "projected finish
+          date at current pace" calculation either (also planning-doc aspiration, not
+          built). The web dashboard deliberately doesn't invent a test-picker or a
+          pacing projection the app itself can't back up — <code>entryModel.ts</code>'s
+          <code>MATERIAL_PARTICIPATION_TEST</code> constant is hardcoded to match, with
+          a comment explaining why.
+        </div>
+
+        <h2>4. Design System: Brand Chrome + a Validated Data Palette</h2>
+        <p>
+          <code>web/src/styles/tokens.css</code> ports the landing page's pine/navy/brass
+          palette exactly — same CSS custom properties, same three-declaration-site
+          theme pattern (<code>@media (prefers-color-scheme: dark)</code> plus explicit
+          <code>[data-theme]</code> overrides so the toggle wins either way). A small
+          <code>ThemeToggle</code> component persists the choice to <code>localStorage</code>.
+        </p>
+        <p>
+          Charts are a different problem: the brand only has three hues (pine, navy,
+          brass) — not enough distinct, CVD-safe slots for the six entry categories a
+          bar chart needs to show side by side. Rather than eyeball a six-color set out
+          of three hues, the dashboard uses the data-viz skill's validated default
+          8-hue categorical theme (first six slots, fixed order, never cycled) for
+          chart <em>data</em>, while chart <em>chrome</em> (surface, gridlines, ink)
+          stays on the brand's own tokens. This was re-validated against this app's
+          actual surface color, not assumed from the skill's own defaults:
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Mode</th><th>Result</th></tr></thead>
+            <tbody>
+              <tr><td>Light, surface <code>#ffffff</code></td><td>All checks pass. CVD separation and normal-vision floor both clear; contrast is a WARN on 3 of 6 slots (magenta/yellow/aqua sit under 3:1) — mitigated by shipping direct value labels on every bar, never relying on color alone</td></tr>
+              <tr><td>Dark, surface <code>#16201c</code></td><td>All checks pass clean, including contrast</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          Single-value encodings (threshold progress, the flagged-entries trend line)
+          use the brand's pine accent directly rather than the categorical set — a
+          single series needs no palette, just one hue and a title.
+        </p>
+
+        <h2>5. Local Dev: <code>run-web-with-emulators.sh</code>, and a Real Bug It Surfaced</h2>
+        <p>
+          Mirrors <code>run-android-with-emulators.sh</code>'s shape — start the
+          Firebase emulator suite, wait for ready, start the app, tear both down
+          together on Ctrl+C — but simpler, since a browser talking to
+          <code>localhost</code> needs no <code>adb reverse</code>-style port
+          forwarding the way a physical Android device does.
+        </p>
+        <div class="callout warn">
+          <span class="callout-label">The default project argument was wrong, and it silently broke everything</span>
+          The script originally defaulted to <code>demo-contempo</code> (matching the
+          Android script's placeholder) independent of whatever project
+          <code>web/.env.local</code> was configured for (<code>contempo-platform</code>,
+          the real registered app). The Firestore and Auth emulators partition data
+          <em>by project id</em> — a client configured for one project id gets a
+          completely separate, empty namespace from another, even against the same
+          running emulator process. Seeding sample data via the Admin SDK under
+          <code>demo-contempo</code> and then loading the dashboard (configured for
+          <code>contempo-platform</code>) produced a dashboard that rendered correctly
+          but showed <strong>0.0h everywhere</strong> — not an error, just silently
+          empty. Confirmed directly by querying both project namespaces with the Admin
+          SDK: 20 seeded entries existed under <code>demo-contempo</code>, 0 under
+          <code>contempo-platform</code>. Fixed by having the script read
+          <code>VITE_FIREBASE_PROJECT_ID</code> out of <code>web/.env.local</code> and
+          use that as the default (falling back to <code>demo-contempo</code> only if
+          that file doesn't exist), and by correcting the script's own mismatch warning,
+          which had previously (and wrongly) claimed a mismatch was harmless.
+        </div>
+
+        <h2>6. Stripe: Deliberately Not Done</h2>
+        <p>
+          <code>web/src/billing/subscription.ts</code> is a stub:
+          <code>getSubscriptionStatus()</code> always returns <code>"none"</code>, with
+          a <code>TODO(stripe)</code> comment describing the plan (Stripe's official
+          "Run Payments with Stripe" Firebase Extension, syncing subscription status
+          into a Firestore doc every client reads). <code>BillingPage</code> reads this
+          stub and renders three illustrative pricing tiers (kept identical to the
+          landing page mockup's Starter/Pro/Portfolio tiers) with disabled "Coming
+          soon" buttons — no checkout flow exists yet, by design, until Stripe is
+          actually configured.
+        </p>
+
+        <h2>7. What Was Actually Verified (Not Just Written)</h2>
+        <p>
+          Same standard as the Android implementation report: this section describes
+          what was actually run, with evidence, not what was expected to work.
+        </p>
+        <ol>
+          <li>
+            <strong><code>npm run build</code></strong> (<code>tsc -b && vite build</code>)
+            passes clean. Bundle is 799&nbsp;KB / 242&nbsp;KB gzipped — Vite warns about
+            chunk size (mostly the Firebase SDK); not code-split yet, flagged as a real
+            gap in Section 8, not fixed.
+          </li>
+          <li>
+            <strong>Full sign-in-to-dashboard flow, automated with Playwright against a
+            headless Chromium</strong>, not just started and eyeballed: launched
+            <code>scripts/run-web-with-emulators.sh</code>, drove the actual "Sign in
+            with Google" button, which — with the Firebase Auth emulator connected —
+            opens the emulator's own fake Google IDP widget rather than real Google;
+            created a test account there, landed back on <code>/dashboard</code>
+            correctly authenticated.
+          </li>
+          <li>
+            <strong>Seeded realistic sample data via the Admin SDK</strong> (2
+            properties, 20 entries spanning ~10 weeks, mixed status/category/flags)
+            directly into the signed-in test user's <code>uid</code>, matching the
+            exact schema from Section 3 — this is what caught the project-id bug in
+            Section 5.
+          </li>
+          <li>
+            <strong>Screenshotted every page in both themes</strong> with real data:
+            Dashboard (threshold progress showing 30.6/100h, a real flagged-entries
+            trend line, populated property/category bar charts with correct validated
+            colors and direct labels), Entries (filtered list, risk flags in the
+            brand's danger red), Billing (three tiers, disabled buttons). Light and
+            dark both confirmed to swap every token correctly, including the chart
+            categorical colors.
+          </li>
+          <li>
+            <strong>Exercised the "view as table" toggle</strong> on both bar charts —
+            confirmed it swaps to a real data table, not a placeholder.
+          </li>
+          <li>
+            <strong>Exercised CSV export end-to-end</strong> — clicked "Export CSV",
+            captured the actual browser download event, and read back the file's real
+            content (header row plus correctly formatted property/date/task/category/
+            duration/status/flagged columns) rather than just confirming a click
+            handler exists.
+          </li>
+          <li>
+            No console errors or uncaught exceptions were logged by the app during any
+            of the above (checked via Playwright's console/pageerror listeners across
+            every run, not just visually).
+          </li>
+        </ol>
+
+        <h2>8. What's NOT Done or NOT Verified</h2>
+        <ul>
+          <li><strong>Stripe/billing is entirely unimplemented</strong> — see Section 6. No checkout, no webhook, no real entitlement sync.</li>
+          <li><strong>Real (non-emulator) Google Sign-In against the actual <code>contempo-platform</code> project was never clicked through</strong> — only the Auth emulator's fake IDP widget was exercised. The real popup flow (real Google OAuth consent screen) should work since the same app registration and <code>auth.providers.googleSignIn</code> config back both Android and web, but hasn't been directly tested against production.</li>
+          <li><strong>No property-management UI</strong> — properties are read-only in the dashboard/filters; creating/editing a property still requires the Android app.</li>
+          <li><strong>Corrections collection has no reader</strong> — matches the Android side (write-only, training signal for later), not a web gap specifically.</li>
+          <li><strong>No code-splitting</strong> — single 799&nbsp;KB JS bundle; fine at current scale (single pilot user), worth revisiting before this needs to serve real traffic.</li>
+          <li><strong>No automated test suite committed</strong> — verification in Section 7 was a one-off Playwright script run from a scratch directory, not checked into the repo as a repeatable test.</li>
+          <li><strong>Print/PDF view was implemented (<code>window.print()</code> plus print-only CSS) but not visually verified</strong> — headless Chromium doesn't render a print preview the same way a real browser's print dialog does, so this is unverified beyond "the code path exists and doesn't throw."</li>
+        </ul>
+
+        <h2>9. How to Run It</h2>
+        <ol>
+          <li><code>cd web && npm install</code> (one-time)</li>
+          <li>
+            Copy <code>web/.env.example</code> to <code>web/.env.local</code> and fill
+            in the Firebase web app config — fetch it with
+            <code>npx -y firebase-tools@latest apps:sdkconfig WEB &lt;APP_ID&gt; --project contempo-platform</code>.
+          </li>
+          <li>
+            <code>./scripts/run-web-with-emulators.sh</code> — starts the Firebase
+            emulator suite (defaulting to whatever project <code>.env.local</code> is
+            configured for) and the Vite dev server together, tears both down on
+            Ctrl+C. Pass a project id explicitly to override.
+          </li>
+          <li>
+            Open the printed <code>http://localhost:5173/</code> URL, click "Sign in
+            with Google" — against the emulator this opens a fake IDP widget where any
+            email works; against a real project it's the real Google consent screen.
+          </li>
+        </ol>
+
+        <h2>10. Immediate Next Steps</h2>
+        <ul>
+          <li>Configure Stripe and replace the <code>subscription.ts</code> stub — the natural next milestone, since everything else in Billing already assumes its shape</li>
+          <li>Click through real (non-emulator) Google Sign-In against the live <code>contempo-platform</code> project at least once</li>
+          <li>Decide whether property management belongs on web or stays Android-only as usage grows past the current single-pilot-user scale</li>
+          <li>Commit a real test (even a minimal Playwright smoke test) so the sign-in &rarr; dashboard &rarr; export path stays checked automatically instead of re-verified by hand each time</li>
+          <li>Revisit bundle size/code-splitting once this needs to serve more than a pilot user</li>
+        </ul>
+
+      </article>
+
+      <a class="back-to-top" href="#top">&uarr; Back to top</a>
+    </main>
+  </div>
+
+  <script src="assets/toc.js"></script>
+</body>
+</html>

@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Play Store Listing Kit v0 — Contempo</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="dot"></span> STR Tracker Reports</div>
+    <nav>
+      <a href="index.html">All reports</a>
+    </nav>
+  </header>
+
+  <div class="report-shell">
+    <aside class="toc-col">
+      <div class="toc-title">On this page</div>
+      <ul id="toc-list"></ul>
+    </aside>
+
+    <main class="report-main">
+      <div class="report-header">
+        <div class="eyebrow">Publishing Kit &middot; v0 &middot; Draft</div>
+        <h1>Play Store Listing Kit</h1>
+        <p class="subtitle">
+          Copy-paste-ready answers for every Google Play Console field required to
+          submit <code>com.hejitech.contempo</code> — store listing copy, the content
+          rating questionnaire, the Data safety form, target audience, and the
+          declarations Play Console requires — each grounded in what the app actually
+          does today, not what the roadmap says it will do. Two real compliance gaps
+          are flagged, not glossed over: see Section 8.
+        </p>
+        <div class="doc-meta">
+          <span><strong>Status:</strong> Draft, unreviewed</span>
+          <span><strong>Version:</strong> v0</span>
+          <span><strong>Date:</strong> July 17, 2026</span>
+          <span><strong>Owner:</strong> Jackson Zhou</span>
+          <span><strong>Depends on:</strong> MVP Scope v0, MVP Implementation Walkthrough v0</span>
+        </div>
+      </div>
+
+      <article class="report-content">
+
+        <h2>1. App Details</h2>
+        <p>
+          Package: <code>com.hejitech.contempo</code>. Current version:
+          <code>0.1.0-mvp</code> (versionCode 1). All copy below fits Play Console's
+          current limits: title 30 characters, short description 80 characters, full
+          description 4,000 characters.
+        </p>
+
+        <h3>1.1 App title (max 30 characters)</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Field</th><th>Value</th><th>Length</th></tr></thead>
+            <tbody>
+              <tr><td>Title</td><td><code>Contempo — Hour Tracker</code></td><td>24 / 30</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout warn">
+          <span class="callout-label">"Contempo" is a placeholder brand name</span>
+          Per CLAUDE.md, "Contempo" was picked to pressure-test positioning, not as a
+          final naming decision. If the name changes before submission, this whole
+          section (and the description copy below, which references it by name)
+          needs a pass.
+        </div>
+
+        <h3>1.2 Short description (max 80 characters)</h3>
+        <div class="table-wrap">
+          <table>
+            <tbody>
+              <tr><td><code>Log STR hours hands-free — audit-ready records for the IRS 100-hour test.</code></td><td>76 / 80</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>1.3 Full description (max 4,000 characters)</h3>
+        <p>Paste as-is into the "Full description" field:</p>
+        <div class="table-wrap">
+          <table>
+            <tbody>
+              <tr><td>
+                <p style="margin:0 0 0.75rem">
+                  Contempo helps short-term rental hosts log the hours they spend
+                  managing their properties — in a form that actually holds up if the
+                  IRS ever asks for proof.
+                </p>
+                <p style="margin:0 0 0.75rem">
+                  If you're using the STR "material participation" strategy to
+                  reclassify rental losses against your W-2 income, the tax code
+                  doesn't just require that you did the work — it requires
+                  contemporaneous records, logged as the work happens, not
+                  reconstructed at tax time from memory. Most hosts who fail an audit
+                  don't fail because they didn't do the hours. They fail because they
+                  can't prove it.
+                </p>
+                <p style="margin:0 0 0.5rem"><strong>How it works:</strong></p>
+                <p style="margin:0 0 0.25rem">• Talk or type what you just did — Contempo turns it into a structured, timestamped entry (property, task, duration, category), asking one quick follow-up only if it can't tell what you meant.</p>
+                <p style="margin:0 0 0.25rem">• Attach a photo as evidence on any entry.</p>
+                <p style="margin:0 0 0.25rem">• Every AI-drafted entry lands as a draft first — nothing is final until you confirm or edit it.</p>
+                <p style="margin:0 0 0.25rem">• Entries logged well after the fact, or described too vaguely, get flagged automatically — visibly, on the entry itself — so you can fix a weak record before it becomes a problem at tax time, not after.</p>
+                <p style="margin:0 0 0.25rem">• A simple dashboard shows hours logged against your threshold, and a CSV export hands your CPA a clean record on request.</p>
+                <p style="margin:0.5rem 0 0.75rem">
+                  Entry parsing can run entirely on-device (nothing leaves your phone)
+                  or fall back to the cloud when needed — you choose which, in
+                  Settings.
+                </p>
+                <p style="margin:0">
+                  Contempo is built by Hejitech for real hosts, starting with one pilot
+                  user — this is an early build, and the feature set will keep growing
+                  as real usage informs it.
+                </p>
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>2. Category &amp; Tags</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Field</th><th>Value</th></tr></thead>
+            <tbody>
+              <tr><td>App category</td><td>Productivity <em>(alternative: Business — either fits; Productivity centers the hour-logging mechanic, Business centers the STR/tax audience)</em></td></tr>
+              <tr><td>Tags</td><td>Productivity, Business, Real estate, Time tracking <em>(exact tag vocabulary is chosen from Play Console's own list at submission time — these are the closest matches)</em></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>3. Contact Details</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Field</th><th>Value</th></tr></thead>
+            <tbody>
+              <tr><td>Developer email (required)</td><td><code>jacksonzhou666@gmail.com</code></td></tr>
+              <tr><td>Website (optional)</td><td>Not yet — <code>branding/landing_v0</code> is a mockup, not a hosted site</td></tr>
+              <tr><td>Phone (optional)</td><td>Not provided</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>4. Content Rating Questionnaire</h2>
+        <p>
+          Run through Play Console's IARC questionnaire — the underlying content has
+          none of the flagged categories, so every question below should be answered
+          "No" / "None." Expected outcome: <strong>Everyone / ESRB "E," PEGI 3</strong>
+          across all territories.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Questionnaire category</th><th>Answer</th><th>Why</th></tr></thead>
+            <tbody>
+              <tr><td>Violence</td><td>None</td><td>No such content anywhere in the app</td></tr>
+              <tr><td>Sexual content / nudity</td><td>None</td><td>No such content</td></tr>
+              <tr><td>Profanity / crude humor</td><td>None</td><td>No such content — all copy is plain business language</td></tr>
+              <tr><td>Controlled substances (alcohol/tobacco/drugs)</td><td>None</td><td>No such content</td></tr>
+              <tr><td>Gambling / contests</td><td>None</td><td>No such content</td></tr>
+              <tr><td>Fear / horror themes</td><td>None</td><td>No such content</td></tr>
+              <tr><td>User-generated content shared with other users</td><td>No</td><td>Entries (<code>task</code> free-text, photos) are private to the signed-in user's own Firestore/Storage subtree — see <code>backend/firestore.rules</code>; there is no sharing, feed, or multi-user visibility of any kind in MVP scope</td></tr>
+              <tr><td>Shares user's location with other users</td><td>No</td><td>Location (GPS mileage trips, capture lat/lng) is stored only in the signed-in user's own data, never shared with other users or third parties</td></tr>
+              <tr><td>Unrestricted internet access / web browser</td><td>No</td><td>The app makes network calls only to Firebase (Auth/Firestore/Storage/Functions) — no in-app browser, no arbitrary URL loading</td></tr>
+              <tr><td>Digital purchases</td><td>No</td><td>By design — see Section 6 and CLAUDE.md: subscriptions are sold web-only, specifically so the Android and iOS apps never contain a purchase flow or pricing mention, avoiding Apple/Google's in-app-purchase fee</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>5. Data Safety Section</h2>
+        <p>
+          Grounded directly in <code>AndroidManifest.xml</code>'s declared permissions,
+          <code>core/model/Entry.kt</code>'s actual stored fields, and
+          <code>backend/firestore.rules</code> / <code>storage.rules</code>. One
+          definitional nuance drives most of the "Shared: No" answers below: Google
+          Play's Data safety form defines <strong>sharing</strong> as transferring data
+          to a <em>third party</em> — sending data to your own backend
+          infrastructure (this app's Firebase/Firestore project, which Hejitech owns
+          and operates) counts as <strong>collection</strong>, not sharing, since
+          Hejitech remains the first party throughout.
+        </p>
+        <div class="callout">
+          <span class="callout-label">Top-level questions</span>
+          Does your app collect or share any of the required user data types? <strong>Yes, collects — does not share.</strong>
+          Is all of the user data collected encrypted in transit? <strong>Yes</strong> (all traffic is to Firebase over HTTPS/gRPC-over-TLS).
+          Do you provide a way for users to request that their data be deleted? <strong>Yes</strong> — an in-app "Delete account" flow (Android and web), self-service, immediate. See Section 8.
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Data type</th><th>Collected?</th><th>Shared?</th><th>Purpose</th><th>Optional?</th><th>Source in code</th></tr></thead>
+            <tbody>
+              <tr><td>Name, email address, profile photo</td><td>Yes</td><td>No</td><td>Account management, app functionality (Google Sign-In identity)</td><td>Required — sign-in is mandatory</td><td><code>auth/AuthManager.kt</code></td></tr>
+              <tr><td>Precise location</td><td>Yes</td><td>No</td><td>App functionality — GPS mileage-trip tracking (<code>tripStartLat/Lng</code>, <code>tripEndLat/Lng</code>) and optional capture-location tagging on any entry (<code>captureLat/Lng</code>)</td><td>Optional — mileage tracking and location-tagging are both user-initiated, not required to use the app</td><td><code>mileage/MileageTrackingService.kt</code>, <code>core/model/Entry.kt</code></td></tr>
+              <tr><td>Photos</td><td>Yes</td><td>No</td><td>App functionality — evidence photos attached to entries, odometer-photo mileage capture</td><td>Optional</td><td><code>util/PhotoUtils.kt</code>, <code>storage.rules</code></td></tr>
+              <tr><td>Voice/audio recordings</td><td>Yes</td><td>No</td><td>App functionality — voice-memo capture, transcribed to text (on-device Whisper or LiteRT, or cloud Gemini Flash depending on the user's Settings choice) then discarded from working memory; the source audio itself is kept permanently as an audit-trail artifact</td><td>Optional — text/manual entry doesn't require it</td><td><code>agent/WhisperTranscriber.kt</code>, <code>agent/AudioRecorder.kt</code>, <code>core/model/Entry.kt</code>'s <code>audioUrl</code></td></tr>
+              <tr><td>App activity / user-generated content (task descriptions, categories, durations)</td><td>Yes</td><td>No</td><td>App functionality — this is the core hour-log record itself</td><td>Required — this is what the app does</td><td><code>core/model/Entry.kt</code></td></tr>
+              <tr><td>App interactions (which AI-drafted fields a user corrects)</td><td>Yes</td><td>No</td><td>App functionality / analytics (the correction-feedback pipeline — captured for future personalization, not yet consumed by anything server-side)</td><td>Not user-facing/optional — happens automatically on any edit to an AI draft</td><td><code>FirestoreEntryRepository.kt</code>'s <code>recordCorrection</code>, <code>users/{uid}/corrections</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout warn">
+          <span class="callout-label">No analytics or crash-reporting SDK is present</span>
+          Checked <code>app/build.gradle.kts</code> and the version catalog directly —
+          there's no Firebase Analytics, Crashlytics, or comparable SDK wired in, so
+          there is nothing to declare under "App performance" or "Device or other
+          IDs" beyond what Firebase Auth/App Check use internally for security
+          (which Play's form doesn't require disclosing separately). Revisit this
+          section if either gets added later.
+        </div>
+
+        <h2>6. Target Audience &amp; Content</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Field</th><th>Answer</th></tr></thead>
+            <tbody>
+              <tr><td>Target age group(s)</td><td>18 and over only</td></tr>
+              <tr><td>Appeals to children?</td><td>No</td></tr>
+              <tr><td>Primarily a store/service for children?</td><td>No</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          The product is explicitly a tax/audit tool for adult property owners and
+          real estate professionals (PRD Section 4) — there's no plausible child
+          audience to declare here.
+        </p>
+
+        <h2>7. Ads &amp; Financial Features Declarations</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Declaration</th><th>Answer</th><th>Why</th></tr></thead>
+            <tbody>
+              <tr><td>Contains ads?</td><td>No</td><td>No ad SDK anywhere in the dependency list</td></tr>
+              <tr><td>Financial features declaration</td><td>"My app doesn't provide any financial features"</td><td>Contempo is a recordkeeping tool, not a lender, payment processor, exchange, or advisor. It touches tax strategy only descriptively (helping log hours for a deduction a host already qualifies for), which doesn't trigger Play's financial-services category — confirmed against the current form's own category list (banking/loans, payments/transfers, trading/funds, credit/advice/insurance), none of which apply. Subscriptions themselves are web-only (Stripe, currently a <code>TODO(stripe)</code> stub per <code>web/src/billing/subscription.ts</code>) and never touch the Android app at all.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>8. Compliance Gaps to Close Before Submission</h2>
+        <p>
+          Gap 1 is now resolved. Gap 2 is real, not paperwork — Play Console will
+          reject or later suspend a listing over it.
+        </p>
+        <div class="callout">
+          <span class="callout-label">Gap 1 — Resolved: account deletion now works, in-app and on web</span>
+          Both required paths now exist: <code>ui/settings/SettingsScreen.kt</code> has
+          a "Delete account" flow (with a confirmation dialog) alongside "Sign out",
+          and <code>web/src/pages/SettingsPage.tsx</code> has the same flow, reachable
+          without the Android app installed. Both call a shared
+          <code>deleteAccount</code> callable Cloud Function
+          (<code>backend/functions/src/account.ts</code>) that recursively deletes the
+          user's Firestore subtree and Storage files via the Admin SDK, then deletes
+          the Firebase Auth account itself — plus a <code>cleanupDeletedUserData</code>
+          Auth <code>onDelete</code> trigger as a safety net for accounts removed any
+          other way. Verified end-to-end against the emulator suite: seeded
+          data → called the function as the signed-in user → confirmed Firestore docs,
+          Storage files, and the Auth account are all actually gone, for both the
+          direct-callable path and the trigger safety net, and for the full
+          click-through web UI flow (Playwright, sign in → seed → delete →
+          confirm → lands back on sign-in).
+        </div>
+        <div class="callout warn">
+          <span class="callout-label">Gap 2 — Privacy Policy page exists, but isn't hosted publicly yet</span>
+          A publicly hosted Privacy Policy URL is a hard requirement of the store
+          listing form (and is separately referenced from the Data safety section).
+          The content itself is done — <code>web/src/pages/LegalPage.tsx</code> renders
+          both the Privacy Policy and Terms of Service from
+          <code>web/src/legal/content.ts</code>, at routes <code>/legal/privacy</code> and
+          <code>/legal/terms</code>, deliberately reachable without signing in (see
+          <code>App.tsx</code>) since Play's review requires that. What's still missing is
+          deploying <code>web/</code> to a real public URL (e.g. Firebase Hosting — no
+          <code>hosting</code> block exists in <code>backend/firebase.json</code> yet,
+          though the project already has Hosting sites registered:
+          <code>contempo.web.app</code> / <code>contempo-platform.web.app</code>). Once
+          deployed, paste the real URL here:
+          <br /><br />
+          <strong>Privacy Policy URL:</strong> <code>[PASTE HOSTED URL HERE — deploy web/ first]</code>
+        </div>
+
+        <h2>9. App Access — Reviewer Instructions</h2>
+        <p>
+          The app requires real Google Sign-In to reach any functionality beyond the
+          sign-in screen itself — there's no guest mode. This matters for Play's
+          review team, who need a way in.
+        </p>
+        <div class="callout warn">
+          <span class="callout-label">Firebase emulator mode is a dev convenience, not a reviewer path</span>
+          <code>BuildConfig.USE_FIREBASE_EMULATOR</code> (true in debug builds only,
+          per CLAUDE.md) is not present in the release build Play reviews — reviewers
+          will hit the real <code>contempo-platform</code> Google Sign-In flow, the
+          same as any real user.
+        </div>
+        <p>Paste into the "App access" section of App content:</p>
+        <div class="table-wrap">
+          <table>
+            <tbody>
+              <tr><td>
+                All functionality requires signing in with a Google account (Google
+                Sign-In via Firebase Auth). There is no restricted or special-access
+                content beyond the standard sign-in flow. To review: sign in with any
+                Google account — a fresh account will land on an empty Dashboard with
+                no properties or entries yet, which is the expected first-run state.
+                <br /><br />
+                <strong>Provide a demo/test Google account credential pair here before
+                submitting</strong> if reviewers should see a Dashboard already
+                populated with sample entries, rather than the empty first-run state —
+                not yet created as of this report.
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>10. Graphic Assets Checklist</h2>
+        <p>
+          Not composed yet — listed here as a checklist against current Play Console
+          requirements so asset creation has a clear target.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Asset</th><th>Spec</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td>App icon</td><td>512&times;512px, 32-bit PNG with alpha, &le;1024KB</td><td>Not yet exported — <code>ic_launcher_foreground.xml</code>/<code>ic_launcher_background.xml</code> (the ring+dot brand mark, pine background) is the source to export from</td></tr>
+              <tr><td>Feature graphic</td><td>1024&times;500px, JPEG or 24-bit PNG (no alpha) — required to publish</td><td>Not yet created</td></tr>
+              <tr><td>Phone screenshots</td><td>Min 2, up to 8; 1080&times;1920px recommended portrait; JPEG or 24-bit PNG</td><td>Not yet captured — Dashboard, Capture, Confirm, and Export screens are the natural set</td></tr>
+              <tr><td>Tablet/other device screenshots</td><td>Optional at MVP — app isn't tablet-optimized</td><td>Skip for now</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>11. Sources</h2>
+        <p>Requirements researched directly against current (2026) Play Console documentation:</p>
+        <ul>
+          <li><a href="https://support.google.com/googleplay/android-developer/answer/10787469?hl=en">Provide information for Google Play's Data safety section</a></li>
+          <li><a href="https://support.google.com/googleplay/android-developer/answer/13327111?hl=en">Understanding Google Play's app account deletion requirements</a></li>
+          <li><a href="https://support.google.com/googleplay/android-developer/answer/13393723?hl=en">Best practices for your store listing</a></li>
+          <li><a href="https://support.google.com/googleplay/android-developer/answer/9866151?hl=en">Store listing graphic asset specifications</a></li>
+          <li><a href="https://support.google.com/googleplay/android-developer/answer/9898843?hl=en">Content ratings</a></li>
+          <li><a href="https://support.google.com/googleplay/android-developer/answer/9867159?hl=en">Manage target audience and app content settings</a></li>
+          <li><a href="https://support.google.com/googleplay/android-developer/answer/13849271">Financial features declaration</a></li>
+        </ul>
+
+      </article>
+
+      <a class="back-to-top" href="#top">&uarr; Back to top</a>
+    </main>
+  </div>
+
+  <script src="assets/toc.js"></script>
+</body>
+</html>

@@ -1,0 +1,137 @@
+/* Ported from branding/landing_v0/site/assets/style.css — same pine/navy/brass
+   palette, same three-declaration-site theme pattern (media query for OS
+   preference, explicit [data-theme] to let a toggle override it either way).
+   Kept in sync by hand; if the landing page's tokens change, mirror it here. */
+
+:root {
+  color-scheme: light;
+
+  --paper: #f5f6f2;
+  --paper-raised: #ffffff;
+  --ink: #14201b;
+  --ink-soft: #45524b;
+  --ink-faint: #7c8880;
+
+  --pine: #1f5c46;
+  --pine-deep: #163f31;
+  --pine-tint: #e4eee8;
+  --navy: #16273d;
+  --navy-tint: #e7ebf1;
+  --brass: #a67c34;
+  --brass-tint: #f3e9d6;
+
+  --hairline: #dbe1d8;
+  --hairline-strong: #c3ccc3;
+  --danger: #a13f36;
+  --danger-tint: #fbeceb;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+
+  --font-body: -apple-system, "Helvetica Neue", Helvetica, Arial, "PingFang SC",
+    "Microsoft YaHei", "Segoe UI", sans-serif;
+  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia,
+    "Noto Serif", "Songti SC", serif;
+  --font-mono: ui-monospace, "SF Mono", "IBM Plex Mono", Menlo, Consolas,
+    monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+
+    --paper: #0e1613;
+    --paper-raised: #16201c;
+    --ink: #eceee8;
+    --ink-soft: #a9b3ac;
+    --ink-faint: #71827a;
+
+    --pine: #45a67c;
+    --pine-deep: #327a5b;
+    --pine-tint: #16261f;
+    --navy: #9fb2cf;
+    --navy-tint: #17222f;
+    --brass: #cda35c;
+    --brass-tint: #2a2214;
+
+    --hairline: #263029;
+    --hairline-strong: #364039;
+    --danger: #d97a70;
+    --danger-tint: #2c1a18;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --paper: #0e1613;
+  --paper-raised: #16201c;
+  --ink: #eceee8;
+  --ink-soft: #a9b3ac;
+  --ink-faint: #71827a;
+
+  --pine: #45a67c;
+  --pine-deep: #327a5b;
+  --pine-tint: #16261f;
+  --navy: #9fb2cf;
+  --navy-tint: #17222f;
+  --brass: #cda35c;
+  --brass-tint: #2a2214;
+
+  --hairline: #263029;
+  --hairline-strong: #364039;
+  --danger: #d97a70;
+  --danger-tint: #2c1a18;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  text-wrap: balance;
+  margin: 0 0 0.5em;
+}
+
+a {
+  color: var(--pine);
+}
+
+:focus-visible {
+  outline: 2px solid var(--pine);
+  outline-offset: 2px;
+}
+
+button {
+  font-family: inherit;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+    color: #000;
+  }
+}

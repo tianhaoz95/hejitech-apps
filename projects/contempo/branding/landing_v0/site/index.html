@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Contempo — Material participation, proven as you go</title>
+<meta name="description" content="Contempo turns a voice memo, a text, or a photo into a timestamped, audit-ready material participation record — captured the moment the work happens." />
+<link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+
+<a class="skip-link" href="#top-content">Skip to content</a>
+
+<nav class="nav" id="nav">
+  <div class="container nav-row">
+    <a href="#top" class="wordmark">
+      <span class="name serif">Contempo</span>
+      <span class="stamp" data-i18n="nav.stamp">v0 concept</span>
+    </a>
+    <div class="nav-links" id="nav-links">
+      <a href="#how-it-works" data-nav-link data-i18n="nav.how">How it works</a>
+      <a href="#features" data-nav-link data-i18n="nav.features">Features</a>
+      <a href="#trust" data-nav-link data-i18n="nav.trust">Audit defense</a>
+      <a href="#pricing" data-nav-link data-i18n="nav.pricing">Pricing</a>
+      <a href="#faq" data-nav-link data-i18n="nav.faq">FAQ</a>
+    </div>
+    <div class="nav-actions">
+      <button class="lang-toggle" id="lang-toggle" aria-label="Switch language">中文</button>
+      <button class="theme-toggle" id="theme-toggle" aria-label="Toggle color theme">◐</button>
+      <a class="btn btn-primary" href="#join" data-i18n="cta.waitlist">Join the waitlist</a>
+      <button class="nav-toggle" id="nav-toggle" aria-label="Toggle menu" aria-expanded="false">☰</button>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="container hero-grid" id="top-content">
+    <div>
+      <div class="eyebrow" data-i18n="hero.eyebrow">Material participation, logged as it happens</div>
+      <h1><span data-i18n="hero.h1_line1">Say it once.</span><br /><span data-i18n="hero.h1_line2">Prove it forever.</span></h1>
+      <p class="lede" data-i18n="hero.lede">
+        Contempo turns a voice memo, a text, or a photo into a timestamped,
+        audit-ready record — the moment the work happens, not the night before
+        your CPA call.
+      </p>
+      <div class="hero-cta-row">
+        <a class="btn btn-primary" href="#join" data-i18n="cta.waitlist">Join the waitlist</a>
+        <a class="btn-text" href="#how-it-works" data-i18n="hero.cta_secondary">See how it works ↓</a>
+      </div>
+      <p class="hero-note" data-i18n="hero.note">Built for STR hosts and real estate professionals pursuing the 100-hour, 500-hour, or REPS 750-hour test.</p>
+    </div>
+
+    <div class="mock-card" aria-hidden="true">
+      <div class="screen-status">
+        <span>9:41</span>
+        <span class="signal"><span></span><span></span><span></span></span>
+      </div>
+      <div class="mock-row-top">
+        <span class="rec-pill"><span class="rec-dot"></span> <span data-i18n="mock.capturing">Capturing</span></span>
+        <span class="session-timer mono" id="session-timer">00:12:47</span>
+      </div>
+
+      <div class="draft-bubble">
+        <span class="draft-label" data-i18n="mock.draft_label">AI draft &middot; pending review</span>
+        <span data-i18n="mock.draft_text">“Cleaned and restocked supplies at Maple St, then swapped the lockbox
+        code before the next check-in.”</span>
+        <div class="draft-actions">
+          <button class="chip-btn confirm" type="button" data-i18n="mock.confirm_btn">✓ Confirm · 42 min · Maintenance</button>
+          <button class="chip-btn" type="button" data-i18n="mock.edit_btn">Edit</button>
+        </div>
+      </div>
+
+      <div class="mock-divider"></div>
+
+      <div class="progress-row">
+        <div class="ring" style="--pct:62">
+          <span class="ring-label mono">62%</span>
+        </div>
+        <div class="progress-copy">
+          <div class="p-title" data-i18n="mock.ring_title">62 / 100 hrs toward the STR test</div>
+          <div class="p-sub" data-i18n="mock.ring_sub">On pace to qualify by Nov 4, at your current rate</div>
+        </div>
+      </div>
+
+      <div class="live-activity-pill">
+        <span class="la-dot"></span>
+        <span data-i18n="mock.live_pill">Contempo — session running</span>
+        <span class="la-mono" id="live-activity-time">12:47</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section class="section-pad" id="problem">
+  <div class="container">
+    <div class="eyebrow" data-i18n="problem.eyebrow">Why most hosts fail the test</div>
+    <h2 class="max-measure" style="font-size: clamp(1.8rem, 3.5vw, 2.4rem);" data-i18n="problem.h2">The hours were real. The paperwork wasn't.</h2>
+    <div class="problem-grid">
+      <div class="problem-card">
+        <span class="tag" data-i18n="problem.c1.tag">Requirement</span>
+        <p><span data-i18n="problem.c1.text">The IRS requires contemporaneous records — logged as the work happens, not reconstructed later from memory.</span></p>
+      </div>
+      <div class="problem-card">
+        <span class="tag" data-i18n="problem.c2.tag">Precedent</span>
+        <p><span data-i18n="problem.c2.text">Courts have consistently sided with taxpayers who kept real-time logs, and against those who estimated their hours after the fact.</span></p>
+      </div>
+      <div class="problem-card">
+        <span class="tag" data-i18n="problem.c3.tag">Burden of proof</span>
+        <p><span data-i18n="problem.c3.text">Proving material participation is entirely on the host. If it isn't written down as it happens, it doesn't hold up under review.</span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section-pad" id="how-it-works" style="border-top: 1px solid var(--hairline);">
+  <div class="container">
+    <div class="eyebrow" data-i18n="how.eyebrow">From activity to evidence</div>
+    <h2 class="max-measure" style="font-size: clamp(1.8rem, 3.5vw, 2.4rem);" data-i18n="how.h2">Four steps, none of them a form.</h2>
+
+    <div class="ledger">
+      <div class="ledger-entry">
+        <div class="ledger-content">
+          <div class="ledger-id mono" data-i18n="how.e1.id">ENTRY 01 · CAPTURE</div>
+          <h3 data-i18n="how.e1.h3">Talk, text, or let it happen automatically</h3>
+          <p data-i18n="how.e1.p">Send a voice memo, forward a text, snap a photo, or let a calendar event, geofence, or booking signal draft the entry before you ever open the app — whichever surface you happen to be near.</p>
+        </div>
+        <div class="ledger-visual reveal">
+          <div class="capture-trio">
+            <div class="trio-item">
+              <div class="watch-mount">
+                <div class="watch-band watch-band-top watch-band-mini"></div>
+                <div class="mini-device mini-watch">
+                  <div class="mini-screen">
+                    <div class="mini-mic">●</div>
+                    <div class="mini-wave"><span></span><span></span><span></span></div>
+                  </div>
+                </div>
+                <div class="watch-band watch-band-bottom watch-band-mini"></div>
+              </div>
+              <span class="trio-label" data-i18n="how.e1.watch_label">Watch · say it</span>
+            </div>
+
+            <div class="trio-item">
+              <div class="mini-device mini-phone">
+                <div class="mini-screen">
+                  <div class="mini-bubble pop-in" style="animation-delay:0.4s" data-i18n="how.e1.app_bubble">cleaned pool + restocked towels, 35 min</div>
+                  <div class="mini-check pop-in" style="animation-delay:1.1s" data-i18n="how.e1.app_check">✓ logged</div>
+                </div>
+              </div>
+              <span class="trio-label" data-i18n="how.e1.app_label">App · text or type it</span>
+            </div>
+
+            <div class="trio-item">
+              <div class="mini-device mini-lock">
+                <div class="mini-screen">
+                  <div class="mini-time pop-in" style="animation-delay:0.2s">9:41</div>
+                  <div class="mini-pill pop-in" style="--pop-y:8px; animation-delay:0.7s"><span class="llp-dot"></span><span data-i18n="how.e1.lock_pill">Auto-drafted from calendar</span></div>
+                </div>
+              </div>
+              <span class="trio-label" data-i18n="how.e1.lock_label">Lock screen · it happens for you</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ledger-entry">
+        <div class="ledger-content">
+          <div class="ledger-id mono" data-i18n="how.e2.id">ENTRY 02 · PARSE</div>
+          <h3 data-i18n="how.e2.h3">The AI extracts the details</h3>
+          <p data-i18n="how.e2.p">Property, task, duration, category, and participant — pulled from what you actually said, with one clarifying question asked only if it's genuinely needed.</p>
+        </div>
+        <div class="ledger-visual reveal">
+          <div class="device device-phone">
+            <div class="device-notch"></div>
+            <div class="device-screen">
+              <div class="screen-status"><span>9:41</span><span class="signal"><span></span><span></span><span></span></span></div>
+              <div class="extract-source pop-in" style="animation-delay:0.15s" data-i18n="how.e2.source">“swapped the lockbox code before the next check-in, took about 20 minutes”</div>
+              <div class="extract-field pop-in" style="animation-delay:0.75s"><span class="ef-key" data-i18n="how.e2.f1_key">Property</span><span class="ef-val" data-i18n="how.e2.f1_val">Maple St</span></div>
+              <div class="extract-field pop-in" style="animation-delay:1.05s"><span class="ef-key" data-i18n="how.e2.f2_key">Duration</span><span class="ef-val" data-i18n="how.e2.f2_val">20 min</span></div>
+              <div class="extract-field pop-in" style="animation-delay:1.35s"><span class="ef-key" data-i18n="how.e2.f3_key">Category</span><span class="ef-val" data-i18n="how.e2.f3_val">Turnover</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ledger-entry">
+        <div class="ledger-content">
+          <div class="ledger-id mono" data-i18n="how.e3.id">ENTRY 03 · CONFIRM</div>
+          <h3 data-i18n="how.e3.h3">Nothing commits without you</h3>
+          <p data-i18n="how.e3.p">Every draft sits for a one-tap review. Edit any field, on any entry, however it was captured — manual and AI-drafted entries carry the same weight.</p>
+        </div>
+        <div class="ledger-visual reveal">
+          <div class="device device-phone">
+            <div class="device-notch"></div>
+            <div class="device-screen">
+              <div class="screen-status"><span>9:41</span><span class="signal"><span></span><span></span><span></span></span></div>
+              <div class="confirm-mini pop-in" style="animation-delay:0.15s" data-i18n="how.e3.confirm_text">“Swapped the lockbox code before check-in” · 20 min · Turnover</div>
+              <div class="confirm-mini-actions">
+                <span class="confirm tap-confirm" data-i18n="how.e3.confirm_btn">✓ Confirm</span>
+                <span class="pop-in" style="animation-delay:0.9s" data-i18n="how.e3.edit_btn">Edit</span>
+                <span class="logged-tag pop-in" style="animation-delay:1.9s" data-i18n="how.e3.logged_tag">Logged ✓</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ledger-entry">
+        <div class="ledger-content">
+          <div class="ledger-id mono" data-i18n="how.e4.id">ENTRY 04 · PROVE</div>
+          <h3 data-i18n="how.e4.h3">It becomes part of your ledger</h3>
+          <p data-i18n="how.e4.p">Timestamped, contemporaneity-scored, and organized by property — ready to export the moment your CPA, or the IRS, asks for it.</p>
+        </div>
+        <div class="ledger-visual reveal">
+          <div class="device device-phone">
+            <div class="device-notch"></div>
+            <div class="device-screen">
+              <div class="screen-status"><span>9:41</span><span class="signal"><span></span><span></span><span></span></span></div>
+              <div class="mini-ledger">
+                <div class="mini-ledger-row pop-in" style="animation-delay:0.2s"><span class="ml-time mono">Tue 14:02</span><span class="ml-task" data-i18n="how.e4.row1">Turnover clean · 38m</span><span class="ml-flag">✓</span></div>
+                <div class="mini-ledger-row pop-in" style="animation-delay:0.5s"><span class="ml-time mono">Wed 09:15</span><span class="ml-task" data-i18n="how.e4.row2">Guest msgs · 12m</span><span class="ml-flag">✓</span></div>
+                <div class="mini-ledger-row pop-in" style="animation-delay:0.8s"><span class="ml-time mono">Fri 16:40</span><span class="ml-task" data-i18n="how.e4.row3">Lockbox fix · 20m</span><span class="ml-flag">✓</span></div>
+              </div>
+              <div class="mini-export pop-in glow-once" style="animation-delay:1.2s, 1.7s" data-i18n="how.e4.export_btn">Export CPA package →</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section-pad" id="features" style="border-top: 1px solid var(--hairline);">
+  <div class="container">
+    <div class="eyebrow" data-i18n="features.eyebrow">Built for how the work actually happens</div>
+    <h2 class="max-measure" style="font-size: clamp(1.8rem, 3.5vw, 2.4rem);" data-i18n="features.h2">Logging that survives contact with a busy day.</h2>
+
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-mark">◉</div>
+        <h3 data-i18n="features.f1.h3">Capture without a screen</h3>
+        <p data-i18n="features.f1.p">Geofence, calendar, and booking signals draft entries before you ever unlock your phone.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-mark">◈</div>
+        <h3 data-i18n="features.f2.h3">Voice, text, or a photo</h3>
+        <p data-i18n="features.f2.p">Forward a voice memo or snap a picture of the work. No form, no typing required.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-mark">§</div>
+        <h3 data-i18n="features.f3.h3">A copilot that knows the law</h3>
+        <p data-i18n="features.f3.p">Ask “would this count?” and get an answer grounded in the actual material participation tests and known case outcomes.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-mark">⌘</div>
+        <h3 data-i18n="features.f4.h3">Household-aware</h3>
+        <p data-i18n="features.f4.p">Tracks your spouse, cleaner, and co-host's hours too, and warns you before anyone else's time outpaces yours.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-mark">✎</div>
+        <h3 data-i18n="features.f5.h3">Manual, whenever you want it</h3>
+        <p data-i18n="features.f5.p">Every entry is the same structured record, however it was captured — fully editable, always one tap away.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-mark">◍</div>
+        <h3 data-i18n="features.f6.h3">Live, wherever you glance</h3>
+        <p data-i18n="features.f6.p">A Live Activity or Live Update shows your running session and year-to-date progress right on your lock screen.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section-pad trust-section" id="trust">
+  <div class="container">
+    <div class="eyebrow" data-i18n="trust.eyebrow">Built for scrutiny, not just speed</div>
+    <h2 style="font-size: clamp(1.8rem, 3.5vw, 2.4rem);" class="max-measure" data-i18n="trust.h2">Every entry carries its own paper trail.</h2>
+
+    <div class="trust-grid">
+      <div class="trust-copy">
+        <p data-i18n="trust.p1">Contempo scores every entry for contemporaneity — how soon it was logged after the work happened — and flags the patterns that actually sink an audit: vague descriptions, unrealistic durations, and entries added long after the fact.</p>
+        <p data-i18n="trust.p2">Nothing here is tax advice. It's the documentation infrastructure your CPA wishes every client already had.</p>
+      </div>
+
+      <div class="readiness-card">
+        <div class="readiness-top">
+          <span class="r-label" data-i18n="trust.readiness_label">2026 readiness score</span>
+          <span class="readiness-score mono">84<span>/100</span></span>
+        </div>
+        <div class="readiness-bar"><span></span></div>
+        <ul class="readiness-list">
+          <li><span class="r-ok">✓</span> <span data-i18n="trust.list1">214 entries logged within 24 hours of the activity</span></li>
+          <li><span class="r-warn">⚠</span> <span data-i18n="trust.list2">6 entries flagged as vague — needs one more detail each</span></li>
+          <li><span class="r-warn">⚠</span> <span data-i18n="trust.list3">2 entries logged more than 14 days after the activity</span></li>
+          <li><span class="r-ok">✓</span> <span data-i18n="trust.list4">No household hour conflicts detected on the 100-hour test</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section-pad" id="platforms">
+  <div class="container">
+    <div class="eyebrow" data-i18n="platforms.eyebrow">Everywhere the work happens</div>
+    <h2 class="max-measure" style="font-size: clamp(1.8rem, 3.5vw, 2.4rem);" data-i18n="platforms.h2">Not just another app you forget to open.</h2>
+
+    <div class="moments-grid">
+      <div class="moment-card">
+        <div class="watch-mount">
+          <div class="watch-band watch-band-top"></div>
+          <div class="device device-watch reveal">
+            <div class="device-screen">
+              <div class="watch-mic">●</div>
+              <div class="waveform"><span></span><span></span><span></span><span></span><span></span></div>
+              <div class="watch-caption pop-in" style="animation-delay:1.3s" data-i18n="moments.m1.caption">“mowed the lawn, fixed the sprinkler head”</div>
+            </div>
+          </div>
+          <div class="watch-band watch-band-bottom"></div>
+        </div>
+        <h3 data-i18n="moments.m1.h3">Tap your watch, not your phone</h3>
+        <p data-i18n="moments.m1.p">Hold the mic, say what you did, let go. Your hands never leave the yard tools.</p>
+      </div>
+
+      <div class="moment-card">
+        <div class="device device-phone reveal">
+          <div class="device-notch"></div>
+          <div class="device-screen dark-screen">
+            <div class="lock-time pop-in" style="animation-delay:0.15s">9:41</div>
+            <div class="lock-date pop-in" style="animation-delay:0.35s" data-i18n="moments.m2.date">FRIDAY, JULY 24</div>
+            <div class="lock-live-pill pop-in" style="--pop-y:14px; animation-delay:0.65s">
+              <div class="llp-top"><span class="llp-dot"></span> <span data-i18n="moments.m2.pill">Contempo — session running</span></div>
+              <div class="llp-bar"><span></span></div>
+              <div class="llp-meta"><span><span id="lock-elapsed" class="mono">00:04</span> <span data-i18n="moments.m2.elapsed">elapsed</span></span><span><span class="count-up mono" data-target="62">0</span><span data-i18n="moments.m2.ytd">/100 hrs YTD</span></span></div>
+            </div>
+          </div>
+        </div>
+        <h3 data-i18n="moments.m2.h3">Glance without unlocking</h3>
+        <p data-i18n="moments.m2.p">iOS Live Activity, Android Live Update — the same running total, right on the lock screen.</p>
+      </div>
+
+      <div class="moment-card">
+        <div class="device device-phone reveal">
+          <div class="device-notch"></div>
+          <div class="device-screen">
+            <div class="screen-status"><span>9:41</span><span class="signal"><span></span><span></span><span></span></span></div>
+            <div class="msg-thread">
+              <div class="pop-in" style="animation-delay:0.2s">
+                <span class="msg-sender" data-i18n="moments.m3.sender">Maria (cleaner)</span>
+                <div class="msg-bubble msg-in" data-i18n="moments.m3.incoming">done at Maple St, took about 40 min</div>
+              </div>
+              <div class="typing-dots"><span></span><span></span><span></span></div>
+              <div class="msg-bubble msg-out pop-in" style="animation-delay:1.5s" data-i18n="moments.m3.outgoing">✓ Logged under Maria · doesn't count against your hours</div>
+            </div>
+          </div>
+        </div>
+        <h3 data-i18n="moments.m3.h3">Your team logs too — correctly attributed</h3>
+        <p data-i18n="moments.m3.p">No app install for the cleaner. Their hours are tracked separately, so they never eat into your test.</p>
+      </div>
+    </div>
+
+    <div class="platform-badges">
+      <span>iOS</span><span>Android</span><span>Apple Watch</span><span>Wear OS</span><span>SMS / iMessage</span><span data-i18n="platform.web">Web (back office)</span>
+    </div>
+  </div>
+</section>
+
+<section class="section-pad" id="pricing" style="border-top: 1px solid var(--hairline);">
+  <div class="container">
+    <div class="eyebrow" data-i18n="pricing.eyebrow">Pricing</div>
+    <h2 class="max-measure" style="font-size: clamp(1.8rem, 3.5vw, 2.4rem);" data-i18n="pricing.h2">Priced against the deduction, not the timer.</h2>
+
+    <div class="pricing-grid">
+      <div class="price-card">
+        <span class="price-name" data-i18n="pricing.p1.name">Starter</span>
+        <div class="price-amount">$0<span data-i18n="pricing.suffix">/mo</span></div>
+        <p class="price-desc" data-i18n="pricing.p1.desc">One property, logged properly, at no cost.</p>
+        <ul class="price-features">
+          <li data-i18n="pricing.p1.f1">1 property</li>
+          <li data-i18n="pricing.p1.f2">Unlimited manual, voice &amp; SMS entries</li>
+          <li data-i18n="pricing.p1.f3">Core hour tracking &amp; pacing dashboard</li>
+          <li data-i18n="pricing.p1.f4">CSV export</li>
+        </ul>
+        <a class="btn btn-ghost" href="#join" data-i18n="cta.waitlist">Join the waitlist</a>
+      </div>
+
+      <div class="price-card featured">
+        <span class="featured-badge mono" data-i18n="pricing.badge">MOST HOSTS PICK THIS</span>
+        <span class="price-name" data-i18n="pricing.p2.name">Pro</span>
+        <div class="price-amount">$19<span data-i18n="pricing.suffix">/mo</span></div>
+        <p class="price-desc" data-i18n="pricing.p2.desc">For hosts running one or more properties as a real operation.</p>
+        <ul class="price-features">
+          <li data-i18n="pricing.p2.f1">Unlimited properties</li>
+          <li data-i18n="pricing.p2.f2">Passive capture — calendar, PMS, geofence</li>
+          <li data-i18n="pricing.p2.f3">Legal-grounding copilot</li>
+          <li data-i18n="pricing.p2.f4">Contemporaneity &amp; readiness scoring</li>
+          <li data-i18n="pricing.p2.f5">CPA-ready export package</li>
+        </ul>
+        <a class="btn btn-primary" href="#join" data-i18n="cta.waitlist">Join the waitlist</a>
+      </div>
+
+      <div class="price-card">
+        <span class="price-name" data-i18n="pricing.p3.name">Portfolio</span>
+        <div class="price-amount">$49<span data-i18n="pricing.suffix">/mo</span></div>
+        <p class="price-desc" data-i18n="pricing.p3.desc">For multi-property operators with a household or team.</p>
+        <ul class="price-features">
+          <li data-i18n="pricing.p3.f1">Everything in Pro</li>
+          <li data-i18n="pricing.p3.f2">Household &amp; team logging with constraint checks</li>
+          <li data-i18n="pricing.p3.f3">Concierge audit-defense package</li>
+          <li data-i18n="pricing.p3.f4">Priority support</li>
+        </ul>
+        <a class="btn btn-ghost" href="#join" data-i18n="cta.waitlist">Join the waitlist</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section-pad" id="faq" style="border-top: 1px solid var(--hairline);">
+  <div class="container">
+    <div class="eyebrow" data-i18n="faq.eyebrow">Questions</div>
+    <h2 class="max-measure" style="font-size: clamp(1.8rem, 3.5vw, 2.4rem);" data-i18n="faq.h2">Before you ask your CPA.</h2>
+
+    <div class="faq-list">
+      <div class="faq-item">
+        <button class="faq-q"><span data-i18n="faq.q1.q">Is Contempo tax advice?</span><span class="plus">+</span></button>
+        <div class="faq-a"><p data-i18n="faq.q1.a">No. Contempo documents your participation; whether it qualifies is a conversation with your CPA. The logic is built around IRS Publication 925 and §1.469-5T, but we're not your accountant.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q"><span data-i18n="faq.q2.q">What happens if I actually get audited?</span><span class="plus">+</span></button>
+        <div class="faq-a"><p data-i18n="faq.q2.a">Export a CPA-ready package in one tap — full timeline, attachments, and a readiness score that flags weak entries long before they're a problem.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q"><span data-i18n="faq.q3.q">Do I have to share my location and bank activity?</span><span class="plus">+</span></button>
+        <div class="faq-a"><p data-i18n="faq.q3.a">No. Every passive signal is opt-in, individually. Turn any of them off and log entirely by hand — it carries the exact same weight in your record.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q"><span data-i18n="faq.q4.q">Does it work without cell service?</span><span class="plus">+</span></button>
+        <div class="faq-a"><p data-i18n="faq.q4.a">Yes. Capture is offline-first — entries save locally and sync once you're back in range, which matters for rural properties and basements alike.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q"><span data-i18n="faq.q5.q">Which platforms are supported?</span><span class="plus">+</span></button>
+        <div class="faq-a"><p data-i18n="faq.q5.a">iOS, Android, Apple Watch, and Wear OS for capture, plus a web dashboard for exports, bulk review, and settings.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section-pad final-cta" id="join">
+  <div class="container">
+    <h2 class="serif" data-i18n="final.h2">Start the record before you need it.</h2>
+    <p class="lede" data-i18n="final.lede">Join the waitlist for early access. No spam, no card — just a note when it's ready.</p>
+    <form class="waitlist-form" id="waitlist-form">
+      <input type="email" required placeholder="you@yourproperty.com" data-i18n-placeholder="final.placeholder" aria-label="Email address" id="waitlist-email" />
+      <button class="btn btn-primary" type="submit" data-i18n="cta.waitlist">Join the waitlist</button>
+    </form>
+    <p class="waitlist-success mono" id="waitlist-success" data-i18n="final.success">✓ You're on the list. We'll be in touch before next tax season.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div class="footer-row">
+      <a href="#top" class="wordmark">
+        <span class="name serif">Contempo</span>
+      </a>
+      <div class="footer-links">
+        <a href="#how-it-works" data-i18n="nav.how">How it works</a>
+        <a href="#features" data-i18n="nav.features">Features</a>
+        <a href="#pricing" data-i18n="nav.pricing">Pricing</a>
+        <a href="#faq" data-i18n="nav.faq">FAQ</a>
+      </div>
+    </div>
+    <p class="footer-fine" data-i18n="footer.fine">
+      Contempo is a documentation tool, not a law firm, CPA firm, or tax advisor.
+      Consult a qualified tax professional about your specific situation before
+      relying on any material participation test. This page is an early
+      product-concept mockup — no product exists yet.
+    </p>
+  </div>
+</footer>
+
+<script src="assets/script.js"></script>
+<script src="assets/i18n.js"></script>
+</body>
+</html>

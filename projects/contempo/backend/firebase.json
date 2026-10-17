@@ -1,0 +1,95 @@
+{
+  "auth": {
+    "providers": {
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Contempo",
+        "supportEmail": "jacksonzhou666@gmail.com"
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "hosting": [
+    {
+      "site": "contempo-str",
+      "public": "web-dist",
+      "ignore": ["firebase.json", "**/.*"],
+      "predeploy": [
+        "npm --prefix ../web run build",
+        "rm -rf web-dist && cp -r ../web/dist web-dist"
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ],
+      "headers": [
+        {
+          "source": "**",
+          "headers": [
+            { "key": "Cross-Origin-Opener-Policy", "value": "same-origin-allow-popups" },
+            { "key": "Cache-Control", "value": "no-cache, max-age=0, must-revalidate" }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "contempo-str-feedback",
+      "public": "feedback-dist",
+      "ignore": ["firebase.json", "**/.*"],
+      "predeploy": ["rm -rf feedback-dist && cp -r ../feedback/public feedback-dist"]
+    },
+    {
+      "site": "contempo-str-admin",
+      "public": "admin-dist",
+      "ignore": ["firebase.json", "**/.*"],
+      "predeploy": [
+        "npm --prefix ../admin run build",
+        "rm -rf admin-dist && cp -r ../admin/dist admin-dist"
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ],
+      "headers": [
+        {
+          "source": "**",
+          "headers": [
+            { "key": "Cross-Origin-Opener-Policy", "value": "same-origin-allow-popups" },
+            { "key": "Cache-Control", "value": "no-cache, max-age=0, must-revalidate" }
+          ]
+        }
+      ]
+    }
+  ],
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": ["node_modules", ".git", "*.log"],
+      "predeploy": ["npm --prefix \"$RESOURCE_DIR\" run build"]
+    },
+    {
+      "source": "functions-billing",
+      "codebase": "billing",
+      "ignore": ["node_modules", ".git", "*.log"],
+      "predeploy": ["npm --prefix \"$RESOURCE_DIR\" run build"]
+    }
+  ],
+  "emulators": {
+    "auth": { "port": 9099 },
+    "functions": { "port": 5001 },
+    "firestore": { "port": 8080 },
+    "storage": { "port": 9199 },
+    "ui": { "enabled": true, "port": 4000 },
+    "singleProjectMode": true
+  }
+}

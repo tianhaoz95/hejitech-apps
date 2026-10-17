@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Same palette as branding/landing_v0 (light theme values) — kept as
+         literal hex here and in ui/theme/Color.kt rather than a shared token
+         pipeline; see that file's comment for why. -->
+    <color name="contempo_paper">#F5F6F2</color>
+    <color name="contempo_ink">#14201B</color>
+    <color name="contempo_pine">#1F5C46</color>
+    <color name="contempo_navy">#16273D</color>
+    <color name="contempo_brass">#A67C34</color>
+</resources>

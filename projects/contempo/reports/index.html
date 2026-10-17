@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>STR Tracker — Reports</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="dot"></span> STR Tracker Reports</div>
+    <nav>
+      <a href="index.html">Home</a>
+    </nav>
+  </header>
+
+  <section class="home-hero">
+    <h1>Reports</h1>
+    <p class="lead">
+      Working documents for the AI-native short-term rental material participation
+      tracker: product requirements, market research, and planning artifacts, in one place.
+    </p>
+  </section>
+
+  <main class="home-wrap">
+    <div class="report-grid">
+      <a class="report-card" href="prd-v0.html">
+        <div class="meta-row">
+          <span class="tag status-draft">PRD</span>
+          <span class="date">v0 &middot; July 2026</span>
+        </div>
+        <h2>Product Requirements Document — v0</h2>
+        <p>
+          Problem statement, competitive landscape (REPSLog, HourProof, STR Loophole,
+          Field Ledger), product vision, feature scope, AI-native architecture principles,
+          go-to-market strategy, and open risks.
+        </p>
+      </a>
+
+      <a class="report-card" href="mvp-scope-v0.html">
+        <div class="meta-row">
+          <span class="tag status-draft">Scope</span>
+          <span class="date">v0 &middot; July 2026</span>
+        </div>
+        <h2>MVP Scope — v0</h2>
+        <p>
+          What actually ships first: the MVP hypothesis, a must-have / fast-follow /
+          deferred feature cut, platform sequencing, core user flow, architecture
+          notes, phased rollout, and exit criteria.
+        </p>
+      </a>
+
+      <a class="report-card" href="mvp-implementation-v0.html">
+        <div class="meta-row">
+          <span class="tag status-draft">Implementation</span>
+          <span class="date">v0 &middot; July 2026</span>
+        </div>
+        <h2>MVP Implementation Walkthrough — v0</h2>
+        <p>
+          What got built (native Android + Firebase/Genkit backend), how the core
+          loop works, what's verified vs. unverified, and step-by-step instructions
+          to run the emulator and the app.
+        </p>
+      </a>
+
+      <a class="report-card" href="prd-status-v0.html">
+        <div class="meta-row">
+          <span class="tag status-draft">Status</span>
+          <span class="date">v0 &middot; July 2026</span>
+        </div>
+        <h2>PRD Status Check — v0</h2>
+        <p>
+          Section-by-section against the PRD: what's implemented, what's
+          deliberately deferred per MVP Scope, and what's a genuine gap worth
+          picking up next — traced to specific files in the codebase.
+        </p>
+      </a>
+
+      <a class="report-card" href="web-implementation-v0.html">
+        <div class="meta-row">
+          <span class="tag status-draft">Implementation</span>
+          <span class="date">v0 &middot; July 2026</span>
+        </div>
+        <h2>Web App Implementation Walkthrough — v0</h2>
+        <p>
+          Why web's scope grew to billing + analysis dashboard + back-office, how
+          it's wired to the same Firebase project and data model as Android, the
+          validated data-viz palette, a real emulator project-id bug found and
+          fixed, and what's verified vs. still a TODO (Stripe).
+        </p>
+      </a>
+
+      <a class="report-card" href="play-store-listing-v0.html">
+        <div class="meta-row">
+          <span class="tag status-draft">Publishing</span>
+          <span class="date">v0 &middot; July 2026</span>
+        </div>
+        <h2>Play Store Listing Kit — v0</h2>
+        <p>
+          Copy-paste-ready Play Console answers — store listing copy, content
+          rating questionnaire, Data safety form, target audience, financial
+          features declaration — grounded in the actual app, plus two real
+          compliance gaps flagged before submission (account deletion, privacy
+          policy URL).
+        </p>
+      </a>
+
+      <a class="report-card" href="pricing-proposal-v0.html">
+        <div class="meta-row">
+          <span class="tag status-draft">Strategy</span>
+          <span class="date">v0 &middot; July 2026</span>
+        </div>
+        <h2>Pricing &amp; Tier Proposal — v0</h2>
+        <p>
+          A re-verified July 2026 competitor pricing check (Field Ledger,
+          HourProof, REPSLog, STR Loophole), a permanent single Free/Pro
+          structure priced below Field Ledger's anchor on the strength of
+          on-device AI's lower cost structure, and why this product should
+          avoid time-limited trials and savings-percentage pricing.
+        </p>
+      </a>
+
+      <a class="report-card" href="app-store-listing-v0.html">
+        <div class="meta-row">
+          <span class="tag status-draft">Publishing</span>
+          <span class="date">v0 &middot; July 2026</span>
+        </div>
+        <h2>App Store Listing Kit — v0</h2>
+        <p>
+          Copy-paste-ready App Store Connect answers — store listing metadata,
+          keywords, promotional text, App Privacy nutrition labels, reviewer
+          instructions, Info.plist requirements, and Apple App Store Review
+          Guideline compliance checks (including Guideline 4.8 Sign in with Apple).
+        </p>
+      </a>
+    </div>
+
+    <p class="home-footer">
+      Add new reports by dropping an HTML file in <code>/reports</code> and a card here.
+      Served locally via <code>scripts/serve-reports.sh</code>.
+    </p>
+  </main>
+</body>
+</html>

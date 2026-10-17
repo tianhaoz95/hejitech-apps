@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Send feedback on Contempo — no account needed." />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <title>Contempo — Feedback</title>
+    <link rel="stylesheet" href="assets/style.css" />
+  </head>
+  <body>
+    <!-- Same header shape as web/src/components/Layout.tsx: plain bordered
+         bar, "Contempo" as bold serif text (not a wordmark/badge lockup),
+         text-only theme toggle — this page borrows web/'s actual product
+         chrome, not the marketing landing page's. -->
+    <header class="topbar">
+      <strong class="brand">Contempo</strong>
+      <span class="brand-sub">Feedback</span>
+      <div class="spacer"></div>
+      <button class="theme-toggle" id="theme-toggle" aria-label="Toggle color theme">☾ Dark</button>
+    </header>
+
+    <main class="page-main">
+      <h1>Send feedback</h1>
+      <p class="subtitle">Bug, idea, or anything else — no account needed.</p>
+
+      <form id="feedback-form" novalidate>
+        <label for="message">Your feedback</label>
+        <textarea id="message" name="message" required maxlength="5000"></textarea>
+
+        <label for="email">Email (optional, if you'd like a reply)</label>
+        <input id="email" name="email" type="email" maxlength="200" />
+
+        <div class="honeypot-field" aria-hidden="true">
+          <label for="website">Website</label>
+          <input id="website" name="website" type="text" tabindex="-1" autocomplete="off" />
+        </div>
+
+        <button type="submit">Send feedback</button>
+        <p id="status" class="status" role="status"></p>
+      </form>
+    </main>
+
+    <script src="assets/theme.js"></script>
+    <script type="module" src="assets/script.js"></script>
+  </body>
+</html>

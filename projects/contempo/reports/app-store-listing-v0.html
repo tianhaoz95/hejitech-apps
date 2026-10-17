@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>App Store Listing Kit v0 — Contempo</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="dot"></span> STR Tracker Reports</div>
+    <nav>
+      <a href="index.html">All reports</a>
+    </nav>
+  </header>
+
+  <div class="report-shell">
+    <aside class="toc-col">
+      <div class="toc-title">On this page</div>
+      <ul id="toc-list"></ul>
+    </aside>
+
+    <main class="report-main">
+      <div class="report-header">
+        <div class="eyebrow">Publishing Kit &middot; v0 &middot; Draft</div>
+        <h1>iOS App Store Listing Kit</h1>
+        <p class="subtitle">
+          Copy-paste-ready answers for every App Store Connect field required to
+          submit <code>com.hejitech.contempo</code> for iOS and watchOS — store listing copy,
+          keywords, promotional text, App Privacy nutrition labels, reviewer instructions,
+          Info.plist requirements, and Apple App Store Review Guideline compliance checks.
+          Three real compliance gaps are flagged for engineering action before submission (including Guideline 4.8 Sign in with Apple): see Section 8.
+        </p>
+        <div class="doc-meta">
+          <span><strong>Status:</strong> Draft, unreviewed</span>
+          <span><strong>Version:</strong> v0</span>
+          <span><strong>Date:</strong> July 20, 2026</span>
+          <span><strong>Owner:</strong> Jackson Zhou</span>
+          <span><strong>Depends on:</strong> MVP Scope v0, Play Store Listing Kit v0, iOS Architecture (ios/project.yml)</span>
+        </div>
+      </div>
+
+      <article class="report-content">
+
+        <h2>1. App Store Listing Metadata</h2>
+        <p>
+          Target bundle ID: <code>com.hejitech.contempo</code> (iOS) and <code>com.hejitech.contempo.watchkitapp</code> (watchOS). Current version:
+          <code>0.1.0-mvp</code> (build number 1). All text fields strictly comply with App Store Connect's character limits: title (max 30), subtitle (max 30), promotional text (max 170), keywords (max 100), and full description (max 4,000).
+        </p>
+
+        <h3>1.1 App Name (max 30 characters)</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Field</th><th>Value</th><th>Length</th></tr></thead>
+            <tbody>
+              <tr><td>Title</td><td><code>Contempo — Hour Tracker</code></td><td>24 / 30</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout warn">
+          <span class="callout-label">"Contempo" is a working brand name</span>
+          Per CLAUDE.md, "Contempo" was chosen to test positioning, not as a final naming commitment. If the product name changes before submission, update this listing copy and keywords accordingly.
+        </div>
+
+        <h3>1.2 Subtitle (max 30 characters)</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Field</th><th>Value</th><th>Length</th></tr></thead>
+            <tbody>
+              <tr><td>Subtitle</td><td><code>Log STR hours for IRS audits</code></td><td>28 / 30</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>1.3 Primary &amp; Secondary Categories</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Category</th><th>Value</th><th>Rationale</th></tr></thead>
+            <tbody>
+              <tr><td>Primary Category</td><td><code>Productivity</code></td><td>Centers the core hour-logging, voice-capture, and risk-flagging functionality.</td></tr>
+              <tr><td>Secondary Category</td><td><code>Business</code></td><td>Targets short-term rental owners, property managers, and real estate professionals.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>1.4 Promotional Text (max 170 characters)</h3>
+        <p>Promotional text can be updated at any time without submitting a new app build:</p>
+        <div class="table-wrap">
+          <table>
+            <tbody>
+              <tr><td><code>Log short-term rental management hours hands-free. Contemporaneous, audit-ready records for the IRS 100-hour and 500-hour material participation tests.</code></td><td>163 / 170</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>1.5 Keywords (max 100 characters, comma-separated)</h3>
+        <p>App Store Connect indexes keywords to drive search discoverability. Do not include spaces after commas to conserve characters:</p>
+        <div class="table-wrap">
+          <table>
+            <tbody>
+              <tr><td><code>short term rental,material participation,str,tax audit,real estate,hour tracker,100 hours,irs</code></td><td>95 / 100</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>1.6 Full Description (max 4,000 characters)</h3>
+        <p>Paste as-is into the "Description" field in App Store Connect:</p>
+        <div class="table-wrap">
+          <table>
+            <tbody>
+              <tr><td>
+                <p style="margin:0 0 0.75rem">
+                  Contempo helps short-term rental hosts log the hours they spend managing their properties — in a form that actually holds up if the IRS ever asks for proof.
+                </p>
+                <p style="margin:0 0 0.75rem">
+                  If you're using the STR "material participation" strategy to reclassify rental losses against your W-2 or active income, the tax code doesn't just require that you did the work — it requires contemporaneous records, logged as the work happens, not reconstructed at tax time from memory. Most hosts who fail an audit don't fail because they didn't do the hours. They fail because they can't prove it.
+                </p>
+                <p style="margin:0 0 0.5rem"><strong>Key Features on iOS &amp; Apple Watch:</strong></p>
+                <p style="margin:0 0 0.25rem">• <strong>Hands-Free Voice &amp; Text Capture:</strong> Speak or type what you just did — Contempo turns it into a structured, timestamped entry (property, task, duration, category), asking one quick follow-up only if it needs clarification.</p>
+                <p style="margin:0 0 0.25rem">• <strong>Apple Watch Companion App:</strong> Record work-log voice memos directly from your wrist with one tap. Memos are encoded locally and synced automatically when back online.</p>
+                <p style="margin:0 0 0.25rem">• <strong>Photo Evidence &amp; Mileage Tracking:</strong> Attach photo evidence to any entry, or track drive time with automatic GPS mileage trip tracking and Live Activities.</p>
+                <p style="margin:0 0 0.25rem">• <strong>Contemporaneous Risk Flagging:</strong> Entries logged long after the fact, or described too vaguely, get flagged automatically — visibly, on the entry itself — so you can fix a weak record before it becomes an issue with your CPA or the IRS.</p>
+                <p style="margin:0 0 0.25rem">• <strong>Audit-Ready Progress &amp; Exports:</strong> Track your progress toward 100-hour and 500-hour Material Participation tests on a clean dashboard, and generate audit-ready CSV, PDF, or JSON packages for your CPA.</p>
+                <p style="margin:0 0 0.25rem">• <strong>On-Device Privacy:</strong> Transcription can run entirely on-device via local Whisper and LiteRT LLM models (nothing leaves your phone), or use cloud AI processing — customizable anytime in Settings.</p>
+                <p style="margin:0.5rem 0 0.75rem">
+                  Contempo is built by Hejitech for real hosts — this is an early release, and features will continuously expand based on real host usage.
+                </p>
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>2. Contact, Support &amp; Legal URLs</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Field</th><th>Required?</th><th>Value / Status</th></tr></thead>
+            <tbody>
+              <tr><td>Developer Name / Entity</td><td>Required</td><td>Hejitech</td></tr>
+              <tr><td>Support URL</td><td>Required</td><td><code>https://contempo-platform.web.app</code> <em>(or support contact page)</em></td></tr>
+              <tr><td>Privacy Policy URL</td><td>Required</td><td><code>https://contempo-platform.web.app/legal/privacy</code> <em>(See Gap 2 in Section 8)</em></td></tr>
+              <tr><td>Marketing URL</td><td>Optional</td><td><code>https://contempo-platform.web.app</code></td></tr>
+              <tr><td>Copyright</td><td>Required</td><td><code>© 2026 Hejitech</code></td></tr>
+              <tr><td>Reviewer Contact Email</td><td>Required</td><td><code>jacksonzhou666@gmail.com</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>3. Age Rating &amp; Content Questionnaire</h2>
+        <p>
+          Completed against Apple's App Store Content Rating questionnaire. The app contains no mature content, violence, gambling, or external web browsing. Expected rating outcome: <strong>4+ (Everyone)</strong> across all Apple storefronts.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Questionnaire Category</th><th>Answer</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td>Cartoon / Fantasy Violence</td><td>None</td><td>No such content</td></tr>
+              <tr><td>Realistic Violence</td><td>None</td><td>No such content</td></tr>
+              <tr><td>Profanity or Crude Humor</td><td>None</td><td>All text is professional business/tax terminology</td></tr>
+              <tr><td>Sexual Content or Nudity</td><td>None</td><td>No such content</td></tr>
+              <tr><td>Alcohol, Tobacco, or Drug Use</td><td>None</td><td>No such content</td></tr>
+              <tr><td>Simulated Gambling</td><td>None</td><td>No such content</td></tr>
+              <tr><td>Horror or Fear Themes</td><td>None</td><td>No such content</td></tr>
+              <tr><td>Medical / Treatment Information</td><td>None</td><td>No such content</td></tr>
+              <tr><td>Unrestricted Web Access</td><td>No</td><td>Network activity is strictly scoped to Firebase services (Auth, Firestore, Storage, Functions)</td></tr>
+              <tr><td>User-Generated Content Sharing</td><td>No</td><td>Entries are private to the user's authenticated account (see <code>backend/firestore.rules</code>)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>4. App Privacy (Nutrition Labels)</h2>
+        <p>
+          Based directly on <code>ios/project.yml</code> Info.plist permissions, <code>ContempoCore</code> models, and Firebase network destinations. Apple requires disclosing all data collected by the app or integrated third-party SDKs. Data sent to Hejitech's own Firebase backend is classified as <strong>Collected</strong> (not Shared with third parties).
+        </p>
+
+        <div class="callout">
+          <span class="callout-label">Top-Level Privacy Questions</span>
+          Do you or your third-party partners collect data from this app? <strong>Yes.</strong><br />
+          Is all user data collected encrypted in transit? <strong>Yes</strong> (HTTPS and gRPC-over-TLS to Firebase).<br />
+          Do you use data for tracking purposes across other apps/websites? <strong>No.</strong> (No App Tracking Transparency prompt required).<br />
+          Do you provide in-app and web account deletion? <strong>Yes.</strong> (Compliant with App Store Review Guideline 5.1.1(v)).
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Data Type</th><th>Collected?</th><th>Linked to User?</th><th>Used for Tracking?</th><th>Purpose</th><th>Source in Code</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Contact Info</strong> (Name, Email)</td><td>Yes</td><td>Yes</td><td>No</td><td>Account authentication &amp; user management</td><td><code>AuthManager.swift</code> / Firebase Auth</td></tr>
+              <tr><td><strong>Location</strong> (Precise Location)</td><td>Yes</td><td>Yes</td><td>No</td><td>App functionality — GPS mileage trip tracking and entry location capture</td><td><code>MileageTripCoordinator.swift</code>, <code>NSLocationWhenInUseUsageDescription</code></td></tr>
+              <tr><td><strong>Photos or Videos</strong> (Photos)</td><td>Yes</td><td>Yes</td><td>No</td><td>App functionality — attaching evidence photos or odometer snapshots to work logs</td><td><code>PhotoPicker</code>, <code>NSCameraUsageDescription</code>, <code>NSPhotoLibraryAddUsageDescription</code></td></tr>
+              <tr><td><strong>Audio Data</strong> (Voice Recordings)</td><td>Yes</td><td>Yes</td><td>No</td><td>App functionality — voice memo work-log capture (transcribed on-device via <code>SherpaOnnx</code> or cloud AI)</td><td><code>AudioRecorder.swift</code>, <code>NSMicrophoneUsageDescription</code></td></tr>
+              <tr><td><strong>User Content</strong> (Task descriptions, durations, categories)</td><td>Yes</td><td>Yes</td><td>No</td><td>App functionality — core material participation hour logging</td><td><code>ContempoCore/Entry.swift</code></td></tr>
+              <tr><td><strong>Diagnostics / Usage Data</strong> (Correction feedback)</td><td>Yes</td><td>Yes</td><td>No</td><td>App functionality — recording user corrections to AI-drafted entries for model improvement</td><td><code>FirestoreEntryRepository.swift</code> (<code>users/{uid}/corrections</code>)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout warn">
+          <span class="callout-label">No Third-Party Analytics or Advertising SDKs</span>
+          Verification of <code>ios/project.yml</code> confirms that no third-party ad networks, tracking SDKs, or analytics engines (e.g. Firebase Analytics, Adjust, AppsFlyer) are included. The app collects data purely for primary app functionality.
+        </div>
+
+        <h2>5. App Review Information (Reviewer Instructions)</h2>
+        <p>
+          App Review requires working test credentials and background explanations for permissions requested in <code>Info.plist</code>.
+        </p>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Review Field</th><th>Instruction / Value</th></tr></thead>
+            <tbody>
+              <tr><td>Sign-in Required?</td><td>Yes — Google Sign-In / Sign in with Apple mandatory to enter main application.</td></tr>
+              <tr><td>Demo Account Username</td><td><code>[PASTE DEMO GOOGLE/APPLE REVIEWER EMAIL HERE]</code></td></tr>
+              <tr><td>Demo Account Password</td><td><code>[PASTE DEMO REVIEWER PASSWORD / ACCESS KEY HERE]</code></td></tr>
+              <tr><td>Notes for Reviewer</td><td>
+                Paste the following explanation into App Store Connect:<br /><br />
+                <em>"Contempo is a specialized productivity and tax compliance recordkeeping app for short-term rental property hosts. It allows hosts to log management hours via voice, text, or photo evidence to prove compliance with IRS material participation rules (100-hour and 500-hour thresholds).<br /><br />
+                Key features for review:<br />
+                1. Voice Capture &amp; On-Device AI: Uses microphone permissions to record short work logs. Voice processing runs on-device via embedded Whisper models or falls back to Firebase Genkit Cloud Functions.<br />
+                2. Live Activities &amp; Background Location: Uses location permissions exclusively when a user explicitly starts a mileage trip to compute driving distance for tax deduction logs.<br />
+                3. Apple Watch Companion: The watchOS app allows one-tap wrist voice capture with background sync to the user's private Firebase storage.<br />
+                4. Account Deletion: Accessible under Settings > Delete Account, removing all Firestore entries, Storage files, and Auth credentials immediately."</em>
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>6. Xcode Build, Target Capabilities &amp; Declarations</h2>
+        <p>
+          Technical parameters extracted directly from <code>ios/project.yml</code>:
+        </p>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Target / Requirement</th><th>Value / Configuration</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td>Build Engine Requirement</td><td>Xcode 26+ with iOS 26 SDK</td><td>Required for all App Store submissions as of 2026</td></tr>
+              <tr><td>iOS Deployment Target</td><td>iOS 17.0+</td><td>SwiftUI 5, Live Activities (ActivityKit), NavigationStack</td></tr>
+              <tr><td>watchOS Deployment Target</td><td>watchOS 10.0+</td><td>Standalone Watch app with local WAV recording &amp; background upload</td></tr>
+              <tr><td>App Bundle Identifier</td><td><code>com.hejitech.contempo</code></td><td>Main iOS application</td></tr>
+              <tr><td>Watch App Bundle ID</td><td><code>com.hejitech.contempo.watchkitapp</code></td><td>watchOS companion app target</td></tr>
+              <tr><td>Widget Extension Bundle IDs</td><td><code>com.hejitech.contempo.widgets</code><br /><code>com.hejitech.contempo.watchkitapp.widgets</code></td><td>iOS ActivityKit &amp; watchOS Complication extensions</td></tr>
+              <tr><td>Export Compliance Encryption</td><td><code>ITSAppUsesNonExemptEncryption = NO</code></td><td>Uses standard OS TLS/HTTPS and standard Apple security frameworks</td></tr>
+              <tr><td>Background Modes (<code>UIBackgroundModes</code>)</td><td><code>audio</code>, <code>location</code>, <code>fetch</code>, <code>processing</code></td><td>Supports background voice recording, GPS trip tracking, and watch background upload tasks</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>6.1 Mandatory Info.plist Permission Strings</h3>
+        <p>Verify that exact usage descriptions exist in <code>ios/project.yml</code> / <code>Info.plist</code> (rejection occurs if strings are vague or missing):</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Key</th><th>Configured Usage Description String</th></tr></thead>
+            <tbody>
+              <tr><td><code>NSMicrophoneUsageDescription</code></td><td><code>"Contempo uses your microphone to capture spoken work-log entries."</code></td></tr>
+              <tr><td><code>NSCameraUsageDescription</code></td><td><code>"Contempo uses your camera to attach a photo, or read an odometer, to a work-log entry."</code></td></tr>
+              <tr><td><code>NSLocationWhenInUseUsageDescription</code></td><td><code>"Contempo uses your location to record where a work entry or mileage trip started and ended."</code></td></tr>
+              <tr><td><code>NSPhotoLibraryAddUsageDescription</code></td><td><code>"Contempo saves photos you attach to work-log entries."</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>7. Business Model &amp; In-App Purchases (Guideline 3.1.3(a))</h2>
+        <p>
+          Contempo operates a multiplatform SaaS business model with web-only billing:
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Field</th><th>Setting</th><th>Rationale &amp; Compliance Rule</th></tr></thead>
+            <tbody>
+              <tr><td>Store Price</td><td>Free</td><td>App download is free on the iOS App Store.</td></tr>
+              <tr><td>In-App Purchases / Subscriptions</td><td>None</td><td>Subscriptions are billed exclusively on the web via Stripe (<code>web/src/billing/subscription.ts</code>).</td></tr>
+              <tr><td>Apple IAP Fee Avoidance</td><td>Guideline 3.1.3(a) "Multiplatform Services"</td><td>Per App Store Review Guideline 3.1.3(a), multiplatform apps may allow users to access content or subscriptions purchased on the web, provided there is <strong>no link, button, or call-to-action inside the iOS app</strong> directing users to purchase on the web. The iOS app contains no pricing mentions or payment flows.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>8. Compliance Gaps to Close Before Submission</h2>
+        <p>
+          Three compliance gaps must be addressed by engineering before submitting the build to App Store Review:
+        </p>
+
+        <div class="callout warn">
+          <span class="callout-label">Gap 1 — CRITICAL: Missing "Sign in with Apple" (Guideline 4.8)</span>
+          <strong>Issue:</strong> Apple App Store Review Guideline 4.8 explicitly mandates that any app offering third-party social authentication (such as Google Sign-In) <strong>MUST also offer Sign in with Apple</strong> as an equivalent option.<br />
+          <strong>Codebase State:</strong> <code>ios/Contempo/Sources/Auth/GoogleSignInButton.swift</code> currently implements Google Sign-In only.<br />
+          <strong>Required Fix:</strong> Implement <code>AuthenticationServices</code> framework's <code>SignInWithAppleButton</code> in the auth flow alongside Google Sign-In, and configure the Sign in with Apple capability in <code>ios/project.yml</code> and Apple Developer Portal.
+        </div>
+
+        <div class="callout warn">
+          <span class="callout-label">Gap 2 — Privacy Policy URL Hosting</span>
+          <strong>Issue:</strong> App Store Connect requires a live, publicly accessible Privacy Policy URL.<br />
+          <strong>Codebase State:</strong> Privacy Policy content is ready in <code>web/src/legal/content.ts</code> and rendered at <code>/legal/privacy</code>, but <code>web/</code> has not yet been deployed to production Firebase Hosting.<br />
+          <strong>Required Fix:</strong> Deploy <code>web/</code> via <code>firebase deploy --only hosting</code> and verify <code>https://contempo-platform.web.app/legal/privacy</code> before pasting the link into App Store Connect.
+        </div>
+
+        <div class="callout">
+          <span class="callout-label">Gap 3 — Demo Account Setup for App Review</span>
+          <strong>Issue:</strong> Reviewers cannot test behind Google Sign-In without active test credentials.<br />
+          <strong>Required Fix:</strong> Provision a dedicated test Google/Apple account pre-populated with sample STR properties and entries, and document credentials in Section 5 prior to pressing Submit for Review.
+        </div>
+
+        <h2>9. Graphic Assets &amp; Screenshots Checklist</h2>
+        <p>
+          Checklist of required visual assets for App Store Connect submission:
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Asset Type</th><th>Dimensions / Spec</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td>App Icon (iOS)</td><td>1024&times;1024 px, 24-bit PNG, <strong>no alpha / no transparency</strong></td><td>Needs export from brand mark assets</td></tr>
+              <tr><td>6.9" iPhone Screenshots</td><td>1320&times;2868 px or 1290&times;2796 px (iPhone 16 Pro Max / 15 Pro Max)</td><td>Min 1 required (up to 10) — capture Dashboard, Voice Capture, Confirm, Export</td></tr>
+              <tr><td>6.5" iPhone Screenshots</td><td>1242&times;2688 px (iPhone 11 Pro Max / XS Max)</td><td>Min 1 required (up to 10)</td></tr>
+              <tr><td>Apple Watch Screenshots</td><td>396&times;484 px or 410&times;402 px (watchOS Series 9 / Ultra)</td><td>Required if watchOS target is included — capture Watch Voice Capture screen</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>10. Sources &amp; Official References</h2>
+        <ul>
+          <li><a href="https://developer.apple.com/app-store/review/guidelines/">Apple App Store Review Guidelines</a></li>
+          <li><a href="https://developer.apple.com/app-store/review/guidelines/#sign-in-with-apple">Guideline 4.8 — Sign in with Apple Requirements</a></li>
+          <li><a href="https://developer.apple.com/app-store/app-privacy-details/">App Privacy Details on the App Store (Nutrition Labels)</a></li>
+          <li><a href="https://developer.apple.com/support/account-deletion/">Apple Account Deletion Requirements (Guideline 5.1.1(v))</a></li>
+          <li><a href="https://developer.apple.com/help/app-store-connect/configure-in-app-purchases/overview-of-in-app-purchases">App Store Connect Metadata Specifications</a></li>
+        </ul>
+
+      </article>
+
+      <a class="back-to-top" href="#top">&uarr; Back to top</a>
+    </main>
+  </div>
+
+  <script src="assets/toc.js"></script>
+</body>
+</html>

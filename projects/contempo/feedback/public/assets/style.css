@@ -1,0 +1,199 @@
+/* Same token set as branding/landing_v0/site/assets/style.css — the real
+   Contempo pine/navy/brass identity, not a one-off palette for this page. */
+:root {
+  --paper: #f5f6f2;
+  --paper-raised: #ffffff;
+  --ink: #14201b;
+  --ink-soft: #45524b;
+  --ink-faint: #7c8880;
+  --pine: #1f5c46;
+  --pine-deep: #163f31;
+  --pine-tint: #e4eee8;
+  --navy: #16273d;
+  --navy-tint: #e7ebf1;
+  --brass: #a67c34;
+  --brass-tint: #f3e9d6;
+  --hairline: #dbe1d8;
+  --hairline-strong: #c3ccc3;
+  --danger: #a13f36;
+  --danger-tint: #fbeceb;
+  --shadow-1: 0 1px 2px rgba(20, 32, 27, 0.05), 0 8px 24px rgba(20, 32, 27, 0.06);
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #0e1613;
+    --paper-raised: #16201c;
+    --ink: #eceee8;
+    --ink-soft: #a9b3ac;
+    --ink-faint: #71827a;
+    --pine: #45a67c;
+    --pine-deep: #327a5b;
+    --pine-tint: #16261f;
+    --navy: #9fb2cf;
+    --navy-tint: #17222f;
+    --brass: #cda35c;
+    --brass-tint: #2a2214;
+    --hairline: #263029;
+    --hairline-strong: #364039;
+    --danger: #d97a70;
+    --danger-tint: #2c1a18;
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper: #0e1613; --paper-raised: #16201c; --ink: #eceee8; --ink-soft: #a9b3ac;
+  --ink-faint: #71827a; --pine: #45a67c; --pine-deep: #327a5b; --pine-tint: #16261f;
+  --navy: #9fb2cf; --navy-tint: #17222f; --brass: #cda35c; --brass-tint: #2a2214;
+  --hairline: #263029; --hairline-strong: #364039; --danger: #d97a70; --danger-tint: #2c1a18;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --paper: #f5f6f2; --paper-raised: #ffffff; --ink: #14201b; --ink-soft: #45524b;
+  --ink-faint: #7c8880; --pine: #1f5c46; --pine-deep: #163f31; --pine-tint: #e4eee8;
+  --navy: #16273d; --navy-tint: #e7ebf1; --brass: #a67c34; --brass-tint: #f3e9d6;
+  --hairline: #dbe1d8; --hairline-strong: #c3ccc3; --danger: #a13f36; --danger-tint: #fbeceb;
+  --shadow-1: 0 1px 2px rgba(20, 32, 27, 0.05), 0 8px 24px rgba(20, 32, 27, 0.06);
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+/* Same flat, undecorated background as web/src/styles/tokens.css — no
+   gradient/animation, this page is meant to read as part of the same
+   product, not a marketing page. */
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Segoe UI", sans-serif;
+  line-height: 1.6;
+}
+
+a { color: var(--pine); }
+
+/* Same shape as web/src/components/Layout.tsx's header: plain bordered bar
+   on a solid --paper-raised surface, "Contempo" as bold serif text — not
+   the marketing landing page's wordmark+badge lockup. */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 1.5rem;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--paper-raised);
+}
+
+.brand {
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  color: var(--ink);
+}
+
+.brand-sub {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.spacer { flex: 1; }
+
+/* Same text-only style as web/src/styles/charts.css's .chart-toggle, which
+   web/src/components/ThemeToggle.tsx actually renders with — not a circular
+   icon button. */
+.theme-toggle {
+  font-size: 0.85rem;
+  color: var(--pine);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.page-main {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 4rem;
+}
+
+h1 {
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 1.6rem;
+  margin: 0 0 0.4rem;
+}
+
+.subtitle {
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  margin: 0 0 1.8rem;
+}
+
+label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+
+textarea, input[type="email"] {
+  width: 100%;
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-md);
+  padding: 0.65rem 0.75rem;
+  margin-bottom: 1.1rem;
+}
+
+textarea:focus, input[type="email"]:focus {
+  outline: 2px solid var(--pine);
+  outline-offset: 1px;
+}
+
+textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+/* Honeypot — visually hidden but present in the tab/accessibility tree
+   in a way that off-screen-positioning survives more bot heuristics than
+   display:none does. */
+.honeypot-field {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+button[type="submit"] {
+  font: inherit;
+  font-weight: 600;
+  color: #fdfdfb;
+  background: var(--pine);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1.2rem;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.15s ease;
+}
+button[type="submit"]:hover:not(:disabled) { background: var(--pine-deep); }
+button[type="submit"]:disabled { opacity: 0.6; cursor: default; }
+
+.status {
+  margin-top: 1rem;
+  font-size: 0.88rem;
+  min-height: 1.2em;
+}
+
+.status-success { color: var(--pine); font-weight: 600; }
+.status-error { color: var(--danger); }

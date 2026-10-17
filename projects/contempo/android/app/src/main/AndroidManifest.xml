@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application
+        android:name=".ContempoApp"
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.Contempo"
+        android:supportsRtl="true">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Contempo.Starting"
+            android:windowSoftInputMode="adjustResize">
+            <!-- Without this, the default (effectively adjustPan-ish here since
+                 enableEdgeToEdge() means decorFitsSystemWindows=false) has the
+                 OS pan the whole window upward to keep a focused field visible
+                 above the keyboard, instead of shrinking the available layout
+                 space the way Compose's WindowInsets.ime / imePadding()
+                 expects — the two mechanisms fighting each other is what
+                 pushed ChatScreen's content up past the top of the screen. -->
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Used by ExportScreen to share the generated CSV via ACTION_SEND. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <!-- Continuously accumulates distance during a GPS-tracked mileage
+             trip — see mileage/MileageTrackingService.kt. Started by a direct
+             user tap while the app is foregrounded (not on boot or from
+             background), which is what the foreground-service exemption for
+             continued location updates while backgrounded/screen-off relies
+             on — see the mileage plan's note on ACCESS_BACKGROUND_LOCATION. -->
+        <service
+            android:name=".mileage.MileageTrackingService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+
+        <!-- Persistent "work in progress" notification with a live elapsed
+             timer and a "Mark done" action, so a host can close out a work
+             timer without opening the app — see timer/OngoingWorkNotificationService.kt.
+             "dataSync" rather than "location"/etc.: this service just keeps a
+             Firestore listener alive, not tied to any of the other typed
+             foreground-service categories. -->
+        <service
+            android:name=".timer.OngoingWorkNotificationService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+    </application>
+</manifest>

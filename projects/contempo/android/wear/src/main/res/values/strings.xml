@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Contempo</string>
+    <string name="complication_label">Hours logged</string>
+    <string name="tile_label">Contempo progress</string>
+</resources>

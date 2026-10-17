@@ -1,0 +1,81 @@
+# macOS
+.DS_Store
+
+# Editors/IDEs
+.idea/
+*.iml
+
+# Android / Gradle build outputs
+android/**/build/
+android/.gradle/
+android/.kotlin/
+android/local.properties
+android/captures/
+android/**/.externalNativeBuild/
+android/**/.cxx/
+*.apk
+*.aab
+
+# Real Firebase config — never commit, see *.example files
+android/app/google-services.json
+android/wear/google-services.json
+
+# Vendored/downloaded build scratch dir (nested git clone + prebuilt archives,
+# reproducible from upstream — not the app's runtime assets, which live
+# committed under android/app/src/main/{assets,jniLibs})
+android/whisper-vendor/
+
+# iOS / Xcode — project.pbxproj is XcodeGen-generated from ios/project.yml,
+# not hand-edited, so it's not committed either (same "generated, not
+# authored" reasoning as not committing Gradle's build/ output).
+ios/*.xcodeproj/
+ios/*.xcworkspace/
+ios/**/xcuserdata/
+ios/**/.build/
+ios/**/.swiftpm/
+ios/Contempo/GoogleService-Info.plist
+ios/Contempo/Config/Secrets.xcconfig
+ios/Contempo Watch App/GoogleService-Info.plist
+
+# ios/Vendor/sherpa-onnx/'s prebuilt xcframeworks ARE committed (same
+# "runtime assets get committed, only build scratch is ignored" reasoning as
+# android/whisper-vendor/ above — these are the iOS equivalent of Android's
+# committed jniLibs, not a reproducible build scratch dir).
+
+# Node
+node_modules/
+backend/functions/lib/
+*.log
+
+# Env/secrets
+.env
+.env.*
+# ...except templates — these document required config and should be
+# committed, same convention as google-services.json.example.
+!.env.example
+# App Store Connect API key (see .env's APP_CONNECT_KEY_ID/ISSUER_ID) — never commit.
+credentials/
+*.p8
+
+# Firebase emulator/tooling artifacts
+backend/firestore-debug.log
+
+# Hosting deploy artifact — copied from web/dist by backend/firebase.json's
+# hosting.predeploy hook (public dirs can't reference paths outside the
+# Firebase project directory, i.e. can't point straight at ../web/dist)
+backend/web-dist/
+backend/feedback-dist/
+backend/admin-dist/
+backend/ui-debug.log
+backend/.firebase/
+
+# Claude Code local lock files — but not project-authored skills, which are
+# meant to be committed and shared (e.g. .claude/skills/triage-feedback/).
+# Note: `.claude/*` + `!.claude/skills/`, not `.claude/` + negation — git
+# can't re-include a path whose parent directory itself is excluded, only a
+# path excluded by a wildcard match one level up.
+.claude/*
+!.claude/skills/
+scratch/
+ios/Build/
+Build/
