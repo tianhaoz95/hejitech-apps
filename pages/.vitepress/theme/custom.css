@@ -40,6 +40,30 @@
 }
 .VPHero .image-src { max-width: 180px; max-height: 180px; border-radius: 28%; }
 
+/* ---------- home background: slow-drifting brand light behind the page ---------- */
+.heji-bg { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.heji-bg::after { /* faint grid that fades out toward the edges */
+  content: ""; position: absolute; inset: 0;
+  background-image: linear-gradient(var(--heji-grid) 1px, transparent 1px), linear-gradient(90deg, var(--heji-grid) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, #000 30%, transparent 75%);
+}
+.heji-bg span { position: absolute; border-radius: 50%; filter: blur(90px); opacity: var(--heji-glow); will-change: transform; }
+.heji-bg span:nth-child(1) { width: 46vmax; height: 46vmax; left: -8vmax; top: -12vmax; background: #4f7cff; animation: heji-drift-a 26s ease-in-out infinite alternate; }
+.heji-bg span:nth-child(2) { width: 38vmax; height: 38vmax; right: -10vmax; top: 4vmax; background: #2140c4; animation: heji-drift-b 32s ease-in-out infinite alternate; }
+.heji-bg span:nth-child(3) { width: 24vmax; height: 24vmax; left: 38vw; top: 18vmax; background: #ffd166; opacity: calc(var(--heji-glow) * .7); animation: heji-drift-c 22s ease-in-out infinite alternate; }
+@keyframes heji-drift-a { to { transform: translate(18vw, 14vh) scale(1.15); } }
+@keyframes heji-drift-b { to { transform: translate(-16vw, 20vh) scale(.9); } }
+@keyframes heji-drift-c { to { transform: translate(-22vw, -10vh) scale(1.25); } }
+:root { --heji-glow: .22; --heji-grid: rgba(33, 64, 196, .06); }
+.dark { --heji-glow: .3; --heji-grid: rgba(255, 255, 255, .035); }
+@media (prefers-reduced-motion: reduce) { .heji-bg span { animation: none; } }
+/* Let the light show through the home page's surfaces. */
+.VPHome .heji-app, .VPHome .heji-principles > div {
+  background: color-mix(in srgb, var(--vp-c-bg-soft) 72%, transparent);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+}
+
 /* ---------- home sections ---------- */
 .heji-section { max-width: 1152px; margin: 0 auto; padding: 32px 24px 8px; }
 .heji-section h2 { border-top: 0; margin-top: 8px; font-size: 28px; }

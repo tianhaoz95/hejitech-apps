@@ -16,6 +16,8 @@ hero:
       link: /monorepo
 ---
 
+<div class="heji-bg" aria-hidden="true"><span></span><span></span><span></span></div>
+
 <div class="heji-section" id="apps">
 
 ## The apps
