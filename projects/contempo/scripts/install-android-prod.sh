@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# Builds and installs the "prod" (release build type) Android app onto a
-# connected physical device — real Firebase (contempo-str), real Google
-# Sign-In, no emulator wiring. Unlike scripts/run-android-with-emulators.sh,
-# this never starts or touches the Firebase emulator suite.
+# Builds and installs the "prod" (release build type) Android app onto a connected physical device
+# (or an emulator), against the hosted backend: the shared HEJI Supabase project, baked into
+# BuildConfig by app/build.gradle.kts, so there's nothing to configure locally.
 #
 # If a Wear OS device is also connected (an emulator or a real watch — either
 # way, whatever declares the android.hardware.type.watch feature), the wear/
@@ -10,12 +9,10 @@
 # This is best-effort: no wear device found is not an error, it's the normal
 # case for anyone not also testing the watch app.
 #
-# The release build type reuses the default debug keystore/signing config
-# (see app/build.gradle.kts and wear/build.gradle.kts) rather than a
-# dedicated release key — that debug keystore's SHA-1/SHA-256 are what's
-# registered with the real project for Google Sign-In, and there's no Play
-# Store pipeline yet to need a real signing key for. "prod" means "real
-# backend," not "ready to publish."
+# Release builds sign with the upload key (android/keystore.properties). A copy installed from Play
+# is signed with Play's app signing key instead, so Android refuses to update it in place: the
+# script says so and stops, unless --replace, which uninstalls that copy first (its local data
+# goes with it). Debug builds (com.hejitech.contempoapp.debug) install next to it.
 #
 # Usage: ./scripts/install-android-prod.sh [options]
 #   --no-launch, --build-only  : build and install only, skip launching.
@@ -24,6 +21,7 @@
 #   -s, --device <serial>     : target a specific phone device serial.
 #   --wear-device <serial>    : target a specific Wear OS device serial.
 #   --clean                   : run `./gradlew clean` before building.
+#   --replace                 : uninstall a differently-signed copy (e.g. from Play) first.
 #   -h, --help                : show this help message.
 set -euo pipefail
 
@@ -39,6 +37,7 @@ WANT_WEAR_ONLY=false
 TARGET_DEVICE_SERIAL="${ANDROID_SERIAL:-}"
 TARGET_WEAR_SERIAL=""
 CLEAN=false
+REPLACE=false
 
 show_help() {
   cat <<'EOF'
@@ -53,6 +52,7 @@ Options:
   -s, --device <serial>       Specify target phone device serial (overrides auto-detection).
   --wear-device <serial>      Specify target Wear OS device serial (overrides auto-detection).
   --clean                     Run `./gradlew clean` before building.
+  --replace                   Uninstall a differently-signed copy (e.g. from Play) first; its data is lost.
   -h, --help                  Show this help message and exit.
 EOF
   exit 0
@@ -90,6 +90,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --clean)
       CLEAN=true
+      shift
+      ;;
+    --replace)
+      REPLACE=true
       shift
       ;;
     -h|--help)
@@ -226,87 +230,49 @@ if [[ "$INSTALL_ANDROID" == "true" ]]; then
 fi
 
 if [[ "$INSTALL_ANDROID" != "true" && -z "$WEAR_SERIAL" ]]; then
-  warn "Nothing to install: --wear-os was requested but no wear device was found."
-  exit 1
-fi
-
-# --- find physical device or emulator for phone app -------------------------
-if [[ "$INSTALL_ANDROID" == "true" ]]; then
-  log "Looking for a connected physical device or emulator..."
-  if [[ -n "$TARGET_DEVICE_SERIAL" ]]; then
-    DEVICE_SERIAL="$TARGET_DEVICE_SERIAL"
-    export ANDROID_SERIAL="$DEVICE_SERIAL"
-    echo "  using specified device $DEVICE_SERIAL"
-  else
-    PHYSICAL_CANDIDATES=()
-    EMULATOR_CANDIDATES=()
-    while IFS=$'\t' read -r serial state; do
-      [[ -z "$serial" || -z "$state" ]] && continue
-      is_wear_serial "$serial" && continue
-      if [[ "$state" == "device" ]]; then
-        if [[ "$serial" =~ ^emulator- ]] || [[ "$serial" =~ ^127\.0\.0\.1: ]] || [[ "$serial" =~ ^localhost: ]]; then
-          EMULATOR_CANDIDATES+=("$serial")
-        else
-          PHYSICAL_CANDIDATES+=("$serial")
-        fi
-      elif [[ "$state" == "unauthorized" ]]; then
-        warn "Device $serial is unauthorized — accept the USB debugging prompt on the device."
-      fi
-    done < <("$ADB" devices | grep -E $'^\\S+\t')
-
-    if [[ ${#PHYSICAL_CANDIDATES[@]} -gt 1 ]]; then
-      warn "Multiple physical devices connected: ${PHYSICAL_CANDIDATES[*]}. Use -s/--device <serial> or disconnect all but one and retry."
-      exit 1
-    elif [[ ${#PHYSICAL_CANDIDATES[@]} -eq 1 ]]; then
-      DEVICE_SERIAL="${PHYSICAL_CANDIDATES[0]}"
-    elif [[ ${#EMULATOR_CANDIDATES[@]} -gt 1 ]]; then
-      warn "Multiple emulators running: ${EMULATOR_CANDIDATES[*]}. Use -s/--device <serial> or close all but one and retry."
-      exit 1
-    elif [[ ${#EMULATOR_CANDIDATES[@]} -eq 1 ]]; then
-      DEVICE_SERIAL="${EMULATOR_CANDIDATES[0]}"
-    else
-      warn "No authorized physical device or emulator found. Plug in a device via USB or start an emulator, enable USB debugging, and accept the prompt."
-      exit 1
-    fi
-    export ANDROID_SERIAL="$DEVICE_SERIAL"
-    echo "  using device $DEVICE_SERIAL"
-  fi
-
-  # --- sanity-check config ---------------------------------------------------
-  GOOGLE_SERVICES="$ANDROID_DIR/app/google-services.json"
-  if [[ ! -f "$GOOGLE_SERVICES" ]]; then
-    warn "android/app/google-services.json is missing — required for a real-Firebase build. See google-services.json.example."
-    exit 1
-  fi
-  if grep -q "REPLACE_" "$GOOGLE_SERVICES"; then
-    warn "android/app/google-services.json still has placeholder values — this won't talk to a real project."
-    exit 1
-  fi
-  PROJECT_ID="$(python3 -c "import json; print(json.load(open('$GOOGLE_SERVICES'))['project_info']['project_id'])" 2>/dev/null || echo "unknown")"
-  echo "  google-services.json -> project \"$PROJECT_ID\""
-
-  if [[ -f "$ANDROID_DIR/local.properties" ]] && grep -q "^GOOGLE_WEB_CLIENT_ID=.\+" "$ANDROID_DIR/local.properties"; then
-    echo "  GOOGLE_WEB_CLIENT_ID is set"
-  else
-    warn "GOOGLE_WEB_CLIENT_ID is not set in android/local.properties — real Google Sign-In will fail at runtime (see local.properties.example)."
-  fi
-fi
-
-if [[ -n "$WEAR_SERIAL" ]]; then
-  WEAR_GOOGLE_SERVICES="$ANDROID_DIR/wear/google-services.json"
-  if [[ ! -f "$WEAR_GOOGLE_SERVICES" ]]; then
-    warn "android/wear/google-services.json is missing — skipping the wear/ companion app. See google-services.json.example."
-    WEAR_SERIAL=""
-  elif grep -q "REPLACE_" "$WEAR_GOOGLE_SERVICES"; then
-    warn "android/wear/google-services.json still has placeholder values — skipping the wear/ companion app."
-    WEAR_SERIAL=""
-  fi
-fi
-
-if [[ "$INSTALL_ANDROID" != "true" && -z "$WEAR_SERIAL" ]]; then
   warn "Nothing to install: no valid target device or companion app configured."
   exit 1
 fi
+
+# --- JDK -------------------------------------------------------------------------
+# Gradle 8.11 needs JDK 17 (Android Studio's bundled JDK 25 is too new; see CLAUDE.md).
+if [[ -z "${JAVA_HOME:-}" ]] || ! "$JAVA_HOME/bin/java" -version 2>&1 | grep -q '"17\.'; then
+  for candidate in /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home "$(/usr/libexec/java_home -v 17 2>/dev/null || true)"; do
+    if [[ -n "$candidate" && -x "$candidate/bin/java" ]]; then
+      export JAVA_HOME="$candidate"
+      break
+    fi
+  done
+fi
+if [[ -z "${JAVA_HOME:-}" ]] || ! "$JAVA_HOME/bin/java" -version 2>&1 | grep -q '"17\.'; then
+  warn "Gradle here needs JDK 17: brew install openjdk@17 (or point JAVA_HOME at one)."
+  exit 1
+fi
+echo "  JAVA_HOME=$JAVA_HOME"
+
+install_release() {
+  local module="$1" serial="$2" pkg="$3"
+  ( cd "$ANDROID_DIR" && ./gradlew ":$module:assembleRelease" )
+  local apk; apk="$(ls "$ANDROID_DIR/$module/build/outputs/apk/release/"*.apk 2>/dev/null | head -n 1)"
+  [[ -z "$apk" ]] && { warn "No release APK found under $module/build/outputs/apk/release/."; exit 1; }
+  local out
+  if out="$("$ADB" -s "$serial" install -r "$apk" 2>&1)"; then
+    echo "$out" | tail -n 1
+    return
+  fi
+  # A copy signed with another key (Play's app signing key) can't be updated in place.
+  if ! grep -q "INSTALL_FAILED_UPDATE_INCOMPATIBLE" <<<"$out"; then
+    echo "$out" >&2
+    exit 1
+  fi
+  if [[ "$REPLACE" != "true" ]]; then
+    warn "$pkg on $serial is signed with another key (likely Play's app signing key), so this build can't update it. Re-run with --replace to uninstall that copy first (its local data is lost), or install the debug build, which sits next to it: (cd android && ./gradlew :$module:installDebug)"
+    exit 1
+  fi
+  warn "$pkg on $serial is signed with another key. --replace: uninstalling it first; its local data is lost."
+  "$ADB" -s "$serial" uninstall "$pkg" >/dev/null
+  "$ADB" -s "$serial" install "$apk"
+}
 
 # --- build and install ------------------------------------------------------
 if [[ "$CLEAN" == "true" ]]; then
@@ -315,13 +281,13 @@ if [[ "$CLEAN" == "true" ]]; then
 fi
 
 if [[ "$INSTALL_ANDROID" == "true" ]]; then
-  log "Building and installing the release (prod) app (com.hejitech.contempo) on $DEVICE_SERIAL..."
-  ( cd "$ANDROID_DIR" && ANDROID_SERIAL="$DEVICE_SERIAL" ./gradlew :app:installRelease )
+  log "Building and installing the release (prod) app (com.hejitech.contempoapp) on $DEVICE_SERIAL..."
+  install_release app "$DEVICE_SERIAL" com.hejitech.contempoapp
 fi
 
 if [[ -n "$WEAR_SERIAL" ]]; then
   log "Building and installing the wear companion app (com.hejitech.contempoappwear) on $WEAR_SERIAL..."
-  ( cd "$ANDROID_DIR" && ANDROID_SERIAL="$WEAR_SERIAL" ./gradlew :wear:installRelease )
+  install_release wear "$WEAR_SERIAL" com.hejitech.contempoappwear
 fi
 
 if [[ "$LAUNCH" != "true" ]]; then

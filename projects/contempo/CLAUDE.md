@@ -122,8 +122,12 @@ npx feedbackkit-cli list --project 3a6e5664-8828-4d86-bada-2b814c6fb90f
 ./scripts/launch-android-emulators.sh --wear                # Launch Wear OS AVD only
 
 # Build & install production/release builds (hosted Supabase):
-./scripts/install-android-prod.sh                           # Android + Wear OS
-./scripts/install-ios-prod.sh                               # iOS + watchOS
+./scripts/install-android-prod.sh                           # Android + Wear OS (JDK 17 found automatically)
+./scripts/install-android-prod.sh --replace                 # ...over a Play-installed copy (other key; its data is lost)
+./scripts/install-ios-prod.sh                               # iOS + watchOS; the connected iPhone first, else a simulator
+./scripts/install-ios-prod.sh --simulator                   # force a simulator
+# After an Xcode update the iOS script stops until `sudo xcodebuild -runFirstLaunch` has run once
+# (device/simulator tools otherwise hang waiting for an admin password).
 # Debug builds are com.hejitech.contempoapp.debug, so they install next to a Play Store copy.
 
 

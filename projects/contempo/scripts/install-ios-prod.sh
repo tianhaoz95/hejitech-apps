@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Builds and installs the "prod" (Release configuration) iOS app onto an iOS
-# simulator or connected physical device — real Firebase (contempo-str),
-# real Google Sign-In, no emulator wiring. Unlike
-# scripts/run-ios-with-emulators.sh, this never starts or touches the
-# Firebase emulator suite.
+# Builds and installs the "prod" (Release configuration) iOS app against the hosted backend (the
+# shared HEJI Supabase project). Prefers the connected iPhone (the monorepo rule), signed with the
+# team's existing Apple Development identity through the App Store Connect API key
+# (FA_ASC_KEY_ID / FA_ASC_ISSUER_ID / FA_KEY_LOCATION, or ASC_*), since Release's App Store
+# distribution profiles can't install on a device. Falls back to a simulator when no iPhone is
+# connected, or with --simulator.
 #
 # If a watchOS simulator or device is available, the watchOS companion app is
 # built and installed on it too, same Release configuration. Embedded targets
@@ -14,6 +15,7 @@
 #   --ios                         : only install the iOS phone app, skip the watch app.
 #   --watch-os, --watchOS, --watch: only install the watchOS companion app, skip the phone app.
 #   -s, --device <id_or_name>     : target a specific iOS simulator or physical device ID/name.
+#   --simulator                   : use a simulator even when an iPhone is connected.
 #   --watch-device <id_or_name>   : target a specific watchOS simulator or physical device ID/name.
 #   --clean                       : clean build artifacts before building.
 #   -h, --help                    : show this help message.
@@ -31,6 +33,7 @@ WANT_WATCH_ONLY=false
 TARGET_IOS_DEST="${IOS_DEST_ID:-}"
 TARGET_WATCH_DEST=""
 CLEAN=false
+FORCE_SIMULATOR=false
 
 show_help() {
   cat <<'EOF'
@@ -44,6 +47,7 @@ Options:
   --watch-os, --watchOS, --watch Install only the watchOS companion app, skip the phone app.
   -s, --device <id_or_name>      Specify target iOS simulator or physical device ID/name.
   --watch-device <id_or_name>    Specify target watchOS simulator or physical device ID/name.
+  --simulator                    Use a simulator even when an iPhone is connected.
   --clean                        Clean build artifacts before building.
   -h, --help                     Show this help message and exit.
 EOF
@@ -84,6 +88,10 @@ while [[ $# -gt 0 ]]; do
       CLEAN=true
       shift
       ;;
+    --simulator)
+      FORCE_SIMULATOR=true
+      shift
+      ;;
     -h|--help)
       show_help
       ;;
@@ -120,6 +128,14 @@ if ! command -v xcrun >/dev/null 2>&1; then
   exit 1
 fi
 
+# Every device/simulator tool (devicectl, simctl, xcodebuild) first runs Xcode's first-launch setup.
+# After an Xcode update that setup needs an admin password, so from a script it waits forever
+# (and CoreSimulator reports "out of date"). Stop with the fix instead of hanging.
+if ! xcodebuild -checkFirstLaunchStatus >/dev/null 2>&1; then
+  warn "Xcode's first-launch setup hasn't run since the last Xcode update, so device and simulator tools would hang. Run once:  sudo xcodebuild -runFirstLaunch"
+  exit 1
+fi
+
 # Backend: the shared HEJI Supabase project (projects/contempo/backend.env), compiled into
 # ContempoCore's ContempoBackend.swift; nothing to configure locally.
 
@@ -146,7 +162,29 @@ if [[ -n "$TARGET_IOS_DEST" ]]; then
     echo "  using specified physical iOS device: $IOS_DEST_ID"
   fi
 else
-  # 1. Look for booted simulator
+  # 1. A connected iPhone (paired, reachable now), unless --simulator.
+  if [[ "$FORCE_SIMULATOR" != "true" ]]; then
+    DEVICES_JSON="$(mktemp)"
+    if xcrun devicectl list devices --json-output "$DEVICES_JSON" >/dev/null 2>&1; then
+      IOS_DEST_ID="$(python3 - "$DEVICES_JSON" <<'PY'
+import json, sys
+devices = json.load(open(sys.argv[1])).get("result", {}).get("devices", [])
+for d in devices:
+    hw, conn = d.get("hardwareProperties", {}), d.get("connectionProperties", {})
+    if hw.get("deviceType") == "iPhone" and conn.get("pairingState") == "paired" and conn.get("tunnelState") != "unavailable":
+        print(hw.get("udid", "")); break
+PY
+)"
+    fi
+    rm -f "$DEVICES_JSON"
+    if [[ -n "$IOS_DEST_ID" ]]; then
+      IS_IOS_PHYSICAL=true
+      echo "  using connected iPhone: $IOS_DEST_ID"
+    fi
+  fi
+fi
+if [[ -z "$IOS_DEST_ID" ]]; then
+  # 2. Look for booted simulator
   IOS_DEST_ID="$(xcrun simctl list devices 2>/dev/null | grep -E "iPhone.*\(Booted\)" | head -n 1 | sed -E 's/.*\(([A-F0-9-]+)\).*/\1/')" || true
   # 2. Look for available simulator
   if [[ -z "$IOS_DEST_ID" ]]; then
@@ -214,22 +252,44 @@ log "Generating Xcode project with xcodegen..."
 ( cd "$IOS_DIR" && xcodegen generate )
 
 BUILD_DEST="id=$IOS_DEST_ID"
+SIGNING_ARGS=()
 if [[ "$IS_IOS_PHYSICAL" == "true" ]]; then
-  BUILD_DEST="generic/platform=iOS"
+  # Release signs for App Store distribution; a device install needs a development profile.
+  # Automatic signing with the team's existing Apple Development identity, profiles through the
+  # App Store Connect API key (never let it mint a new certificate: the identity must already be
+  # in the login keychain).
+  ASC_KEY_ID="${ASC_KEY_ID:-${FA_ASC_KEY_ID:-}}"
+  ASC_ISSUER_ID="${ASC_ISSUER_ID:-${FA_ASC_ISSUER_ID:-}}"
+  ASC_KEY_PATH="${ASC_KEY_PATH:-$(eval echo "${FA_KEY_LOCATION:-}")}"
+  if [[ -z "$ASC_KEY_ID" || -z "$ASC_ISSUER_ID" || ! -f "$ASC_KEY_PATH" ]]; then
+    warn "A device build needs the App Store Connect API key: set FA_ASC_KEY_ID, FA_ASC_ISSUER_ID and FA_KEY_LOCATION (or ASC_*), or pass --simulator."
+    exit 1
+  fi
+  if ! security find-identity -v -p codesigning | grep -q "Apple Development"; then
+    warn "No Apple Development identity in the keychain; import the team's (~/Credentials/tianhaozhou-apple-dev-cert.p12) rather than letting Xcode create one."
+    exit 1
+  fi
+  SIGNING_ARGS=(
+    -allowProvisioningUpdates
+    -authenticationKeyPath "$ASC_KEY_PATH" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+    CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY="Apple Development" PROVISIONING_PROFILE_SPECIFIER=
+  )
 fi
 
 log "Resolving Swift Package dependencies..."
-if ! ( cd "$IOS_DIR" && xcodebuild -project Contempo.xcodeproj -scheme Contempo -destination "$BUILD_DEST" -derivedDataPath Build -resolvePackageDependencies ); then
+if ! ( cd "$IOS_DIR" && xcodebuild -project Contempo.xcodeproj -scheme Contempo -destination "$BUILD_DEST" -derivedDataPath Build -resolvePackageDependencies ${SIGNING_ARGS[@]+"${SIGNING_ARGS[@]:0:7}"} ); then
   warn "Package dependency resolution failed. Clearing corrupted SwiftPM artifact cache and retrying..."
   rm -rf "$HOME/Library/Caches/org.swift.swiftpm/artifacts"/* "$HOME/Library/Caches/org.swift.swiftpm/repositories"/* 2>/dev/null || true
-  ( cd "$IOS_DIR" && xcodebuild -project Contempo.xcodeproj -scheme Contempo -destination "$BUILD_DEST" -derivedDataPath Build -resolvePackageDependencies )
+  ( cd "$IOS_DIR" && xcodebuild -project Contempo.xcodeproj -scheme Contempo -destination "$BUILD_DEST" -derivedDataPath Build -resolvePackageDependencies ${SIGNING_ARGS[@]+"${SIGNING_ARGS[@]:0:7}"} )
 fi
 
 log "Building Contempo iOS app, watchOS app, and ContempoWidgets in Release (prod) configuration..."
-( cd "$IOS_DIR" && xcodebuild -project Contempo.xcodeproj -scheme Contempo -configuration Release -destination "$BUILD_DEST" -derivedDataPath Build build )
+( cd "$IOS_DIR" && xcodebuild -project Contempo.xcodeproj -scheme Contempo -configuration Release -destination "$BUILD_DEST" -derivedDataPath Build ${SIGNING_ARGS[@]+"${SIGNING_ARGS[@]}"} build )
 
 
-IOS_APP_PATH="$(find "$IOS_DIR/Build/Build/Products" -path "*/Release-*" -name "Contempo.app" -not -path "*/Watch/*" -type d 2>/dev/null | head -n 1)"
+RELEASE_DIR="Release-iphonesimulator"
+[[ "$IS_IOS_PHYSICAL" == "true" ]] && RELEASE_DIR="Release-iphoneos"
+IOS_APP_PATH="$(find "$IOS_DIR/Build/Build/Products/$RELEASE_DIR" -maxdepth 1 -name "Contempo.app" -type d 2>/dev/null | head -n 1)"
 if [[ -z "$IOS_APP_PATH" ]]; then
   IOS_APP_PATH="$(find "$IOS_DIR/Build/Build/Products" -name "Contempo.app" -not -path "*/Watch/*" -type d 2>/dev/null | head -n 1)"
 fi
