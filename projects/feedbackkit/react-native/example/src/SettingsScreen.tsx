@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, useColorScheme } from 'react-native';
-import { FeedbackKit } from 'feedbackkit-react-native';
+import { FeedbackKit } from 'feedback-kit-react-native';
 import { BRANDINGS, DEFAULT_ENDPOINT, DemoSettings, useDemoSettings } from './settings';
 import { palette } from './theme';
 

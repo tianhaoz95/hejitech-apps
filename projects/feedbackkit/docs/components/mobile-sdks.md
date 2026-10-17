@@ -3,7 +3,7 @@
 A native Android SDK (`android/feedbackkit`) with the Swift SDK's flow and
 report contract, and two thin bridges over the native iOS and Android SDKs:
 the Flutter plugin (`flutter/feedbackkit_flutter`) and the React Native
-module (`react-native/`, npm `feedbackkit-react-native`). User-facing docs
+module (`react-native/`, npm `feedback-kit-react-native`). User-facing docs
 live on the dashboard at `/docs/mobile-sdks`; this page is for contributors.
 The reasoning behind the design is in `DESIGN.md` §1c.
 

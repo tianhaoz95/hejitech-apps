@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { FeedbackKit, type FeedbackTheme } from 'feedbackkit-react-native';
+import { FeedbackKit, type FeedbackTheme } from 'feedback-kit-react-native';
 
 export const DEFAULT_ENDPOINT = 'https://gpucoladcyvijefdjudf.supabase.co/functions/v1/ingest-feedback';
 

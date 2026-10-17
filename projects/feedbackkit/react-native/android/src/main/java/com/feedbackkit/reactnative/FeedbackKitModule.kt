@@ -14,7 +14,7 @@ import com.feedbackkit.FeedbackKitBridge
 import com.feedbackkit.FeedbackSubmitter
 
 /**
- * Bridges `feedbackkit-react-native` to the native FeedbackKit Android SDK.
+ * Bridges `feedback-kit-react-native` to the native FeedbackKit Android SDK.
  * Every call maps 1:1 onto `FeedbackKit`; reports cross as maps (see
  * `FeedbackKitBridge`) with binary fields as base64 strings.
  */

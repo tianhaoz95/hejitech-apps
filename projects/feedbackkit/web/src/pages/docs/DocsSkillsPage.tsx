@@ -106,7 +106,7 @@ export function DocsSkillsPage() {
             [
               "setup-react-native-sdk",
               "React Native",
-              "Installs feedbackkit-react-native and the iOS pod, configures it at startup, adds triggers, and wires React Navigation screen names.",
+              "Installs feedback-kit-react-native and the iOS pod, configures it at startup, adds triggers, and wires React Navigation screen names.",
             ],
             [
               "setup-tauri-sdk",

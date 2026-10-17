@@ -1,11 +1,11 @@
 ---
 name: setup-react-native-sdk
-description: Integrate FeedbackKit into a React Native app with feedbackkit-react-native, a TurboModule that runs the native FeedbackKit iOS and Android SDKs — installs the package and iOS pod, configures the project key, adds triggers, wires React Navigation screen names, and enables "is it fixed?" verification.
+description: Integrate FeedbackKit into a React Native app with feedback-kit-react-native, a TurboModule that runs the native FeedbackKit iOS and Android SDKs — installs the package and iOS pod, configures the project key, adds triggers, wires React Navigation screen names, and enables "is it fixed?" verification.
 ---
 
 # setup-react-native-sdk
 
-Integrates FeedbackKit into a React Native app through `feedbackkit-react-native`. The module is a thin bridge: the capture, annotation editor and submission are the native FeedbackKit SDKs on iOS and Android, so reports look exactly like native ones.
+Integrates FeedbackKit into a React Native app through `feedback-kit-react-native`. The module is a thin bridge: the capture, annotation editor and submission are the native FeedbackKit SDKs on iOS and Android, so reports look exactly like native ones.
 
 ## When to Use
 
@@ -24,7 +24,7 @@ Integrates FeedbackKit into a React Native app through `feedbackkit-react-native
 ### Step 1 -- Install the package and the iOS SDK
 
 ```bash
-npm install feedbackkit-react-native   # or yarn add / pnpm add
+npm install feedback-kit-react-native   # or yarn add / pnpm add
 ```
 
 The Swift SDK isn't on the CocoaPods trunk, so add it to `ios/Podfile` inside the app target, with the same version as the npm package:
@@ -40,7 +40,7 @@ Then run `cd ios && pod install`. Android needs nothing else.
 In `index.js` or at module scope in the root component's file:
 
 ```ts
-import { FeedbackKit } from 'feedbackkit-react-native';
+import { FeedbackKit } from 'feedback-kit-react-native';
 
 FeedbackKit.configure({
   endpointUrl: '<endpoint from the dashboard>',

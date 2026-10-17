@@ -1,5 +1,5 @@
 {
-  "name": "feedbackkit-react-native",
+  "name": "feedback-kit-react-native",
   "version": "1.0.62",
   "description": "In-app feedback for React Native, running the native FeedbackKit iOS and Android SDKs",
   "main": "./lib/module/index.js",

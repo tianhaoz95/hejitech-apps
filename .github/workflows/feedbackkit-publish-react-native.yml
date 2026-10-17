@@ -1,6 +1,6 @@
 name: FeedbackKit · Publish React Native Module
 
-# Publishes react-native/ to npm as feedbackkit-react-native on unified
+# Publishes react-native/ to npm as feedback-kit-react-native on unified
 # vX.Y.Z releases (and react-native-vX.Y.Z for this package alone). The
 # version comes from the tag; `npm publish` runs prepack, which vendors the
 # Android SDK into the package (scripts/vendor-native-sdks.sh).
@@ -35,7 +35,7 @@ jobs:
       id-token: write
     environment:
       name: npm
-      url: https://www.npmjs.com/package/feedbackkit-react-native
+      url: https://www.npmjs.com/package/feedback-kit-react-native
     defaults:
       run:
         working-directory: projects/feedbackkit/react-native
@@ -75,8 +75,8 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.FEEDBACKKIT_NPM_TOKEN }}
         run: |
           PKG_VERSION="${{ steps.version.outputs.version }}"
-          if [ "$(npm view feedbackkit-react-native@"$PKG_VERSION" version 2>/dev/null || true)" = "$PKG_VERSION" ]; then
-            echo "feedbackkit-react-native@$PKG_VERSION is already on npm. Skipping."
+          if [ "$(npm view feedback-kit-react-native@"$PKG_VERSION" version 2>/dev/null || true)" = "$PKG_VERSION" ]; then
+            echo "feedback-kit-react-native@$PKG_VERSION is already on npm. Skipping."
             exit 0
           fi
           if [ "${{ inputs.dry_run }}" = "true" ]; then

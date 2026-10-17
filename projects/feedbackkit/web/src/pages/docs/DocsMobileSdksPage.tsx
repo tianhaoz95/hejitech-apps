@@ -71,14 +71,14 @@ Future<void> main() async {
 final report = await FeedbackKit.present();          // you deliver it
 final result = await FeedbackKit.presentAndSubmit(); // sends it to the dashboard`;
 
-const rnInstall = `npm install feedbackkit-react-native
+const rnInstall = `npm install feedback-kit-react-native
 
 # ios/Podfile, inside your app target — the same version as the npm package:
 pod 'FeedbackKit', :git => 'https://github.com/tianhaoz95/feedback-kit.git', :tag => 'v<version>'
 
 cd ios && pod install`;
 
-const rnUsage = `import { FeedbackKit } from 'feedbackkit-react-native';
+const rnUsage = `import { FeedbackKit } from 'feedback-kit-react-native';
 
 FeedbackKit.configure({
   endpointUrl: 'https://<project>.supabase.co/functions/v1/ingest-feedback',
@@ -120,7 +120,7 @@ export function DocsMobileSdksPage() {
           rows={[
             [<>Native Android (Kotlin/Java, Views or Compose)</>, <InlineCode>com.github.tianhaoz95.feedback-kit:feedbackkit</InlineCode>, <>The Android SDK</>],
             [<>Flutter</>, <InlineCode>feedbackkit_flutter</InlineCode>, <>Swift SDK on iOS, Android SDK on Android</>],
-            [<>React Native (New Architecture)</>, <InlineCode>feedbackkit-react-native</InlineCode>, <>Swift SDK on iOS, Android SDK on Android</>],
+            [<>React Native (New Architecture)</>, <InlineCode>feedback-kit-react-native</InlineCode>, <>Swift SDK on iOS, Android SDK on Android</>],
           ]}
         />
         <p>

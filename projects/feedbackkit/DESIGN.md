@@ -854,7 +854,7 @@ Sources/FeedbackKit/   the SDK (Swift Package, iOS + macOS + watchOS)
 Tests/FeedbackKitTests/
 android/               the Android SDK (feedbackkit/) and its demo app (demo/), one Gradle project
 flutter/               the Flutter plugin (feedbackkit_flutter/, demo app in example/)
-react-native/          the React Native module (npm feedbackkit-react-native, demo app in example/)
+react-native/          the React Native module (npm feedback-kit-react-native, demo app in example/)
 desktop/               Tauri (Rust plugin + npm feedbackkit-tauri) and Electron (npm feedbackkit-electron) packages and demos
 web-sdk/               the web SDK (npm feedbackkit-web): src/, unit tests, Playwright e2e
 DemoApp/               project.yml (XcodeGen) + sample apps exercising the SDK

@@ -82,7 +82,7 @@ file is about how to build/test/run things day to day.
 | `Tests/FeedbackKitTests/` | SDK unit tests |
 | `android/` | Native Android SDK (`feedbackkit`, Kotlin, no dependencies beyond the stdlib) and its demo app (`demo`: Compose Home, classic-View Cart, Settings) — one Gradle project. Published through JitPack (`jitpack.yml`) |
 | `flutter/feedbackkit_flutter/` | Flutter plugin over the native iOS/Android SDKs (method channel `feedbackkit`); demo app in `example/` |
-| `react-native/` | React Native TurboModule (npm `feedbackkit-react-native`) over the native SDKs; demo app in `example/` (yarn workspace) |
+| `react-native/` | React Native TurboModule (npm `feedback-kit-react-native`) over the native SDKs; demo app in `example/` (yarn workspace) |
 | `desktop/` | Tauri (`tauri/`: Rust crate `tauri-plugin-feedbackkit` + npm `feedbackkit-tauri` in `guest-js/`) and Electron (`electron/`: npm `feedbackkit-electron`) packages over the web SDK; `tauri-demo/` and `electron-demo/` share `demo-ui/` (the Home/Cart/Settings sample) |
 | `web-sdk/` | Web SDK (npm `feedbackkit-web`, TypeScript, no framework): capture/annotate/submit for websites, plus console/network log capture. Unit tests (vitest) + Playwright e2e |
 | `DemoApp/` | Sample apps exercising the SDK on iOS, macOS, and watchOS (one XcodeGen project, three targets; the `.xcodeproj` is generated — not committed) |
