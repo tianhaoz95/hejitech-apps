@@ -57,10 +57,8 @@ export default withMermaid(
       logo: "/heji.svg",
       siteTitle: "HEJI Apps",
       nav: [
+        // The home page's app cards link each project; the nav stays short.
         { text: "Apps", link: "/#apps" },
-        ...projects.map((p) => ({ text: pagesJson(p).name, link: `/${p}/`, activeMatch: `^/${p}/` })),
-        // Its own VitePress site, built into /feedbackkit/ by pages.yml: a full page load, not a route.
-        { text: "FeedbackKit", link: "https://tianhaoz95.github.io/hejitech-apps/feedbackkit/", target: "_self" },
         { text: "Monorepo", link: "/monorepo" },
       ],
       sidebar: Object.fromEntries(projects.map((p) => [`/${p}/`, sidebarFor(p)])),
