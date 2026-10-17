@@ -48,9 +48,9 @@ export default withMermaid(
     vite: { define: { __PAGES_BUILD__: JSON.stringify((process.env.GITHUB_SHA ?? "local").slice(0, 7)) } },
     head: [
       // ?v=2: until 2026-10-16 this address was Waypack's docs, and browsers keep a site's old icon.
-      ["link", { rel: "icon", href: `${base}heji.svg?v=2`, type: "image/svg+xml" }],
-      ["link", { rel: "icon", href: `${base}heji-192.png?v=2`, type: "image/png", sizes: "192x192" }],
-      ["link", { rel: "apple-touch-icon", href: `${base}apple-touch-icon.png?v=2` }],
+      ["link", { rel: "icon", href: `${base}heji.svg?v=3`, type: "image/svg+xml" }],
+      ["link", { rel: "icon", href: `${base}heji-192.png?v=3`, type: "image/png", sizes: "192x192" }],
+      ["link", { rel: "apple-touch-icon", href: `${base}apple-touch-icon.png?v=3` }],
       ["meta", { name: "theme-color", content: "#2f5bea" }],
     ],
     themeConfig: {

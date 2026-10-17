@@ -31,8 +31,6 @@
   --vp-c-brand-3: #2140c4;
   --vp-home-hero-name-color: transparent;
   --vp-home-hero-name-background: linear-gradient(120deg, #4f7cff 20%, #2140c4 80%);
-  --vp-home-hero-image-background-image: linear-gradient(-45deg, #4f7cff55 50%, #ffd16655 50%);
-  --vp-home-hero-image-filter: blur(56px);
 }
 .dark {
   --vp-home-hero-name-background: linear-gradient(120deg, #a9bcff 20%, #5d82ff 80%);
