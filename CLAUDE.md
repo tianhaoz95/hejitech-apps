@@ -15,6 +15,14 @@ coordinates only in the files a project lists in its `backend.env`. Products tal
 APIs, never the database. Rules, checks (`check_isolation.mjs`, `graduation_check.sh`, run by
 `supabase-ci.yml`) and the move itself: `supabase/GRADUATION.md`.
 
+## Testing on devices
+
+Always prefer the connected physical device over a simulator/emulator when testing mobile apps
+(an iPhone is usually attached: `xcrun devicectl list devices`; Android: `adb devices`). Use a
+simulator only when no device is connected or the test can't run on one, and say so. Debug device
+builds sign with the team's existing Apple Development identity via the App Store Connect API key
+(`-allowProvisioningUpdates` with `-authenticationKey…`); never let signing mint a new certificate.
+
 ## Releases
 
 Cut every release with `scripts/cut_release.sh <project>`. Don't improvise: no hand-made tags, no

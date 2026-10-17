@@ -512,16 +512,29 @@ async function stripeWebhook(request: Request, env: Env): Promise<Response> {
     const uid = obj.client_reference_id as string | undefined;
     if (uid && obj.subscription) {
       const sub = await stripe(env, "GET", `subscriptions/${obj.subscription}`);
-      if ((sub.metadata as Record<string, string> | undefined)?.app === "contempo") await syncSubscription(admin, uid, sub);
+      if (isContempoSubscription(sub)) await syncSubscription(admin, uid, sub);
     }
   } else if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
-    if ((obj.metadata as Record<string, string> | undefined)?.app === "contempo") {
+    if (isContempoSubscription(obj)) {
       const { data } = await admin.from("stripe_customers").select("user_id").eq("customer_id", obj.customer as string).maybeSingle();
       if (data?.user_id) await syncSubscription(admin, data.user_id as string, obj);
       else console.warn("stripe webhook: no user for customer", obj.customer);
     }
   }
   return new Response(null, { status: 200 });
+}
+
+/** Contempo Pro in the shared HEJI Stripe account (products are tagged metadata.app). */
+const CONTEMPO_PRODUCT = "prod_V0smC72BLmnFUb";
+
+/** Ours if tagged app=contempo, or if any of its items is a Contempo Pro price. */
+function isContempoSubscription(sub: Record<string, unknown>): boolean {
+  if ((sub.metadata as Record<string, string> | undefined)?.app === "contempo") return true;
+  const items = ((sub.items as { data?: Record<string, unknown>[] })?.data ?? []);
+  return items.some((item) => {
+    const product = (item.price as Record<string, unknown> | undefined)?.product;
+    return product === CONTEMPO_PRODUCT || (product as Record<string, unknown> | undefined)?.id === CONTEMPO_PRODUCT;
+  });
 }
 
 async function syncSubscription(admin: SupabaseClient, uid: string, sub: Record<string, unknown>): Promise<void> {
