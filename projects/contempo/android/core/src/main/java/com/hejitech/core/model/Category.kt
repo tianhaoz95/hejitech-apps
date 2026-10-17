@@ -1,6 +1,5 @@
 package com.hejitech.core.model
 
-import com.google.firebase.Timestamp
 
 /**
  * Firestore document shape for `users/{uid}/categories/{categoryId}` — a

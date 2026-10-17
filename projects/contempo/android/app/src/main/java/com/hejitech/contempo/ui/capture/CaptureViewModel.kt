@@ -40,7 +40,7 @@ import com.hejitech.core.model.Entry
 import com.hejitech.core.model.EntryStatus
 import com.hejitech.core.model.MaterialParticipationTest
 import com.google.android.gms.location.LocationServices
-import com.google.firebase.Timestamp
+import com.hejitech.core.model.Timestamp
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId

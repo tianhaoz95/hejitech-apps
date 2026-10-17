@@ -1,5 +1,6 @@
 package com.hejitech.contempo.wear
 
+import com.hejitech.core.supabase.ContempoBackend
 import android.util.Log
 import com.hejitech.contempo.agent.EntryDraft
 import com.hejitech.contempo.agent.ParseOutcome
@@ -14,9 +15,7 @@ import com.hejitech.core.model.CaptureSource
 import com.hejitech.core.model.Entry
 import com.hejitech.core.model.EntryCategory
 import com.hejitech.core.model.EntryStatus
-import com.google.firebase.Firebase
-import com.google.firebase.Timestamp
-import com.google.firebase.storage.storage
+import com.hejitech.core.model.Timestamp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -122,8 +121,7 @@ object AudioCaptureProcessor {
     ) {
         _currentlyProcessing.value = AudioProcessingStage.DOWNLOADING
         onStageChange?.invoke(AudioProcessingStage.DOWNLOADING)
-        val storageRef = Firebase.storage.reference.child(capture.storagePath)
-        val wavBytes = runCatching { storageRef.getBytes(MAX_AUDIO_BYTES).await() }.getOrNull()
+        val wavBytes = runCatching { ContempoBackend.downloadFile(capture.storagePath) }.getOrNull()?.takeIf { it.size <= MAX_AUDIO_BYTES }
         if (wavBytes == null) {
             Log.e(TAG, "failed to download ${capture.storagePath} — leaving queued for retry")
             return
@@ -146,7 +144,7 @@ object AudioCaptureProcessor {
 
         _currentlyProcessing.value = AudioProcessingStage.PARSING
         onStageChange?.invoke(AudioProcessingStage.PARSING)
-        val audioUrl = runCatching { storageRef.downloadUrl.await().toString() }.getOrDefault("")
+        val audioUrl = runCatching { ContempoBackend.signedUrl(capture.storagePath) }.getOrDefault("")
         val knownProperties = runCatching {
             ServiceLocator.entryRepository.observeProperties().first().map { it.name }
         }.getOrDefault(emptyList())

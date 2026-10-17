@@ -8,8 +8,13 @@ plugins {
     alias(libs.plugins.kotlin.android) apply false
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.kotlin.serialization) apply false
-    alias(libs.plugins.google.services) apply false
-    alias(libs.plugins.firebase.crashlytics) apply false
-    alias(libs.plugins.firebase.perf) apply false
     alias(libs.plugins.play.publisher) apply false
+}
+
+// supabase-kt's auth module pulls androidx.browser 1.10, which requires AGP 8.9.1+; this project
+// is on AGP 8.7.2 (see gradle/libs.versions.toml). 1.8.0 has everything Custom Tabs sign-in uses.
+allprojects {
+    configurations.all {
+        resolutionStrategy.force("androidx.browser:browser:1.8.0")
+    }
 }

@@ -43,14 +43,14 @@ import com.hejitech.contempo.ui.onboarding.OnboardingScreen
 import com.hejitech.contempo.ui.signin.SignInScreen
 import com.hejitech.contempo.ui.theme.ContempoTheme
 import com.hejitech.contempo.wear.AudioCaptureProcessor
-import com.google.firebase.Firebase
-import com.google.firebase.auth.auth
+import com.hejitech.core.supabase.ContempoBackend
+import io.github.jan.supabase.auth.handleDeeplinks
+import android.content.Intent
 import java.io.File
 import java.io.FileOutputStream
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 
 private const val SPLASH_EXIT_ANIM_DURATION_MS = 280L
 
@@ -84,7 +84,7 @@ class MainActivity : ComponentActivity() {
      */
     private fun handleShake() {
         if (!ServiceLocator.shakeToReportSettingsStore.enabled.value) return
-        if (Firebase.auth.currentUser == null) return
+        if (ContempoBackend.uid == null) return
         captureScreenshotAndShowFeedback()
     }
 
@@ -160,7 +160,15 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // Google sign-in comes back as com.hejitech.contempoapp://login-callback (PKCE code).
+        ContempoBackend.client.handleDeeplinks(intent)
         setContent { ContempoRoot() }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        ContempoBackend.client.handleDeeplinks(intent)
     }
 }
 
@@ -205,43 +213,8 @@ private fun ContempoRoot() {
  */
 @Composable
 private fun AuthGate(content: @Composable () -> Unit) {
-    var signedIn by remember { mutableStateOf(Firebase.auth.currentUser != null) }
-
-    // A cached FirebaseUser can outlive the backend session it was issued
-    // against — most commonly here, a local Firebase Auth emulator
-    // restarting (its state is in-memory only, see
-    // ContempoApp.connectToEmulators) invalidates every refresh token minted
-    // before the restart, but the Android SDK still returns the stale
-    // cached FirebaseUser regardless, so `currentUser != null` looks
-    // signed-in while every later Firestore call silently fails with
-    // UNAUTHENTICATED/INVALID_REFRESH_TOKEN and the app just stops being
-    // able to read or write anything, with no visible sign-out — confirmed
-    // live via Firestore's own verbose logs (FirebaseFirestore.setLoggingEnabled).
-    // Forcing one token refresh on launch surfaces that failure immediately
-    // and recovers by re-authenticating, instead of leaving the user stuck
-    // in an unrecoverable "signed in but nothing works" state.
-    LaunchedEffect(Unit) {
-        val user = Firebase.auth.currentUser ?: return@LaunchedEffect
-        runCatching { user.getIdToken(true).await() }
-            .onFailure {
-                ServiceLocator.authManager.signOut()
-                if (BuildConfig.USE_FIREBASE_EMULATOR) {
-                    // Dev-only: re-authenticate with the same fixed fake
-                    // identity right away so this recovery is invisible —
-                    // there's no real user to prompt for a real sign-in.
-                    ServiceLocator.authManager.signIn()
-                }
-            }
-    }
-
-    DisposableEffect(Unit) {
-        val listener = com.google.firebase.auth.FirebaseAuth.AuthStateListener { auth ->
-            signedIn = auth.currentUser != null
-        }
-        Firebase.auth.addAuthStateListener(listener)
-        onDispose { Firebase.auth.removeAuthStateListener(listener) }
-    }
-
+    // Supabase restores and refreshes the saved session itself; signedIn follows it.
+    val signedIn by ContempoBackend.signedIn.collectAsState(initial = ContempoBackend.uid != null)
     if (signedIn) {
         content()
     } else {

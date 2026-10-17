@@ -6,7 +6,7 @@ import android.provider.OpenableColumns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.Timestamp
+import com.hejitech.core.model.Timestamp
 import com.hejitech.contempo.agent.CategoryOutcome
 import com.hejitech.contempo.data.ServiceLocator
 import com.hejitech.contempo.data.recoverFromAuthRaceOrSignOut

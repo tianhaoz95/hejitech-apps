@@ -1,13 +1,15 @@
 package com.hejitech.core.data
 
-import com.google.firebase.Timestamp
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
-import kotlinx.coroutines.channels.awaitClose
+import com.hejitech.core.model.Timestamp
+import com.hejitech.core.supabase.ContempoBackend
+import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.tasks.await
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.put
 
 data class PendingTextCapture(
     val id: String,
@@ -17,74 +19,39 @@ data class PendingTextCapture(
     val lng: Double?,
 )
 
-/**
- * Quick Capture's typed-text counterpart to [AudioCaptureQueue] — same
- * "immediate local save, background parse" shape, but text is small enough
- * that it doesn't need Storage/an upload stage: the raw text is written
- * directly onto the queue doc, and Firestore's own offline persistence is
- * durability enough (unlike audio, which needs a real local file since a
- * large binary upload isn't covered by the SDK's offline write queue the
- * same way). The phone drains this queue (see AudioCaptureProcessor),
- * turning each into a real Entry and removing the queue doc.
- */
-class TextCaptureQueue(
-    private val firestore: FirebaseFirestore,
-    private val auth: FirebaseAuth,
-) {
-    private val uid: String
-        get() = auth.currentUser?.uid ?: error("TextCaptureQueue used before sign-in")
-
-    private fun collection() = firestore.collection("users").document(uid).collection("textCaptures")
+/** Quick Capture's typed text, saved immediately and parsed in the background: contempo.text_captures. */
+class TextCaptureQueue {
+    private val db get() = ContempoBackend.client
 
     suspend fun enqueue(rawText: String, capturedAt: Timestamp, lat: Double?, lng: Double?): String {
-        val doc = mapOf(
-            "rawText" to rawText,
-            "capturedAt" to capturedAt,
-            "lat" to lat,
-            "lng" to lng,
+        val id = ContempoBackend.newId()
+        db.from("text_captures").insert(
+            buildJsonObject {
+                put("id", id)
+                put("user_id", ContempoBackend.requireUid())
+                put("raw_text", rawText)
+                put("captured_at", capturedAt.toIso())
+                put("lat", lat)
+                put("lng", lng)
+            },
         )
-        val ref = collection().add(doc).await()
-        return ref.id
+        return id
     }
 
-    /** Oldest capturedAt first, so a backlog processes in the order it was actually typed. */
-    suspend fun listPending(): List<PendingTextCapture> {
-        val snapshot = collection().orderBy("capturedAt", Query.Direction.ASCENDING).get().await()
-        return snapshot.documents.mapNotNull(::toPendingTextCapture)
-    }
+    suspend fun listPending(): List<PendingTextCapture> =
+        db.from("text_captures").select { order("captured_at", Order.ASCENDING) }.decodeList<JsonObject>().mapNotNull(::toPending)
 
-    /**
-     * Live twin of [listPending] — used by the Capture tab's Quick Capture
-     * status indicator (see CaptureViewModel.quickCaptureStatus), which needs
-     * to react instantly as items are enqueued/removed rather than on a poll
-     * timer, the same way AudioCaptureQueue.observePending() does.
-     */
-    fun observePending(): Flow<List<PendingTextCapture>> = callbackFlow {
-        val registration = collection()
-            .orderBy("capturedAt", Query.Direction.ASCENDING)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    close(error)
-                    return@addSnapshotListener
-                }
-                trySend(snapshot?.documents.orEmpty().mapNotNull(::toPendingTextCapture))
-            }
-        awaitClose { registration.remove() }
-    }
+    fun observePending(): Flow<List<PendingTextCapture>> =
+        ContempoBackend.liveRows("text_captures", "captured_at", ascending = true, map = ::toPending)
 
-    private fun toPendingTextCapture(doc: com.google.firebase.firestore.DocumentSnapshot): PendingTextCapture? {
-        val rawText = doc.getString("rawText") ?: return null
-        val capturedAt = doc.getTimestamp("capturedAt") ?: return null
-        return PendingTextCapture(
-            id = doc.id,
-            rawText = rawText,
-            capturedAt = capturedAt,
-            lat = doc.getDouble("lat"),
-            lng = doc.getDouble("lng"),
-        )
+    private fun toPending(r: JsonObject): PendingTextCapture? {
+        val id = (r["id"] as? JsonPrimitive)?.content ?: return null
+        val text = (r["raw_text"] as? JsonPrimitive)?.content ?: return null
+        val at = (r["captured_at"] as? JsonPrimitive)?.content?.let { runCatching { Timestamp.parse(it) }.getOrNull() } ?: return null
+        return PendingTextCapture(id, text, at, (r["lat"] as? JsonPrimitive)?.doubleOrNull, (r["lng"] as? JsonPrimitive)?.doubleOrNull)
     }
 
     suspend fun remove(captureId: String) {
-        collection().document(captureId).delete().await()
+        db.from("text_captures").delete { filter { eq("id", captureId) } }
     }
 }

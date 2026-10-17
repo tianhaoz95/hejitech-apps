@@ -1,11 +1,9 @@
 package com.hejitech.wear.auth
 
 import android.content.Context
-import com.hejitech.wear.BuildConfig
-import com.google.firebase.Firebase
-import com.google.firebase.auth.GoogleAuthProvider
-import com.google.firebase.auth.auth
-import kotlinx.coroutines.tasks.await
+import com.hejitech.core.supabase.ContempoBackend
+import io.github.jan.supabase.auth.OtpType
+import io.github.jan.supabase.auth.auth
 
 /**
  * Same two-path design as app/auth/AuthManager.kt (see its kdoc) for the
@@ -28,35 +26,20 @@ class WearAuthManager(private val context: Context) {
 
     private val tokenClient = WatchAuthTokenClient(context)
 
+    /**
+     * Asks the paired phone for a one-time pairing code (the phone gets it from the Contempo Worker)
+     * and exchanges it for this watch's own Supabase session. Replaces the Firebase custom token.
+     */
     suspend fun signIn(onWaitingForPhone: () -> Unit = {}): Result<Unit> = runCatching {
-        if (BuildConfig.USE_FIREBASE_EMULATOR) {
-            fakeEmulatorIdToken()
-        } else {
-            when (val result = tokenClient.requestToken(onWaitingForPhone)) {
-                is WatchAuthTokenResult.CustomToken -> {
-                    android.util.Log.d("WearAuthDiag", "got CustomToken from phone, signing in")
-                    Firebase.auth.signInWithCustomToken(result.token).await()
-                }
-                is WatchAuthTokenResult.IsEmulator -> {
-                    android.util.Log.d("WearAuthDiag", "got IsEmulator result")
-                    fakeEmulatorIdToken()
-                }
-                is WatchAuthTokenResult.PhoneError -> {
-                    android.util.Log.d("WearAuthDiag", "got PhoneError: ${result.message}")
-                    error(result.message)
-                }
-            }
+        when (val result = tokenClient.requestToken(onWaitingForPhone)) {
+            is WatchAuthTokenResult.PairingCode ->
+                ContempoBackend.client.auth.verifyEmailOtp(type = OtpType.Email.MAGIC_LINK, tokenHash = result.tokenHash)
+            is WatchAuthTokenResult.IsEmulator -> error("Sign in on your phone first")
+            is WatchAuthTokenResult.PhoneError -> error(result.message)
         }
     }
 
     fun signOut() {
-        Firebase.auth.signOut()
-    }
-
-    /** Same fixed test identity as the phone app, so both land on the same emulator-mode user. */
-    private suspend fun fakeEmulatorIdToken() {
-        val idToken = """{"sub":"emulator-pilot-user","email":"pilot@example.test","email_verified":true,"name":"Pilot Host"}"""
-        val credential = GoogleAuthProvider.getCredential(idToken, null)
-        Firebase.auth.signInWithCredential(credential).await()
+        kotlinx.coroutines.runBlocking { runCatching { ContempoBackend.client.auth.signOut() } }
     }
 }

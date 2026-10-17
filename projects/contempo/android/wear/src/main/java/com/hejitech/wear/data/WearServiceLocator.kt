@@ -7,11 +7,7 @@ import com.hejitech.wear.capture.UploadStatsStore
 import com.hejitech.wear.capture.WearAudioRecorder
 import com.hejitech.core.data.AudioCaptureQueue
 import com.hejitech.core.data.EntryRepository
-import com.hejitech.core.data.FirestoreEntryRepository
-import com.google.firebase.Firebase
-import com.google.firebase.auth.auth
-import com.google.firebase.firestore.firestore
-import com.google.firebase.storage.storage
+import com.hejitech.core.data.SupabaseEntryRepository
 
 /** Same manual-service-locator approach as app/data/ServiceLocator.kt, trimmed to this module's needs. */
 object WearServiceLocator {
@@ -35,15 +31,11 @@ object WearServiceLocator {
 
     fun initialize(context: Context) {
         appContext = context.applicationContext
-        val auth = Firebase.auth
-        // FirestoreEntryRepository's attachPhoto is unused on the watch (no
-        // camera capture here), but the constructor needs a Storage instance
-        // regardless — Firebase.storage is free to obtain, no extra setup.
-        entryRepository = FirestoreEntryRepository(Firebase.firestore, auth, Firebase.storage)
+        entryRepository = SupabaseEntryRepository(context.applicationContext)
         authManager = WearAuthManager(context.applicationContext)
         audioRecorder = WearAudioRecorder(context.applicationContext)
         pendingCaptureStore = PendingCaptureStore(context.applicationContext)
-        audioCaptureQueue = AudioCaptureQueue(Firebase.firestore, auth)
+        audioCaptureQueue = AudioCaptureQueue()
         uploadStatsStore = UploadStatsStore(context.applicationContext)
     }
 }

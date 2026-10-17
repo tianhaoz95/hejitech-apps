@@ -1,13 +1,9 @@
 package com.hejitech.wear.capture
 
+import com.hejitech.core.supabase.ContempoBackend
 import android.util.Log
 import com.hejitech.wear.data.WearServiceLocator
-import com.google.firebase.Firebase
-import com.google.firebase.Timestamp
-import com.google.firebase.auth.auth
-import com.google.firebase.storage.storage
-import com.google.firebase.storage.storageMetadata
-import kotlinx.coroutines.tasks.await
+import com.hejitech.core.model.Timestamp
 
 private const val TAG = "ContempoUpload"
 
@@ -30,18 +26,17 @@ object PendingCaptureSyncer {
 
     /** Returns whether this capture is now durably uploaded (and so removed from the local queue). */
     suspend fun syncOne(pending: PendingCapture): Boolean {
-        val uid = Firebase.auth.currentUser?.uid ?: return false
+        val uid = ContempoBackend.uid ?: return false
         val wavBytes = runCatching { pending.file.readBytes() }.getOrNull() ?: return false
 
-        val storagePath = "users/$uid/audioCaptures/${pending.id}.wav"
+        val storagePath = "$uid/audio/${pending.id}.wav"
         // Explicit content type — previously unset (defaulted to
         // application/octet-stream), which meant storage.rules had nothing
         // real to validate against for this path. Also lets anything that
         // downloads/plays this back later (a browser, a future admin tool)
         // treat it as audio without guessing from the .wav extension alone.
-        val metadata = storageMetadata { contentType = "audio/wav" }
         val uploadResult = runCatching {
-            Firebase.storage.reference.child(storagePath).putBytes(wavBytes, metadata).await()
+            ContempoBackend.uploadFile(storagePath, wavBytes, "audio/wav")
         }
         if (uploadResult.isFailure) {
             Log.e(TAG, "upload failed for ${pending.id}", uploadResult.exceptionOrNull())

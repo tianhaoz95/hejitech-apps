@@ -1,5 +1,6 @@
 package com.hejitech.wear.auth
 
+import com.hejitech.core.supabase.ContempoBackend
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -20,8 +21,6 @@ import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.Icon
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
-import com.google.firebase.Firebase
-import com.google.firebase.auth.auth
 
 /**
  * Sign-out lives on its own page now (see MainActivity's HorizontalPager),
@@ -33,7 +32,7 @@ import com.google.firebase.auth.auth
  */
 @Composable
 fun WearSettingsScreen(onSignOut: () -> Unit) {
-    val email = Firebase.auth.currentUser?.email
+    val email = ContempoBackend.email
     Box(
         modifier = Modifier.fillMaxSize().padding(PaddingValues(horizontal = 16.dp, vertical = 8.dp)),
         contentAlignment = Alignment.Center,

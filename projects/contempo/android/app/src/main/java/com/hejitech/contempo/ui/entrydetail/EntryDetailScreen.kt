@@ -101,7 +101,7 @@ import com.hejitech.core.model.Entry
 import com.hejitech.core.model.EntryCategory
 import com.hejitech.core.model.EntryFieldValidation
 import com.hejitech.core.model.EntryStatus
-import com.google.firebase.Timestamp
+import com.hejitech.core.model.Timestamp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File

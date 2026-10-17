@@ -1,18 +1,12 @@
 package com.hejitech.wear
 
+import com.hejitech.core.supabase.ContempoBackend
 import android.app.Application
 import com.hejitech.wear.capture.PendingCaptureSyncWorker
 import com.hejitech.wear.data.WearServiceLocator
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import com.google.firebase.Firebase
-import com.google.firebase.auth.auth
-import com.google.firebase.firestore.firestore
-import com.google.firebase.firestore.firestoreSettings
-import com.google.firebase.firestore.memoryCacheSettings
-import com.google.firebase.initialize
-import com.google.firebase.storage.storage
 import java.util.concurrent.TimeUnit
 
 /**
@@ -26,17 +20,9 @@ class WearApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        Firebase.initialize(this)
-
-        if (BuildConfig.USE_FIREBASE_EMULATOR) {
-            connectToEmulators()
-        }
-        // No App Check provider installed in either build variant — see
-        // ContempoApp.kt's onCreate for the full reasoning (in short: App
-        // Check enforcement isn't on anywhere yet, and the Play Integrity
-        // provider that used to be installed here for release builds was
-        // the actual root cause of a Firestore-write-hangs-then-times-out
-        // bug on real devices).
+        // Same Supabase project as the phone (projects/contempo/backend.env). The watch never opens a
+        // browser: it signs in with a pairing code from the phone (auth/WearAuthManager.kt).
+        ContempoBackend.init(BuildConfig.SUPABASE_URL, BuildConfig.SUPABASE_PUBLISHABLE_KEY, scheme = "com.hejitech.contempoappwear")
 
         WearServiceLocator.initialize(this)
         schedulePendingCaptureSync()
@@ -53,21 +39,5 @@ class WearApp : Application() {
         val request = PeriodicWorkRequestBuilder<PendingCaptureSyncWorker>(15, TimeUnit.MINUTES).build()
         WorkManager.getInstance(this)
             .enqueueUniquePeriodicWork("pending-capture-sync", ExistingPeriodicWorkPolicy.KEEP, request)
-    }
-
-    private fun connectToEmulators() {
-        val host = EMULATOR_HOST
-        Firebase.auth.useEmulator(host, 9099)
-        Firebase.firestore.useEmulator(host, 8080)
-        Firebase.firestore.firestoreSettings = firestoreSettings {
-            setLocalCacheSettings(memoryCacheSettings {})
-        }
-        // Genuinely used now (audio upload), unlike before when Storage was
-        // only obtained for FirestoreEntryRepository's unused attachPhoto.
-        Firebase.storage.useEmulator(host, 9199)
-    }
-
-    companion object {
-        private const val EMULATOR_HOST = "localhost"
     }
 }

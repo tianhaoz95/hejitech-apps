@@ -1,5 +1,6 @@
 package com.hejitech.wear.tile
 
+import com.hejitech.wear.data.fetchConfirmedHours
 import android.app.PendingIntent
 import android.content.Intent
 import androidx.wear.protolayout.ActionBuilders
@@ -20,9 +21,6 @@ import androidx.wear.tiles.TileService
 import com.hejitech.wear.MainActivity
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
-import com.google.firebase.Firebase
-import com.google.firebase.auth.auth
-import com.google.firebase.firestore.firestore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.guava.future
@@ -78,14 +76,7 @@ class ProgressTileService : TileService() {
         Futures.immediateFuture(ResourceBuilders.Resources.Builder().setVersion(RESOURCES_VERSION).build())
 
     private suspend fun confirmedHours(): Double? {
-        val uid = Firebase.auth.currentUser?.uid ?: return null
-        return withTimeoutOrNull(QUERY_TIMEOUT_MS) {
-            val snapshot = Firebase.firestore.collection("users").document(uid).collection("entries")
-                .whereEqualTo("status", "confirmed")
-                .get()
-                .await()
-            snapshot.documents.sumOf { it.getLong("durationMinutes") ?: 0L } / 60.0
-        }
+        return withTimeoutOrNull(QUERY_TIMEOUT_MS) { runCatching { fetchConfirmedHours() }.getOrNull() }
     }
 
     private fun rootLayout(hours: Double?): LayoutElementBuilders.LayoutElement {

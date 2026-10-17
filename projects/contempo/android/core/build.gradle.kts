@@ -34,12 +34,16 @@ kotlin {
 }
 
 dependencies {
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.firestore)
-    implementation(libs.firebase.auth)
-    implementation(libs.firebase.storage)
+    // The shared HEJI Supabase project (projects/contempo/backend.env): Postgres (schema contempo)
+    // with RLS, Auth, Storage and Realtime. api(): app and wear use the client directly.
+    api(platform(libs.supabase.bom))
+    api(libs.supabase.postgrest)
+    api(libs.supabase.auth)
+    api(libs.supabase.storage)
+    api(libs.supabase.realtime)
+    implementation(libs.ktor.client.okhttp)
     implementation(libs.kotlinx.coroutines.play.services)
-    implementation(libs.kotlinx.serialization.json)
+    api(libs.kotlinx.serialization.json)
 
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)

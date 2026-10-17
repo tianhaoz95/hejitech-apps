@@ -1,13 +1,9 @@
 package com.hejitech.contempo.capture
 
+import com.hejitech.core.supabase.ContempoBackend
 import android.util.Log
 import com.hejitech.contempo.data.ServiceLocator
-import com.google.firebase.Firebase
-import com.google.firebase.Timestamp
-import com.google.firebase.auth.auth
-import com.google.firebase.storage.storage
-import com.google.firebase.storage.storageMetadata
-import kotlinx.coroutines.tasks.await
+import com.hejitech.core.model.Timestamp
 
 private const val TAG = "ContempoQuickCapture"
 
@@ -30,13 +26,12 @@ object PendingCaptureSyncer {
 
     /** Returns whether this capture is now durably uploaded (and so removed from the local queue). */
     suspend fun syncOne(pending: PendingCapture): Boolean {
-        val uid = Firebase.auth.currentUser?.uid ?: return false
+        val uid = ContempoBackend.uid ?: return false
         val wavBytes = runCatching { pending.file.readBytes() }.getOrNull() ?: return false
 
-        val storagePath = "users/$uid/audioCaptures/${pending.id}.wav"
-        val metadata = storageMetadata { contentType = "audio/wav" }
+        val storagePath = "$uid/audio/${pending.id}.wav"
         val uploadResult = runCatching {
-            Firebase.storage.reference.child(storagePath).putBytes(wavBytes, metadata).await()
+            ContempoBackend.uploadFile(storagePath, wavBytes, "audio/wav")
         }
         if (uploadResult.isFailure) {
             Log.e(TAG, "upload failed for ${pending.id}", uploadResult.exceptionOrNull())

@@ -9,10 +9,10 @@ import com.hejitech.contempo.ui.capture.CaptureMode
 import com.hejitech.core.model.CaptureLanguage
 import com.hejitech.core.model.Role
 import com.hejitech.core.model.TokenUsageWeek
-import com.google.firebase.Firebase
-import com.google.firebase.auth.auth
-import com.google.firebase.functions.FirebaseFunctionsException
-import com.google.firebase.functions.functions
+import com.hejitech.core.supabase.ContempoBackend
+import io.github.jan.supabase.auth.auth
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -110,8 +110,9 @@ class SettingsViewModel : ViewModel() {
     }
 
     fun currentAccount(): SettingsUiState {
-        val user = Firebase.auth.currentUser
-        return SettingsUiState(displayName = user?.displayName, email = user?.email)
+        val user = ContempoBackend.client.auth.currentUserOrNull()
+        val name = (user?.userMetadata?.get("full_name") as? JsonPrimitive)?.content
+        return SettingsUiState(displayName = name, email = user?.email)
     }
 
     fun setInferencePreference(preference: InferencePreference) {
@@ -161,10 +162,10 @@ class SettingsViewModel : ViewModel() {
         _deleteAccountState.value = DeleteAccountUiState(isDeleting = true)
         viewModelScope.launch {
             try {
-                Firebase.functions.getHttpsCallable("deleteAccount").call().await()
+                ContempoBackend.api("account/delete", JsonObject(emptyMap()))
                 authManager.signOut()
                 _deleteAccountState.value = DeleteAccountUiState(completed = true)
-            } catch (e: FirebaseFunctionsException) {
+            } catch (e: Exception) {
                 _deleteAccountState.value = DeleteAccountUiState(
                     errorMessage = e.message ?: "Couldn't delete your account. Please try again.",
                 )

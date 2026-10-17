@@ -1,8 +1,5 @@
 package com.hejitech.core.model
 
-import com.google.firebase.Timestamp
-import com.google.firebase.firestore.Exclude
-import com.google.firebase.firestore.PropertyName
 
 /**
  * Firestore document shape for `users/{uid}/entries/{entryId}`. Mirrors
@@ -33,9 +30,9 @@ data class Entry(
     // at write time silently reads back as false, undermining the risk-flag
     // feature this whole app is built around. Needs `var` for the same
     // setter-based-reflection reason isTrip does.
-    @get:PropertyName("isVague") @set:PropertyName("isVague")
+    
     var isVague: Boolean = false,
-    @get:PropertyName("isBackfilled") @set:PropertyName("isBackfilled")
+    
     var isBackfilled: Boolean = false,
     val daysLate: Int = 0,
     val riskReasons: List<String> = emptyList(),
@@ -49,7 +46,7 @@ data class Entry(
     // looked like a no-op: the write succeeds but every subsequent read
     // reports isPaused == false again.
     /** True while an in-progress entry is paused — see TimerEntryCoordinator.handlePause/handleResume. */
-    @get:PropertyName("isPaused") @set:PropertyName("isPaused")
+    
     var isPaused: Boolean = false,
     /** Set when a pause begins, cleared on resume. Null whenever [isPaused] is false. */
     val pausedAt: Timestamp? = null,
@@ -72,7 +69,7 @@ data class Entry(
     // to false regardless of what's actually stored, and needs a real
     // setter (hence `var`, unlike every other field on this class) for
     // Firestore's setter-based reflection to have something to call.
-    @get:PropertyName("isTrip") @set:PropertyName("isTrip")
+    
     var isTrip: Boolean = false,
     /** "manual" / "photo" / "gps" — how the mileage below was captured, for audit-trail transparency and CSV export. */
     val mileageCaptureMethod: String = "",
@@ -133,16 +130,16 @@ data class Entry(
     val roleName: String = "",
 ) {
     /** The only bucket that should count toward the 100-hour/500-hour material participation progress on the Dashboard. */
-    @get:Exclude
+    
     val isOwnerHours: Boolean get() = roleId.isEmpty()
 
-    // @get:Exclude — computed, not stored: without this Firestore's reflection-based
+    // — computed, not stored: without this Firestore's reflection-based
     // mapper tries to find a matching field/setter for these and logs a harmless
     // but noisy "No setter/field found" warning on every read.
-    @get:Exclude val categoryEnum: EntryCategory get() = EntryCategory.fromFirestoreValue(category)
-    @get:Exclude val statusEnum: EntryStatus get() = EntryStatus.fromFirestoreValue(status)
-    @get:Exclude val sourceEnum: CaptureSource get() = CaptureSource.fromFirestoreValue(source)
-    @get:Exclude val riskFlags: RiskFlags get() = RiskFlags(isVague, isBackfilled, daysLate, riskReasons)
+    val categoryEnum: EntryCategory get() = EntryCategory.fromFirestoreValue(category)
+    val statusEnum: EntryStatus get() = EntryStatus.fromFirestoreValue(status)
+    val sourceEnum: CaptureSource get() = CaptureSource.fromFirestoreValue(source)
+    val riskFlags: RiskFlags get() = RiskFlags(isVague, isBackfilled, daysLate, riskReasons)
 
     /**
      * Which of property/task/duration are still unset, derived live from
@@ -154,6 +151,6 @@ data class Entry(
      * confirm tap — drives the Dashboard's Draft badge and Entry Detail's
      * missing-field text.
      */
-    @get:Exclude val missingFields: List<String>
+    val missingFields: List<String>
         get() = EntryFieldValidation.missingFields(propertyName, task, durationMinutes)
 }

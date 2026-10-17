@@ -1,5 +1,6 @@
 package com.hejitech.wear.capture
 
+import com.hejitech.core.supabase.ContempoBackend
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
@@ -13,9 +14,6 @@ import com.hejitech.wear.data.WearServiceLocator
 import com.hejitech.core.audio.WavAudio
 import com.hejitech.core.model.EntryStatus
 import com.google.android.gms.location.LocationServices
-import com.google.firebase.Firebase
-import com.google.firebase.auth.auth
-import com.google.firebase.firestore.FirebaseFirestoreException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,7 +30,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import com.hejitech.core.model.Entry
 import com.hejitech.core.model.EntryCategory
 import com.hejitech.core.model.CaptureSource
-import com.google.firebase.Timestamp
+import com.hejitech.core.model.Timestamp
 import java.util.Date
 
 import com.hejitech.wear.timer.WearGpsTripStore
@@ -81,7 +79,7 @@ class WearCaptureViewModel : ViewModel() {
 
     val recordingAmplitude = audioRecorder.amplitude
 
-    private val _uiState = MutableStateFlow(WearUiState(isSignedIn = Firebase.auth.currentUser != null))
+    private val _uiState = MutableStateFlow(WearUiState(isSignedIn = ContempoBackend.uid != null))
     val uiState: StateFlow<WearUiState> = _uiState.asStateFlow()
 
     private var timerTickerJob: Job? = null
@@ -230,10 +228,7 @@ class WearCaptureViewModel : ViewModel() {
             // process — same failure mode already fixed on the phone side
             // (see DashboardViewModel/CaptureViewModel's identical .catch).
             .catch { e ->
-                if (e is FirebaseFirestoreException &&
-                    (e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED ||
-                        e.code == FirebaseFirestoreException.Code.UNAUTHENTICATED)
-                ) {
+                if (e is io.github.jan.supabase.exceptions.RestException && (e.statusCode == 401 || e.statusCode == 403)) {
                     authManager.signOut()
                     _uiState.update { it.copy(isSignedIn = false) }
                 }

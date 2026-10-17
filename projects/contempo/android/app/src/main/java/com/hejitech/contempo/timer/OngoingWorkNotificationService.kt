@@ -14,7 +14,7 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.LocationServices
-import com.google.firebase.Timestamp
+import com.hejitech.core.model.Timestamp
 import com.hejitech.contempo.MainActivity
 import com.hejitech.contempo.R
 import com.hejitech.contempo.data.ServiceLocator

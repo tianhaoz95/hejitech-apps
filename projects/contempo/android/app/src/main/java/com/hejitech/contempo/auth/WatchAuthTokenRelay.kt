@@ -1,14 +1,14 @@
 package com.hejitech.contempo.auth
 
 import android.content.Context
-import com.hejitech.contempo.BuildConfig
 import com.google.android.gms.wearable.MessageClient
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
-import com.google.firebase.Firebase
-import com.google.firebase.auth.auth
-import com.google.firebase.functions.functions
+import com.hejitech.core.supabase.ContempoBackend
+import kotlinx.coroutines.flow.filter
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -45,10 +45,8 @@ class WatchAuthTokenRelay(
 
     fun start() {
         messageClient.addListener(this)
-        Firebase.auth.addAuthStateListener {
-            if (it.currentUser != null) {
-                scope.launch { pushTokenToDataLayer() }
-            }
+        scope.launch {
+            ContempoBackend.signedIn.filter { it }.collect { pushTokenToDataLayer() }
         }
     }
 
@@ -72,31 +70,24 @@ class WatchAuthTokenRelay(
         runCatching { dataClient.putDataItem(request).await() }
     }
 
+    /**
+     * A one-time pairing code from the Contempo Worker (POST /api/watch/pair): the watch exchanges
+     * it for its own Supabase session (verifyOtp with the token hash). Replaces the Firebase custom token.
+     */
     private suspend fun buildPayload(): ByteArray {
-        val json = if (BuildConfig.USE_FIREBASE_EMULATOR) {
-            JSONObject().put("isEmulator", true)
+        val json = if (ContempoBackend.uid == null) {
+            JSONObject().put("error", "not_signed_in")
         } else {
-            val user = Firebase.auth.currentUser
-            if (user == null) {
-                JSONObject().put("error", "not_signed_in")
-            } else {
-                try {
-                    val result = Firebase.functions.getHttpsCallable("mintWatchAuthToken").call().await()
-                    // .getData() explicitly, not the .data property shorthand
-                    // — Kotlin's property sugar hits a visibility mismatch
-                    // against this SDK's compiled metadata even though the
-                    // underlying getter is public (see AgentClient.kt).
-                    @Suppress("UNCHECKED_CAST")
-                    val data = result.getData() as? Map<String, Any?>
-                    val customToken = data?.get("customToken") as? String
-                    if (customToken != null) {
-                        JSONObject().put("customToken", customToken)
-                    } else {
-                        JSONObject().put("error", "mint_failed")
-                    }
-                } catch (e: Exception) {
-                    JSONObject().put("error", e.message ?: "unknown")
+            try {
+                val result = ContempoBackend.api("watch/pair", JsonObject(emptyMap()))
+                val tokenHash = (result["tokenHash"] as? JsonPrimitive)?.content
+                if (tokenHash != null) {
+                    JSONObject().put("tokenHash", tokenHash).put("type", (result["type"] as? JsonPrimitive)?.content ?: "magiclink")
+                } else {
+                    JSONObject().put("error", "mint_failed")
                 }
+            } catch (e: Exception) {
+                JSONObject().put("error", e.message ?: "unknown")
             }
         }
         return json.toString().toByteArray(Charsets.UTF_8)

@@ -20,7 +20,6 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.google.services)
     alias(libs.plugins.play.publisher)
 }
 
@@ -42,7 +41,11 @@ val localProperties = Properties().apply {
     val file = rootProject.file("local.properties")
     if (file.exists()) file.inputStream().use { load(it) }
 }
-val googleWebClientId: String = localProperties.getProperty("GOOGLE_WEB_CLIENT_ID", "")
+// Backend: the shared HEJI Supabase project (projects/contempo/backend.env). Every build uses the
+// hosted project unless local.properties points somewhere else (e.g. the local stack via adb
+// reverse: SUPABASE_URL=http://127.0.0.1:55421 plus its anon key).
+val supabaseUrl: String = localProperties.getProperty("SUPABASE_URL", "https://jitdzllkxfhlrxxvljhp.supabase.co")
+val supabaseKey: String = localProperties.getProperty("SUPABASE_PUBLISHABLE_KEY", "sb_publishable_lZSe_L4Wd0Sw01h25eixzQ_vLU7FPP8")
 
 // Dedicated release keystore for the wear app — deliberately its own
 // keystore.properties/.jks pair, not shared with app/build.gradle.kts's
@@ -75,7 +78,8 @@ android {
         targetSdk = 36
         versionCode = 5
         versionName = "0.1.0-mvp"
-        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
+        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
+        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"$supabaseKey\"")
         buildConfigField("boolean", "USE_FIREBASE_EMULATOR", "false")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -95,10 +99,15 @@ android {
             signingConfig = signingConfigs.getByName("release")
         }
         debug {
-            buildConfigField("boolean", "USE_FIREBASE_EMULATOR", "true")
+            buildConfigField("boolean", "USE_FIREBASE_EMULATOR", "false")
         }
     }
 
+    lint {
+        // Same lint crash as app/build.gradle.kts documents (androidx.lifecycle's detector vs this
+        // AGP/Kotlin combo); reached the watch once supabase-kt brought lifecycle-process along.
+        disable += "NullSafeMutableLiveData"
+    }
     buildFeatures {
         compose = true
         buildConfig = true
@@ -133,14 +142,6 @@ dependencies {
     // Periodic background sync of the pending-capture backlog — see
     // capture/PendingCaptureSyncWorker.kt.
     implementation(libs.androidx.work.runtime.ktx)
-
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.auth)
-    implementation(libs.firebase.firestore)
-    implementation(libs.firebase.storage)
-    implementation(libs.firebase.appcheck)
-    implementation(libs.firebase.appcheck.playintegrity)
-    implementation(libs.firebase.appcheck.debug)
 
     implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.kotlinx.coroutines.guava)

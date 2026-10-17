@@ -21,9 +21,7 @@ import com.hejitech.core.model.EntryFieldValidation
 import com.hejitech.core.model.EntryStatus
 import com.hejitech.core.model.Property
 import com.hejitech.core.model.Role
-import com.google.firebase.Firebase
-import com.google.firebase.Timestamp
-import com.google.firebase.firestore.firestore
+import com.hejitech.core.model.Timestamp
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.TimeoutCancellationException
@@ -659,10 +657,8 @@ class ConfirmViewModel(
      * actually completes, instead of racing it.
      */
     private suspend fun resetFirestoreConnection() {
-        runCatching {
-            Firebase.firestore.disableNetwork().await()
-            Firebase.firestore.enableNetwork().await()
-        }
+        // Supabase writes are plain HTTPS requests with nothing long-lived to reset; kept as the
+        // retry hook withSaveRetry calls between attempts.
     }
 
     /**

@@ -1,6 +1,6 @@
 package com.hejitech.core.data
 
-import com.google.firebase.Timestamp
+import com.hejitech.core.model.Timestamp
 import com.hejitech.core.model.CaptureSource
 import com.hejitech.core.model.Entry
 import com.hejitech.core.model.EntryCategory

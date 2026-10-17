@@ -12,20 +12,13 @@ lifecycle = "2.8.7"
 activityCompose = "1.9.3"
 composeBom = "2025.01.00"
 navigationCompose = "2.8.5"
-firebaseBom = "33.7.0"
-firebaseAi = "17.13.0"
-firebaseAiOnDevice = "16.0.0-beta03"
-appCheckDebug = "19.2.0"
-# Gradle plugin, not a BoM-managed library — the plugin/SDK versions are
-# independent (see google-services below, same situation). Verify like the
-# rest of this file before first sync.
-firebaseCrashlyticsPlugin = "3.0.2"
-firebasePerfPlugin = "1.4.2"
+# Supabase (the shared HEJI project, schema contempo) — 3.6.x is the last line built with Kotlin
+# 2.3 (3.7+ needs Kotlin 2.4). Ktor engine pinned to the version supabase-kt 3.6.0 uses.
+supabase = "3.6.0"
+ktor = "3.4.3"
 kotlinxCoroutinesPlayServices = "1.9.0"
 kotlinxCoroutinesGuava = "1.9.0"
 kotlinxSerializationJson = "1.7.3"
-credentials = "1.5.0"
-googleid = "1.1.1"
 wearCompose = "1.4.1"
 playServicesWearable = "19.0.0"
 playServicesLocation = "21.3.0"
@@ -38,6 +31,7 @@ espressoCore = "3.6.1"
 uiautomator = "2.3.0"
 liteRtLm = "0.14.0"
 workManager = "2.10.0"
+fragment = "1.8.5"
 coreSplashscreen = "1.0.1"
 coil = "3.4.0"
 media3 = "1.10.1"
@@ -57,33 +51,12 @@ compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 
-firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
-firebase-auth = { group = "com.google.firebase", name = "firebase-auth-ktx" }
-firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore-ktx" }
-firebase-storage = { group = "com.google.firebase", name = "firebase-storage-ktx" }
-firebase-functions = { group = "com.google.firebase", name = "firebase-functions-ktx" }
-firebase-appcheck = { group = "com.google.firebase", name = "firebase-appcheck" }
-firebase-appcheck-playintegrity = { group = "com.google.firebase", name = "firebase-appcheck-playintegrity" }
-firebase-appcheck-debug = { group = "com.google.firebase", name = "firebase-appcheck-debug", version.ref = "appCheckDebug" }
-# Crash + non-fatal-exception reporting — see ContempoApp.kt (collection
-# toggled off for USE_FIREBASE_EMULATOR builds, same pattern as App Check)
-# and AuthAwareFlow.kt (records a non-fatal on the auth-race fallback path).
-firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics-ktx" }
-# Custom traces around the app's actual slow operations (on-device
-# transcription/parsing, Firestore save) — see PerformanceTrace.kt and its
-# three call sites. Automatic screen-render/network instrumentation comes
-# free with just this dependency; the custom traces are the point though,
-# since this app's real bottlenecks are on-device ML work, not classic
-# HTTP/UI jank.
-firebase-performance = { group = "com.google.firebase", name = "firebase-perf-ktx" }
-# Remote kill switch for cloud AI usage — see RemoteConfigStore.kt. No
-# Gradle plugin needed (unlike Crashlytics/Performance above) — plain
-# runtime SDK, BoM-managed like auth/firestore/storage/functions.
-firebase-remoteconfig = { group = "com.google.firebase", name = "firebase-config-ktx" }
-# Not in the Firebase BoM yet as of this writing (per Firebase AI Logic hybrid
-# docs) — pinned directly rather than via the BoM.
-firebase-ai = { group = "com.google.firebase", name = "firebase-ai", version.ref = "firebaseAi" }
-firebase-ai-ondevice = { group = "com.google.firebase", name = "firebase-ai-ondevice", version.ref = "firebaseAiOnDevice" }
+supabase-bom = { group = "io.github.jan-tennert.supabase", name = "bom", version.ref = "supabase" }
+supabase-postgrest = { group = "io.github.jan-tennert.supabase", name = "postgrest-kt" }
+supabase-auth = { group = "io.github.jan-tennert.supabase", name = "auth-kt" }
+supabase-storage = { group = "io.github.jan-tennert.supabase", name = "storage-kt" }
+supabase-realtime = { group = "io.github.jan-tennert.supabase", name = "realtime-kt" }
+ktor-client-okhttp = { group = "io.ktor", name = "ktor-client-okhttp", version.ref = "ktor" }
 
 # On-device LLM runtime (Gemma 4 E2B) — the active on-device path as of this
 # writing, chosen over Firebase AI Logic/Gemini Nano (AICore) for device
@@ -96,11 +69,6 @@ kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "ko
 kotlinx-coroutines-guava = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-guava", version.ref = "kotlinxCoroutinesGuava" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 
-# Current (non-deprecated) Google Sign-In stack: Credential Manager +
-# Google Identity Services, replacing the old GoogleSignInClient/play-services-auth API.
-credentials = { group = "androidx.credentials", name = "credentials", version.ref = "credentials" }
-credentials-play-services-auth = { group = "androidx.credentials", name = "credentials-play-services-auth", version.ref = "credentials" }
-googleid = { group = "com.google.android.libraries.identity.googleid", name = "googleid", version.ref = "googleid" }
 
 wear-compose-material = { group = "androidx.wear.compose", name = "compose-material", version.ref = "wearCompose" }
 wear-compose-foundation = { group = "androidx.wear.compose", name = "compose-foundation", version.ref = "wearCompose" }
@@ -162,6 +130,7 @@ media3-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "medi
 # key, no billed usage, this isn't a feature worth spending Maps Platform
 # money on. See EntryLocationMap.kt.
 osmdroid-android = { group = "org.osmdroid", name = "osmdroid-android", version.ref = "osmdroid" }
+androidx-fragment = { group = "androidx.fragment", name = "fragment-ktx", version.ref = "fragment" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -170,7 +139,4 @@ android-asset-pack = { id = "com.android.asset-pack", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
-google-services = { id = "com.google.gms.google-services", version = "4.4.2" }
-firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "firebaseCrashlyticsPlugin" }
-firebase-perf = { id = "com.google.firebase.firebase-perf", version.ref = "firebasePerfPlugin" }
 play-publisher = { id = "com.github.triplet.play", version = "3.13.0" }

@@ -1,6 +1,6 @@
 package com.hejitech.core.data
 
-import com.google.firebase.Timestamp
+import com.hejitech.core.model.Timestamp
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.temporal.WeekFields

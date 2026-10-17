@@ -5,8 +5,14 @@ import com.hejitech.contempo.data.traced
 import com.hejitech.core.data.EntryRepository
 import com.hejitech.core.model.Entry
 import com.hejitech.core.model.EntryCategory
-import com.google.firebase.functions.FirebaseFunctions
-import com.google.firebase.functions.FirebaseFunctionsException
+import com.hejitech.core.supabase.ContempoBackend
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.intOrNull
 import kotlinx.coroutines.tasks.await
 import kotlinx.serialization.json.Json
 import java.time.Instant
@@ -38,7 +44,6 @@ import java.time.Instant
  */
 class AgentClient(
     private val onDeviceLlm: OnDeviceLlm,
-    private val functions: FirebaseFunctions,
     private val entryRepository: EntryRepository,
     private val inferencePreference: () -> InferencePreference,
 ) {
@@ -384,20 +389,15 @@ class AgentClient(
 
     private suspend fun cloudParseEntry(rawText: String, knownProperties: List<String>): ParseOutcome {
         return try {
-            val payload = hashMapOf(
+            val payload = mapOf(
                 "rawText" to rawText,
                 "knownProperties" to knownProperties,
                 "nowIso" to Instant.now().toString(),
             )
-            val result = functions.getHttpsCallable("parseEntry").call(payload).await()
-            // .getData() explicitly, not the .data property shorthand — Kotlin's
-            // property sugar hits a visibility mismatch against this SDK's
-            // compiled metadata even though the underlying getter is public.
-            val draft = parseCallableResult(result.getData())
+            val result = ContempoBackend.api("parse-entry", toJson(payload) as JsonObject)
+            val draft = parseCallableResult(result)
                 ?: return ParseOutcome.Failure("Cloud parse returned an unexpected shape")
             ParseOutcome.Success(ParseResult(draft, ParseSource.CLOUD))
-        } catch (e: FirebaseFunctionsException) {
-            ParseOutcome.Failure(e.message ?: "Cloud parsing failed")
         } catch (e: Exception) {
             ParseOutcome.Failure(e.message ?: "Cloud parsing failed")
         }
@@ -410,9 +410,9 @@ class AgentClient(
         attachedEntries: List<Entry> = emptyList(),
     ): AskOutcome {
         return try {
-            val payload = hashMapOf(
+            val payload = mapOf(
                 "history" to history.map {
-                    hashMapOf("role" to it.role.name.lowercase(), "text" to it.text)
+                    mapOf("role" to it.role.name.lowercase(), "text" to it.text)
                 },
                 "question" to question,
                 "confirmedHours" to stats.confirmedHours,
@@ -420,31 +420,40 @@ class AgentClient(
                 "testName" to stats.testName,
                 "attachedEntries" to attachedEntries.map { it.toChatContextMap() },
             )
-            val result = functions.getHttpsCallable("askAgent").call(payload).await()
-            @Suppress("UNCHECKED_CAST")
-            val answer = (result.getData() as? Map<String, Any?>)?.get("answer") as? String
+            val result = ContempoBackend.api("ask-agent", toJson(payload) as JsonObject)
+            val answer = (result["answer"] as? JsonPrimitive)?.takeIf { it !is JsonNull }?.content
                 ?: return AskOutcome.Failure("Cloud answer returned an unexpected shape")
             AskOutcome.Success(answer, ParseSource.CLOUD)
-        } catch (e: FirebaseFunctionsException) {
-            AskOutcome.Failure(e.message ?: "Cloud request failed")
         } catch (e: Exception) {
             AskOutcome.Failure(e.message ?: "Cloud request failed")
         }
     }
 
-    @Suppress("UNCHECKED_CAST")
-    private fun parseCallableResult(data: Any?): EntryDraft? {
-        val map = data as? Map<String, Any?> ?: return null
+    /** The Worker's parse-entry response (same shape as the old Genkit flow's EntryDraft). */
+    private fun parseCallableResult(map: JsonObject): EntryDraft? {
+        fun str(k: String) = (map[k] as? JsonPrimitive)?.takeIf { it !is JsonNull }?.content
         return EntryDraft(
-            property = map["property"] as? String,
-            task = map["task"] as? String,
-            durationMinutes = (map["durationMinutes"] as? Number)?.toInt(),
-            category = map["category"] as? String,
-            eventType = map["eventType"] as? String,
-            miles = (map["miles"] as? Number)?.toDouble(),
-            resolvedActivityDateIso = map["resolvedActivityDateIso"] as? String,
+            property = str("property"),
+            task = str("task"),
+            durationMinutes = (map["durationMinutes"] as? JsonPrimitive)?.intOrNull,
+            category = str("category"),
+            eventType = str("eventType"),
+            miles = (map["miles"] as? JsonPrimitive)?.doubleOrNull,
+            resolvedActivityDateIso = str("resolvedActivityDateIso"),
         )
     }
+
+    /** Plain Kotlin maps/lists/primitives → JSON for the Worker API. */
+    private fun toJson(value: Any?): JsonElement = when (value) {
+        null -> JsonNull
+        is JsonElement -> value
+        is Map<*, *> -> JsonObject(value.entries.associate { (k, v) -> k.toString() to toJson(v) })
+        is Iterable<*> -> JsonArray(value.map(::toJson))
+        is Number -> JsonPrimitive(value)
+        is Boolean -> JsonPrimitive(value)
+        else -> JsonPrimitive(value.toString())
+    }
+
 
     private fun buildPhotoEntryPrompt(knownProperties: List<String>): String = buildString {
         appendLine("You extract a short-term-rental work-log entry from a photo a host just took of work they did.")

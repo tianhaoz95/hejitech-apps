@@ -1,11 +1,10 @@
 package com.hejitech.wear.complication
 
+import com.hejitech.core.supabase.ContempoBackend
+import com.hejitech.wear.data.fetchConfirmedHours
 import android.app.PendingIntent
 import android.content.Intent
 import com.hejitech.wear.MainActivity
-import com.google.firebase.Firebase
-import com.google.firebase.auth.auth
-import com.google.firebase.firestore.firestore
 import androidx.wear.watchface.complications.data.ComplicationData
 import androidx.wear.watchface.complications.data.ComplicationType
 import androidx.wear.watchface.complications.data.PlainComplicationText
@@ -33,15 +32,9 @@ class HoursComplicationService : SuspendingComplicationDataSourceService() {
 
     override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData? {
         if (request.complicationType != ComplicationType.SHORT_TEXT) return null
-        val uid = Firebase.auth.currentUser?.uid ?: return shortText("—", "Sign in to see hours logged")
+        if (ContempoBackend.uid == null) return shortText("—", "Sign in to see hours logged")
 
-        val hours = withTimeoutOrNull(QUERY_TIMEOUT_MS) {
-            val snapshot = Firebase.firestore.collection("users").document(uid).collection("entries")
-                .whereEqualTo("status", "confirmed")
-                .get()
-                .await()
-            snapshot.documents.sumOf { it.getLong("durationMinutes") ?: 0L } / 60.0
-        } ?: return null
+        val hours = withTimeoutOrNull(QUERY_TIMEOUT_MS) { runCatching { fetchConfirmedHours() }.getOrNull() } ?: return null
 
         return shortText("${hours.toInt()}h", "${hours.toInt()} hours logged toward material participation")
     }

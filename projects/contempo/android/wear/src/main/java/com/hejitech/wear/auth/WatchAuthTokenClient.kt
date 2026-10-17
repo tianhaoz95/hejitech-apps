@@ -21,7 +21,8 @@ private const val REQUEST_TIMEOUT_MS = 15_000L
 private const val RECONNECT_WAIT_TIMEOUT_MS = 45_000L
 
 sealed class WatchAuthTokenResult {
-    data class CustomToken(val token: String) : WatchAuthTokenResult()
+    /** One-time pairing code from the phone (Contempo Worker /api/watch/pair): exchanged with verifyOtp. */
+    data class PairingCode(val tokenHash: String) : WatchAuthTokenResult()
     data object IsEmulator : WatchAuthTokenResult()
     data class PhoneError(val message: String) : WatchAuthTokenResult()
 }
@@ -124,7 +125,7 @@ class WatchAuthTokenClient(private val context: Context) {
         val json = runCatching { JSONObject(String(payload, Charsets.UTF_8)) }.getOrNull() ?: return null
         return when {
             json.optBoolean("isEmulator", false) -> WatchAuthTokenResult.IsEmulator
-            json.has("customToken") -> WatchAuthTokenResult.CustomToken(json.getString("customToken"))
+            json.has("tokenHash") -> WatchAuthTokenResult.PairingCode(json.getString("tokenHash"))
             json.has("error") -> WatchAuthTokenResult.PhoneError(friendlyErrorMessage(json.getString("error")))
             else -> null
         }

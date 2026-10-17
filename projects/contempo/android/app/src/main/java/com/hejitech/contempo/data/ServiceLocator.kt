@@ -13,16 +13,11 @@ import com.hejitech.contempo.capture.PendingCaptureStore
 import com.hejitech.contempo.capture.QuickCaptureStatsStore
 import com.hejitech.core.data.AudioCaptureQueue
 import com.hejitech.core.data.EntryRepository
-import com.hejitech.core.data.FirestoreEntryRepository
+import com.hejitech.core.data.SupabaseEntryRepository
 import com.hejitech.core.data.MileageTripCoordinator
 import com.hejitech.core.data.SubscriptionRepository
 import com.hejitech.core.data.TextCaptureQueue
 import com.hejitech.core.data.TimerEntryCoordinator
-import com.google.firebase.Firebase
-import com.google.firebase.auth.auth
-import com.google.firebase.firestore.firestore
-import com.google.firebase.functions.functions
-import com.google.firebase.storage.storage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -104,12 +99,11 @@ object ServiceLocator {
 
     fun initialize(context: Context) {
         appContext = context.applicationContext
-        val auth = Firebase.auth
-        entryRepository = FirestoreEntryRepository(Firebase.firestore, auth, Firebase.storage)
+        entryRepository = SupabaseEntryRepository(context.applicationContext)
         timerEntryCoordinator = TimerEntryCoordinator(entryRepository)
         mileageTripCoordinator = MileageTripCoordinator(entryRepository)
-        audioCaptureQueue = AudioCaptureQueue(Firebase.firestore, auth)
-        textCaptureQueue = TextCaptureQueue(Firebase.firestore, auth)
+        audioCaptureQueue = AudioCaptureQueue()
+        textCaptureQueue = TextCaptureQueue()
         quickCaptureSettingsStore = QuickCaptureSettingsStore(context)
         shakeToReportSettingsStore = ShakeToReportSettingsStore(context)
         onboardingStore = OnboardingStore(context)
@@ -119,7 +113,7 @@ object ServiceLocator {
         captureModeStore = CaptureModeStore(context)
         aiSettingsStore = AiSettingsStore(context)
         remoteConfigStore = RemoteConfigStore()
-        subscriptionRepository = SubscriptionRepository(Firebase.firestore, auth)
+        subscriptionRepository = SubscriptionRepository()
         appScope.launch {
             subscriptionRepository.observeHasProEntitlement().collect { _hasProEntitlement.value = it }
         }
@@ -130,7 +124,6 @@ object ServiceLocator {
         onDeviceLlm = LiteRtLlm(context, aiSettingsStore, appScope)
         agentClient = AgentClient(
             onDeviceLlm = onDeviceLlm,
-            functions = Firebase.functions,
             entryRepository = entryRepository,
             // Remotely disabling cloud AI (RemoteConfigStore's kill switch), or
             // not currently holding a Pro entitlement (reports/pricing-proposal-v0.html

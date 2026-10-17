@@ -6,9 +6,6 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.google.services)
-    alias(libs.plugins.firebase.crashlytics)
-    alias(libs.plugins.firebase.perf)
     alias(libs.plugins.play.publisher)
 }
 
@@ -22,7 +19,11 @@ val localProperties = Properties().apply {
     val file = rootProject.file("local.properties")
     if (file.exists()) file.inputStream().use { load(it) }
 }
-val googleWebClientId: String = localProperties.getProperty("GOOGLE_WEB_CLIENT_ID", "")
+// Backend: the shared HEJI Supabase project (projects/contempo/backend.env). Every build uses the
+// hosted project unless local.properties points somewhere else (e.g. the local stack via adb
+// reverse: SUPABASE_URL=http://127.0.0.1:55421 plus its anon key).
+val supabaseUrl: String = localProperties.getProperty("SUPABASE_URL", "https://jitdzllkxfhlrxxvljhp.supabase.co")
+val supabaseKey: String = localProperties.getProperty("SUPABASE_PUBLISHABLE_KEY", "sb_publishable_lZSe_L4Wd0Sw01h25eixzQ_vLU7FPP8")
 
 // Play Store upload-signing key. Checked into the repo (android/upload-keystore.jks
 // + android/keystore.properties) at the user's explicit direction — Play App
@@ -59,7 +60,8 @@ android {
         targetSdk = 36
         versionCode = 71
         versionName = "0.1.0-mvp"
-        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
+        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
+        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"$supabaseKey\"")
         // Default for every build type except debug (which overrides to
         // true below) — without a default here, release has no value for
         // this field at all and fails to compile (ContempoApp.kt/
@@ -109,7 +111,7 @@ android {
         debug {
             // Lets the app use Firebase's debug App Check provider against the
             // emulator without needing real attestation — see backend/README.md.
-            buildConfigField("boolean", "USE_FIREBASE_EMULATOR", "true")
+            buildConfigField("boolean", "USE_FIREBASE_EMULATOR", "false")
         }
     }
     lint {
@@ -161,33 +163,6 @@ dependencies {
     implementation(libs.compose.material.icons.extended)
     implementation(libs.navigation.compose)
 
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.auth)
-    implementation(libs.firebase.firestore)
-    implementation(libs.firebase.storage)
-    implementation(libs.firebase.functions)
-    implementation(libs.firebase.appcheck)
-    implementation(libs.firebase.appcheck.playintegrity)
-    // Plain implementation, not debugImplementation: ContempoApp.kt
-    // references DebugAppCheckProviderFactory unconditionally (it's only
-    // *installed* when BuildConfig.USE_FIREBASE_EMULATOR is true, but the
-    // class still has to be on the compile classpath for every build type,
-    // including release/prod).
-    implementation(libs.firebase.appcheck.debug)
-    // Crash + non-fatal reporting — see ContempoApp.kt/AuthAwareFlow.kt.
-    implementation(libs.firebase.crashlytics)
-    // Custom performance traces — see ContempoApp.kt/PerformanceTrace.kt.
-    implementation(libs.firebase.performance)
-    // Remote kill switch for cloud AI usage — see RemoteConfigStore.kt.
-    implementation(libs.firebase.remoteconfig)
-
-    // Firebase AI Logic hybrid inference — kept for GeminiNanoLlm (see
-    // agent/OnDeviceLlm.kt), an alternate OnDeviceLlm implementation that's
-    // no longer the active one (AICore's device coverage is too narrow) but
-    // is left in place in case it's worth revisiting. Not yet in the
-    // Firebase BoM as of this writing, pinned directly.
-    implementation(libs.firebase.ai)
-    implementation(libs.firebase.ai.ondevice)
 
     // LiteRT-LM — the active on-device LLM runtime (Gemma 4 E2B). See
     // agent/OnDeviceLlm.kt / agent/LiteRtLlm.kt.
@@ -196,14 +171,13 @@ dependencies {
     implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.kotlinx.serialization.json)
 
-    // Google Sign-In (real, non-emulator path) — see auth/AuthManager.kt.
-    implementation(libs.credentials)
-    implementation(libs.credentials.play.services.auth)
-    implementation(libs.googleid)
 
     // Wear Data Layer API (MessageClient) — relays a Firebase custom token
     // to the paired Wear OS watch for first-time sign-in there — see
     // wear/auth/WatchAuthTokenClient.kt and auth/WatchAuthTokenRelay.kt.
+    // registerForActivityResult needs Fragment 1.3+ (lint InvalidFragmentVersionForActivityResult);
+    // it used to arrive transitively with Credential Manager.
+    implementation(libs.androidx.fragment)
     implementation(libs.play.services.wearable)
 
     // FusedLocationProviderClient for GPS mileage-trip tracking — see

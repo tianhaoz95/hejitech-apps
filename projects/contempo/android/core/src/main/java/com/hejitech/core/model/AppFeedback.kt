@@ -1,6 +1,5 @@
 package com.hejitech.core.model
 
-import com.google.firebase.Timestamp
 
 /**
  * The single box the user drew on the screenshot to point at the area of
