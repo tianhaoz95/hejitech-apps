@@ -6,7 +6,7 @@ description: Move an existing app repository into this HEJI monorepo (projects/<
 # Migrating a project into the monorepo
 
 Distilled from moving Wee Hours (tianhaoz95/wee-hours) in on 2026-10-15/16, then FeedbackKit,
-Voxbrief and Meowtrix (sections at the end). Read the root
+Voxbrief, Meowtrix and Contempo (sections at the end). Read the root
 `CLAUDE.md`, `README.md` ("Adding a project"), `supabase/README.md` and `supabase/GRADUATION.md`
 first: they are the rules; this is the order of work and the traps.
 
@@ -237,6 +237,28 @@ are ancestors of HEAD). Then restructure in follow-up commits with `git mv`.
   inside the app itself, clear its env (`MEOWTRIX_*`, daemon ports) or you query the installed copy.
 - **Open issues:** `gh issue transfer <n> <owner>/hejitech-apps` plus a `<name>` label before the
   owner archives the old repo.
+
+## Private repos and projects moving off another backend (from Contempo, 2026-10-16)
+
+- **Private → public:** before importing, scan *all history* for secrets (`git log --all
+  --name-only` for keystores/.p8/.p12/.env/service accounts; `git log --all -p` for key
+  patterns and for the literal password values). Save what's needed to `~/Credentials/<name>/`,
+  then import from a `git filter-repo --invert-paths --path …` copy, never the original.
+  Gitignore the files and copy them back locally for release builds.
+- **Off Firebase:** map collections to tables with `user_id` + RLS and turn the security rules'
+  field checks into check constraints and triggers (append-only, update-only-these-columns).
+  Use text ids so clients keep minting ids. Callable functions become Worker routes. The
+  Firebase Auth custom token becomes a magic-link `hashed_token` from `auth.admin.generateLink`,
+  verified with `verifyOtp`; it works even with email sign-in off. Remote Config becomes a
+  static JSON on the Worker, and Crashlytics/Performance are dropped. Keep the clients' model
+  types: a `Timestamp` drop-in with Firebase's API kept every screen unchanged.
+- **Cloud AI without keys:** Workers AI (`ai` binding) runs the LLM routes when no provider key
+  is set; it costs nothing to configure.
+- **Toolchains:** match client SDK versions to the app's compiler (supabase-kt 3.7 needs
+  Kotlin 2.4) and AGP (`androidx.browser` 1.10 needs AGP 8.9.1; force 1.8.0). Removing a
+  dependency can drop a transitive one that lint relied on (Fragment ≥1.3 for activity results).
+- **User-facing text** (privacy policies in every client) usually names the old backend:
+  update it in the same change.
 
 ## Moving an already-live project's tables out of `public`
 
