@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.26.5"
+    public static let currentVersion = "1.26.6"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,33 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.26.6",
+            date: "October 2026",
+            tagline: "Pick Your Template",
+            features: [
+                WhatsNewItem(
+                    icon: "rectangle.3.group",
+                    tint: .purple,
+                    title: "Change a Note's Template",
+                    description: "Tap the template under a note's title to rewrite it as another template, or let Voxbrief detect one again. Your recording isn't transcribed again.",
+                    highlights: [
+                        "New notes still pick a template automatically",
+                        "Regenerates from the transcript you already have",
+                        "Choose Auto-detect to go back to the automatic pick"
+                    ]
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "text.alignleft",
+                    tint: .gray,
+                    title: "Transcript Kept When AI Is Unavailable",
+                    description: "If no AI engine can run, the note now keeps your transcript and says so, instead of a basic rule-based rewrite. Retry runs only the AI step.",
+                    kind: .improvement
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.26.5",
             date: "October 2026",

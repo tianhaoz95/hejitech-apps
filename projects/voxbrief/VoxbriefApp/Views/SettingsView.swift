@@ -237,7 +237,7 @@ public struct SettingsView: View {
                     header: Text("On-Device Models"),
                     footer: Text(AppleFoundationModelService.isSupportedOnThisDevice
                         ? "Apple Intelligence is used by default with zero extra download. Lite and Flash are only used when you choose them."
-                        : "On devices with Apple Intelligence, it's used by default. On other devices, use Lite, download Flash for better results, or use the rule-based fallback.")
+                        : "On devices with Apple Intelligence, it's used by default. On other devices Lite is used, or download Flash for better results.")
                 ) {
                     Picker("Model Preference", selection: $llmService.modelPreference) {
                         ForEach(OnDeviceModelSelection.allCases) { selection in
@@ -548,7 +548,7 @@ public struct SettingsView: View {
         } else if AppleFoundationModelService.isSupportedOnThisDevice {
             return "\(AppleFoundationModelService.modelDisplayName) (System)"
         } else {
-            return "Rule-Based Fallback"
+            return llmService.activeModelDisplayName
         }
     }
 

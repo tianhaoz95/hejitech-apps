@@ -305,9 +305,18 @@ public final class OnDeviceLLMService: ObservableObject {
             return Self.smallModelDisplayName
         } else if AppleFoundationModelService.isSupportedOnThisDevice {
             return AppleFoundationModelService.modelDisplayName
+        } else if Self.isSupportedOnThisDevice {
+            // No Apple Intelligence and nothing picked: the bundled model serves.
+            return Self.smallModelDisplayName
         } else {
-            return "Rule-Based Fallback"
+            return "Not Available"
         }
+    }
+
+    /// Which MLX model `generate` runs (Flash when it's in use, otherwise Lite) -- labels notes
+    /// it cleaned up, including when it stood in for Apple Intelligence.
+    public var mlxModelDisplayName: String {
+        isUsingLargeModel ? Self.largeModelDisplayName : Self.smallModelDisplayName
     }
 
     #if DEBUG

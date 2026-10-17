@@ -148,7 +148,7 @@ struct PreferencesView: View {
             } footer: {
                 Text(AppleFoundationModelService.isSupportedOnThisDevice
                     ? "Apple Intelligence is used by default with zero extra download. Lite and Flash are only used when you choose them."
-                    : "On Macs with Apple Intelligence, it's used by default. On other Macs, use Lite or download Flash for better results.")
+                    : "On Macs with Apple Intelligence, it's used by default. On other Macs Lite is used, or download Flash for better results.")
             }
 
             Section(

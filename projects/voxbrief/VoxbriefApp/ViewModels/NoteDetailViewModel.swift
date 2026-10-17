@@ -10,6 +10,8 @@ public final class NoteDetailViewModel: ObservableObject {
     @Published public var editedTitle: String = ""
     @Published public var editedCleanedNote: String = ""
     @Published public private(set) var isGeneratingLightCleanup: Bool = false
+    /// Set when a template change couldn't run (e.g. no AI engine); shown as an alert.
+    @Published public var templateChangeError: String?
     
     public enum DetailTab: String, CaseIterable, Identifiable {
         case cleanedNote = "Full Rewrite"
@@ -39,6 +41,7 @@ public final class NoteDetailViewModel: ObservableObject {
     
     private let repository: NoteRepository
     private let pipeline: NoteProcessingPipeline
+    private let templateStore: TemplateStore
     public let playbackService: AudioPlaybackService
     
     private var cancellables = Set<AnyCancellable>()
@@ -48,12 +51,19 @@ public final class NoteDetailViewModel: ObservableObject {
         initialTab: DetailTab = .cleanedNote,
         repository: NoteRepository = .shared,
         pipeline: NoteProcessingPipeline = .shared,
+        templateStore: TemplateStore = .shared,
         playbackService: AudioPlaybackService = .shared
     ) {
         self.note = note
-        self.selectedTab = initialTab
+        // A note whose AI step failed has no formatted note to show, only its transcript.
+        if initialTab == .cleanedNote, note.status == .failed, !note.rawTranscript.isEmpty {
+            self.selectedTab = .rawTranscript
+        } else {
+            self.selectedTab = initialTab
+        }
         self.repository = repository
         self.pipeline = pipeline
+        self.templateStore = templateStore
         self.playbackService = playbackService
         
         repository.$notes
@@ -72,8 +82,8 @@ public final class NoteDetailViewModel: ObservableObject {
     }
 
     /// True when this note's Stage 2 cleanup ran on the deterministic rule-based transformer
-    /// because neither Ollama nor the on-device LLM was available -- surfaced in the UI so a
-    /// degraded result is visible rather than looking identical to a full LLM cleanup.
+    /// because no AI engine was available -- only notes made by builds before 1.26.6, which had
+    /// that fallback. Surfaced so a degraded result doesn't look like a full AI cleanup.
     public var usedFallbackCleanup: Bool {
         note.cleanupEngine == CleanupEngineLabel.ruleBased
     }
@@ -212,6 +222,53 @@ public final class NoteDetailViewModel: ObservableObject {
         isReprocessing = true
         Task {
             await pipeline.reprocessWithLLM(noteId: note.id)
+            isReprocessing = false
+        }
+    }
+
+    /// Retries a failed note: only Stage 2 when it already has a transcript, otherwise the whole
+    /// pipeline from the audio.
+    public func retry() {
+        if note.rawTranscript.isEmpty {
+            retryFullProcessing()
+        } else {
+            reprocessNote()
+        }
+    }
+
+    // MARK: - Template
+
+    /// Templates the note's template picker offers: the enabled ones, plus the note's current
+    /// template if it has since been disabled. A deleted one only shows as the current label.
+    public var templateChoices: [NoteTemplate] {
+        var choices = templateStore.enabledTemplates
+        if let id = note.templateId,
+           !choices.contains(where: { $0.id == id }),
+           let current = templateStore.allTemplates.first(where: { $0.id == id }) {
+            choices.append(current)
+        }
+        return choices
+    }
+
+    public var templateLabel: String {
+        note.templateName ?? "Choose Template"
+    }
+
+    public var canChangeTemplate: Bool {
+        !note.rawTranscript.isEmpty && !note.status.isProcessing && !isReprocessing
+    }
+
+    /// Regenerates the note with `template`, or auto-detects one when `nil`, from its existing
+    /// transcript (see `NoteProcessingPipeline.changeTemplate`).
+    public func changeTemplate(to template: NoteTemplate?) {
+        guard canChangeTemplate else { return }
+        isReprocessing = true
+        Task {
+            do {
+                try await pipeline.changeTemplate(noteId: note.id, to: template)
+            } catch {
+                templateChangeError = error.localizedDescription
+            }
             isReprocessing = false
         }
     }

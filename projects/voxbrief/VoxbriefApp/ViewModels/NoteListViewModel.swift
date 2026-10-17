@@ -205,9 +205,15 @@ public final class NoteListViewModel: ObservableObject {
         repository.duplicate(id: note.id)
     }
     
+    /// Re-runs only Stage 2 when the note already has a transcript (its AI step failed),
+    /// otherwise the whole pipeline from the audio.
     public func retryProcessing(note: VoiceNote) {
         Task {
-            await pipeline.process(note: note)
+            if note.rawTranscript.isEmpty {
+                await pipeline.process(note: note)
+            } else {
+                await pipeline.reprocessWithLLM(noteId: note.id)
+            }
         }
     }
 

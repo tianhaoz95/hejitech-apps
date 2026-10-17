@@ -298,6 +298,14 @@ public struct NoteDetailView: View {
                 }
             }
         }
+        .alert("Couldn't Change Template", isPresented: Binding(
+            get: { viewModel.templateChangeError != nil },
+            set: { if !$0 { viewModel.templateChangeError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(viewModel.templateChangeError ?? "")
+        }
         .alert("Apple Reminders", isPresented: $showingRemindersAlert) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -426,6 +434,8 @@ public struct NoteDetailView: View {
                 .font(.title2.bold())
                 .foregroundStyle(.primary)
 
+            templateMenu
+
             // Reading stats & action items progress pill row
             HStack(spacing: 10) {
                 Label("\(viewModel.note.wordCount) words", systemImage: "doc.text")
@@ -495,6 +505,55 @@ public struct NoteDetailView: View {
         }
     }
 
+    /// The note's template, as a chip: picking another (or Auto-detect) regenerates the note
+    /// from its transcript.
+    private var templateMenu: some View {
+        Menu {
+            Section("Regenerate As") {
+                Button {
+                    viewModel.changeTemplate(to: nil)
+                } label: {
+                    Label("Auto-detect", systemImage: "sparkles")
+                }
+
+                ForEach(viewModel.templateChoices) { template in
+                    Button {
+                        viewModel.changeTemplate(to: template)
+                    } label: {
+                        if template.id == viewModel.note.templateId {
+                            Label(template.name, systemImage: "checkmark")
+                        } else {
+                            Text(template.name)
+                        }
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 5) {
+                if viewModel.isReprocessing {
+                    ProgressView()
+                        .controlSize(.mini)
+                } else {
+                    Image(systemName: "rectangle.3.group")
+                }
+                Text(viewModel.isReprocessing ? "Regenerating…" : viewModel.templateLabel)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8, weight: .bold))
+            }
+            .font(.caption.weight(.medium))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Color.accentColor.opacity(0.12), in: Capsule())
+            .foregroundStyle(Color.accentColor)
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .disabled(!viewModel.canChangeTemplate)
+        .accessibilityLabel("Template: \(viewModel.templateLabel)")
+    }
+
     private func colorForName(_ name: String) -> Color? {
         switch name.lowercased() {
         case "blue": return .blue
@@ -530,7 +589,7 @@ public struct NoteDetailView: View {
                     }
                 } else {
                     Button("Retry") {
-                        viewModel.retryFullProcessing()
+                        viewModel.retry()
                     }
                     .font(.caption.weight(.semibold))
                 }
@@ -550,7 +609,7 @@ public struct NoteDetailView: View {
                 .foregroundStyle(.orange)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("Basic cleanup only — the on-device LLM wasn't available for this note, so a simpler rule-based pass formatted it instead.")
+                Text("Basic cleanup only — the AI engine wasn't available when this note was made, so a simpler rule-based pass formatted it instead.")
                     .font(.subheadline)
                     .foregroundStyle(.primary)
 
@@ -563,7 +622,7 @@ public struct NoteDetailView: View {
                             .foregroundStyle(.secondary)
                     }
                 } else {
-                    Button("Try the On-Device LLM Again") {
+                    Button("Try the AI Engine Again") {
                         viewModel.reprocessNote()
                     }
                     .font(.caption.weight(.semibold))

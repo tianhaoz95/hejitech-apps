@@ -6,6 +6,7 @@ import Foundation
 public enum CleanupEngineLabel {
     public static let notApplicable = "N/A"
     public static let ollama = "Ollama"
+    /// Only on notes from builds before 1.26.6, which fell back to rule-based output.
     public static let ruleBased = "Rule-Based (LLM Unavailable)"
     public static let appleFoundationModel = "Apple Intelligence"
 
@@ -47,9 +48,8 @@ public struct LLMProcessingResult: Sendable, Codable {
     /// Legacy fields kept for backward compatibility (search, `NoteDetailView`'s pre-multi-
     /// template rendering path) -- for the `.full` mode's on-device/Ollama paths these are now
     /// derived from `sections` by matching the Design Doc template's fixed section titles, so
-    /// they're only ever non-empty when that specific template was chosen. Rule-based `.full`
-    /// output (`transformLocally`) always uses Design Doc, so these stay populated exactly as
-    /// before for that path.
+    /// they're only ever non-empty when that specific template was chosen. The legacy Ollama
+    /// rewrite (`transformLocally`) always uses Design Doc, so these stay populated for it.
     public let requirements: [String]
     public let conditions: [String]
     public let actionItems: [String]
@@ -94,7 +94,10 @@ public protocol LLMCopywriterServiceProtocol: Sendable {
     /// injected into the LLM prompt as terms to preserve verbatim. Pass `[]` for none.
     /// `templates` is the available set of output templates (built-in + user-defined, see
     /// `NoteTemplate`/`TemplateStore`) the LLM picks from for `.full` mode -- ignored by `.light`
-    /// mode, and treated as `NoteTemplate.builtIns` if passed empty.
+    /// mode, and treated as `NoteTemplate.builtIns` if passed empty. A single template skips
+    /// classification and is used as-is (how a user's template change is applied).
+    /// Throws `LLMCopywriterError.aiEngineUnavailable` when no AI engine can run: there is no
+    /// rule-based fallback, the caller keeps the raw transcript instead.
     func processTranscript(_ rawTranscript: String, mode: RewriteMode, dictionary: [DictionaryEntry], templates: [NoteTemplate]) async throws -> LLMProcessingResult
 
     /// Best-effort: starts loading whichever engine would actually serve the next call now,
@@ -106,11 +109,14 @@ public protocol LLMCopywriterServiceProtocol: Sendable {
 
 public enum LLMCopywriterError: LocalizedError {
     case unparsableResponse
+    case aiEngineUnavailable
 
     public var errorDescription: String? {
         switch self {
         case .unparsableResponse:
             return "On-device model response could not be parsed as JSON."
+        case .aiEngineUnavailable:
+            return "AI engine not available. Your transcript is saved in the Transcript tab."
         }
     }
 }
@@ -177,41 +183,26 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
                 }
             }
 
-            // 2. On-device LLM:
-            //    On available devices/platforms, Apple Foundation Model is used by default.
-            //    Qwen is only used when the user chooses to download and use it.
-            let onDevice = OnDeviceLLMService.shared
-            let useAppleFM = await onDevice.isUsingAppleFoundationModel
-            let useQwen = await onDevice.isUsingQwenModel
-
-            if useAppleFM {
+            // 2. Apple Intelligence, the default where the device supports it.
+            if await OnDeviceLLMService.shared.isUsingAppleFoundationModel {
                 do {
                     return try await processWithAppleFoundationModel(transcript: trimmed, mode: mode, dictionary: dictionary, templates: templates)
                 } catch {
                     print("[LLMCopywriterService] Apple Foundation Model failed, falling back: \(error)")
-                    if await onDevice.largeModelState == .ready {
-                        do {
-                            return try await processWithOnDeviceLLM(transcript: trimmed, mode: mode, dictionary: dictionary, templates: templates)
-                        } catch {
-                            print("[LLMCopywriterService] Fallback Qwen LLM also failed: \(error)")
-                        }
-                    }
-                }
-            } else if useQwen {
-                do {
-                    return try await processWithOnDeviceLLM(transcript: trimmed, mode: mode, dictionary: dictionary, templates: templates)
-                } catch {
-                    print("[LLMCopywriterService] On-device Qwen LLM failed, falling back to rule-based transformer: \(error)")
                 }
             }
 
-            // 3. Deterministic rule-based transformer -- the zero-dependency fallback that always works.
-            switch mode {
-            case .full:
-                return transformLocally(rawTranscript: trimmed)
-            case .light:
-                return transformLocallyLight(rawTranscript: trimmed)
+            // 3. MLX: Flash when it's the one in use, otherwise the bundled Lite -- the user's pick,
+            //    and the fallback wherever Apple Intelligence isn't available or failed.
+            do {
+                return try await processWithOnDeviceLLM(transcript: trimmed, mode: mode, dictionary: dictionary, templates: templates)
+            } catch {
+                print("[LLMCopywriterService] On-device MLX model failed: \(error)")
             }
+
+            // 4. No rule-based fallback: its output was rarely worth reading over the raw
+            //    transcript, which the caller keeps.
+            throw LLMCopywriterError.aiEngineUnavailable
         }()
 
         return applyVoiceCommands(to: baseResult, commands: commands)
@@ -272,12 +263,17 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
         let availableTemplates = templates.isEmpty ? NoteTemplate.builtIns : templates
         let fallback = effectiveFallbackTemplate(in: availableTemplates)
 
-        let classificationRaw = try await OnDeviceLLMService.shared.generate(
-            systemPrompt: buildClassificationSystemPrompt(templates: availableTemplates),
-            userPrompt: transcript,
-            maxTokens: 24
-        )
-        let chosenTemplate = resolveTemplate(fromClassificationRaw: classificationRaw, candidates: availableTemplates, fallback: fallback)
+        let chosenTemplate: NoteTemplate
+        if let only = Self.singleTemplate(in: availableTemplates) {
+            chosenTemplate = only
+        } else {
+            let classificationRaw = try await OnDeviceLLMService.shared.generate(
+                systemPrompt: buildClassificationSystemPrompt(templates: availableTemplates),
+                userPrompt: transcript,
+                maxTokens: 24
+            )
+            chosenTemplate = resolveTemplate(fromClassificationRaw: classificationRaw, candidates: availableTemplates, fallback: fallback)
+        }
 
         let generationRaw = try await OnDeviceLLMService.shared.generate(
             systemPrompt: buildGenerationSystemPrompt(template: chosenTemplate, dictionary: dictionary),
@@ -311,7 +307,7 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
             actionItems: actionItems,
             cleanedMarkdown: markdown,
             tags: tags,
-            engine: CleanupEngineLabel.onDeviceLLM(model: await OnDeviceLLMService.shared.activeModelDisplayName),
+            engine: CleanupEngineLabel.onDeviceLLM(model: await OnDeviceLLMService.shared.mlxModelDisplayName),
             sections: parsed.sections,
             templateId: chosenTemplate.id,
             templateName: chosenTemplate.name
@@ -353,6 +349,12 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
     /// `TemplateStore.setEnabled` -- if General Notes itself was disabled, falling back to it
     /// anyway would silently resurrect a template the user turned off. `internal` for direct
     /// unit testing.
+    /// The template to use without classifying, when there is only one to choose from (a
+    /// template the user picked for a note, or a single enabled template).
+    static func singleTemplate(in templates: [NoteTemplate]) -> NoteTemplate? {
+        templates.count == 1 ? templates[0] : nil
+    }
+
     func effectiveFallbackTemplate(in templates: [NoteTemplate]) -> NoteTemplate {
         templates.first(where: { $0.id == NoteTemplate.fallbackDefault.id })
             ?? templates.first
@@ -536,7 +538,7 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
             actionItems: [],
             cleanedMarkdown: cleanedText,
             tags: tags,
-            engine: CleanupEngineLabel.onDeviceLLM(model: await OnDeviceLLMService.shared.activeModelDisplayName)
+            engine: CleanupEngineLabel.onDeviceLLM(model: await OnDeviceLLMService.shared.mlxModelDisplayName)
         )
     }
 
@@ -555,11 +557,16 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
         let availableTemplates = templates.isEmpty ? NoteTemplate.builtIns : templates
         let fallback = effectiveFallbackTemplate(in: availableTemplates)
 
-        let classificationRaw = try await AppleFoundationModelService.shared.generate(
-            systemPrompt: buildClassificationSystemPrompt(templates: availableTemplates),
-            userPrompt: transcript
-        )
-        let chosenTemplate = resolveTemplate(fromClassificationRaw: classificationRaw, candidates: availableTemplates, fallback: fallback)
+        let chosenTemplate: NoteTemplate
+        if let only = Self.singleTemplate(in: availableTemplates) {
+            chosenTemplate = only
+        } else {
+            let classificationRaw = try await AppleFoundationModelService.shared.generate(
+                systemPrompt: buildClassificationSystemPrompt(templates: availableTemplates),
+                userPrompt: transcript
+            )
+            chosenTemplate = resolveTemplate(fromClassificationRaw: classificationRaw, candidates: availableTemplates, fallback: fallback)
+        }
 
         let generationRaw = try await AppleFoundationModelService.shared.generate(
             systemPrompt: buildGenerationSystemPrompt(template: chosenTemplate, dictionary: dictionary),
@@ -701,8 +708,10 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
     }
 
     // MARK: - On-Device NLP & Semantic Transformation Engine
-    
-    private func transformLocally(rawTranscript: String) -> LLMProcessingResult {
+
+    /// Rule-based structuring of text an LLM already wrote (the legacy Ollama rewrite's prose).
+    /// No longer a fallback for when no AI engine runs. `internal` so it's unit-testable.
+    func transformLocally(rawTranscript: String) -> LLMProcessingResult {
         // 1. Clean speech artifacts, filler words, and fix common tech typos
         let sanitized = sanitizeSpeechTranscript(rawTranscript)
         
@@ -802,7 +811,7 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
     /// "[ Inaudible Remark ]", "[Music]", "[BLANK_AUDIO]") -- these are audio-event tags the ASR
     /// model emits, not spoken words. Light Cleanup otherwise preserves the transcript verbatim,
     /// so these need removing explicitly rather than being kept as if they were content.
-    private func stripASRSpecialTokens(_ text: String) -> String {
+    func stripASRSpecialTokens(_ text: String) -> String {
         guard let regex = try? NSRegularExpression(pattern: "\\[[^\\[\\]]*\\]") else { return text }
         var result = regex.stringByReplacingMatches(
             in: text,
@@ -819,7 +828,7 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
     /// Light-mode counterpart to `transformLocally`: fixes typos, filler words, and tech-term
     /// capitalization but never buckets sentences into requirements/conditions/action items --
     /// the output stays in the transcript's original order as plain prose.
-    private func transformLocallyLight(rawTranscript: String) -> LLMProcessingResult {
+    func transformLocallyLight(rawTranscript: String) -> LLMProcessingResult {
         let sanitized = stripASRSpecialTokens(sanitizeSpeechTranscript(rawTranscript))
         let cleanedSentences = splitIntoSentences(sanitized).map { cleanAndFormatSentence($0) }.filter { !$0.isEmpty }
 
@@ -1128,9 +1137,14 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
     private func callLocalLLMEndpointFull(url: URL, model: String, transcript: String, dictionary: [DictionaryEntry], templates: [NoteTemplate]) async throws -> LLMProcessingResult {
         let availableTemplates = templates.isEmpty ? NoteTemplate.builtIns : templates
         do {
-            let classificationPrompt = buildClassificationSystemPrompt(templates: availableTemplates) + "\n\nTranscript:\n\(transcript)"
-            let classificationRaw = try await postToOllama(prompt: classificationPrompt, url: url, model: model)
-            let chosenTemplate = resolveTemplate(fromClassificationRaw: classificationRaw, candidates: availableTemplates, fallback: effectiveFallbackTemplate(in: availableTemplates))
+            let chosenTemplate: NoteTemplate
+            if let only = Self.singleTemplate(in: availableTemplates) {
+                chosenTemplate = only
+            } else {
+                let classificationPrompt = buildClassificationSystemPrompt(templates: availableTemplates) + "\n\nTranscript:\n\(transcript)"
+                let classificationRaw = try await postToOllama(prompt: classificationPrompt, url: url, model: model)
+                chosenTemplate = resolveTemplate(fromClassificationRaw: classificationRaw, candidates: availableTemplates, fallback: effectiveFallbackTemplate(in: availableTemplates))
+            }
 
             let generationPrompt = buildGenerationSystemPrompt(template: chosenTemplate, dictionary: dictionary) + "\n\nTranscript:\n\(transcript)"
             let generationRaw = try await postToOllama(prompt: generationPrompt, url: url, model: model)
@@ -1168,6 +1182,11 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
                 templateName: chosenTemplate.name
             )
         } catch {
+            // The legacy rewrite is always Design-Doc-shaped, so it can't stand in for a
+            // template the user picked explicitly.
+            if let only = Self.singleTemplate(in: availableTemplates), only.id != NoteTemplate.designDoc.id {
+                throw error
+            }
             print("[LLMCopywriterService] Ollama JSON template flow failed, falling back to legacy prose rewrite: \(error)")
             return try await legacyOllamaFullRewrite(url: url, model: model, transcript: transcript, dictionary: dictionary)
         }

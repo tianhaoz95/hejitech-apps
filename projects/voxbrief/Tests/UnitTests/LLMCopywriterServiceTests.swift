@@ -9,31 +9,41 @@ final class LLMCopywriterServiceTests: XCTestCase {
         super.setUp()
         service = LLMCopywriterService()
     }
+
+    /// The rule-based structuring `processTranscript` no longer falls back to (it still formats
+    /// the legacy Ollama rewrite), with the same token stripping applied first.
+    private func ruleBased(_ transcript: String, mode: RewriteMode = .full) -> LLMProcessingResult {
+        let stripped = service.stripASRSpecialTokens(transcript)
+        switch mode {
+        case .full: return service.transformLocally(rawTranscript: stripped)
+        case .light: return service.transformLocallyLight(rawTranscript: stripped)
+        }
+    }
     
-    func testRequirementsConvertedToBulletPoints() async throws {
+    func testRequirementsConvertedToBulletPoints() {
         let transcript = "So um we need to build an apple watch complication. Requirement is to support on-device speech recognition. Make sure to format requirements as bullets."
         
-        let result = try await service.processTranscript(transcript)
+        let result = ruleBased(transcript)
         
         XCTAssertFalse(result.requirements.isEmpty, "Requirements should be extracted")
         XCTAssertTrue(result.cleanedMarkdown.contains("### 🎯 Requirements"), "Markdown should contain Requirements header")
         XCTAssertTrue(result.cleanedMarkdown.contains("- Build an Apple Watch complication") || result.cleanedMarkdown.contains("- Support on-device speech recognition"), "Requirements should be formatted with bullet points")
     }
     
-    func testEnumeratedConditionsUseNumberedFormatting() async throws {
+    func testEnumeratedConditionsUseNumberedFormatting() {
         let transcript = "First condition is if wifi is connected sync immediately. Second condition is if battery is low pause heavy background tasks. Finally notify user when complete."
         
-        let result = try await service.processTranscript(transcript)
+        let result = ruleBased(transcript)
         
         XCTAssertFalse(result.conditions.isEmpty, "Conditions should be extracted")
         XCTAssertTrue(result.cleanedMarkdown.contains("### 🔢 Enumerated Conditions & Workflow"), "Markdown should contain Conditions header")
         XCTAssertTrue(result.cleanedMarkdown.contains("1. ") && result.cleanedMarkdown.contains("2. "), "Conditions should be numbered sequentially")
     }
     
-    func testFillerRemovalAndGrammarFixes() async throws {
+    func testFillerRemovalAndGrammarFixes() {
         let transcript = "um uh so basically we need to test the ios and watchos asr pipeline with the llm api."
         
-        let result = try await service.processTranscript(transcript)
+        let result = ruleBased(transcript)
         
         XCTAssertFalse(result.cleanedMarkdown.contains(" um "), "Filler 'um' should be removed")
         XCTAssertFalse(result.cleanedMarkdown.contains(" uh "), "Filler 'uh' should be removed")
@@ -44,10 +54,10 @@ final class LLMCopywriterServiceTests: XCTestCase {
         XCTAssertTrue(result.cleanedMarkdown.contains("API"), "api should be capitalized to API")
     }
     
-    func testActionItemsChecklistExtraction() async throws {
+    func testActionItemsChecklistExtraction() {
         let transcript = "Todo remember to submit app review notes before Friday. Also assign to Sarah for QA."
         
-        let result = try await service.processTranscript(transcript)
+        let result = ruleBased(transcript)
         
         XCTAssertFalse(result.actionItems.isEmpty, "Action items should be extracted")
         XCTAssertTrue(result.cleanedMarkdown.contains("- [ ]"), "Action items should use markdown task list syntax")
@@ -55,10 +65,10 @@ final class LLMCopywriterServiceTests: XCTestCase {
 
     // MARK: - Light Rewrite Mode
 
-    func testLightModeDoesNotRestructureIntoSections() async throws {
+    func testLightModeDoesNotRestructureIntoSections() {
         let transcript = "First condition is if wifi is connected sync immediately. Requirement is to support on-device speech recognition. Todo remember to submit app review notes."
 
-        let result = try await service.processTranscript(transcript, mode: .light)
+        let result = ruleBased(transcript, mode: .light)
 
         XCTAssertTrue(result.requirements.isEmpty, "Light mode should not extract requirements")
         XCTAssertTrue(result.conditions.isEmpty, "Light mode should not extract conditions")
@@ -68,10 +78,10 @@ final class LLMCopywriterServiceTests: XCTestCase {
         XCTAssertFalse(result.cleanedMarkdown.contains("- [ ]"), "Light mode markdown should have no checklist formatting")
     }
 
-    func testLightModeStillFixesTyposAndFillerWords() async throws {
+    func testLightModeStillFixesTyposAndFillerWords() {
         let transcript = "um uh so basically we need to test the ios and watchos asr pipeline with the llm api."
 
-        let result = try await service.processTranscript(transcript, mode: .light)
+        let result = ruleBased(transcript, mode: .light)
 
         XCTAssertFalse(result.cleanedMarkdown.contains(" um "), "Filler 'um' should be removed")
         XCTAssertFalse(result.cleanedMarkdown.contains(" uh "), "Filler 'uh' should be removed")
@@ -82,10 +92,10 @@ final class LLMCopywriterServiceTests: XCTestCase {
         XCTAssertTrue(result.cleanedMarkdown.contains("API"), "api should be capitalized to API")
     }
 
-    func testLightModeRemovesWhisperSpecialTokens() async throws {
+    func testLightModeRemovesWhisperSpecialTokens() {
         let transcript = "Writing on board [ breathing heavily ] [ Laughter ] [ Inaudible Remark ] So, kind of, what are you doing?"
 
-        let result = try await service.processTranscript(transcript, mode: .light)
+        let result = ruleBased(transcript, mode: .light)
 
         XCTAssertFalse(result.cleanedMarkdown.contains("["), "Bracketed ASR annotations should be stripped")
         XCTAssertFalse(result.cleanedMarkdown.contains("]"), "Bracketed ASR annotations should be stripped")
@@ -96,10 +106,10 @@ final class LLMCopywriterServiceTests: XCTestCase {
         XCTAssertTrue(result.cleanedMarkdown.contains("what are you doing"), "Actual spoken content should be preserved")
     }
 
-    func testLightModePreservesOriginalSentenceOrder() async throws {
+    func testLightModePreservesOriginalSentenceOrder() {
         let transcript = "First we open the app. Then we tap record. Finally we review the transcript."
 
-        let result = try await service.processTranscript(transcript, mode: .light)
+        let result = ruleBased(transcript, mode: .light)
 
         let openRange = result.cleanedMarkdown.range(of: "open the app")
         let tapRange = result.cleanedMarkdown.range(of: "tap record")
@@ -114,10 +124,10 @@ final class LLMCopywriterServiceTests: XCTestCase {
         }
     }
 
-    func testFullModeUnaffectedByModeParameter() async throws {
+    func testFullModeUnaffectedByModeParameter() {
         let transcript = "So um we need to build an apple watch complication. Requirement is to support on-device speech recognition."
 
-        let result = try await service.processTranscript(transcript, mode: .full)
+        let result = ruleBased(transcript, mode: .full)
 
         XCTAssertFalse(result.requirements.isEmpty, "Explicit .full mode should still extract requirements")
         XCTAssertTrue(result.cleanedMarkdown.contains("### 🎯 Requirements"), "Explicit .full mode should still restructure into sections")
@@ -184,18 +194,31 @@ final class LLMCopywriterServiceTests: XCTestCase {
         XCTAssertFalse(block.contains("Term\(LLMCopywriterService.maxDictionaryTermsInPrompt + 10)"), "Terms beyond the cap should not appear")
     }
 
-    func testProcessTranscriptDefaultsToNoDictionary() async throws {
-        // Existing call sites (no dictionary argument) must keep compiling and behaving as before.
-        let result = try await service.processTranscript("We need to build the auth flow.")
+    func testProcessTranscriptThrowsWhenNoAIEngineRuns() async throws {
+        // On the Simulator neither MLX model can run; Apple Intelligence might, on a host Mac
+        // that has it, in which case there's nothing to assert here.
+        let appleIntelligenceAvailable = await MainActor.run { AppleFoundationModelService.isSupportedOnThisDevice }
+        try XCTSkipIf(appleIntelligenceAvailable, "Apple Intelligence is available on this simulator")
+        try XCTSkipIf(UserDefaults.standard.bool(forKey: "use_local_llm_endpoint"), "An Ollama endpoint is configured")
 
-        XCTAssertFalse(result.requirements.isEmpty)
+        do {
+            _ = try await service.processTranscript("We need to build the auth flow.")
+            XCTFail("processTranscript should not fall back to rule-based output")
+        } catch LLMCopywriterError.aiEngineUnavailable {
+        }
+    }
+
+    func testSingleTemplateSkipsClassification() {
+        XCTAssertEqual(LLMCopywriterService.singleTemplate(in: [NoteTemplate.designDoc])?.id, NoteTemplate.designDoc.id)
+        XCTAssertNil(LLMCopywriterService.singleTemplate(in: NoteTemplate.builtIns))
+        XCTAssertNil(LLMCopywriterService.singleTemplate(in: []))
     }
 
     // MARK: - Multi-template classification & generation
     //
     // `processTranscript` never reaches `processWithOnDeviceLLMFull` itself on the Simulator
     // (where these tests run) -- OnDeviceLLMService.isSupportedOnThisDevice is false there, so
-    // every test above actually exercises the rule-based fallback. These helpers are tested
+    // the tests above exercise the rule-based structuring directly. These helpers are tested
     // directly instead, as small, pure, data-in/data-out functions independent of
     // OnDeviceLLMService.shared.generate -- the same reasoning dictionaryInstructionBlock's own
     // `internal` visibility already established.

@@ -73,6 +73,8 @@ public final class NoteProcessingPipeline: ObservableObject {
         }
 
         let audioURL = audioFileManager.url(for: audioFileName)
+        // Set once Stage 1 succeeds, so a Stage 2 failure still saves the transcript.
+        var transcribedNote: VoiceNote?
         inFlightNoteIds.insert(note.id)
         activeProcessingCount += 1
         defer {
@@ -101,6 +103,21 @@ public final class NoteProcessingPipeline: ObservableObject {
             let rawTranscript = DictionaryCorrector.apply(to: asrTranscript, entries: dictionaryEntries)
             streamingTranscripts[note.id] = rawTranscript
 
+            var transcribed = note
+            transcribed.rawTranscript = rawTranscript
+            transcribed.transcriptSegments = timingSegments
+            transcribed.segments = [
+                NoteSegment(
+                    id: note.id,
+                    audioFileName: audioFileName,
+                    createdAt: note.createdAt,
+                    duration: note.duration,
+                    source: note.source,
+                    rawTranscript: rawTranscript
+                )
+            ]
+            transcribedNote = transcribed
+
             // Stage 2: On-device LLM cleanup / copywriting. Only the "full" structured rewrite
             // runs here -- the "light" rewrite is never generated eagerly (it used to run
             // concurrently with this one on every single capture, which on a bundled on-device
@@ -111,19 +128,7 @@ public final class NoteProcessingPipeline: ObservableObject {
             let llmResult = try await llmService.processTranscript(rawTranscript, mode: .full, dictionary: dictionaryEntries, templates: templateStore.enabledTemplates)
 
             // Build completed note
-            var updatedNote = note
-            updatedNote.rawTranscript = rawTranscript
-            updatedNote.transcriptSegments = timingSegments
-            updatedNote.segments = [
-                NoteSegment(
-                    id: note.id,
-                    audioFileName: audioFileName,
-                    createdAt: note.createdAt,
-                    duration: note.duration,
-                    source: note.source,
-                    rawTranscript: rawTranscript
-                )
-            ]
+            var updatedNote = transcribed
             updatedNote.title = llmResult.title
             updatedNote.summary = llmResult.summary
             updatedNote.cleanedNote = llmResult.cleanedMarkdown
@@ -146,12 +151,17 @@ public final class NoteProcessingPipeline: ObservableObject {
             print("[NoteProcessingPipeline] Successfully processed note: \(note.id) -> '\(llmResult.title)'")
         } catch {
             print("[NoteProcessingPipeline] Processing failed for note \(note.id): \(error)")
-            var failedNote = note
+            var failedNote = transcribedNote ?? note
             failedNote.status = .failed
             failedNote.errorMessage = error.localizedDescription
             if failedNote.title == "Processing Voice Note..." {
-                failedNote.title = "Processing Failed"
-                failedNote.summary = error.localizedDescription
+                if transcribedNote != nil, let title = Self.provisionalTitle(from: failedNote.rawTranscript) {
+                    failedNote.title = title
+                    failedNote.summary = ""
+                } else {
+                    failedNote.title = "Processing Failed"
+                    failedNote.summary = error.localizedDescription
+                }
             }
             repository.save(failedNote)
         }
@@ -165,7 +175,35 @@ public final class NoteProcessingPipeline: ObservableObject {
         activeProcessingCount += 1
         defer { activeProcessingCount -= 1 }
 
-        await reprocessStage2(for: noteId)
+        await reprocessStage2MarkingFailure(for: noteId)
+    }
+
+    /// Regenerates a note's Stage 2 rewrite from its existing transcript with `template`, or with
+    /// auto-detection among the enabled templates (as on first processing) when `nil`. The choice
+    /// isn't sticky: appending, merging and re-running detect the template again. On failure a
+    /// ready note keeps its content and status, and the error is rethrown for the caller to show.
+    public func changeTemplate(noteId: UUID, to template: NoteTemplate?) async throws {
+        guard let note = repository.note(withId: noteId),
+              !note.rawTranscript.isEmpty,
+              !inFlightNoteIds.contains(noteId) else { return }
+
+        inFlightNoteIds.insert(noteId)
+        activeProcessingCount += 1
+        defer {
+            inFlightNoteIds.remove(noteId)
+            activeProcessingCount -= 1
+        }
+
+        do {
+            try await reprocessStage2(for: noteId, templates: template.map { [$0] } ?? templateStore.enabledTemplates)
+        } catch {
+            if note.status == .ready {
+                repository.updateStatus(for: noteId, status: .ready)
+            } else {
+                repository.updateStatus(for: noteId, status: .failed, errorMessage: error.localizedDescription)
+            }
+            throw error
+        }
     }
 
     /// Appends a freshly-recorded segment's audio to an existing note: runs Stage 1 (ASR) on just
@@ -220,7 +258,7 @@ public final class NoteProcessingPipeline: ObservableObject {
             note.transcriptSegments = note.transcriptSegments + timingSegments
             repository.save(note)
 
-            await reprocessStage2(for: noteId)
+            await reprocessStage2MarkingFailure(for: noteId)
         } catch {
             repository.updateStatus(for: noteId, status: .failed, errorMessage: error.localizedDescription)
         }
@@ -255,10 +293,10 @@ public final class NoteProcessingPipeline: ObservableObject {
         repository.save(target)
         repository.removeRecordOnly(id: sourceId)
 
-        await reprocessStage2(for: targetId)
+        await reprocessStage2MarkingFailure(for: targetId)
     }
 
-    // MARK: - Stage 2 Reprocessing (shared by reprocessWithLLM / appendRecording / mergeNote)
+    // MARK: - Stage 2 Reprocessing (shared by reprocessWithLLM / changeTemplate / appendRecording / mergeNote)
 
     /// Rebuilds `rawTranscript` as the concatenation of every segment (re-applying dictionary
     /// correction to each, so a newly-added dictionary alias retroactively fixes older segments
@@ -269,7 +307,10 @@ public final class NoteProcessingPipeline: ObservableObject {
     /// regenerated here -- the transcript just changed underneath it, so the old light text would
     /// be stale, and regenerating it eagerly would defeat the point of it being lazy. It
     /// regenerates the next time something actually displays it (see `generateLightCleanup`).
-    private func reprocessStage2(for noteId: UUID) async {
+    ///
+    /// `templates` defaults to the enabled templates (auto-detect); a single one is applied as-is.
+    /// Throws without touching the note's status -- callers decide what a failure means.
+    private func reprocessStage2(for noteId: UUID, templates: [NoteTemplate]? = nil) async throws {
         guard var note = repository.note(withId: noteId) else { return }
         let dictionaryEntries = dictionaryStore.entries
 
@@ -283,27 +324,41 @@ public final class NoteProcessingPipeline: ObservableObject {
         note.rawTranscript = mergedTranscript
 
         repository.updateStatus(for: noteId, status: .cleaningLLM)
+        let llmResult = try await llmService.processTranscript(mergedTranscript, mode: .full, dictionary: dictionaryEntries, templates: templates ?? templateStore.enabledTemplates)
+        note.title = llmResult.title
+        note.summary = llmResult.summary
+        note.cleanedNote = llmResult.cleanedMarkdown
+        note.requirements = llmResult.requirements
+        note.conditions = llmResult.conditions
+        note.actionItems = llmResult.actionItems
+        note.tags = llmResult.tags
+        note.status = .ready
+        note.errorMessage = nil
+        note.cleanupEngine = llmResult.engine
+        note.templateSections = llmResult.sections
+        note.templateId = llmResult.templateId
+        note.templateName = llmResult.templateName.isEmpty ? nil : llmResult.templateName
+        note.lightCleanedNote = nil
+        note.lightCleanupEngine = nil
+        repository.save(note)
+    }
+
+    /// `reprocessStage2` with auto-detection, marking the note failed (content kept) on error.
+    private func reprocessStage2MarkingFailure(for noteId: UUID) async {
         do {
-            let llmResult = try await llmService.processTranscript(mergedTranscript, mode: .full, dictionary: dictionaryEntries, templates: templateStore.enabledTemplates)
-            note.title = llmResult.title
-            note.summary = llmResult.summary
-            note.cleanedNote = llmResult.cleanedMarkdown
-            note.requirements = llmResult.requirements
-            note.conditions = llmResult.conditions
-            note.actionItems = llmResult.actionItems
-            note.tags = llmResult.tags
-            note.status = .ready
-            note.errorMessage = nil
-            note.cleanupEngine = llmResult.engine
-            note.templateSections = llmResult.sections
-            note.templateId = llmResult.templateId
-            note.templateName = llmResult.templateName.isEmpty ? nil : llmResult.templateName
-            note.lightCleanedNote = nil
-            note.lightCleanupEngine = nil
-            repository.save(note)
+            try await reprocessStage2(for: noteId)
         } catch {
             repository.updateStatus(for: noteId, status: .failed, errorMessage: error.localizedDescription)
         }
+    }
+
+    /// A title for a note whose transcript exists but whose Stage 2 failed: its first few words.
+    static func provisionalTitle(from transcript: String) -> String? {
+        let words = transcript.split(whereSeparator: \.isWhitespace)
+        guard !words.isEmpty else { return nil }
+        let maxWords = 8
+        let title = words.prefix(maxWords).joined(separator: " ")
+        return words.count > maxWords ? title + "…" : title
     }
 
     /// Generates Stage 2's "light" rewrite on demand. Unlike the full rewrite, this is never run

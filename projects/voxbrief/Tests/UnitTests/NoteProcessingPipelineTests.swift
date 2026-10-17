@@ -43,11 +43,14 @@ fileprivate final class MockLLMCopywriterService: LLMCopywriterServiceProtocol, 
     var stubSections: [TemplateSectionContent] = []
     var stubTemplateId: UUID?
     var stubTemplateName: String = ""
+    /// Set by a test to make every call fail, like when no AI engine can run.
+    var stubError: Error?
 
     func processTranscript(_ rawTranscript: String, mode: RewriteMode, dictionary: [DictionaryEntry], templates: [NoteTemplate]) async throws -> LLMProcessingResult {
         receivedDictionaries.append(dictionary)
         receivedTranscripts.append(rawTranscript)
         receivedTemplates.append(templates)
+        if let stubError { throw stubError }
         return LLMProcessingResult(
             title: "Mock Title",
             summary: "Mock Summary",
@@ -184,6 +187,88 @@ final class NoteProcessingPipelineTests: XCTestCase {
         let updated = repository.note(withId: note.id)
         XCTAssertNil(updated?.lightCleanedNote, "A transcript change should invalidate the old light rewrite rather than leave stale text")
         XCTAssertNil(updated?.lightCleanupEngine)
+    }
+
+    // MARK: - AI engine unavailable
+
+    func testProcessKeepsTheTranscriptWhenStage2Fails() async {
+        mockASR.stubTranscript = "Pick up the dry cleaning before the team dinner on Friday night"
+        mockLLM.stubError = LLMCopywriterError.aiEngineUnavailable
+        let note = VoiceNote(id: UUID(), audioFileName: "recording.m4a", title: "Processing Voice Note...", status: .syncing)
+        repository.save(note)
+
+        await pipeline.process(note: note)
+
+        let saved = repository.note(withId: note.id)
+        XCTAssertEqual(saved?.status, .failed)
+        XCTAssertEqual(saved?.rawTranscript, "Pick up the dry cleaning before the team dinner on Friday night")
+        XCTAssertEqual(saved?.segments.count, 1)
+        XCTAssertEqual(saved?.title, "Pick up the dry cleaning before the team…")
+        XCTAssertEqual(saved?.errorMessage, LLMCopywriterError.aiEngineUnavailable.errorDescription)
+    }
+
+    func testProvisionalTitleUsesTheFirstWords() {
+        XCTAssertEqual(NoteProcessingPipeline.provisionalTitle(from: "Short memo"), "Short memo")
+        XCTAssertEqual(NoteProcessingPipeline.provisionalTitle(from: "one two three four five six seven eight nine"), "one two three four five six seven eight…")
+        XCTAssertNil(NoteProcessingPipeline.provisionalTitle(from: "  "))
+    }
+
+    // MARK: - Template change
+
+    func testChangeTemplatePassesOnlyTheChosenTemplate() async throws {
+        let email = try XCTUnwrap(templateStore.allTemplates.first { $0.id != NoteTemplate.designDoc.id })
+        mockLLM.stubTemplateId = email.id
+        mockLLM.stubTemplateName = email.name
+        let note = VoiceNote(id: UUID(), rawTranscript: "Send the launch update to the team.", status: .ready, lightCleanedNote: "old light", lightCleanupEngine: "mock")
+        repository.save(note)
+
+        try await pipeline.changeTemplate(noteId: note.id, to: email)
+
+        XCTAssertTrue(mockASR.receivedVocabulary.isEmpty, "A template change never re-runs ASR")
+        XCTAssertEqual(mockLLM.receivedTemplates.last?.map(\.id), [email.id])
+        let updated = repository.note(withId: note.id)
+        XCTAssertEqual(updated?.templateId, email.id)
+        XCTAssertEqual(updated?.templateName, email.name)
+        XCTAssertEqual(updated?.status, .ready)
+        XCTAssertNil(updated?.lightCleanedNote, "Light cleanup regenerates lazily after a template change")
+    }
+
+    func testChangeTemplateToAutoDetectPassesTheEnabledTemplates() async throws {
+        let note = VoiceNote(id: UUID(), rawTranscript: "Send the launch update to the team.", status: .ready)
+        repository.save(note)
+
+        try await pipeline.changeTemplate(noteId: note.id, to: nil)
+
+        XCTAssertEqual(mockLLM.receivedTemplates.last?.map(\.id), templateStore.enabledTemplates.map(\.id))
+    }
+
+    func testChangeTemplateFailureKeepsAReadyNoteAsItWas() async throws {
+        let original = VoiceNote(id: UUID(), title: "Launch Update", rawTranscript: "Send the launch update to the team.", cleanedNote: "original markdown", status: .ready, templateName: "Design Doc")
+        repository.save(original)
+        mockLLM.stubError = LLMCopywriterError.aiEngineUnavailable
+
+        do {
+            try await pipeline.changeTemplate(noteId: original.id, to: NoteTemplate.designDoc)
+            XCTFail("changeTemplate should rethrow the Stage 2 error")
+        } catch {
+            XCTAssertEqual(error.localizedDescription, LLMCopywriterError.aiEngineUnavailable.errorDescription)
+        }
+
+        let saved = repository.note(withId: original.id)
+        XCTAssertEqual(saved?.status, .ready)
+        XCTAssertNil(saved?.errorMessage)
+        XCTAssertEqual(saved?.cleanedNote, "original markdown")
+        XCTAssertEqual(saved?.templateName, "Design Doc")
+    }
+
+    func testReprocessAfterATemplateChangeDetectsTheTemplateAgain() async throws {
+        let note = VoiceNote(id: UUID(), rawTranscript: "Send the launch update to the team.", status: .ready)
+        repository.save(note)
+        try await pipeline.changeTemplate(noteId: note.id, to: NoteTemplate.designDoc)
+
+        await pipeline.reprocessWithLLM(noteId: note.id)
+
+        XCTAssertEqual(mockLLM.receivedTemplates.last?.count, templateStore.enabledTemplates.count, "A user's template pick isn't sticky")
     }
 
     // MARK: - Lazy light cleanup
