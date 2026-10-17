@@ -1,6 +1,7 @@
 package com.hejitech.contempo.data
 
 import android.content.Context
+import com.hejitech.contempo.feedback.FeedbackReporting
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -8,8 +9,8 @@ import kotlinx.coroutines.flow.asStateFlow
 /**
  * Plain SharedPreferences, same reasoning as QuickCaptureSettingsStore — a
  * single boolean doesn't need DataStore. Persists across restarts since
- * shake-to-report is a standing preference, not a one-off. See
- * MainActivity's ShakeDetector registration and FeedbackAnnotationScreen.
+ * shake-to-report is a standing preference, not a one-off. Setting it turns
+ * FeedbackKit's shake-to-report on or off (see FeedbackReporting).
  */
 class ShakeToReportSettingsStore(context: Context) {
     private val prefs = context.applicationContext
@@ -21,6 +22,7 @@ class ShakeToReportSettingsStore(context: Context) {
     fun setEnabled(value: Boolean) {
         prefs.edit().putBoolean(KEY, value).apply()
         _enabled.value = value
+        FeedbackReporting.apply(value)
     }
 
     private companion object {

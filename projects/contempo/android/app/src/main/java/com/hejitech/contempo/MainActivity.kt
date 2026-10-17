@@ -6,13 +6,8 @@ import android.animation.AnimatorListenerAdapter
 import android.animation.ObjectAnimator
 import android.animation.PropertyValuesHolder
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.hardware.SensorManager
 import android.os.Build
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.view.PixelCopy
 import android.view.animation.AccelerateInterpolator
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -28,16 +23,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.hejitech.contempo.data.ServiceLocator
-import com.hejitech.contempo.feedback.PendingFeedbackCaptureStore
-import com.hejitech.contempo.feedback.ShakeDetector
-import com.hejitech.contempo.ui.feedback.FeedbackAnnotationScreen
 import com.hejitech.contempo.ui.navigation.ContempoNavHost
 import com.hejitech.contempo.ui.onboarding.OnboardingScreen
 import com.hejitech.contempo.ui.signin.SignInScreen
@@ -46,8 +37,6 @@ import com.hejitech.contempo.wear.AudioCaptureProcessor
 import com.hejitech.core.supabase.ContempoBackend
 import io.github.jan.supabase.auth.handleDeeplinks
 import android.content.Intent
-import java.io.File
-import java.io.FileOutputStream
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -62,51 +51,6 @@ class MainActivity : ComponentActivity() {
     // future notification this app posts; nothing to react to either way.
     private val requestNotificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
-
-    private val sensorManager by lazy { getSystemService(SENSOR_SERVICE) as SensorManager }
-    private val shakeDetector = ShakeDetector(onShake = ::handleShake)
-
-    override fun onResume() {
-        super.onResume()
-        shakeDetector.register(sensorManager)
-    }
-
-    override fun onPause() {
-        super.onPause()
-        shakeDetector.unregister(sensorManager)
-    }
-
-    /**
-     * Only captures if the user has opted in (Settings' "Shake to report"
-     * toggle) and is signed in — see ShakeToReportSettingsStore and
-     * firestore.rules' isValidAppFeedback (ownership-only, no submission
-     * possible while signed out anyway).
-     */
-    private fun handleShake() {
-        if (!ServiceLocator.shakeToReportSettingsStore.enabled.value) return
-        if (ContempoBackend.uid == null) return
-        captureScreenshotAndShowFeedback()
-    }
-
-    // PixelCopy (not View.drawToBitmap()) so this also captures
-    // hardware-accelerated Compose content correctly.
-    private fun captureScreenshotAndShowFeedback() {
-        val decorView = window.decorView
-        if (decorView.width == 0 || decorView.height == 0) return
-        val bitmap = Bitmap.createBitmap(decorView.width, decorView.height, Bitmap.Config.ARGB_8888)
-        PixelCopy.request(
-            window,
-            bitmap,
-            { result ->
-                if (result == PixelCopy.SUCCESS) {
-                    val file = File(cacheDir, "feedback_capture_${System.currentTimeMillis()}.jpg")
-                    FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out) }
-                    PendingFeedbackCaptureStore.setCapture(file)
-                }
-            },
-            Handler(Looper.getMainLooper()),
-        )
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Must be called before super.onCreate() — see Theme.Contempo.Starting
@@ -188,18 +132,7 @@ private fun ContempoRoot() {
                 OnboardingScreen(onFinished = { ServiceLocator.onboardingStore.setCompleted(true) })
             } else {
                 AuthGate {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        ContempoNavHost()
-                        // Shown on top of whichever tab is active — a shake can
-                        // happen from anywhere, see MainActivity.handleShake.
-                        val pendingCapture by PendingFeedbackCaptureStore.pendingCapture.collectAsState()
-                        pendingCapture?.let { file ->
-                            FeedbackAnnotationScreen(
-                                imageFile = file,
-                                onDismiss = { PendingFeedbackCaptureStore.clear() },
-                            )
-                        }
-                    }
+                    ContempoNavHost()
                 }
             }
         }

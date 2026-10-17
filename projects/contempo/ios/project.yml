@@ -11,6 +11,10 @@ packages:
     path: ContempoCore
   # Backend: the shared HEJI Supabase project (projects/contempo/backend.env), via ContempoCore's
   # supabase-swift dependency; no other backend SDKs.
+  # Shake to report: FeedbackKit's SDK, sending to Contempo's FeedbackKit project.
+  FeedbackKit:
+    url: https://github.com/tianhaoz95/feedback-kit
+    from: 1.0.62
 
 settings:
   base:
@@ -112,6 +116,7 @@ targets:
         product: ContempoCore
       - package: ContempoCore
         product: ContempoData
+      - package: FeedbackKit
       - framework: Vendor/sherpa-onnx/sherpa-onnx.xcframework
         embed: false
       - framework: Vendor/sherpa-onnx/onnxruntime.xcframework

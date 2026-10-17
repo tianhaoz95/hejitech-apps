@@ -10,7 +10,7 @@
  *   POST /api/billing/portal     Stripe customer portal (was createPortalLink)
  *   POST /api/admin/coupons/*    coupon management for the admin site (was adminListCoupons, …)
  *   POST /api/stripe/webhook     subscription sync into contempo.subscriptions (was stripeWebhook)
- *   POST /api/feedback           the login-free feedback form (was a direct Firestore write)
+ *   POST /api/feedback           the login-free feedback form, forwarded to FeedbackKit
  *
  * Every /api call except the webhook and /api/feedback needs `Authorization: Bearer <Supabase access token>`.
  * Data lives in the shared Supabase project, schema `contempo` (projects/contempo/backend.env);
@@ -71,7 +71,7 @@ export default {
 async function api(request: Request, env: Env, route: string): Promise<Response> {
   if (request.method !== "POST") throw new HttpError(405, "POST only.");
   if (route === "stripe/webhook") return stripeWebhook(request, env);
-  if (route === "feedback") return publicFeedback(request, env);
+  if (route === "feedback") return publicFeedback(request);
 
   const user = await authenticate(request, env);
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
@@ -147,14 +147,54 @@ export function flagRisk(body: Record<string, unknown>) {
 
 // ------------------------------------------------------------------------- public feedback
 
-/** The login-free form at /feedback/: anyone may send, only admins read (contempo.feedback). */
-async function publicFeedback(request: Request, env: Env): Promise<Response> {
+// Contempo's FeedbackKit project, where the apps' shake-to-report goes too. The project key is a
+// routing key, not a secret (it ships in the apps).
+const FEEDBACKKIT_INGEST_URL = "https://gpucoladcyvijefdjudf.supabase.co/functions/v1/ingest-feedback";
+const FEEDBACKKIT_PROJECT_KEY = "pk_e34cf12ad7d2c103d4ce464337ecf0869f6b";
+
+/**
+ * The login-free form at /feedback/ (also the contact address in the legal pages). Forwarded to
+ * FeedbackKit's public ingest API as a text-only report, with the email as the reporter.
+ */
+async function publicFeedback(request: Request): Promise<Response> {
   const body = (await request.json().catch(() => ({}))) as { message?: unknown; email?: unknown };
   const message = typeof body.message === "string" ? body.message.trim() : "";
   const email = typeof body.email === "string" && body.email.trim() ? body.email.trim().slice(0, 200) : null;
   if (!message || message.length > 5000) throw new HttpError(400, "Feedback must be between 1 and 5000 characters.");
-  const { error } = await serviceClient(env).from("feedback").insert({ message, email });
-  if (error) throw error;
+  const res = await fetch(FEEDBACKKIT_INGEST_URL, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      project_key: FEEDBACKKIT_PROJECT_KEY,
+      id: crypto.randomUUID(),
+      created_at: new Date().toISOString(),
+      text: message,
+      annotations: [],
+      // Every field the Swift SDK requires, so the FeedbackKit Portal can decode it.
+      environment: {
+        osName: "Web",
+        osVersion: "",
+        deviceModel: "",
+        appVersion: "",
+        appBuild: "",
+        bundleIdentifier: "contempo.hejitech.workers.dev",
+        screenName: "Feedback form",
+        locale: request.headers.get("accept-language")?.split(",")[0] ?? "",
+        screenWidthPoints: 0,
+        screenHeightPoints: 0,
+        screenScale: 1,
+        platform: "web",
+        pageUrl: new URL("/feedback/", request.url).toString(),
+        userAgent: request.headers.get("user-agent") ?? "",
+      },
+      notify_reporter: false,
+      ...(email ? { reporter: { email } } : {}),
+    }),
+  });
+  if (!res.ok) {
+    console.error("feedbackkit ingest", res.status, await res.text().catch(() => ""));
+    throw new HttpError(502, "Couldn't send your feedback. Please try again.");
+  }
   return json({ ok: true });
 }
 

@@ -348,18 +348,9 @@
 
     <string name="settings_feedback_section">Feedback</string>
     <string name="settings_shake_to_report_label">Shake to report</string>
-    <string name="settings_shake_to_report_caption">Shake your device to capture a screenshot and report a bug or suggest an improvement.</string>
+    <string name="settings_shake_to_report_caption">Shake your device to report a bug or suggest an improvement. It captures a screenshot you can mark up (or leave out) and describe, and adds your device and app version automatically. Ask to be told when it\'s fixed, and the app lets you know once the fix ships.</string>
     <string name="settings_shake_to_report_toggle_content_description">Shake to report toggle</string>
     <string name="settings_shake_to_report_info_content_description">What is shake to report?</string>
-
-    <string name="feedback_annotation_title">Report an issue</string>
-    <string name="feedback_annotation_hint">Drag to box the area you\'re reporting (optional), then describe what\'s wrong or what could be better.</string>
-    <string name="feedback_annotation_hint_editing">Drag the corners to resize, drag inside to move, or drag elsewhere to redraw.</string>
-    <string name="feedback_description_placeholder">What happened, or what would help?</string>
-    <string name="feedback_cancel_button">Cancel</string>
-    <string name="feedback_submit_button">Submit</string>
-    <string name="feedback_minimize_input_content_description">Minimize to see the screenshot</string>
-    <string name="feedback_expand_input_content_description">Expand feedback input</string>
 
     <string name="settings_roles_section">Roles</string>
     <string name="settings_roles_section_hint">Tag entries under a role (Property Manager, Co-host, Cleaner, a contractor, ...) when someone other than you did the work. Only your own hours (no role) count toward the 100-hour/500-hour progress on the Dashboard — the IRS tests require your participation to exceed everyone else\'s.</string>

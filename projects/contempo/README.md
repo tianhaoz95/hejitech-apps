@@ -21,8 +21,8 @@ follows `com.hejitech.<app>` (with a couple of documented exceptions in
 | `ios/` | iOS + watchOS app (SwiftUI, XcodeGen). Parity with `android/`. See [`ios/README.md`](ios/README.md). |
 | `backend/` | The Firebase project root — Firestore, Auth, Storage, Cloud Functions (Genkit). See [`backend/README.md`](backend/README.md). |
 | `web/` | Vite/React/TypeScript. Billing/subscriptions live **only** here (never in the mobile apps, to avoid Apple/Google's IAP fee), plus a dashboard and legal pages. See [`web/README.md`](web/README.md). |
-| `admin/` | Internal admin site — coupon management and feedback triage, restricted to admin accounts. See [`admin/README.md`](admin/README.md). |
-| `feedback/` | Standalone, login-free feedback form — zero-dependency static site. See [`feedback/README.md`](feedback/README.md). |
+| `services/admin/` | Internal admin site — coupon management, restricted to admin accounts. See [`services/admin/README.md`](services/admin/README.md). |
+| `feedback/` | Standalone, login-free feedback form — zero-dependency static site, forwarded to FeedbackKit. See [`feedback/README.md`](feedback/README.md). |
 | `reports/` | Planning docs (PRD, MVP scope, implementation status) as a small static site. |
 | `branding/landing_v0/` | Landing-page mockup used to pressure-test positioning before any product existed. |
 | `scripts/` | Dev-loop, build, and release scripts — see below. |

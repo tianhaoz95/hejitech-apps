@@ -3,7 +3,6 @@ import { useAuth } from "./auth/AuthContext";
 import { Layout } from "./components/Layout";
 import { AccessDeniedPage } from "./pages/AccessDeniedPage";
 import { CouponsPage } from "./pages/CouponsPage";
-import { FeedbackPage } from "./pages/FeedbackPage";
 import { SignInPage } from "./pages/SignInPage";
 
 export function App() {
@@ -24,7 +23,6 @@ export function App() {
       <Route element={<Layout />}>
         <Route index element={<Navigate to="/coupons" replace />} />
         <Route path="/coupons" element={<CouponsPage />} />
-        <Route path="/feedback" element={<FeedbackPage />} />
         <Route path="*" element={<Navigate to="/coupons" replace />} />
       </Route>
     </Routes>

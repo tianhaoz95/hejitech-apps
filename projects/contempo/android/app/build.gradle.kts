@@ -151,6 +151,7 @@ dependencies {
     implementation(project(":core"))
 
     implementation(libs.core.ktx)
+    implementation(libs.feedbackkit)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.lifecycle.runtime.ktx)
     implementation(libs.lifecycle.viewmodel.compose)

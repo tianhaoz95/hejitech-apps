@@ -2,8 +2,8 @@ import Foundation
 import Observation
 
 /// Persisted UserDefaults store for the "Shake to report" toggle — mirrors
-/// `QuickCaptureSettingsStore` exactly. When on, shaking the device anywhere
-/// in the app captures a screenshot and opens the feedback annotation flow.
+/// `QuickCaptureSettingsStore`. When on, shaking the device anywhere in the
+/// app opens FeedbackKit's report flow (see `FeedbackReporting`).
 @Observable
 @MainActor
 public final class ShakeToReportSettingsStore {
@@ -13,6 +13,7 @@ public final class ShakeToReportSettingsStore {
     public var enabled: Bool {
         didSet {
             defaults.set(enabled, forKey: Self.key)
+            FeedbackReporting.apply(enabled: enabled)
         }
     }
 

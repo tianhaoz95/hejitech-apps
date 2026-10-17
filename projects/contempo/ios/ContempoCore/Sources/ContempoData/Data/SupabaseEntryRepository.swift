@@ -231,43 +231,6 @@ public final class SupabaseEntryRepository: EntryRepository, Sendable {
         try await db.from("attachments").update(NoteOnly(note: note)).eq("id", value: attachmentId).execute()
     }
 
-    private struct FeedbackRow: Encodable {
-        let id: String
-        let description: String
-        let screenshot_path: String
-        let download_url: String
-        let region: FeedbackRegion?
-        let app_version: String
-        let build_number: String
-        let os_version: String
-        let device_model: String
-        let screen_name: String
-        let locale: String
-    }
-
-    public func submitFeedback(
-        imageData: Data,
-        region: FeedbackRegion?,
-        description: String,
-        screenName: String,
-        appVersion: String,
-        buildNumber: String,
-        osVersion: String,
-        deviceModel: String,
-        locale: String
-    ) async throws -> AppFeedback {
-        let uid = try ContempoBackend.requireUid()
-        let id = ContempoBackend.newId()
-        // <uid>/feedback/… : admins may read this folder (storage policy "contempo: own files read").
-        let storagePath = "\(uid)/feedback/\(id)/screenshot.jpg"
-        let url = try await ContempoBackend.uploadFile(path: storagePath, data: imageData, contentType: "image/jpeg")
-        return try await db.from("app_feedback").insert(
-            FeedbackRow(id: id, description: description, screenshot_path: storagePath, download_url: url, region: region,
-                        app_version: appVersion, build_number: buildNumber, os_version: osVersion, device_model: deviceModel,
-                        screen_name: screenName, locale: locale)
-        ).select().single().execute().value
-    }
-
     private static func sanitizeFileNameComponent(_ fileName: String) -> String {
         fileName.replacingOccurrences(of: "[^A-Za-z0-9.\\-_]", with: "_", options: .regularExpression)
     }

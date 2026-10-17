@@ -1,6 +1,15 @@
 {
-  "originHash" : "dfa030477e7a8f7c89a0c62c8ee2126cd0e534d1d46a09edc0a59fb29840fab6",
+  "originHash" : "5007e2f72d589c6de29523af4d48dfefe80ebc53737e80d868591b558320b4f9",
   "pins" : [
+    {
+      "identity" : "feedback-kit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/tianhaoz95/feedback-kit",
+      "state" : {
+        "revision" : "4c495da82a764e98360364478d5b520b8e0eb2b9",
+        "version" : "1.0.62"
+      }
+    },
     {
       "identity" : "supabase-swift",
       "kind" : "remoteSourceControl",

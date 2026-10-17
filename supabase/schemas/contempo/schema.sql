@@ -13,7 +13,7 @@ create schema contempo;
 -- A non-public schema gets no Data API privileges by default; RLS below decides what rows clients see.
 grant usage on schema contempo to anon, authenticated, service_role;
 
--- Reviewers of feedback (the admin/ site). Replaces Firebase's `admin` custom claim; rows are
+-- Who may use the admin/ site (coupons). Replaces Firebase's `admin` custom claim; rows are
 -- added by hand (SQL editor / service role), never by clients.
 create table contempo.admins (
   user_id uuid primary key references auth.users(id) on delete cascade,
@@ -198,64 +198,6 @@ $$;
 revoke all on function contempo.record_device_token_usage(text, timestamptz, bigint, bigint) from public, anon;
 grant execute on function contempo.record_device_token_usage(text, timestamptz, bigint, bigint) to authenticated;
 
--- Shake-to-report from a signed-in user. Owners create (always 'pending'); admins move it along.
-create table contempo.app_feedback (
-  id text primary key default gen_random_uuid()::text,
-  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
-  description text not null default '' check (char_length(description) <= 5000),
-  screenshot_path text not null check (char_length(screenshot_path) between 1 and 500),
-  download_url text,
-  region jsonb check (region is null or (
-    jsonb_typeof(region) = 'object'
-    and (region->>'x')::double precision between 0 and 1 and (region->>'y')::double precision between 0 and 1
-    and (region->>'w')::double precision between 0 and 1 and (region->>'h')::double precision between 0 and 1)),
-  app_version text not null default '' check (char_length(app_version) <= 50),
-  build_number text not null default '' check (char_length(build_number) <= 50),
-  os_version text not null default '' check (char_length(os_version) <= 100),
-  device_model text not null default '' check (char_length(device_model) <= 100),
-  screen_name text not null default '' check (char_length(screen_name) <= 200),
-  locale text not null default '' check (char_length(locale) <= 50),
-  status text not null default 'pending' check (status in ('pending', 'triaged', 'resolved')),
-  created_at timestamptz not null default now(),
-  triaged_at timestamptz,
-  resolved_at timestamptz
-);
-
-create or replace function contempo.app_feedback_guard() returns trigger
-language plpgsql set search_path = contempo, extensions as $$
-begin
-  if tg_op = 'INSERT' then
-    new.status := 'pending';
-    new.created_at := now();
-    new.triaged_at := null;
-    new.resolved_at := null;
-  elsif (to_jsonb(new) - 'status' - 'triaged_at' - 'resolved_at') <> (to_jsonb(old) - 'status' - 'triaged_at' - 'resolved_at') then
-    raise exception 'only status, triaged_at and resolved_at can change';
-  end if;
-  return new;
-end;
-$$;
-create trigger app_feedback_guard before insert or update on contempo.app_feedback
-  for each row execute function contempo.app_feedback_guard();
-
--- The login-free feedback form (projects/contempo/feedback): anyone may insert, only admins read.
-create table contempo.feedback (
-  id text primary key default gen_random_uuid()::text,
-  message text not null check (char_length(message) between 1 and 5000),
-  email text check (char_length(email) <= 200),
-  created_at timestamptz not null default now()
-);
-
-create or replace function contempo.feedback_server_time() returns trigger
-language plpgsql set search_path = contempo, extensions as $$
-begin
-  new.created_at := now();
-  return new;
-end;
-$$;
-create trigger feedback_server_time before insert on contempo.feedback
-  for each row execute function contempo.feedback_server_time();
-
 -- Stripe subscription state, written only by the Worker's Stripe webhook.
 create table contempo.subscriptions (
   user_id uuid primary key references auth.users(id) on delete cascade,
@@ -286,8 +228,6 @@ alter table contempo.corrections enable row level security;
 alter table contempo.audio_captures enable row level security;
 alter table contempo.text_captures enable row level security;
 alter table contempo.token_usage enable row level security;
-alter table contempo.app_feedback enable row level security;
-alter table contempo.feedback enable row level security;
 alter table contempo.subscriptions enable row level security;
 alter table contempo.stripe_customers enable row level security;
 
@@ -296,9 +236,6 @@ grant select, insert, update, delete on contempo.properties, contempo.roles, con
   contempo.entries, contempo.attachments, contempo.audio_captures, contempo.text_captures to authenticated;
 grant select, insert on contempo.corrections to authenticated;
 grant select on contempo.token_usage, contempo.subscriptions to authenticated;
-grant select, insert, update on contempo.app_feedback to authenticated;
-grant insert on contempo.feedback to anon, authenticated;
-grant select on contempo.feedback to authenticated;
 grant all on all tables in schema contempo to service_role;
 
 create policy "own admin row" on contempo.admins for select using (user_id = auth.uid());
@@ -316,13 +253,6 @@ create policy "add own corrections" on contempo.corrections for insert with chec
 
 create policy "read own token usage" on contempo.token_usage for select using (user_id = auth.uid());
 create policy "read own subscription" on contempo.subscriptions for select using (user_id = auth.uid());
-
-create policy "read own or admin app feedback" on contempo.app_feedback for select using (user_id = auth.uid() or contempo.is_admin());
-create policy "add own app feedback" on contempo.app_feedback for insert with check (user_id = auth.uid());
-create policy "admins triage app feedback" on contempo.app_feedback for update using (contempo.is_admin()) with check (contempo.is_admin());
-
-create policy "anyone sends feedback" on contempo.feedback for insert with check (true);
-create policy "admins read feedback" on contempo.feedback for select using (contempo.is_admin());
 
 -- Live lists on the phone and the web (Firestore snapshot listeners before).
 alter publication supabase_realtime add table contempo.entries, contempo.properties, contempo.roles,

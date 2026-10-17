@@ -1,9 +1,10 @@
 import ContempoCore
+import FeedbackKit
 import SwiftUI
 
-/// Screen tags exist solely to let `CurrentScreenTracker` record which tab
-/// is visible (for "shake to report" — see Feedback/CurrentScreenTracker.swift);
-/// they don't otherwise change the native `TabView` chrome or behavior.
+/// Screen tags exist solely to tell FeedbackKit which tab is visible, so a
+/// shake-to-report says where it came from (`FeedbackKit.currentScreen`); they
+/// don't otherwise change the native `TabView` chrome or behavior.
 private enum MainTab: Hashable {
     case capture, dashboard, chat, settings
 }
@@ -27,10 +28,10 @@ struct MainTabView: View {
                 .tag(MainTab.settings)
         }
         .onChange(of: selectedTab) { _, newValue in
-            ServiceLocator.currentScreenTracker.screenName = screenName(for: newValue)
+            FeedbackKit.currentScreen = screenName(for: newValue)
         }
         .onAppear {
-            ServiceLocator.currentScreenTracker.screenName = screenName(for: selectedTab)
+            FeedbackKit.currentScreen = screenName(for: selectedTab)
         }
     }
 

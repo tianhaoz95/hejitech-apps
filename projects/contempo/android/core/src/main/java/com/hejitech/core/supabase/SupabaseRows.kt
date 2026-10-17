@@ -1,10 +1,8 @@
 package com.hejitech.core.supabase
 
-import com.hejitech.core.model.AppFeedback
 import com.hejitech.core.model.Attachment
 import com.hejitech.core.model.Category
 import com.hejitech.core.model.Entry
-import com.hejitech.core.model.FeedbackRegion
 import com.hejitech.core.model.Property
 import com.hejitech.core.model.Role
 import com.hejitech.core.model.Timestamp
@@ -155,27 +153,6 @@ fun attachmentFromRow(r: JsonObject): Attachment? = r.str("id")?.let {
         downloadURL = r.str("download_url").orEmpty(),
         uploadedAt = r.time("uploaded_at") ?: Timestamp.now(),
         note = r.str("note").orEmpty(),
-    )
-}
-
-fun appFeedbackFromRow(r: JsonObject): AppFeedback? = r.str("id")?.let {
-    val region = (r["region"] as? JsonObject)?.let { g ->
-        FeedbackRegion(g.double("x") ?: 0.0, g.double("y") ?: 0.0, g.double("w") ?: 0.0, g.double("h") ?: 0.0)
-    }
-    AppFeedback(
-        id = it,
-        description = r.str("description").orEmpty(),
-        screenshotPath = r.str("screenshot_path").orEmpty(),
-        downloadURL = r.str("download_url").orEmpty(),
-        region = region,
-        appVersion = r.str("app_version").orEmpty(),
-        buildNumber = r.str("build_number").orEmpty(),
-        osVersion = r.str("os_version").orEmpty(),
-        deviceModel = r.str("device_model").orEmpty(),
-        screenName = r.str("screen_name").orEmpty(),
-        locale = r.str("locale").orEmpty(),
-        status = r.str("status") ?: "pending",
-        createdAt = r.time("created_at") ?: Timestamp.now(),
     )
 }
 

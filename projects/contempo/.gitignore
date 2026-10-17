@@ -73,7 +73,7 @@ backend/ui-debug.log
 backend/.firebase/
 
 # Claude Code local lock files — but not project-authored skills, which are
-# meant to be committed and shared (e.g. .claude/skills/triage-feedback/).
+# meant to be committed and shared (.claude/skills/<name>/).
 # Note: `.claude/*` + `!.claude/skills/`, not `.claude/` + negation — git
 # can't re-include a path whose parent directory itself is excluded, only a
 # path excluded by a wildcard match one level up.

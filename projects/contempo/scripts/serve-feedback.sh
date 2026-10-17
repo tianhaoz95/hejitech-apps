@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 # Serves ./feedback/public locally for a quick visual check (styling, layout).
-# python's http.server binds "localhost", so script.js's hostname check
-# routes writes to the Firestore EMULATOR, not the real project — but no
-# emulator is running here, so a submission will just fail. To actually test
-# submissions, see ./scripts/run-feedback-with-emulators.sh instead.
+# Submitting won't work here: POST /api/feedback lives in the Worker. For the whole
+# loop run `npm run dev:worker -w @contempo/web` from the repo root (form at /feedback/).
 # Usage: ./scripts/serve-feedback.sh [port]
 set -euo pipefail
 

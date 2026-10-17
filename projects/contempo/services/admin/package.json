@@ -1,7 +1,7 @@
 {
   "name": "@contempo/admin",
   "version": "1.0.0",
-  "description": "Contempo admin site \u2014 coupon management and feedback triage, admin-only",
+  "description": "Contempo admin site \u2014 coupon management, admin-only",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

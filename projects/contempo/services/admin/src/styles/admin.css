@@ -198,19 +198,6 @@ label {
   gap: 0.75rem;
 }
 
-/* A feedback report's screenshot-thumbnail-beside-details layout (see
-   FeedbackPage's AppFeedbackCard) — stacks on a narrow phone width instead
-   of leaving the details column too cramped to read. */
-.feedback-card {
-  display: flex;
-  gap: 1rem;
-}
-
-.feedback-card-thumb {
-  width: 160px;
-  flex-shrink: 0;
-}
-
 @media (max-width: 640px) {
   .admin-header {
     padding: 0.75rem 1rem;
@@ -244,14 +231,5 @@ label {
   .form-row {
     flex-direction: column;
     gap: 0.85rem;
-  }
-
-  .feedback-card {
-    flex-direction: column;
-  }
-
-  .feedback-card-thumb {
-    width: 100%;
-    max-width: 220px;
   }
 }

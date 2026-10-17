@@ -18,9 +18,9 @@ a way that survives an IRS audit (contemporaneous records for the 100-hour /
 - `services/web/` — the Contempo **Cloudflare Worker** (`contempo`,
   https://contempo.hejitech.workers.dev): serves the web app (Vite/React: Dashboard, Entries,
   Settings, Billing, legal pages `/legal/privacy` and `/legal/terms`), the admin site at
-  `/admin/` (`services/admin/`, feedback triage + coupons, admins only), the login-free feedback
-  form at `/feedback/` (`feedback/public/`), and the API that replaced the Firebase Cloud
-  Functions (`src/worker/index.ts`).
+  `/admin/` (`services/admin/`, coupons, admins only), the login-free feedback form at
+  `/feedback/` (`feedback/public/`, forwarded to FeedbackKit), and the API that replaced the
+  Firebase Cloud Functions (`src/worker/index.ts`).
 - `reports/`, `branding/landing_v0/` — zero-dependency static planning/branding sites.
 
 **Backend: the shared HEJI Supabase project, schema `contempo`** (moved off Firebase project
@@ -34,13 +34,12 @@ lists the only files allowed to hold the project's URL/key. Rules for schema cha
   `categories`, `entries`, `attachments` (immutable except `note`), `corrections`
   (append-only), `audio_captures` / `text_captures` (background queues), `token_usage`
   (`device` rows via `record_device_token_usage`, `cloud` rows only from the Worker),
-  `app_feedback` (shake to report; admins triage), `feedback` (anonymous form; admins read),
   `subscriptions` / `stripe_customers` (Worker's Stripe webhook only), `admins` (who may use
   `/admin/`; add rows by hand). The Firestore rules' field validation became check
   constraints. Rows go with the auth user (`on delete cascade`).
 - **Storage:** private bucket `contempo`, every object under `<uid>/…` (`entries/<id>/…`,
-  `audio/…`, `feedback/<id>/screenshot.jpg`); clients store long-lived signed URLs on rows
-  (`photo_urls`, `download_url`, `audio_url`) where Firestore stored download URLs.
+  `audio/…`); clients store long-lived signed URLs on rows (`photo_urls`, `download_url`,
+  `audio_url`) where Firestore stored download URLs.
 - **Auth:** Supabase Auth, Google only, the monorepo's way: a browser tab to Supabase's
   `/authorize` (PKCE) returning to `com.hejitech.contempoapp://login-callback` (Android,
   iOS) or the page itself (web). No Google SDKs or client ids in the apps. The watch signs in
@@ -63,7 +62,8 @@ lists the only files allowed to hold the project's URL/key. Rules for schema cha
 - **Worker API** (`services/web/src/worker/index.ts`, bearer = Supabase access token):
   `flag-risk`, `account/delete`, `watch/pair`,
   `billing/checkout` / `billing/portal` / `stripe/webhook` / `admin/coupons/*` (Stripe over
-  fetch; needs `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`), and `feedback` (anonymous).
+  fetch; needs `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`), and `feedback` (anonymous, forwarded
+  to FeedbackKit's ingest API).
   Secrets: `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY` (the shared HEJI Stripe account's
   key) and `STRIPE_WEBHOOK_SECRET` (endpoint `we_1URNe…`, see `~/Credentials/stripe.env`).
   Contempo Pro is product `prod_V0smC72BLmnFUb`; the webhook ignores other apps' subscriptions.
@@ -73,6 +73,16 @@ lists the only files allowed to hold the project's URL/key. Rules for schema cha
   `ContempoCore/.../Data/ContempoBackend.swift` (supabase-swift) and `ContempoData`'s
   `SupabaseEntryRepository`; web/admin `src/lib/supabase.ts`. Models keep a `Timestamp` type with
   Firebase's API (a drop-in in `core`/`ContempoCore`), so screens didn't change.
+- **Feedback: FeedbackKit**, project "Contempo" (`3a6e5664-8828-4d86-bada-2b814c6fb90f`, key
+  `pk_e34c…` in `FeedbackReporting.swift` / `FeedbackReporting.kt` and the Worker). Shake to report
+  is FeedbackKit's own flow (opt-in in Settings; the toggle also turns fix verification on/off),
+  and the `/feedback/` form is forwarded to the same project by the Worker. iOS uses the Swift
+  package from `tianhaoz95/feedback-kit` (like Wee Hours); Android pins a JitPack build of a commit
+  in that repo (`libs.feedbackkit`), since no tag there carries the Android SDK. Triage with the
+  FeedbackKit dashboard/Portal or `npx feedbackkit-cli`; FeedbackKit's GitHub App isn't connected
+  to this repo, so put a `FeedbackKit: <id>` trailer on the fix commit and run
+  `npx feedbackkit-cli link <id> --commit <sha> --summary "…"`. There is no feedback table or
+  admin page in Contempo anymore (dropped 2026-10-17).
 - **Deploy:** the Worker deploys from the repo with `npm run deploy -w @contempo/web` (Workers
   Builds can run the same on push). `.github/workflows/contempo-ci.yml` typechecks, tests and
   builds it.
@@ -103,8 +113,8 @@ npm run typecheck -w @contempo/web && npm test -w @contempo/web
 npm run dev:worker -w @contempo/web      # http://127.0.0.1:8789 (needs services/web/.dev.vars)
 npm run deploy -w @contempo/web
 
-# Triage shake-to-report feedback (needs SUPABASE_SECRET_KEY in the environment)
-node scripts/fetch-feedback.mjs
+# Triage feedback (shake to report + the /feedback/ form) in FeedbackKit, project "Contempo"
+npx feedbackkit-cli list --project 3a6e5664-8828-4d86-bada-2b814c6fb90f
 
 # Launch Android and Wear OS emulators (AVDs)
 ./scripts/launch-android-emulators.sh                       # Launch Android phone & Wear OS AVDs

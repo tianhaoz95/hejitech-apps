@@ -3,6 +3,10 @@ import SwiftUI
 
 @main
 struct ContempoApp: App {
+    init() {
+        FeedbackReporting.configure()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()

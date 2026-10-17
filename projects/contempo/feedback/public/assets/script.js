@@ -1,5 +1,5 @@
-// Submissions go to the Contempo Worker (POST /api/feedback, same origin), which stores them in
-// Supabase (contempo.feedback). Served at /feedback/ by that Worker; no keys on this page.
+// Submissions go to the Contempo Worker (POST /api/feedback, same origin), which forwards them to
+// Contempo's FeedbackKit project. Served at /feedback/ by that Worker; no keys on this page.
 const MAX_MESSAGE_LENGTH = 5000;
 
 const form = document.getElementById("feedback-form");

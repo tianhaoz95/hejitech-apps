@@ -152,7 +152,7 @@ struct SettingsScreen: View {
             } header: {
                 Text("Feedback")
             } footer: {
-                Text("Shake your device to report a bug or suggest an improvement — captures a screenshot you can box and describe.")
+                Text("Shake your device to report a bug or suggest an improvement — captures a screenshot you can mark up and describe.")
             }
 
             Section("Watch capture") {
@@ -587,9 +587,10 @@ private struct ShakeToReportExplanationSheet: View {
                 .foregroundStyle(palette.ink)
 
             VStack(alignment: .leading, spacing: 12) {
-                Label("Box the part of the screen you're reporting on.", systemImage: "rectangle.dashed")
+                Label("Draw on the screenshot to point at what you mean, or leave the screenshot out.", systemImage: "pencil.tip.crop.circle")
                 Label("Add a short note about the bug or improvement.", systemImage: "text.bubble")
                 Label("Sent straight to us — no need to describe your device or app version, we capture that automatically.", systemImage: "paperplane.fill")
+                Label("Ask to be told when it's fixed, and the app lets you know once the fix ships.", systemImage: "checkmark.seal")
             }
             .font(ContempoFont.bodySmall())
             .foregroundStyle(palette.inkSoft)

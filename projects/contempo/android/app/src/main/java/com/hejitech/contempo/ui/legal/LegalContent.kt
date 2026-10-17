@@ -43,10 +43,15 @@ val PrivacyPolicy = LegalDocument(
                     "moment you capture an entry, start a work timer, or stop a work timer, we " +
                     "also store that capture/start/stop location.",
                 "In-app feedback: if you turn on \"Shake to report\" in Settings, shaking your " +
-                    "device captures a screenshot of what you're looking at. We store that " +
-                    "screenshot, the area you box on it (if any), the description you write, and " +
-                    "structured device/app state (app version, OS version, device model, which " +
-                    "screen you were on, and locale) so we can find and fix the issue faster.",
+                    "device opens a report form with a screenshot of what you're looking at, which " +
+                    "you can mark up or leave out. When you send a report, we receive the screenshot " +
+                    "and your markings, the description you write, any file you attach, device/app " +
+                    "details (app version and build, OS version, device model, screen size, which " +
+                    "screen you were on, and locale) and a random identifier for this install, so we " +
+                    "can find and fix the issue and, if you ask, tell you in the app when it's fixed. " +
+                    "Reports go to FeedbackKit, Hejitech's own feedback service, and aren't linked to " +
+                    "your Contempo account. Messages sent through the feedback form on our website, " +
+                    "and the email address if you give one, go there too.",
                 "Role names: if you tag an entry as done by someone else who works on your " +
                     "property (a co-host, cleaner, or contractor, for example), we store the name " +
                     "you give that role. That's content you choose to enter about a third party, " +

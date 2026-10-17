@@ -31,7 +31,6 @@ enum ServiceLocator {
     static let pendingCaptureStore = PendingCaptureStore()
     static let shakeToReportSettingsStore = ShakeToReportSettingsStore()
     static let onboardingStore = OnboardingStore()
-    static let currentScreenTracker = CurrentScreenTracker()
     static let agentClient = AgentClient(onDeviceLlm: onDeviceLlm, entryRepository: entryRepository)
 
 }

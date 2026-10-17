@@ -19,9 +19,6 @@ export function Layout() {
           <NavLink to="/coupons" style={navLinkStyle}>
             Coupons
           </NavLink>
-          <NavLink to="/feedback" style={navLinkStyle}>
-            Feedback
-          </NavLink>
         </nav>
         <div className="admin-header-actions">
           <ThemeToggle />

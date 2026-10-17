@@ -2,17 +2,14 @@ package com.hejitech.core.data
 
 import android.content.Context
 import android.net.Uri
-import com.hejitech.core.model.AppFeedback
 import com.hejitech.core.model.Attachment
 import com.hejitech.core.model.Category
 import com.hejitech.core.model.Entry
-import com.hejitech.core.model.FeedbackRegion
 import com.hejitech.core.model.Property
 import com.hejitech.core.model.Role
 import com.hejitech.core.model.Timestamp
 import com.hejitech.core.model.TokenUsageWeek
 import com.hejitech.core.supabase.ContempoBackend
-import com.hejitech.core.supabase.appFeedbackFromRow
 import com.hejitech.core.supabase.attachmentFromRow
 import com.hejitech.core.supabase.categoryFromRow
 import com.hejitech.core.supabase.entryFromRow
@@ -239,43 +236,6 @@ class SupabaseEntryRepository(private val context: Context) : EntryRepository {
         withContext(Dispatchers.IO) { destination.writeBytes(bytes) }
         onProgress(1f)
         return destination
-    }
-
-    override suspend fun submitFeedback(
-        imageFile: File,
-        region: FeedbackRegion?,
-        description: String,
-        screenName: String,
-        appVersion: String,
-        buildNumber: String,
-        osVersion: String,
-        deviceModel: String,
-        locale: String,
-    ): AppFeedback {
-        val id = ContempoBackend.newId()
-        // <uid>/feedback/… : admins may read this folder (storage policy "contempo: own files read").
-        val storagePath = "$uid/feedback/$id/screenshot.jpg"
-        val bytes = withContext(Dispatchers.IO) { imageFile.readBytes() }
-        val url = uploadAndSign(storagePath, bytes, "image/jpeg")
-        val row = db.from("app_feedback").insert(
-            buildJsonObject {
-                put("id", id)
-                put("user_id", uid)
-                put("description", description)
-                put("screenshot_path", storagePath)
-                put("download_url", url)
-                put("app_version", appVersion)
-                put("build_number", buildNumber)
-                put("os_version", osVersion)
-                put("device_model", deviceModel)
-                put("screen_name", screenName)
-                put("locale", locale)
-                if (region != null) {
-                    put("region", buildJsonObject { put("x", region.x); put("y", region.y); put("w", region.w); put("h", region.h) })
-                }
-            },
-        ) { select() }.decodeSingle<JsonObject>()
-        return appFeedbackFromRow(row) ?: error("submitFeedback: no row returned")
     }
 }
 

@@ -11,6 +11,10 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // FeedbackKit's Android SDK only (libs.feedbackkit).
+        maven("https://jitpack.io") {
+            content { includeGroup("com.github.tianhaoz95") }
+        }
     }
 }
 

@@ -3,6 +3,7 @@ package com.hejitech.contempo
 import android.app.Application
 import com.hejitech.contempo.capture.PendingCaptureSyncWorker
 import com.hejitech.contempo.data.ServiceLocator
+import com.hejitech.contempo.feedback.FeedbackReporting
 import com.hejitech.core.supabase.ContempoBackend
 import com.hejitech.contempo.timer.OngoingWorkNotificationService
 import com.hejitech.contempo.wear.PendingAudioProcessWorker
@@ -35,6 +36,7 @@ class ContempoApp : Application() {
         // com.hejitech.contempoapp://login-callback (AndroidManifest, MainActivity).
         ContempoBackend.init(BuildConfig.SUPABASE_URL, BuildConfig.SUPABASE_PUBLISHABLE_KEY, scheme = "com.hejitech.contempoapp")
         ServiceLocator.initialize(this)
+        FeedbackReporting.configure(ServiceLocator.shakeToReportSettingsStore.enabled.value)
         // No anonymous sign-in here anymore — auth.currentUser stays null
         // until the user actually signs in via SignInScreen/AuthManager.
 

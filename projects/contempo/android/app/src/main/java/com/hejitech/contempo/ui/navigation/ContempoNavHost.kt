@@ -44,6 +44,7 @@ import com.hejitech.contempo.ui.confirm.ConfirmScreen
 import com.hejitech.contempo.ui.dashboard.DashboardScreen
 import com.hejitech.contempo.ui.entrydetail.EntryDetailScreen
 import com.hejitech.contempo.ui.settings.SettingsScreen
+import com.feedbackkit.FeedbackKit
 
 private sealed class TopLevelDestination(val route: String, val labelRes: Int) {
     data object Capture : TopLevelDestination("capture", R.string.nav_capture)
@@ -169,7 +170,7 @@ fun ContempoNavHost() {
     val currentRoute = navBackStackEntry?.destination?.route
     val isTopLevelScreen = topLevelDestinations.any { it.route == currentRoute }
 
-    // Feeds CurrentScreenTracker — see its kdoc. Routes carrying query args
+    // Tells FeedbackKit where a shake-to-report came from. Routes carrying query args
     // (confirm?...) or path args (entryDetail/{id}, legal/{doc}) are
     // collapsed to their bare screen name.
     val trackedScreenName = when {
@@ -179,7 +180,7 @@ fun ContempoNavHost() {
         currentRoute.startsWith("legal") -> "legal"
         else -> currentRoute
     }
-    LaunchedEffect(trackedScreenName) { CurrentScreenTracker.update(trackedScreenName) }
+    LaunchedEffect(trackedScreenName) { FeedbackKit.currentScreen = trackedScreenName }
     // Scaffold still reserves the bottom bar's height in innerPadding even
     // once the keyboard visually covers that same screen area — nothing
     // shrinks it just because it's now hidden. Hiding the bar outright
