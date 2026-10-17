@@ -446,50 +446,50 @@ public final class NoteRepository: ObservableObject {
             duration: 54.2,
             audioFileName: nil,
             title: "On-Device AI Engine & Privacy Architecture",
-            summary: "Zero cloud transmission architecture running local Whisper CoreML ASR and MLX Swift Qwen3 on-device LLM.",
-            rawTranscript: "hey team so for the AI engine we need complete privacy. requirement one is speech recognition must run locally with whisperkit and coreml so no audio ever leaves the device. requirement two is stage two structured copywriting runs on-device using qwen3 with mlx swift. condition 1 if the device supports metal gpu acceleration execute directly on neural engine. condition 2 if user configures a local ollama endpoint route there instead. make sure to encrypt local storage with aes 256.",
+            summary: "Zero cloud transmission architecture running local speech recognition and an on-device language model.",
+            rawTranscript: "hey team so for the AI engine we need complete privacy. requirement one is speech recognition must run locally with whisperkit and coreml so no audio ever leaves the device. requirement two is stage two structured copywriting runs on-device using the local language model. condition 1 if the device supports metal gpu acceleration execute directly on neural engine. condition 2 if user configures a local ollama endpoint route there instead. make sure to encrypt local storage with aes 256.",
             cleanedNote: """
             # On-Device AI Engine & Privacy Architecture
 
-            > Zero cloud transmission architecture running local Whisper CoreML ASR and MLX Swift Qwen3 on-device LLM.
+            > Zero cloud transmission architecture running local speech recognition and an on-device language model.
 
             ### 🎯 Requirements
             - Run speech recognition locally via WhisperKit CoreML (no audio leaves device)
-            - Execute Stage 2 copywriting using on-device Qwen3 via MLX Swift Metal acceleration
+            - Execute Stage 2 copywriting using the on-device language model with GPU acceleration
             - Encrypt local audio recordings and notes database on disk with AES-256
             - Zero cloud accounts, telemetry, or external API requirements
 
             ### 🔢 Execution Logic & Fallback Chain
-            1. If device supports Metal GPU, execute on-device Qwen3 model
+            1. If device supports Metal GPU, execute the on-device language model
             2. If user explicitly opts into local LLM endpoint in Settings, route to private Ollama host
             3. If on-device inference is unavailable, fall back to deterministic transformer
 
             ### ✅ Action Items
             - [ ] Benchmark CoreML neural engine inference latency on A17/A18 Pro
-            - [ ] Validate MLX Swift memory allocation and cache purge on backgrounding
+            - [ ] Validate model memory allocation and cache purge on backgrounding
             - [ ] Confirm zero network requests during full note processing
             """,
             requirements: [
                 "Run speech recognition locally via WhisperKit CoreML (no audio leaves device)",
-                "Execute Stage 2 copywriting using on-device Qwen3 via MLX Swift Metal acceleration",
+                "Execute Stage 2 copywriting using the on-device language model with GPU acceleration",
                 "Encrypt local audio recordings and notes database on disk with AES-256",
                 "Zero cloud accounts, telemetry, or external API requirements"
             ],
             conditions: [
-                "If device supports Metal GPU, execute on-device Qwen3 model",
+                "If device supports Metal GPU, execute the on-device language model",
                 "If user explicitly opts into local LLM endpoint in Settings, route to private Ollama host",
                 "If on-device inference is unavailable, fall back to deterministic transformer"
             ],
             actionItems: [
                 "Benchmark CoreML neural engine inference latency on A17/A18 Pro",
-                "Validate MLX Swift memory allocation and cache purge on backgrounding",
+                "Validate model memory allocation and cache purge on backgrounding",
                 "Confirm zero network requests during full note processing"
             ],
             tags: ["#AI", "#privacy", "#CoreML", "#architecture"],
             status: .ready,
             source: .phoneApp,
             isFavorite: true,
-            cleanupEngine: "On-Device LLM (Qwen3-0.6B)"
+            cleanupEngine: CleanupEngineLabel.onDeviceLLM(model: OnDeviceLLMService.smallModelDisplayName)
         )
 
         let sample4 = VoiceNote(
@@ -535,7 +535,7 @@ public final class NoteRepository: ObservableObject {
             status: .ready,
             source: .watchComplication,
             isFavorite: false,
-            cleanupEngine: "On-Device LLM (Qwen3-0.6B)"
+            cleanupEngine: CleanupEngineLabel.onDeviceLLM(model: OnDeviceLLMService.smallModelDisplayName)
         )
         
         self.notes = [sample1, sample2, sample3, sample4]

@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.26.4"
+    public static let currentVersion = "1.26.5"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,28 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.26.5",
+            date: "October 2026",
+            tagline: "Simpler Model Names",
+            features: [
+                WhatsNewItem(
+                    icon: "sparkles",
+                    tint: .indigo,
+                    title: "Apple Intelligence, Lite and Flash",
+                    description: "The on-device models now go by simple names: Apple Intelligence, Lite (fast, included) and Flash (best quality, optional download)."
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "textformat",
+                    tint: .gray,
+                    title: "Clearer Settings",
+                    description: "Settings and note labels describe each model by what it's good at instead of technical model names.",
+                    kind: .improvement
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.26.4",
             date: "October 2026",
@@ -640,7 +662,7 @@ public struct WhatsNewView: View {
                     title: "Pipeline Processing Badge Animation",
                     description: "Enhanced the orange pulsing processing dot on the bottom mic button with subtle scale animation.",
                     kind: .improvement,
-                    detailedDescription: "Provides live feedback that on-device WhisperKit or Qwen3 pipeline is actively computing."
+                    detailedDescription: "Provides live feedback that on-device speech recognition or AI cleanup is actively computing."
                 ),
                 WhatsNewItem(
                     icon: "accessibility",
@@ -711,8 +733,8 @@ public struct WhatsNewView: View {
                     icon: "arrow.triangle.branch",
                     tint: .indigo,
                     title: "On-Device Pipeline Stage Inspector",
-                    description: "Inspect each stage of Voxbrief's private on-device pipeline from audio ingest through WhisperKit ASR and Qwen3 LLM to Markdown.",
-                    detailedDescription: "Gain insight into Voxbrief's completely private, on-device AI pipeline. Tap each stage in the interactive diagram to inspect how audio buffers are ingested, transcribed via Apple Neural Engine CoreML, and synthesized by quantized Qwen3.",
+                    description: "Inspect each stage of Voxbrief's private on-device pipeline from audio ingest through speech recognition and AI cleanup to Markdown.",
+                    detailedDescription: "Gain insight into Voxbrief's completely private, on-device AI pipeline. Tap each stage in the interactive diagram to inspect how audio buffers are ingested, transcribed via Apple Neural Engine CoreML, and structured by the on-device language model.",
                     highlights: [
                         "Interactive 4-stage pipeline visualization (Ingest ➔ ASR ➔ LLM ➔ Markdown)",
                         "Detailed telemetry and model execution breakdown for each stage",
@@ -899,7 +921,7 @@ public struct WhatsNewView: View {
                     highlights: [
                         "Real-time local audio storage calculation",
                         "One-tap synced audio cache purging",
-                        "Direct pipeline diagnostics (WhisperKit ASR + Qwen3 LLM)"
+                        "Direct pipeline diagnostics (speech recognition + AI cleanup)"
                     ],
                     visualization: .pipeline
                 )
@@ -1940,7 +1962,7 @@ public struct WhatsNewVisualizationView: View {
                 Image(systemName: "arrow.right")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
-                pipelineNode(index: 2, title: "Qwen3 LLM", icon: "brain.head.profile", color: .indigo)
+                pipelineNode(index: 2, title: "AI Cleanup", icon: "brain.head.profile", color: .indigo)
                 Image(systemName: "arrow.right")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
@@ -1964,10 +1986,10 @@ public struct WhatsNewVisualizationView: View {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 case 2:
-                    Text("Stage 3: On-Device Qwen3 via MLX")
+                    Text("Stage 3: On-Device AI Cleanup")
                         .font(.caption.bold())
                         .foregroundStyle(.indigo)
-                    Text("Extracts title, concise summary, checklist requirements, and condition tags using 4-bit quantized Qwen3.")
+                    Text("Extracts title, concise summary, checklist requirements, and condition tags with Apple Intelligence, Lite or Flash.")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 default:

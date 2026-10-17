@@ -43,11 +43,11 @@ public enum OnDeviceModelSelection: String, CaseIterable, Identifiable, Sendable
         case .auto:
             return "Auto (Best Available)"
         case .appleFoundation:
-            return "Apple Foundation Model (System)"
+            return "Apple Intelligence"
         case .small:
-            return "Qwen3-0.6B (Optional)"
+            return "Lite"
         case .large:
-            return "Qwen3-4B (Downloaded)"
+            return "Flash (Download)"
         }
     }
 
@@ -56,11 +56,11 @@ public enum OnDeviceModelSelection: String, CaseIterable, Identifiable, Sendable
         case .auto:
             return "Auto"
         case .appleFoundation:
-            return "Apple Foundation"
+            return "Apple Intelligence"
         case .small:
-            return "Qwen3-0.6B"
+            return "Lite"
         case .large:
-            return "Qwen3-4B"
+            return "Flash"
         }
     }
 }
@@ -104,13 +104,13 @@ public final class OnDeviceLLMService: ObservableObject {
     public static let modelPreferenceStorageKey = "on_device_model_preference"
 
     public static let smallModelResourceName = "Qwen3-0.6B-4bit"
-    public static let smallModelDisplayName = "Qwen3-0.6B (bundled)"
-    public static let smallModelParameterCount = "0.6B"
+    /// User-facing tier names stay fixed when the underlying models are swapped, so no screen
+    /// ever names the actual model.
+    public static let smallModelDisplayName = "Lite"
     public static let smallModelApproxSizeBytes: Int64 = 351_386_061
 
     public static let largeModelRepoId = "mlx-community/Qwen3-4B-4bit"
-    public static let largeModelDisplayName = "Qwen3-4B"
-    public static let largeModelParameterCount = "4B"
+    public static let largeModelDisplayName = "Flash"
     public static let largeModelApproxDownloadBytes: Int64 = 2_278_972_183
 
     @Published public private(set) var largeModelState: OnDeviceModelState = .notDownloaded
@@ -302,7 +302,7 @@ public final class OnDeviceLLMService: ObservableObject {
         } else if isUsingLargeModel {
             return Self.largeModelDisplayName
         } else if isUsingQwenModel {
-            return "Qwen3-0.6B"
+            return Self.smallModelDisplayName
         } else if AppleFoundationModelService.isSupportedOnThisDevice {
             return AppleFoundationModelService.modelDisplayName
         } else {

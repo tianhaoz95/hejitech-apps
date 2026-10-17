@@ -123,7 +123,7 @@ public struct WatchSettingsView: View {
                     Text("• Stage 1: WhisperKit ASR")
                         .font(.system(size: 10))
                         .foregroundColor(.secondary)
-                    Text("• Stage 2: Qwen3 On-Device LLM")
+                    Text("• Stage 2: On-Device AI Cleanup")
                         .font(.system(size: 10))
                         .foregroundColor(.secondary)
                     Text("• 100% Private, On-Device")

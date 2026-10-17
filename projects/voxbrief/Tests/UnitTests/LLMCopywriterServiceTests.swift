@@ -395,9 +395,18 @@ final class LLMCopywriterServiceTests: XCTestCase {
 
     func testCleanupEngineLabelConstants() {
         XCTAssertEqual(CleanupEngineLabel.ollama, "Ollama")
-        XCTAssertEqual(CleanupEngineLabel.appleFoundationModel, "Apple Foundation Model")
+        XCTAssertEqual(CleanupEngineLabel.appleFoundationModel, "Apple Intelligence")
         XCTAssertEqual(CleanupEngineLabel.ollama(model: "llama3.2:3b"), "Ollama (llama3.2:3b)")
-        XCTAssertEqual(CleanupEngineLabel.onDeviceLLM(model: "Qwen3-4B"), "On-Device LLM (Qwen3-4B)")
+        XCTAssertEqual(CleanupEngineLabel.onDeviceLLM(model: "Flash"), "On-Device (Flash)")
+    }
+
+    @MainActor
+    func testCleanupEngineDisplayNameHidesLegacyModelNames() {
+        XCTAssertEqual(CleanupEngineLabel.displayName(for: "On-Device LLM (Qwen3-0.6B)"), "On-Device (Lite)")
+        XCTAssertEqual(CleanupEngineLabel.displayName(for: "On-Device LLM (Qwen3-0.6B (bundled))"), "On-Device (Lite)")
+        XCTAssertEqual(CleanupEngineLabel.displayName(for: "On-Device LLM (Qwen3-4B)"), "On-Device (Flash)")
+        XCTAssertEqual(CleanupEngineLabel.displayName(for: "Apple Foundation Model"), "Apple Intelligence")
+        XCTAssertEqual(CleanupEngineLabel.displayName(for: CleanupEngineLabel.ruleBased), CleanupEngineLabel.ruleBased)
     }
 
     func testOnDeviceModelSelectionProperties() {
@@ -411,10 +420,10 @@ final class LLMCopywriterServiceTests: XCTestCase {
         XCTAssertEqual(OnDeviceModelSelection.small.id, "small")
         XCTAssertEqual(OnDeviceModelSelection.large.id, "large")
 
-        XCTAssertTrue(OnDeviceModelSelection.small.displayName.contains("0.6B"))
-        XCTAssertTrue(OnDeviceModelSelection.large.displayName.contains("4B"))
+        XCTAssertEqual(OnDeviceModelSelection.small.displayName, "Lite")
+        XCTAssertTrue(OnDeviceModelSelection.large.displayName.contains("Flash"))
         XCTAssertTrue(OnDeviceModelSelection.auto.displayName.contains("Auto"))
-        XCTAssertTrue(OnDeviceModelSelection.appleFoundation.displayName.contains("Apple Foundation"))
+        XCTAssertEqual(OnDeviceModelSelection.appleFoundation.displayName, "Apple Intelligence")
     }
 
     @MainActor
@@ -473,7 +482,7 @@ final class LLMCopywriterServiceTests: XCTestCase {
         // 3. In .small mode:
         service.modelPreference = .small
         XCTAssertFalse(service.isUsingLargeModel)
-        XCTAssertEqual(service.activeModelDisplayName, "Qwen3-0.6B")
+        XCTAssertEqual(service.activeModelDisplayName, OnDeviceLLMService.smallModelDisplayName)
 
         // When large model IS ready:
         service.setLargeModelStateForTesting(.ready)
@@ -498,6 +507,6 @@ final class LLMCopywriterServiceTests: XCTestCase {
         // 3. In .small mode, it forces small model
         service.modelPreference = .small
         XCTAssertFalse(service.isUsingLargeModel)
-        XCTAssertEqual(service.activeModelDisplayName, "Qwen3-0.6B")
+        XCTAssertEqual(service.activeModelDisplayName, OnDeviceLLMService.smallModelDisplayName)
     }
 }

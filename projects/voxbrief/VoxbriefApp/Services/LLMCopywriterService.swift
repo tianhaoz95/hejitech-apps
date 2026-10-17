@@ -7,10 +7,22 @@ public enum CleanupEngineLabel {
     public static let notApplicable = "N/A"
     public static let ollama = "Ollama"
     public static let ruleBased = "Rule-Based (LLM Unavailable)"
-    public static let appleFoundationModel = "Apple Foundation Model"
+    public static let appleFoundationModel = "Apple Intelligence"
 
     public static func onDeviceLLM(model: String) -> String {
-        "On-Device LLM (\(model))"
+        "On-Device (\(model))"
+    }
+
+    /// The label to show for a stored engine string. Notes saved before the tier names existed
+    /// carry the raw model names; this maps them so the UI never names a model.
+    @MainActor
+    public static func displayName(for label: String) -> String {
+        label
+            .replacingOccurrences(of: "On-Device LLM (", with: "On-Device (")
+            .replacingOccurrences(of: "Apple Foundation Model", with: appleFoundationModel)
+            .replacingOccurrences(of: "Qwen3-0.6B (bundled)", with: OnDeviceLLMService.smallModelDisplayName)
+            .replacingOccurrences(of: "Qwen3-0.6B", with: OnDeviceLLMService.smallModelDisplayName)
+            .replacingOccurrences(of: "Qwen3-4B", with: OnDeviceLLMService.largeModelDisplayName)
     }
 
     public static func ollama(model: String) -> String {

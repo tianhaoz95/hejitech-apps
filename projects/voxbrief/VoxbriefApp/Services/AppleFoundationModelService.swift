@@ -30,7 +30,7 @@ public enum AppleFoundationModelError: LocalizedError {
 public final class AppleFoundationModelService: ObservableObject {
     public static let shared = AppleFoundationModelService()
 
-    public static let modelDisplayName = "Apple Foundation Model"
+    public static let modelDisplayName = "Apple Intelligence"
 
     @Published public private(set) var state: AppleFoundationModelState = .available
 

@@ -812,7 +812,7 @@ public struct NoteDetailView: View {
                     sectionHeader(icon: "doc.plaintext", tint: .accentColor, title: "Formatted Note")
                     Spacer()
                     if let engine = viewModel.note.cleanupEngine, engine != CleanupEngineLabel.notApplicable {
-                        Text(engine)
+                        Text(CleanupEngineLabel.displayName(for: engine))
                             .font(.caption2.weight(.medium))
                             .foregroundStyle(.secondary)
                     }
@@ -835,7 +835,7 @@ public struct NoteDetailView: View {
                 sectionHeader(icon: "wand.and.stars", tint: .blue, title: "Light Cleanup")
                 Spacer()
                 if let engine = viewModel.note.lightCleanupEngine, engine != CleanupEngineLabel.notApplicable {
-                    Text(engine)
+                    Text(CleanupEngineLabel.displayName(for: engine))
                         .font(.caption2.weight(.medium))
                         .foregroundStyle(.secondary)
                 }

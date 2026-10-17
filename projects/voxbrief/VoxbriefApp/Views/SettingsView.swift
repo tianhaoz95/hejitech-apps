@@ -103,13 +103,6 @@ public struct SettingsView: View {
                                 .textInputAutocapitalization(.never)
                         }
                     } else {
-                        HStack {
-                            Label("Framework", systemImage: "shippingbox")
-                            Spacer()
-                            Text(llmService.isUsingAppleFoundationModel ? "Apple Intelligence" : "MLX Swift")
-                                .foregroundStyle(.secondary)
-                        }
-
                         Picker("Model", selection: $llmService.modelPreference) {
                             ForEach(OnDeviceModelSelection.allCases) { selection in
                                 Text(selection.displayName).tag(selection)
@@ -243,8 +236,8 @@ public struct SettingsView: View {
                 Section(
                     header: Text("On-Device Models"),
                     footer: Text(AppleFoundationModelService.isSupportedOnThisDevice
-                        ? "Apple Foundation Model is used by default with zero extra download. Qwen models are only used when you choose to download and use them."
-                        : "On supported devices with Apple Intelligence, the Apple Foundation Model is used by default. On other devices, download Qwen for local LLM cleanup, or use the rule-based fallback.")
+                        ? "Apple Intelligence is used by default with zero extra download. Lite and Flash are only used when you choose them."
+                        : "On devices with Apple Intelligence, it's used by default. On other devices, use Lite, download Flash for better results, or use the rule-based fallback.")
                 ) {
                     Picker("Model Preference", selection: $llmService.modelPreference) {
                         ForEach(OnDeviceModelSelection.allCases) { selection in
@@ -255,7 +248,7 @@ public struct SettingsView: View {
                     modelRow(
                         name: AppleFoundationModelService.modelDisplayName,
                         detail: AppleFoundationModelService.isSupportedOnThisDevice
-                            ? "System Foundation Model · Apple Intelligence · Default on this device"
+                            ? "Built into your device · Default"
                             : "Unavailable (requires Apple Intelligence)",
                         trailing: AnyView(
                             HStack(spacing: 8) {
@@ -274,7 +267,7 @@ public struct SettingsView: View {
 
                     modelRow(
                         name: OnDeviceLLMService.smallModelDisplayName,
-                        detail: "\(OnDeviceLLMService.smallModelParameterCount) parameters · optional lightweight model",
+                        detail: "Fast and lightweight · included",
                         trailing: AnyView(
                             HStack(spacing: 8) {
                                 smallModelStatusBadge
@@ -290,8 +283,8 @@ public struct SettingsView: View {
 
                     if llmService.modelPreference == .large && !llmService.isUsingLargeModel {
                         Text(AppleFoundationModelService.isSupportedOnThisDevice
-                            ? "Qwen3-4B is selected, but not downloaded yet. Using Apple Foundation Model until downloaded."
-                            : "Qwen3-4B is selected, but not downloaded yet. Please download the model to use it.")
+                            ? "Flash is selected, but not downloaded yet. Using Apple Intelligence until downloaded."
+                            : "Flash is selected, but not downloaded yet. Please download it to use it.")
                             .font(.caption)
                             .foregroundStyle(.orange)
                     }
@@ -551,7 +544,7 @@ public struct SettingsView: View {
         } else if llmService.isUsingLargeModel {
             return "\(OnDeviceLLMService.largeModelDisplayName) (downloaded)"
         } else if llmService.isUsingQwenModel {
-            return "Qwen3-0.6B"
+            return OnDeviceLLMService.smallModelDisplayName
         } else if AppleFoundationModelService.isSupportedOnThisDevice {
             return "\(AppleFoundationModelService.modelDisplayName) (System)"
         } else {
@@ -602,7 +595,7 @@ public struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(OnDeviceLLMService.largeModelDisplayName)
                         .font(.subheadline.weight(.medium))
-                    Text("\(OnDeviceLLMService.largeModelParameterCount) parameters · \(sizeString) download")
+                    Text("Best quality · \(sizeString) download")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

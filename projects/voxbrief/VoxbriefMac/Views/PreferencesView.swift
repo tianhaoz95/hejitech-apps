@@ -104,7 +104,7 @@ struct PreferencesView: View {
 
                 LabeledContent(AppleFoundationModelService.modelDisplayName) {
                     HStack(spacing: 8) {
-                        Text(AppleFoundationModelService.isSupportedOnThisDevice ? "System · Apple Intelligence" : "Unsupported on this Mac")
+                        Text(AppleFoundationModelService.isSupportedOnThisDevice ? "Built into your Mac" : "Unsupported on this Mac")
                             .foregroundStyle(.secondary)
                         if AppleFoundationModelService.isSupportedOnThisDevice {
                             if llmService.isUsingAppleFoundationModel {
@@ -123,7 +123,7 @@ struct PreferencesView: View {
 
                 LabeledContent(OnDeviceLLMService.smallModelDisplayName) {
                     HStack(spacing: 8) {
-                        Text("\(OnDeviceLLMService.smallModelParameterCount) · optional")
+                        Text("Fast and lightweight")
                             .foregroundStyle(.secondary)
                         if llmService.modelPreference == .small {
                             Label("Active", systemImage: "checkmark.circle.fill")
@@ -138,8 +138,8 @@ struct PreferencesView: View {
 
                 if llmService.modelPreference == .large && !llmService.isUsingLargeModel {
                     Text(AppleFoundationModelService.isSupportedOnThisDevice
-                        ? "Qwen3-4B is selected, but not downloaded yet. Using Apple Foundation Model until downloaded."
-                        : "Qwen3-4B is selected, but not downloaded yet. Please download the model to use it.")
+                        ? "Flash is selected, but not downloaded yet. Using Apple Intelligence until downloaded."
+                        : "Flash is selected, but not downloaded yet. Please download it to use it.")
                         .font(.caption)
                         .foregroundStyle(.orange)
                 }
@@ -147,8 +147,8 @@ struct PreferencesView: View {
                 Text("On-Device Models")
             } footer: {
                 Text(AppleFoundationModelService.isSupportedOnThisDevice
-                    ? "Apple Foundation Model is used by default with zero extra download. Qwen models are only used when you choose to download and use them."
-                    : "On Macs with Apple Intelligence, the Apple Foundation Model is used by default. On other Macs, download Qwen for local LLM cleanup.")
+                    ? "Apple Intelligence is used by default with zero extra download. Lite and Flash are only used when you choose them."
+                    : "On Macs with Apple Intelligence, it's used by default. On other Macs, use Lite or download Flash for better results.")
             }
 
             Section(
