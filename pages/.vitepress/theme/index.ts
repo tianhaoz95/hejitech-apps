@@ -2,9 +2,12 @@ import DefaultTheme from "vitepress/theme";
 import type { Theme } from "vitepress";
 import "./custom.css";
 
+/** The deployed commit (pages.yml builds with GITHUB_SHA), for FeedbackKit's fix verification. */
+declare const __PAGES_BUILD__: string;
+
 /**
- * FeedbackKit per section: each app's docs send feedback to that app's FeedbackKit project. The
- * widget appears once a visitor opens an app's docs and follows them between sections.
+ * FeedbackKit on every page: an app's docs send feedback to that app's FeedbackKit project; the
+ * rest of the site (home, monorepo guide, apps without their own project) to "HEJI Apps".
  */
 const FEEDBACK: Record<string, { projectKey: string; color: string }> = {
   waypack: { projectKey: "pk_88dcc559540fd5cea57354c41dc455fcfd13", color: "#1D6FE0" },
@@ -12,6 +15,7 @@ const FEEDBACK: Record<string, { projectKey: string; color: string }> = {
   voxbrief: { projectKey: "pk_ffa7308d843fd670a9bbd1d67ad0ebf54597", color: "#1D4ED8" },
   meowtrix: { projectKey: "pk_a2157c1fc7c01f948094c73935cf997f5c0e", color: "#7c3aed" },
 };
+const SITE = { projectKey: "pk_8bd53e754628a1a3f02030e7f03393ff0dc9", color: "#2f5bea" };
 const ENDPOINT = "https://gpucoladcyvijefdjudf.supabase.co/functions/v1/ingest-feedback";
 
 export default {
@@ -20,12 +24,12 @@ export default {
     if (typeof window === "undefined") return;
     let current = "";
     const route = async (path: string) => {
-      const section = path.replace(/^\/hejitech-apps\//, "/").split("/")[1] ?? "";
-      const cfg = FEEDBACK[section];
-      if (!cfg) return;
+      const segment = path.replace(/^\/hejitech-apps\//, "/").split("/")[1] ?? "";
+      const section = segment in FEEDBACK ? segment : "site";
+      const cfg = FEEDBACK[section] ?? SITE;
       const { FeedbackKit } = await import("feedbackkit-web");
       if (current !== section) {
-        FeedbackKit.configure({ projectKey: cfg.projectKey, endpoint: ENDPOINT, appVersion: "docs" });
+        FeedbackKit.configure({ projectKey: cfg.projectKey, endpoint: ENDPOINT, appVersion: "docs", appBuild: __PAGES_BUILD__ });
         FeedbackKit.theme = { primaryColorHex: cfg.color };
         if (!current) {
           FeedbackKit.showFloatingTriggerButton();
@@ -34,7 +38,7 @@ export default {
         }
         current = section;
       }
-      FeedbackKit.currentScreen = `Docs - ${path.replace(/^\/hejitech-apps/, "")}`;
+      FeedbackKit.currentScreen = `Docs - ${path.replace(/^\/hejitech-apps/, "") || "/"}`;
     };
     void route(window.location.pathname);
     const previous = router.onAfterRouteChange;

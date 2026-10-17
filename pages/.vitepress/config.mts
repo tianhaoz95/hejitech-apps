@@ -45,6 +45,7 @@ export default withMermaid(
     description: "Small, focused apps by HEJI Technology: Waypack, Wee Hours, Voxbrief, Meowtrix, Contempo and what comes next.",
     base,
     cleanUrls: true,
+    vite: { define: { __PAGES_BUILD__: JSON.stringify((process.env.GITHUB_SHA ?? "local").slice(0, 7)) } },
     head: [
       // ?v=2: until 2026-10-16 this address was Waypack's docs, and browsers keep a site's old icon.
       ["link", { rel: "icon", href: `${base}heji.svg?v=2`, type: "image/svg+xml" }],
