@@ -60,6 +60,8 @@ export default withMermaid(
         // The home page's app cards link each project; the nav stays short.
         { text: "Apps", link: "/#apps" },
         { text: "Monorepo", link: "/monorepo" },
+        // Styled as a button in custom.css (.VPNavBarMenuLink[href$="/status"]).
+        { text: "● Status", link: "/status", activeMatch: "^/status" },
       ],
       sidebar: Object.fromEntries(projects.map((p) => [`/${p}/`, sidebarFor(p)])),
       socialLinks: [{ icon: "github", link: "https://github.com/tianhaoz95/hejitech-apps" }],

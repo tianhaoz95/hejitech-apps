@@ -101,3 +101,45 @@
   .heji-app { flex-direction: column; }
   .heji-apps { grid-template-columns: 1fr; }
 }
+
+/* ---------- status page (status.md, StatusBoard.vue) ---------- */
+/* The top bar's Status link is a button. */
+.VPNavBarMenuLink[href$="/status"] {
+  margin: 0 4px 0 8px; padding: 0 14px; height: 32px; line-height: 30px; align-self: center;
+  border-radius: 16px; border: 1px solid var(--vp-button-brand-border);
+  background: var(--vp-button-brand-bg); color: var(--vp-button-brand-text) !important;
+  font-weight: 600; transition: background-color .2s;
+}
+.VPNavBarMenuLink[href$="/status"]:hover { background: var(--vp-button-brand-hover-bg); }
+.VPNavBarMenuLink[href$="/status"].active { box-shadow: 0 0 0 2px var(--vp-c-brand-soft); }
+.heji-status-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin: 16px 0 4px; }
+.heji-status-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.heji-status-actions button { cursor: pointer; }
+.heji-status-actions button:disabled { opacity: .6; cursor: default; }
+.heji-status-summary { font-weight: 600; color: var(--vp-c-green-1); }
+.heji-status-summary.bad { color: var(--vp-c-danger-1); }
+.heji-status-note { margin: 4px 0 0; font-size: 13px; color: var(--vp-c-text-2); }
+.heji-status-table { overflow-x: auto; }
+.heji-status-table table { display: table; width: 100%; margin: 12px 0; }
+.heji-status-table td, .heji-status-table th { vertical-align: middle; }
+.heji-status-table img { display: inline-block; vertical-align: middle; max-width: none; }
+.heji-status-releases { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.heji-status-releases img { display: block; }
+.heji-status-when { margin-left: 8px; font-size: 12px; color: var(--vp-c-text-2); white-space: nowrap; }
+.heji-kind { padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; background: var(--vp-c-default-soft); color: var(--vp-c-text-2); }
+.heji-kind.ci { background: var(--vp-c-brand-soft); color: var(--vp-c-brand-1); }
+.heji-kind.release { background: var(--vp-c-purple-soft); color: var(--vp-c-purple-1); }
+.heji-kind.deploy { background: var(--vp-c-green-soft); color: var(--vp-c-green-1); }
+.heji-pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; text-decoration: none !important; background: var(--vp-c-default-soft); color: var(--vp-c-text-2); }
+.heji-pill.success { background: var(--vp-c-green-soft); color: var(--vp-c-green-1); }
+.heji-pill.failure, .heji-pill.timed_out, .heji-pill.startup_failure, .heji-pill.action_required { background: var(--vp-c-danger-soft); color: var(--vp-c-danger-1); }
+.heji-pill.running { background: var(--vp-c-warning-soft); color: var(--vp-c-warning-1); }
+@media (max-width: 640px) {
+  .heji-status-when { display: block; margin: 4px 0 0; }
+}
+.heji-status-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Tables want the room: the status page drops the reading-width column. */
+.heji-status-page .VPDoc.has-aside .content-container,
+.heji-status-page .VPDoc .content-container,
+.heji-status-page .VPDoc .container { max-width: 1152px !important; }
+.heji-status-page .VPDoc .content { max-width: none !important; }

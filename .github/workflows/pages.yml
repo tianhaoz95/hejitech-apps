@@ -15,6 +15,9 @@ on:
       - "projects/meowtrix/website/**"
       - "projects/meowtrix/public/**"
       - "scripts/pages_sync.mjs"
+      # The status page lists every workflow and release line (pages/status.data.ts).
+      - ".github/workflows/**"
+      - "projects/*/release.env"
       - "projects/feedbackkit/docs/**"
       - ".github/workflows/pages.yml"
       - "package.json"
