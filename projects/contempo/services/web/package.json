@@ -1,0 +1,32 @@
+{
+  "name": "@contempo/web",
+  "version": "1.0.0",
+  "description": "Contempo web app + Cloudflare Worker: dashboard, entries, billing, legal pages, the admin site (/admin/), the feedback form (/feedback/) and the API that replaced the Firebase Cloud Functions",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 3100",
+    "dev:worker": "npm run assemble && wrangler dev",
+    "build": "npm run typecheck && npm run assemble",
+    "assemble": "vite build && npm run build -w @contempo/admin && rm -rf dist/admin dist/feedback && cp -R ../admin/dist dist/admin && cp -R ../../feedback/public dist/feedback",
+    "typecheck": "tsc -b && tsc --noEmit -p tsconfig.worker.json",
+    "test": "node --test --experimental-strip-types test/*.test.ts",
+    "deploy": "npm run assemble && wrangler deploy --env production",
+    "upload-version": "npm run assemble && wrangler versions upload --env production"
+  },
+  "type": "module",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-router-dom": "^7.18.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260930.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "typescript": "^5.6.3",
+    "vite": "^8.3.2",
+    "wrangler": "^4.147.0"
+  },
+  "private": true
+}

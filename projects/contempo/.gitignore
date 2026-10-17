@@ -53,6 +53,9 @@ backend/functions/lib/
 # ...except templates — these document required config and should be
 # committed, same convention as google-services.json.example.
 !.env.example
+# Public build-time Supabase coordinates for the web and admin apps (backend.env BACKEND_FILES).
+!services/*/.env.production
+!services/*/.env.development
 # App Store Connect API key (see .env's APP_CONNECT_KEY_ID/ISSUER_ID) — never commit.
 credentials/
 *.p8
@@ -86,3 +89,4 @@ android/keystore.properties*
 android/wear-keystore.properties
 android/*.jks
 android/*.jks.*
+services/web/.dev.vars

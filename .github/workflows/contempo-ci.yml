@@ -1,0 +1,43 @@
+name: Contempo CI
+
+# The Worker + web app + admin site (typecheck, unit tests, the assembled build) and a backend round
+# trip: the shared Supabase stack (every project's migrations) with the Worker's API on top.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "projects/contempo/**"
+      - "supabase/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/contempo-ci.yml"
+  pull_request:
+    paths:
+      - "projects/contempo/**"
+      - "supabase/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/contempo-ci.yml"
+  workflow_dispatch: {}
+
+concurrency:
+  group: contempo-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: Worker, web and admin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck -w @contempo/web
+      - run: npm test -w @contempo/web
+      - run: npm run assemble -w @contempo/web

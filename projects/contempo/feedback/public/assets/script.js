@@ -1,23 +1,5 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
-import {
-  getFirestore,
-  connectFirestoreEmulator,
-  collection,
-  addDoc,
-  serverTimestamp,
-} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
-import { firebaseConfig } from "./firebase-config.js";
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-// Same dual-path convention as web/src/lib/firebase.ts, but hostname-based
-// since this zero-build site has no env vars to read a flag from.
-const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
-if (isLocal) {
-  connectFirestoreEmulator(db, "localhost", 8080);
-}
-
+// Submissions go to the Contempo Worker (POST /api/feedback, same origin), which stores them in
+// Supabase (contempo.feedback). Served at /feedback/ by that Worker; no keys on this page.
 const MAX_MESSAGE_LENGTH = 5000;
 
 const form = document.getElementById("feedback-form");
@@ -55,11 +37,12 @@ form.addEventListener("submit", async (event) => {
 
   submitButton.disabled = true;
   try {
-    await addDoc(collection(db, "feedback"), {
-      message,
-      email: email || null,
-      createdAt: serverTimestamp(),
+    const res = await fetch("/api/feedback", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message, email: email || null }),
     });
+    if (!res.ok) throw new Error(`feedback ${res.status}`);
     form.reset();
     statusEl.textContent = "Thanks for the feedback!";
     statusEl.className = "status status-success";
