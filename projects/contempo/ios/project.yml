@@ -54,6 +54,8 @@ targets:
       path: Contempo/Info.plist
       properties:
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        # Only standard HTTPS (exempt): answers App Store Connect's export-compliance question.
+        ITSAppUsesNonExemptEncryption: false
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         UILaunchScreen: {}
         NSMicrophoneUsageDescription: "Contempo uses your microphone to capture spoken work-log entries."
@@ -202,6 +204,8 @@ targets:
       path: "Contempo Watch App/Info.plist"
       properties:
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        # Only standard HTTPS (exempt): answers App Store Connect's export-compliance question.
+        ITSAppUsesNonExemptEncryption: false
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         UILaunchScreen: {}
         NSMicrophoneUsageDescription: "Contempo uses your microphone to capture spoken work-log entries from your wrist."
