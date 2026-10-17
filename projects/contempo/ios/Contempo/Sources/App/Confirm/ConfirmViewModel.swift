@@ -1,6 +1,5 @@
 import ContempoCore
-import ContempoFirestore
-import FirebaseFirestore
+import ContempoData
 import Foundation
 import Observation
 
@@ -558,9 +557,8 @@ final class ConfirmViewModel {
     /// forces Firestore to tear down and reopen its connections, so the next
     /// attempt gets a fresh stream instead of queueing behind the same one.
     private func resetFirestoreConnection() async {
-        let firestore = Firestore.firestore()
-        try? await firestore.disableNetwork()
-        try? await firestore.enableNetwork()
+        // Supabase writes are plain HTTPS requests with nothing long-lived to reset; kept as the
+        // hook withSaveRetry calls between attempts.
     }
 
     /// One bounded auto-retry after a stuck-stream timeout —

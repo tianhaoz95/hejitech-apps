@@ -1,13 +1,10 @@
-import FirebaseAuth
-import FirebaseFunctions
+import ContempoCore
 import Foundation
 import WatchConnectivity
 
-/// Sends the paired watch a Firebase custom token once this phone is signed
-/// in, so the watch can bootstrap its own independent Firebase session (see
-/// `mintWatchAuthToken` in backend/functions and the watch-side
-/// `WatchAuthManager`). Uses `transferUserInfo` + `updateApplicationContext`
-/// and responds to interactive `sendMessage` requests from the watch.
+/// Hands the paired Apple Watch a one-time pairing code (Contempo Worker POST /api/watch/pair) over
+/// WatchConnectivity; the watch exchanges it for its own Supabase session (verifyOTP with the token
+/// hash). Replaces the Firebase custom token.
 @MainActor
 final class WatchAuthTokenRelay: NSObject, WCSessionDelegate {
     static let shared = WatchAuthTokenRelay()
@@ -22,27 +19,24 @@ final class WatchAuthTokenRelay: NSObject, WCSessionDelegate {
         WCSession.default.activate()
     }
 
+    private func mintPairingCode() async throws -> String {
+        let result = try await ContempoBackend.api("watch/pair")
+        guard let tokenHash = result["tokenHash"] as? String else { throw ContempoBackendError.api("Pairing failed") }
+        return tokenHash
+    }
+
     func sendTokenIfSignedIn() {
-        guard Auth.auth().currentUser != nil else { return }
+        guard ContempoBackend.uid != nil else { return }
         Task {
-            #if USE_FIREBASE_EMULATOR
-            let payload: [String: Any] = ["isEmulator": true]
-            _ = try? WCSession.default.updateApplicationContext(payload)
-            WCSession.default.transferUserInfo(payload)
-            #else
             do {
-                let result = try await Functions.functions().httpsCallable("mintWatchAuthToken").call()
-                guard let data = result.data as? [String: Any], let customToken = data["customToken"] as? String else {
-                    return
-                }
+                let tokenHash = try await mintPairingCode()
                 guard WCSession.default.activationState == .activated else { return }
-                let payload: [String: Any] = ["customToken": customToken]
+                let payload: [String: Any] = ["tokenHash": tokenHash]
                 _ = try? WCSession.default.updateApplicationContext(payload)
                 WCSession.default.transferUserInfo(payload)
             } catch {
-                print("[WatchAuthTokenRelay] Error minting/transferring watch token: \(error)")
+                print("[WatchAuthTokenRelay] Error minting/transferring watch pairing code: \(error)")
             }
-            #endif
         }
     }
 
@@ -54,30 +48,16 @@ final class WatchAuthTokenRelay: NSObject, WCSessionDelegate {
 
     nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
         Task { @MainActor in
-            guard let user = Auth.auth().currentUser else {
+            guard ContempoBackend.uid != nil else {
                 replyHandler(["error": "Sign in on iPhone first"])
                 return
             }
-            #if USE_FIREBASE_EMULATOR
-            replyHandler(["isEmulator": true])
-            self.sendTokenIfSignedIn()
-            #else
             do {
-                _ = try? await user.getIDToken()
-                let result = try await Functions.functions().httpsCallable("mintWatchAuthToken").call()
-                if let data = result.data as? [String: Any], let customToken = data["customToken"] as? String {
-                    replyHandler(["customToken": customToken])
-                    let payload: [String: Any] = ["customToken": customToken]
-                    _ = try? WCSession.default.updateApplicationContext(payload)
-                    WCSession.default.transferUserInfo(payload)
-                } else {
-                    replyHandler(["error": "Mint failed — try again"])
-                }
+                let tokenHash = try await self.mintPairingCode()
+                replyHandler(["tokenHash": tokenHash])
             } catch {
-                print("[WatchAuthTokenRelay] mintWatchAuthToken error: \(error)")
                 replyHandler(["error": error.localizedDescription])
             }
-            #endif
         }
     }
 

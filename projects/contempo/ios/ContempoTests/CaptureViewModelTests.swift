@@ -1,7 +1,6 @@
 @testable import Contempo
 import ContempoCore
-import ContempoFirestore
-import FirebaseAuth
+import ContempoData
 import XCTest
 
 /// `CaptureViewModel.init()` eagerly attaches Firestore listeners (via
@@ -26,14 +25,8 @@ import XCTest
 /// stale task.
 @MainActor
 final class CaptureViewModelTests: XCTestCase {
-    private static var didSignIn = false
-
-    override func setUp() async throws {
-        try await super.setUp()
-        guard !Self.didSignIn else { return }
-        try await ServiceLocator.authManager.signIn()
-        Self.didSignIn = true
-    }
+    // Signed out: the live queries fail with notSignedIn instead of a precondition crash (Supabase
+    // backend), so the view model's initial state is testable without an account.
 
     func testInitialState() {
         let viewModel = CaptureViewModel()

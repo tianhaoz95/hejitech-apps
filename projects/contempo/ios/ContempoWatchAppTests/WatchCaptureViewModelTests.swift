@@ -1,6 +1,5 @@
 @testable import Contempo_Watch_App
 import ContempoCore
-import FirebaseCore
 import XCTest
 
 /// A watchOS SwiftUI `App`'s `init()` (where `ContempoWatchApp` normally
@@ -13,13 +12,6 @@ import XCTest
 /// after all) is what makes constructing this ViewModel safe in a test.
 @MainActor
 final class WatchCaptureViewModelTests: XCTestCase {
-    override func setUp() {
-        super.setUp()
-        if FirebaseApp.app() == nil {
-            FirebaseBootstrap.configure()
-        }
-    }
-
     func testWatchCaptureInitialState() {
         let viewModel = WatchCaptureViewModel()
         XCTAssertFalse(viewModel.isRecording)

@@ -1,4 +1,5 @@
-import FirebaseAuth
+import ContempoCore
+@preconcurrency import Supabase
 import Foundation
 import Observation
 import WatchConnectivity
@@ -28,10 +29,10 @@ final class WatchAuthManager: NSObject, WCSessionDelegate {
     func start() {
         checkAuthStatus()
 
-        Auth.auth().addStateDidChangeListener { [weak self] _, user in
-            Task { @MainActor [weak self] in
-                self?.isSignedIn = user != nil
-                self?.isWaitingForPhone = user == nil
+        Task { @MainActor [weak self] in
+            for await (_, session) in ContempoBackend.client.auth.authStateChanges {
+                self?.isSignedIn = session != nil
+                self?.isWaitingForPhone = session == nil
             }
         }
 
@@ -46,7 +47,7 @@ final class WatchAuthManager: NSObject, WCSessionDelegate {
     }
 
     func checkAuthStatus() {
-        let signedIn = Auth.auth().currentUser != nil
+        let signedIn = ContempoBackend.client.auth.currentUser != nil
         isSignedIn = signedIn
         isWaitingForPhone = !signedIn
         if !signedIn {
@@ -72,49 +73,31 @@ final class WatchAuthManager: NSObject, WCSessionDelegate {
             }
         } errorHandler: { [weak self] error in
             Task { @MainActor [weak self] in
-                #if USE_FIREBASE_EMULATOR
-                try? await self?.signInWithFakeEmulatorIdentity()
-                #else
                 self?.statusMessage = "iPhone unreachable — tap to retry"
-                #endif
             }
         }
     }
 
     func signOut() {
-        try? Auth.auth().signOut()
-        checkAuthStatus()
+        Task {
+            try? await ContempoBackend.client.auth.signOut()
+            checkAuthStatus()
+        }
     }
-
-    #if USE_FIREBASE_EMULATOR
-    /// Fixed test identity matching the phone app in emulator mode.
-    func signInWithFakeEmulatorIdentity() async throws {
-        let fakeIdToken = #"{"sub":"emulator-pilot-user","email":"pilot@example.test","email_verified":true,"name":"Pilot Host"}"#
-        let credential = GoogleAuthProvider.credential(withIDToken: fakeIdToken, accessToken: "")
-        try await Auth.auth().signIn(with: credential)
-        statusMessage = nil
-        checkAuthStatus()
-    }
-    #endif
 
     func processAuthPayload(_ payload: [String: Any]) {
-        if let customToken = payload["customToken"] as? String {
+        // One-time pairing code from the iPhone (Contempo Worker /api/watch/pair): exchanged for
+        // this watch's own Supabase session.
+        if let tokenHash = payload["tokenHash"] as? String {
             Task {
                 do {
-                    try await Auth.auth().signIn(withCustomToken: customToken)
+                    try await ContempoBackend.client.auth.verifyOTP(tokenHash: tokenHash, type: .magiclink)
                     statusMessage = nil
                     checkAuthStatus()
                 } catch {
                     statusMessage = "Sign-in error: \(error.localizedDescription)"
                 }
             }
-        } else if payload["isEmulator"] as? Bool == true {
-            #if USE_FIREBASE_EMULATOR
-            Task {
-                try? await signInWithFakeEmulatorIdentity()
-                statusMessage = nil
-            }
-            #endif
         } else if let errorMsg = payload["error"] as? String {
             statusMessage = friendlyAuthErrorMessage(errorMsg)
         }

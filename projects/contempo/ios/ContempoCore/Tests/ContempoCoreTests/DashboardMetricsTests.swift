@@ -1,6 +1,6 @@
 import ContempoCore
-import ContempoFirestore
-import FirebaseFirestore
+import ContempoData
+import ContempoCore
 import XCTest
 
 final class DashboardMetricsTests: XCTestCase {

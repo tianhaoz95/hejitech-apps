@@ -13,42 +13,33 @@ let package = Package(
     ],
     products: [
         .library(name: "ContempoCore", targets: ["ContempoCore"]),
-        .library(name: "ContempoFirestore", targets: ["ContempoFirestore"]),
+        .library(name: "ContempoData", targets: ["ContempoData"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/firebase/firebase-ios-sdk.git", from: "11.0.0"),
+        .package(url: "https://github.com/supabase/supabase-swift.git", from: "2.30.0"),
     ],
     targets: [
-        // Platform-agnostic: model enums, theme tokens, and anything usable
-        // from watchOS. Depends only on FirebaseAuth (uid + REST auth
-        // tokens), which — unlike FirebaseFirestore — does build for
-        // watchOS: firebase-ios-sdk's Package.swift conditions the
-        // FirebaseFirestore target to iOS/tvOS/macOS/macCatalyst only (its
-        // gRPC/leveldb/abseil native dependencies have no watchOS slice), so
-        // anything that needs the Firestore *SDK* (not just REST) lives in
-        // ContempoFirestore below instead, which only the phone app links.
+        // Platform-agnostic: model enums, theme tokens, Timestamp, the Supabase client
+        // (ContempoBackend) and the watch-side writers. supabase-swift builds for watchOS, so the
+        // watch talks to the same backend as the phone.
         .target(
             name: "ContempoCore",
             dependencies: [
-                .product(name: "FirebaseAuth", package: "firebase-ios-sdk"),
+                .product(name: "Supabase", package: "supabase-swift"),
             ]
         ),
-        // Entry/Property models, EntryRepository, the Timer/Mileage
-        // coordinators, and anything else that needs the real Firestore SDK
-        // — iOS/macOS only in practice (nothing links this from the watch
-        // target, since watchOS can't build it at all).
+        // Entry/Property models, EntryRepository on Supabase, the Timer/Mileage coordinators —
+        // what the phone app uses (schema contempo in the shared HEJI Supabase project).
         .target(
-            name: "ContempoFirestore",
+            name: "ContempoData",
             dependencies: [
                 "ContempoCore",
-                .product(name: "FirebaseFirestore", package: "firebase-ios-sdk"),
-                .product(name: "FirebaseAuth", package: "firebase-ios-sdk"),
-                .product(name: "FirebaseStorage", package: "firebase-ios-sdk"),
+                .product(name: "Supabase", package: "supabase-swift"),
             ]
         ),
         .testTarget(
             name: "ContempoCoreTests",
-            dependencies: ["ContempoCore", "ContempoFirestore"]
+            dependencies: ["ContempoCore", "ContempoData"]
         ),
     ]
 )

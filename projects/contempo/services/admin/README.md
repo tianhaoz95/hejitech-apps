@@ -8,7 +8,7 @@ public; not indexed (`<meta name="robots" content="noindex, nofollow">` in
 Same stack as `web/` (Vite + React + TypeScript), same `contempo-str`
 Firebase project/Auth/Firestore, but its own Firebase Web App registration
 ("Contempo Admin") and its own Hosting site (`contempo-str-admin`,
-`https://contempo-str-admin.web.app`) — entirely separate from `web/`'s
+`https://contempo.hejitech.workers.dev/admin/`) — entirely separate from `web/`'s
 `contempo` site, same pattern `feedback/` already uses for its own site.
 
 ## Access control

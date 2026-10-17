@@ -1,7 +1,6 @@
 import ContempoCore
-import ContempoFirestore
+import ContempoData
 import CoreLocation
-import FirebaseFirestore
 import Foundation
 import Observation
 

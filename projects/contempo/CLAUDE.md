@@ -7,75 +7,66 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 An AI-native short-term rental (STR) "material participation" hour tracker — a
 mobile-first app that helps STR hosts and real estate professionals log hours in
 a way that survives an IRS audit (contemporaneous records for the 100-hour /
-500-hour STR tests or the REPS 750-hour test). Product code now exists — the MVP
-Android app and its Firebase backend are underway, alongside the original
-planning/branding artifacts:
+500-hour STR tests or the REPS 750-hour test). Part of the HEJI monorepo
+(`projects/contempo` of `tianhaoz95/hejitech-apps`, imported 2026-10-16 from the private
+`tianhaoz95/contempo`); the root `CLAUDE.md` has the shared rules.
 
-- `reports/` — a small internal site of planning documents (PRD, MVP scope), each
-  a standalone HTML file with an auto-generated table of contents.
-- `branding/landing_v0/` — a landing-page mockup for the product concept (working
-  brand name **"Contempo"**, a placeholder — not a final naming decision), used to
-  pressure-test positioning and feel before any product is built.
-- `android/` — the MVP app (Kotlin/Compose, Gradle multi-module: `app`, `core`,
-  `wear`). See "`android/` architecture" below.
-- `backend/` — the Firebase project root (Firestore, Auth, Storage, Genkit Cloud
-  Functions). See "`backend/` architecture" below.
-- `ios/` — the iOS + watchOS app (SwiftUI, XcodeGen multi-module: `Contempo` phone app, `Contempo Watch App`, `ContempoWidgets`, `Contempo Watch Widgets`, and `ContempoCore` package). Parity with `android/` and `android/wear/`. See `ios/README.md`.
-- `web/` — Vite/React/TypeScript (see `web/README.md`), not MVP (never
-  day-to-day capture) but no longer just a scaffold: real Dashboard/Entries/
-  Settings/Billing/Sign-in pages, working account deletion (calls the same
-  `deleteAccount` Cloud Function as Android), and legal pages
-  (`/legal/privacy`, `/legal/terms`) live and reachable signed-out (Play Store
-  review requires this). Auto-deployed to Firebase Hosting (site `contempo-str`,
-  `https://contempo-str.web.app`) via `.github/workflows/firebase-deploy.yml`'s
-  `deploy-hosting` job on every push to `main`. **Subscriptions are web-only
-  by design**: neither the Android nor iOS app will ever contain a purchase
-  flow or pricing mention, specifically to avoid Apple/Google's
-  in-app-purchase platform fee — the apps only read entitlement status
-  (synced from Stripe into Firestore, via Stripe's official Firebase
-  Extension) and gate premium features accordingly. Stripe itself isn't wired
-  up yet (`web/src/billing/subscription.ts` has a `TODO(stripe)`) — the
-  Billing page is UI without a working purchase flow behind it yet; Auth
-  (Google Sign-In) and Firestore are wired against the real `contempo-str`
-  project, same as `android/`.
-- `feedback/` — a standalone, login-free feedback form (see
-  `feedback/README.md`), zero-dependency static site like `reports/` and
-  `branding/landing_v0/`. Writes anonymously to a top-level `feedback`
-  Firestore collection via its own Firebase Web App registration ("Contempo
-  Feedback", separate from `web/`'s "Contempo Web" app, though same
-  `contempo-str` project) and its own Hosting site (`contempo-str-feedback`,
-  `https://contempo-str-feedback.web.app`) — entirely separate from the main
-  `contempo` Hosting site `web/` deploys to.
+- `android/` — the MVP app (Kotlin/Compose, Gradle multi-module: `app`, `core`, `wear`).
+- `ios/` — the iOS + watchOS app (SwiftUI, XcodeGen: `Contempo`, `Contempo Watch App`,
+  `ContempoWidgets`, `Contempo Watch Widgets`, and the `ContempoCore` package with the
+  `ContempoCore` + `ContempoData` libraries). Parity with `android/`.
+- `services/web/` — the Contempo **Cloudflare Worker** (`contempo`,
+  https://contempo.hejitech.workers.dev): serves the web app (Vite/React: Dashboard, Entries,
+  Settings, Billing, legal pages `/legal/privacy` and `/legal/terms`), the admin site at
+  `/admin/` (`services/admin/`, feedback triage + coupons, admins only), the login-free feedback
+  form at `/feedback/` (`feedback/public/`), and the API that replaced the Firebase Cloud
+  Functions (`src/worker/index.ts`).
+- `reports/`, `branding/landing_v0/` — zero-dependency static planning/branding sites.
 
-The **real Firebase project is `contempo-str`** (project number
-`664765495548`), backing `android/`, `backend/`, `web/`, and eventually `ios/` —
-all under the **Hejitech** business entity (`com.hejitech.<app>` package/bundle
-IDs — not `com.contempo.*`). **Exceptions:**
-the Android phone app's `applicationId` is `com.hejitech.contempoapp`, not
-`com.hejitech.contempo` — Play Console locked its listing to that package name
-from an earlier upload (package names are permanent once a Play app has its
-first release), so the Gradle project's `applicationId` was changed to match
-rather than the other way around. The Gradle `namespace` (source/R-class
-package) is still `com.hejitech.contempo`, unaffected by this. The Wear OS
-app's `applicationId` is `com.hejitech.contempoappwear`, not the plain
-`com.hejitech.wear` the `<app>` pattern would suggest — Hejitech ships more
-than one product, so the package name needs to say which product's Wear
-companion this is (its Gradle `namespace` similarly stays the shorter
-`com.hejitech.wear`, unaffected). It has Firestore (standard edition,
-`us-central1`, chosen over multi-region `nam5` to stay cheap pre-revenue —
-identical free-tier quota either way, but `nam5` costs more once billed and buys
-reliability this single-pilot-user MVP doesn't need yet) and Google Sign-In
-enabled. An Android app (`com.hejitech.contempo`) is registered in it with both
-the debug keystore's and the release upload keystore's (`android/upload-keystore.jks`,
-alias `contempo-upload` — checked into the repo along with its passwords in
-`android/keystore.properties`, since the repo is private; this is the Play
-Store *upload* key, not the final app-signing key once Play App Signing takes
-over) SHA-1/SHA-256 fingerprints attached, so Google Sign-In works from both
-debug and release (`./gradlew :app:bundleRelease`) builds. `reports/` and
-`branding/landing_v0/` remain zero-dependency static
-sites — no backend, no build tooling — served locally via plain
-`python3 -m http.server` wrapper scripts; don't introduce a bundler/framework
-there without a reason.
+**Backend: the shared HEJI Supabase project, schema `contempo`** (moved off Firebase project
+`contempo-str` on 2026-10-16; no users were migrated). `backend.env` says `BACKEND=shared` and
+lists the only files allowed to hold the project's URL/key. Rules for schema changes:
+`supabase/README.md` at the repo root.
+
+- **Schema:** `supabase/schemas/contempo/schema.sql` (declarative; migrations via
+  `scripts/db_migration.sh contempo <what>` at the repo root). Tables mirror the old Firestore
+  collections, one owner per row (`user_id`, RLS ownership-only): `properties`, `roles`,
+  `categories`, `entries`, `attachments` (immutable except `note`), `corrections`
+  (append-only), `audio_captures` / `text_captures` (background queues), `token_usage`
+  (`device` rows via `record_device_token_usage`, `cloud` rows only from the Worker),
+  `app_feedback` (shake to report; admins triage), `feedback` (anonymous form; admins read),
+  `subscriptions` / `stripe_customers` (Worker's Stripe webhook only), `admins` (who may use
+  `/admin/`; add rows by hand). The Firestore rules' field validation became check
+  constraints. Rows go with the auth user (`on delete cascade`).
+- **Storage:** private bucket `contempo`, every object under `<uid>/…` (`entries/<id>/…`,
+  `audio/…`, `feedback/<id>/screenshot.jpg`); clients store long-lived signed URLs on rows
+  (`photo_urls`, `download_url`, `audio_url`) where Firestore stored download URLs.
+- **Auth:** Supabase Auth, Google only, the monorepo's way: a browser tab to Supabase's
+  `/authorize` (PKCE) returning to `com.hejitech.contempoapp://login-callback` (Android,
+  iOS) or the page itself (web). No Google SDKs or client ids in the apps. The watch signs in
+  with a one-time pairing code from the phone (`POST /api/watch/pair` → `verifyOTP` with the
+  token hash), replacing the Firebase custom token.
+- **Worker API** (`services/web/src/worker/index.ts`, bearer = Supabase access token):
+  `parse-entry` and `ask-agent` (cloud AI: Gemini when the `GOOGLE_GENAI_API_KEY` secret is set,
+  otherwise Cloudflare Workers AI), `flag-risk`, `account/delete`, `watch/pair`,
+  `billing/checkout` / `billing/portal` / `stripe/webhook` / `admin/coupons/*` (Stripe over
+  fetch; needs `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`), and `feedback` (anonymous).
+  Secrets: `SUPABASE_SERVICE_ROLE_KEY` (required). The cloud-AI kill switch is
+  `services/web/public/app-config.json` (`cloud_ai_enabled`), read by both apps.
+- **Clients:** Android `core/.../supabase/ContempoBackend.kt` (supabase-kt 3.6; live lists =
+  select + Realtime reload) and `SupabaseEntryRepository`; iOS
+  `ContempoCore/.../Data/ContempoBackend.swift` (supabase-swift) and `ContempoData`'s
+  `SupabaseEntryRepository`; web/admin `src/lib/supabase.ts`. Models keep a `Timestamp` type with
+  Firebase's API (a drop-in in `core`/`ContempoCore`), so screens didn't change.
+- **Deploy:** the Worker deploys from the repo with `npm run deploy -w @contempo/web` (Workers
+  Builds can run the same on push). `.github/workflows/contempo-ci.yml` typechecks, tests and
+  builds it.
+- **Package names:** Android `applicationId` is `com.hejitech.contempoapp` (Play Console locked
+  it; Gradle `namespace` stays `com.hejitech.contempo`), Wear `com.hejitech.contempoappwear`,
+  iOS `com.hejitech.contempoapp`. Don't "fix" them.
+- **Signing keys:** the Android upload keystores and `keystore.properties` are **not** in git
+  (this repo is public; they were stripped from the imported history). They live in
+  `~/Credentials/contempo/`; copy them into `android/` for local release builds.
 
 ## Commands
 
@@ -91,22 +82,24 @@ there without a reason.
 # Build/install the Android app
 cd android && ./gradlew :app:assembleDebug   # or :app:installDebug with a device attached
 
-# Full local dev loop: Firebase emulators + build + install, torn down together on Ctrl+C.
-./scripts/run-android-with-emulators.sh                    # Android against demo-contempo
-./scripts/run-android-with-emulators.sh contempo-str  # Android against real project
-./scripts/run-ios-with-emulators.sh                        # iOS + watchOS against demo-contempo
+# Web app + Worker (from the repo root): typecheck, tests, local Worker against the local
+# Supabase stack (`supabase start` first), deploy
+npm run typecheck -w @contempo/web && npm test -w @contempo/web
+npm run dev:worker -w @contempo/web      # http://127.0.0.1:8789 (needs services/web/.dev.vars)
+npm run deploy -w @contempo/web
+
+# Triage shake-to-report feedback (needs SUPABASE_SECRET_KEY in the environment)
+node scripts/fetch-feedback.mjs
 
 # Launch Android and Wear OS emulators (AVDs)
 ./scripts/launch-android-emulators.sh                       # Launch Android phone & Wear OS AVDs
 ./scripts/launch-android-emulators.sh --phone               # Launch phone AVD only
 ./scripts/launch-android-emulators.sh --wear                # Launch Wear OS AVD only
 
-# Build & install production/release builds (real Firebase contempo-str, no emulators):
+# Build & install production/release builds (hosted Supabase):
 ./scripts/install-android-prod.sh                           # Android + Wear OS
 ./scripts/install-ios-prod.sh                               # iOS + watchOS
 
-# Firebase CLI commands (run from backend/, or pass --project) always prefer
-# `npx -y firebase-tools@latest ...` over a global `firebase` install.
 
 # Ship a new Android build to the Play Console internal testing track
 # (bump versionCode in android/app/build.gradle.kts first — see "Play Store
@@ -120,17 +113,6 @@ cd android && ./gradlew :app:publishReleaseBundle
 ./scripts/install-ios-prod.sh --no-launch
 ```
 *Note*: It is acceptable if installation fails due to no connected device/simulator, but any build, compilation, script, or configuration error must be debugged and fixed before considering the task complete.
-
-**Always stop any Firebase emulator instance once you're done with it** — whether
-started via `./scripts/run-android-with-emulators.sh` (Ctrl+C tears down
-build/install/logcat/emulators together) or started ad hoc (e.g. `firebase
-emulators:start --project ...` run directly for a test session): `kill
--SIGINT <pid>` on the `firebase emulators:start` process shuts down its
-Firestore/Storage/Functions children cleanly. A leftover instance silently
-occupies ports 8080/9099/9199/5001/4400/4500, which then blocks the next
-`emulators:start` from binding those ports and has previously caused a
-confusing failure that took real debugging effort to trace back to a stray
-process from an earlier session.
 
 Both static-site scripts just `cd` into the relevant site directory and run
 `python3 -m http.server`; there's nothing to install first. Requires `python3` on
@@ -242,17 +224,18 @@ elsewhere — don't harden them into fact without being asked.
 Gradle multi-module (Kotlin, Jetpack Compose, version catalog in
 `gradle/libs.versions.toml`): `app` (the phone MVP), `core` (shared domain
 models + repository interfaces, e.g. `EntryRepository` /
-`FirestoreEntryRepository` in `core/src/main/java/com/hejitech/core/`), `wear`
+`SupabaseEntryRepository` in `core/src/main/java/com/hejitech/core/`, and the Supabase client in
+`core/.../supabase/`), `wear`
 (Wear OS companion — voice capture relayed to the phone for processing, plus
 a progress Tile and an hours Complication; see its `capture`/`tile`/
 `complication` packages and its own instrumented test suite,
 `wear/src/androidTest/`).
 
-- **`android/app/google-services.json`** and **`android/local.properties`** are
-  both gitignored (real credentials) — `.example` files document the expected
-  shape. Never commit the real ones. Regenerate `google-services.json` via
-  `npx -y firebase-tools@latest apps:sdkconfig ANDROID <APP_ID> --project
-  contempo-str` rather than hand-editing it.
+- **`android/local.properties`** is gitignored (`sdk.dir`; optionally `SUPABASE_URL` /
+  `SUPABASE_PUBLISHABLE_KEY` to point a build at another Supabase project, e.g. the local stack via
+  `adb reverse`). Builds default to the hosted project from `app/build.gradle.kts`. A JDK 17
+  (`JAVA_HOME=/opt/homebrew/opt/openjdk@17/...`) runs this Gradle; Android Studio's bundled JDK 25
+  is too new for Gradle 8.11.
 - **Play Store publishing is automated via `gradle-play-publisher`**
   (`com.github.triplet.play`, pinned to `3.13.0` in `gradle/libs.versions.toml`
   — not the `4.0.0` latest, which requires Gradle 9.1+ and this project is on
@@ -278,41 +261,26 @@ a progress Tile and an hours Complication; see its `capture`/`tile`/
     service account Play Console permissions, and the first automated publish
     attempt failed on exactly this until it was enabled.
   - The Play Console listing's package name is **`com.hejitech.contempoapp`**,
-    not `com.hejitech.contempo` — see the exception noted above under "the
-    real Firebase project is contempo-str." `applicationId` in
+    not `com.hejitech.contempo` — see "Package names" above. `applicationId` in
     `app/build.gradle.kts` is set accordingly; don't "fix" it back to match
     the `com.hejitech.<app>` convention, that would break publishing.
   - The very first Play release still had to be a manual upload through the
     Play Console web UI (Play App Signing enrollment + initial store listing
     can't be done via the API) — this automation is for every release
     *after* that first one.
-- **Two parallel code paths, everywhere, selected by
-  `BuildConfig.USE_FIREBASE_EMULATOR`** (true in debug builds): an
-  emulator-mode path (fake identities/local Firestore, no real project needed)
-  and a real path against `contempo-str`. See the doc comment on
-  `auth/AuthManager.kt` for the canonical example — real Google Sign-In needs
-  `BuildConfig.GOOGLE_WEB_CLIENT_ID` (read from `local.properties`, *not* the
-  google-services-plugin-generated resource, since that resource only exists
-  once an `oauth_client` entry is present) plus Credential Manager + Google
-  Identity Services (not the deprecated `GoogleSignInClient` API).
-- Firebase Auth, Firestore, Storage, Functions, App Check, Crashlytics,
-  Performance Monitoring, and Remote Config are all wired in
-  `app/build.gradle.kts` via the Firebase BoM (Crashlytics/Performance also
-  need their own Gradle plugins, applied alongside `google-services`);
-  Firebase AI Logic (hybrid on-device/cloud inference, see
-  `agent/AgentClient.kt`) is pinned directly since it isn't in the BoM yet.
-  Crashlytics/Performance collection is toggled off for
-  `USE_FIREBASE_EMULATOR` builds (`ContempoApp.onCreate()`) so local dev
-  noise never reaches the real console — only a build with that flag false
-  (a release-style build) actually reports. Performance custom traces
-  (on-device transcription/parsing, the Firestore entry save) go through the
-  shared `data/PerformanceTrace.kt` helper; Remote Config's one real flag so
-  far, `cloud_ai_enabled`, is a kill switch for cloud AI spend, gated
-  centrally in `ServiceLocator`'s `AgentClient.inferencePreference` lambda
-  (see `data/RemoteConfigStore.kt`) rather than at each call site.
+- **Sign-in** (`auth/AuthManager.kt`) opens Supabase's Google sign-in in a browser tab; the
+  `com.hejitech.contempoapp://login-callback` deep link (manifest intent filter) goes to
+  `ContempoBackend.client.handleDeeplinks` in `MainActivity`, and `AuthGate` follows
+  `ContempoBackend.signedIn`. supabase-kt is pinned to 3.6 (3.7+ needs Kotlin 2.4), and
+  `androidx.browser` is forced to 1.8.0 in the root `build.gradle.kts` (1.10 needs AGP 8.9.1+).
+- No crash/performance SDKs: `data/PerformanceTrace.kt` logs timings to logcat (tag
+  `ContempoTrace`) with the old call-site API; `data/RemoteConfigStore.kt` reads the
+  `cloud_ai_enabled` kill switch from the Worker's `/app-config.json`, gated centrally in
+  `ServiceLocator`'s `AgentClient.inferencePreference` lambda. Cloud parsing/chat, account
+  deletion and watch pairing call the Worker (`ContempoBackend.api`).
 - **`data/AuthAwareFlow.kt`'s `recoverFromAuthRaceOrSignOut()`** is the
-  standard way every eagerly-collected Firestore listener (Capture/Dashboard/
-  Confirm ViewModels) handles `PERMISSION_DENIED`/`UNAUTHENTICATED` — retries
+  standard way every eagerly-collected live query (Capture/Dashboard/
+  Confirm ViewModels) handles a 401/403 from Supabase — retries
   once after a short delay (a real, confirmed-live token-propagation race on
   fresh sign-in, not just an emulator quirk) before falling back to sign-out.
   Use this rather than a bespoke `.catch` block for any new eagerly-collected
@@ -323,73 +291,9 @@ a progress Tile and an hours Complication; see its `capture`/`tile`/
   that at least one OEM (ColorOS) treats `IMPORTANCE_LOW` as "silent" and
   buries the notification below every other app's, defeating an
   ongoing-status notification's entire purpose.
-- `scripts/run-android-with-emulators.sh` is the fastest real-device dev loop —
-  starts the Firebase emulator suite, `adb reverse`s the emulator ports to a
-  connected physical device, builds/installs/launches the app, streams filtered
-  logcat, and tears everything down together on exit.
-
-## `backend/` architecture
-
-The Firebase project root — `firebase` CLI commands (prefixed
-`npx -y firebase-tools@latest`) run from here, not the repo root. Project alias
-`default` in `.firebaserc` points at the real project, `contempo-str`.
-
-- **Firestore** (standard edition, `us-central1`): data model is deliberately
-  nested under a single owner for MVP (no household/team sharing yet):
-  `users/{uid}/properties/{propertyId}`, `users/{uid}/entries/{entryId}`,
-  `users/{uid}/corrections/{correctionId}` (the correction-feedback pipeline,
-  captured from day one even though unused yet — see MVP scope report Section
-  8). `firestore.rules` is ownership-only (`request.auth.uid == uid`, keyed off
-  the path segment, not client-supplied data) for read access, **plus
-  field-level type/size/range validation on every write** (entry field types
-  and enums, string/array/lat-lng bounds, etc. — mirrored by hand from
-  `core/model/Entry.kt` and `Property.kt`; a suite in `backend/firestore-tests/`
-  (`npm test` there, requires the emulator running — see its README) covers
-  the highest-risk boundaries — cross-user isolation, the `roles` collection,
-  and `isValidNoteUpdate` — via `@firebase/rules-unit-testing`, though it
-  doesn't exhaustively re-test every field constraint on `isValidEntry`; a
-  rules change beyond what it covers should still get a manual emulator
-  check before deploying). `corrections` is
-  additionally append-only at the rules layer (`allow update, delete: if
-  false`), not just by client convention. Separately, a top-level (not
-  nested under `users/{uid}` — there's no owner) `feedback/{feedbackId}`
-  collection backs `feedback/`'s login-free form: public create-only, with
-  no read access for anyone including the submitter (review via the
-  Firestore console) and a server-pinned `createdAt` (`== request.time`) so
-  submissions can't be backdated. Rules deploy automatically from
-  `main` via `.github/workflows/firebase-deploy.yml`, authenticating through
-  Workload Identity Federation (no service-account key stored anywhere) —
-  see that workflow file for the underlying GCP IAM/WIF setup.
-- **Auth**: Google Sign-In is enabled via the `auth.providers.googleSignIn`
-  block in `firebase.json`, deployed with `firebase deploy --only auth` (this
-  is what auto-provisions the web/Android OAuth clients — the Firebase Console
-  toggle alone doesn't do this the same way).
-- **Functions** (`functions/`, TypeScript, Genkit): `parseEntryFlow` (cloud
-  fallback for entry parsing), `flagRisk` (deterministic
-  contemporaneity/vagueness heuristics, no LLM call), and `askAgent` (the
-  freeform legal-question chat copilot — cloud Gemini Flash, not the curated
-  static FAQ the MVP scope doc originally specced). Needs
-  `GOOGLE_GENAI_API_KEY` (env var locally, `firebase functions:secrets:set` when
-  deployed) only to actually call the cloud model, not to start emulators.
-  Separately, `account.ts` has `deleteAccount` (a plain `onCall`, not
-  Genkit — recursively wipes a user's Firestore/Storage data via the Admin
-  SDK then deletes their Auth account; deliberately `enforceAppCheck: false`
-  since it must be callable from web, which has no App Check provider set up
-  yet) and `cleanupDeletedUserData` (a v1 Auth `onDelete` trigger, safety-net
-  cleanup for accounts removed any other way).
-- **Hosting**: two sites, both deployed together via `deploy-hosting` in
-  `.github/workflows/firebase-deploy.yml` on every push to `main` (`--only
-  hosting`, not scoped to one site — the Firebase CLI runs every hosting
-  entry's predeploy hook regardless of which site `--only` narrows to, so
-  there's no cost saved by deploying them separately). `contempo` serves
-  `web/` (`https://contempo-str.web.app`); `contempo-feedback` serves
-  `feedback/`'s static site (`https://contempo-str-feedback.web.app`), entirely
-  separate registrations/apps despite sharing the `contempo-str`
-  project.
-- **Local dev without a real project**: `firebase emulators:start --project
-  demo-contempo` runs fully offline against a Firebase "demo project" — no real
-  project or billing needed until you're ready to test against the real one.
-- See `backend/README.md` for the full layout and first-time setup steps.
+- Instrumented tests that ran against the Firebase emulator were removed with the move; rewriting
+  them against the local Supabase stack is open work. `wear/.../WearCaptureScreenUiTest.kt` was
+  already out of date with the screen's signature before the move.
 
 ## Product context worth knowing before writing more planning content
 

@@ -1,5 +1,5 @@
 import ContempoCore
-import ContempoFirestore
+import ContempoData
 import SwiftUI
 
 /// How long the ongoing-work/trip banners linger in their "completed" state — see the two `.onChange` blocks in CaptureScreen's body.

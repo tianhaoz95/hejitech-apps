@@ -62,6 +62,16 @@ hero:
   </div>
 </a>
 
+<a class="heji-app" href="./contempo/">
+  <img src="/contempo/icon.png" alt="" width="64" height="64">
+  <div class="heji-app-body">
+    <h3>Contempo</h3>
+    <p>Hours that survive an audit. Short-term-rental hosts log work by voice on the phone or watch; Contempo turns it into contemporaneous, risk-checked records for the IRS material-participation tests.</p>
+    <span class="heji-tags"><span>Android · Wear OS</span><span>iPhone · Apple Watch</span><span>Web</span><span>On-device AI</span></span>
+    <span class="heji-links"><span>Developer docs →</span></span>
+  </div>
+</a>
+
 <a class="heji-app" href="https://tianhaoz95.github.io/hejitech-apps/feedbackkit/" target="_self">
   <img src="/feedbackkit-logo.png" alt="" width="64" height="64">
   <div class="heji-app-body">
@@ -74,7 +84,7 @@ hero:
 
 </div>
 
-<p class="heji-visit">Visit the apps: <a href="https://waypack.hejitech.workers.dev">waypack.hejitech.workers.dev</a> · <a href="https://weehours.hejitech.workers.dev">weehours.hejitech.workers.dev</a> · <a href="https://tianhaoz95.github.io/hejitech-apps/voxbrief/site/" target="_self">Voxbrief</a> · <a href="https://tianhaoz95.github.io/hejitech-apps/meowtrix/site/" target="_self">Meowtrix</a></p>
+<p class="heji-visit">Visit the apps: <a href="https://waypack.hejitech.workers.dev">waypack.hejitech.workers.dev</a> · <a href="https://weehours.hejitech.workers.dev">weehours.hejitech.workers.dev</a> · <a href="https://tianhaoz95.github.io/hejitech-apps/voxbrief/site/" target="_self">Voxbrief</a> · <a href="https://tianhaoz95.github.io/hejitech-apps/meowtrix/site/" target="_self">Meowtrix</a> · <a href="https://contempo.hejitech.workers.dev">contempo.hejitech.workers.dev</a></p>
 
 </div>
 

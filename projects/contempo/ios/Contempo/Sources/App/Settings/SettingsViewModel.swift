@@ -1,7 +1,6 @@
 import ContempoCore
-import ContempoFirestore
-import FirebaseAuth
-import FirebaseFunctions
+import ContempoData
+@preconcurrency import Supabase
 import Foundation
 import Observation
 
@@ -9,7 +8,6 @@ import Observation
 @MainActor
 final class SettingsViewModel {
     private let authManager = ServiceLocator.authManager
-    private let functions = Functions.functions()
     private let aiSettingsStore = ServiceLocator.aiSettingsStore
     private let remoteConfigStore = ServiceLocator.remoteConfigStore
     private let onDeviceLlm = ServiceLocator.onDeviceLlm
@@ -20,8 +18,8 @@ final class SettingsViewModel {
     private let shakeToReportSettingsStore = ServiceLocator.shakeToReportSettingsStore
     private let entryRepository = ServiceLocator.entryRepository
 
-    var displayName: String { Auth.auth().currentUser?.displayName ?? "Signed in" }
-    var email: String { Auth.auth().currentUser?.email ?? "" }
+    var displayName: String { ContempoBackend.client.auth.currentUser?.userMetadata["full_name"]?.stringValue ?? "Signed in" }
+    var email: String { ContempoBackend.email ?? "" }
 
     var inferencePreference: InferencePreference { aiSettingsStore.preference }
     var cloudAiEnabled: Bool { remoteConfigStore.cloudAiEnabled }
@@ -149,7 +147,7 @@ final class SettingsViewModel {
         deleteAccountError = nil
         Task {
             do {
-                _ = try await functions.httpsCallable("deleteAccount").call()
+                _ = try await ContempoBackend.api("account/delete")
                 try? authManager.signOut()
                 isDeletingAccount = false
             } catch {

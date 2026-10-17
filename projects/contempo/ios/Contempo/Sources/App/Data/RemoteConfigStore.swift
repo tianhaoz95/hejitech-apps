@@ -1,44 +1,20 @@
-import FirebaseRemoteConfig
 import Foundation
 import Observation
 
-private let cloudAiEnabledKey = "cloud_ai_enabled"
+private let configURL = URL(string: "https://contempo.hejitech.workers.dev/app-config.json")!
 private let defaultCloudAiEnabled = true
-private let minFetchIntervalSeconds: TimeInterval = 3_600
 
-/// A remote kill switch for cloud AI usage — cloud calls (Genkit's
-/// parseEntry/askAgent Cloud Functions) cost real money per request, unlike
-/// on-device inference, so this exists to cut that cost off instantly (a
-/// console change, not an App Store release) if it ever needs to happen.
-/// Gated centrally in `ServiceLocator`'s `AgentClient` inference-preference
-/// closure — every `AgentClient` call site benefits without each needing its
-/// own check.
-///
-/// `cloudAiEnabled`'s in-process default (`true`) holds until `refresh()`
-/// actually completes — deliberately not read from the Remote Config SDK's
-/// own value before that, to avoid a cold-start window failing closed
-/// instead of open.
+/// Remote kill switch for cloud AI spend (`cloud_ai_enabled`), read from the Contempo Worker's static
+/// app-config.json (projects/contempo/services/web/public/app-config.json): edit and push to flip
+/// it, no app release. Replaces Firebase Remote Config; stays on if unreachable.
 @Observable
 @MainActor
 final class RemoteConfigStore {
-    private let remoteConfig = RemoteConfig.remoteConfig()
-
     private(set) var cloudAiEnabled = defaultCloudAiEnabled
 
-    init() {
-        let settings = RemoteConfigSettings()
-        settings.minimumFetchInterval = minFetchIntervalSeconds
-        remoteConfig.configSettings = settings
-    }
-
-    /// Best-effort, called once from app launch — failures are silently swallowed.
     func refresh() async {
-        remoteConfig.setDefaults([cloudAiEnabledKey: defaultCloudAiEnabled as NSObject])
-        do {
-            try await remoteConfig.fetchAndActivate()
-            cloudAiEnabled = remoteConfig[cloudAiEnabledKey].boolValue
-        } catch {
-            // Keep the existing in-process default — see class doc.
-        }
+        guard let (data, _) = try? await URLSession.shared.data(from: configURL),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+        cloudAiEnabled = json["cloud_ai_enabled"] as? Bool ?? defaultCloudAiEnabled
     }
 }

@@ -47,20 +47,6 @@ struct WatchSignInView: View {
                     }
                 }
 
-                #if USE_FIREBASE_EMULATOR
-                Button {
-                    Task {
-                        try? await authManager.signInWithFakeEmulatorIdentity()
-                    }
-                } label: {
-                    Text("Sign In (Demo User)")
-                        .font(ContempoFont.labelSmall())
-                        .bold()
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(palette.pine)
-                #endif
-
                 Button {
                     authManager.requestTokenFromPhone()
                 } label: {

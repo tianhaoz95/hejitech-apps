@@ -61,8 +61,8 @@ val PrivacyPolicy = LegalDocument(
             "How we use your information",
             listOf(
                 "To parse natural-language text or voice entries into structured fields " +
-                    "(property, task, duration, category), using either on-device AI or Google's " +
-                    "cloud Gemini API depending on your Settings preference (see below).",
+                    "(property, task, duration, category), using either on-device AI or a cloud " +
+                    "AI model depending on your Settings preference (see below).",
                 "To compute contemporaneity and vague-entry risk flags (a deterministic check, " +
                     "not an AI model), and to generate your pacing dashboard and CSV/print exports.",
                 "To answer legal-question chat messages you choose to send — see the disclaimer " +
@@ -81,7 +81,7 @@ val PrivacyPolicy = LegalDocument(
                     "step.",
                 "Cloud processing sends the entry's text (never audio — voice is always " +
                     "transcribed to text on-device first, even when cloud parsing is used for the " +
-                    "text itself) to Google's Gemini API (via Firebase) so it can be parsed there. " +
+                    "text itself) to our server (a Cloudflare Worker), which has it parsed by a cloud AI model (Cloudflare Workers AI, or Google's Gemini API) so it can be parsed there. " +
                     "If you choose \"On-device only\" and on-device processing isn't available on " +
                     "your phone, parsing falls back to manual entry rather than silently using the " +
                     "cloud.",
@@ -90,10 +90,10 @@ val PrivacyPolicy = LegalDocument(
         LegalSection(
             "How we store and protect your information",
             listOf(
-                "Your data is stored in Google Firebase / Google Cloud (Firestore database and " +
-                    "Firebase Storage, both in a United States region), under a per-account " +
-                    "storage path that only your signed-in Google account can access.",
-                "Firestore and Storage security rules enforce that access restriction, plus " +
+                "Your data is stored with Supabase (a Postgres database and file storage, in a " +
+                    "United States region), in records and a per-account storage path that only " +
+                    "your signed-in account can access.",
+                "Database row-level security and storage policies enforce that access restriction, plus " +
                     "field-level validation on what can be written, and data is encrypted in " +
                     "transit.",
             ),
@@ -101,13 +101,9 @@ val PrivacyPolicy = LegalDocument(
         LegalSection(
             "Diagnostic and crash data",
             listOf(
-                "The Android app uses Firebase Crashlytics and Firebase Performance Monitoring " +
-                    "in production builds to help us find and fix crashes and slow performance. " +
-                    "These collect device information (make/model, OS version), app version, and " +
-                    "crash/performance logs — this is diagnostic data about the app's behavior, " +
-                    "not your entry content. This collection is switched off in development/test " +
-                    "builds. The iOS app does not currently include crash or performance " +
-                    "reporting.",
+                "The apps don't include a crash-reporting or performance-monitoring service. " +
+                    "Our servers keep standard request logs (time, endpoint, status) for operating " +
+                    "and securing the service; they don't include your entry content.",
             ),
         ),
         LegalSection(
@@ -115,8 +111,8 @@ val PrivacyPolicy = LegalDocument(
             listOf(
                 "We do not sell your personal information, and we don't use any third-party " +
                     "advertising networks.",
-                "Your data is processed by Google/Firebase (including the Crashlytics/Performance " +
-                    "Monitoring described above) and Google's Gemini API as our infrastructure " +
+                "Your data is processed by Supabase, Cloudflare and, for cloud parsing, Google's " +
+                    "Gemini API as our infrastructure " +
                     "providers, under their own data-processing terms — this is what makes the app " +
                     "function, not sharing for their independent purposes.",
                 "CSV or print exports you generate are shared only when and however you choose to " +
@@ -130,9 +126,9 @@ val PrivacyPolicy = LegalDocument(
                 "Entries and properties persist until you delete them yourself in the app.",
                 "You can permanently delete your account and all associated data at any time " +
                     "from Settings, on Android, on iOS, or on the web — this immediately and " +
-                    "irreversibly deletes your Firestore records, Storage photos/audio, and your " +
+                    "irreversibly deletes your database records, stored photos/audio, and your " +
                     "sign-in account itself. If you'd rather not use the self-service option, you " +
-                    "can also contact us at https://contempo-str-feedback.web.app to request deletion.",
+                    "can also contact us at https://contempo.hejitech.workers.dev/feedback/ to request deletion.",
             ),
         ),
         LegalSection(
@@ -153,7 +149,7 @@ val PrivacyPolicy = LegalDocument(
         ),
         LegalSection(
             "International data transfer",
-            listOf("Your data is stored in the United States (Firestore's us-central1 region)."),
+            listOf("Your data is stored in the United States (Supabase's us-west-2 region)."),
         ),
         LegalSection(
             "Changes to this policy",
@@ -164,7 +160,7 @@ val PrivacyPolicy = LegalDocument(
         ),
         LegalSection(
             "Contact us",
-            listOf("Questions about this policy or your data: https://contempo-str-feedback.web.app."),
+            listOf("Questions about this policy or your data: https://contempo.hejitech.workers.dev/feedback/."),
         ),
     ),
 )
@@ -280,7 +276,7 @@ val TermsOfService = LegalDocument(
         ),
         LegalSection(
             "Contact us",
-            listOf("Questions about these terms: https://contempo-str-feedback.web.app."),
+            listOf("Questions about these terms: https://contempo.hejitech.workers.dev/feedback/."),
         ),
     ),
 )

@@ -1,5 +1,5 @@
 import ContempoCore
-import ContempoFirestore
+import ContempoData
 import Foundation
 import Observation
 

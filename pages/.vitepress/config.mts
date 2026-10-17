@@ -42,7 +42,7 @@ function sidebarFor(p: string): DefaultTheme.SidebarItem[] {
 export default withMermaid(
   defineConfig({
     title: "HEJI Apps",
-    description: "Small, focused apps by HEJI Technology: Waypack, Wee Hours, Voxbrief, Meowtrix and what comes next.",
+    description: "Small, focused apps by HEJI Technology: Waypack, Wee Hours, Voxbrief, Meowtrix, Contempo and what comes next.",
     base,
     cleanUrls: true,
     head: [

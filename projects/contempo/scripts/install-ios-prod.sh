@@ -120,41 +120,8 @@ if ! command -v xcrun >/dev/null 2>&1; then
   exit 1
 fi
 
-# --- sanity-check config ---------------------------------------------------
-if [[ "$INSTALL_IOS" == "true" ]]; then
-  GOOGLE_SERVICES="$IOS_DIR/Contempo/GoogleService-Info.plist"
-  if [[ ! -f "$GOOGLE_SERVICES" ]]; then
-    warn "ios/Contempo/GoogleService-Info.plist is missing — required for a real-Firebase build. See GoogleService-Info.plist.example."
-    exit 1
-  fi
-  if grep -q "REPLACE_" "$GOOGLE_SERVICES"; then
-    warn "ios/Contempo/GoogleService-Info.plist still has placeholder values — this won't talk to a real project."
-    exit 1
-  fi
-  PROJECT_ID="$(sed -n 's/.*<key>PROJECT_ID<\/key>.*<string>\(.*\)<\/string>.*/\1/p' "$GOOGLE_SERVICES" | tr -d ' \t')"
-  if [[ -z "$PROJECT_ID" ]]; then
-    PROJECT_ID="$(python3 -c "import plistlib; print(plistlib.load(open('$GOOGLE_SERVICES', 'rb')).get('PROJECT_ID', 'unknown'))" 2>/dev/null || echo "unknown")"
-  fi
-  echo "  GoogleService-Info.plist -> project \"$PROJECT_ID\""
-
-  SECRETS_XCCONFIG="$IOS_DIR/Contempo/Config/Secrets.xcconfig"
-  if [[ -f "$SECRETS_XCCONFIG" ]] && grep -q -E "^REVERSED_CLIENT_ID\s*=\s*\S+" "$SECRETS_XCCONFIG"; then
-    echo "  REVERSED_CLIENT_ID is set in Secrets.xcconfig"
-  else
-    warn "REVERSED_CLIENT_ID is not set in ios/Contempo/Config/Secrets.xcconfig — real Google Sign-In will fail at runtime (see Secrets.xcconfig.example)."
-  fi
-fi
-
-if [[ "$INSTALL_WATCH" == "true" ]]; then
-  WATCH_GOOGLE_SERVICES="$IOS_DIR/Contempo Watch App/GoogleService-Info.plist"
-  if [[ ! -f "$WATCH_GOOGLE_SERVICES" ]]; then
-    warn "ios/Contempo Watch App/GoogleService-Info.plist is missing — skipping the watch app. See GoogleService-Info.plist.example."
-    INSTALL_WATCH=false
-  elif grep -q "REPLACE_" "$WATCH_GOOGLE_SERVICES"; then
-    warn "ios/Contempo Watch App/GoogleService-Info.plist still has placeholder values — skipping the watch app."
-    INSTALL_WATCH=false
-  fi
-fi
+# Backend: the shared HEJI Supabase project (projects/contempo/backend.env), compiled into
+# ContempoCore's ContempoBackend.swift; nothing to configure locally.
 
 if [[ "$INSTALL_IOS" != "true" ]] && [[ "$INSTALL_WATCH" != "true" ]]; then
   warn "Nothing to install."

@@ -1,5 +1,5 @@
-@preconcurrency import FirebaseAuth
 import Foundation
+@preconcurrency import Supabase
 
 public enum WatchEntryWriterError: Error, Sendable {
     case notSignedIn
@@ -7,33 +7,25 @@ public enum WatchEntryWriterError: Error, Sendable {
     case malformedResponse
 }
 
-/// Watch-side write counterpart to `WatchEntryStatsReader` — writes completed
-/// work and trip entries to `users/{uid}/entries` over Firestore's plain REST API.
+/// Writes a finished, confirmed entry straight from the watch (a work timer or GPS trip stopped
+/// on the wrist) into contempo.entries.
 public final class WatchEntryWriter: Sendable {
-    private let projectId: String
-    private let emulatorHost: String?
-    private let customAuth: Auth?
+    public init() {}
 
-    public init(projectId: String, emulatorHost: String?, auth: Auth? = nil) {
-        self.projectId = projectId
-        self.emulatorHost = emulatorHost
-        self.customAuth = auth
-    }
-
-    private var auth: Auth {
-        customAuth ?? Auth.auth()
-    }
-
-    private var activeProjectId: String {
-        if !projectId.isEmpty { return projectId }
-        return "contempo-str"
-    }
-
-    private var documentsBaseURL: String {
-        if let emulatorHost {
-            return "http://\(emulatorHost):8080/v1/projects/\(activeProjectId)/databases/(default)/documents"
-        }
-        return "https://firestore.googleapis.com/v1/projects/\(activeProjectId)/databases/(default)/documents"
+    private struct Row: Encodable {
+        let id: String
+        let user_id: String
+        let task: String
+        let duration_minutes: Int
+        let category: String
+        let status: String
+        let source: String
+        let activity_date: Timestamp
+        let logged_at: Timestamp
+        let confirmed_at: Timestamp
+        let is_trip: Bool
+        let mileage_capture_method: String
+        let stopped_at: Timestamp
     }
 
     @discardableResult
@@ -46,56 +38,21 @@ public final class WatchEntryWriter: Sendable {
         startedAt: Date,
         stoppedAt: Date = Date()
     ) async throws -> String {
-        guard let uid = auth.currentUser?.uid, let idToken = try? await auth.currentUser?.getIDToken() else {
-            throw WatchEntryWriterError.notSignedIn
+        guard let uid = ContempoBackend.uid else { throw WatchEntryWriterError.notSignedIn }
+        let id = ContempoBackend.newId()
+        let stopped = Timestamp(date: stoppedAt)
+        do {
+            try await ContempoBackend.client.from("entries").insert(
+                Row(
+                    id: id, user_id: uid, task: task, duration_minutes: durationMinutes, category: category,
+                    status: EntryStatus.confirmed.firestoreValue, source: source,
+                    activity_date: Timestamp(date: startedAt), logged_at: stopped, confirmed_at: stopped,
+                    is_trip: isTrip, mileage_capture_method: isTrip ? "gps" : "", stopped_at: stopped
+                )
+            ).execute()
+        } catch {
+            throw WatchEntryWriterError.requestFailed(error.localizedDescription)
         }
-
-        let url = URL(string: "\(documentsBaseURL)/users/\(uid)/entries")!
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(idToken)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        let isoFormatter = ISO8601DateFormatter()
-        let fields: [String: Any] = [
-            "propertyId": ["stringValue": ""],
-            "propertyName": ["stringValue": ""],
-            "task": ["stringValue": task],
-            "durationMinutes": ["integerValue": "\(durationMinutes)"],
-            "category": ["stringValue": category],
-            "status": ["stringValue": EntryStatus.confirmed.firestoreValue],
-            "source": ["stringValue": source],
-            "activityDate": ["timestampValue": isoFormatter.string(from: startedAt)],
-            "loggedAt": ["timestampValue": isoFormatter.string(from: stoppedAt)],
-            "confirmedAt": ["timestampValue": isoFormatter.string(from: stoppedAt)],
-            "isVague": ["booleanValue": false],
-            "isBackfilled": ["booleanValue": false],
-            "daysLate": ["integerValue": "0"],
-            "riskReasons": ["arrayValue": ["values": [] as [Any]]],
-            "photoUrls": ["arrayValue": ["values": [] as [Any]]],
-            "inProgress": ["booleanValue": false],
-            "isTrip": ["booleanValue": isTrip],
-            "mileageCaptureMethod": ["stringValue": isTrip ? "gps" : ""],
-            "miles": ["doubleValue": 0.0],
-            "audioUrl": ["stringValue": ""],
-            "rawTranscript": ["stringValue": ""],
-            "stoppedAt": ["timestampValue": isoFormatter.string(from: stoppedAt)]
-        ]
-
-        request.httpBody = try JSONSerialization.data(withJSONObject: ["fields": fields])
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            let body = String(data: data, encoding: .utf8) ?? ""
-            throw WatchEntryWriterError.requestFailed(body)
-        }
-        guard
-            let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let name = json["name"] as? String,
-            let documentId = name.split(separator: "/").last
-        else {
-            throw WatchEntryWriterError.malformedResponse
-        }
-        return String(documentId)
+        return id
     }
 }

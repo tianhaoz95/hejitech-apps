@@ -1,5 +1,4 @@
 import ContempoCore
-import FirebaseAuth
 import SwiftUI
 import UIKit
 
@@ -8,8 +7,7 @@ import UIKit
 /// Android's `ContempoApp`: `auth.currentUser` stays nil until the user
 /// actually signs in.
 struct RootView: View {
-    @State private var isSignedIn = Auth.auth().currentUser != nil
-    @State private var authHandle: AuthStateDidChangeListenerHandle?
+    @State private var isSignedIn = ContempoBackend.client.auth.currentUser != nil
     @State private var pendingFeedbackScreenshot: FeedbackScreenshot?
 
     var body: some View {
@@ -28,16 +26,13 @@ struct RootView: View {
         .contempoTheme()
         .onAppear {
             WatchAuthTokenRelay.shared.start()
-            authHandle = Auth.auth().addStateDidChangeListener { _, user in
-                isSignedIn = user != nil
-                if user != nil {
+        }
+        .task {
+            for await (_, session) in ContempoBackend.client.auth.authStateChanges {
+                isSignedIn = session != nil
+                if session != nil {
                     WatchAuthTokenRelay.shared.sendTokenIfSignedIn()
                 }
-            }
-        }
-        .onDisappear {
-            if let authHandle {
-                Auth.auth().removeStateDidChangeListener(authHandle)
             }
         }
         // Invisible — only exists to become first responder and forward

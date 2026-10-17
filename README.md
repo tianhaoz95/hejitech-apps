@@ -11,6 +11,7 @@ one npm workspace and the CI plumbing.
 | FeedbackKit | In-app feedback with a closed fix loop: SDKs (iOS/macOS/watchOS, Android, web, Flutter, React Native, desktop), dashboard, Portal apps, CLI + MCP. Own Supabase project (`BACKEND=own`) | [`projects/feedbackkit`](projects/feedbackkit/README.md) |
 | Voxbrief | Voice memos on Apple Watch → clean Markdown notes on iPhone/Mac, transcribed and rewritten on the device (Swift, Whisper + Qwen3). No backend (`BACKEND=none`) | [`projects/voxbrief`](projects/voxbrief/README.md) |
 | Meowtrix | Remote workspace for vibe engineering: self-hosted Node server (split panes of terminals, browsers, editor), macOS desktop apps (Tauri). No backend (`BACKEND=none`); standalone npm project with its own lockfile | [`projects/meowtrix`](projects/meowtrix/README.md) |
+| Contempo | AI-native hour tracker for STR material-participation tests: Android + Wear OS (Kotlin), iOS + watchOS (Swift), web app + admin + API on its Worker. Moved off Firebase onto the shared Supabase project (schema `contempo`) | [`projects/contempo`](projects/contempo/README.md) |
 
 ## Layout
 ```

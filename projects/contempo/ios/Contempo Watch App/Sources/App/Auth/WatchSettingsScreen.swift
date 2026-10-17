@@ -1,5 +1,4 @@
 import ContempoCore
-import FirebaseAuth
 import SwiftUI
 
 /// Sign-out lives on its own page now (see RootView's TabView), separate
@@ -11,7 +10,7 @@ import SwiftUI
 struct WatchSettingsScreen: View {
     @Environment(\.contempoPalette) private var palette
 
-    private var email: String { Auth.auth().currentUser?.email ?? "" }
+    private var email: String { ContempoBackend.email ?? "" }
 
     var body: some View {
         ScrollView {

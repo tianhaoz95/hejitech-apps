@@ -1,7 +1,7 @@
 import AVFoundation
 import Combine
 import ContempoCore
-import ContempoFirestore
+import ContempoData
 import CoreLocation
 import MapKit
 import PhotosUI

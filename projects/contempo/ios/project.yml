@@ -9,12 +9,8 @@ options:
 packages:
   ContempoCore:
     path: ContempoCore
-  firebase-ios-sdk:
-    url: https://github.com/firebase/firebase-ios-sdk.git
-    from: 11.0.0
-  GoogleSignIn-iOS:
-    url: https://github.com/google/GoogleSignIn-iOS.git
-    from: 8.0.0
+  # Backend: the shared HEJI Supabase project (projects/contempo/backend.env), via ContempoCore's
+  # supabase-swift dependency; no other backend SDKs.
 
 settings:
   base:
@@ -50,8 +46,6 @@ targets:
       - path: Contempo/Resources/sherpa-onnx-whisper-tiny
         type: folder
         resourceTags: [whisper-tiny-multilingual]
-      - path: Contempo/GoogleService-Info.plist
-        optional: true
     info:
       path: Contempo/Info.plist
       properties:
@@ -64,9 +58,10 @@ targets:
         NSPhotoLibraryAddUsageDescription: "Contempo saves photos you attach to work-log entries."
         UIBackgroundModes: [audio, location, fetch]
         NSSupportsLiveActivities: true
+        # Google sign-in through Supabase returns here (com.hejitech.contempoapp://login-callback).
         CFBundleURLTypes:
           - CFBundleURLSchemes:
-              - "$(REVERSED_CLIENT_ID)"
+              - com.hejitech.contempoapp
         # Debug builds (USE_FIREBASE_EMULATOR) talk to plain http://localhost
         # for Auth/Firestore/Storage/Functions — App Transport Security
         # blocks that by default, even for loopback, unless explicitly
@@ -110,25 +105,7 @@ targets:
       - package: ContempoCore
         product: ContempoCore
       - package: ContempoCore
-        product: ContempoFirestore
-      - package: firebase-ios-sdk
-        product: FirebaseAuth
-      - package: firebase-ios-sdk
-        product: FirebaseFirestore
-      - package: firebase-ios-sdk
-        product: FirebaseStorage
-      - package: firebase-ios-sdk
-        product: FirebaseFunctions
-      - package: firebase-ios-sdk
-        product: FirebaseRemoteConfig
-      - package: firebase-ios-sdk
-        product: FirebaseAppCheck
-      - package: firebase-ios-sdk
-        product: FirebaseCrashlytics
-      - package: GoogleSignIn-iOS
-        product: GoogleSignIn
-      - package: GoogleSignIn-iOS
-        product: GoogleSignInSwift
+        product: ContempoData
       - framework: Vendor/sherpa-onnx/sherpa-onnx.xcframework
         embed: false
       - framework: Vendor/sherpa-onnx/onnxruntime.xcframework
@@ -159,23 +136,6 @@ targets:
     configFiles:
       Debug: Contempo/Config/Debug.xcconfig
       Release: Contempo/Config/Release.xcconfig
-    # Uploads dSYMs (+ reads GOOGLE_APP_ID straight out of the bundled
-    # GoogleService-Info.plist) so crashes symbolicate in the Firebase
-    # console — the official Firebase SPM-install script, per
-    # https://firebase.google.com/docs/crashlytics/get-started?platform=ios.
-    # ${BUILD_DIR%/Build/*}/SourcePackages/checkouts resolves to wherever
-    # Xcode/xcodebuild actually put this run's SPM checkouts (DerivedData by
-    # default), not a fixed path, so this works the same in Xcode, `xcodebuild
-    # archive` (scripts/ship-ios-testflight.sh), and plain build/run
-    # (scripts/install-ios-prod.sh) alike.
-    postBuildScripts:
-      - name: "Upload Crashlytics dSYMs"
-        script: |
-          "${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run"
-        inputFiles:
-          - "$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)"
-          - "${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${TARGET_NAME}"
-        basedOnDependencyAnalysis: false
 
   ContempoWidgets:
     type: app-extension
@@ -225,13 +185,7 @@ targets:
       # be *compiled* into this extension target for Button(intent:) to
       # reference the type at all.
       - package: ContempoCore
-        product: ContempoFirestore
-      - package: firebase-ios-sdk
-        product: FirebaseAuth
-      - package: firebase-ios-sdk
-        product: FirebaseFirestore
-      - package: firebase-ios-sdk
-        product: FirebaseStorage
+        product: ContempoData
 
   "Contempo Watch App":
     type: application
@@ -240,8 +194,6 @@ targets:
       - path: "Contempo Watch App/Sources"
       - path: "Contempo Watch App/Assets.xcassets"
       - path: Contempo/Sources/Shared/LiveActivity
-      - path: "Contempo Watch App/GoogleService-Info.plist"
-        optional: true
     info:
       path: "Contempo Watch App/Info.plist"
       properties:
@@ -278,7 +230,7 @@ targets:
         SKIP_INSTALL: "NO"
       configs:
         Debug:
-          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) DEBUG USE_FIREBASE_EMULATOR"
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) DEBUG"
         Release:
           PROVISIONING_PROFILE_SPECIFIER: "Contempo AppStore ContempoWatchApp"
           CODE_SIGN_IDENTITY: "Apple Distribution"
@@ -297,10 +249,6 @@ targets:
       # WatchAudioCaptureQueueWriter instead, which only needs FirebaseAuth.
       - package: ContempoCore
         product: ContempoCore
-      - package: firebase-ios-sdk
-        product: FirebaseAuth
-      - package: firebase-ios-sdk
-        product: FirebaseStorage
       - target: "Contempo Watch Widgets"
         embed: true
         codeSign: true

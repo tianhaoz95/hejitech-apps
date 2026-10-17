@@ -1,0 +1,14 @@
+{
+  "name": "Contempo",
+  "sidebar": [
+    {
+      "text": "Contempo",
+      "items": [
+        { "text": "Overview", "link": "" },
+        { "text": "Web app ↗", "link": "https://contempo.hejitech.workers.dev", "target": "_blank" },
+        { "text": "Privacy policy ↗", "link": "https://contempo.hejitech.workers.dev/legal/privacy", "target": "_blank" },
+        { "text": "Send feedback ↗", "link": "https://contempo.hejitech.workers.dev/feedback/", "target": "_blank" }
+      ]
+    }
+  ]
+}

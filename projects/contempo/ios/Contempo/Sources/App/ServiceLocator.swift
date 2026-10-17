@@ -1,9 +1,5 @@
 import ContempoCore
-import ContempoFirestore
-import FirebaseAuth
-import FirebaseFirestore
-import FirebaseFunctions
-import FirebaseStorage
+import ContempoData
 import Foundation
 
 /// Manual service locator instead of a DI framework — deliberate for MVP:
@@ -14,13 +10,9 @@ import Foundation
 /// to adopt one, not to build more plumbing here.
 @MainActor
 enum ServiceLocator {
-    static let entryRepository: EntryRepository = FirestoreEntryRepository(
-        firestore: Firestore.firestore(),
-        auth: Auth.auth(),
-        storage: Storage.storage()
-    )
-    static let audioCaptureQueue = AudioCaptureQueue(firestore: Firestore.firestore(), auth: Auth.auth())
-    static let textCaptureQueue = TextCaptureQueue(firestore: Firestore.firestore(), auth: Auth.auth())
+    static let entryRepository: EntryRepository = SupabaseEntryRepository()
+    static let audioCaptureQueue = AudioCaptureQueue()
+    static let textCaptureQueue = TextCaptureQueue()
     static let timerEntryCoordinator = TimerEntryCoordinator(entryRepository: entryRepository)
     static let mileageTripCoordinator = MileageTripCoordinator(entryRepository: entryRepository)
     static let mileageTracker = MileageTracker()
@@ -44,7 +36,6 @@ enum ServiceLocator {
     static let currentScreenTracker = CurrentScreenTracker()
     static let agentClient = AgentClient(
         onDeviceLlm: onDeviceLlm,
-        functions: Functions.functions(),
         entryRepository: entryRepository,
         // Remotely disabling cloud AI, or not currently holding a Pro
         // entitlement (reports/pricing-proposal-v0.html §3.2), overrides the

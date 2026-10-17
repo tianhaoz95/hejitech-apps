@@ -13,7 +13,6 @@ private let backgroundRefreshIntervalSeconds: TimeInterval = 15 * 60
 @main
 struct ContempoWatchApp: App {
     init() {
-        FirebaseBootstrap.configure()
     }
 
     var body: some Scene {

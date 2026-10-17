@@ -1,5 +1,5 @@
 import ContempoCore
-import ContempoFirestore
+import ContempoData
 import Foundation
 
 /// Ports Android's `ExportViewModel`'s CSV generation verbatim — same column

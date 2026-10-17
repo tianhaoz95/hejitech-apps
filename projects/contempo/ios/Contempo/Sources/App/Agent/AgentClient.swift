@@ -1,6 +1,5 @@
 import ContempoCore
-import ContempoFirestore
-import FirebaseFunctions
+import ContempoData
 import Foundation
 
 /// Two-tier entry parsing + chat, mirroring Android's `AgentClient`:
@@ -18,18 +17,15 @@ import Foundation
 @MainActor
 final class AgentClient {
     private let onDeviceLlm: OnDeviceLlm
-    private let functions: Functions
     private let entryRepository: EntryRepository
     private let inferencePreference: () -> InferencePreference
 
     init(
         onDeviceLlm: OnDeviceLlm,
-        functions: Functions,
         entryRepository: EntryRepository,
         inferencePreference: @escaping () -> InferencePreference
     ) {
         self.onDeviceLlm = onDeviceLlm
-        self.functions = functions
         self.entryRepository = entryRepository
         self.inferencePreference = inferencePreference
     }
@@ -279,8 +275,8 @@ final class AgentClient {
                 "knownProperties": knownProperties,
                 "nowIso": ISO8601DateFormatter().string(from: Date()),
             ]
-            let result = try await functions.httpsCallable("parseEntry").call(payload)
-            guard let draft = Self.parseCallableResult(result.data) else {
+            let result = try await ContempoBackend.api("parse-entry", body: payload)
+            guard let draft = Self.parseCallableResult(result) else {
                 return .failure(message: "Cloud parse returned an unexpected shape")
             }
             return .success(ParseResult(draft: draft, source: .cloud))
@@ -299,8 +295,8 @@ final class AgentClient {
                 "testName": stats.testName,
                 "attachedEntries": attachedEntries.map { $0.chatContextPayload() },
             ]
-            let result = try await functions.httpsCallable("askAgent").call(payload)
-            guard let data = result.data as? [String: Any], let answer = data["answer"] as? String else {
+            let data = try await ContempoBackend.api("ask-agent", body: payload)
+            guard let answer = data["answer"] as? String else {
                 return .failure(message: "Cloud answer returned an unexpected shape")
             }
             return .success(answer: answer, source: .cloud)

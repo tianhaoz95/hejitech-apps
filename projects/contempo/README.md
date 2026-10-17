@@ -1,5 +1,7 @@
 # Contempo
 
+> Part of the [HEJI apps monorepo](https://github.com/tianhaoz95/hejitech-apps) (`projects/contempo`). Since 2026-10-16 the backend is the shared Supabase project (schema `contempo`) plus the Contempo Cloudflare Worker (`services/web`), not Firebase; see `CLAUDE.md`. Live: https://contempo.hejitech.workers.dev
+
 An AI-native short-term rental (STR) "material participation" hour tracker —
 helping STR hosts and real estate professionals log hours in a way that
 survives an IRS audit (contemporaneous records for the 100-hour / 500-hour STR

@@ -1,10 +1,8 @@
 #if canImport(ActivityKit)
 import ActivityKit
 import AppIntents
-import ContempoFirestore
-import FirebaseAuth
-import FirebaseFirestore
-import FirebaseStorage
+import ContempoCore
+import ContempoData
 import Foundation
 
 /// Interactive Live Activity buttons for pause/resume. Unlike a normal widget
@@ -18,8 +16,8 @@ import Foundation
 /// `ContempoWidgets` targets) so both targets compile the identical
 /// implementation, which `Button(intent:)` in the widget's Live Activity view
 /// requires.
-private func makeRepository() -> FirestoreEntryRepository {
-    FirestoreEntryRepository(firestore: Firestore.firestore(), auth: Auth.auth(), storage: Storage.storage())
+private func makeRepository() -> SupabaseEntryRepository {
+    SupabaseEntryRepository()
 }
 
 private func applyTimerState(from entry: Entry) async {

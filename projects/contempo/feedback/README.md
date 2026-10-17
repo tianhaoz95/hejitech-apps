@@ -20,7 +20,7 @@ npx -y firebase-tools@latest apps:sdkconfig WEB 1:664765495548:web:c3b24b46ce901
 ```
 
 Hosted at the `contempo-feedback` Firebase Hosting site
-(`https://contempo-str-feedback.web.app`), deployed automatically by
+(`https://contempo.hejitech.workers.dev/feedback/`), deployed automatically by
 `.github/workflows/firebase-deploy.yml`'s `deploy-feedback` job whenever
 `feedback/**` changes on `main`.
 

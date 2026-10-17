@@ -1,7 +1,5 @@
 import ContempoCore
-import ContempoFirestore
-import FirebaseFirestore
-import FirebaseStorage
+import ContempoData
 import Foundation
 import Observation
 
@@ -47,10 +45,9 @@ public final class AudioCaptureProcessor {
     private func processOne(_ capture: PendingAudioCapture, onStageChange: ((AudioProcessingStage) -> Void)? = nil) async throws {
         self.currentlyProcessingStage = .downloading
         onStageChange?(.downloading)
-        let storageRef = Storage.storage().reference(withPath: capture.storagePath)
 
         let maxAudioBytes: Int64 = 50_000_000
-        guard let wavBytes = try? await storageRef.data(maxSize: maxAudioBytes) else {
+        guard let wavBytes = try? await ContempoBackend.downloadFile(path: capture.storagePath), wavBytes.count <= maxAudioBytes else {
             return
         }
 
@@ -66,7 +63,7 @@ public final class AudioCaptureProcessor {
 
         self.currentlyProcessingStage = .parsing
         onStageChange?(.parsing)
-        let audioUrl = (try? await storageRef.downloadURL())?.absoluteString ?? ""
+        let audioUrl = (try? await ContempoBackend.signedURL(path: capture.storagePath)) ?? ""
         let knownProperties = (try? await ServiceLocator.entryRepository.observeProperties().first(where: { _ in true }))?.map { $0.name } ?? []
 
         let outcome = await parseWithRetry(rawText: rawText, knownProperties: knownProperties)
