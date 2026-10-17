@@ -171,7 +171,8 @@ import json, sys
 devices = json.load(open(sys.argv[1])).get("result", {}).get("devices", [])
 for d in devices:
     hw, conn = d.get("hardwareProperties", {}), d.get("connectionProperties", {})
-    if hw.get("deviceType") == "iPhone" and conn.get("pairingState") == "paired" and conn.get("tunnelState") != "unavailable":
+    # devicectl also lists simulators ("reality": "simulated").
+    if hw.get("deviceType") == "iPhone" and hw.get("reality") == "physical" and conn.get("pairingState") == "paired" and conn.get("tunnelState") != "unavailable":
         print(hw.get("udid", "")); break
 PY
 )"
@@ -273,6 +274,8 @@ if [[ "$IS_IOS_PHYSICAL" == "true" ]]; then
     -allowProvisioningUpdates
     -authenticationKeyPath "$ASC_KEY_PATH" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID"
     CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY="Apple Development" PROVISIONING_PROFILE_SPECIFIER=
+    # Command-line settings reach the Swift packages' targets too, which then need the team.
+    DEVELOPMENT_TEAM="$(sed -n 's/^ *DEVELOPMENT_TEAM: *//p' "$IOS_DIR/project.yml" | head -n 1)"
   )
 fi
 
