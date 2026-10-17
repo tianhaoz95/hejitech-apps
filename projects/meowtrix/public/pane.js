@@ -258,6 +258,26 @@ function getTermTheme() {
   };
 }
 
+// The WebGL addon packs glyphs into atlas pages and merges pages as they
+// fill. In WebKit (Safari, the desktop app's WKWebView) a merge leaves glyphs
+// cached before it pointing at garbage, so after a long colorful session (an
+// agent's TUI) text redraws as blank or scrambled cells over intact
+// backgrounds. Still broken in xterm 6 / addon-webgl 0.19. Rebuilding the
+// atlas after each merge re-rasterizes from scratch; merges are rare, so the
+// cost is a one-frame redraw now and then.
+function guardWebglAtlas(addon) {
+  if (typeof addon.onRemoveTextureAtlasCanvas !== 'function') return;
+  let pending = false;
+  addon.onRemoveTextureAtlasCanvas(() => {
+    if (pending) return;
+    pending = true;
+    setTimeout(() => {
+      pending = false;
+      try { addon.clearTextureAtlas(); } catch (_) {}
+    }, 0);
+  });
+}
+
 function toggleMaximizePane(pane) {
   if (maximizedPane === pane) {
     // Restore
@@ -798,6 +818,7 @@ function initTerminalTab(tab, existingPtyId) {
         if (typeof updateWebGLIndicator === 'function') updateWebGLIndicator();
       });
       term.loadAddon(webglAddon);
+      guardWebglAtlas(webglAddon);
       tab.webglAddon = webglAddon;
     } catch (e) {
       console.warn('WebGL addon failed to initialize, falling back to default renderer:', e);
@@ -1158,6 +1179,7 @@ function applyTermRenderer(tab, renderer) {
         if (typeof updateWebGLIndicator === 'function') updateWebGLIndicator();
       });
       tab.term.loadAddon(addon);
+      guardWebglAtlas(addon);
       tab.webglAddon = addon;
     } catch (e) {
       console.warn('Failed to load WebGL addon:', e);
