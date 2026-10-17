@@ -32,6 +32,9 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.resolve.outputs.version }}
+    defaults:
+      run:
+        working-directory: . # no checkout here, so projects/feedbackkit doesn't exist
     steps:
       - id: resolve
         run: |
