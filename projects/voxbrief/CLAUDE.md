@@ -36,7 +36,7 @@ releases up to v1.26.3). The root `CLAUDE.md` has the shared rules; what matters
   empty keychain. Voxbrief-only CI settings would be named `VOXBRIEF_…`.
 - **CI:** `.github/workflows/voxbrief-ci.yml` (macOS + iOS unit tests, also every 6 hours).
 - **LLM eval:** `.github/workflows/voxbrief-llm-eval.yml` scores the Stage 2 prompts on the bundled
-  Lite model (mlx-lm on CPU, sharded) only when the prompts or the model in use change, monthly on
+  Lite model (mlx-lm on macOS runners, sharded) only when the prompts or the model in use change, monthly on
   the 15th, or by hand; pass rates land in the run summary next to `evals/llm/baseline.json`. Run
   it after any prompt change, and add a case to `evals/llm/cases.json` for every prompt-quality
   report. See `evals/llm/README.md`.

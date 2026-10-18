@@ -25,13 +25,12 @@ CI: `.github/workflows/voxbrief-llm-eval.yml`. The eval is slow and costly, so i
 the prompts or the model in use change (the Swift files that build or feed the prompts,
 `OnDeviceLLMService.swift`, `model.env`), on the 15th of each month, and from the Actions tab
 (samples, model; use this after editing the cases or the harness). The macOS job exports the
-prompts and runs the `ml/` tests against them; four Linux jobs run a quarter of the cases each
-(`--shard k/4`) through mlx-lm on CPU; the last merges them (`--merge`) and posts the report to
-the run summary. It reports, it doesn't gate.
+prompts and runs the `ml/` tests against them; four macOS jobs run a quarter of the cases each
+(`--shard k/4`) through mlx-lm (MLX's Linux CPU backend took 40 minutes per sample); the last
+merges them (`--merge`) and posts the report to the run summary. It reports, it doesn't gate.
 
-Locally (from `projects/voxbrief`, after `xcodegen generate`; write the export outside
-`/Volumes/...` if the checkout lives there, since the unsigned test host can't write to it
-without a privacy prompt):
+Locally (from `projects/voxbrief`, after `xcodegen generate`; a checkout on an external volume
+needs the test host's one-time "removable volumes" permission to write the export there):
 
 ```sh
 TEST_RUNNER_VOXBRIEF_PROMPT_EXPORT=/tmp/prompts.json xcodebuild test -project Voxbrief.xcodeproj \

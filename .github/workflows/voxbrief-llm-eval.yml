@@ -2,9 +2,9 @@ name: Voxbrief LLM eval
 
 # Scores Voxbrief's Stage 2 prompts on the on-device Lite model: the macOS job exports the prompts
 # the app itself builds (LLMPromptExportTests) and runs the fine-tuning pipeline's tests (ml/,
-# incl. its prompt port against that export); four Linux jobs run the cases through mlx-lm on CPU;
-# the last job merges them and posts pass rates to the run summary, next to
-# evals/llm/baseline.json. Report only, not a gate.
+# incl. its prompt port against that export); four macOS jobs run a quarter of the cases each
+# through mlx-lm (MLX's Linux CPU backend took 40 minutes per sample, unusable); the last job merges
+# them and posts pass rates to the run summary, next to evals/llm/baseline.json. Report only.
 #
 # The eval is slow and costly, so it runs only when the prompts or the model in use change, on
 # the 15th of every month (drift in dependencies), and from the Actions tab (pick samples/model,
@@ -121,9 +121,9 @@ jobs:
           path: projects/voxbrief/evals/llm/out/prompts.json
 
   eval:
-    name: Eval shard ${{ matrix.shard }}/4 (mlx-lm, CPU)
+    name: Eval shard ${{ matrix.shard }}/4 (mlx-lm, macOS)
     needs: export-prompts
-    runs-on: ubuntu-24.04-arm
+    runs-on: macos-26
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -141,8 +141,10 @@ jobs:
           cache: pip
           cache-dependency-path: projects/voxbrief/evals/llm/requirements.txt
 
-      - name: Install mlx-lm (CPU)
-        run: pip install -r requirements.txt
+      - name: Install mlx-lm
+        run: |
+          pip install -r requirements.txt
+          python -c "import mlx.core as mx; print('MLX device:', mx.default_device())"
 
       - name: Pick model
         run: |
