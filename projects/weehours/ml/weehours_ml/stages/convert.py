@@ -23,7 +23,9 @@ def llama_cpp(commit):
     subprocess.run(["git", "-C", str(work), "checkout", "-q", commit], check=True)
     build = work / "build"
     if not all((build / "bin" / b).exists() for b in BINARIES):
-        subprocess.run(["cmake", "-S", str(work), "-B", str(build), "-DCMAKE_BUILD_TYPE=Release", "-DLLAMA_CURL=OFF"], check=True)
+        # No web UI (its asset download breaks at some pins) and no OpenSSL: nothing here needs them.
+        subprocess.run(["cmake", "-S", str(work), "-B", str(build), "-DCMAKE_BUILD_TYPE=Release", "-DLLAMA_CURL=OFF",
+                        "-DLLAMA_OPENSSL=OFF", "-DLLAMA_USE_PREBUILT_UI=OFF", "-DLLAMA_UI_GZIP=OFF"], check=True)
         subprocess.run(["cmake", "--build", str(build), "-j", "--target", *BINARIES], check=True)
     return work
 

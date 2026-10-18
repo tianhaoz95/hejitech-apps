@@ -67,17 +67,21 @@ jobs:
         uses: actions/cache@v4
         with:
           path: projects/weehours/.llama-server
-          key: weehours-llama-server-${{ env.LLAMA_COMMIT }}-macos-cpu
+          key: weehours-llama-server-${{ env.LLAMA_COMMIT }}-macos-cpu-static
 
-      # CPU build: GitHub's macOS VMs don't expose Metal to compute.
+      # CPU build (GitHub's macOS VMs don't expose Metal to compute), static and without OpenSSL so
+      # the cached binary stands alone, and without the web UI: llama-server otherwise downloads
+      # the UI bundle, which failed at this pin (the "latest" fallback broke the asset step).
       - name: Build llama-server
         if: steps.llama-cache.outputs.cache-hit != 'true'
         run: |
-          git clone --filter=blob:none https://github.com/ggml-org/llama.cpp.git /tmp/llama.cpp
-          git -C /tmp/llama.cpp checkout -q "$LLAMA_COMMIT"
-          cmake -S /tmp/llama.cpp -B /tmp/llama.cpp/build -DCMAKE_BUILD_TYPE=Release -DGGML_METAL=OFF -DLLAMA_CURL=OFF
-          cmake --build /tmp/llama.cpp/build -j --target llama-server
-          mkdir -p .llama-server && cp -R /tmp/llama.cpp/build/bin/. .llama-server/
+          src="$RUNNER_TEMP/llama.cpp"
+          git clone --filter=blob:none https://github.com/ggml-org/llama.cpp.git "$src"
+          git -C "$src" checkout -q "$LLAMA_COMMIT"
+          cmake -S "$src" -B "$src/build" -DCMAKE_BUILD_TYPE=Release -DGGML_METAL=OFF -DLLAMA_CURL=OFF \
+            -DLLAMA_OPENSSL=OFF -DBUILD_SHARED_LIBS=OFF -DLLAMA_USE_PREBUILT_UI=OFF -DLLAMA_UI_GZIP=OFF
+          cmake --build "$src/build" -j --target llama-server
+          mkdir -p .llama-server && cp "$src/build/bin/llama-server" .llama-server/
 
       - name: Cache model
         id: model-cache
