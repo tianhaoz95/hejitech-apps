@@ -25,7 +25,7 @@ def plan_one(rng, index, config, registry):
             fields[q] = rng.choice(stated)
     children = config["children"]
     return {
-        "id": f"p{index:06d}",
+        "id": f"{config['run'].get('id_prefix', 'p')}{index:06d}",
         "type": type_id,
         "fields": fields,
         "labels": registry.labels(type_id, fields),

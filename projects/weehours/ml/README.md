@@ -34,7 +34,7 @@ first   labels      aloud  hears          (RLCD)            vs stock
 
 | Path | What |
 |---|---|
-| `configs/pilot.toml`, `configs/full.toml` | One file drives every stage. Pilot = 200 plans × 3, full = 7,000 × 3. |
+| `configs/pilot.toml`, `configs/full.toml`, `configs/topup.toml` | One file drives every stage. Pilot = 200 plans × 3, full = 7,000 × 3; topup adds 1,200 plans of the types full was short of and trains on both (`include`, `id_prefix`). |
 | `weehours_ml/laya.py` | Labels, questions, training rows; checked against the app |
 | `weehours_ml/stages/*.py` | One module per stage; `python -m weehours_ml <stage>` |
 | `spark/` | `run.sh` (one step), `all.sh` (pilot → gate → full), `Dockerfile` (CUDA stages) |

@@ -47,8 +47,10 @@ def _git_commit():
 
 def run_stage(run, limit=None):
     questions = laya_questions(load_export(run.laya_export))
-    plans = {p["id"]: p for p in jsonl.read(run.path("utterances.jsonl"))}
-    heard = jsonl.read(run.path("asr.jsonl"))[:limit]
+    # `include`: earlier runs whose data this one adds to (a top-up run's ids have their own prefix).
+    sources = [run.dir] + [run.dir.parent / name for name in run["run"].get("include", [])]
+    plans = {p["id"]: p for d in sources for p in jsonl.read(d / "utterances.jsonl")}
+    heard = [r for d in sources for r in jsonl.read(d / "asr.jsonl")][:limit]
     held_out = eval_texts()
     train, val, seen, dropped = [], [], set(), Counter()
     for record in heard:

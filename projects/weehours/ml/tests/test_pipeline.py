@@ -59,6 +59,8 @@ def test_teacher_requests():
     assert "clock time" in text and "Mia" in text
     none = dict(plan, type=NONE, fields={}, labels={"category": NONE})
     assert "NOT a feed" in describe(none, r)
+    single = dict(plan, type="feed.bottle.single", labels={"category": "bottle", "phase": "single"}, when="now")
+    assert "already over" in describe(single, r) and "happening now" not in describe(single, r)
     assert list(label_questions(plan, {"category": 1, "phase": 2, "side": 3, "amount": 4})) == ["category", "phase", "amount"]
     assert valid_utterance("done with the bottle, drank half")
     assert not valid_utterance("[Music]") and not valid_utterance("")

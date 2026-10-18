@@ -31,6 +31,7 @@ NONE_TOPICS = [
     "a rash or symptom", "a question for the pediatrician", "a milestone like a first smile",
     "the baby being fussy or crying", "buying more diapers or formula", "a visitor", "bath time",
     "giving vitamin drops or medicine", "tummy time", "the parent's own tiredness",
+    "washing or sterilizing bottles", "making up formula or bottles for later",
 ]
 
 
@@ -52,7 +53,10 @@ def describe(plan, registry):
                 parts.append(f"It must clearly answer \"{question['instructions']}\" with: {desc}.")
     if plan["type"] in ("weight", "height", "head"):
         parts.append("Include the measurement with a number and unit.")
-    parts.append(WHEN_TEXT[plan["when"]])
+    if plan["when"] == "now" and plan["labels"].get("phase") == "single":
+        parts.append("It is already over; don't mention a time.")  # "happening now" would make it a start
+    else:
+        parts.append(WHEN_TEXT[plan["when"]])
     if plan["child"]:
         parts.append(f"Mention the baby by name: {plan['child']}.")
     return " ".join(parts)
