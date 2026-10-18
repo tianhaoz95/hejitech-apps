@@ -183,6 +183,49 @@ final class LLMCopywriterServiceTests: XCTestCase {
         XCTAssertFalse(block.contains("Voxbrief ("), "A whitespace-only hint should be treated as no hint")
     }
 
+    func testDictionaryInstructionBlockAsksForSoundAlikesWithExample() {
+        let block = service.dictionaryInstructionBlock([DictionaryEntry(term: "Voxbrief")])
+
+        XCTAssertTrue(block.contains("sounds like"), "The model should be told to fix sound-alikes, not only close spellings")
+        XCTAssertTrue(block.contains("including the title"))
+        XCTAssertTrue(block.contains("Zentrify"), "A worked example should show a mishearing being fixed")
+        XCTAssertFalse(block.contains("superficially similar"), "The old hedge discouraged corrections")
+    }
+
+    func testDictionaryInstructionBlockShowsAliasesAsMishearings() {
+        let dictionary = [
+            DictionaryEntry(term: "Voxbrief", aliases: ["fox brief", " ", "vox brief"], contextHint: "our app"),
+            DictionaryEntry(term: "Kubernetes", aliases: ["cooper netties"])
+        ]
+
+        let block = service.dictionaryInstructionBlock(dictionary)
+
+        XCTAssertTrue(block.contains("- Voxbrief (our app; often misheard as \"fox brief\", \"vox brief\")"))
+        XCTAssertTrue(block.contains("- Kubernetes (often misheard as \"cooper netties\")"))
+    }
+
+    func testDictionaryInstructionBlockCapsAliasesPerTerm() {
+        let dictionary = [DictionaryEntry(term: "Voxbrief", aliases: ["a1", "a2", "a3", "a4"])]
+
+        let block = service.dictionaryInstructionBlock(dictionary)
+
+        XCTAssertTrue(block.contains("\"a3\""))
+        XCTAssertFalse(block.contains("\"a4\""))
+    }
+
+    func testTranscriptUserPromptRemindsOfTermsNextToTranscript() {
+        let dictionary = [DictionaryEntry(term: "Voxbrief"), DictionaryEntry(term: "Kubernetes")]
+
+        let prompt = service.transcriptUserPrompt("For the Wotsbrief project.", dictionary: dictionary)
+
+        XCTAssertTrue(prompt.contains("Voxbrief, Kubernetes"))
+        XCTAssertTrue(prompt.hasSuffix("Transcript:\nFor the Wotsbrief project."))
+    }
+
+    func testTranscriptUserPromptIsBareTranscriptWithoutDictionary() {
+        XCTAssertEqual(service.transcriptUserPrompt("Just text.", dictionary: []), "Just text.")
+    }
+
     func testDictionaryInstructionBlockRespectsTermCap() {
         let dictionary = (1...(LLMCopywriterService.maxDictionaryTermsInPrompt + 10)).map {
             DictionaryEntry(term: "Term\($0)")

@@ -15,6 +15,10 @@ public struct NoteListView: View {
     @State private var isSelectMode: Bool = false
     @State private var selectedNoteIDs: Set<UUID> = []
     @State private var showingBatchDeleteAlert: Bool = false
+    /// The capture button is 1.5x a standard bottom-bar icon (17pt glyph, 44pt target): it's the
+    /// app's primary action. Scales with Dynamic Type.
+    @ScaledMetric(relativeTo: .body) private var captureIconSize: CGFloat = 26
+    @ScaledMetric(relativeTo: .body) private var captureButtonSize: CGFloat = 66
     @FocusState private var isSearchFieldFocused: Bool
 
     public init() {}
@@ -80,12 +84,16 @@ public struct NoteListView: View {
                     }
                 }
 
-                ToolbarItem(placement: .bottomBar) {
-                    if isSelectMode {
+                if isSelectMode {
+                    ToolbarItem(placement: .bottomBar) {
                         batchBottomBar
-                    } else {
-                        recordBottomBarButton
                     }
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                if !isSelectMode {
+                    captureButton
+                        .padding(.bottom, 8)
                 }
             }
             .sheet(isPresented: $viewModel.showingRecordSheet) {
@@ -427,20 +435,28 @@ public struct NoteListView: View {
         }
     }
 
-    private var recordBottomBarButton: some View {
+    /// Floats over the list instead of sitting in the bottom toolbar, which caps its items'
+    /// height and would only widen the button.
+    private var captureButton: some View {
         Button {
             viewModel.showingRecordSheet = true
         } label: {
             Image(systemName: "mic.fill")
+                .font(.system(size: captureIconSize, weight: .semibold))
+                .foregroundStyle(Color.accentColor)
+                .frame(width: captureButtonSize, height: captureButtonSize)
+                .modifier(CaptureButtonBackground())
+                .contentShape(Circle())
         }
-        .tint(Color.accentColor)
+        .buttonStyle(.plain)
         .keyboardShortcut("n", modifiers: .command)
+        .accessibilityLabel("Record Memo")
         .overlay(alignment: .topTrailing) {
             if viewModel.pipeline.activeProcessingCount > 0 {
                 Circle()
                     .fill(.orange)
-                    .frame(width: 7, height: 7)
-                    .offset(x: 8, y: -6)
+                    .frame(width: 10, height: 10)
+                    .offset(x: -6, y: 6)
             }
         }
     }
@@ -781,4 +797,15 @@ public struct NoteListView: View {
 
 private struct KeyboardRecordTrigger: Identifiable {
     let id = UUID()
+}
+
+/// Liquid Glass where available, matching the toolbar it replaced; material before iOS 26.
+private struct CaptureButtonBackground: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.glassEffect(.regular.interactive(), in: .circle)
+        } else {
+            content.background(.regularMaterial, in: Circle())
+        }
+    }
 }

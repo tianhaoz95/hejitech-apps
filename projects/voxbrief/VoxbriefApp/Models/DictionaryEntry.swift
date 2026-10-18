@@ -8,8 +8,9 @@ public struct DictionaryEntry: Identifiable, Codable, Sendable, Hashable {
     public let id: UUID
     /// Canonical, correctly-spelled/capitalized form, e.g. "Voxbrief", "Kubernetes", "Priya Patel".
     public var term: String
-    /// Known ASR mishearings of `term` (e.g. ["fox brief", "vox brief"]), used only by
-    /// `DictionaryCorrector`'s deterministic substitution pass. May be empty.
+    /// Known ASR mishearings of `term` (e.g. ["fox brief", "vox brief"]). `DictionaryCorrector`
+    /// replaces them verbatim, and `LLMCopywriterService`'s Stage 2 prompt shows them as examples
+    /// so the model recognizes other mishearings of the same term. May be empty.
     public var aliases: [String]
     /// Optional short description of what `term` actually is (e.g. "our project's codename" or
     /// "a person on the team, not a typo"). Consumed only by `LLMCopywriterService`'s Stage 2

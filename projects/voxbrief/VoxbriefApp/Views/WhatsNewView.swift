@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.26.6"
+    public static let currentVersion = "1.26.7"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,33 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.26.7",
+            date: "October 2026",
+            tagline: "Your Words, Spelled Right",
+            features: [
+                WhatsNewItem(
+                    icon: "character.book.closed",
+                    tint: .blue,
+                    title: "Personal Dictionary Catches Sound-Alikes",
+                    description: "The AI now treats words that sound like one of your dictionary terms as that term, so an obvious mishearing like \"Wotsbrief\" comes out as \"Voxbrief\", title included.",
+                    highlights: [
+                        "Works on new notes and when you re-run a note",
+                        "Mishearings you list teach the AI what to look for",
+                        "A term is skipped when it clearly doesn't fit the sentence"
+                    ]
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "mic.circle",
+                    tint: .accentColor,
+                    title: "Bigger Capture Button",
+                    description: "The record button at the bottom of your notes is 50% larger, so it's easier to hit.",
+                    kind: .improvement
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.26.6",
             date: "October 2026",

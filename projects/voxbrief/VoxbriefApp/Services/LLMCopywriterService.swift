@@ -277,7 +277,7 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
 
         let generationRaw = try await OnDeviceLLMService.shared.generate(
             systemPrompt: buildGenerationSystemPrompt(template: chosenTemplate, dictionary: dictionary),
-            userPrompt: transcript
+            userPrompt: transcriptUserPrompt(transcript, dictionary: dictionary)
         )
         let parsed = try parseGenerationResponse(generationRaw, template: chosenTemplate)
 
@@ -496,7 +496,7 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
         transcript as continuous prose), "tags" (array of short hashtags starting with #).\(dictionaryInstructionBlock(dictionary))
         """
 
-        let raw = try await OnDeviceLLMService.shared.generate(systemPrompt: systemPrompt, userPrompt: transcript)
+        let raw = try await OnDeviceLLMService.shared.generate(systemPrompt: systemPrompt, userPrompt: transcriptUserPrompt(transcript, dictionary: dictionary))
 
         guard let jsonSubstring = Self.extractJSONObject(from: raw) else {
             throw LLMCopywriterError.unparsableResponse
@@ -570,7 +570,7 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
 
         let generationRaw = try await AppleFoundationModelService.shared.generate(
             systemPrompt: buildGenerationSystemPrompt(template: chosenTemplate, dictionary: dictionary),
-            userPrompt: transcript
+            userPrompt: transcriptUserPrompt(transcript, dictionary: dictionary)
         )
         let parsed = try parseGenerationResponse(generationRaw, template: chosenTemplate)
 
@@ -622,7 +622,7 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
         transcript as continuous prose), "tags" (array of short hashtags starting with #).\(dictionaryInstructionBlock(dictionary))
         """
 
-        let raw = try await AppleFoundationModelService.shared.generate(systemPrompt: systemPrompt, userPrompt: transcript)
+        let raw = try await AppleFoundationModelService.shared.generate(systemPrompt: systemPrompt, userPrompt: transcriptUserPrompt(transcript, dictionary: dictionary))
 
         guard let jsonSubstring = Self.extractJSONObject(from: raw) else {
             throw LLMCopywriterError.unparsableResponse
@@ -684,27 +684,49 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
     /// pass whenever `NoteProcessingPipeline.generateLightCleanup` runs it on demand).
     static let maxDictionaryTermsInPrompt = 50
 
-    /// Renders the dictionary as a "preserve verbatim" instruction block appended to a system
-    /// prompt. An entry with a `contextHint` renders as `term (hint)`, so the model has enough to
-    /// judge whether an ambiguous or unfamiliar-looking mention actually fits the surrounding
-    /// sentence rather than just matching spelling -- entries without one (most terms) render as
-    /// a bare term, same as before this existed. Returns "" for an empty dictionary so callers can
-    /// unconditionally interpolate it without branching. `internal` (not `private`) so it's
-    /// directly unit-testable.
+    /// Aliases shown per term, as examples of how speech recognition mishears it.
+    static let maxAliasesPerTermInPrompt = 3
+
+    /// Renders the dictionary as an instruction block appended to a system prompt. Small models
+    /// follow a worked example far better than "fix close variants" (a real note kept
+    /// "Wotsbrief" for "Voxbrief" under that wording), so the block says the transcript is
+    /// speech-recognized, gives an example with an invented term (so it can't leak into a note),
+    /// and lists each term with its `contextHint` and the user's own `aliases`:
+    /// `term (hint; often misheard as "a", "b")`. Caution is limited to a term that clearly
+    /// doesn't fit the sentence. Returns "" for an empty dictionary so callers can interpolate it
+    /// unconditionally. `internal` (not `private`) so it's directly unit-testable.
     func dictionaryInstructionBlock(_ dictionary: [DictionaryEntry]) -> String {
         guard !dictionary.isEmpty else { return "" }
         let rendered = dictionary.prefix(Self.maxDictionaryTermsInPrompt).map { entry -> String in
+            var notes: [String] = []
             if let hint = entry.contextHint?.trimmingCharacters(in: .whitespacesAndNewlines), !hint.isEmpty {
-                return "\(entry.term) (\(hint))"
+                notes.append(hint)
             }
-            return entry.term
-        }.joined(separator: ", ")
-        return "\n\nThe speaker uses these specific proper nouns and jargon terms -- if you see a "
-            + "close variant of one in the transcript, use this exact spelling and capitalization "
-            + "verbatim rather than correcting, translating, or genericizing it. A parenthetical "
-            + "after a term describes what it actually is -- use it to judge whether a given "
-            + "mention really matches that term instead of forcing every superficially similar "
-            + "word to become it: \(rendered)."
+            let aliases = entry.aliases
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+                .prefix(Self.maxAliasesPerTermInPrompt)
+            if !aliases.isEmpty {
+                notes.append("often misheard as " + aliases.map { "\"\($0)\"" }.joined(separator: ", "))
+            }
+            return notes.isEmpty ? "- \(entry.term)" : "- \(entry.term) (\(notes.joined(separator: "; ")))"
+        }.joined(separator: "\n")
+        return "\n\nPersonal dictionary: the transcript comes from speech recognition, which often "
+            + "mishears names and jargon. Any word or phrase that sounds like one of the terms "
+            + "below is almost certainly that term: write the term with exactly this spelling and "
+            + "capitalization everywhere, including the title. For example, if the list had "
+            + "\"Zentrify\", a transcript saying \"Sentrafy\" or \"send trify\" means Zentrify. "
+            + "Keep the original word only when the term clearly makes no sense in that sentence "
+            + "(a note in parentheses says what a term is). Terms:\n\(rendered)"
+    }
+
+    /// The user message for a generation call: the transcript, preceded by a one-line reminder
+    /// of the dictionary terms when there are any. Small models weigh what's next to the
+    /// transcript more than the end of a long system prompt. Unchanged transcript otherwise.
+    func transcriptUserPrompt(_ transcript: String, dictionary: [DictionaryEntry]) -> String {
+        guard !dictionary.isEmpty else { return transcript }
+        let terms = dictionary.prefix(Self.maxDictionaryTermsInPrompt).map(\.term).joined(separator: ", ")
+        return "Dictionary terms (anything that sounds like one is that term): \(terms)\n\nTranscript:\n\(transcript)"
     }
 
     // MARK: - On-Device NLP & Semantic Transformation Engine
