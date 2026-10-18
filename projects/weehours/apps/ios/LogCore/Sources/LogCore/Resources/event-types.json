@@ -30,7 +30,7 @@
       "id": "feed.bottle.single",
       "category": "bottle",
       "label": "Bottle (one entry)",
-      "voice": "baby had a bottle earlier, a whole bottle feed logged at once",
+      "voice": "baby had or was given a bottle earlier (minutes or hours ago), a whole bottle feed logged at once",
       "questions": ["contents", "amount", "when"]
     },
     {
@@ -143,11 +143,11 @@
         "quarter": { "description": "drank a quarter", "fraction": 0.25 },
         "half": { "description": "drank half", "fraction": 0.5 },
         "three_quarters": { "description": "drank three quarters", "fraction": 0.75 },
-        "full": { "description": "drank all of it, the whole bottle", "fraction": 1.0 },
+        "full": { "description": "drank all of it, finished the whole bottle", "fraction": 1.0 },
         "quarter_left": { "description": "a quarter is left over", "fraction": 0.75 },
         "half_left": { "description": "half is left over", "fraction": 0.5 },
         "three_quarters_left": { "description": "three quarters left over", "fraction": 0.25 },
-        "not_stated": { "description": "amount not mentioned" }
+        "not_stated": { "description": "amount not mentioned; done or all done alone does not say how much" }
       }
     },
     "side": {

@@ -26,7 +26,7 @@
 {"text": "she's done, three quarters left over", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "three_quarters_left", "when": "now"}}
 {"text": "changed a wet one", "open": [], "expect": {"type": "diaper", "diaper_kind": "wet", "when": "now"}}
 {"text": "she has a little rash on her cheek", "open": [], "expect": {"type": "none_of_these"}}
-{"text": "he finished his bottle", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "not_stated", "when": "now"}}
+{"text": "he finished his bottle", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "full", "when": "now"}}
 {"text": "started a bottle half an hour ago", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "30"}}
 {"text": "nursing on the left", "open": [], "expect": {"type": "feed.breast.start", "side": "left", "when": "now"}}
 {"text": "pumped 120 ml", "open": [], "expect": {"type": "pump", "side": "not_stated"}}
@@ -40,9 +40,9 @@
 {"text": "switched sides", "open": ["breast"], "expect": {"type": "feed.breast.switch", "side": "not_stated", "when": "now"}}
 {"text": "she started drinking her bottle half an hour ago", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "30"}}
 {"text": "asleep in the car seat", "open": [], "expect": {"type": "sleep.start", "when": "now"}}
-{"text": "gave her a bottle of formula about fifteen minutes ago", "open": [], "expect": {"type": "feed.bottle.start", "contents": "formula", "when": "15"}}
+{"text": "gave her a bottle of formula about fifteen minutes ago", "open": [], "expect": {"type": "feed.bottle.single", "contents": "formula", "when": "15"}}
 {"text": "diaper was dry", "open": [], "expect": {"type": "diaper", "diaper_kind": "dry", "when": "now"}}
-{"text": "gave her a bottle of formula five minutes ago", "open": [], "expect": {"type": "feed.bottle.start", "contents": "formula", "when": "5"}}
+{"text": "gave her a bottle of formula five minutes ago", "open": [], "expect": {"type": "feed.bottle.single", "contents": "formula", "when": "5"}}
 {"text": "all done, drank a quarter", "open": [], "expect": {"type": "feed.bottle.finish", "amount": "quarter", "when": "now"}}
 {"text": "changed a wet one five minutes ago", "open": [], "expect": {"type": "diaper", "diaper_kind": "wet", "when": "5"}}
 {"text": "poop and pee", "open": [], "expect": {"type": "diaper", "diaper_kind": "both", "when": "now"}}
@@ -118,7 +118,7 @@
 {"text": "started nursing on the right half an hour ago", "open": [], "expect": {"type": "feed.breast.start", "side": "right", "when": "30"}}
 {"text": "finished the bottle at 4:05, drank half", "open": [], "expect": {"type": "feed.bottle.finish", "when": "explicit", "amount": "half"}}
 {"text": "need to wash the bottles", "open": [], "expect": {"type": "none_of_these"}}
-{"text": "gave her a bottle of formula half an hour ago", "open": [], "expect": {"type": "feed.bottle.start", "contents": "formula", "when": "30"}}
+{"text": "gave her a bottle of formula half an hour ago", "open": [], "expect": {"type": "feed.bottle.single", "contents": "formula", "when": "30"}}
 {"text": "done nursing", "open": ["breast"], "expect": {"type": "feed.breast.finish", "when": "now"}}
 {"text": "call the pediatrician tomorrow", "open": [], "expect": {"type": "none_of_these"}}
 {"text": "started a bottle at 11:50 pm", "open": [], "expect": {"type": "feed.bottle.start", "when": "explicit", "contents": "not_stated"}}
@@ -169,7 +169,7 @@
 {"text": "started nursing on the right an hour ago", "open": [], "expect": {"type": "feed.breast.start", "side": "right", "when": "60"}}
 {"text": "down for a nap", "open": [], "expect": {"type": "sleep.start", "when": "now"}}
 {"text": "bottle done, three quarters left over", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "three_quarters_left", "when": "now"}}
-{"text": "gave her a bottle of formula an hour ago", "open": [], "expect": {"type": "feed.bottle.start", "contents": "formula", "when": "60"}}
+{"text": "gave her a bottle of formula an hour ago", "open": [], "expect": {"type": "feed.bottle.single", "contents": "formula", "when": "60"}}
 {"text": "bottle done, drank half a bottle", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "half", "when": "now"}}
 {"text": "bottle done, drank three quarters", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "three_quarters", "when": "now"}}
 {"text": "he woke from his nap", "open": ["sleep"], "expect": {"type": "sleep.end", "when": "now"}}
