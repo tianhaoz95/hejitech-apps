@@ -30,7 +30,7 @@
       "id": "feed.bottle.single",
       "category": "bottle",
       "label": "Bottle (one entry)",
-      "voice": "baby had or was given a bottle earlier (minutes or hours ago), a whole bottle feed logged at once",
+      "voice": "baby had or was given a bottle earlier (minutes or hours ago), told after it was over, logged as one entry",
       "questions": ["contents", "amount", "when"]
     },
     {
@@ -133,8 +133,8 @@
       "options": {
         "start": { "description": "starting, beginning, falling asleep, going down" },
         "switch": { "description": "switching to the other side" },
-        "finish": { "description": "finished, done, ended, waking up, says how much was drunk" },
-        "single": { "description": "a whole feed that already happened, logged at once" }
+        "finish": { "description": "finished, done, ended, waking up: what was going on just ended" },
+        "single": { "description": "a feed told after it was over (had a bottle an hour ago, drank half), logged as one entry" }
       }
     },
     "amount": {
