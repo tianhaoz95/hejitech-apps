@@ -2,7 +2,8 @@ import XCTest
 @testable import VoxbriefMac
 
 /// Builds the prompts for every case of the Stage 2 LLM eval (`evals/llm/cases.json`) with the
-/// app's own prompt builders, so `evals/llm/run_eval.py` scores exactly what ships. As a unit test
+/// app's own prompt builders, so `evals/llm/run_eval.py` scores exactly what ships, plus the
+/// dictionary-free prompt kit the fine-tuning pipeline (`ml/`) builds its examples from. As a unit test
 /// it checks every case builds; it writes the prompts only when `VOXBRIEF_PROMPT_EXPORT` names a
 /// file (set `TEST_RUNNER_VOXBRIEF_PROMPT_EXPORT` through xcodebuild, see `evals/llm/README.md`).
 final class LLMPromptExportTests: XCTestCase {
@@ -74,8 +75,25 @@ final class LLMPromptExportTests: XCTestCase {
             exported.append(item)
         }
 
+        // The prompts without a dictionary, for the fine-tuning pipeline (`ml/`): it renders the
+        // dictionary block and user prompt itself and checks that against `cases` above.
+        let templates = NoteTemplate.builtIns
+        let kit: [String: Any] = [
+            "classification": ["system": service.buildClassificationSystemPrompt(templates: templates), "maxTokens": 24] as [String: Any],
+            "fallbackTemplate": service.effectiveFallbackTemplate(in: templates).name,
+            "generation": Dictionary(uniqueKeysWithValues: templates.map { template in
+                (template.name, [
+                    "system": service.buildGenerationSystemPrompt(template: template, dictionary: []),
+                    "fieldKeys": template.sections.map(\.fieldKey)
+                ] as [String: Any])
+            }),
+            "light": ["system": service.buildLightSystemPrompt(dictionary: [])],
+            "maxDictionaryTermsInPrompt": LLMCopywriterService.maxDictionaryTermsInPrompt,
+            "maxAliasesPerTermInPrompt": LLMCopywriterService.maxAliasesPerTermInPrompt
+        ]
+
         guard let path = ProcessInfo.processInfo.environment["VOXBRIEF_PROMPT_EXPORT"], !path.isEmpty else { return }
-        let json = try JSONSerialization.data(withJSONObject: ["cases": exported], options: [.prettyPrinted, .sortedKeys])
+        let json = try JSONSerialization.data(withJSONObject: ["cases": exported, "kit": kit], options: [.prettyPrinted, .sortedKeys])
         try json.write(to: URL(fileURLWithPath: path))
     }
 }

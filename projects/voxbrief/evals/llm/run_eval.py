@@ -16,43 +16,21 @@ import sys
 import time
 from pathlib import Path
 
+from checks import extract_json, score_output
+
 GENERATION_MAX_TOKENS = 1024
 TEMPERATURE = 0.3
-# Checked on every case: the prompt's own scaffolding must never end up in a note.
-LEAK_MARKERS = ["Zentrify", "Sentrafy", "send trify", "Dictionary terms", "Transcript:"]
-
-
-def extract_json(text):
-    """Same rule as LLMCopywriterService.extractJSONObject: first "{" to last "}"."""
-    start, end = text.find("{"), text.rfind("}")
-    if start == -1 or end <= start:
-        return None
-    try:
-        value = json.loads(text[start:end + 1])
-    except json.JSONDecodeError:
-        return None
-    return value if isinstance(value, dict) else None
-
-
-def strings_in(value):
-    if isinstance(value, str):
-        return [value]
-    if isinstance(value, list):
-        return [s for item in value for s in strings_in(item)]
-    if isinstance(value, dict):
-        return [s for item in value.values() for s in strings_in(item)]
-    return []
 
 
 class Runner:
-    def __init__(self, model_path):
+    def __init__(self, model_path, temperature, top_p):
         import mlx.core as mx
         from mlx_lm import generate, load
         from mlx_lm.sample_utils import make_sampler
 
         self.mx, self.generate_fn = mx, generate
         self.model, self.tokenizer = load(model_path)
-        self.sampler = make_sampler(temp=TEMPERATURE)
+        self.sampler = make_sampler(temp=temperature, top_p=top_p)
 
     def __call__(self, system, user, max_tokens, seed):
         self.mx.random.seed(seed)
@@ -95,53 +73,9 @@ def run_sample(runner, prompts, seed):
 
 
 def score(case, prompts, template, raw):
-    """List of (check, passed, detail)."""
-    expect = case.get("expect", {})
-    checks = []
-    obj = extract_json(raw)
-    checks.append(("json", obj is not None, "" if obj else "no JSON object in output"))
-    if obj is None:
-        return checks
-
-    if case["mode"] == "light":
-        keys = ["title", "summary", "cleanedText", "tags"]
-    else:
-        keys = ["title", "summary", "tags"] + prompts["generation"][template]["fieldKeys"]
-    missing = [k for k in keys if k not in obj]
-    checks.append(("keys", not missing, f"missing {missing}" if missing else ""))
-
-    title = obj.get("title") if isinstance(obj.get("title"), str) else ""
-    words = len(title.split())
-    checks.append(("title<=8 words", 0 < words <= 8, f"{words} words: {title!r}"))
-
-    text = "\n".join(strings_in(obj))
-    body = "\n".join(s for k, v in obj.items() if k not in ("title", "tags") for s in strings_in(v))
-    leaked = [m for m in LEAK_MARKERS if m.lower() in text.lower()]
-    checks.append(("no prompt leak", not leaked, f"leaked {leaked}" if leaked else ""))
-
-    if "template" in expect:
-        checks.append(("template", template == expect["template"], f"chose {template}"))
-    for term in expect.get("contains", []):
-        checks.append((f"has {term!r}", term in text, ""))
-    for term in expect.get("contains_ci", []):
-        checks.append((f"has {term!r}", term.lower() in text.lower(), ""))
-    for term in expect.get("not_contains_ci", []):
-        checks.append((f"no {term!r}", term.lower() not in text.lower(), ""))
-    for term in expect.get("body_not_contains", []):
-        checks.append((f"body has no {term!r}", term not in body, ""))
-    for word in expect.get("not_words_ci", []):
-        found = re.search(rf"\b{re.escape(word)}\b", text, re.IGNORECASE)
-        checks.append((f"no word {word!r}", not found, ""))
-    for key, minimum in expect.get("min_items", {}).items():
-        value = obj.get(key)
-        count = len(value) if isinstance(value, list) else (1 if isinstance(value, str) and value.strip() else 0)
-        checks.append((f"{key}>={minimum} items", count >= minimum, f"{count} items"))
-    for key in expect.get("nonempty", []):
-        checks.append((f"{key} not empty", bool("".join(strings_in(obj.get(key))).strip()), ""))
-    for key, limit in expect.get("max_chars", {}).items():
-        length = len("".join(strings_in(obj.get(key))))
-        checks.append((f"{key}<={limit} chars", 0 < length <= limit, f"{length} chars"))
-    return checks
+    """List of (check, passed, detail); the checks live in checks.py."""
+    field_keys = [] if case["mode"] == "light" else prompts["generation"][template]["fieldKeys"]
+    return score_output(raw, case["mode"], field_keys, case.get("expect", {}), template)
 
 
 def pct(passed, total):
@@ -173,7 +107,8 @@ def summarize(results):
 
 def render_report(meta, summary, results, baseline):
     lines = [f"## Voxbrief Stage 2 LLM eval: {meta['model']}", "",
-             f"{meta['cases']} cases × {meta['samples']} samples, temperature {TEMPERATURE}, "
+             f"{meta['cases']} cases × {meta['samples']} samples, temperature {meta['temperature']}, "
+             f"top_p {meta['top_p']}, "
              f"{meta['seconds']:.0f}s. A sample passes when every check on it passes.", "",
              "| Category | Pass rate | Samples | vs baseline |", "|---|---|---|---|"]
     rows = list(summary["categories"].items()) + [("**overall**", summary["overall"])]
@@ -209,19 +144,52 @@ def render_report(meta, summary, results, baseline):
     return "\n".join(lines) + "\n"
 
 
+def write_outputs(args, meta, results):
+    summary = summarize(results)
+    baseline = json.loads(args.baseline.read_text()) if args.baseline.exists() else {}
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    args.out.write_text(json.dumps({"meta": meta, "summary": summary, "results": results}, indent=2) + "\n")
+    args.report.parent.mkdir(parents=True, exist_ok=True)
+    args.report.write_text(render_report(meta, summary, results, baseline))
+    overall = summary["overall"]
+    rate = 100 * overall["passed"] / overall["total"] if overall["total"] else 0
+    print(f"overall {overall['passed']}/{overall['total']} ({rate:.0f}%), report: {args.report}")
+    if args.min_overall is not None and rate < args.min_overall:
+        sys.exit(f"overall pass rate {rate:.0f}% is below --min-overall {args.min_overall:.0f}%")
+
+
+def merge(args):
+    """Combines shard results (--merge a.json b.json ...) into one result and report, in
+    cases.json order."""
+    parts = [json.loads(Path(p).read_text()) for p in args.merge]
+    order = {c["id"]: i for i, c in enumerate(json.loads(args.cases.read_text()))}
+    results = sorted((r for part in parts for r in part["results"]), key=lambda r: order.get(r["id"], len(order)))
+    meta = dict(parts[0]["meta"], cases=len(results), seconds=max(p["meta"]["seconds"] for p in parts),
+                shards=len(parts))
+    write_outputs(args, meta, results)
+
+
 def main():
     here = Path(__file__).resolve().parent
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--prompts", required=True, type=Path, help="prompts.json from LLMPromptExportTests")
+    parser.add_argument("--prompts", type=Path, help="prompts.json from LLMPromptExportTests")
     parser.add_argument("--cases", default=here / "cases.json", type=Path)
     parser.add_argument("--model", default="mlx-community/Qwen3-0.6B-4bit", help="Hugging Face id or local path")
     parser.add_argument("--samples", default=3, type=int)
     parser.add_argument("--only", help="regex of case ids to run")
+    parser.add_argument("--shard", help="run every n-th case only, as k/n (k from 1), e.g. 2/4")
+    parser.add_argument("--merge", nargs="+", help="combine shard results.json files instead of running")
     parser.add_argument("--baseline", default=here / "baseline.json", type=Path)
     parser.add_argument("--out", default=here / "out" / "results.json", type=Path)
     parser.add_argument("--report", default=here / "out" / "report.md", type=Path)
+    parser.add_argument("--temperature", default=TEMPERATURE, type=float, help="the app uses 0.3")
+    parser.add_argument("--top-p", default=1.0, type=float, help="the app uses 1.0 (off)")
     parser.add_argument("--min-overall", type=float, help="exit 1 below this overall pass rate (0-100)")
     args = parser.parse_args()
+    if args.merge:
+        return merge(args)
+    if not args.prompts:
+        parser.error("--prompts is required unless --merge is given")
 
     cases = json.loads(args.cases.read_text())
     prompts = {p["id"]: p for p in json.loads(args.prompts.read_text())["cases"]}
@@ -230,8 +198,11 @@ def main():
         sys.exit(f"prompts.json is missing {stale}: re-export it after changing cases.json")
     if args.only:
         cases = [c for c in cases if re.search(args.only, c["id"])]
+    if args.shard:
+        k, n = (int(x) for x in args.shard.split("/"))
+        cases = cases[k - 1::n]
 
-    runner = Runner(args.model)
+    runner = Runner(args.model, args.temperature, args.top_p)
     started = time.time()
     results = []
     for case in cases:
@@ -247,18 +218,9 @@ def main():
             print(f"{case['id']} seed={seed}: {'pass' if passed else 'FAIL ' + ', '.join(failing)}", flush=True)
         results.append({"id": case["id"], "category": case["category"], "samples": samples})
 
-    summary = summarize(results)
-    meta = {"model": args.model, "samples": args.samples, "cases": len(cases), "seconds": time.time() - started}
-    baseline = json.loads(args.baseline.read_text()) if args.baseline.exists() else {}
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps({"meta": meta, "summary": summary, "results": results}, indent=2) + "\n")
-    args.report.parent.mkdir(parents=True, exist_ok=True)
-    args.report.write_text(render_report(meta, summary, results, baseline))
-    overall = summary["overall"]
-    rate = 100 * overall["passed"] / overall["total"] if overall["total"] else 0
-    print(f"overall {overall['passed']}/{overall['total']} ({rate:.0f}%), report: {args.report}")
-    if args.min_overall is not None and rate < args.min_overall:
-        sys.exit(f"overall pass rate {rate:.0f}% is below --min-overall {args.min_overall:.0f}%")
+    meta = {"model": args.model, "samples": args.samples, "cases": len(cases), "temperature": args.temperature,
+            "top_p": args.top_p, "seconds": time.time() - started}
+    write_outputs(args, meta, results)
 
 
 if __name__ == "__main__":

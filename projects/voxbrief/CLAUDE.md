@@ -36,9 +36,15 @@ releases up to v1.26.3). The root `CLAUDE.md` has the shared rules; what matters
   empty keychain. Voxbrief-only CI settings would be named `VOXBRIEF_…`.
 - **CI:** `.github/workflows/voxbrief-ci.yml` (macOS + iOS unit tests, also every 6 hours).
 - **LLM eval:** `.github/workflows/voxbrief-llm-eval.yml` scores the Stage 2 prompts on the bundled
-  Lite model (mlx-lm on CPU) whenever the prompts, templates or `evals/llm/` change; the pass rates
-  land in the run summary next to `evals/llm/baseline.json`. Check it after any prompt change, and
-  add a case to `evals/llm/cases.json` for every prompt-quality report. See `evals/llm/README.md`.
+  Lite model (mlx-lm on CPU, sharded) only when the prompts or the model in use change, monthly on
+  the 15th, or by hand; pass rates land in the run summary next to `evals/llm/baseline.json`. Run
+  it after any prompt change, and add a case to `evals/llm/cases.json` for every prompt-quality
+  report. See `evals/llm/README.md`.
+- **Lite fine-tuning:** `ml/` is the synthetic-data + LoRA pipeline for Lite (teacher on a DGX
+  Spark, Kokoro TTS → Whisper base.en for real mishearings, the eval's checks as the data filter,
+  MLX 4-bit, published to Hugging Face). Its prompt port must match the app's
+  (`python -m voxbrief_ml verify`); keep `ml/voxbrief_ml/app_prompts.py` in step with
+  `LLMCopywriterService`. Tests: `voxbrief-ml.yml`. See `ml/README.md`.
 - **Site and docs:** the landing page, privacy policy and support page are `site/` (static),
   published at https://tianhaoz95.github.io/hejitech-apps/voxbrief/site/; the developer overview
   is `docs/index.md` (https://tianhaoz95.github.io/hejitech-apps/voxbrief/). Both deploy with the

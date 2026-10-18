@@ -1,0 +1,20 @@
+[project]
+name = "voxbrief-ml"
+version = "0.1.0"
+description = "Synthetic data and LoRA fine-tuning for Voxbrief's on-device Lite model (Qwen3-0.6B)"
+requires-python = ">=3.11"
+dependencies = []  # the pure stages (plan, filter, build) and the tests need only the standard library
+
+[project.optional-dependencies]
+# Each stage runs where it can: teacher/tts/asr/train on the DGX Spark (CUDA, aarch64),
+# convert on an Apple silicon Mac (MLX). See README.md.
+teacher = ["openai>=1.40"]
+tts = ["kokoro>=0.9.4", "soundfile>=0.12", "numpy>=1.26", "scipy>=1.11"]
+asr = ["transformers>=4.51", "torch>=2.4", "soundfile>=0.12", "numpy>=1.26"]
+train = ["transformers>=4.51", "torch>=2.4", "peft>=0.15", "accelerate>=1.6"]
+convert = ["mlx-lm>=0.25"]
+publish = ["huggingface_hub>=0.30"]
+test = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

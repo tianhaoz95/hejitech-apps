@@ -18,10 +18,16 @@ isn't covered; Flash (Qwen3-4B-4bit) can be picked with `--model`.
 - `baseline.json`: the summary of a CI run to compare against (the report's "vs baseline").
   Refresh it from a run's `voxbrief-llm-eval-results` artifact after a deliberate prompt change:
   `python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); json.dump({"meta": r["meta"], "summary": r["summary"]}, open("baseline.json", "w"), indent=2)' results.json`.
+- `checks.py`: the checks on one output, shared with the fine-tuning pipeline's data filter (`ml/`).
+- `model.env`: the model the eval scores by default (the app's Lite).
 
-CI: `.github/workflows/voxbrief-llm-eval.yml` runs on changes to the prompts, cases or harness
-and from the Actions tab (samples, model). The macOS job exports the prompts, the Linux job runs
-mlx-lm on CPU and posts the report to the run summary. It reports, it doesn't gate.
+CI: `.github/workflows/voxbrief-llm-eval.yml`. The eval is slow and costly, so it runs only when
+the prompts or the model in use change (the Swift files that build or feed the prompts,
+`OnDeviceLLMService.swift`, `model.env`), on the 15th of each month, and from the Actions tab
+(samples, model; use this after editing the cases or the harness). The macOS job exports the
+prompts and runs the `ml/` tests against them; four Linux jobs run a quarter of the cases each
+(`--shard k/4`) through mlx-lm on CPU; the last merges them (`--merge`) and posts the report to
+the run summary. It reports, it doesn't gate.
 
 Locally (from `projects/voxbrief`, after `xcodegen generate`; write the export outside
 `/Volumes/...` if the checkout lives there, since the unsigned test host can't write to it

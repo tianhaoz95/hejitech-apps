@@ -1,0 +1,36 @@
+{"term": "Datadog", "kind": "product", "aliases": ["data dog"]}
+{"term": "Postgres", "kind": "jargon", "aliases": ["post grass"]}
+{"term": "Jira", "kind": "product", "hint": "ticket tracker", "aliases": ["gira"]}
+{"term": "Asana", "kind": "product", "hint": "project management app", "common_word": true}
+{"term": "Trello", "kind": "product", "aliases": ["trellow"]}
+{"term": "Zendesk", "kind": "product", "aliases": ["zen desk"]}
+{"term": "Shopify", "kind": "product", "aliases": ["shop if i"]}
+{"term": "Airtable", "kind": "product", "aliases": ["air table"]}
+{"term": "Netlify", "kind": "product", "aliases": ["net lify"]}
+{"term": "Kafka", "kind": "jargon", "hint": "event streaming system"}
+{"term": "Redis", "kind": "jargon", "aliases": ["read is"]}
+{"term": "GraphQL", "kind": "jargon", "aliases": ["graph QL"]}
+{"term": "OAuth", "kind": "jargon", "aliases": ["oh auth"]}
+{"term": "Xcode", "kind": "product", "aliases": ["ex code"]}
+{"term": "TestFlight", "kind": "product", "aliases": ["test flight"]}
+{"term": "Cloudflare", "kind": "product", "aliases": ["cloud flare"]}
+{"term": "Miro", "kind": "product", "hint": "whiteboard app"}
+{"term": "Loom", "kind": "product", "hint": "video messaging app", "common_word": true}
+{"term": "Things", "kind": "product", "hint": "to-do app", "common_word": true}
+{"term": "Craft", "kind": "product", "hint": "docs app", "common_word": true}
+{"term": "Arc", "kind": "product", "hint": "web browser", "common_word": true}
+{"term": "Signal", "kind": "product", "hint": "messaging app", "common_word": true}
+{"term": "Nadia Haddad", "kind": "person", "hint": "head of sales"}
+{"term": "Tomasz Wiśniewski", "kind": "person", "hint": "backend engineer"}
+{"term": "Aoife Byrne", "kind": "person", "hint": "recruiter"}
+{"term": "Oluwaseun Adeyemi", "kind": "person"}
+{"term": "Mei-Ling Zhou", "kind": "person", "hint": "investor"}
+{"term": "Rajesh Iyer", "kind": "person", "hint": "accountant"}
+{"term": "Brightwave", "kind": "product", "hint": "our company"}
+{"term": "Quillo", "kind": "product", "hint": "our writing app"}
+{"term": "Nimbus Ridge", "kind": "place", "hint": "office building"}
+{"term": "Kestrel", "kind": "product", "hint": "internal codename", "common_word": true}
+{"term": "HIPAA", "kind": "jargon", "aliases": ["hip a"]}
+{"term": "SOC 2", "kind": "jargon", "aliases": ["sock two"]}
+{"term": "Dr. Okafor", "kind": "person", "hint": "pediatrician"}
+{"term": "Lisinopril", "kind": "jargon", "hint": "blood pressure medication"}

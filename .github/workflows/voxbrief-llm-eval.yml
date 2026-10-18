@@ -1,41 +1,48 @@
 name: Voxbrief LLM eval
 
-# Scores Voxbrief's Stage 2 prompts on the bundled on-device model (Qwen3-0.6B-4bit, "Lite"):
-# the macOS job exports the prompts the app itself builds (LLMPromptExportTests), the Linux job
-# runs them through mlx-lm on CPU and posts pass rates to the run summary. Report only, not a
-# gate: a small model's output varies, so watch the numbers against evals/llm/baseline.json.
-# Runs when the prompts, cases or harness change, and from the Actions tab (pick samples/model).
-# See projects/voxbrief/evals/llm/README.md.
+# Scores Voxbrief's Stage 2 prompts on the on-device Lite model: the macOS job exports the prompts
+# the app itself builds (LLMPromptExportTests) and runs the fine-tuning pipeline's tests (ml/,
+# incl. its prompt port against that export); four Linux jobs run the cases through mlx-lm on CPU;
+# the last job merges them and posts pass rates to the run summary, next to
+# evals/llm/baseline.json. Report only, not a gate.
+#
+# The eval is slow and costly, so it runs only when the prompts or the model in use change, on
+# the 15th of every month (drift in dependencies), and from the Actions tab (pick samples/model,
+# e.g. after editing evals/llm/cases.json). See projects/voxbrief/evals/llm/README.md.
 on:
   push:
     branches: [main]
     paths:
-      - "projects/voxbrief/evals/llm/**"
+      # Prompts: what builds them, what feeds them, and the export.
       - "projects/voxbrief/VoxbriefApp/Services/LLMCopywriterService.swift"
       - "projects/voxbrief/VoxbriefApp/Services/DictionaryCorrector.swift"
       - "projects/voxbrief/VoxbriefApp/Services/VoiceCommandProcessor.swift"
       - "projects/voxbrief/VoxbriefApp/Models/DictionaryEntry.swift"
       - "projects/voxbrief/Shared/Models/NoteTemplate.swift"
       - "projects/voxbrief/Tests/MacUnitTests/LLMPromptExportTests.swift"
-      - ".github/workflows/voxbrief-llm-eval.yml"
+      # Model: how the app runs it, and which one the eval scores.
+      - "projects/voxbrief/VoxbriefApp/Services/OnDeviceLLMService.swift"
+      - "projects/voxbrief/evals/llm/model.env"
   pull_request:
     paths:
-      - "projects/voxbrief/evals/llm/**"
       - "projects/voxbrief/VoxbriefApp/Services/LLMCopywriterService.swift"
       - "projects/voxbrief/VoxbriefApp/Services/DictionaryCorrector.swift"
       - "projects/voxbrief/VoxbriefApp/Services/VoiceCommandProcessor.swift"
       - "projects/voxbrief/VoxbriefApp/Models/DictionaryEntry.swift"
       - "projects/voxbrief/Shared/Models/NoteTemplate.swift"
       - "projects/voxbrief/Tests/MacUnitTests/LLMPromptExportTests.swift"
-      - ".github/workflows/voxbrief-llm-eval.yml"
+      - "projects/voxbrief/VoxbriefApp/Services/OnDeviceLLMService.swift"
+      - "projects/voxbrief/evals/llm/model.env"
+  schedule:
+    - cron: "0 7 15 * *"
   workflow_dispatch:
     inputs:
       samples:
         description: Runs per case (fixed seeds 0..n-1)
         default: "3"
       model:
-        description: Hugging Face model id (Flash is mlx-community/Qwen3-4B-4bit)
-        default: mlx-community/Qwen3-0.6B-4bit
+        description: Hugging Face model id (empty = evals/llm/model.env; Flash is mlx-community/Qwen3-4B-4bit)
+        default: ""
 
 concurrency:
   group: voxbrief-llm-eval-${{ github.ref }}
@@ -95,16 +102,33 @@ jobs:
             | tail -n 30
           test -s evals/llm/out/prompts.json
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # The fine-tuning pipeline builds its training prompts from this export; its tests check
+      # the Python port still matches every prompt the app built.
+      - name: Fine-tuning pipeline tests (ml/)
+        working-directory: projects/voxbrief/ml
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install --quiet pytest
+          .venv/bin/python -m pytest -q
+
       - uses: actions/upload-artifact@v4
         with:
           name: voxbrief-llm-prompts
           path: projects/voxbrief/evals/llm/out/prompts.json
 
   eval:
-    name: Eval (mlx-lm, CPU)
+    name: Eval shard ${{ matrix.shard }}/4 (mlx-lm, CPU)
     needs: export-prompts
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     defaults:
       run:
         working-directory: projects/voxbrief/evals/llm
@@ -120,11 +144,17 @@ jobs:
       - name: Install mlx-lm (CPU)
         run: pip install -r requirements.txt
 
+      - name: Pick model
+        run: |
+          model="${{ inputs.model }}"
+          if [ -z "$model" ]; then model="$(sed -n 's/^LITE_MODEL=//p' model.env)"; fi
+          echo "MODEL=$model" >> "$GITHUB_ENV"
+
       - name: Cache model
         uses: actions/cache@v4
         with:
           path: ~/.cache/huggingface
-          key: voxbrief-llm-eval-hf-${{ inputs.model || 'mlx-community/Qwen3-0.6B-4bit' }}
+          key: voxbrief-llm-eval-hf-${{ env.MODEL }}
 
       - uses: actions/download-artifact@v4
         with:
@@ -135,15 +165,44 @@ jobs:
         run: |
           python run_eval.py \
             --prompts out/prompts.json \
-            --model "${{ inputs.model || 'mlx-community/Qwen3-0.6B-4bit' }}" \
-            --samples "${{ inputs.samples || '3' }}"
-
-      - name: Post report
-        if: always()
-        run: test -f out/report.md && cat out/report.md >> "$GITHUB_STEP_SUMMARY" || true
+            --model "$MODEL" \
+            --samples "${{ inputs.samples || '3' }}" \
+            --shard "${{ matrix.shard }}/4" \
+            --out out/results-${{ matrix.shard }}.json \
+            --report out/report-${{ matrix.shard }}.md
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
+          name: voxbrief-llm-eval-shard-${{ matrix.shard }}
+          path: projects/voxbrief/evals/llm/out/results-${{ matrix.shard }}.json
+
+  report:
+    name: Report
+    needs: eval
+    if: always() && needs.eval.result != 'skipped'
+    runs-on: ubuntu-24.04-arm
+    defaults:
+      run:
+        working-directory: projects/voxbrief/evals/llm
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: voxbrief-llm-eval-shard-*
+          merge-multiple: true
+          path: projects/voxbrief/evals/llm/out
+
+      - name: Merge shards
+        run: |
+          ls out/results-*.json
+          python3 run_eval.py --merge out/results-*.json --out out/results.json --report out/report.md
+          cat out/report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
           name: voxbrief-llm-eval-results
-          path: projects/voxbrief/evals/llm/out/
+          path: |
+            projects/voxbrief/evals/llm/out/results.json
+            projects/voxbrief/evals/llm/out/report.md

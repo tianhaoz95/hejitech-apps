@@ -1,0 +1,21 @@
+{"term": "Voxbrief", "kind": "product", "hint": "our voice notes app"}
+{"term": "Supabase", "kind": "product", "hint": "backend database service"}
+{"term": "Kubernetes", "kind": "jargon"}
+{"term": "FeedbackKit", "kind": "product"}
+{"term": "Priya Patel", "kind": "person", "hint": "design lead"}
+{"term": "Notion", "kind": "product", "hint": "the notes app", "common_word": true}
+{"term": "Slack", "kind": "product", "hint": "team chat app", "common_word": true}
+{"term": "Grafana", "kind": "product"}
+{"term": "Terraform", "kind": "jargon"}
+{"term": "Figma", "kind": "product", "hint": "design tool"}
+{"term": "Siobhan Kelly", "kind": "person", "hint": "account manager"}
+{"term": "Chidi Okonkwo", "kind": "person"}
+{"term": "Tailscale", "kind": "product"}
+{"term": "PostHog", "kind": "product", "hint": "product analytics"}
+{"term": "Waypack", "kind": "product", "hint": "packing list app"}
+{"term": "Meowtrix", "kind": "product"}
+{"term": "Raycast", "kind": "product", "hint": "Mac launcher"}
+{"term": "Vercel", "kind": "product", "hint": "web hosting"}
+{"term": "Obsidian", "kind": "product", "hint": "notes app", "common_word": true}
+{"term": "Linear", "kind": "product", "hint": "issue tracker", "common_word": true}
+{"term": "Bear", "kind": "product", "hint": "notes app", "common_word": true}

@@ -1,0 +1,78 @@
+# Full run (~20k scenarios). Run configs/pilot.toml first and check its manifest.
+# Every stage reads this file: python -m voxbrief_ml <stage> --config configs/full.toml
+
+[run]
+name = "full"               # outputs go to runs/<name>/
+seed = 7
+examples = 20000            # scenarios planned (examples left after filtering are fewer)
+val_fraction = 0.05
+prompts_export = "../evals/llm/out/prompts.json"   # from LLMPromptExportTests (see README)
+
+[mix]                       # share of scenarios by kind; must sum to 1
+correction = 0.45           # dictionary present and a term is spoken (ASR may mishear it)
+negative_unused = 0.15      # dictionary present, none of its terms spoken
+negative_lookalike = 0.10   # a common word that is also a term, used in its ordinary meaning
+plain = 0.30                # no dictionary
+
+[modes]
+light = 0.2                 # share proofread in light mode; the rest become full notes
+
+[templates]                 # share of full notes per template (app's built-ins)
+"Design Doc" = 0.2
+"Email" = 0.2
+"Short Tweet" = 0.15
+"Task List" = 0.2
+"General Notes" = 0.25
+
+[dictionary]
+max_entries = 6
+alias_probability = 0.25    # entry carries the term bank's aliases (the app replaces them before the LLM)
+hint_probability = 0.4      # entry carries its context hint
+
+[terms]
+generate = 600              # extra train terms requested from the teacher on top of terms/seed_train.jsonl
+
+[teacher]                   # any OpenAI-compatible server, e.g. `vllm serve` on the Spark
+base_url = "http://localhost:8000/v1"
+api_key = "EMPTY"
+model = "openai/gpt-oss-120b"
+concurrency = 32
+temperature = 0.8           # scenarios and terms; targets use 0.2
+max_tokens = 1500
+retries = 3
+
+[tts]
+voices = ["af_heart", "af_bella", "af_nicole", "am_michael", "am_adam", "bf_emma", "bf_isabella", "bm_george", "bm_lewis"]
+speed = [0.85, 1.15]
+noise_snr_db = [12, 35]     # added white noise; a watch mic is never studio clean
+reverb_probability = 0.4
+max_seconds = 29            # Whisper's window; longer memos are dropped
+
+[asr]
+model = "openai/whisper-base.en"   # same weights the app runs through WhisperKit
+device = "cuda"
+vocabulary_prompt = true    # like ASRService: dictionary terms bias decoding
+
+[filter]
+min_light_similarity = 0.6  # light cleanedText vs what was said
+
+[train]
+base_model = "Qwen/Qwen3-0.6B"     # full precision; the app's Lite is its MLX 4-bit quantization
+epochs = 2
+learning_rate = 2e-4
+batch_size = 8
+gradient_accumulation = 2
+max_length = 2048
+lora_r = 16
+lora_alpha = 32
+lora_dropout = 0.05
+target_modules = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+eval_steps = 200
+
+[convert]
+q_bits = 4                  # same as mlx-community/Qwen3-0.6B-4bit
+q_group_size = 64
+
+[publish]
+repo = ""                   # Hugging Face repo, e.g. "<user>/voxbrief-lite"; set before `publish`
+private = false

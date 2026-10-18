@@ -1,0 +1,39 @@
+name: Voxbrief ML pipeline tests
+
+# Unit tests of the Lite fine-tuning pipeline (projects/voxbrief/ml), standard library only, no
+# model and no GPU, so cheap enough to run on every change to it. The prompt-parity test needs the
+# app's prompt export and runs in voxbrief-llm-eval.yml instead (skipped here).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "projects/voxbrief/ml/**"
+      - "projects/voxbrief/evals/llm/checks.py"
+      - "projects/voxbrief/evals/llm/cases.json"
+      - ".github/workflows/voxbrief-ml.yml"
+  pull_request:
+    paths:
+      - "projects/voxbrief/ml/**"
+      - "projects/voxbrief/evals/llm/checks.py"
+      - "projects/voxbrief/evals/llm/cases.json"
+      - ".github/workflows/voxbrief-ml.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: pytest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: projects/voxbrief/ml
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pytest
+      - run: python -m pytest -q
