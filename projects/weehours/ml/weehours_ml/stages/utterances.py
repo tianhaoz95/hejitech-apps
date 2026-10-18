@@ -101,7 +101,7 @@ async def _run(run, plans, questions, registry, out):
         return dict(plan, utterances=kept)
 
     with jsonl.Appender(out) as sink:
-        failed = await run_all(plans, worker, sink, "utterances")
+        failed = await run_all(plans, worker, sink, "utterances", in_flight=run["teacher"]["concurrency"])
     print(f"utterances: {failed} plans got nothing usable (dropped)")
 
 

@@ -56,14 +56,17 @@ class Teacher:
         return None
 
 
-async def run_all(items, worker, sink, label):
+async def run_all(items, worker, sink, label, in_flight=64):
     """Runs `worker(item)` for every item concurrently, passing each non-None result to `sink`
-    as it finishes, with a progress line every 50 items."""
+    as it finishes, with a progress line every 50 items. At most `in_flight` items run at once,
+    so items finish (and are saved) steadily instead of all waiting on their last request."""
     done = failed = 0
+    gate = asyncio.Semaphore(in_flight)
 
     async def one(item):
         nonlocal done, failed
-        result = await worker(item)
+        async with gate:
+            result = await worker(item)
         if result is None:
             failed += 1
         else:
