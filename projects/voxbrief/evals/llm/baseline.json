@@ -1,0 +1,85 @@
+{
+  "meta": {
+    "model": "mlx-community/Qwen3-0.6B-4bit",
+    "samples": 3,
+    "cases": 44,
+    "temperature": 0.3,
+    "top_p": 1.0,
+    "seconds": 68.72292399406433,
+    "shards": 4
+  },
+  "summary": {
+    "categories": {
+      "classification": {
+        "passed": 30,
+        "total": 30
+      },
+      "dictionary": {
+        "passed": 14,
+        "total": 69
+      },
+      "false-positive": {
+        "passed": 20,
+        "total": 27
+      },
+      "light": {
+        "passed": 1,
+        "total": 6
+      }
+    },
+    "checks": {
+      "json": {
+        "passed": 132,
+        "total": 132
+      },
+      "keys": {
+        "passed": 132,
+        "total": 132
+      },
+      "title<=8 words": {
+        "passed": 128,
+        "total": 132
+      },
+      "no prompt leak": {
+        "passed": 132,
+        "total": 132
+      },
+      "has term": {
+        "passed": 63,
+        "total": 102
+      },
+      "no term": {
+        "passed": 51,
+        "total": 120
+      },
+      "body has no term": {
+        "passed": 15,
+        "total": 15
+      },
+      "template": {
+        "passed": 30,
+        "total": 30
+      },
+      "field>=3 items": {
+        "passed": 6,
+        "total": 6
+      },
+      "field not empty": {
+        "passed": 12,
+        "total": 12
+      },
+      "field<=280 chars": {
+        "passed": 6,
+        "total": 6
+      },
+      "no word term": {
+        "passed": 4,
+        "total": 6
+      }
+    },
+    "overall": {
+      "passed": 65,
+      "total": 132
+    }
+  }
+}
