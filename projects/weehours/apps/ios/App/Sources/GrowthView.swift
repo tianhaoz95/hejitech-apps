@@ -1,15 +1,51 @@
 import LogCore
 import SwiftUI
 
-/// Growth measurements (weight, height, head size): one sheet from the Now tab. Values are stored in
-/// grams and centimeters; the units shown follow the phone's measurement system.
+/// Growth measurements: weight, height and head size each have their own tile on the Now tab and
+/// their own one-field sheet. Values are stored in grams and centimeters; the units shown follow the
+/// phone's measurement system.
 enum Growth {
     static let types = ["weight", "height", "head"]
     static var usesImperial: Bool { Locale.current.measurementSystem == .us }
 
+    static func title(_ type: String) -> String {
+        switch type {
+        case "weight": return "Weight"
+        case "height": return "Height"
+        default: return "Head size"
+        }
+    }
+
+    static func icon(_ type: String) -> String {
+        switch type {
+        case "weight": return "scalemass.fill"
+        case "height": return "ruler.fill"
+        default: return "circle.dashed"
+        }
+    }
+
+    /// The stored field: grams for weight, centimeters for the lengths.
+    static func field(_ type: String) -> String {
+        switch type {
+        case "weight": return "grams"
+        case "height": return "height_cm"
+        default: return "head_cm"
+        }
+    }
+
+    static func unit(_ type: String) -> String {
+        type == "weight" ? (usesImperial ? "lb" : "kg") : (usesImperial ? "in" : "cm")
+    }
+
     /// The newest active entry of a growth type.
     static func latest(_ type: String, in log: DerivedLog) -> LogEvent? {
         log.all.filter { $0.type == type && log.status[$0.id] == .active }.max { $0.occurredAt < $1.occurredAt }
+    }
+
+    /// "4.20 kg" or "21.5 in" for the latest entry of a type, or nil when it wasn't measured yet.
+    static func latestText(_ type: String, in log: DerivedLog) -> String? {
+        guard let v = latest(type, in: log)?.number(field(type)) else { return nil }
+        return type == "weight" ? weightText(grams: v) : lengthText(cm: v)
     }
 
     static func weightText(grams: Double) -> String {
@@ -20,74 +56,71 @@ enum Growth {
         usesImperial ? String(format: "%.1f in", cm / 2.54) : String(format: "%.1f cm", cm)
     }
 
-    /// "4.20 kg · 52.0 cm · 35.5 cm" from the latest entries, or nil when nothing was measured yet.
-    static func summary(_ log: DerivedLog) -> String? {
-        var parts: [String] = []
-        if let g = latest("weight", in: log)?.number("grams") { parts.append(weightText(grams: g)) }
-        if let cm = latest("height", in: log)?.number("height_cm") { parts.append(lengthText(cm: cm)) }
-        if let cm = latest("head", in: log)?.number("head_cm") { parts.append("head \(lengthText(cm: cm))") }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    /// A typed number in the phone's locale ("4,2" too), or nil when the field is empty or not a number.
+    /// Fields keep their text and parse it on every keystroke, so Save follows what's on screen.
+    static func number(_ text: String) -> Double? {
+        let t = text.trimmingCharacters(in: .whitespaces)
+        return t.isEmpty ? nil : try? Double(t, format: .number)
+    }
+
+    /// The stored value for a number typed in the shown unit.
+    static func stored(_ type: String, _ v: Double) -> Double {
+        if type == "weight" { return (usesImperial ? v * 453.592 : v * 1000).rounded() }
+        return ((usesImperial ? v * 2.54 : v) * 10).rounded() / 10
     }
 }
 
+/// Logs one measurement: the tile picked the type, so the sheet asks for one number.
 struct GrowthSheet: View {
+    let type: String
     @EnvironmentObject var model: AppModel
     @Environment(\.dismiss) private var dismiss
     @State private var at = Date()
-    @State private var weight: Double?
-    @State private var height: Double?
-    @State private var head: Double?
+    @State private var value = ""
+    @FocusState private var focused: Bool
 
-    private var imperial: Bool { Growth.usesImperial }
-    private var weightUnit: String { imperial ? "lb" : "kg" }
-    private var lengthUnit: String { imperial ? "in" : "cm" }
-
-    private var entries: [(String, [String: FieldValue])] {
-        var out: [(String, [String: FieldValue])] = []
-        if let w = weight, w > 0 { out.append(("weight", ["grams": .number((imperial ? w * 453.592 : w * 1000).rounded())])) }
-        if let h = height, h > 0 { out.append(("height", ["height_cm": .number(centimeters(h))])) }
-        if let c = head, c > 0 { out.append(("head", ["head_cm": .number(centimeters(c))])) }
-        return out
-    }
-
-    private func centimeters(_ v: Double) -> Double { ((imperial ? v * 2.54 : v) * 10).rounded() / 10 }
+    private var amount: Double? { Growth.number(value).flatMap { $0 > 0 ? $0 : nil } }
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    measure("Weight", unit: weightUnit, value: $weight, last: Growth.latest("weight", in: model.log)?.number("grams").map(Growth.weightText))
-                    measure("Height", unit: lengthUnit, value: $height, last: Growth.latest("height", in: model.log)?.number("height_cm").map(Growth.lengthText))
-                    measure("Head size", unit: lengthUnit, value: $head, last: Growth.latest("head", in: model.log)?.number("head_cm").map(Growth.lengthText))
+                    LabeledContent {
+                        HStack(spacing: 6) {
+                            TextField(Growth.latestText(type, in: model.log).map { "last \($0)" } ?? "—", text: $value)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                                .focused($focused)
+                            Text(Growth.unit(type)).foregroundStyle(.secondary)
+                        }
+                    } label: { Text(Growth.title(type)) }
+                    .accessibilityIdentifier("growth-\(type)")
                 } footer: {
-                    Text("Fill in what you measured; empty fields are skipped. You can also say it: “she's 52 centimeters long”.")
+                    Text("You can also say it: “\(example)”.")
                 }
                 DatePicker("Measured", selection: $at, in: ...Date())
             }
-            .navigationTitle("Growth")
+            .navigationTitle(Growth.title(type))
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear { focused = true }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        for (type, fields) in entries { model.log(type, fields, at: at) }
+                        if let v = amount { model.log(type, [Growth.field(type): .number(Growth.stored(type, v))], at: at) }
                         dismiss()
                     }
-                    .disabled(entries.isEmpty)
+                    .disabled(amount == nil)
                 }
             }
         }
     }
 
-    private func measure(_ title: String, unit: String, value: Binding<Double?>, last: String?) -> some View {
-        LabeledContent {
-            HStack(spacing: 6) {
-                TextField(last.map { "last \($0)" } ?? "—", value: value, format: .number.precision(.fractionLength(0...2)))
-                    .keyboardType(.decimalPad)
-                    .multilineTextAlignment(.trailing)
-                Text(unit).foregroundStyle(.secondary)
-            }
-        } label: { Text(title) }
-        .accessibilityIdentifier("growth-\(title)")
+    private var example: String {
+        switch type {
+        case "weight": return Growth.usesImperial ? "she weighs 9 pounds" : "she weighs 4.2 kilos"
+        case "height": return "she's 52 centimeters long"
+        default: return "head is 35 centimeters"
+        }
     }
 }

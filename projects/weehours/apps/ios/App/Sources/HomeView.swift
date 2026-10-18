@@ -143,7 +143,7 @@ struct DuplicateRow: View {
 
 struct QuickActions: View {
     @EnvironmentObject var model: AppModel
-    @State private var measuring = false
+    @State private var measuring: String?   // the growth type whose sheet is open
     private let columns = [GridItem(.flexible()), GridItem(.flexible())]
 
     var body: some View {
@@ -197,16 +197,21 @@ struct QuickActions: View {
                 }
             }
             if h.enabled.contains("growth") {
-                Button { measuring = true } label: {
-                    Tile(title: "Growth", subtitle: Growth.summary(model.log) ?? "weight · height · head", icon: "ruler.fill", color: Theme.growth)
+                ForEach(Growth.types, id: \.self) { type in
+                    Button { measuring = type } label: {
+                        Tile(title: Growth.title(type), subtitle: Growth.latestText(type, in: model.log) ?? "tap to log",
+                             icon: Growth.icon(type), color: Theme.growth)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("growthTile-\(type)")
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("growthTile")
             }
         }
-        .sheet(isPresented: $measuring) { GrowthSheet().presentationDetents([.medium, .large]) }
+        .sheet(isPresented: Binding { measuring != nil } set: { if !$0 { measuring = nil } }) {
+            if let measuring { GrowthSheet(type: measuring).presentationDetents([.medium, .large]) }
+        }
         .onAppear {   // automation: `-screen growth` opens the sheet (screenshots)
-            if model.screen == "growth" { model.screen = "home"; measuring = true }
+            if model.screen == "growth" { model.screen = "home"; measuring = "weight" }
         }
     }
 }

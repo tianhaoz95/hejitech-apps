@@ -118,7 +118,7 @@ struct EditEventView: View {
     @State private var fraction = 0.5
     @State private var kind = "wet"
     @State private var side = "left"
-    @State private var measure: Double?
+    @State private var measure = ""
 
     var body: some View {
         NavigationStack {
@@ -140,7 +140,7 @@ struct EditEventView: View {
                 if let field = Self.measureField[event.type] {
                     LabeledContent(field == "grams" ? "Weight" : "Length") {
                         HStack(spacing: 6) {
-                            TextField("—", value: $measure, format: .number.precision(.fractionLength(0...2)))
+                            TextField("—", text: $measure)
                                 .keyboardType(.decimalPad).multilineTextAlignment(.trailing)
                             Text(field == "grams" ? "kg" : "cm").foregroundStyle(.secondary)
                         }
@@ -170,7 +170,7 @@ struct EditEventView: View {
                         }
                         if event.type == "diaper" { f["kind"] = .string(kind) }
                         if f["side"] != nil { f["side"] = .string(side) }
-                        if let field = Self.measureField[event.type], let m = measure, m > 0 {
+                        if let field = Self.measureField[event.type], let m = Growth.number(measure), m > 0 {
                             f[field] = .number(field == "grams" ? (m * 1000).rounded() : (m * 10).rounded() / 10)
                         }
                         model.edit(event, fields: f, at: at)
@@ -183,7 +183,9 @@ struct EditEventView: View {
                 fraction = event.number("consumed_fraction") ?? 0.5
                 kind = event.string("kind") ?? "wet"
                 side = event.string("side") ?? "left"
-                if let field = Self.measureField[event.type], let v = event.number(field) { measure = field == "grams" ? v / 1000 : v }
+                if let field = Self.measureField[event.type], let v = event.number(field) {
+                    measure = (field == "grams" ? v / 1000 : v).formatted(.number.precision(.fractionLength(0...2)).grouping(.never))
+                }
             }
         }
     }
