@@ -37,6 +37,9 @@ class Teacher:
                         messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
                         temperature=self.config["temperature"] if temperature is None else temperature,
                         max_tokens=self.config["max_tokens"],
+                        # gpt-oss thinks before answering, inside max_tokens; "low" keeps it short.
+                        **({"reasoning_effort": self.config["reasoning_effort"]}
+                           if self.config.get("reasoning_effort") else {}),
                     )
                 except Exception as error:  # server hiccup: retry
                     print(f"teacher request failed (attempt {attempt + 1}): {error}", file=sys.stderr)

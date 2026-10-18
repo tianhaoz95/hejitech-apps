@@ -37,6 +37,7 @@ first   labels      aloud  hears          (RLCD)            vs stock
 | `configs/pilot.toml`, `configs/full.toml` | One file drives every stage. Pilot = 200 plans × 3, full = 7,000 × 3. |
 | `weehours_ml/laya.py` | Labels, questions, training rows; checked against the app |
 | `weehours_ml/stages/*.py` | One module per stage; `python -m weehours_ml <stage>` |
+| `spark/` | `run.sh` (one step), `all.sh` (pilot → gate → full), `Dockerfile` (CUDA stages) |
 | `tests/` | Standard-library tests (CI: `weehours-ml.yml`; label parity in `weehours-llm-eval.yml`) |
 | `runs/<name>/` | Git-ignored: JSONL per stage, audio, dataset, laya checkpoint, GGUFs, eval, manifest |
 | `../eval/laya.env` | The Laya model in use (bundled, downloaded, evaluated) |
@@ -60,8 +61,12 @@ commit and the model URL against the app.
 | `evaluate` | Mac | Swift (`logeval`); builds llama-server at the app's commit |
 | `publish` | anywhere | `.[publish]`, `hf auth login` |
 
-On the Spark use NVIDIA's NGC containers: vLLM to serve the teacher, PyTorch for
-`tts`/`asr`/`train` (`pip install -e '.[tts,asr,train]'` inside keeps the container's torch).
+On the Spark everything CUDA runs in NVIDIA's NGC vLLM image: it serves the teacher, and
+`spark/Dockerfile` adds Kokoro, espeak-ng and `laya` on top of it (keeping its torch) as `heji-ml`
+for `tts`/`asr`/`train`/`convert`. `spark/run.sh <config> <step...>` runs single steps
+(`teacher-up`, `teacher-down`, or a stage); `spark/all.sh` runs the pilot, stops unless its
+manifest passes a sanity gate, then the full run through `convert`. Keep `runs/` on a big disk
+(a symlink is fine) and set `BULK` to where the Hugging Face cache should live.
 
 ## Running it
 

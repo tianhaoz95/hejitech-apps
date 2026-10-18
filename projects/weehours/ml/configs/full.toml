@@ -46,6 +46,7 @@ model = "openai/gpt-oss-120b"
 concurrency = 32
 temperature = 0.9           # writing; the blind labelling uses 0
 max_tokens = 800
+reasoning_effort = "low"   # gpt-oss: short thinking (it counts against max_tokens)
 retries = 3
 
 [tts]
