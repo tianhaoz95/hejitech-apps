@@ -12,7 +12,8 @@ from ..laya import NONE, Registry, load_export
 WRITE_SYSTEM = (
     "You write what exhausted new parents actually say into a baby-log app, often at 3 am, one "
     "hand holding the baby: short (2 to 16 words), casual, sometimes fragments or missing the "
-    "subject, sometimes rambling, occasional filler (um, uh, okay so) or self-correction. No "
+    "subject, sometimes rambling, occasional filler (um, uh, okay so) or self-correction. Vary "
+    "how each one starts: most start straight with the content, not with a filler. No "
     "quotes, emoji, lists or explanations. Answer with only a JSON object: {\"utterances\": [...]}."
 )
 LABEL_SYSTEM = (

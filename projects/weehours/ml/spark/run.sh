@@ -19,7 +19,7 @@ for step in "$@"; do
       docker rm -f teacher >/dev/null 2>&1 || true
       docker run -d --name teacher --gpus all --ipc=host -p 127.0.0.1:8000:8000 \
         -v "$BULK/hf:/root/.cache/huggingface" -e HF_HUB_OFFLINE=1 "$VLLM_IMAGE" \
-        vllm serve "$TEACHER" --gpu-memory-utilization 0.75 --max-model-len 8192 --max-num-seqs 64
+        vllm serve "$TEACHER" --gpu-memory-utilization 0.75 --max-model-len 8192 --max-num-seqs 160
       until curl -sf localhost:8000/v1/models >/dev/null; do
         docker inspect -f "{{.State.Running}}" teacher | grep -q true || { docker logs --tail 50 teacher; exit 1; }
         sleep 10

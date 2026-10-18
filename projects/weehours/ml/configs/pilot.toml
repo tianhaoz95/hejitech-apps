@@ -55,6 +55,10 @@ speed = [0.8, 1.1]          # tired parents, often slower
 noise_snr_db = [8, 30]      # night-time rooms: fans, white-noise machines, a crying baby
 reverb_probability = 0.4
 max_seconds = 29
+# Kokoro fails on the Spark's GPU (cuFFT error 50 under the container's CUDA forward compatibility);
+# on the CPU one utterance takes ~0.8 s, so it runs in parallel processes.
+device = "cpu"
+workers = 10
 
 [asr]
 model = "openai/whisper-base.en"   # same weights the app runs through WhisperKit

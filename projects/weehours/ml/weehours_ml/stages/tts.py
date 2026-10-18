@@ -36,30 +36,29 @@ def degrade(audio, rng, config, np):
     return (audio / peak * 0.9).astype(np.float32)
 
 
-def run_stage(run, limit=None):
+def synthesize(job):
+    """One worker process: synthesizes its share of the items (every `workers`-th one), each with
+    a voice, speed and noise drawn from its own id, so reruns and resumes give the same audio."""
+    import hashlib
+
     import numpy as np
     import soundfile as sf
+    import torch
     from kokoro import KPipeline
     from scipy.signal import resample_poly
 
-    config = run["tts"]
-    items = agreed_utterances(run)
-    audio_dir = run.path("audio")
-    audio_dir.mkdir(exist_ok=True)
-    out = run.path("tts.jsonl")
-    done = jsonl.done_ids(out)
-    todo = [s for s in items if s["id"] not in done][:limit]
-    print(f"tts: {len(todo)} to synthesize ({len(done)} already done)")
-
+    run_dir, config, seed, items, threads = job
+    torch.set_num_threads(threads)
     pipelines = {}  # Kokoro lang code: "a" American voices (a*_), "b" British (b*_)
-    rng = random.Random(run["run"]["seed"] + 1)
-    with jsonl.Appender(out) as sink:
-        for i, item in enumerate(todo, 1):
+    records = []
+    with jsonl.Appender(run_dir / "tts.jsonl") as sink:
+        for item in items:
+            rng = random.Random(int(hashlib.sha256(f"{seed}:{item['id']}".encode()).hexdigest()[:12], 16))
             voice = rng.choice(config["voices"])
             speed = rng.uniform(*config["speed"])
             lang = voice[0]
             if lang not in pipelines:
-                pipelines[lang] = KPipeline(lang_code=lang)
+                pipelines[lang] = KPipeline(lang_code=lang, device=config["device"])
             chunks = [np.asarray(audio) for _, _, audio in pipelines[lang](item["text"], voice=voice, speed=speed)]
             if not chunks:
                 continue
@@ -68,9 +67,30 @@ def run_stage(run, limit=None):
             if seconds > config["max_seconds"]:
                 sink({"id": item["id"], "skipped": f"{seconds:.1f}s is too long"})
                 continue
-            path = audio_dir / f"{item['id']}.wav"
+            path = run_dir / "audio" / f"{item['id']}.wav"
             sf.write(path, degrade(audio, rng, config, np), WHISPER_RATE)
-            sink({"id": item["id"], "audio": str(path.relative_to(run.dir)), "voice": voice,
+            sink({"id": item["id"], "audio": str(path.relative_to(run_dir)), "voice": voice,
                   "speed": round(speed, 3), "seconds": round(seconds, 2)})
-            if i % 100 == 0:
-                print(f"tts: {i}/{len(todo)}", flush=True)
+            records.append(item["id"])
+    return len(records)
+
+
+def run_stage(run, limit=None):
+    import multiprocessing
+    import os
+
+    config = run["tts"]
+    items = agreed_utterances(run)
+    run.path("audio").mkdir(exist_ok=True)
+    done = jsonl.done_ids(run.path("tts.jsonl"))
+    todo = [s for s in items if s["id"] not in done][:limit]
+    workers = max(1, min(config["workers"], len(todo)))
+    print(f"tts: {len(todo)} to synthesize ({len(done)} already done) on {config['device']}, {workers} workers")
+    if not todo:
+        return
+    threads = max(1, (os.cpu_count() or 1) // workers)
+    jobs = [(run.dir, config, run["run"]["seed"], todo[k::workers], threads) for k in range(workers)]
+    # Each worker appends whole lines to tts.jsonl; "spawn" keeps torch out of a forked parent.
+    with multiprocessing.get_context("spawn").Pool(workers) as pool:
+        for i, count in enumerate(pool.imap_unordered(synthesize, jobs), 1):
+            print(f"tts: worker {i}/{workers} done ({count} files)", flush=True)
