@@ -13,6 +13,8 @@ public struct DuplicateFlag: Hashable, Sendable {
 public struct Session: Hashable, Sendable {
     public enum Kind: String, Sendable { case bottle, breast, sleep }
     public let kind: Kind
+    /// The child the session belongs to.
+    public var babyId: UUID?
     public var start: Date?
     public var end: Date?
     public var startEvent: UUID?
@@ -40,7 +42,13 @@ public struct DutyState: Hashable, Sendable {
 
 /// Everything shown anywhere is derived from the log by this one function; it is pure and
 /// mirrored by the TypeScript core, with shared fixtures keeping the two in step.
+///
+/// With `baby`, the log is one child's: their data events, sessions and duplicates (system events
+/// such as undo and duty stay household-wide). Without it, the household's: every child's events,
+/// with sessions paired per child. Undo, edits and duplicate resolutions are always resolved over
+/// the whole household, so an edit that moves an entry to another child removes it from the first.
 public struct DerivedLog: Sendable {
+    public let baby: UUID?
     public let all: [LogEvent]
     public let status: [UUID: EventStatus]
     /// Active data events (not system events), ordered by `occurredAt`.
@@ -49,10 +57,12 @@ public struct DerivedLog: Sendable {
     public let sessions: [Session]
     public let duty: DutyState?
 
-    public init(events: [LogEvent], registry: EventRegistry = .shared, asOf: Date? = nil) {
+    public init(events: [LogEvent], registry: EventRegistry = .shared, asOf: Date? = nil, baby: UUID? = nil) {
         let visible = asOf.map { cutoff in events.filter { $0.occurredAt <= cutoff } } ?? events
         let ordered = visible.sorted { ($0.loggedAt, $0.id.uuidString) < ($1.loggedAt, $1.id.uuidString) }
-        all = ordered
+        self.baby = baby
+        func mine(_ e: LogEvent) -> Bool { baby == nil || SystemType.all.contains(e.type) || e.babyId == baby }
+        all = ordered.filter(mine)
         let byId = Dictionary(ordered.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
 
         // 1. undo events (an undo of an undo restores the target)
@@ -91,14 +101,14 @@ public struct DerivedLog: Sendable {
             .filter { !SystemType.all.contains($0.type) && status[$0.id] == .active }
             .sorted { ($0.occurredAt, $0.loggedAt) < ($1.occurredAt, $1.loggedAt) }
 
-        // 4. duplicate flags: same type, close in time, from another caregiver or another surface
+        // 4. duplicate flags: same child and type, close in time, from another caregiver or another surface
         var flags: [DuplicateFlag] = []
         let lineage = Self.lineage(ordered)
         for (i, a) in data.enumerated() {
             for b in data[(i + 1)...] {
                 let window = registry.type(a.type)?.session?.role == "start" ? registry.duplicateWindowStart : registry.duplicateWindowDefault
                 if b.occurredAt.timeIntervalSince(a.occurredAt) > window { break }
-                guard a.type == b.type else { continue }
+                guard a.type == b.type, a.babyId == b.babyId else { continue }
                 guard a.loggedBy != b.loggedBy || a.provenance.surface != b.provenance.surface else { continue }
                 if lineage[a.id] == lineage[b.id] { continue }
                 if resolvedPairs.contains(Self.pairKey(a.id, b.id)) { continue }
@@ -108,10 +118,15 @@ public struct DerivedLog: Sendable {
                 status[second.id] = .duplicateUnresolved
             }
         }
-        duplicates = flags
+        let own = data.filter(mine)
+        let ownIds = Set(own.map(\.id))
+        duplicates = flags.filter { ownIds.contains($0.duplicate) }
         self.status = status
-        effective = data
-        sessions = Self.pairSessions(data.filter { status[$0.id] == .active }, registry: registry)
+        effective = own
+        let active = own.filter { status[$0.id] == .active }
+        let children = Dictionary(grouping: active, by: \.babyId)
+        sessions = children.count <= 1 ? Self.pairSessions(active, registry: registry)
+            : children.values.flatMap { Self.pairSessions($0, registry: registry) }.sorted { ($0.anchor, $0.babyId?.uuidString ?? "") < ($1.anchor, $1.babyId?.uuidString ?? "") }
 
         // 5. on-duty: the latest duty event wins
         if let d = ordered.last(where: { $0.type == SystemType.duty && status[$0.id] == .active }) {
@@ -165,6 +180,7 @@ public struct DerivedLog: Sendable {
             guard let k = kind(for: e.type) else { continue }
             if e.type == "feed.bottle.single" {
                 var s = Session(kind: .bottle, start: e.occurredAt, end: e.occurredAt, startEvent: e.id, endEvent: e.id)
+                s.babyId = e.babyId
                 s.consumedFraction = e.number("consumed_fraction")
                 s.consumedMl = e.number("consumed_ml")
                 s.contents = e.string("contents")
@@ -176,6 +192,7 @@ public struct DerivedLog: Sendable {
             case "start":
                 if let i = open[k] { sessions[i].abandoned = true; open[k] = nil }  // end stays unknown
                 var s = Session(kind: k, start: e.occurredAt, startEvent: e.id)
+                s.babyId = e.babyId
                 if let side = e.string("side") { s.sides.append(side) }
                 s.contents = e.string("contents")
                 sessions.append(s)
@@ -186,6 +203,7 @@ public struct DerivedLog: Sendable {
                     if let side = e.string("side") { sessions[i].sides.append(side) }
                 } else {
                     var s = Session(kind: k, start: e.occurredAt, startEvent: e.id)
+                    s.babyId = e.babyId
                     if let side = e.string("side") { s.sides.append(side) }
                     sessions.append(s)
                     open[k] = sessions.count - 1
@@ -199,6 +217,7 @@ public struct DerivedLog: Sendable {
                     open[k] = nil
                 } else {
                     var s = Session(kind: k, start: nil, end: e.occurredAt, endEvent: e.id)
+                    s.babyId = e.babyId
                     s.consumedFraction = e.number("consumed_fraction")
                     s.consumedMl = e.number("consumed_ml")
                     sessions.append(s)

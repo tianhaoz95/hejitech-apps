@@ -46,13 +46,61 @@ public struct ReminderSettings: Codable, Hashable, Sendable {
     }
 }
 
+/// One child in the household (a `weehours.babies` row). The name keeps the schema's word, `baby`.
+public struct Baby: Codable, Hashable, Sendable, Identifiable {
+    public var id: UUID
+    public var name: String
+    public var birthDate: Date?
+    /// Key into the app's child palette (`Theme.childColor`); nil picks one by position.
+    public var color: String?
+    /// Overrides the household bottle size for this child.
+    public var bottleMl: Double?
+    /// Overrides what a quick "start feed" starts for this child: bottle or breast.
+    public var defaultFeed: String?
+    public var position: Int
+    /// Archived children keep their log but leave Now, widgets and voice.
+    public var archived: Bool
+
+    public init(id: UUID = UUID(), name: String, birthDate: Date? = nil, color: String? = nil, bottleMl: Double? = nil,
+                defaultFeed: String? = nil, position: Int = 0, archived: Bool = false) {
+        self.id = id
+        self.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.birthDate = birthDate
+        self.color = color
+        self.bottleMl = bottleMl
+        self.defaultFeed = defaultFeed
+        self.position = position
+        self.archived = archived
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, color, position, archived
+        case birthDate = "birth_date"
+        case bottleMl = "bottle_ml"
+        case defaultFeed = "default_feed"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name).trimmingCharacters(in: .whitespacesAndNewlines)
+        birthDate = try c.decodeIfPresent(Date.self, forKey: .birthDate)
+        color = try c.decodeIfPresent(String.self, forKey: .color)
+        bottleMl = try c.decodeIfPresent(Double.self, forKey: .bottleMl)
+        defaultFeed = try c.decodeIfPresent(String.self, forKey: .defaultFeed)
+        position = try c.decodeIfPresent(Int.self, forKey: .position) ?? 0
+        archived = try c.decodeIfPresent(Bool.self, forKey: .archived) ?? false
+    }
+}
+
 /// Household configuration (the Supabase `households.settings` column plus profile fields).
+/// People, duty, tracked categories, reminders and billing are household-wide; each child has a
+/// few settings of their own (`Baby`).
 public struct Household: Codable, Hashable, Sendable {
     public var id: UUID
     public var name: String
-    public var babyId: UUID
-    public var babyName: String
-    public var birthDate: Date?
+    /// Every child, archived ones included, in display order.
+    public var babies: [Baby]
     public var bottleMl: Double
     public var categories: [String]
     /// What a ring tap / generic "start feed" starts: bottle or breast.
@@ -63,14 +111,13 @@ public struct Household: Codable, Hashable, Sendable {
     public var nightEnd: Int
 
     public init(id: UUID = UUID(), name: String = "Our family", babyId: UUID = UUID(), babyName: String = "Baby",
-                birthDate: Date? = nil, bottleMl: Double = 120, categories: [String] = Array(EventRegistry.shared.defaultCategories).sorted(),
+                birthDate: Date? = nil, babies: [Baby]? = nil, bottleMl: Double = 120,
+                categories: [String] = Array(EventRegistry.shared.defaultCategories).sorted(),
                 defaultFeed: String = "bottle", reminders: ReminderSettings = .init(), caregivers: [Caregiver] = [],
                 nightStart: Int = 21 * 60, nightEnd: Int = 7 * 60) {
         self.id = id
         self.name = name
-        self.babyId = babyId
-        self.babyName = babyName
-        self.birthDate = birthDate
+        self.babies = babies ?? [Baby(id: babyId, name: babyName, birthDate: birthDate)]
         self.bottleMl = bottleMl
         self.categories = categories
         self.defaultFeed = defaultFeed
@@ -81,7 +128,7 @@ public struct Household: Codable, Hashable, Sendable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, name, categories, reminders, caregivers
+        case id, name, categories, reminders, caregivers, babies
         case babyId = "baby_id"
         case babyName = "baby_name"
         case birthDate = "birth_date"
@@ -89,6 +136,68 @@ public struct Household: Codable, Hashable, Sendable {
         case defaultFeed = "default_feed"
         case nightStart = "night_start"
         case nightEnd = "night_end"
+    }
+
+    /// Households saved before children were a list (and older servers) only have the first
+    /// child's `baby_id`, `baby_name` and `birth_date`.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        if let list = try c.decodeIfPresent([Baby].self, forKey: .babies), !list.isEmpty {
+            babies = list.sorted { ($0.position, $0.name) < ($1.position, $1.name) }
+        } else {
+            babies = [Baby(id: try c.decode(UUID.self, forKey: .babyId), name: try c.decode(String.self, forKey: .babyName),
+                           birthDate: try c.decodeIfPresent(Date.self, forKey: .birthDate))]
+        }
+        bottleMl = try c.decodeIfPresent(Double.self, forKey: .bottleMl) ?? 120
+        categories = try c.decodeIfPresent([String].self, forKey: .categories) ?? Array(EventRegistry.shared.defaultCategories).sorted()
+        defaultFeed = try c.decodeIfPresent(String.self, forKey: .defaultFeed) ?? "bottle"
+        reminders = try c.decodeIfPresent(ReminderSettings.self, forKey: .reminders) ?? .init()
+        caregivers = try c.decodeIfPresent([Caregiver].self, forKey: .caregivers) ?? []
+        nightStart = try c.decodeIfPresent(Int.self, forKey: .nightStart) ?? 21 * 60
+        nightEnd = try c.decodeIfPresent(Int.self, forKey: .nightEnd) ?? 7 * 60
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(name, forKey: .name)
+        try c.encode(babies, forKey: .babies)
+        try c.encode(babyId, forKey: .babyId)
+        try c.encode(babyName, forKey: .babyName)
+        try c.encodeIfPresent(birthDate, forKey: .birthDate)
+        try c.encode(bottleMl, forKey: .bottleMl)
+        try c.encode(categories, forKey: .categories)
+        try c.encode(defaultFeed, forKey: .defaultFeed)
+        try c.encode(reminders, forKey: .reminders)
+        try c.encode(caregivers, forKey: .caregivers)
+        try c.encode(nightStart, forKey: .nightStart)
+        try c.encode(nightEnd, forKey: .nightEnd)
+    }
+
+    /// Children that are not archived, in display order.
+    public var active: [Baby] {
+        let list = babies.filter { !$0.archived }
+        return list.isEmpty ? Array(babies.prefix(1)) : list
+    }
+
+    /// The first child: what older surfaces and a log entry without a child default to.
+    public var firstBaby: Baby { active[0] }
+    public var babyId: UUID { firstBaby.id }
+    public var babyName: String { firstBaby.name }
+    public var birthDate: Date? { firstBaby.birthDate }
+
+    public func baby(_ id: UUID?) -> Baby? { babies.first { $0.id == id } }
+    public func babyName(_ id: UUID?) -> String { baby(id)?.name ?? babyName }
+    public func bottleMl(for baby: UUID?) -> Double { self.baby(baby)?.bottleMl ?? bottleMl }
+    public func defaultFeed(for baby: UUID?) -> String { self.baby(baby)?.defaultFeed ?? defaultFeed }
+
+    /// "Mia", "Mia & Leo", "Mia, Leo & Ava".
+    public static func names(_ babies: [Baby]) -> String {
+        let n = babies.map(\.name)
+        guard n.count > 1 else { return n.first ?? "" }
+        return n.dropLast().joined(separator: ", ") + " & " + n.last!
     }
 
     public var enabled: Set<String> { Set(categories) }
@@ -104,10 +213,10 @@ public struct Household: Codable, Hashable, Sendable {
         return nightStart > nightEnd ? (m >= nightStart || m < nightEnd) : (m >= nightStart && m < nightEnd)
     }
 
-    /// Amount in ml for a bottle entry: explicit ml wins, else fraction × preset size.
+    /// Amount in ml for a bottle entry: explicit ml wins, else fraction × the child's bottle size.
     public func milliliters(_ e: LogEvent) -> Double? {
         if let ml = e.number("consumed_ml") { return ml }
-        if let f = e.number("consumed_fraction") { return (f * bottleMl).rounded() }
+        if let f = e.number("consumed_fraction") { return (f * bottleMl(for: e.babyId)).rounded() }
         return nil
     }
 }
@@ -117,6 +226,7 @@ public struct Household: Codable, Hashable, Sendable {
 public struct PlannedReminder: Hashable, Sendable {
     public enum Kind: String, Sendable { case feed, diaper }
     public let kind: Kind
+    public var baby: UUID? = nil
     public let fireAt: Date
     /// Second stage: phone sound after the overdue margin; the first stage is haptic / HUD only.
     public let escalated: Bool
@@ -126,6 +236,16 @@ public struct PlannedReminder: Hashable, Sendable {
 /// Pure reminder planning: given the log and settings, which reminders should this caregiver's
 /// devices schedule? Logging the matching event changes the log and so cancels them.
 public enum ReminderPlanner {
+    /// One plan per child (`logs`: each child's derived log); duty is household-wide.
+    public static func plan(logs: [(Baby, DerivedLog)], household: Household, me: UUID, now: Date,
+                            snoozedUntil: [PlannedReminder.Kind: Date] = [:], calendar: Calendar = .current) -> [PlannedReminder] {
+        logs.flatMap { baby, log in
+            plan(log: log, household: household, me: me, now: now, snoozedUntil: snoozedUntil, calendar: calendar)
+                .map { PlannedReminder(kind: $0.kind, baby: baby.id, fireAt: $0.fireAt, escalated: $0.escalated,
+                                       message: logs.count > 1 ? "\(baby.name) · \($0.message)" : $0.message) }
+        }
+    }
+
     public static func plan(log: DerivedLog, household: Household, me: UUID, now: Date,
                             snoozedUntil: [PlannedReminder.Kind: Date] = [:], calendar: Calendar = .current) -> [PlannedReminder] {
         if let duty = log.duty, let onDuty = duty.caregiver, onDuty != me { return [] }
@@ -177,11 +297,11 @@ public enum ReminderPlanner {
 
 public enum CSVExport {
     public static func csv(log: DerivedLog, household: Household) -> String {
-        var lines = ["occurred_at,type,details,ml,logged_by,surface,input,transcript,confidence_tier"]
+        var lines = ["occurred_at,child,type,details,ml,logged_by,surface,input,transcript,confidence_tier"]
         for e in log.effective where log.status[e.id] == .active {
             let ml = household.milliliters(e).map { String(Int($0)) } ?? ""
             let details = e.fields.keys.sorted().map { "\($0)=\(e.fields[$0]!)" }.joined(separator: " ")
-            let cols = [LogCoding.isoString(e.occurredAt), e.type, details, ml, household.caregiverName(e.loggedBy),
+            let cols = [LogCoding.isoString(e.occurredAt), household.babyName(e.babyId), e.type, details, ml, household.caregiverName(e.loggedBy),
                         e.provenance.surface.rawValue, e.provenance.input.rawValue, e.provenance.rawTranscript ?? "",
                         e.provenance.confidenceTier?.rawValue ?? ""]
             lines.append(cols.map(escape).joined(separator: ","))

@@ -8,6 +8,7 @@ import WidgetKit
 struct WeeHoursWidgets: WidgetBundle {
     var body: some Widget {
         StatusWidget()
+        EveryoneWidget()
         SessionLiveActivity()
     }
 }
@@ -16,33 +17,94 @@ struct StatusEntry: TimelineEntry {
     let date: Date
     let snapshot: StatusSnapshot?
     let babyName: String
+    /// The child the widget's buttons log for (nil: the first shown child).
+    var child: ChildEntity? = nil
 }
 
-struct StatusProvider: TimelineProvider {
+/// Which child a "What's next" widget follows (long-press → Edit Widget).
+struct ChildWidgetIntent: WidgetConfigurationIntent {
+    static let title: LocalizedStringResource = "Child"
+    static let description = IntentDescription("The child this widget shows and logs for.")
+    @Parameter(title: "Child") var child: ChildEntity?
+}
+
+struct StatusProvider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> StatusEntry { StatusEntry(date: Date(), snapshot: nil, babyName: "Baby") }
 
-    func getSnapshot(in context: Context, completion: @escaping (StatusEntry) -> Void) {
-        completion(StatusEntry(date: Date(), snapshot: SharedStore.snapshot, babyName: SharedStore.household?.babyName ?? "Baby"))
+    func snapshot(for configuration: ChildWidgetIntent, in context: Context) async -> StatusEntry {
+        entry(configuration, at: Date())
     }
 
     /// The line is relative ("2h40m ago"), so redraw every 5 minutes for the next 2 hours.
-    func getTimeline(in context: Context, completion: @escaping (Timeline<StatusEntry>) -> Void) {
-        let s = SharedStore.snapshot
-        let name = SharedStore.household?.babyName ?? "Baby"
-        let entries = (0..<24).map { StatusEntry(date: Date().addingTimeInterval(Double($0) * 300), snapshot: s, babyName: name) }
-        completion(Timeline(entries: entries, policy: .atEnd))
+    func timeline(for configuration: ChildWidgetIntent, in context: Context) async -> Timeline<StatusEntry> {
+        Timeline(entries: (0..<24).map { entry(configuration, at: Date().addingTimeInterval(Double($0) * 300)) }, policy: .atEnd)
+    }
+
+    private func entry(_ configuration: ChildWidgetIntent, at date: Date) -> StatusEntry {
+        guard let h = SharedStore.household else { return StatusEntry(date: date, snapshot: nil, babyName: "Baby") }
+        let baby = configuration.child.flatMap { c in h.babies.first { $0.id == c.id } } ?? SharedStore.shown(h).first ?? h.firstBaby
+        return StatusEntry(date: date, snapshot: SharedStore.snapshots[baby.id] ?? (baby.id == h.babyId ? SharedStore.snapshot : nil),
+                           babyName: baby.name, child: ChildEntity(baby))
     }
 }
 
 struct StatusWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "status", provider: StatusProvider()) { entry in
+        AppIntentConfiguration(kind: "status", intent: ChildWidgetIntent.self, provider: StatusProvider()) { entry in
             StatusWidgetView(entry: entry)
                 .containerBackground(for: .widget) { Color(red: 0.11, green: 0.10, blue: 0.22) }
         }
         .configurationDisplayName("What's next")
-        .description("Time since the last feed, next side and last diaper, with one-tap logging.")
+        .description("Time since the last feed, next side and last diaper, with one-tap logging. Edit the widget to pick a child.")
         .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular, .accessoryInline, .accessoryCircular])
+    }
+}
+
+// MARK: - Everyone (several children)
+
+struct EveryoneEntry: TimelineEntry {
+    let date: Date
+    let children: [(name: String, line: String)]
+}
+
+struct EveryoneProvider: TimelineProvider {
+    func placeholder(in context: Context) -> EveryoneEntry {
+        EveryoneEntry(date: Date(), children: [("Mia", "Fed 1h20m ago · left next"), ("Leo", "Sleeping 35m")])
+    }
+
+    func getSnapshot(in context: Context, completion: @escaping (EveryoneEntry) -> Void) { completion(entry(at: Date())) }
+
+    func getTimeline(in context: Context, completion: @escaping (Timeline<EveryoneEntry>) -> Void) {
+        completion(Timeline(entries: (0..<24).map { entry(at: Date().addingTimeInterval(Double($0) * 300)) }, policy: .atEnd))
+    }
+
+    private func entry(at date: Date) -> EveryoneEntry {
+        guard let h = SharedStore.household else { return EveryoneEntry(date: date, children: []) }
+        let all = SharedStore.snapshots
+        return EveryoneEntry(date: date, children: SharedStore.shown(h).map { ($0.name, all[$0.id]?.line(now: date) ?? "Open the app") })
+    }
+}
+
+/// Every shown child's line in one widget, for families with twins or siblings.
+struct EveryoneWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "everyone", provider: EveryoneProvider()) { entry in
+            VStack(alignment: .leading, spacing: 8) {
+                if entry.children.isEmpty { Text("Open the app to set up").foregroundStyle(.white) }
+                ForEach(entry.children.prefix(4), id: \.name) { c in
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(c.name).font(.caption.bold()).foregroundStyle(.white.opacity(0.7))
+                        Text(c.line).font(.subheadline.weight(.semibold)).foregroundStyle(.white).lineLimit(2)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .containerBackground(for: .widget) { Color(red: 0.11, green: 0.10, blue: 0.22) }
+        }
+        .configurationDisplayName("Everyone")
+        .description("Every child's status line, for twins and siblings.")
+        .supportedFamilies([.systemMedium, .systemLarge])
     }
 }
 
@@ -78,11 +140,11 @@ struct StatusWidgetView: View {
                     Spacer()
                 }
                 VStack(spacing: 8) {
-                    Button(intent: ToggleFeedIntent()) {
+                    Button(intent: ToggleFeedIntent(child: entry.child)) {
                         Label(entry.snapshot?.openFeedKind == nil ? "Feed" : "Finish", systemImage: "drop.fill").frame(maxWidth: .infinity)
                     }
-                    Button(intent: LogDiaperIntent(kind: .wet)) { Label("Wet", systemImage: "humidity.fill").frame(maxWidth: .infinity) }
-                    Button(intent: LogDiaperIntent(kind: .dirty)) { Label("Dirty", systemImage: "humidity").frame(maxWidth: .infinity) }
+                    Button(intent: LogDiaperIntent(kind: .wet, child: entry.child)) { Label("Wet", systemImage: "humidity.fill").frame(maxWidth: .infinity) }
+                    Button(intent: LogDiaperIntent(kind: .dirty, child: entry.child)) { Label("Dirty", systemImage: "humidity").frame(maxWidth: .infinity) }
                 }
                 .font(.caption.bold())
                 .tint(Color(red: 0.95, green: 0.62, blue: 0.40))
@@ -93,7 +155,7 @@ struct StatusWidgetView: View {
                 Text(entry.babyName).font(.caption).foregroundStyle(.white.opacity(0.7))
                 Text(line).font(.subheadline.bold()).foregroundStyle(.white).lineLimit(4)
                 Spacer()
-                Button(intent: ToggleFeedIntent()) {
+                Button(intent: ToggleFeedIntent(child: entry.child)) {
                     Label(entry.snapshot?.openFeedKind == nil ? "Feed" : "Finish", systemImage: "drop.fill").frame(maxWidth: .infinity)
                 }
                 .font(.caption.bold())
@@ -107,21 +169,22 @@ struct StatusWidgetView: View {
 struct SessionLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: SessionActivityAttributes.self) { context in
+            let child = Self.child(context.attributes)
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Image(systemName: icon(context.state.kind))
-                    Text(title(context.state)).font(.headline)
+                    Text((context.attributes.babyName.isEmpty ? "" : context.attributes.babyName + " · ") + title(context.state)).font(.headline)
                     Spacer()
                     Text(context.state.since, style: .timer).font(.title3.monospacedDigit().bold())
                 }
                 HStack {
                     if context.state.kind == "sleep" {
-                        Button(intent: ToggleSleepIntent()) { Text("Woke up").frame(maxWidth: .infinity) }
+                        Button(intent: ToggleSleepIntent(child: child)) { Text("Woke up").frame(maxWidth: .infinity) }
                     } else {
                         if context.state.kind == "breast" {
-                            Button(intent: SwitchSideIntent()) { Text("Switch side").frame(maxWidth: .infinity) }
+                            Button(intent: SwitchSideIntent(child: child)) { Text("Switch side").frame(maxWidth: .infinity) }
                         }
-                        Button(intent: ToggleFeedIntent()) { Text("Finish").frame(maxWidth: .infinity) }
+                        Button(intent: ToggleFeedIntent(child: child)) { Text("Finish").frame(maxWidth: .infinity) }
                     }
                 }
                 .tint(Color(red: 0.95, green: 0.62, blue: 0.40))
@@ -136,9 +199,9 @@ struct SessionLiveActivity: Widget {
                 DynamicIslandExpandedRegion(.trailing) { Text(context.state.since, style: .timer).monospacedDigit() }
                 DynamicIslandExpandedRegion(.bottom) {
                     if context.state.kind == "sleep" {
-                        Button(intent: ToggleSleepIntent()) { Text("Woke up") }
+                        Button(intent: ToggleSleepIntent(child: Self.child(context.attributes))) { Text("Woke up") }
                     } else {
-                        Button(intent: ToggleFeedIntent()) { Text("Finish") }
+                        Button(intent: ToggleFeedIntent(child: Self.child(context.attributes))) { Text("Finish") }
                     }
                 }
             } compactLeading: {
@@ -149,6 +212,12 @@ struct SessionLiveActivity: Widget {
                 Image(systemName: icon(context.state.kind))
             }
         }
+    }
+
+    /// The activity's child (nil on activities from older builds: the first child).
+    static func child(_ a: SessionActivityAttributes) -> ChildEntity? {
+        guard let id = a.babyId.flatMap(UUID.init(uuidString:)), let b = SharedStore.household?.baby(id) else { return nil }
+        return ChildEntity(b)
     }
 
     func icon(_ kind: String) -> String {

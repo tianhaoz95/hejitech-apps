@@ -5,10 +5,15 @@ struct TimelineView: View {
     @EnvironmentObject var model: AppModel
     @State private var editing: LogEvent?
     @State private var showUndone = false
+    /// Show one child's entries (nil: everyone's).
+    @State private var child: UUID?
+
+    private var several: Bool { model.household.babies.count > 1 }
 
     private var days: [(Date, [LogEvent])] {
         let events = model.log.all
             .filter { !SystemType.all.contains($0.type) || $0.type == SystemType.note }
+            .filter { child == nil || $0.babyId == child }
             .filter { showUndone || model.log.status[$0.id] != .undone }
             .filter { model.log.status[$0.id] != .superseded }
             .sorted { $0.occurredAt > $1.occurredAt }
@@ -19,11 +24,21 @@ struct TimelineView: View {
     var body: some View {
         NavigationStack {
             List {
+                if several {
+                    Picker("Child", selection: $child) {
+                        Text("All").tag(UUID?.none)
+                        ForEach(model.shown) { Text($0.name).tag(UUID?.some($0.id)) }
+                    }
+                    .pickerStyle(.segmented)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
+                }
                 ForEach(days, id: \.0) { day, events in
                     Section(day.formatted(date: .complete, time: .omitted)) {
                         ForEach(events) { e in
                             EventRow(event: e, status: model.log.status[e.id] ?? .active, who: model.household.caregiverName(e.loggedBy),
-                                     ml: model.household.milliliters(e))
+                                     ml: model.household.milliliters(e),
+                                     child: several ? model.household.baby(e.babyId).map { ($0.name, Theme.color(for: $0, in: model.household)) } : nil)
                                 .contentShape(Rectangle())
                                 .onTapGesture { editing = e }
                                 .swipeActions {
@@ -62,6 +77,8 @@ struct EventRow: View {
     let status: EventStatus
     let who: String
     let ml: Double?
+    /// The child's name and colour, when the household has several.
+    var child: (name: String, color: Color)? = nil
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -74,6 +91,12 @@ struct EventRow: View {
                     Text(event.type == "note" ? "Note" : VoiceInterpreter.label(type: event.type, fields: event.fields))
                         .strikethrough(status == .undone)
                     if let ml, event.type.hasPrefix("feed.bottle") { Text("\(Int(ml)) ml").foregroundStyle(.secondary) }
+                    if let child {
+                        Spacer(minLength: 4)
+                        Text(child.name).font(.caption.weight(.semibold)).foregroundStyle(child.color)
+                            .padding(.horizontal, 8).padding(.vertical, 2)
+                            .background(child.color.opacity(0.15), in: Capsule())
+                    }
                 }
                 if let t = event.provenance.rawTranscript {
                     Text("“\(t)”").font(.caption).foregroundStyle(.secondary).lineLimit(2)
@@ -119,11 +142,17 @@ struct EditEventView: View {
     @State private var kind = "wet"
     @State private var side = "left"
     @State private var measure = ""
+    @State private var baby = UUID()
 
     var body: some View {
         NavigationStack {
             Form {
                 DatePicker("When", selection: $at)
+                if model.household.babies.count > 1, !SystemType.all.contains(event.type) {
+                    Picker("Child", selection: $baby) {
+                        ForEach(model.household.babies.filter { !$0.archived || $0.id == event.babyId }) { Text($0.name).tag($0.id) }
+                    }
+                }
                 if event.type == "feed.bottle.finish" || event.type == "feed.bottle.single" {
                     Picker("Drank", selection: $fraction) {
                         Text("¼").tag(0.25); Text("½").tag(0.5); Text("¾").tag(0.75); Text("All").tag(1.0)
@@ -173,13 +202,14 @@ struct EditEventView: View {
                         if let field = Self.measureField[event.type], let m = Growth.number(measure), m > 0 {
                             f[field] = .number(field == "grams" ? (m * 1000).rounded() : (m * 10).rounded() / 10)
                         }
-                        model.edit(event, fields: f, at: at)
+                        model.edit(event, fields: f, at: at, baby: baby == event.babyId ? nil : baby)
                         dismiss()
                     }
                 }
             }
             .onAppear {
                 at = event.occurredAt
+                baby = event.babyId
                 fraction = event.number("consumed_fraction") ?? 0.5
                 kind = event.string("kind") ?? "wet"
                 side = event.string("side") ?? "left"

@@ -14,7 +14,7 @@ export type Db = SupabaseClient<any, any, any>;
 import { derive, eventTypes, status, statusLine, typeSpec, validate, type LogEvent } from "@weehours/core";
 
 const PROTOCOL_VERSION = "2025-06-18";
-export const SERVER_VERSION = "0.1.3";
+export const SERVER_VERSION = "0.2.0";
 
 export interface Caller {
   userId: string;
@@ -33,19 +33,30 @@ function json(body: unknown, status = 200, extra: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...cors, ...extra } });
 }
 
+const CHILD = {
+  type: "string",
+  description: "A child's name or id (see list_children). Required when the household has several children; \"all\" logs for every child.",
+};
+
 const TOOLS = [
   {
     name: "get_status",
     description:
-      "The household's one-line status (time since last feed, next breast side, last diaper, sleep state) plus the raw status fields, the on-duty caregiver and unresolved duplicate flags.",
+      "Each child's one-line status (time since last feed, next breast side, last diaper, sleep state) with the raw status fields, plus the on-duty caregiver and unresolved duplicate flags. Pass child for one child only.",
+    inputSchema: { type: "object", properties: { child: { type: "string", description: "A child's name or id. Default: every child." } } },
+    annotations: { readOnlyHint: true },
+  },
+  {
+    name: "list_children",
+    description:
+      "The household's children: id, name, birth date and age in days, and bottle size; plus enabled tracking categories and caregivers. Use birth dates to reason about age-specific questions.",
     inputSchema: { type: "object", properties: {} },
     annotations: { readOnlyHint: true },
   },
   {
     name: "get_baby_profile",
-    description:
-      "Baby name, birth date and age in days, bottle size preset, enabled tracking categories and caregivers. Use the birth date to reason about age-specific questions.",
-    inputSchema: { type: "object", properties: {} },
+    description: "One child's profile (the first child, or `child`): name, birth date, age in days, bottle size, tracking categories and caregivers. Prefer list_children.",
+    inputSchema: { type: "object", properties: { child: { type: "string", description: "A child's name or id." } } },
     annotations: { readOnlyHint: true },
   },
   {
@@ -64,6 +75,7 @@ const TOOLS = [
         since: { type: "string", description: "ISO time, inclusive. Default: 24 hours ago." },
         until: { type: "string", description: "ISO time, exclusive. Default: now." },
         types: { type: "array", items: { type: "string" }, description: "Filter by type id or prefix, e.g. ['feed', 'diaper']." },
+        child: { type: "string", description: "Only this child's entries (name or id). Default: every child." },
         limit: { type: "number", description: "Max rows (default 500, max 5000)." },
       },
     },
@@ -79,6 +91,7 @@ const TOOLS = [
         type: { type: "string", description: "An entry type id from list_event_types." },
         fields: { type: "object", description: "Typed fields, e.g. {\"kind\":\"wet\"} or {\"consumed_fraction\":0.5}." },
         occurred_at: { type: "string", description: "ISO time it happened. Default: now." },
+        child: CHILD,
       },
     },
   },
@@ -109,26 +122,53 @@ async function loadAll(admin: Db, household: string): Promise<LogEvent[]> {
   return rows;
 }
 
+interface Child {
+  id: string;
+  name: string;
+  birth_date: string | null;
+  settings: Record<string, unknown> | null;
+  position: number;
+  archived_at: string | null;
+}
+
 async function household(admin: Db, id: string) {
   const { data: h } = await admin.from("households").select("id, name, settings").eq("id", id).single();
-  const { data: baby } = await admin.from("babies").select("id, name, birth_date").eq("household_id", id).single();
+  const { data: babies } = await admin.from("babies").select("id, name, birth_date, settings, position, archived_at")
+    .eq("household_id", id).order("position").order("created_at");
   const { data: members } = await admin.from("members").select("user_id, display_name").eq("household_id", id);
-  return { h, baby, members: members ?? [] };
+  const all = (babies ?? []) as Child[];
+  const active = all.filter((b) => !b.archived_at);
+  return { h, all, children: active.length ? active : all.slice(0, 1), members: members ?? [] };
 }
 
 export async function callTool(name: string, args: Record<string, unknown>, caller: Caller, admin: Db, clientName: string) {
-  const { h, baby, members } = await household(admin, caller.householdId);
+  const { h, all, children, members } = await household(admin, caller.householdId);
   const settings = (h?.settings ?? {}) as Record<string, unknown>;
-  const bottleMl = Number(settings.bottle_ml ?? 120);
+  const bottleMlFor = (baby?: string) => Number(all.find((b) => b.id === baby)?.settings?.bottle_ml ?? settings.bottle_ml ?? 120);
   const who = (id?: string | null) => members.find((m) => m.user_id === id)?.display_name ?? (id ? "someone" : null);
+  const several = children.length > 1;
+  const childName = (id: string) => all.find((b) => b.id === id)?.name ?? null;
 
-  const write = async (type: string, fields: Record<string, unknown>, occurredAt: string, supersedes?: string) => {
+  /** The children an argument names: a name or id, "all", or (with one child) nothing. */
+  const pick = (arg: unknown, required: boolean): Child[] => {
+    const v = arg === undefined || arg === null ? "" : String(arg).trim();
+    if (!v) {
+      if (!several || !required) return children;
+      throw new Error(`this household has several children (${children.map((c) => c.name).join(", ")}): pass child`);
+    }
+    if (["all", "both", "everyone"].includes(v.toLowerCase())) return children;
+    const c = all.find((b) => b.id === v) ?? all.find((b) => b.name.toLowerCase() === v.toLowerCase());
+    if (!c) throw new Error(`no child "${v}"; the household's children are ${children.map((x) => x.name).join(", ")}`);
+    return [c];
+  };
+
+  const write = async (type: string, fields: Record<string, unknown>, occurredAt: string, baby: string, supersedes?: string) => {
     if (caller.scope !== "write") throw new Error("this token is read-only");
     const err = validate(type, fields as never, settings.categories as string[] | undefined);
     if (err) throw new Error(err);
     const now = new Date().toISOString();
     const row = {
-      id: crypto.randomUUID(), household_id: caller.householdId, baby_id: baby!.id, type, fields, occurred_at: occurredAt,
+      id: crypto.randomUUID(), household_id: caller.householdId, baby_id: baby, type, fields, occurred_at: occurredAt,
       logged_at: now, logged_by: caller.userId, supersedes: supersedes ?? null,
       provenance: { surface: "mcp", input: "agent", caller: clientName },
     };
@@ -137,36 +177,54 @@ export async function callTool(name: string, args: Record<string, unknown>, call
     return row;
   };
 
+  const profile = (c: Child) => {
+    const birth = c.birth_date ? new Date(c.birth_date) : null;
+    return {
+      id: c.id, name: c.name, birth_date: c.birth_date ?? null,
+      age_days: birth ? Math.floor((Date.now() - birth.getTime()) / 86_400_000) : null,
+      bottle_size_ml: bottleMlFor(c.id),
+    };
+  };
+
   switch (name) {
     case "get_status": {
-      const d = derive(await loadAll(admin, caller.householdId));
+      const events = await loadAll(admin, caller.householdId);
+      const household = derive(events);
       const { count } = await admin.from("captures").select("id", { count: "exact", head: true })
         .eq("household_id", caller.householdId).eq("status", "pending");
-      const s = status(d, { pendingCaptures: count ?? 0 });
       const iso = (ms?: number) => (ms === undefined ? null : new Date(ms).toISOString());
-      return {
-        line: statusLine(s, Date.now()),
-        last_feed_at: iso(s.last_feed_at), last_feed_kind: s.last_feed_kind ?? null,
-        open_feed: s.open_feed_kind ? { kind: s.open_feed_kind, since: iso(s.open_feed_since) } : null,
-        next_side: s.next_side ?? null, sleeping_since: iso(s.sleeping_since),
-        last_diaper: s.last_diaper_at ? { at: iso(s.last_diaper_at), kind: s.last_diaper_kind } : null,
-        on_duty: who(s.on_duty ?? null), pending_voice_captures: s.pending_captures,
-        duplicates_to_review: d.duplicates.map((x) => ({ original: x.original, duplicate: x.duplicate })),
+      const one = (c: Child) => {
+        const s = status(derive(events, c.id), { pendingCaptures: several ? 0 : count ?? 0 });
+        return {
+          child: c.name, line: statusLine(s, Date.now()),
+          last_feed_at: iso(s.last_feed_at), last_feed_kind: s.last_feed_kind ?? null,
+          open_feed: s.open_feed_kind ? { kind: s.open_feed_kind, since: iso(s.open_feed_since) } : null,
+          next_side: s.next_side ?? null, sleeping_since: iso(s.sleeping_since),
+          last_diaper: s.last_diaper_at ? { at: iso(s.last_diaper_at), kind: s.last_diaper_kind } : null,
+        };
       };
+      const shared = {
+        on_duty: who(household.duty?.caregiver ?? null), pending_voice_captures: count ?? 0,
+        duplicates_to_review: household.duplicates.map((x) => ({ original: x.original, duplicate: x.duplicate })),
+      };
+      const chosen = pick(args.child, false);
+      // one child (or one asked for): the flat shape older agents read; several: one entry each
+      return chosen.length === 1 ? { ...one(chosen[0]), ...shared } : { children: chosen.map(one), ...shared };
     }
-    case "get_baby_profile": {
-      const birth = baby?.birth_date ? new Date(baby.birth_date) : null;
+    case "list_children":
       return {
-        name: baby?.name, birth_date: baby?.birth_date ?? null,
-        age_days: birth ? Math.floor((Date.now() - birth.getTime()) / 86_400_000) : null,
-        bottle_size_ml: bottleMl, tracking: settings.categories ?? null,
-        caregivers: members.map((m) => m.display_name), household: h?.name,
+        children: children.map(profile), archived: all.filter((b) => b.archived_at).map((b) => b.name),
+        tracking: settings.categories ?? null, caregivers: members.map((m) => m.display_name), household: h?.name,
       };
+    case "get_baby_profile": {
+      const c = args.child ? pick(args.child, true)[0] : children[0];
+      return { ...profile(c), tracking: settings.categories ?? null, caregivers: members.map((m) => m.display_name), household: h?.name };
     }
     case "list_event_types":
       return eventTypes.map((t) => ({ type: t.id, category: t.category, label: t.label, fields: fieldDocs(t.id) }));
     case "list_events": {
-      const d = derive(await loadAll(admin, caller.householdId));
+      const only = args.child ? pick(args.child, true) : null;
+      const d = derive(await loadAll(admin, caller.householdId), only?.length === 1 ? only[0].id : undefined);
       const since = Date.parse(String(args.since ?? new Date(Date.now() - 86_400_000).toISOString()));
       const until = Date.parse(String(args.until ?? new Date(Date.now() + 1).toISOString()));
       const types = (args.types as string[] | undefined) ?? [];
@@ -177,25 +235,32 @@ export async function callTool(name: string, args: Record<string, unknown>, call
         .filter((e) => types.length === 0 || types.some((p) => e.type === p || e.type.startsWith(p + ".") || e.type.startsWith(p)))
         .slice(0, limit)
         .map((e) => ({
-          id: e.id, type: e.type, occurred_at: e.occurred_at, fields: e.fields,
+          id: e.id, type: e.type, occurred_at: e.occurred_at, fields: e.fields, child: several ? childName(e.baby_id) : undefined,
           ml: typeof e.fields.consumed_ml === "number" ? e.fields.consumed_ml
-            : typeof e.fields.consumed_fraction === "number" ? Math.round(e.fields.consumed_fraction * bottleMl)
+            : typeof e.fields.consumed_fraction === "number" ? Math.round(e.fields.consumed_fraction * bottleMlFor(e.baby_id))
             : typeof e.fields.amount_ml === "number" ? e.fields.amount_ml : undefined,
           logged_by: who(e.logged_by), via: `${e.provenance.surface}/${e.provenance.input}`,
           transcript: e.provenance.raw_transcript, duplicate_unresolved: d.status.get(e.id) === "duplicate_unresolved" || undefined,
         }));
     }
     case "log_event": {
-      const row = await write(String(args.type), (args.fields as Record<string, unknown>) ?? {}, String(args.occurred_at ?? new Date().toISOString()));
-      return { logged: row.id, type: row.type, occurred_at: row.occurred_at };
+      const targets = pick(args.child, true);
+      const fields = { ...((args.fields as Record<string, unknown>) ?? {}) };
+      if (targets.length > 1) fields.group = crypto.randomUUID();   // logged together: the app undoes them together
+      const at = String(args.occurred_at ?? new Date().toISOString());
+      const rows = [];
+      for (const c of targets) rows.push(await write(String(args.type), fields, at, c.id));
+      const out = rows.map((r) => ({ logged: r.id, type: r.type, occurred_at: r.occurred_at, child: childName(r.baby_id) }));
+      return out.length === 1 ? out[0] : { logged: out };
     }
     case "undo_event": {
-      const row = await write("undo", {}, new Date().toISOString(), String(args.id));
+      const { data: target } = await admin.from("events").select("baby_id").eq("household_id", caller.householdId).eq("id", String(args.id)).maybeSingle();
+      const row = await write("undo", {}, new Date().toISOString(), target?.baby_id ?? children[0].id, String(args.id));
       return { undone: args.id, event: row.id };
     }
     case "resolve_duplicate": {
       const row = await write("resolve", { original: String(args.original), duplicate: String(args.duplicate), resolution: String(args.resolution) },
-        new Date().toISOString());
+        new Date().toISOString(), children[0].id);
       return { resolved: row.id };
     }
     default:

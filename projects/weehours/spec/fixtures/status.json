@@ -1,5 +1,5 @@
 {
-  "about": "Shared derivation fixtures. Each case lists events relative to `now` (minutes_ago) and the expected derived status. Run by the Swift (LogCore) and TypeScript (core) test suites so both implementations stay identical.",
+  "about": "Shared derivation fixtures. Each case lists events relative to `now` (minutes_ago) and the expected derived status. Events belong to child `baby` (default \"b\"); `for_baby` derives one child's log instead of the household's. Run by the Swift (LogCore) and TypeScript (core) test suites so both implementations stay identical.",
   "now": "2026-10-14T15:00:00Z",
   "caregivers": { "a": "00000000-0000-4000-8000-00000000000a", "b": "00000000-0000-4000-8000-00000000000b" },
   "cases": [
@@ -116,6 +116,54 @@
         { "id": "e1", "type": "feed.bottle.start", "minutes_ago": 120, "by": "b", "logged_minutes_ago": 2 }
       ],
       "expect": { "line": "Fed 2h ago", "sessions": 1 }
+    },
+    {
+      "name": "twins fed together by two parents are not duplicates",
+      "events": [
+        { "id": "e1", "type": "feed.bottle.single", "minutes_ago": 20, "by": "a", "baby": "m", "fields": { "consumed_fraction": 1 } },
+        { "id": "e2", "type": "feed.bottle.single", "minutes_ago": 20, "by": "b", "surface": "watch", "baby": "l", "fields": { "consumed_fraction": 0.5 } }
+      ],
+      "expect": { "to_review": 0, "sessions": 2, "status": { "e1": "active", "e2": "active" } }
+    },
+    {
+      "name": "finishing one twin's bottle leaves the other's open",
+      "for_baby": "m",
+      "events": [
+        { "id": "e1", "type": "feed.bottle.start", "minutes_ago": 30, "by": "a", "baby": "m" },
+        { "id": "e2", "type": "feed.bottle.start", "minutes_ago": 25, "by": "b", "baby": "l" },
+        { "id": "e3", "type": "feed.bottle.finish", "minutes_ago": 5, "by": "b", "baby": "l", "fields": { "consumed_fraction": 1 } }
+      ],
+      "expect": { "line": "Feeding 30m", "open_feed_kind": "bottle", "sessions": 1 }
+    },
+    {
+      "name": "the other twin's status",
+      "for_baby": "l",
+      "events": [
+        { "id": "e1", "type": "feed.bottle.start", "minutes_ago": 30, "by": "a", "baby": "m" },
+        { "id": "e2", "type": "feed.bottle.start", "minutes_ago": 25, "by": "b", "baby": "l" },
+        { "id": "e3", "type": "feed.bottle.finish", "minutes_ago": 5, "by": "b", "baby": "l", "fields": { "consumed_fraction": 1 } },
+        { "id": "e4", "type": "feed.breast.start", "minutes_ago": 300, "by": "a", "baby": "m", "fields": { "side": "left" } }
+      ],
+      "expect": { "line": "Fed 25m ago", "sessions": 1 }
+    },
+    {
+      "name": "an edit that moves an entry to the other child",
+      "for_baby": "m",
+      "events": [
+        { "id": "e1", "type": "diaper", "minutes_ago": 30, "by": "a", "baby": "m", "fields": { "kind": "wet" } },
+        { "id": "e2", "type": "diaper", "minutes_ago": 30, "by": "a", "baby": "l", "logged_minutes_ago": 10, "fields": { "kind": "wet" }, "supersedes": "e1" }
+      ],
+      "expect": { "line": "No feeds yet", "status": { "e1": "superseded", "e2": "active" } }
+    },
+    {
+      "name": "duplicates are per child",
+      "for_baby": "l",
+      "events": [
+        { "id": "e1", "type": "diaper", "minutes_ago": 12, "by": "a", "baby": "m", "fields": { "kind": "wet" } },
+        { "id": "e2", "type": "diaper", "minutes_ago": 11, "by": "b", "baby": "m", "fields": { "kind": "wet" } },
+        { "id": "e3", "type": "diaper", "minutes_ago": 10, "by": "b", "baby": "l", "fields": { "kind": "dirty" } }
+      ],
+      "expect": { "line": "No feeds yet · diaper 10m ago", "to_review": 0, "status": { "e2": "duplicate_unresolved", "e3": "active" } }
     }
   ]
 }

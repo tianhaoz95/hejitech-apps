@@ -32,7 +32,9 @@ const kv: KV = {
 
 const api = new Api({ url: params.get("url") ?? LOCAL.url, anonKey: params.get("key") ?? LOCAL.anonKey }, kv);
 const controller = new GlassesController();
-let world: World = { statusLine: "Sign in on the phone page", openFeed: null, sleeping: false, nextSide: null, defaultFeed: "bottle", me: "", onDuty: null, night: false };
+let world: World = { statusLine: "Sign in on the phone page", openFeed: null, sleeping: false, nextSide: null, defaultFeed: "bottle", me: "", onDuty: null, night: false, children: [], focus: null };
+/** The child gestures act on (several children); kept across launches. */
+let focus: string | null = null;
 let frames: Uint8Array[] = [];
 let recordingSurface: "glasses" | "ring" = "ring";
 
@@ -54,18 +56,23 @@ async function refresh() {
   try {
     const remaining = await api.flush();
     const events = [...(await api.recentEvents()), ...(await api.queued())];
-    const d = derive(events);
-    const s = status(d, { pendingCaptures: (await api.pendingCaptures()) + 0 });
+    const kids = api.household.children;
+    if (!kids.some((c) => c.id === focus)) focus = kids[0]?.id ?? null;
+    const d = derive(events, focus ?? undefined);
+    const s = status(d, { pendingCaptures: kids.length > 1 ? 0 : await api.pendingCaptures() });
     const h = api.household.settings as Record<string, unknown>;
+    const child = kids.find((c) => c.id === focus);
     world = {
       statusLine: statusLine(s, Date.now()) + (remaining ? ` · ${remaining} offline` : ""),
       openFeed: (s.open_feed_kind as World["openFeed"]) ?? null,
       sleeping: s.sleeping_since !== undefined,
       nextSide: s.next_side ?? null,
-      defaultFeed: (h.default_feed as World["defaultFeed"]) ?? "bottle",
+      defaultFeed: ((child?.default_feed ?? h.default_feed) as World["defaultFeed"]) ?? "bottle",
       me: api.session.user_id,
       onDuty: s.on_duty ?? null,
       night: false,
+      children: kids.map((c) => ({ id: c.id, name: c.name })),
+      focus,
     };
   } catch (e) {
     log(`offline: ${(e as Error).message}`);
@@ -77,8 +84,12 @@ async function onInput(input: Input, surface: "glasses" | "ring") {
   if (!api.household) { log("not signed in"); return; }
   const commands = controller.handle(input, world, Date.now());
   for (const c of commands) {
-    if (c.kind === "log" || c.kind === "undo") {
-      const row = c.kind === "log" ? api.newEvent(c.type, c.fields, surface) : api.newEvent("undo", {}, surface, c.id);
+    if (c.kind === "focus") {
+      focus = c.id;
+      await kv.set("focus", c.id);
+      controller.flash(`Logging for ${api.household!.children.find((k) => k.id === c.id)?.name ?? ""}`, Date.now());
+    } else if (c.kind === "log" || c.kind === "undo") {
+      const row = c.kind === "log" ? api.newEvent(c.type, c.fields, surface, focus) : api.newEvent("undo", {}, surface, focus, c.id);
       await api.enqueueEvent(row);
       controller.committed({ id: row.id, type: row.type, at: Date.now() }, LABELS[row.type] ?? row.type, Date.now());
       log(`logged ${row.type} ${JSON.stringify(row.fields)}`);
@@ -95,7 +106,7 @@ async function onInput(input: Input, surface: "glasses" | "ring") {
         controller.flash("Too short, hold while you speak", Date.now());
       } else {
         const audio = pcm.length ? pcm : new Uint8Array(3200);
-        const id = await api.enqueueCapture(wav(audio), c.attachTo, recordingSurface);
+        const id = await api.enqueueCapture(wav(audio), c.attachTo, recordingSurface, focus);
         log(`capture ${id} (${Math.round(durationMs(audio))} ms) attach_to=${c.attachTo ?? "-"}`);
       }
     }
@@ -124,7 +135,7 @@ function inputFrom(event: EvenHubEvent): { input: Input; surface: "glasses" | "r
 async function signIn(email: string, password: string) {
   await api.signIn(email, password);
   await api.loadHousehold();
-  $("who").textContent = `${email} · ${(api.household!.settings as { baby_name?: string }).baby_name ?? ""}`;
+  $("who").textContent = `${email} · ${api.household!.children.map((c) => c.name).join(", ")}`;
   log("signed in");
   await refresh();
 }
@@ -158,6 +169,7 @@ async function boot() {
   });
 
   await api.restore();
+  focus = await kv.get("focus");
   const email = params.get("email"), password = params.get("password");
   if (email && password) await signIn(email, password).catch((e) => log(e.message));
   else if (api.session) await api.loadHousehold().then(refresh).catch((e) => log(e.message));

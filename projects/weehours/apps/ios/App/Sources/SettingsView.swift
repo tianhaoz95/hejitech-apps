@@ -8,6 +8,8 @@ struct SettingsView: View {
     @State private var draft = Household()
     @State private var invite: String?
     @State private var confirmDelete = false
+    @State private var editingChild: UUID?
+    @State private var loaded = false
     @AppStorage(Feedback.key) private var shakeToReport = true
 
     var body: some View {
@@ -22,9 +24,31 @@ struct SettingsView: View {
                         }
                     }
                 }
-                Section("Baby") {
-                    TextField("Name", text: $draft.babyName)
-                    DatePicker("Born", selection: Binding(get: { draft.birthDate ?? Date() }, set: { draft.birthDate = $0 }), displayedComponents: .date)
+                Section {
+                    ForEach(draft.babies) { b in
+                        Button { editingChild = b.id } label: {
+                            HStack(spacing: 10) {
+                                Circle().fill(Theme.color(for: b, in: draft)).frame(width: 12, height: 12)
+                                Text(b.name.isEmpty ? "New child" : b.name).foregroundStyle(.primary)
+                                Spacer()
+                                if b.archived {
+                                    Text("Archived").foregroundStyle(.secondary)
+                                } else if model.hidden.contains(b.id) {
+                                    Text("Hidden here").foregroundStyle(.secondary)
+                                }
+                                Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
+                            }
+                        }
+                        .tint(.primary)
+                        .accessibilityIdentifier("settings-child-\(b.name)")
+                    }
+                    Button {
+                        let b = Baby(name: "", birthDate: draft.babies.last?.birthDate, position: (draft.babies.map(\.position).max() ?? 0) + 1)
+                        draft.babies.append(b)
+                        editingChild = b.id
+                    } label: { Label("Add a child", systemImage: "plus") }
+                } header: { Text("Children") } footer: {
+                    Text("Children you add are shared with everyone in the household once you save. Hiding a child only changes this iPhone.")
                 }
                 Section("Tracking") {
                     ForEach(EventRegistry.shared.categories, id: \.id) { c in
@@ -52,7 +76,14 @@ struct SettingsView: View {
                     Text("Use your pediatrician's guidance. Reminders go to whoever is on duty, as a tap on the wrist first and a sound only when overdue.")
                 }
                 Section {
-                    Button("Save changes") { Task { await model.save(draft) } }.disabled(draft == model.household)
+                    Button("Save changes") {
+                        for i in draft.babies.indices {
+                            draft.babies[i].name = draft.babies[i].name.trimmingCharacters(in: .whitespacesAndNewlines)
+                            if draft.babies[i].name.isEmpty { draft.babies[i].name = "Baby" }
+                        }
+                        Task { await model.save(draft) }
+                    }
+                    .disabled(draft == model.household)
                 }
                 Section("Household") {
                     ForEach(model.household.caregivers) { c in Label(c.name, systemImage: c.id == model.me ? "person.fill" : "person") }
@@ -115,7 +146,19 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
-            .onAppear { draft = model.household }
+            .navigationDestination(item: $editingChild) { id in
+                // bound by id, not position: the list can change while the editor is on screen
+                ChildEditor(baby: Binding(get: { draft.baby(id) ?? Baby(id: id, name: "") },
+                                          set: { b in if let i = draft.babies.firstIndex(where: { $0.id == id }) { draft.babies[i] = b } }),
+                            household: draft, isNew: model.household.baby(id) == nil) {
+                    draft.babies.removeAll { $0.id == id }
+                    editingChild = nil
+                }
+            }
+            // the draft keeps unsaved edits across the child editor and tab switches; a save (or
+            // a change from another phone) brings it back in line
+            .onAppear { if !loaded { draft = model.household; loaded = true } }
+            .onChange(of: model.household) { _, h in draft = h }
             .confirmationDialog("Delete every entry, capture and token for this household? This cannot be undone.", isPresented: $confirmDelete, titleVisibility: .visible) {
                 Button("Delete everything", role: .destructive) { Task { await model.deleteAllData() } }
             }
@@ -130,6 +173,72 @@ struct SettingsView: View {
         case .expired: return "Expired"
         case nil: return "…"
         }
+    }
+}
+
+/// One child's settings. Name, birthday, colour and feeding apply household-wide (after Save);
+/// "Show on this iPhone" changes only this phone, right away.
+struct ChildEditor: View {
+    @EnvironmentObject var model: AppModel
+    @Binding var baby: Baby
+    let household: Household
+    let isNew: Bool
+    let discard: () -> Void
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("Name", text: $baby.name).accessibilityIdentifier("childName")
+                DatePicker("Born", selection: Binding(get: { baby.birthDate ?? Date() }, set: { baby.birthDate = $0 }), in: ...Date(), displayedComponents: .date)
+            }
+            Section("Colour") {
+                HStack(spacing: 14) {
+                    ForEach(Theme.childPalette, id: \.key) { c in
+                        let on = Theme.colorKey(for: baby, in: household) == c.key
+                        Button { baby.color = c.key } label: {
+                            Circle().fill(c.color).frame(width: 30, height: 30)
+                                .overlay(Circle().strokeBorder(.primary.opacity(on ? 0.8 : 0), lineWidth: 2).padding(-4))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(c.key)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+            Section {
+                Toggle("Own bottle size", isOn: Binding(get: { baby.bottleMl != nil }, set: { baby.bottleMl = $0 ? household.bottleMl : nil }))
+                if let ml = baby.bottleMl {
+                    Stepper("Bottle size \(Int(ml)) ml", value: Binding(get: { ml }, set: { baby.bottleMl = $0 }), in: 30...360, step: 10)
+                }
+                Picker("Quick feed starts", selection: $baby.defaultFeed) {
+                    Text("Household setting").tag(String?.none)
+                    Text("Bottle").tag(String?.some("bottle"))
+                    Text("Breastfeeding").tag(String?.some("breast"))
+                }
+            } header: { Text("Feeding") } footer: {
+                Text("Without its own, this child uses the household's bottle size (\(Int(household.bottleMl)) ml).")
+            }
+            Section {
+                Toggle("Show on this iPhone", isOn: Binding(get: { !model.hidden.contains(baby.id) }, set: { show in
+                    if show { model.hidden.remove(baby.id) } else { model.hidden.insert(baby.id) }
+                }))
+                .disabled(baby.archived)
+            } footer: {
+                Text("Hidden children stay in the log and on your partner's phone; Now, widgets and the watch here leave them out.")
+            }
+            Section {
+                if isNew {
+                    Button("Don't add", role: .destructive) { discard() }
+                } else if baby.archived {
+                    Button("Restore") { baby.archived = false }
+                } else if household.babies.filter({ !$0.archived }).count > 1 {
+                    Button("Archive", role: .destructive) { baby.archived = true }
+                }
+            } footer: {
+                if !isNew { Text("Archiving keeps the child's log and export, and removes them from every phone's Now. Save to apply.") }
+            }
+        }
+        .navigationTitle(baby.name.isEmpty ? "New child" : baby.name)
     }
 }
 

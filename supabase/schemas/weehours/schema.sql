@@ -16,11 +16,16 @@ create table weehours.households (
   created_at timestamptz not null default now()
 );
 
+-- A household's children. `settings` holds per-child overrides (color, bottle_ml, default_feed);
+-- archived children keep their log but leave the apps' child pickers.
 create table weehours.babies (
   id uuid primary key,
   household_id uuid not null references weehours.households(id) on delete cascade,
   name text not null,
   birth_date date,
+  settings jsonb not null default '{}'::jsonb,
+  position integer not null default 0,
+  archived_at timestamptz,
   created_at timestamptz not null default now()
 );
 
@@ -70,6 +75,7 @@ create table weehours.captures (
   audio_path text,
   transcript text,
   attach_to uuid,
+  baby_id uuid,                  -- the child the device was set to; a name in the transcript wins
   status text not null default 'pending' check (status in ('pending', 'needs_review', 'done', 'dismissed', 'failed')),
   interpretation jsonb,
   processed_by uuid,
@@ -151,29 +157,62 @@ begin
   return p_id;
 end $$;
 
+-- The first active child: what single-child app builds read and rename.
+create or replace function weehours.first_baby(p_household uuid) returns uuid
+language sql stable security definer set search_path = weehours, extensions as $$
+  select id from babies where household_id = p_household
+  order by archived_at is not null, position, created_at limit 1
+$$;
+
+-- Builds from before several children rename "the" baby: only the first child now.
 create or replace function weehours.update_household(
   p_id uuid, p_name text, p_baby_name text, p_birth_date date, p_settings jsonb
 ) returns void
 language plpgsql security definer set search_path = weehours, extensions as $$
 begin
   if p_id is distinct from my_household_id() then raise exception 'not a member'; end if;
-  update households set name = p_name, settings = p_settings where id = p_id;
-  update babies set name = p_baby_name, birth_date = p_birth_date where household_id = p_id;
+  update households set name = p_name, settings = p_settings - 'babies' where id = p_id;
+  update babies set name = p_baby_name, birth_date = p_birth_date where id = first_baby(p_id);
 end $$;
 
--- The household as the app's `Household` JSON: saved settings plus live members and baby.
+-- Adds or updates the household's children (the app's `Baby` JSON: id, name, birth_date, position,
+-- archived, plus per-child settings). Children left out are kept; they are archived, never deleted.
+create or replace function weehours.save_babies(p_babies jsonb) returns void
+language plpgsql security definer set search_path = weehours, extensions as $$
+declare v_household uuid := my_household_id(); b jsonb;
+begin
+  if v_household is null then raise exception 'no household'; end if;
+  for b in select * from jsonb_array_elements(p_babies) loop
+    insert into babies as x (id, household_id, name, birth_date, settings, position, archived_at)
+    values ((b->>'id')::uuid, v_household, coalesce(nullif(trim(b->>'name'), ''), 'Baby'), (b->>'birth_date')::date,
+            b - 'id' - 'name' - 'birth_date' - 'position' - 'archived', coalesce((b->>'position')::int, 0),
+            case when (b->>'archived')::boolean then now() end)
+    on conflict (id) do update set
+      name = excluded.name, birth_date = excluded.birth_date, settings = excluded.settings, position = excluded.position,
+      archived_at = case when excluded.archived_at is null then null else coalesce(x.archived_at, excluded.archived_at) end
+    where x.household_id = v_household;
+  end loop;
+end $$;
+
+-- The household as the app's `Household` JSON: saved settings plus live members and children.
+-- `baby_id`, `baby_name` and `birth_date` are the first active child, for single-child builds.
 create or replace function weehours.my_household() returns jsonb
 language sql stable security definer set search_path = weehours, extensions as $$
-  select h.settings
+  select (h.settings - 'babies')
     || jsonb_build_object(
       'id', h.id, 'name', h.name,
       'baby_id', b.id, 'baby_name', b.name, 'birth_date', b.birth_date,
+      'babies', (
+        select jsonb_agg(c.settings || jsonb_build_object('id', c.id, 'name', c.name, 'birth_date', c.birth_date,
+                                                          'position', c.position, 'archived', c.archived_at is not null)
+                         order by c.position, c.created_at)
+        from babies c where c.household_id = h.id),
       'caregivers', coalesce((
         select jsonb_agg(
           coalesce((select c from jsonb_array_elements(h.settings->'caregivers') c where c->>'id' = m.user_id::text), '{}'::jsonb)
           || jsonb_build_object('id', m.user_id, 'name', m.display_name)
         ) from members m where m.household_id = h.id), '[]'::jsonb))
-  from households h join babies b on b.household_id = h.id
+  from households h join babies b on b.id = weehours.first_baby(h.id)
   where h.id = my_household_id()
   limit 1
 $$;

@@ -44,4 +44,40 @@ final class BackendIntegrationTests: XCTestCase {
         let open = try await other.openCaptures(household: h.id)
         XCTAssertTrue(log2.all.contains { $0.id == cap.eventId } || open.contains { $0.id == cap.id && $0.status == .needsReview })
     }
+
+    func testChildrenSaveAndReadBack() async throws {
+        let client = SupabaseClient(config: .local)
+        _ = try await client.signIn(email: "parent1@example.com", password: "newborn-dev")
+        let first = try await client.myHousehold()
+        var h = try XCTUnwrap(first)
+        let leo = UUID(uuidString: "00000000-0000-4000-8000-00000000b0b0")!
+        h.babies.removeAll { $0.id == leo }
+        h.babies.append(Baby(id: leo, name: "Leo", birthDate: h.birthDate, color: "teal", bottleMl: 150, position: 1))
+        try await client.saveSettings(h)
+
+        let fetched = try await client.myHousehold()
+        let back = try XCTUnwrap(fetched)
+        XCTAssertEqual(back.babyName, "Mia")                       // single-child builds still see the first child
+        let saved = try XCTUnwrap(back.baby(leo))
+        XCTAssertEqual(saved.name, "Leo")
+        XCTAssertEqual(saved.color, "teal")
+        XCTAssertEqual(saved.bottleMl, 150)
+        XCTAssertFalse(saved.archived)
+        XCTAssertEqual(Calendar.current.startOfDay(for: try XCTUnwrap(saved.birthDate)), Calendar.current.startOfDay(for: try XCTUnwrap(h.birthDate)))
+
+        // a capture can carry the device's child
+        let cap = Capture(householdId: back.id, surface: .glasses, capturedAt: Date(), loggedBy: client.session!.userId,
+                          transcript: "wet diaper", babyId: leo, status: .dismissed)
+        try await client.pushCaptures([cap])
+
+        // archived: kept, but out of `active`, so the seed household's first child stays Mia
+        h = back
+        h.babies[h.babies.firstIndex { $0.id == leo }!].archived = true
+        try await client.saveSettings(h)
+        let again = try await client.myHousehold()
+        let archived = try XCTUnwrap(again)
+        XCTAssertFalse(archived.active.contains { $0.id == leo })
+        XCTAssertEqual(archived.babyName, "Mia")
+        XCTAssertTrue(try XCTUnwrap(archived.baby(leo)).archived)
+    }
 }

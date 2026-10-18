@@ -56,7 +56,8 @@ async function render() {
     el("button", { class: "btn secondary", type: "button", onclick: decide("deny") }, "Deny"),
   ];
 
-  const baby = (household as { baby_name?: string } | null)?.baby_name;
+  const kids = ((household as { babies?: { name: string; archived?: boolean }[] } | null)?.babies ?? []).filter((b) => !b.archived).map((b) => b.name);
+  const baby = kids.length > 1 ? kids.slice(0, -1).join(", ") + " & " + kids.at(-1) : (household as { baby_name?: string } | null)?.baby_name;
   show(
     el("div", { class: "client" },
       el("div", { class: "ph" }, clientName.slice(0, 1).toUpperCase()),
@@ -67,7 +68,7 @@ async function render() {
     el("ul", { class: "checks small", style: "text-align: left; margin: 14px 0 20px" },
       el("li", {}, el("span", {}, "Read feeds, diapers, sleep and other entries, and the status line")),
       el("li", {}, el("span", {}, "Add entries, undo them and resolve duplicates, marked as coming from this assistant")),
-      el("li", {}, el("span", {}, "Your household's name, baby's name and birth date, and caregivers' names")),
+      el("li", {}, el("span", {}, "Your household's name, children's names and birth dates, and caregivers' names")),
     ),
     loopback && el("p", { class: "error", style: "text-align: left" }, `Access will be sent to an app on this computer (${host}). Continue only if you just started connecting from your AI assistant.`),
     !household && el("p", { class: "error", style: "text-align: left" }, "This account has no household yet. Set one up in the iPhone app first, or the assistant will have nothing to read."),

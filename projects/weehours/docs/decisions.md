@@ -41,6 +41,17 @@ The PRD ("Newborn Log — PRD") plus the changes agreed while planning, and the 
 | Google sign-in | The shared project's Google provider (HEJI web client) through Supabase in the system browser sheet with PKCE, returning to `weehours://login-callback`; the site uses the same provider | Owner request (2026-10-16). Reuses what Waypack set up, so no iOS OAuth client or GoogleSignIn SDK; Google shows the shared HEJI branding |
 | Build numbers | Stay UTC timestamps | Builds already uploaded use them; Waypack's 2000 + run number would go backwards |
 
+## Several children (2026-10-17)
+
+| Topic | Decision | Why |
+|---|---|---|
+| Now screen | Direction 03 "Log-for bar" from `reports/weehours-multi-child`: every shown child's status side by side, a sticky "Log for" bar over the buttons (any number of children, plus Both/All), foldable to one line; with one shown child, no bar and no extra card | Owner's pick, with: arbitrary child count, no wasted space for one child, fold for long stretches with one child |
+| Which children a phone shows | Per phone (Settings → Children → Show on this iPhone); archiving is household-wide | Owner request: a family with three children can keep two on this phone |
+| Per child | Name, birth date, colour, bottle size and quick-feed override; categories, reminders' intervals, caregivers, night window and duty stay household-wide | Recommended in the proposal; nothing else asked for |
+| Several at once | One event per child sharing a `group` field; Undo takes them back together | Each child keeps a clean log; MCP and CSV need no new concept |
+| Voice | Names in the sentence win ("the twins", "both of them" = all); otherwise the device's current child | Names are parsed deterministically, so the model's questions don't change |
+| Price | Unchanged: one purchase covers every child | Recommended; families with twins shouldn't pay twice |
+
 ## Not done yet
 
 See the report (`report/v0/site`, "What's verified") for what was verified in simulators and what still needs devices or the hosted project.

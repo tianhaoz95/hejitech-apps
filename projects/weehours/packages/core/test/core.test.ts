@@ -19,12 +19,12 @@ describe("shared status fixtures", () => {
         for (const [k, v] of Object.entries(e.fields ?? {})) fields[k] = ["original", "duplicate", "caregiver"].includes(k) ? id(String(v)) : (v as string | number);
         const occurred = new Date(now - e.minutes_ago * 60_000).toISOString();
         return {
-          id: id(e.id), household_id: "h", baby_id: "b", type: e.type, fields, occurred_at: occurred,
+          id: id(e.id), household_id: "h", baby_id: id(e.baby ?? "b"), type: e.type, fields, occurred_at: occurred,
           logged_at: e.logged_minutes_ago !== undefined ? new Date(now - e.logged_minutes_ago * 60_000).toISOString() : occurred,
           logged_by: id(e.by), provenance: { surface: e.surface ?? "phone", input: "tap" }, supersedes: e.supersedes ? id(e.supersedes) : null,
         };
       });
-      const d = derive(events);
+      const d = derive(events, (c as { for_baby?: string }).for_baby ? id((c as { for_baby: string }).for_baby) : undefined);
       const s = status(d);
       const x = c.expect as Record<string, any>;
       if (x.line !== undefined) expect(statusLine(s, now)).toBe(x.line);

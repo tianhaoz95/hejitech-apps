@@ -27,11 +27,15 @@ public struct Interpretation: Codable, Hashable, Sendable {
     /// The question that decided the tier (the least confident relevant one).
     public var decidingQuestion: String?
     public var reference: Date
+    /// The children the entry is for (named in the sentence, or the device's current child);
+    /// nil in interpretations from before children were a list, meaning the first child.
+    public var babyIds: [UUID]? = nil
 
     enum CodingKeys: String, CodingKey {
         case transcript, tier, candidates, confidence, reference
         case modelVersion = "model_version"
         case decidingQuestion = "deciding_question"
+        case babyIds = "baby_ids"
     }
 
     public var best: Candidate? { candidates.first }

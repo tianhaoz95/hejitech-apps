@@ -16,9 +16,22 @@ struct WeeHoursWatchApp: App {
 
 @MainActor
 final class PhoneLink: NSObject, ObservableObject, WCSessionDelegate {
+    struct Child: Identifiable, Equatable {
+        let id: String
+        let name: String
+        let line: String
+        let openFeed: String
+        let sleeping: Bool
+    }
+
     @Published var line = "Open the iPhone app"
     @Published var openFeed = ""
     @Published var sleeping = false
+    /// The household's children shown on the iPhone; the watch logs for `child`.
+    @Published var children: [Child] = []
+    @Published var child = UserDefaults.standard.string(forKey: "child") ?? "" {
+        didSet { UserDefaults.standard.set(child, forKey: "child"); applyChild() }
+    }
     @Published var confirmation: String?
     @Published var lastId: String?
     @Published var recording = false
@@ -34,6 +47,8 @@ final class PhoneLink: NSObject, ObservableObject, WCSessionDelegate {
     }
 
     func send(_ message: [String: Any]) {
+        var message = message
+        if !child.isEmpty { message["baby"] = child }
         guard WCSession.default.isReachable else {
             confirmation = "iPhone not reachable"
             WKInterfaceDevice.current().play(.failure)
@@ -57,7 +72,7 @@ final class PhoneLink: NSObject, ObservableObject, WCSessionDelegate {
             recorder?.stop()
             recording = false
             if let url = recorder?.url {
-                WCSession.default.transferFile(url, metadata: ["capturedAt": startedAt.timeIntervalSince1970])
+                WCSession.default.transferFile(url, metadata: ["capturedAt": startedAt.timeIntervalSince1970, "baby": child])
                 confirmation = "Captured ✓ · your iPhone will log it"
                 WKInterfaceDevice.current().play(.click)
             }
@@ -91,6 +106,20 @@ final class PhoneLink: NSObject, ObservableObject, WCSessionDelegate {
         if let l = ctx["line"] as? String { line = l }
         openFeed = ctx["openFeed"] as? String ?? ""
         sleeping = ctx["sleeping"] as? Bool ?? false
+        children = (ctx["children"] as? [[String: Any]] ?? []).compactMap { c in
+            guard let id = c["id"] as? String, let name = c["name"] as? String else { return nil }
+            return Child(id: id, name: name, line: c["line"] as? String ?? "", openFeed: c["openFeed"] as? String ?? "", sleeping: c["sleeping"] as? Bool ?? false)
+        }
+        if !children.contains(where: { $0.id == child }) { child = (ctx["target"] as? String).flatMap { t in children.first { $0.id == t }?.id } ?? children.first?.id ?? "" }
+        applyChild()
+    }
+
+    /// Shows the chosen child's line and state.
+    private func applyChild() {
+        guard let c = children.first(where: { $0.id == child }) else { return }
+        line = c.line
+        openFeed = c.openFeed
+        sleeping = c.sleeping
     }
 }
 
@@ -101,6 +130,12 @@ struct WatchHome: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
+                if link.children.count > 1 {
+                    Picker("Child", selection: $link.child) {
+                        ForEach(link.children) { Text($0.name).tag($0.id) }
+                    }
+                    .pickerStyle(.navigationLink)
+                }
                 Text(link.line).font(.headline).fixedSize(horizontal: false, vertical: true)
                 if let c = link.confirmation { Text(c).font(.caption2).foregroundStyle(.green) }
                 Button { link.toggleRecording() } label: {

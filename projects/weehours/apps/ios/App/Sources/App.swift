@@ -99,6 +99,24 @@ enum Theme {
     static let growth = Color(red: 0.96, green: 0.80, blue: 0.42)
     static let card = Color(.secondarySystemBackground)
 
+    /// Each child's colour, picked in Settings → Children (`Baby.color`), else by position.
+    static let childPalette: [(key: String, color: Color)] = [
+        ("rose", Color(red: 0.88, green: 0.50, blue: 0.65)), ("teal", Color(red: 0.25, green: 0.65, blue: 0.56)),
+        ("blue", Color(red: 0.42, green: 0.55, blue: 0.88)), ("amber", Color(red: 0.90, green: 0.62, blue: 0.20)),
+        ("violet", Color(red: 0.60, green: 0.48, blue: 0.86)), ("green", Color(red: 0.42, green: 0.70, blue: 0.35)),
+    ]
+
+    static func colorKey(for baby: Baby, in household: Household) -> String {
+        if let key = baby.color, childPalette.contains(where: { $0.key == key }) { return key }
+        let i = household.babies.firstIndex { $0.id == baby.id } ?? household.babies.count
+        return childPalette[i % childPalette.count].key
+    }
+
+    static func color(for baby: Baby, in household: Household) -> Color {
+        let key = colorKey(for: baby, in: household)
+        return childPalette.first { $0.key == key }!.color
+    }
+
     static func color(for type: String) -> Color {
         if type.hasPrefix("feed") { return feed }
         if type == "diaper" { return diaper }
@@ -192,8 +210,7 @@ struct SignInView: View {
 struct HouseholdSetupView: View {
     @EnvironmentObject var model: AppModel
     @State private var name = ""
-    @State private var babyName = ""
-    @State private var birth = Date()
+    @State private var children = [Baby(name: "", birthDate: Date())]
     @State private var categories = EventRegistry.shared.defaultCategories
     @State private var defaultFeed = "bottle"
     @State private var bottleMl = 120.0
@@ -216,10 +233,20 @@ struct HouseholdSetupView: View {
                          : "This account has no household yet. Create one below or join your partner's with an invite code, or switch to the account you already use.")
                 }
                 Section("You") { TextField("Your name", text: $name) }
-                Section("Baby") {
-                    TextField("Baby's name", text: $babyName)
-                    DatePicker("Born", selection: $birth, in: ...Date(), displayedComponents: .date)
+                ForEach($children) { $child in
+                    Section {
+                        TextField("Baby's name", text: $child.name)
+                        DatePicker("Born", selection: Binding(get: { child.birthDate ?? Date() }, set: { child.birthDate = $0 }), in: ...Date(), displayedComponents: .date)
+                        if children.count > 1 {
+                            Button("Remove", role: .destructive) { children.removeAll { $0.id == child.id } }
+                        }
+                    } header: { Text(children.count > 1 ? "Child \((children.firstIndex { $0.id == child.id } ?? 0) + 1)" : "Baby") }
                 }
+                Section {
+                    Button { children.append(Baby(name: "", birthDate: children.last?.birthDate ?? Date(), position: children.count)) } label: {
+                        Label("Add another child", systemImage: "plus")
+                    }
+                } footer: { Text("Twins or siblings: add each child. You can add more later in Settings.") }
                 Section {
                     ForEach(EventRegistry.shared.categories, id: \.id) { c in
                         Toggle(c.label, isOn: Binding(get: { categories.contains(c.id) }, set: { on in
@@ -236,7 +263,14 @@ struct HouseholdSetupView: View {
                 }
                 Section {
                     Button("Create household") {
-                        let h = Household(name: "\(name)'s family", babyName: babyName.isEmpty ? "Baby" : babyName, birthDate: birth,
+                        let babies = children.enumerated().map { i, b in
+                            var b = b
+                            b.position = i
+                            b.name = b.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                            if b.name.isEmpty { b.name = children.count > 1 ? "Baby \(i + 1)" : "Baby" }
+                            return b
+                        }
+                        let h = Household(name: "\(name)'s family", babies: babies,
                                           bottleMl: bottleMl, categories: categories.sorted(), defaultFeed: defaultFeed)
                         Task { await model.createHousehold(h, displayName: name.isEmpty ? "Parent" : name) }
                     }

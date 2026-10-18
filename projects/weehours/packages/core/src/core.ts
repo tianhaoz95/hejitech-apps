@@ -36,6 +36,7 @@ export type EventStatus = "active" | "undone" | "superseded" | "merged" | "dupli
 
 export interface Session {
   kind: "bottle" | "breast" | "sleep";
+  baby_id?: string;
   start?: number;
   end?: number;
   startEvent?: string;
@@ -58,6 +59,7 @@ export function typeSpec(id: string) {
 const t = (iso: string) => Date.parse(iso);
 
 export interface Derived {
+  baby?: string;
   all: LogEvent[];
   status: Map<string, EventStatus>;
   effective: LogEvent[];
@@ -66,8 +68,14 @@ export interface Derived {
   duty: { caregiver: string | null; since: number } | null;
 }
 
-export function derive(events: LogEvent[]): Derived {
+/**
+ * With `baby`, one child's log: their data events, sessions and duplicates (system events such as undo
+ * and duty stay household-wide). Without it, the household's, with sessions paired per child. Undo,
+ * edits and resolutions are resolved over the whole household (same as Derive.swift).
+ */
+export function derive(events: LogEvent[], baby?: string): Derived {
   const ordered = [...events].sort((a, b) => t(a.logged_at) - t(b.logged_at) || a.id.localeCompare(b.id));
+  const mine = (e: LogEvent) => baby === undefined || SYSTEM_TYPES.has(e.type) || e.baby_id === baby;
   const byId = new Map(ordered.map((e) => [e.id, e]));
 
   const undone = new Set<string>();
@@ -119,7 +127,7 @@ export function derive(events: LogEvent[]): Derived {
     for (let j = i + 1; j < data.length; j++) {
       const b = data[j];
       if (t(b.occurred_at) - t(a.occurred_at) > window) break;
-      if (a.type !== b.type) continue;
+      if (a.type !== b.type || a.baby_id !== b.baby_id) continue;
       if (a.logged_by === b.logged_by && a.provenance.surface === b.provenance.surface) continue;
       if (root.get(a.id) === root.get(b.id)) continue;
       if (resolved.has([a.id, b.id].sort().join("|"))) continue;
@@ -130,13 +138,20 @@ export function derive(events: LogEvent[]): Derived {
     }
   }
 
-  const sessions = pairSessions(data.filter((e) => status.get(e.id) === "active"));
+  const own = data.filter(mine);
+  const ownIds = new Set(own.map((e) => e.id));
+  const active = own.filter((e) => status.get(e.id) === "active");
+  const children = new Map<string, LogEvent[]>();
+  for (const e of active) children.set(e.baby_id, [...(children.get(e.baby_id) ?? []), e]);
+  const sessions = children.size <= 1 ? pairSessions(active)
+    : [...children.values()].flatMap(pairSessions).sort((a, b) => anchor(a) - anchor(b) || (a.baby_id ?? "").localeCompare(b.baby_id ?? ""));
   const dutyEvent = [...ordered].reverse().find((e) => e.type === "duty" && status.get(e.id) === "active");
   return {
-    all: ordered,
+    baby,
+    all: ordered.filter(mine),
     status,
-    effective: data,
-    duplicates,
+    effective: own,
+    duplicates: duplicates.filter((d) => ownIds.has(d.duplicate)),
     sessions,
     duty: dutyEvent ? { caregiver: (dutyEvent.fields.caregiver as string) ?? null, since: t(dutyEvent.occurred_at) } : null,
   };
@@ -161,7 +176,7 @@ export function pairSessions(events: LogEvent[]): Session[] {
     if (!k) continue;
     const at = t(e.occurred_at);
     if (e.type === "feed.bottle.single") {
-      sessions.push({ kind: "bottle", start: at, end: at, startEvent: e.id, endEvent: e.id, sides: [],
+      sessions.push({ kind: "bottle", baby_id: e.baby_id, start: at, end: at, startEvent: e.id, endEvent: e.id, sides: [],
         consumedFraction: num(e.fields.consumed_fraction), consumedMl: num(e.fields.consumed_ml), contents: e.fields.contents as string });
       continue;
     }
@@ -169,14 +184,14 @@ export function pairSessions(events: LogEvent[]): Session[] {
     const i = open.get(k);
     if (role === "start") {
       if (i !== undefined) sessions[i].abandoned = true;
-      sessions.push({ kind: k, start: at, startEvent: e.id, sides: e.fields.side ? [String(e.fields.side)] : [],
+      sessions.push({ kind: k, baby_id: e.baby_id, start: at, startEvent: e.id, sides: e.fields.side ? [String(e.fields.side)] : [],
         contents: e.fields.contents as string | undefined });
       open.set(k, sessions.length - 1);
     } else if (role === "switch") {
       if (i !== undefined) {
         if (e.fields.side) sessions[i].sides.push(String(e.fields.side));
       } else {
-        sessions.push({ kind: k, start: at, startEvent: e.id, sides: e.fields.side ? [String(e.fields.side)] : [] });
+        sessions.push({ kind: k, baby_id: e.baby_id, start: at, startEvent: e.id, sides: e.fields.side ? [String(e.fields.side)] : [] });
         open.set(k, sessions.length - 1);
       }
     } else {
@@ -184,7 +199,7 @@ export function pairSessions(events: LogEvent[]): Session[] {
         Object.assign(sessions[i], { end: at, endEvent: e.id, consumedFraction: num(e.fields.consumed_fraction), consumedMl: num(e.fields.consumed_ml) });
         open.delete(k);
       } else {
-        sessions.push({ kind: k, end: at, endEvent: e.id, sides: [], consumedFraction: num(e.fields.consumed_fraction), consumedMl: num(e.fields.consumed_ml) });
+        sessions.push({ kind: k, baby_id: e.baby_id, end: at, endEvent: e.id, sides: [], consumedFraction: num(e.fields.consumed_fraction), consumedMl: num(e.fields.consumed_ml) });
       }
     }
   }

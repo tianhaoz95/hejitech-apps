@@ -56,7 +56,14 @@ await step("initialize", async () => {
 await step("tools/list", async () => {
   const r = await rpc("tools/list");
   const names = r.body.result.tools.map((t) => t.name);
-  for (const n of ["get_status", "list_events", "log_event", "get_baby_profile", "resolve_duplicate"]) assert.ok(names.includes(n), n);
+  for (const n of ["get_status", "list_events", "log_event", "get_baby_profile", "list_children", "resolve_duplicate"]) assert.ok(names.includes(n), n);
+});
+await step("list_children names each child", async () => {
+  const c = await tool("list_children");
+  assert.ok(c.children.length >= 1);
+  assert.ok(c.children[0].name && c.children[0].id && c.children[0].birth_date);
+  await assert.rejects(tool("get_baby_profile", { child: "Nobody" }), /no child "Nobody"/);
+  assert.equal((await tool("get_baby_profile", { child: c.children[0].name })).id, c.children[0].id);
 });
 await step("baby profile has birth date and age", async () => {
   const p = await tool("get_baby_profile");

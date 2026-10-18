@@ -164,13 +164,15 @@ public struct Capture: Codable, Identifiable, Hashable, Sendable {
     public var transcript: String?
     /// An event this capture adds detail to (e.g. ring "finish feed" then voice "drank half").
     public var attachTo: UUID?
+    /// The child the capturing device was set to (the glasses' focus); a name in the transcript wins.
+    public var babyId: UUID?
     public var status: Status
     public var interpretation: Interpretation?
     public var processedBy: UUID?
     public var processedAt: Date?
 
     public init(id: UUID = UUID(), householdId: UUID, surface: Surface, capturedAt: Date, loggedBy: UUID,
-                audioPath: String? = nil, transcript: String? = nil, attachTo: UUID? = nil, status: Status = .pending,
+                audioPath: String? = nil, transcript: String? = nil, attachTo: UUID? = nil, babyId: UUID? = nil, status: Status = .pending,
                 interpretation: Interpretation? = nil, processedBy: UUID? = nil, processedAt: Date? = nil) {
         self.id = id
         self.householdId = householdId
@@ -180,6 +182,7 @@ public struct Capture: Codable, Identifiable, Hashable, Sendable {
         self.audioPath = audioPath
         self.transcript = transcript
         self.attachTo = attachTo
+        self.babyId = babyId
         self.status = status
         self.interpretation = interpretation
         self.processedBy = processedBy
@@ -193,6 +196,7 @@ public struct Capture: Codable, Identifiable, Hashable, Sendable {
         case loggedBy = "logged_by"
         case audioPath = "audio_path"
         case attachTo = "attach_to"
+        case babyId = "baby_id"
         case processedBy = "processed_by"
         case processedAt = "processed_at"
     }

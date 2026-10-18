@@ -343,6 +343,27 @@ public enum Parsers {
         return nil
     }
 
+    /// Phrases that mean every child ("both" alone is not one: "wet and dirty, both", "both sides").
+    static let everyChild = ["the twins", "twins", "both babies", "both kids", "both of them", "both girls", "both boys",
+                             "all of them", "all three", "all the kids", "all the babies", "everyone", "everybody", "the babies", "the kids"]
+
+    /// The children a sentence names ("Mia had 90 ml", "Leo's diaper"), or every child for "the
+    /// twins" / "both of them" / "everyone". Nil when it names none, so the caller's current child
+    /// applies. Names match whole words, case-insensitively.
+    public static func children(in text: String, among babies: [Baby]) -> [UUID]? {
+        guard babies.count > 1 else { return nil }
+        let t = " " + text.lowercased().replacingOccurrences(of: "’", with: "'") + " "
+        if everyChild.contains(where: { t.contains(" \($0) ") || t.contains(" \($0),") || t.contains(" \($0).") || t.contains(" \($0)'") }) {
+            return babies.map(\.id)
+        }
+        let named = babies.filter { b in
+            let name = NSRegularExpression.escapedPattern(for: b.name.lowercased().trimmingCharacters(in: .whitespaces))
+            guard !name.isEmpty else { return false }
+            return t.range(of: #"\b"# + name + #"\b"#, options: .regularExpression) != nil
+        }
+        return named.isEmpty ? nil : named.map(\.id)
+    }
+
     static let wordNumbers: [String: Double] = [
         "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
         "eleven": 11, "twelve": 12, "fifteen": 15, "a": 1, "an": 1, "forty-five": 45, "twenty-five": 25, "twenty": 20, "thirty": 30, "forty": 40, "fifty": 50, "sixty": 60,

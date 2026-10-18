@@ -16,12 +16,31 @@ final class AppModel: ObservableObject {
         let id = UUID()
         let text: String
         let undo: UUID?
+        /// Undo takes back every entry logged together (one per child).
+        var together = false
     }
 
     @Published var phase: Phase = .loading
-    @Published var household = Household()
+    @Published var household = Household() {
+        didSet { normalizeTarget() }
+    }
+    /// The household's log (every child): Timeline, duplicates, duty.
     @Published var log = DerivedLog(events: [])
+    /// Each shown child's log and status line.
+    @Published var logs: [UUID: DerivedLog] = [:]
+    @Published var statuses: [UUID: StatusSnapshot] = [:]
+    /// The first shown child's status (single-child surfaces: watch, Live Activity fallback).
     @Published var status: StatusSnapshot?
+    /// Who Now's quick actions log for (the Log-for bar); always shown children.
+    @Published var target: [UUID] = [] {
+        didSet { SharedStore.setLogFor(target) }
+    }
+    /// Children hidden on this phone (Settings → Children).
+    @Published var hidden = SharedStore.hiddenChildren {
+        didSet { SharedStore.hiddenChildren = hidden; normalizeTarget(); Task { await refresh() } }
+    }
+    /// The Log-for panel folded to one line, for a long stretch with one child.
+    @AppStorage("logForCollapsed") var collapsed = false
     @Published var reviews: [Capture] = []
     @Published var entitlement: Entitlement?
     @Published var toast: Toast?
@@ -108,9 +127,11 @@ final class AppModel: ObservableObject {
         if backend.session == nil, let email = UserDefaults.standard.string(forKey: "autoSignIn") {
             _ = try? await backend.signIn(email: email, password: UserDefaults.standard.string(forKey: "autoPassword") ?? "newborn-dev")
         }
-        if let baby = UserDefaults.standard.string(forKey: "localSetup"), SharedStore.household == nil {
-            localOnly = true   // automation: `-localSetup Mia` sets up a local-only household
-            await createHousehold(Household(babyName: baby, birthDate: Date().addingTimeInterval(-21 * 86400)), displayName: "Alex")
+        if let names = UserDefaults.standard.string(forKey: "localSetup"), SharedStore.household == nil {
+            localOnly = true   // automation: `-localSetup Mia` (or "Mia,Leo" for twins) sets up a local-only household
+            let born = Date().addingTimeInterval(-21 * 86400)
+            let babies = names.split(separator: ",").enumerated().map { Baby(name: String($1).trimmingCharacters(in: .whitespaces), birthDate: born, position: $0) }
+            await createHousehold(Household(babies: babies), displayName: "Alex")
             return
         }
         await route()
@@ -141,6 +162,24 @@ final class AppModel: ObservableObject {
             phase = .signedOut
         }
     }
+
+    /// The children this phone shows on Now, in order.
+    var shown: [Baby] {
+        let list = household.active.filter { !hidden.contains($0.id) }
+        return list.isEmpty ? household.active : list
+    }
+
+    var targetBabies: [Baby] { target.compactMap { household.baby($0) } }
+
+    private func normalizeTarget() {
+        let ids = shown.map(\.id)
+        let kept = target.filter(ids.contains)
+        let next = kept.isEmpty ? (SharedStore.logFor(household).filter(ids.contains).nilIfEmpty ?? Array(ids.prefix(1))) : kept
+        if next != target { target = next }
+    }
+
+    /// Log for one child, or for every shown child.
+    func setTarget(_ ids: [UUID]) { target = ids.isEmpty ? Array(shown.prefix(1).map(\.id)) : ids }
 
     private func enter(_ h: Household) async {
         household = h
@@ -323,7 +362,13 @@ final class AppModel: ObservableObject {
                 try await backend.createHousehold(h, displayName: name)
                 target = try await backend.myHousehold() ?? h
             }
-            try service.store.rehome(household: target.id, baby: target.babyId, caregiver: (localUserId, session.userId))
+            // children keep their ids in a household made from this one; joining another, they're matched by name
+            let local = household.babies
+            try service.store.rehome(household: target.id, baby: { id in
+                if target.baby(id) != nil { return id }
+                let name = local.first { $0.id == id }?.name.lowercased()
+                return target.active.first { $0.name.lowercased() == name }?.id ?? target.babyId
+            }, caregiver: (localUserId, session.userId))
             if let plan = localEntitlement.plan {
                 try? await backend.recordPurchase(plan: plan, expiresAt: localEntitlement.expiresAt)
             }
@@ -362,14 +407,20 @@ final class AppModel: ObservableObject {
         guard let service else { return }
         do {
             log = try await service.derived()
-            let s = try await service.status()
-            status = s
+            let children = try await service.derivedByChild(shown)
+            logs = Dictionary(uniqueKeysWithValues: children.map { ($0.0.id, $0.1) })
+            var all: [UUID: StatusSnapshot] = [:]
+            for b in shown { all[b.id] = try await service.status(baby: b.id) }
+            statuses = all
+            status = shown.first.flatMap { all[$0.id] }
             reviews = try service.store.captures().filter { $0.status == .needsReview }.sorted { $0.capturedAt > $1.capturedAt }
-            SharedStore.snapshot = s
             await SharedStore.publish(from: service)
-            if let me { ReminderScheduler.apply(ReminderPlanner.plan(log: log, household: household, me: me, now: Date())) }
-            if !UserDefaults.standard.bool(forKey: "skipPermissions") { SessionActivities.sync(status: s, babyName: household.babyName) }
-            watch?.push(line: s.line(now: Date()), openFeed: s.openFeedKind, sleeping: s.sleepingSince != nil)
+            if let me { ReminderScheduler.apply(ReminderPlanner.plan(logs: children, household: household, me: me, now: Date())) }
+            let named = shown.count > 1
+            if !UserDefaults.standard.bool(forKey: "skipPermissions") {
+                SessionActivities.sync(shown.compactMap { b in all[b.id].map { (b, $0) } }, named: named)
+            }
+            watch?.push(children: shown.compactMap { b in all[b.id].map { (b, $0) } }, target: target)
         } catch { self.error = error.localizedDescription }
     }
 
@@ -392,11 +443,25 @@ final class AppModel: ObservableObject {
 
     // MARK: writing
 
-    private func did(_ e: LogEvent?, undoable: Bool = true) async {
-        guard let e else { return }
-        toast = Toast(text: VoiceInterpreter.label(type: e.type, fields: e.fields), undo: undoable ? e.id : nil)
+    /// "Diaper · wet", naming the children when the household has several ("… · Mia + Leo").
+    func label(_ events: [LogEvent]) -> String {
+        guard let e = events.first else { return "" }
+        var text = VoiceInterpreter.label(type: e.type, fields: e.fields)
+        if household.active.count > 1 {
+            text += " · " + events.map { household.babyName($0.babyId) }.joined(separator: " + ")
+        }
+        return text
+    }
+
+    private func did(_ events: [LogEvent], undoable: Bool = true) async {
+        guard let e = events.first else { return }
+        toast = Toast(text: label(events), undo: undoable ? e.id : nil, together: events.count > 1)
         await refresh()
         Task { await syncNow() }
+    }
+
+    private func did(_ e: LogEvent?, undoable: Bool = true) async {
+        await did(e.map { [$0] } ?? [], undoable: undoable)
     }
 
     func perform(_ body: @escaping (LogService) async throws -> LogEvent?) {
@@ -406,17 +471,37 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func log(_ type: String, _ fields: [String: FieldValue] = [:], at: Date = Date()) {
-        perform { try await $0.log(type: type, fields: fields, occurredAt: at, provenance: Provenance(surface: .phone, input: .tap)) }
+    /// Runs a quick action for each child in `babies` (default: the Log-for target), written
+    /// together so one Undo takes them all back. Children it doesn't apply to return nil.
+    func performEach(_ babies: [UUID]? = nil, _ body: @escaping @Sendable (isolated LogService, UUID, [String: FieldValue]) throws -> LogEvent?) {
+        guard let service else { return }
+        let ids = babies ?? target
+        Task {
+            do { await did(try await service.forEach(ids, body)) } catch { self.error = error.localizedDescription }
+        }
     }
 
-    func undo(_ id: UUID) {
-        perform { try await $0.undo(id) }
+    /// Logs one entry for each child in `babies` (default: the Log-for target).
+    func log(_ type: String, _ fields: [String: FieldValue] = [:], at: Date = Date(), for babies: [UUID]? = nil) {
+        performEach(babies) { s, baby, group in
+            try s.log(type: type, fields: fields.merging(group) { $1 }, occurredAt: at, provenance: Provenance(surface: .phone, input: .tap), baby: baby)
+        }
+    }
+
+    func undo(_ id: UUID, together: Bool = false) {
+        guard let service else { return }
         toast = nil
+        Task {
+            do {
+                if together { try await service.undoGroup(of: id) } else { try await service.undo(id) }
+                await refresh()
+                Task { await syncNow() }
+            } catch { self.error = error.localizedDescription }
+        }
     }
 
-    func edit(_ e: LogEvent, fields: [String: FieldValue], at: Date) {
-        perform { try await $0.edit(e.id, fields: fields, occurredAt: at) }
+    func edit(_ e: LogEvent, fields: [String: FieldValue], at: Date, baby: UUID? = nil) {
+        perform { try await $0.edit(e.id, fields: fields, occurredAt: at, baby: baby) }
     }
 
     func resolveDuplicate(_ flag: DuplicateFlag, merge: Bool) {
@@ -457,14 +542,14 @@ final class AppModel: ObservableObject {
     }
 
     /// The voice pipeline from a transcript (phone and watch speech, or the `demoText` launch argument).
-    func handle(transcript: String, capturedAt: Date = Date(), surface: Surface = .phone, attachTo: UUID? = nil) async {
+    func handle(transcript: String, capturedAt: Date = Date(), surface: Surface = .phone, attachTo: UUID? = nil, babies: [UUID]? = nil) async {
         guard let service, !transcript.isEmpty else { return }
         do {
             thinking = true
             defer { thinking = false }
-            let r = try await service.processVoice(transcript: transcript, surface: surface, capturedAt: capturedAt, attachTo: attachTo)
-            if let e = r.committed {
-                await did(e)
+            let r = try await service.processVoice(transcript: transcript, surface: surface, capturedAt: capturedAt, attachTo: attachTo, babies: babies ?? target)
+            if !r.events.isEmpty {
+                await did(r.events)
             } else {
                 await refresh()
                 reviewing = r.capture
@@ -474,7 +559,10 @@ final class AppModel: ObservableObject {
 
     func choose(_ capture: Capture, candidate: Int) {
         reviewing = nil
-        perform { try await $0.resolveCapture(capture.id, candidate: candidate) }
+        guard let service else { return }
+        Task {
+            do { await did(try await service.resolveCapture(capture.id, candidate: candidate)) } catch { self.error = error.localizedDescription }
+        }
     }
 
     func dismiss(_ capture: Capture) {
@@ -556,7 +644,7 @@ final class AppModel: ObservableObject {
     }
 
     func exportCSV() -> URL? {
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(household.babyName)-log.csv")
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(household.active.count > 1 ? household.name : household.babyName)-log.csv")
         do {
             try CSVExport.csv(log: log, household: household).write(to: url, atomically: true, encoding: .utf8)
             return url
@@ -599,9 +687,18 @@ final class WatchBridge: NSObject, WCSessionDelegate, @unchecked Sendable {
         WCSession.default.activate()
     }
 
-    func push(line: String, openFeed: String?, sleeping: Bool) {
-        guard WCSession.isSupported(), WCSession.default.activationState == .activated else { return }
-        try? WCSession.default.updateApplicationContext(["line": line, "openFeed": openFeed ?? "", "sleeping": sleeping, "at": Date().timeIntervalSince1970])
+    /// Each shown child's line and state; `line`/`openFeed`/`sleeping` are the first child's, for
+    /// watch builds from before several children.
+    func push(children: [(Baby, StatusSnapshot)], target: [UUID]) {
+        guard WCSession.isSupported(), WCSession.default.activationState == .activated, let first = children.first else { return }
+        let now = Date()
+        let list: [[String: Any]] = children.map { b, s in
+            ["id": b.id.uuidString, "name": b.name, "line": s.line(now: now), "openFeed": s.openFeedKind ?? "", "sleeping": s.sleepingSince != nil]
+        }
+        try? WCSession.default.updateApplicationContext([
+            "line": first.1.line(now: now), "openFeed": first.1.openFeedKind ?? "", "sleeping": first.1.sleepingSince != nil,
+            "children": list, "target": target.first?.uuidString ?? "", "at": now.timeIntervalSince1970,
+        ])
     }
 
     func session(_ session: WCSession, activationDidCompleteWith state: WCSessionActivationState, error: Error?) {}
@@ -612,19 +709,22 @@ final class WatchBridge: NSObject, WCSessionDelegate, @unchecked Sendable {
         Task { @MainActor in
             guard let model, let service = model.service else { replyHandler(["error": "Open the iPhone app"]); return }
             do {
+                // the watch's child; older watch builds send none and get the first shown child
+                let baby = (message["baby"] as? String).flatMap(UUID.init(uuidString:)).flatMap { id in model.shown.first { $0.id == id }?.id }
+                    ?? model.shown.first?.id
                 var e: LogEvent?
                 switch message["action"] as? String {
-                case "toggleFeed": e = try await service.toggleFeed(surface: .watch)
-                case "toggleSleep": e = try await service.toggleSleep(surface: .watch)
-                case "switchSide": e = try await service.switchSide(surface: .watch)
-                case "diaper": e = try await service.log(type: "diaper", fields: ["kind": .string(message["kind"] as? String ?? "wet")], provenance: Provenance(surface: .watch, input: .tap))
+                case "toggleFeed": e = try await service.toggleFeed(baby: baby, surface: .watch)
+                case "toggleSleep": e = try await service.toggleSleep(baby: baby, surface: .watch)
+                case "switchSide": e = try await service.switchSide(baby: baby, surface: .watch)
+                case "diaper": e = try await service.log(type: "diaper", fields: ["kind": .string(message["kind"] as? String ?? "wet")], provenance: Provenance(surface: .watch, input: .tap), baby: baby)
                 case "undo": if let id = (message["id"] as? String).flatMap(UUID.init) { e = try await service.undo(id, surface: .watch) }
                 default: break
                 }
                 await model.refresh()
                 Task { await model.syncNow() }
-                replyHandler(["label": e.map { VoiceInterpreter.label(type: $0.type, fields: $0.fields) } ?? "", "id": e?.id.uuidString ?? "",
-                              "line": model.status?.line(now: Date()) ?? ""])
+                let line = baby.flatMap { model.statuses[$0] }?.line(now: Date()) ?? model.status?.line(now: Date()) ?? ""
+                replyHandler(["label": e.map { model.label([$0]) } ?? "", "id": e?.id.uuidString ?? "", "line": line])
             } catch {
                 replyHandler(["error": error.localizedDescription])
             }
@@ -633,6 +733,7 @@ final class WatchBridge: NSObject, WCSessionDelegate, @unchecked Sendable {
 
     func session(_ session: WCSession, didReceive file: WCSessionFile) {
         let capturedAt = (file.metadata?["capturedAt"] as? Double).map(Date.init(timeIntervalSince1970:)) ?? Date()
+        let baby = (file.metadata?["baby"] as? String).flatMap(UUID.init(uuidString:))
         let dest = FileManager.default.temporaryDirectory.appendingPathComponent("watch-\(UUID().uuidString).wav")
         try? FileManager.default.moveItem(at: file.fileURL, to: dest)
         Task { @MainActor in
@@ -640,10 +741,14 @@ final class WatchBridge: NSObject, WCSessionDelegate, @unchecked Sendable {
             do {
                 let text = try await model.transcribe(dest)
                 try? FileManager.default.removeItem(at: dest)
-                await model.handle(transcript: text, capturedAt: capturedAt, surface: .watch)
+                await model.handle(transcript: text, capturedAt: capturedAt, surface: .watch, babies: baby.map { [$0] })
             } catch { model.error = "Watch audio: \(error.localizedDescription)" }
         }
     }
+}
+
+extension Array {
+    var nilIfEmpty: Self? { isEmpty ? nil : self }
 }
 
 extension BackendConfig {

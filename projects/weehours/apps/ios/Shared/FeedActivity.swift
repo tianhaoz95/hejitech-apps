@@ -10,6 +10,9 @@ struct SessionActivityAttributes: ActivityAttributes {
         var side: String?
         var statusLine: String
     }
+    /// Shown when the household has several children ("" otherwise).
     var babyName: String
+    /// The child the session belongs to; nil on activities started by older builds.
+    var babyId: String? = nil
 }
 #endif

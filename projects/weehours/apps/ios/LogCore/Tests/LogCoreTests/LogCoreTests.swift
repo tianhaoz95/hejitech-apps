@@ -33,12 +33,12 @@ final class FixtureTests: XCTestCase {
                 }
                 let occurred = now.addingTimeInterval(-60 * (e["minutes_ago"] as! Double))
                 let logged = (e["logged_minutes_ago"] as? Double).map { now.addingTimeInterval(-60 * $0) } ?? occurred
-                events.append(LogEvent(id: id(e["id"] as! String), householdId: H, babyId: B, type: e["type"] as! String, fields: fields,
+                events.append(LogEvent(id: id(e["id"] as! String), householdId: H, babyId: (e["baby"] as? String).map(id) ?? B, type: e["type"] as! String, fields: fields,
                                        occurredAt: occurred, loggedAt: logged, loggedBy: id(e["by"] as! String),
                                        provenance: Provenance(surface: Surface(rawValue: e["surface"] as? String ?? "phone")!, input: .tap),
                                        supersedes: (e["supersedes"] as? String).map(id)))
             }
-            let log = DerivedLog(events: events)
+            let log = DerivedLog(events: events, baby: (c["for_baby"] as? String).map(id))
             let status = StatusSnapshot(log: log, now: now)
             let expect = c["expect"] as! [String: Any]
             if let line = expect["line"] as? String { XCTAssertEqual(status.line(now: now), line, name) }
@@ -68,7 +68,7 @@ func service(categories: [String]? = nil, defaultFeed: String = "bottle") throws
 
 func commit(_ s: LogService, _ r: LogService.VoiceResult) async throws -> LogEvent {
     if let e = r.committed { return e }
-    let e = try await s.resolveCapture(r.capture.id, candidate: 0)
+    let e = try await s.resolveCapture(r.capture.id, candidate: 0).first
     return try XCTUnwrap(e)
 }
 
@@ -408,7 +408,7 @@ final class ServiceTests: XCTestCase {
         try store.append(synced)
         try store.markSynced([synced.id])
         try store.append(pending)
-        try store.rehome(household: newHousehold, baby: newBaby, caregiver: (local, account))
+        try store.rehome(household: newHousehold, baby: { _ in newBaby }, caregiver: (local, account))
         let all = Dictionary(uniqueKeysWithValues: try store.events().map { ($0.id, $0) })
         XCTAssertEqual(all[synced.id]?.householdId, H)
         XCTAssertEqual(all[pending.id]?.householdId, newHousehold)
@@ -481,5 +481,121 @@ final class BillingAndExportTests: XCTestCase {
         let log = DerivedLog(events: [feed, duty])
         XCTAssertTrue(ReminderPlanner.plan(log: log, household: h, me: A, now: now).isEmpty)
         XCTAssertFalse(ReminderPlanner.plan(log: log, household: h, me: P2, now: now).isEmpty)
+    }
+}
+
+// MARK: - Several children
+
+let MIA = UUID(uuidString: "00000000-0000-4000-8000-0000000000a1")!
+let LEO = UUID(uuidString: "00000000-0000-4000-8000-0000000000b2")!
+
+func twins() throws -> LogService {
+    var h = Household(id: H, babies: [Baby(id: MIA, name: "Mia", position: 0), Baby(id: LEO, name: "Leo", bottleMl: 150, position: 1)],
+                      bottleMl: 120, caregivers: [Caregiver(id: A, name: "Alex"), Caregiver(id: P2, name: "Sam")])
+    h.categories = EventRegistry.shared.categories.map(\.id)
+    return LogService(store: try SQLiteLogStore.inMemory(), household: h, me: A, interpreter: VoiceInterpreter(model: KeywordDecisionModel()))
+}
+
+final class ChildrenTests: XCTestCase {
+    func testOlderHouseholdJSONHasOneChild() throws {
+        let json = #"{"id":"\#(H.uuidString)","name":"Ours","baby_id":"\#(B.uuidString)","baby_name":"Mia","birth_date":"2026-09-26","bottle_ml":90}"#
+        let h = try LogCoding.decoder.decode(Household.self, from: Data(json.utf8))
+        XCTAssertEqual(h.babies.map(\.name), ["Mia"])
+        XCTAssertEqual(h.babyId, B)
+        XCTAssertNotNil(h.birthDate)
+        let again = try LogCoding.decoder.decode(Household.self, from: LogCoding.encoder.encode(h))
+        XCTAssertEqual(again, h)
+    }
+
+    func testArchivedChildrenLeaveActive() {
+        let h = Household(babies: [Baby(id: MIA, name: "Mia", archived: true), Baby(id: LEO, name: "Leo", position: 1)])
+        XCTAssertEqual(h.active.map(\.id), [LEO])
+        XCTAssertEqual(h.babyId, LEO)
+        XCTAssertEqual(Household.names([Baby(name: "Mia"), Baby(name: "Leo"), Baby(name: "Ava")]), "Mia, Leo & Ava")
+    }
+
+    func testNamesInASentence() {
+        let kids = [Baby(id: MIA, name: "Mia"), Baby(id: LEO, name: "Leo")]
+        XCTAssertEqual(Parsers.children(in: "Leo had 90 ml", among: kids), [LEO])
+        XCTAssertEqual(Parsers.children(in: "changed Mia's diaper", among: kids), [MIA])
+        XCTAssertEqual(Parsers.children(in: "the twins fell asleep", among: kids), [MIA, LEO])
+        XCTAssertEqual(Parsers.children(in: "Mia and Leo both ate", among: kids), [MIA, LEO])
+        XCTAssertNil(Parsers.children(in: "wet and dirty, both", among: kids))
+        XCTAssertNil(Parsers.children(in: "fed on both sides", among: kids))
+        XCTAssertNil(Parsers.children(in: "Leo had 90 ml", among: [Baby(id: LEO, name: "Leo")]))
+        XCTAssertNil(Parsers.children(in: "Leonard is here", among: kids))
+    }
+
+    func testEachChildHasTheirOwnFeed() async throws {
+        let s = try twins()
+        try await s.toggleFeed(baby: MIA, surface: .phone)
+        try await s.toggleFeed(baby: LEO, surface: .phone)
+        let leoFinish = try await s.toggleFeed(baby: LEO, surface: .phone)
+        XCTAssertEqual(leoFinish.type, "feed.bottle.finish")
+        XCTAssertEqual(leoFinish.babyId, LEO)
+        let (mia, leo, all) = (try await s.status(baby: MIA), try await s.status(baby: LEO), try await s.derived())
+        XCTAssertNotNil(mia.openFeedSince)
+        XCTAssertNil(leo.openFeedSince)
+        XCTAssertEqual(all.duplicates.count, 0)
+    }
+
+    func testVoiceGoesToTheNamedChildOrTheCurrentOne() async throws {
+        let s = try twins()
+        let named = try await s.processVoice(transcript: "Leo had a wet diaper", surface: .phone, babies: [MIA])
+        let n = try await commit(s, named)
+        XCTAssertEqual(n.babyId, LEO)
+        let current = try await s.processVoice(transcript: "wet diaper", surface: .phone, babies: [LEO])
+        let c = try await commit(s, current)
+        XCTAssertEqual(c.babyId, LEO)
+        let fallback = try await s.processVoice(transcript: "dirty diaper", surface: .phone)
+        let f = try await commit(s, fallback)
+        XCTAssertEqual(f.babyId, MIA)
+    }
+
+    func testBothChildrenFromOneSentenceUndoTogether() async throws {
+        let s = try twins()
+        let r = try await s.processVoice(transcript: "the twins fell asleep", surface: .phone)
+        var events = r.events
+        if events.isEmpty { events = try await s.resolveCapture(r.capture.id, candidate: 0) }
+        XCTAssertEqual(Set(events.map(\.babyId)), [MIA, LEO])
+        XCTAssertEqual(Set(events.map { $0.string("group") }).count, 1)
+        XCTAssertNotEqual(events[0].id, events[1].id)
+        try await s.undoGroup(of: events[0].id)
+        let (mia, leo) = (try await s.status(baby: MIA), try await s.status(baby: LEO))
+        XCTAssertNil(mia.sleepingSince)
+        XCTAssertNil(leo.sleepingSince)
+    }
+
+    func testGroupActionAndPerChildBottle() async throws {
+        let s = try twins()
+        let events = try await s.forEach([MIA, LEO]) { s, baby, group in
+            try s.log(type: "feed.bottle.single", fields: ["consumed_fraction": .number(0.5)].merging(group) { $1 },
+                      provenance: Provenance(surface: .phone, input: .tap), baby: baby)
+        }
+        XCTAssertEqual(events.count, 2)
+        let h = await s.household
+        XCTAssertEqual(events.map { h.milliliters($0) }, [60, 75])
+        let csv = CSVExport.csv(log: try await s.derived(), household: h)
+        XCTAssertTrue(csv.contains(",Leo,feed.bottle.single,"))
+    }
+
+    func testRemindersPerChild() async throws {
+        let s = try twins()
+        var h = await s.household
+        h.reminders.diaperEveryMinutes = 120
+        try await s.log(type: "diaper", fields: ["kind": .string("wet")], provenance: Provenance(surface: .phone, input: .tap), baby: MIA)
+        try await s.log(type: "diaper", fields: ["kind": .string("wet")], provenance: Provenance(surface: .phone, input: .tap), baby: LEO)
+        let plan = ReminderPlanner.plan(logs: try await s.derivedByChild(), household: h, me: A, now: Date())
+        XCTAssertEqual(Set(plan.compactMap(\.baby)), [MIA, LEO])
+        XCTAssertTrue(plan.contains { $0.message.hasPrefix("Leo · ") })
+    }
+
+    func testMovingAnEntryToTheOtherChild() async throws {
+        let s = try twins()
+        let e = try await s.log(type: "diaper", fields: ["kind": .string("dirty")], provenance: Provenance(surface: .phone, input: .tap), baby: MIA)
+        try await s.edit(e.id, fields: e.fields, baby: LEO)
+        let (mia, leo) = (try await s.status(baby: MIA), try await s.status(baby: LEO))
+        XCTAssertNil(mia.lastDiaperAt)
+        XCTAssertNotNil(leo.lastDiaperAt)
     }
 }

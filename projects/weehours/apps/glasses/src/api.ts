@@ -30,7 +30,7 @@ type Pending =
 
 export class Api {
   session: Session | null = null;
-  household: { id: string; baby_id: string; settings: Record<string, unknown> } | null = null;
+  household: { id: string; baby_id: string; children: { id: string; name: string; default_feed?: string }[]; settings: Record<string, unknown> } | null = null;
 
   constructor(public config: Config, private kv: KV, private fetchImpl: typeof fetch = fetch.bind(globalThis)) {}
 
@@ -71,7 +71,8 @@ export class Api {
     const res = await this.request("POST", "/rest/v1/rpc/my_household", "{}");
     const h = await res.json();
     if (!h) throw new Error("no household: create one in the phone app first");
-    this.household = { id: h.id, baby_id: h.baby_id, settings: h };
+    const active = ((h.babies ?? []) as { id: string; name: string; archived?: boolean; default_feed?: string }[]).filter((b) => !b.archived);
+    this.household = { id: h.id, baby_id: h.baby_id, children: active.length ? active : [{ id: h.baby_id, name: h.baby_name }], settings: h };
     return this.household;
   }
 
@@ -87,10 +88,10 @@ export class Api {
     return (await res.json()).length;
   }
 
-  newEvent(type: string, fields: Record<string, string | number>, surface: "glasses" | "ring", supersedes?: string): LogEvent {
+  newEvent(type: string, fields: Record<string, string | number>, surface: "glasses" | "ring", baby?: string | null, supersedes?: string): LogEvent {
     const now = new Date().toISOString();
     return {
-      id: crypto.randomUUID(), household_id: this.household!.id, baby_id: this.household!.baby_id, type, fields,
+      id: crypto.randomUUID(), household_id: this.household!.id, baby_id: baby ?? this.household!.baby_id, type, fields,
       occurred_at: now, logged_at: now, logged_by: this.session!.user_id,
       provenance: { surface, input: "gesture" }, supersedes: supersedes ?? null,
     };
@@ -110,12 +111,14 @@ export class Api {
     await this.saveOutbox([...(await this.outbox()), { kind: "event", row }]);
   }
 
-  async enqueueCapture(wavBytes: Uint8Array, attachTo: string | null, surface: "glasses" | "ring") {
+  /** `baby`: the focused child (several children only); a name in the speech wins on the phone. */
+  async enqueueCapture(wavBytes: Uint8Array, attachTo: string | null, surface: "glasses" | "ring", baby?: string | null) {
     const id = crypto.randomUUID();
-    const row = {
+    const row: Record<string, unknown> = {
       id, household_id: this.household!.id, surface, captured_at: new Date().toISOString(), logged_by: this.session!.user_id,
       audio_path: `${this.household!.id}/${id}.wav`, attach_to: attachTo, status: "pending",
     };
+    if (baby && this.household!.children.length > 1) row.baby_id = baby;
     let bin = "";
     for (let i = 0; i < wavBytes.length; i += 0x8000) bin += String.fromCharCode(...wavBytes.subarray(i, i + 0x8000));
     await this.saveOutbox([...(await this.outbox()), { kind: "capture", row, audio: btoa(bin) }]);

@@ -3,7 +3,7 @@ import { GlassesController, type World } from "../src/controller.ts";
 
 const world = (over: Partial<World> = {}): World => ({
   statusLine: "Fed 2h ago", openFeed: null, sleeping: false, nextSide: "left", defaultFeed: "bottle",
-  me: "me", onDuty: null, night: false, ...over,
+  me: "me", onDuty: null, night: false, children: [], focus: null, ...over,
 });
 
 describe("ring gestures", () => {
@@ -65,5 +65,27 @@ describe("ring gestures", () => {
     c.committed({ id: "a", type: "diaper", at: 0 }, "Diaper", 0);
     expect(c.hud(world(), 1_000)).toContain("✓ Diaper");
     expect(c.hud(world(), 10_000)).toContain("hold: speak");
+  });
+});
+
+describe("several children", () => {
+  const kids = [{ id: "m", name: "Mia" }, { id: "l", name: "Leo" }];
+
+  it("names the focused child and switches from the menu", () => {
+    const c = new GlassesController();
+    const w = world({ children: kids, focus: "m" });
+    expect(c.hud(w, 0).split("\n")[0]).toBe("Mia · Fed 2h ago");
+    c.handle("down", w, 0);
+    const items = c.menu(w).map((i) => i.label);
+    expect(items).toContain("Switch to Leo");
+    c.menuIndex = items.indexOf("Switch to Leo");
+    expect(c.handle("click", w, 0)).toEqual([{ kind: "focus", id: "l" }]);
+  });
+
+  it("one child: no name and no switch item", () => {
+    const c = new GlassesController();
+    const w = world({ children: [kids[0]], focus: "m" });
+    expect(c.hud(w, 0).split("\n")[0]).toBe("Fed 2h ago");
+    expect(c.menu(w).some((i) => i.label.startsWith("Switch to"))).toBe(false);
   });
 });

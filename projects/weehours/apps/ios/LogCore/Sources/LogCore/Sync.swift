@@ -258,11 +258,26 @@ public final class SupabaseClient: @unchecked Sendable {
         _ = try await rpc("create_household", ["p_id": h.id.uuidString, "p_name": h.name, "p_baby_id": h.babyId.uuidString,
                                                "p_baby_name": h.babyName, "p_birth_date": h.birthDate.map(Self.day) ?? NSNull(),
                                                "p_settings": try settingsJSON(h), "p_display_name": displayName])
+        if h.babies.count > 1 { try await saveBabies(h) }
     }
 
     public func saveSettings(_ h: Household) async throws {
         _ = try await rpc("update_household", ["p_id": h.id.uuidString, "p_name": h.name, "p_baby_name": h.babyName,
                                                "p_birth_date": h.birthDate.map(Self.day) ?? NSNull(), "p_settings": try settingsJSON(h)])
+        try await saveBabies(h)
+    }
+
+    /// Adds and updates the household's children (`save_babies`); none are ever deleted.
+    public func saveBabies(_ h: Household) async throws {
+        let rows: [[String: Any]] = h.babies.map { b in
+            var row: [String: Any] = ["id": b.id.uuidString, "name": b.name, "birth_date": b.birthDate.map(Self.day) ?? NSNull(),
+                                      "position": b.position, "archived": b.archived]
+            if let c = b.color { row["color"] = c }
+            if let ml = b.bottleMl { row["bottle_ml"] = ml }
+            if let f = b.defaultFeed { row["default_feed"] = f }
+            return row
+        }
+        _ = try await rpc("save_babies", ["p_babies": rows])
     }
 
     public func myHousehold() async throws -> Household? {
@@ -329,8 +344,11 @@ public final class SupabaseClient: @unchecked Sendable {
         _ = try await rpc("revoke_access_token", ["p_id": id.uuidString])
     }
 
+    /// The household-wide settings; children live in their own rows.
     private func settingsJSON(_ h: Household) throws -> Any {
-        try JSONSerialization.jsonObject(with: LogCoding.encoder.encode(h))
+        var obj = try JSONSerialization.jsonObject(with: LogCoding.encoder.encode(h)) as? [String: Any] ?? [:]
+        for k in ["babies", "baby_id", "baby_name", "birth_date"] { obj[k] = nil }
+        return obj
     }
 
     static func day(_ d: Date) -> String {

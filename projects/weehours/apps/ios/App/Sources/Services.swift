@@ -195,7 +195,7 @@ enum ReminderScheduler {
             content.interruptionLevel = r.escalated ? .timeSensitive : .active
             let interval = max(1, r.fireAt.timeIntervalSinceNow)
             let trigger = UNTimeIntervalNotificationTrigger(timeInterval: interval, repeats: false)
-            center.add(UNNotificationRequest(identifier: "\(r.kind.rawValue)-\(r.escalated)", content: content, trigger: trigger))
+            center.add(UNNotificationRequest(identifier: "\(r.kind.rawValue)-\(r.baby?.uuidString ?? "")-\(r.escalated)", content: content, trigger: trigger))
         }
     }
 }
@@ -204,22 +204,32 @@ enum ReminderScheduler {
 
 @MainActor
 enum SessionActivities {
-    static func sync(status: StatusSnapshot, babyName: String) {
+    /// One Live Activity per child with an open feed or sleep; `named` shows the child's name.
+    static func sync(_ children: [(Baby, StatusSnapshot)], named: Bool) {
         #if canImport(ActivityKit)
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
-        let kind: String? = status.sleepingSince != nil ? "sleep" : status.openFeedKind
-        let since = status.sleepingSince ?? status.openFeedSince
-        let current = Activity<SessionActivityAttributes>.activities
-        guard let kind, let since else {
-            for a in current { Task { await a.end(nil, dismissalPolicy: .immediate) } }
-            return
+        var current = Activity<SessionActivityAttributes>.activities
+        for (baby, status) in children {
+            let kind: String? = status.sleepingSince != nil ? "sleep" : status.openFeedKind
+            let since = status.sleepingSince ?? status.openFeedSince
+            // activities from before children had ids belong to the first child
+            let mine = current.filter { $0.attributes.babyId == baby.id.uuidString || ($0.attributes.babyId == nil && baby.id == children.first?.0.id) }
+            current.removeAll { a in mine.contains { $0.id == a.id } }
+            guard let kind, let since else {
+                for a in mine { Task { await a.end(nil, dismissalPolicy: .immediate) } }
+                continue
+            }
+            let state = SessionActivityAttributes.ContentState(kind: kind, since: since, side: status.nextSide, statusLine: status.line(now: Date()))
+            if let a = mine.first(where: { $0.attributes.babyId != nil }) {
+                Task { await a.update(ActivityContent(state: state, staleDate: nil)) }
+                for old in mine where old.id != a.id { Task { await old.end(nil, dismissalPolicy: .immediate) } }
+            } else {
+                for old in mine { Task { await old.end(nil, dismissalPolicy: .immediate) } }
+                _ = try? Activity.request(attributes: SessionActivityAttributes(babyName: named ? baby.name : "", babyId: baby.id.uuidString),
+                                          content: ActivityContent(state: state, staleDate: nil))
+            }
         }
-        let state = SessionActivityAttributes.ContentState(kind: kind, since: since, side: status.nextSide, statusLine: status.line(now: Date()))
-        if let a = current.first {
-            Task { await a.update(ActivityContent(state: state, staleDate: nil)) }
-        } else {
-            _ = try? Activity.request(attributes: SessionActivityAttributes(babyName: babyName), content: ActivityContent(state: state, staleDate: nil))
-        }
+        for a in current { Task { await a.end(nil, dismissalPolicy: .immediate) } }   // hidden or archived children
         #endif
     }
 }

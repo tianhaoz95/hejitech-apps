@@ -5,7 +5,10 @@
 // event's surface):
 //   press        no open feed → start the household's default feed; open feed → finish it
 //   double press diaper → pick the kind (swipe to move, press to choose, double press to cancel)
-//   swipe        open the quick menu: sleep, switch side, on duty, undo last, back
+//   swipe        open the quick menu: sleep, switch side, next child (several children), on duty, undo last, back
+//
+// With several children every gesture acts on the focused child, named on the HUD's first line;
+// the menu's "Switch to <name>" moves the focus.
 //   hold         speak while holding; release uploads the capture for the phone to process
 //                (attached to the entry you just made, so "finish" + "drank half" becomes one entry)
 
@@ -20,11 +23,15 @@ export interface World {
   me: string;
   onDuty: string | null;
   night: boolean;
+  /** The household's children (in order) and the one gestures act on; one child: no names shown. */
+  children: { id: string; name: string }[];
+  focus: string | null;
 }
 
 export type Command =
   | { kind: "log"; type: string; fields: Record<string, string | number> }
   | { kind: "undo"; id: string }
+  | { kind: "focus"; id: string }
   | { kind: "startRecording" }
   | { kind: "stopRecording"; attachTo: string | null };
 
@@ -53,6 +60,11 @@ export class GlassesController {
     if (world.openFeed === "breast") {
       const next = world.nextSide === "left" ? "left" : "right";
       items.push({ label: `Switch to ${next}`, command: () => ({ kind: "log", type: "feed.breast.switch", fields: { side: next } }) });
+    }
+    if (world.children.length > 1) {
+      const i = Math.max(0, world.children.findIndex((c) => c.id === world.focus));
+      const next = world.children[(i + 1) % world.children.length];
+      items.push({ label: `Switch to ${next.name}`, command: () => ({ kind: "focus", id: next.id }) });
     }
     items.push({
       label: world.onDuty === world.me ? "Hand off duty" : "I'm on duty",
@@ -138,7 +150,8 @@ export class GlassesController {
 
   /** Two lines for the HUD: the status line, then the current prompt or confirmation. */
   hud(world: World, now: number): string {
-    const top = world.statusLine;
+    const focused = world.children.length > 1 ? world.children.find((c) => c.id === world.focus) : undefined;
+    const top = focused ? `${focused.name} · ${world.statusLine}` : world.statusLine;
     let bottom: string;
     switch (this.mode) {
       case "recording":

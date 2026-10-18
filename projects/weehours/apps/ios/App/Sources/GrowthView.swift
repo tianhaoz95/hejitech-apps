@@ -70,47 +70,59 @@ enum Growth {
     }
 }
 
-/// Logs one measurement: the tile picked the type, so the sheet asks for one number.
+/// Logs one measurement: the tile picked the type, so the sheet asks for one number per child
+/// being logged for (one field, or one per child when logging for several).
 struct GrowthSheet: View {
     let type: String
+    let babies: [Baby]
     @EnvironmentObject var model: AppModel
     @Environment(\.dismiss) private var dismiss
     @State private var at = Date()
-    @State private var value = ""
-    @FocusState private var focused: Bool
+    @State private var values: [UUID: String] = [:]
+    @FocusState private var focused: UUID?
 
-    private var amount: Double? { Growth.number(value).flatMap { $0 > 0 ? $0 : nil } }
+    private var amounts: [(UUID, Double)] {
+        babies.compactMap { b in Growth.number(values[b.id] ?? "").flatMap { $0 > 0 ? (b.id, $0) : nil } }
+    }
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    LabeledContent {
-                        HStack(spacing: 6) {
-                            TextField(Growth.latestText(type, in: model.log).map { "last \($0)" } ?? "—", text: $value)
-                                .keyboardType(.decimalPad)
-                                .multilineTextAlignment(.trailing)
-                                .focused($focused)
-                            Text(Growth.unit(type)).foregroundStyle(.secondary)
-                        }
-                    } label: { Text(Growth.title(type)) }
-                    .accessibilityIdentifier("growth-\(type)")
+                    ForEach(babies) { b in
+                        LabeledContent {
+                            HStack(spacing: 6) {
+                                TextField(Growth.latestText(type, in: model.logs[b.id] ?? model.log).map { "last \($0)" } ?? "—",
+                                          text: Binding { values[b.id] ?? "" } set: { values[b.id] = $0 })
+                                    .keyboardType(.decimalPad)
+                                    .multilineTextAlignment(.trailing)
+                                    .focused($focused, equals: b.id)
+                                Text(Growth.unit(type)).foregroundStyle(.secondary)
+                            }
+                        } label: { Text(babies.count > 1 ? b.name : Growth.title(type)) }
+                        .accessibilityIdentifier("growth-\(type)-\(b.name)")
+                    }
                 } footer: {
-                    Text("You can also say it: “\(example)”.")
+                    Text(babies.count > 1 ? "Fill in who you measured; empty fields are skipped." : "You can also say it: “\(example)”.")
                 }
                 DatePicker("Measured", selection: $at, in: ...Date())
             }
             .navigationTitle(Growth.title(type))
             .navigationBarTitleDisplayMode(.inline)
-            .onAppear { focused = true }
+            .onAppear { focused = babies.first?.id }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        if let v = amount { model.log(type, [Growth.field(type): .number(Growth.stored(type, v))], at: at) }
+                        let entries = Dictionary(uniqueKeysWithValues: amounts)
+                        let field = Growth.field(type)
+                        model.performEach(amounts.map(\.0)) { [type, at] s, baby, group in
+                            try s.log(type: type, fields: [field: .number(Growth.stored(type, entries[baby]!))].merging(group) { $1 },
+                                      occurredAt: at, provenance: Provenance(surface: .phone, input: .tap), baby: baby)
+                        }
                         dismiss()
                     }
-                    .disabled(amount == nil)
+                    .disabled(amounts.isEmpty)
                 }
             }
         }

@@ -10,7 +10,30 @@ interface Household {
   baby_name: string;
   birth_date: string | null;
   bottle_ml?: number;
+  babies?: Child[];
   caregivers: { id: string; name: string }[];
+}
+
+interface Child {
+  id: string;
+  name: string;
+  birth_date: string | null;
+  bottle_ml?: number;
+  archived?: boolean;
+}
+
+/** The household's children that aren't archived (servers before several children: the one baby). */
+function children(h: Household): Child[] {
+  const active = (h.babies ?? []).filter((b) => !b.archived);
+  return active.length ? active : [{ id: h.baby_id, name: h.baby_name, birth_date: h.birth_date }];
+}
+
+/** What deleting asks you to type: the child's name, or the household's when there are several. */
+const confirmWord = (h: Household) => (children(h).length > 1 ? h.name : h.baby_name);
+
+function ageText(birth: string | null) {
+  const age = birth ? Math.floor((Date.now() - Date.parse(birth)) / DAY) : null;
+  return age === null ? "" : age < 14 ? `${age} days old` : age < 120 ? `${Math.floor(age / 7)} weeks old` : `${Math.floor(age / 30)} months old`;
 }
 
 interface Token {
@@ -80,18 +103,23 @@ async function allEvents(householdId: string): Promise<LogEvent[]> {
 
 // ------------------------------------------------------------------ panels
 
-function householdPanel(h: Household, ent: Entitlement | null, line: string) {
+function householdPanel(h: Household, ent: Entitlement | null, lines: { child: Child; line: string }[]) {
   const plan = access(ent);
-  const age = h.birth_date ? Math.floor((Date.now() - Date.parse(h.birth_date)) / DAY) : null;
-  const ageText = age === null ? "" : age < 14 ? `${age} days old` : age < 120 ? `${Math.floor(age / 7)} weeks old` : `${Math.floor(age / 30)} months old`;
+  const one = lines.length === 1;
+  const sub = [one ? ageText(lines[0].child.birth_date) : "", h.caregivers.map((c) => c.name).join(", ")].filter(Boolean).join(" · ");
   return el(
     "div",
     { class: "panel" },
     el("div", { class: "head" },
-      el("div", {}, el("h2", {}, h.baby_name), el("div", { class: "muted small" }, [ageText, h.caregivers.map((c) => c.name).join(", ")].filter(Boolean).join(" · "))),
+      el("div", {}, el("h2", {}, one ? lines[0].child.name : h.name), el("div", { class: "muted small" }, sub)),
       el("span", { class: plan.active ? "pill write" : "pill" }, plan.label),
     ),
-    el("div", { class: "status-line" }, line),
+    ...(one
+      ? [el("div", { class: "status-line" }, lines[0].line)]
+      : lines.map(({ child, line }) =>
+          el("div", { style: "margin-top: 14px" },
+            el("div", { class: "small" }, el("b", {}, child.name), el("span", { class: "muted" }, ageText(child.birth_date) ? ` · ${ageText(child.birth_date)}` : "")),
+            el("div", { class: "status-line", style: "margin-top: 4px" }, line)))),
     el("p", { class: "muted small", style: "margin: 12px 0 0" },
       "Logging happens in the app. Subscriptions are managed in the App Store: ",
       el("a", { href: "https://apps.apple.com/account/subscriptions", target: "_blank", rel: "noopener" }, "manage subscription"),
@@ -208,15 +236,17 @@ async function grantsPanel(reload: () => void) {
 function csv(events: LogEvent[], h: Household): string {
   const d = derive(events);
   const names = new Map(h.caregivers.map((c) => [c.id, c.name]));
-  const bottleMl = h.bottle_ml ?? 120;
+  const babies = h.babies ?? [{ id: h.baby_id, name: h.baby_name, birth_date: h.birth_date }];
+  const child = (id: string) => babies.find((b) => b.id === id);
+  const bottleFor = (id: string) => child(id)?.bottle_ml ?? h.bottle_ml ?? 120;
   const esc = (s: string) => (/[",\n]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s);
-  const lines = ["occurred_at,type,details,ml,logged_by,surface,input,transcript,confidence_tier"];
+  const lines = ["occurred_at,child,type,details,ml,logged_by,surface,input,transcript,confidence_tier"];
   for (const e of d.effective) {
     if (d.status.get(e.id) !== "active") continue;
     const f = e.fields;
-    const ml = typeof f.consumed_ml === "number" ? f.consumed_ml : typeof f.consumed_fraction === "number" ? Math.round(f.consumed_fraction * bottleMl) : null;
+    const ml = typeof f.consumed_ml === "number" ? f.consumed_ml : typeof f.consumed_fraction === "number" ? Math.round(f.consumed_fraction * bottleFor(e.baby_id)) : null;
     const details = Object.keys(f).sort().map((k) => `${k}=${f[k]}`).join(" ");
-    const cols = [new Date(e.occurred_at).toISOString(), e.type, details, ml === null ? "" : String(Math.trunc(ml)), names.get(e.logged_by) ?? "someone",
+    const cols = [new Date(e.occurred_at).toISOString(), child(e.baby_id)?.name ?? h.baby_name, e.type, details, ml === null ? "" : String(Math.trunc(ml)), names.get(e.logged_by) ?? "someone",
       e.provenance.surface, e.provenance.input, e.provenance.raw_transcript ?? "", e.provenance.confidence_tier ?? ""];
     lines.push(cols.map(esc).join(","));
   }
@@ -234,7 +264,7 @@ function dataPanel(h: Household, ent: Entitlement | null) {
     exportBtn.disabled = true;
     try {
       const blob = new Blob([csv(await allEvents(h.id), h)], { type: "text/csv" });
-      const a = el("a", { href: URL.createObjectURL(blob), download: `${h.baby_name}-log.csv` });
+      const a = el("a", { href: URL.createObjectURL(blob), download: `${children(h).length > 1 ? h.name : h.baby_name}-log.csv` });
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     } catch (e) {
@@ -244,9 +274,10 @@ function dataPanel(h: Household, ent: Entitlement | null) {
     }
   });
 
-  const confirmInput = el("input", { type: "text", placeholder: `Type ${h.baby_name}`, "aria-label": `Type ${h.baby_name} to confirm`, autocomplete: "off" });
+  const word = confirmWord(h);
+  const confirmInput = el("input", { type: "text", placeholder: `Type ${word}`, "aria-label": `Type ${word} to confirm`, autocomplete: "off" });
   const del = el("button", { class: "btn danger", type: "button", disabled: true }, "Delete all household data");
-  confirmInput.addEventListener("input", () => (del.disabled = confirmInput.value.trim() !== h.baby_name));
+  confirmInput.addEventListener("input", () => (del.disabled = confirmInput.value.trim() !== word));
   del.addEventListener("click", async () => {
     del.disabled = true;
     try {
@@ -269,7 +300,7 @@ function dataPanel(h: Household, ent: Entitlement | null) {
       "div",
       { class: "panel danger-zone" },
       el("h2", {}, "Delete household data"),
-      el("p", { class: "muted small" }, `This permanently deletes ${h.baby_name}'s log, voice captures, invites and access tokens for everyone in the household. It can't be undone. Type `, el("b", {}, h.baby_name), " to confirm."),
+      el("p", { class: "muted small" }, `This permanently deletes ${children(h).length > 1 ? "every child's" : `${h.baby_name}'s`} log, voice captures, invites and access tokens for everyone in the household. It can't be undone. Type `, el("b", {}, word), " to confirm."),
       el("div", { class: "row" }, el("div", { style: "flex: 1; min-width: 200px" }, confirmInput), del),
     ),
   ];
@@ -311,9 +342,11 @@ async function render() {
       supabase.from("captures").select("id", { count: "exact", head: true }).eq("household_id", h.id).eq("status", "needs_review"),
       loadTokens(),
     ]);
-    const line = statusLine(status(derive((recent.data ?? []) as LogEvent[]), { pendingCaptures: pending.count ?? 0, pendingPicks: picks.count ?? 0 }), Date.now());
+    const kids = children(h);
+    const counts = kids.length === 1 ? { pendingCaptures: pending.count ?? 0, pendingPicks: picks.count ?? 0 } : {};
+    const lines = kids.map((child) => ({ child, line: statusLine(status(derive((recent.data ?? []) as LogEvent[], child.id), counts), Date.now()) }));
     const grants = await grantsPanel(render).catch(() => null);
-    show(header, householdPanel(h, ent, line), tokensPanel(tokens, render), ...(grants ? [grants] : []), ...dataPanel(h, ent));
+    show(header, householdPanel(h, ent, lines), tokensPanel(tokens, render), ...(grants ? [grants] : []), ...dataPanel(h, ent));
   } catch (e) {
     show(header, el("div", { class: "panel" }, el("p", { class: "error", style: "margin: 0" }, `Couldn't load your account: ${(e as Error).message}`)));
   }
