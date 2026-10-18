@@ -4,6 +4,7 @@ import SwiftUI
 
 struct MainView: View {
     @EnvironmentObject var model: AppModel
+    @AppStorage(VoiceButtonPlacement.key) private var placement = VoiceButtonPlacement.right
 
     var body: some View {
         TabView(selection: $model.screen) {
@@ -18,8 +19,8 @@ struct MainView: View {
         .sheet(item: $model.reviewing) { capture in
             ReviewSheet(capture: capture).presentationDetents([.medium, .large])
         }
-        .overlay(alignment: .bottomTrailing) { VoiceButton().padding(.trailing, 20).padding(.bottom, 64) }
-        .overlay(alignment: .bottom) { ToastView().padding(.trailing, VoiceButton.size + 20).padding(.bottom, 64) }
+        .overlay(alignment: placement.alignment) { VoiceButton().padding(.horizontal, 20).padding(.bottom, 64) }
+        .overlay(alignment: .bottom) { ToastView().padding(placement.toastClearance).padding(.bottom, 64) }
         .onChange(of: model.screen, initial: true) { _, screen in FeedbackKit.currentScreen = screen }
         .onChange(of: model.reviews) { _, reviews in
             if model.screen == "review", model.reviewing == nil, let first = reviews.first {
@@ -450,40 +451,69 @@ extension View {
     func fabClearance() -> some View { contentMargins(.bottom, VoiceButton.size + 16, for: .scrollContent) }
 }
 
+/// Where the floating voice button sits, chosen per phone in Settings.
+enum VoiceButtonPlacement: String, CaseIterable, Identifiable {
+    case left, middle, right
+    static let key = "voiceButtonPlacement"
+    var id: String { rawValue }
+    var title: String { rawValue.capitalized }
+    var alignment: Alignment { [.left: .bottomLeading, .middle: .bottom, .right: .bottomTrailing][self]! }
+
+    /// Keeps the toast beside the button, or above it when the button is in the middle.
+    var toastClearance: EdgeInsets {
+        let side = VoiceButton.size + 20
+        switch self {
+        case .left: return EdgeInsets(top: 0, leading: side, bottom: 0, trailing: 0)
+        case .middle: return EdgeInsets(top: 0, leading: 0, bottom: VoiceButton.size + 12, trailing: 0)
+        case .right: return EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: side)
+        }
+    }
+}
+
 /// Floating hold-to-speak button, on every tab. Release to log. The models start loading the
 /// moment the press begins.
 struct VoiceButton: View {
     static let size: CGFloat = 68
     @EnvironmentObject var model: AppModel
+    @AppStorage(VoiceButtonPlacement.key) private var placement = VoiceButtonPlacement.right
 
     var body: some View {
-        HStack(spacing: 10) {
-            if model.recording {
-                Text("Listening… release to log")
-                    .font(.footnote.weight(.medium))
-                    .padding(.horizontal, 12).padding(.vertical, 8)
-                    .background(.thinMaterial, in: Capsule())
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
-            }
-            ZStack {
-                face
-                    .scaleEffect(model.recording ? 1.15 : 1)
-                    .animation(model.recording ? .easeInOut(duration: 0.6).repeatForever(autoreverses: true) : .default, value: model.recording)
-                if model.thinking {
-                    ProgressView().tint(.white)
-                } else {
-                    Image(systemName: "mic.fill").font(.system(size: 28)).foregroundStyle(.white)
-                }
-            }
-            .contentShape(Circle())
-            .gesture(DragGesture(minimumDistance: 0)
-                .onChanged { _ in if !model.recording { model.startVoice() } }
-                .onEnded { _ in model.stopVoice() })
-            .sensoryFeedback(.start, trigger: model.recording) { _, new in new }
-            .accessibilityLabel("Hold to speak")
-            .accessibilityIdentifier("voiceButton")
+        // The "Listening" hint goes on the open side: beside the button, or above it in the middle.
+        let layout = placement == .middle ? AnyLayout(VStackLayout(spacing: 10)) : AnyLayout(HStackLayout(spacing: 10))
+        layout {
+            if model.recording, placement != .left { listening }
+            button
+            if model.recording, placement == .left { listening }
         }
         .animation(.snappy, value: model.recording)
+    }
+
+    private var listening: some View {
+        Text("Listening… release to log")
+            .font(.footnote.weight(.medium))
+            .padding(.horizontal, 12).padding(.vertical, 8)
+            .background(.thinMaterial, in: Capsule())
+            .transition(.move(edge: [.left: .leading, .middle: .bottom, .right: .trailing][placement]!).combined(with: .opacity))
+    }
+
+    private var button: some View {
+        ZStack {
+            face
+                .scaleEffect(model.recording ? 1.15 : 1)
+                .animation(model.recording ? .easeInOut(duration: 0.6).repeatForever(autoreverses: true) : .default, value: model.recording)
+            if model.thinking {
+                ProgressView().tint(.white)
+            } else {
+                Image(systemName: "mic.fill").font(.system(size: 28)).foregroundStyle(.white)
+            }
+        }
+        .contentShape(Circle())
+        .gesture(DragGesture(minimumDistance: 0)
+            .onChanged { _ in if !model.recording { model.startVoice() } }
+            .onEnded { _ in model.stopVoice() })
+        .sensoryFeedback(.start, trigger: model.recording) { _, new in new }
+        .accessibilityLabel("Hold to speak")
+        .accessibilityIdentifier("voiceButton")
     }
 
     /// Liquid Glass tinted with the accent on iOS 26 and later; a solid accent circle before.

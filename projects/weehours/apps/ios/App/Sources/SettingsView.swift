@@ -12,6 +12,7 @@ struct SettingsView: View {
     @State private var newChild: Baby?
     @State private var loaded = false
     @AppStorage(Feedback.key) private var shakeToReport = true
+    @AppStorage(VoiceButtonPlacement.key) private var voicePlacement = VoiceButtonPlacement.right
 
     var body: some View {
         NavigationStack {
@@ -101,6 +102,10 @@ struct SettingsView: View {
                     }
                 }
                 Section("Voice") {
+                    Picker("Mic button", selection: $voicePlacement) {
+                        ForEach(VoiceButtonPlacement.allCases) { Text($0.title).tag($0) }
+                    }
+                    .accessibilityIdentifier("voicePlacement")
                     Picker("Decision model", selection: Binding(get: { model.decisionBackend }, set: { model.decisionBackend = $0 })) {
                         ForEach(DecisionBackend.allCases) { Text($0.rawValue).tag($0) }
                     }
