@@ -1,0 +1,78 @@
+# Pilot: ~600 utterances, to measure teacher throughput and data quality before the full run.
+# Every stage reads this file: python -m weehours_ml <stage> --config configs/pilot.toml
+
+[run]
+name = "pilot"              # outputs go to runs/<name>/
+seed = 7
+plans = 200                 # labelled plans; the teacher writes `variants` utterances for each
+variants = 3
+val_fraction = 0.05
+laya_export = "runs/laya_export.json"   # from `logeval --export` (see README)
+
+[types]                     # share of plans per event type; none_of_these = not a log entry
+"feed.bottle.start" = 0.10
+"feed.bottle.finish" = 0.13
+"feed.bottle.single" = 0.05
+"feed.breast.start" = 0.08
+"feed.breast.switch" = 0.05
+"feed.breast.finish" = 0.05
+"feed.solids" = 0.05
+"diaper" = 0.12
+"sleep.start" = 0.07
+"sleep.end" = 0.06
+"pump" = 0.05
+"weight" = 0.03
+"height" = 0.02
+"head" = 0.02
+"none_of_these" = 0.12
+
+[fields]
+not_stated = 0.3            # share of field values left unsaid (the not_stated option)
+
+[when]                      # how the time is said; the app parses times itself, but they're part of real speech
+now = 0.45
+relative = 0.3              # "ten minutes ago"
+clock = 0.1                 # "at 3:40"
+vague = 0.15                # "a bit ago", "earlier"
+
+[children]
+names = ["Mia", "Leo", "Noah", "Ava", "Aarav", "Zoe", "Mateo", "Hana", "Ollie", "Amara"]
+probability = 0.2           # share of utterances that name the child
+
+[teacher]                   # any OpenAI-compatible server, e.g. `vllm serve` on the Spark
+base_url = "http://localhost:8000/v1"
+api_key = "EMPTY"
+model = "openai/gpt-oss-120b"
+concurrency = 32
+temperature = 0.9           # writing; the blind labelling uses 0
+max_tokens = 800
+retries = 3
+
+[tts]
+voices = ["af_heart", "af_bella", "af_nicole", "am_michael", "am_adam", "bf_emma", "bf_isabella", "bm_george", "bm_lewis"]
+speed = [0.8, 1.1]          # tired parents, often slower
+noise_snr_db = [8, 30]      # night-time rooms: fans, white-noise machines, a crying baby
+reverb_probability = 0.4
+max_seconds = 29
+
+[asr]
+model = "openai/whisper-base.en"   # same weights the app runs through WhisperKit
+device = "cuda"
+# Must equal the closed-vocabulary prompt in apps/ios/App/Sources/Services.swift (a test checks).
+prompt = "bottle, breastfeeding, nursing, diaper, wet, dirty, poop, asleep, woke up, quarter, half, three quarters, left, right, switched sides"
+
+[train]                     # laya.train.TrainConfig (RLCD); the defaults are the authors' recipe
+base_model = "convaiinnovations/laya"
+epochs = 4
+micro_batch = 8
+grad_accum = 8
+encoder_lr = 2.5e-5
+head_lr = 1e-4
+
+[convert]
+llama_cpp_commit = "e467e5b"        # must equal scripts/build-llama-xcframework.sh (a test checks)
+quantization = "Q8_0"               # what the app bundles
+
+[publish]
+repo = ""                   # Hugging Face repo, e.g. "<user>/weehours-laya"; set before `publish`
+private = false

@@ -26,7 +26,8 @@ Voice is understood **on the iPhone** by [Laya](https://huggingface.co/ggml-org/
 | `packages/core/` | `@weehours/core`: the TypeScript twin of LogCore's derivation, shared by the site, the MCP Worker and the glasses |
 | `services/web/` | Website + Cloudflare Worker: landing, agent setup, account, legal pages, and the **MCP server** with its own OAuth endpoints |
 | `../../supabase/schemas/weehours/` | Postgres schema `weehours` in the shared project: tables with RLS (append-only for clients), RPCs; migrations in `../../supabase/migrations/*_weehours_*`, seed in `../../supabase/seeds/weehours.sql` |
-| `eval/` | Utterance generator and eval results (Laya flat vs. two-step, raw vs. calibrated) |
+| `eval/` | Utterance generator and eval results (Laya flat vs. two-step, raw vs. calibrated), `laya.env` (the Laya model in use) and `report.py` (compares eval runs) |
+| `ml/` | Laya fine-tuning on synthetic data: teacher-written utterances with blind label checks, TTS → Whisper, `laya.train`, GGUF, eval vs stock ([ml/README.md](ml/README.md)) |
 | `scripts/` | Dev stack, glasses simulator (interactive and e2e), MCP test, eval, screenshots, llama.cpp xcframework build, TestFlight release |
 
 ## Quick start (macOS, Xcode 26+, Docker)
@@ -47,7 +48,7 @@ Sign in with `parent1@example.com` / `newborn-dev` (or `parent2@…`). Both acco
 - **Glasses.** `scripts/glasses-sim.sh` opens the official Even Hub simulator, signed in. `scripts/glasses-sim.sh --e2e` drives the simulator through its automation API, checks the backend and saves HUD screenshots.
 - **MCP.** `npm run dev:worker -w @weehours/web` serves the site and the MCP endpoint `http://127.0.0.1:8788/mcp` (use `Authorization: Bearer wh_dev_local_token`, or connect an OAuth-capable client and sign in as a seeded parent). It needs `services/web/.dev.vars` with the local `SUPABASE_SERVICE_ROLE_KEY` (`supabase status`). `node scripts/test-mcp.mjs` runs the integration checks, the OAuth flow included.
 - **Billing.** Run from Xcode to use `Subscriptions.storekit` (monthly, yearly, lifetime). Launched any other way, the paywall uses a built-in dummy store through the same entitlement path.
-- **Eval.** `LAYA_MODEL=… LLAMA_SERVER_BIN=… scripts/eval.sh` re-runs the decision eval and refits `spec/calibration.json`.
+- **Eval.** `LAYA_MODEL=… LLAMA_SERVER_BIN=… scripts/eval.sh` re-runs the decision eval and refits `spec/calibration.json`. In CI, `weehours-llm-eval.yml` runs it on the real Laya (CPU) when the questions or the model change, monthly on the 15th, or by hand, and compares with `eval/results`.
 
 ## Tests
 

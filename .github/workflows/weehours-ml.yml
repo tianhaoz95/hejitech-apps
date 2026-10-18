@@ -1,0 +1,46 @@
+name: Wee Hours ML pipeline tests
+
+# Unit tests of the Laya fine-tuning pipeline (projects/weehours/ml), standard library only, no
+# model and no GPU, so cheap enough to run on every change to it or to what it must match (the
+# Whisper prompt and model URL in Services.swift, the llama.cpp pin, the spec). The label-parity
+# test needs `logeval --export` and runs in weehours-llm-eval.yml instead (skipped here).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "projects/weehours/ml/**"
+      - "projects/weehours/eval/report.py"
+      - "projects/weehours/eval/laya.env"
+      - "projects/weehours/spec/event-types.json"
+      - "projects/weehours/apps/ios/App/Sources/Services.swift"
+      - "projects/weehours/scripts/build-llama-xcframework.sh"
+      - ".github/workflows/weehours-ml.yml"
+  pull_request:
+    paths:
+      - "projects/weehours/ml/**"
+      - "projects/weehours/eval/report.py"
+      - "projects/weehours/eval/laya.env"
+      - "projects/weehours/spec/event-types.json"
+      - "projects/weehours/apps/ios/App/Sources/Services.swift"
+      - "projects/weehours/scripts/build-llama-xcframework.sh"
+      - ".github/workflows/weehours-ml.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: pytest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: projects/weehours/ml
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pytest
+      - run: python -m pytest -q

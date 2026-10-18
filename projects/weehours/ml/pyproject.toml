@@ -1,0 +1,18 @@
+[project]
+name = "weehours-ml"
+version = "0.1.0"
+description = "Synthetic data and fine-tuning for Wee Hours' on-device Laya decision model"
+requires-python = ">=3.11"
+dependencies = []  # plan, build, verify and the tests need only the standard library
+
+[project.optional-dependencies]
+# teacher/tts/asr/train run on the DGX Spark (CUDA, aarch64); evaluate on a Mac (Swift logeval).
+teacher = ["openai>=1.40"]
+tts = ["kokoro>=0.9.4", "soundfile>=0.12", "numpy>=1.26", "scipy>=1.11"]
+asr = ["transformers>=4.51", "torch>=2.4", "soundfile>=0.12", "numpy>=1.26"]
+train = ["laya>=0.3.20", "torch>=2.4"]
+publish = ["huggingface_hub>=0.30"]
+test = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

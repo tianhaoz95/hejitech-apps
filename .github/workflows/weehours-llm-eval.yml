@@ -1,0 +1,138 @@
+name: Wee Hours LLM eval
+
+# Scores the real Laya decision model (not the keyword fallback weehours-ci.yml gates on) with the
+# app's own harness: llama-server at the app's llama.cpp commit (CPU) serves the GGUF named in
+# projects/weehours/eval/laya.env, `logeval` runs spec/utterances.jsonl through VoiceInterpreter
+# raw and with fitted calibration, and eval/report.py compares the result with the committed
+# eval/results in the run summary. It also exports the app's questions and runs the fine-tuning
+# pipeline's tests (ml/) against them. Report only, not a gate.
+#
+# The eval is slow and costly, so it runs only when the prompts or the model in use change (the
+# questions: Decision/Interpreter/LayaPrompt/Registry and spec/event-types.json; the model:
+# eval/laya.env, the llama.cpp pin, the calibration), on the 15th of every month, and from the
+# Actions tab (e.g. after editing spec/utterances.jsonl).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "projects/weehours/apps/ios/LogCore/Sources/LogCore/Decision.swift"
+      - "projects/weehours/apps/ios/LogCore/Sources/LogCore/Interpreter.swift"
+      - "projects/weehours/apps/ios/LogCore/Sources/LogCore/LayaPrompt.swift"
+      - "projects/weehours/apps/ios/LogCore/Sources/LogCore/Registry.swift"
+      - "projects/weehours/spec/event-types.json"
+      - "projects/weehours/spec/calibration.json"
+      - "projects/weehours/eval/laya.env"
+      - "projects/weehours/scripts/build-llama-xcframework.sh"
+  pull_request:
+    paths:
+      - "projects/weehours/apps/ios/LogCore/Sources/LogCore/Decision.swift"
+      - "projects/weehours/apps/ios/LogCore/Sources/LogCore/Interpreter.swift"
+      - "projects/weehours/apps/ios/LogCore/Sources/LogCore/LayaPrompt.swift"
+      - "projects/weehours/apps/ios/LogCore/Sources/LogCore/Registry.swift"
+      - "projects/weehours/spec/event-types.json"
+      - "projects/weehours/spec/calibration.json"
+      - "projects/weehours/eval/laya.env"
+      - "projects/weehours/scripts/build-llama-xcframework.sh"
+  schedule:
+    - cron: "30 7 15 * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: weehours-llm-eval-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  eval:
+    name: Laya eval (llama-server, CPU)
+    runs-on: macos-26
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: projects/weehours
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pins
+        run: |
+          echo "LLAMA_COMMIT=$(sed -n 's/^LLAMA_COMMIT="\${LLAMA_COMMIT:-\(.*\)}"$/\1/p' scripts/build-llama-xcframework.sh)" >> "$GITHUB_ENV"
+          set -a; source eval/laya.env; set +a
+          echo "LAYA_REPO=$LAYA_REPO" >> "$GITHUB_ENV"
+          echo "LAYA_FILE=$LAYA_FILE" >> "$GITHUB_ENV"
+
+      - name: Cache llama-server
+        id: llama-cache
+        uses: actions/cache@v4
+        with:
+          path: projects/weehours/.llama-server
+          key: weehours-llama-server-${{ env.LLAMA_COMMIT }}-macos-cpu
+
+      # CPU build: GitHub's macOS VMs don't expose Metal to compute.
+      - name: Build llama-server
+        if: steps.llama-cache.outputs.cache-hit != 'true'
+        run: |
+          git clone --filter=blob:none https://github.com/ggml-org/llama.cpp.git /tmp/llama.cpp
+          git -C /tmp/llama.cpp checkout -q "$LLAMA_COMMIT"
+          cmake -S /tmp/llama.cpp -B /tmp/llama.cpp/build -DCMAKE_BUILD_TYPE=Release -DGGML_METAL=OFF -DLLAMA_CURL=OFF
+          cmake --build /tmp/llama.cpp/build -j --target llama-server
+          mkdir -p .llama-server && cp -R /tmp/llama.cpp/build/bin/. .llama-server/
+
+      - name: Cache model
+        id: model-cache
+        uses: actions/cache@v4
+        with:
+          path: projects/weehours/.laya-model
+          key: weehours-laya-${{ env.LAYA_REPO }}-${{ env.LAYA_FILE }}
+
+      - name: Download model
+        if: steps.model-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p .laya-model
+          curl -fL -o ".laya-model/$LAYA_FILE" "https://huggingface.co/$LAYA_REPO/resolve/main/$LAYA_FILE"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build logeval
+        working-directory: projects/weehours/apps/ios/LogCore
+        run: swift build -c release --product logeval
+
+      # The fine-tuning pipeline trains on this export; its tests check its labels against it.
+      - name: Export questions + fine-tuning pipeline tests (ml/)
+        run: |
+          mkdir -p ml/runs
+          (cd apps/ios/LogCore && .build/release/logeval --export "$PWD/../../../ml/runs/laya_export.json")
+          cd ml
+          python3 -m venv .venv
+          .venv/bin/pip install --quiet pytest
+          .venv/bin/python -m pytest -q
+
+      - name: Run eval
+        run: |
+          .llama-server/llama-server -m ".laya-model/$LAYA_FILE" --port 8089 -ub 2048 -b 2048 > /tmp/llama-server.log 2>&1 &
+          for _ in $(seq 1 120); do curl -s http://127.0.0.1:8089/health | grep -q ok && break; sleep 1; done
+          cd apps/ios/LogCore
+          .build/release/logeval --model http://127.0.0.1:8089 --design hierarchical --out /tmp/eval
+          .build/release/logeval --model http://127.0.0.1:8089 --design hierarchical --fit --out /tmp/eval
+
+      - name: Report
+        run: |
+          {
+            echo "Model: \`$LAYA_REPO/$LAYA_FILE\` · llama.cpp \`$LLAMA_COMMIT\` (CPU)"
+            echo
+            python3 eval/report.py --title "Raw" now=/tmp/eval/laya-hierarchical.json \
+              committed=eval/results/laya-hierarchical.json
+            python3 eval/report.py --title "Calibrated (fit on even rows, scored on odd)" \
+              now=/tmp/eval/laya-hierarchical-calibrated.json committed=eval/results/laya-hierarchical-calibrated.json
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: weehours-llm-eval-results
+          path: |
+            /tmp/eval/
+            /tmp/llama-server.log

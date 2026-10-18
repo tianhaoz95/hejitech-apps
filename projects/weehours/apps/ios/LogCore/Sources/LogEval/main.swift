@@ -7,6 +7,8 @@ import LogCore
 //
 //   swift run logeval --model http://127.0.0.1:8089 --design hierarchical --fit --out ../../../eval/results
 //   swift run logeval --model keywords            (deterministic, no model needed; used in CI)
+//   swift run logeval --export /tmp/laya.json     (the questions as the app asks them and each
+//                                                  row's gold labels, for ml/; runs no model)
 
 struct Row: Decodable {
     let text: String
@@ -22,6 +24,7 @@ struct Args {
     var fit = false
     var out: String?
     var label: String?
+    var export: String?
 
     init() {
         var it = CommandLine.arguments.dropFirst().makeIterator()
@@ -34,6 +37,7 @@ struct Args {
             case "--fit": fit = true
             case "--out": out = it.next()
             case "--label": label = it.next()
+            case "--export": export = it.next()
             default: FileHandle.standardError.write(Data("unknown argument \(a)\n".utf8))
             }
         }
@@ -110,6 +114,29 @@ func correct(_ c: Candidate, row: Row) -> Bool {
         }
     }
     return true
+}
+
+// 0. --export: the hierarchical questions (option order matters to Laya) and the gold answers
+// per row, so the fine-tuning pipeline (ml/) trains on exactly what the app asks.
+if let path = args.export {
+    let ctx = InterpretContext(reference: reference, log: DerivedLog(events: []), enabledCategories: allCategories)
+    let questions = VoiceInterpreter(model: KeywordDecisionModel(), registry: registry, design: .hierarchical)
+        .questions(for: ctx)
+    let exported: [String: Any] = [
+        "questions": questions.map { q -> [String: Any] in
+            ["id": q.id, "instructions": q.instructions,
+             "options": q.options.map { ["key": $0.key, "description": $0.description ?? NSNull()] as [String: Any] }]
+        },
+        "rows": rows.map { row -> [String: Any] in
+            var labels: [String: String] = [:]
+            for q in questions { if let g = gold(row, question: q.id) { labels[q.id] = g } }
+            return ["text": row.text, "gold": labels]
+        },
+    ]
+    let data = try JSONSerialization.data(withJSONObject: exported, options: [.prettyPrinted, .sortedKeys])
+    try data.write(to: URL(fileURLWithPath: path))
+    print("exported \(questions.count) questions and \(rows.count) rows to \(path)")
+    exit(0)
 }
 
 // 1. raw answers for every row (one model pass each)
