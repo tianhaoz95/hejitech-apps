@@ -9,6 +9,7 @@ struct SettingsView: View {
     @State private var invite: String?
     @State private var confirmDelete = false
     @State private var editingChild: UUID?
+    @State private var newChild: Baby?
     @State private var loaded = false
     @AppStorage(Feedback.key) private var shakeToReport = true
 
@@ -43,12 +44,10 @@ struct SettingsView: View {
                         .accessibilityIdentifier("settings-child-\(b.name)")
                     }
                     Button {
-                        let b = Baby(name: "", birthDate: draft.babies.last?.birthDate, position: (draft.babies.map(\.position).max() ?? 0) + 1)
-                        draft.babies.append(b)
-                        editingChild = b.id
+                        newChild = Baby(name: "", birthDate: draft.babies.last?.birthDate, position: (draft.babies.map(\.position).max() ?? 0) + 1)
                     } label: { Label("Add a child", systemImage: "plus") }
                 } header: { Text("Children") } footer: {
-                    Text("Children you add are shared with everyone in the household once you save. Hiding a child only changes this iPhone.")
+                    Text("A child you add is shared with everyone in the household. Hiding a child only changes this iPhone.")
                 }
                 Section("Tracking") {
                     ForEach(EventRegistry.shared.categories, id: \.id) { c in
@@ -150,9 +149,14 @@ struct SettingsView: View {
                 // bound by id, not position: the list can change while the editor is on screen
                 ChildEditor(baby: Binding(get: { draft.baby(id) ?? Baby(id: id, name: "") },
                                           set: { b in if let i = draft.babies.firstIndex(where: { $0.id == id }) { draft.babies[i] = b } }),
-                            household: draft, isNew: model.household.baby(id) == nil) {
-                    draft.babies.removeAll { $0.id == id }
-                    editingChild = nil
+                            household: draft)
+            }
+            .sheet(item: $newChild) { child in
+                AddChildSheet(child: child, household: draft) { added in
+                    // Add saves right away (with any other edits on this screen)
+                    var h = draft
+                    h.babies.append(added)
+                    Task { await model.save(h) }
                 }
             }
             // the draft keeps unsaved edits across the child editor and tab switches; a save (or
@@ -176,14 +180,44 @@ struct SettingsView: View {
     }
 }
 
+/// A new child, in a sheet: Cancel, or Add once it has a name.
+struct AddChildSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State var child: Baby
+    let household: Household
+    let add: (Baby) -> Void
+
+    private var name: String { child.name.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    var body: some View {
+        NavigationStack {
+            ChildEditor(baby: $child, household: household, isNew: true)
+                .navigationTitle("New child")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Add") {
+                            var b = child
+                            b.name = name
+                            add(b)
+                            dismiss()
+                        }
+                        .disabled(name.isEmpty)
+                        .accessibilityIdentifier("addChild")
+                    }
+                }
+        }
+    }
+}
+
 /// One child's settings. Name, birthday, colour and feeding apply household-wide (after Save);
 /// "Show on this iPhone" changes only this phone, right away.
 struct ChildEditor: View {
     @EnvironmentObject var model: AppModel
     @Binding var baby: Baby
     let household: Household
-    let isNew: Bool
-    let discard: () -> Void
+    var isNew = false
 
     var body: some View {
         Form {
@@ -226,16 +260,16 @@ struct ChildEditor: View {
             } footer: {
                 Text("Hidden children stay in the log and on your partner's phone; Now, widgets and the watch here leave them out.")
             }
-            Section {
-                if isNew {
-                    Button("Don't add", role: .destructive) { discard() }
-                } else if baby.archived {
-                    Button("Restore") { baby.archived = false }
-                } else if household.babies.filter({ !$0.archived }).count > 1 {
-                    Button("Archive", role: .destructive) { baby.archived = true }
+            if !isNew {
+                Section {
+                    if baby.archived {
+                        Button("Restore") { baby.archived = false }
+                    } else if household.babies.filter({ !$0.archived }).count > 1 {
+                        Button("Archive", role: .destructive) { baby.archived = true }
+                    }
+                } footer: {
+                    Text("Archiving keeps the child's log and export, and removes them from every phone's Now. Save to apply.")
                 }
-            } footer: {
-                if !isNew { Text("Archiving keeps the child's log and export, and removes them from every phone's Now. Save to apply.") }
             }
         }
         .navigationTitle(baby.name.isEmpty ? "New child" : baby.name)
