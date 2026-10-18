@@ -432,6 +432,24 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
         """
     }
 
+    /// System prompt for the `.light` proofread (Apple Intelligence and MLX). `internal` for
+    /// unit tests and the prompt export the LLM eval reads (`evals/llm`).
+    func buildLightSystemPrompt(dictionary: [DictionaryEntry]) -> String {
+        """
+        You lightly proofread a rough spoken voice-memo transcript. Fix only typos, grammar \
+        mistakes, and obvious speech-to-text errors, and remove filler words (um, uh, you know, \
+        sort of, kind of). Also remove any bracketed non-speech annotations the speech recognizer \
+        inserted, such as [Laughter], [Music], [Inaudible Remark], or [BLANK_AUDIO] -- these are \
+        the recognizer's own audio-event tags, not spoken words. Do NOT reorganize, summarize, \
+        restructure into lists, or drop any actual spoken content -- keep the original wording, \
+        sentence order, and level of detail as close to verbatim as possible. Respond with ONLY \
+        one valid JSON object -- no markdown code fences, \
+        no commentary before or after -- using exactly these keys: "title" (string, 8 words or \
+        fewer), "summary" (one sentence string), "cleanedText" (string, the full lightly-corrected \
+        transcript as continuous prose), "tags" (array of short hashtags starting with #).\(dictionaryInstructionBlock(dictionary))
+        """
+    }
+
     /// Parses step B's raw model output. Universal fields decode via a small `Decodable` type,
     /// but each template section's own field can't (its key isn't known at compile time), so
     /// this reads the same JSON via `JSONSerialization` instead and looks each one up by
@@ -482,19 +500,7 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
     }
 
     private func processWithOnDeviceLLMLight(transcript: String, dictionary: [DictionaryEntry]) async throws -> LLMProcessingResult {
-        let systemPrompt = """
-        You lightly proofread a rough spoken voice-memo transcript. Fix only typos, grammar \
-        mistakes, and obvious speech-to-text errors, and remove filler words (um, uh, you know, \
-        sort of, kind of). Also remove any bracketed non-speech annotations the speech recognizer \
-        inserted, such as [Laughter], [Music], [Inaudible Remark], or [BLANK_AUDIO] -- these are \
-        the recognizer's own audio-event tags, not spoken words. Do NOT reorganize, summarize, \
-        restructure into lists, or drop any actual spoken content -- keep the original wording, \
-        sentence order, and level of detail as close to verbatim as possible. Respond with ONLY \
-        one valid JSON object -- no markdown code fences, \
-        no commentary before or after -- using exactly these keys: "title" (string, 8 words or \
-        fewer), "summary" (one sentence string), "cleanedText" (string, the full lightly-corrected \
-        transcript as continuous prose), "tags" (array of short hashtags starting with #).\(dictionaryInstructionBlock(dictionary))
-        """
+        let systemPrompt = buildLightSystemPrompt(dictionary: dictionary)
 
         let raw = try await OnDeviceLLMService.shared.generate(systemPrompt: systemPrompt, userPrompt: transcriptUserPrompt(transcript, dictionary: dictionary))
 
@@ -608,19 +614,7 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
     }
 
     private func processWithAppleFoundationModelLight(transcript: String, dictionary: [DictionaryEntry]) async throws -> LLMProcessingResult {
-        let systemPrompt = """
-        You lightly proofread a rough spoken voice-memo transcript. Fix only typos, grammar \
-        mistakes, and obvious speech-to-text errors, and remove filler words (um, uh, you know, \
-        sort of, kind of). Also remove any bracketed non-speech annotations the speech recognizer \
-        inserted, such as [Laughter], [Music], [Inaudible Remark], or [BLANK_AUDIO] -- these are \
-        the recognizer's own audio-event tags, not spoken words. Do NOT reorganize, summarize, \
-        restructure into lists, or drop any actual spoken content -- keep the original wording, \
-        sentence order, and level of detail as close to verbatim as possible. Respond with ONLY \
-        one valid JSON object -- no markdown code fences, \
-        no commentary before or after -- using exactly these keys: "title" (string, 8 words or \
-        fewer), "summary" (one sentence string), "cleanedText" (string, the full lightly-corrected \
-        transcript as continuous prose), "tags" (array of short hashtags starting with #).\(dictionaryInstructionBlock(dictionary))
-        """
+        let systemPrompt = buildLightSystemPrompt(dictionary: dictionary)
 
         let raw = try await AppleFoundationModelService.shared.generate(systemPrompt: systemPrompt, userPrompt: transcriptUserPrompt(transcript, dictionary: dictionary))
 

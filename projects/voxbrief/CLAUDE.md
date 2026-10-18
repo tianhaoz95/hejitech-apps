@@ -35,6 +35,10 @@ releases up to v1.26.3). The root `CLAUDE.md` has the shared rules; what matters
   `.github/actions/apple-signing`. Never let `-allowProvisioningUpdates` mint certificates on an
   empty keychain. Voxbrief-only CI settings would be named `VOXBRIEF_…`.
 - **CI:** `.github/workflows/voxbrief-ci.yml` (macOS + iOS unit tests, also every 6 hours).
+- **LLM eval:** `.github/workflows/voxbrief-llm-eval.yml` scores the Stage 2 prompts on the bundled
+  Lite model (mlx-lm on CPU) whenever the prompts, templates or `evals/llm/` change; the pass rates
+  land in the run summary next to `evals/llm/baseline.json`. Check it after any prompt change, and
+  add a case to `evals/llm/cases.json` for every prompt-quality report. See `evals/llm/README.md`.
 - **Site and docs:** the landing page, privacy policy and support page are `site/` (static),
   published at https://tianhaoz95.github.io/hejitech-apps/voxbrief/site/; the developer overview
   is `docs/index.md` (https://tianhaoz95.github.io/hejitech-apps/voxbrief/). Both deploy with the

@@ -336,6 +336,10 @@ targets:
     deploymentTarget: "14.0"
     sources:
       - path: Tests/MacUnitTests
+      # Read from the bundle by LLMPromptExportTests: the source tree may sit on a volume the
+      # test host needs a privacy prompt to read.
+      - path: evals/llm/cases.json
+        buildPhase: resources
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.jacksonzhou666.voxbrief.mac.tests
     dependencies:

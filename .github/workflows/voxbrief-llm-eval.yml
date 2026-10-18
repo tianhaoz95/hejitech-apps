@@ -1,0 +1,149 @@
+name: Voxbrief LLM eval
+
+# Scores Voxbrief's Stage 2 prompts on the bundled on-device model (Qwen3-0.6B-4bit, "Lite"):
+# the macOS job exports the prompts the app itself builds (LLMPromptExportTests), the Linux job
+# runs them through mlx-lm on CPU and posts pass rates to the run summary. Report only, not a
+# gate: a small model's output varies, so watch the numbers against evals/llm/baseline.json.
+# Runs when the prompts, cases or harness change, and from the Actions tab (pick samples/model).
+# See projects/voxbrief/evals/llm/README.md.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "projects/voxbrief/evals/llm/**"
+      - "projects/voxbrief/VoxbriefApp/Services/LLMCopywriterService.swift"
+      - "projects/voxbrief/VoxbriefApp/Services/DictionaryCorrector.swift"
+      - "projects/voxbrief/VoxbriefApp/Services/VoiceCommandProcessor.swift"
+      - "projects/voxbrief/VoxbriefApp/Models/DictionaryEntry.swift"
+      - "projects/voxbrief/Shared/Models/NoteTemplate.swift"
+      - "projects/voxbrief/Tests/MacUnitTests/LLMPromptExportTests.swift"
+      - ".github/workflows/voxbrief-llm-eval.yml"
+  pull_request:
+    paths:
+      - "projects/voxbrief/evals/llm/**"
+      - "projects/voxbrief/VoxbriefApp/Services/LLMCopywriterService.swift"
+      - "projects/voxbrief/VoxbriefApp/Services/DictionaryCorrector.swift"
+      - "projects/voxbrief/VoxbriefApp/Services/VoiceCommandProcessor.swift"
+      - "projects/voxbrief/VoxbriefApp/Models/DictionaryEntry.swift"
+      - "projects/voxbrief/Shared/Models/NoteTemplate.swift"
+      - "projects/voxbrief/Tests/MacUnitTests/LLMPromptExportTests.swift"
+      - ".github/workflows/voxbrief-llm-eval.yml"
+  workflow_dispatch:
+    inputs:
+      samples:
+        description: Runs per case (fixed seeds 0..n-1)
+        default: "3"
+      model:
+        description: Hugging Face model id (Flash is mlx-community/Qwen3-4B-4bit)
+        default: mlx-community/Qwen3-0.6B-4bit
+
+concurrency:
+  group: voxbrief-llm-eval-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  export-prompts:
+    name: Export prompts (macOS)
+    runs-on: macos-26
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: projects/voxbrief
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "26"
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      # project.yml bundles the git-ignored model as a resource, so the app doesn't build without
+      # it. Same cache key as voxbrief-ci.yml.
+      - name: Cache bundled on-device model
+        id: model-cache
+        uses: actions/cache@v4
+        with:
+          path: projects/voxbrief/VoxbriefApp/Resources/Models/Qwen3-0.6B-4bit
+          key: voxbrief-qwen3-0.6b-4bit-mlx-community-v1
+
+      - name: Download bundled on-device model (Qwen3-0.6B-4bit)
+        if: steps.model-cache.outputs.cache-hit != 'true'
+        run: |
+          python3 -m pip install --break-system-packages --quiet -U "huggingface_hub"
+          hf download mlx-community/Qwen3-0.6B-4bit \
+            --local-dir VoxbriefApp/Resources/Models/Qwen3-0.6B-4bit
+
+      - name: Regenerate Xcode project
+        run: xcodegen generate
+
+      - name: Export prompts
+        run: |
+          mkdir -p evals/llm/out
+          TEST_RUNNER_VOXBRIEF_PROMPT_EXPORT="$PWD/evals/llm/out/prompts.json" \
+          xcodebuild test \
+            -project Voxbrief.xcodeproj \
+            -scheme VoxbriefMac \
+            -destination 'platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            -only-testing:VoxbriefMacTests/LLMPromptExportTests \
+            | tail -n 30
+          test -s evals/llm/out/prompts.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: voxbrief-llm-prompts
+          path: projects/voxbrief/evals/llm/out/prompts.json
+
+  eval:
+    name: Eval (mlx-lm, CPU)
+    needs: export-prompts
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: projects/voxbrief/evals/llm
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: projects/voxbrief/evals/llm/requirements.txt
+
+      - name: Install mlx-lm (CPU)
+        run: pip install -r requirements.txt
+
+      - name: Cache model
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: voxbrief-llm-eval-hf-${{ inputs.model || 'mlx-community/Qwen3-0.6B-4bit' }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: voxbrief-llm-prompts
+          path: projects/voxbrief/evals/llm/out
+
+      - name: Run eval
+        run: |
+          python run_eval.py \
+            --prompts out/prompts.json \
+            --model "${{ inputs.model || 'mlx-community/Qwen3-0.6B-4bit' }}" \
+            --samples "${{ inputs.samples || '3' }}"
+
+      - name: Post report
+        if: always()
+        run: test -f out/report.md && cat out/report.md >> "$GITHUB_STEP_SUMMARY" || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: voxbrief-llm-eval-results
+          path: projects/voxbrief/evals/llm/out/

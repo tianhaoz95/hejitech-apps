@@ -1,0 +1,201 @@
+[
+  {
+    "id": "dict-wotsbrief-report",
+    "category": "dictionary",
+    "note": "The 1.26.6 feedback report: 'Wotsbrief' kept in the title.",
+    "mode": "full",
+    "transcript": "For the Wotsbrief project, I'm planning a performance improvement in terms of prefix caching and faster model loading. We should also measure the cold start time.",
+    "dictionary": [{ "term": "Voxbrief" }],
+    "expect": { "contains": ["Voxbrief"], "not_contains_ci": ["wotsbrief"] }
+  },
+  {
+    "id": "dict-fox-brief-split",
+    "category": "dictionary",
+    "mode": "full",
+    "transcript": "I want fox brief to support a widget on the lock screen, and the fox brief settings page needs a dark mode toggle.",
+    "dictionary": [{ "term": "Voxbrief" }],
+    "expect": { "contains": ["Voxbrief"], "not_contains_ci": ["fox brief"] }
+  },
+  {
+    "id": "dict-superbase",
+    "category": "dictionary",
+    "mode": "full",
+    "transcript": "We need to migrate the backend from Firebase to Superbase, then move the auth tables and update the client keys.",
+    "dictionary": [{ "term": "Supabase" }],
+    "expect": { "contains": ["Supabase"], "not_contains_ci": ["superbase"] }
+  },
+  {
+    "id": "dict-kubernetties",
+    "category": "dictionary",
+    "mode": "full",
+    "transcript": "Deploy the service to Kubernetties next week and set up autoscaling on the cluster.",
+    "dictionary": [{ "term": "Kubernetes" }],
+    "expect": { "contains": ["Kubernetes"], "not_contains_ci": ["kubernetties"] }
+  },
+  {
+    "id": "dict-person-name",
+    "category": "dictionary",
+    "mode": "full",
+    "transcript": "Ask Pria Patell to review the design before Friday, and send the mockups to her team.",
+    "dictionary": [{ "term": "Priya Patel", "contextHint": "design lead" }],
+    "expect": { "contains": ["Priya Patel"], "not_contains_ci": ["pria patell"] }
+  },
+  {
+    "id": "dict-feedbackkit",
+    "category": "dictionary",
+    "mode": "full",
+    "transcript": "Feedback kit should group reports by screen and let the developer reply from the dashboard.",
+    "dictionary": [{ "term": "FeedbackKit" }],
+    "expect": { "contains": ["FeedbackKit"], "not_contains_ci": ["feedback kit"] }
+  },
+  {
+    "id": "dict-alias-teaches-variant",
+    "category": "dictionary",
+    "note": "The listed alias is 'fox brief'; the transcript has a different mishearing.",
+    "mode": "full",
+    "transcript": "Box brief needs a better onboarding flow, and box brief should explain the watch app on the first screen.",
+    "dictionary": [{ "term": "Voxbrief", "aliases": ["fox brief"] }],
+    "expect": { "contains": ["Voxbrief"], "not_contains_ci": ["box brief"] }
+  },
+  {
+    "id": "dict-several-terms",
+    "category": "dictionary",
+    "mode": "full",
+    "transcript": "Wox brief stores notes locally, but the sync server runs on Kubernetes and uses Superbase for auth.",
+    "dictionary": [{ "term": "Voxbrief" }, { "term": "Supabase" }, { "term": "Kubernetes" }],
+    "expect": { "contains": ["Voxbrief", "Supabase", "Kubernetes"], "not_contains_ci": ["wox brief", "superbase"] }
+  },
+  {
+    "id": "dict-light-wotsbrief",
+    "category": "dictionary",
+    "mode": "light",
+    "transcript": "Um so the Wotsbrief app should, uh, show a summary right after recording.",
+    "dictionary": [{ "term": "Voxbrief" }],
+    "expect": { "contains": ["Voxbrief"], "not_contains_ci": ["wotsbrief"] }
+  },
+  {
+    "id": "dict-light-superbase",
+    "category": "dictionary",
+    "mode": "light",
+    "transcript": "The login screen talks to Superbase, so we need to rotate the anon key before launch.",
+    "dictionary": [{ "term": "Supabase" }],
+    "expect": { "contains": ["Supabase"], "not_contains_ci": ["superbase"] }
+  },
+  {
+    "id": "fp-unrelated-note",
+    "category": "false-positive",
+    "note": "Dictionary terms must not be inserted into a note that never mentions them.",
+    "mode": "full",
+    "transcript": "Buy milk, eggs and bread on the way home, then call mom about the weekend.",
+    "dictionary": [{ "term": "Voxbrief" }, { "term": "Kubernetes" }, { "term": "Priya Patel" }, { "term": "Supabase" }],
+    "expect": { "not_contains_ci": ["voxbrief", "kubernetes", "priya", "supabase"] }
+  },
+  {
+    "id": "fp-unrelated-light",
+    "category": "false-positive",
+    "mode": "light",
+    "transcript": "The weather was great today so we walked to the park and had lunch by the lake.",
+    "dictionary": [{ "term": "Voxbrief" }, { "term": "Kubernetes" }, { "term": "Supabase" }],
+    "expect": { "not_contains_ci": ["voxbrief", "kubernetes", "supabase"] }
+  },
+  {
+    "id": "fp-notion-common-noun",
+    "category": "false-positive",
+    "mode": "full",
+    "transcript": "I like the notion of a four-day work week, it could really help the team recharge.",
+    "dictionary": [{ "term": "Notion", "contextHint": "the notes app" }],
+    "expect": { "body_not_contains": ["Notion"] }
+  },
+  {
+    "id": "fp-slack-common-noun",
+    "category": "false-positive",
+    "mode": "full",
+    "transcript": "There is some slack in the schedule, so we can push the launch by a week without any problem.",
+    "dictionary": [{ "term": "Slack", "contextHint": "team chat app" }],
+    "expect": { "body_not_contains": ["Slack"] }
+  },
+  {
+    "id": "cls-task-errands",
+    "category": "classification",
+    "mode": "full",
+    "transcript": "Tomorrow I have to renew my passport, pick up the dry cleaning and book a table for Saturday.",
+    "expect": { "template": "Task List", "min_items": { "tasks": 3 } }
+  },
+  {
+    "id": "cls-task-home",
+    "category": "classification",
+    "mode": "full",
+    "transcript": "Need to email the landlord, fix the leaking tap and order new printer ink.",
+    "expect": { "template": "Task List", "min_items": { "tasks": 3 } }
+  },
+  {
+    "id": "cls-email-invoice",
+    "category": "classification",
+    "mode": "full",
+    "transcript": "Send an email to Mark saying the invoice was paid yesterday and thanking him for his patience.",
+    "expect": { "template": "Email", "nonempty": ["subject", "body"] }
+  },
+  {
+    "id": "cls-email-recruiter",
+    "category": "classification",
+    "mode": "full",
+    "transcript": "Reply to the recruiter by email and tell them I'm available for a call on Thursday afternoon.",
+    "expect": { "template": "Email", "nonempty": ["subject", "body"] }
+  },
+  {
+    "id": "cls-tweet-complications",
+    "category": "classification",
+    "mode": "full",
+    "transcript": "Post a tweet that our app now supports Apple Watch complications and it's free to try.",
+    "expect": { "template": "Short Tweet", "max_chars": { "tweetText": 280 } }
+  },
+  {
+    "id": "cls-tweet-downloads",
+    "category": "classification",
+    "mode": "full",
+    "transcript": "Write a tweet saying we hit ten thousand downloads this week, thank you everyone.",
+    "expect": { "template": "Short Tweet", "max_chars": { "tweetText": 280 } }
+  },
+  {
+    "id": "cls-design-uploads",
+    "category": "classification",
+    "mode": "full",
+    "transcript": "The upload service must retry failed uploads three times. If the file is larger than one gigabyte, split it into chunks first. Then notify the user when it's done.",
+    "expect": { "template": "Design Doc" }
+  },
+  {
+    "id": "cls-design-login",
+    "category": "classification",
+    "mode": "full",
+    "transcript": "Requirements for the login page: it must support passkeys, remember the last account, and if the password fails five times it should show a captcha.",
+    "expect": { "template": "Design Doc" }
+  },
+  {
+    "id": "cls-general-office",
+    "category": "classification",
+    "mode": "full",
+    "transcript": "I've been wondering whether we should move to a smaller office, the commute has been tough lately and the space feels empty most days.",
+    "expect": { "template": "General Notes" }
+  },
+  {
+    "id": "cls-general-meeting",
+    "category": "classification",
+    "mode": "full",
+    "transcript": "Just reflecting on today's meeting, people seemed tired and I think the roadmap discussion went in circles for most of the hour.",
+    "expect": { "template": "General Notes" }
+  },
+  {
+    "id": "light-fillers-and-tags",
+    "category": "light",
+    "mode": "light",
+    "transcript": "Um so basically I, uh, think we should, you know, ship the beta on Monday [Laughter] and then gather feedback from the testers.",
+    "expect": { "contains_ci": ["beta", "monday", "feedback"], "not_contains_ci": ["[laughter]", "you know"], "not_words_ci": ["um", "uh"] }
+  },
+  {
+    "id": "light-keeps-content",
+    "category": "light",
+    "mode": "light",
+    "transcript": "First we open the app. Then we tap record. Finally we review the transcript and share it with the team.",
+    "expect": { "contains_ci": ["open the app", "record", "review the transcript", "share"] }
+  }
+]

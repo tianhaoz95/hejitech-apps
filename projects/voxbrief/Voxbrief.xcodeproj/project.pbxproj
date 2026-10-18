@@ -116,6 +116,7 @@
 		936364B94D1E1E7839A01DC9 /* VoxbriefApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2887D77F3766E9B5992BF4CD /* VoxbriefApp.swift */; };
 		945E814C8C7BD00FFAE02B83 /* AudioFileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 805582BA92BDC768F983C370 /* AudioFileManager.swift */; };
 		97423C8D59C66715E3817F3A /* LLMCopywriterService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD147AE1BD15A3E6E9E9EA8C /* LLMCopywriterService.swift */; };
+		97A3710116B5290E1D9427E4 /* cases.json in Resources */ = {isa = PBXBuildFile; fileRef = 54395C5812867FD9F3A80474 /* cases.json */; };
 		99AA4206F5D1BA2FF4C6DD3D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 251979C32C445301C3EDD38D /* Assets.xcassets */; };
 		99C50F6E5DA466503D6155E0 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 015D2CED079AC4D35BFD7889 /* SettingsView.swift */; };
 		9B57A74F93E88D5B0C0714C9 /* NoteTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4670A66832BC3EDB51D04C99 /* NoteTemplate.swift */; };
@@ -156,6 +157,7 @@
 		C4711C0DE2015BF180A7077A /* CaptureWaveformView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214322359CF4DEE6753E172E /* CaptureWaveformView.swift */; };
 		C62F31CCF5357A78F21C47A5 /* KeyboardHandoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38326DAFB38C97F2FF11D41B /* KeyboardHandoff.swift */; };
 		C8ABA9BEC2112569C5505238 /* MLXLLM in Frameworks */ = {isa = PBXBuildFile; productRef = F12B540EED6866922E9E23CF /* MLXLLM */; };
+		C92DECFED0FCCFF3EFCE56E3 /* LLMPromptExportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CEECC0352AAD60D2E540189 /* LLMPromptExportTests.swift */; };
 		C9CF200D94495FFBAEA7FA37 /* AudioConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 988E0BDCC158250481339E11 /* AudioConstants.swift */; };
 		CB36FED367B66F0719E37778 /* VoxbriefMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F61EA36A51AF152AC8E9882D /* VoxbriefMacApp.swift */; };
 		CC8A8294AA9C21B91FA4CB8C /* KeyboardSetupStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C774501050A357DEB4FA1AA /* KeyboardSetupStatus.swift */; };
@@ -311,6 +313,7 @@
 		4C7490BC66ADC2FB729D084B /* VoxbriefLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoxbriefLiveActivity.swift; sourceTree = "<group>"; };
 		4E1023302B3222C429215588 /* DataBackupServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataBackupServiceTests.swift; sourceTree = "<group>"; };
 		4F9E58587D34FC957F4AE403 /* LLMCopywriterServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMCopywriterServiceTests.swift; sourceTree = "<group>"; };
+		54395C5812867FD9F3A80474 /* cases.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = cases.json; sourceTree = "<group>"; };
 		560015483170C2C0F42ED686 /* TemplateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateStore.swift; sourceTree = "<group>"; };
 		5719502D7118C6E4D80CEED3 /* WhatsNewViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsNewViewTests.swift; sourceTree = "<group>"; };
 		57C43AFCEE906F715A993001 /* RecordingCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingCoordinator.swift; sourceTree = "<group>"; };
@@ -337,6 +340,7 @@
 		87305FD3E2876F8BDBAFB53A /* NoteExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteExportService.swift; sourceTree = "<group>"; };
 		8C20D11D5E1327FBD57ADC9F /* AudioStorageManagementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioStorageManagementTests.swift; sourceTree = "<group>"; };
 		8C774501050A357DEB4FA1AA /* KeyboardSetupStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardSetupStatus.swift; sourceTree = "<group>"; };
+		8CEECC0352AAD60D2E540189 /* LLMPromptExportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMPromptExportTests.swift; sourceTree = "<group>"; };
 		8D816BE4FBE91E1B52B14A93 /* MicrophonePermissionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicrophonePermissionManager.swift; sourceTree = "<group>"; };
 		8E16EF8E03690A86F8E50308 /* AudioPlaybackServiceExtendedTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlaybackServiceExtendedTests.swift; sourceTree = "<group>"; };
 		917D0366004B01DE5CC2CEA7 /* CaptureCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureCoordinator.swift; sourceTree = "<group>"; };
@@ -488,6 +492,14 @@
 				FFA176190C87B452BCDB1DC5 /* Views */,
 			);
 			path = Shared;
+			sourceTree = "<group>";
+		};
+		08F23D16F9120CFEE9B43C86 /* llm */ = {
+			isa = PBXGroup;
+			children = (
+				54395C5812867FD9F3A80474 /* cases.json */,
+			);
+			path = llm;
 			sourceTree = "<group>";
 		};
 		17B2D4376B4D9A467285980C /* Resources */ = {
@@ -680,6 +692,14 @@
 			path = VoxbriefApp;
 			sourceTree = "<group>";
 		};
+		97E8D944EF78C75A4F24A5D1 /* evals */ = {
+			isa = PBXGroup;
+			children = (
+				08F23D16F9120CFEE9B43C86 /* llm */,
+			);
+			path = evals;
+			sourceTree = "<group>";
+		};
 		99A367A324023CD3FC3C58CE /* Services */ = {
 			isa = PBXGroup;
 			children = (
@@ -694,6 +714,7 @@
 			isa = PBXGroup;
 			children = (
 				45BC8B9500EFFF14E2F325BD /* FeedbackShortcutTests.swift */,
+				8CEECC0352AAD60D2E540189 /* LLMPromptExportTests.swift */,
 				B333509FBA0A166F5102396F /* UpdateCheckerTests.swift */,
 			);
 			path = MacUnitTests;
@@ -808,6 +829,7 @@
 		F3AB579659BA72E5180162D2 = {
 			isa = PBXGroup;
 			children = (
+				97E8D944EF78C75A4F24A5D1 /* evals */,
 				07683DFB3779D8D3D724D909 /* Shared */,
 				39379177EAA7DA351EC411EB /* Tests */,
 				8A4AD2D1CD9D7BF090B2A3D8 /* VoxbriefApp */,
@@ -845,6 +867,7 @@
 			buildConfigurationList = 04D268164B7F8398EBD8B9D7 /* Build configuration list for PBXNativeTarget "VoxbriefMacTests" */;
 			buildPhases = (
 				D8FDBC4293CAE9C7E2EE101B /* Sources */,
+				2DFC9E99D54748EFBD79D42F /* Resources */,
 			);
 			buildRules = (
 			);
@@ -1065,6 +1088,14 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		2DFC9E99D54748EFBD79D42F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				97A3710116B5290E1D9427E4 /* cases.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		742AF5DBE8102D6228D74D91 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -1312,6 +1343,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				EB714002C57569EB559FA748 /* FeedbackShortcutTests.swift in Sources */,
+				C92DECFED0FCCFF3EFCE56E3 /* LLMPromptExportTests.swift in Sources */,
 				51DD55546D795135739D6785 /* UpdateCheckerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1553,7 +1585,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MARKETING_VERSION = 1.26.6;
+				MARKETING_VERSION = 1.26.7;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1653,7 +1685,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MARKETING_VERSION = 1.26.6;
+				MARKETING_VERSION = 1.26.7;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
