@@ -7,68 +7,70 @@
 	objects = {
 /* Begin PBXBuildFile section */
 		001700170017001700170017 /* ToddlerPlay.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 000D000D000D000D000D000D /* ToddlerPlay.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		003200320032003200320032 /* FeedbackKit in Frameworks */ = {isa = PBXBuildFile; productRef = 003100310031003100310031 /* FeedbackKit */; };
 		002900290029002900290029 /* TinyTouchWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 002200220022002200220022 /* TinyTouchWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		000000000000000000000202 /* IOSHapticsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000201 /* IOSHapticsManager.swift */; };
 		000000000000000000000204 /* IOSSettingsSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000203 /* IOSSettingsSyncManager.swift */; };
 		000000000000000000000206 /* IOSSoundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000205 /* IOSSoundManager.swift */; };
-		000000000000000000000208 /* TinyTouchiOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000207 /* TinyTouchiOSApp.swift */; };
-		00000000000000000000020A /* GamePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000209 /* GamePreviewView.swift */; };
-		00000000000000000000020C /* ParentDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000020B /* ParentDashboardView.swift */; };
-		00000000000000000000020E /* SafetyGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000020D /* SafetyGuideView.swift */; };
-		000000000000000000000210 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000020F /* Assets.xcassets */; };
-		000000000000000000000212 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000211 /* PrivacyInfo.xcprivacy */; };
-		000000000000000000000214 /* boing.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000213 /* boing.wav */; };
-		000000000000000000000216 /* bubble_pop.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000215 /* bubble_pop.wav */; };
-		000000000000000000000218 /* chime_a4.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000217 /* chime_a4.wav */; };
-		00000000000000000000021A /* chime_c4.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000219 /* chime_c4.wav */; };
-		00000000000000000000021C /* chime_c5.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000021B /* chime_c5.wav */; };
-		00000000000000000000021E /* chime_d4.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000021D /* chime_d4.wav */; };
-		000000000000000000000220 /* chime_e4.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000021F /* chime_e4.wav */; };
-		000000000000000000000222 /* chime_g4.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000221 /* chime_g4.wav */; };
-		000000000000000000000224 /* lullaby.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000223 /* lullaby.wav */; };
-		000000000000000000000226 /* meow.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000225 /* meow.wav */; };
-		000000000000000000000228 /* moo.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000227 /* moo.wav */; };
-		00000000000000000000022A /* quack.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000229 /* quack.wav */; };
-		00000000000000000000022C /* ribbit.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000022B /* ribbit.wav */; };
-		00000000000000000000022E /* sparkle.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000022D /* sparkle.wav */; };
-		000000000000000000000230 /* unlock.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000022F /* unlock.wav */; };
-		000000000000000000000232 /* woof.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000231 /* woof.wav */; };
-		000000000000000000000234 /* GameMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000233 /* GameMode.swift */; };
-		000000000000000000000236 /* HapticsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000235 /* HapticsManager.swift */; };
-		000000000000000000000238 /* SessionKeeper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000237 /* SessionKeeper.swift */; };
-		00000000000000000000023A /* SoundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000239 /* SoundManager.swift */; };
-		00000000000000000000023C /* WatchConnectivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000023B /* WatchConnectivityManager.swift */; };
-		00000000000000000000023E /* ToddlerPlayApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000023D /* ToddlerPlayApp.swift */; };
-		000000000000000000000240 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000023F /* AppState.swift */; };
-		000000000000000000000242 /* ShapeViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000241 /* ShapeViews.swift */; };
-		000000000000000000000244 /* AnimalFriendsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000243 /* AnimalFriendsView.swift */; };
-		000000000000000000000246 /* BubblePopView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000245 /* BubblePopView.swift */; };
-		000000000000000000000248 /* SleepyMoonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000247 /* SleepyMoonView.swift */; };
-		00000000000000000000024A /* SoundGardenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000249 /* SoundGardenView.swift */; };
-		00000000000000000000024C /* SparkleCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000024B /* SparkleCanvasView.swift */; };
-		00000000000000000000024E /* MainContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000024D /* MainContainerView.swift */; };
-		000000000000000000000250 /* ParentDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000024F /* ParentDashboardView.swift */; };
-		000000000000000000000252 /* ParentGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000251 /* ParentGuideView.swift */; };
-		000000000000000000000254 /* ParentShieldButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000253 /* ParentShieldButton.swift */; };
-		000000000000000000000256 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000255 /* Assets.xcassets */; };
-		000000000000000000000258 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000257 /* PrivacyInfo.xcprivacy */; };
-		00000000000000000000025A /* boing.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000259 /* boing.wav */; };
-		00000000000000000000025C /* bubble_pop.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000025B /* bubble_pop.wav */; };
-		00000000000000000000025E /* chime_a4.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000025D /* chime_a4.wav */; };
-		000000000000000000000260 /* chime_c4.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000025F /* chime_c4.wav */; };
-		000000000000000000000262 /* chime_c5.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000261 /* chime_c5.wav */; };
-		000000000000000000000264 /* chime_d4.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000263 /* chime_d4.wav */; };
-		000000000000000000000266 /* chime_e4.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000265 /* chime_e4.wav */; };
-		000000000000000000000268 /* chime_g4.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000267 /* chime_g4.wav */; };
-		00000000000000000000026A /* lullaby.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000269 /* lullaby.wav */; };
-		00000000000000000000026C /* meow.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000026B /* meow.wav */; };
-		00000000000000000000026E /* moo.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000026D /* moo.wav */; };
-		000000000000000000000270 /* quack.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000026F /* quack.wav */; };
-		000000000000000000000272 /* ribbit.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000271 /* ribbit.wav */; };
-		000000000000000000000274 /* sparkle.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000273 /* sparkle.wav */; };
-		000000000000000000000276 /* unlock.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000275 /* unlock.wav */; };
-		000000000000000000000278 /* woof.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000277 /* woof.wav */; };
-		00000000000000000000027A /* TinyTouchWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000279 /* TinyTouchWidget.swift */; };
+		000000000000000000000208 /* ParentFeedback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000207 /* ParentFeedback.swift */; };
+		00000000000000000000020A /* TinyTouchiOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000209 /* TinyTouchiOSApp.swift */; };
+		00000000000000000000020C /* GamePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000020B /* GamePreviewView.swift */; };
+		00000000000000000000020E /* ParentDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000020D /* ParentDashboardView.swift */; };
+		000000000000000000000210 /* SafetyGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000020F /* SafetyGuideView.swift */; };
+		000000000000000000000212 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000211 /* Assets.xcassets */; };
+		000000000000000000000214 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000213 /* PrivacyInfo.xcprivacy */; };
+		000000000000000000000216 /* boing.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000215 /* boing.wav */; };
+		000000000000000000000218 /* bubble_pop.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000217 /* bubble_pop.wav */; };
+		00000000000000000000021A /* chime_a4.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000219 /* chime_a4.wav */; };
+		00000000000000000000021C /* chime_c4.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000021B /* chime_c4.wav */; };
+		00000000000000000000021E /* chime_c5.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000021D /* chime_c5.wav */; };
+		000000000000000000000220 /* chime_d4.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000021F /* chime_d4.wav */; };
+		000000000000000000000222 /* chime_e4.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000221 /* chime_e4.wav */; };
+		000000000000000000000224 /* chime_g4.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000223 /* chime_g4.wav */; };
+		000000000000000000000226 /* lullaby.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000225 /* lullaby.wav */; };
+		000000000000000000000228 /* meow.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000227 /* meow.wav */; };
+		00000000000000000000022A /* moo.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000229 /* moo.wav */; };
+		00000000000000000000022C /* quack.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000022B /* quack.wav */; };
+		00000000000000000000022E /* ribbit.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000022D /* ribbit.wav */; };
+		000000000000000000000230 /* sparkle.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000022F /* sparkle.wav */; };
+		000000000000000000000232 /* unlock.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000231 /* unlock.wav */; };
+		000000000000000000000234 /* woof.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000233 /* woof.wav */; };
+		000000000000000000000236 /* GameMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000235 /* GameMode.swift */; };
+		000000000000000000000238 /* HapticsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000237 /* HapticsManager.swift */; };
+		00000000000000000000023A /* SessionKeeper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000239 /* SessionKeeper.swift */; };
+		00000000000000000000023C /* SoundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000023B /* SoundManager.swift */; };
+		00000000000000000000023E /* WatchConnectivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000023D /* WatchConnectivityManager.swift */; };
+		000000000000000000000240 /* ToddlerPlayApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000023F /* ToddlerPlayApp.swift */; };
+		000000000000000000000242 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000241 /* AppState.swift */; };
+		000000000000000000000244 /* ShapeViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000243 /* ShapeViews.swift */; };
+		000000000000000000000246 /* AnimalFriendsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000245 /* AnimalFriendsView.swift */; };
+		000000000000000000000248 /* BubblePopView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000247 /* BubblePopView.swift */; };
+		00000000000000000000024A /* SleepyMoonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000249 /* SleepyMoonView.swift */; };
+		00000000000000000000024C /* SoundGardenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000024B /* SoundGardenView.swift */; };
+		00000000000000000000024E /* SparkleCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000024D /* SparkleCanvasView.swift */; };
+		000000000000000000000250 /* MainContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000024F /* MainContainerView.swift */; };
+		000000000000000000000252 /* ParentDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000251 /* ParentDashboardView.swift */; };
+		000000000000000000000254 /* ParentGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000253 /* ParentGuideView.swift */; };
+		000000000000000000000256 /* ParentShieldButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000255 /* ParentShieldButton.swift */; };
+		000000000000000000000258 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000257 /* Assets.xcassets */; };
+		00000000000000000000025A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000259 /* PrivacyInfo.xcprivacy */; };
+		00000000000000000000025C /* boing.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000025B /* boing.wav */; };
+		00000000000000000000025E /* bubble_pop.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000025D /* bubble_pop.wav */; };
+		000000000000000000000260 /* chime_a4.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000025F /* chime_a4.wav */; };
+		000000000000000000000262 /* chime_c4.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000261 /* chime_c4.wav */; };
+		000000000000000000000264 /* chime_c5.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000263 /* chime_c5.wav */; };
+		000000000000000000000266 /* chime_d4.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000265 /* chime_d4.wav */; };
+		000000000000000000000268 /* chime_e4.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000267 /* chime_e4.wav */; };
+		00000000000000000000026A /* chime_g4.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000269 /* chime_g4.wav */; };
+		00000000000000000000026C /* lullaby.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000026B /* lullaby.wav */; };
+		00000000000000000000026E /* meow.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000026D /* meow.wav */; };
+		000000000000000000000270 /* moo.wav in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000026F /* moo.wav */; };
+		000000000000000000000272 /* quack.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000271 /* quack.wav */; };
+		000000000000000000000274 /* ribbit.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000273 /* ribbit.wav */; };
+		000000000000000000000276 /* sparkle.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000275 /* sparkle.wav */; };
+		000000000000000000000278 /* unlock.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000277 /* unlock.wav */; };
+		00000000000000000000027A /* woof.wav in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000279 /* woof.wav */; };
+		00000000000000000000027C /* TinyTouchWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000027B /* TinyTouchWidget.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -120,64 +122,65 @@
 		000000000000000000000201 /* IOSHapticsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TinyTouchiOS/Sources/Services/IOSHapticsManager.swift"; sourceTree = "<group>"; };
 		000000000000000000000203 /* IOSSettingsSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TinyTouchiOS/Sources/Services/IOSSettingsSyncManager.swift"; sourceTree = "<group>"; };
 		000000000000000000000205 /* IOSSoundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TinyTouchiOS/Sources/Services/IOSSoundManager.swift"; sourceTree = "<group>"; };
-		000000000000000000000207 /* TinyTouchiOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TinyTouchiOS/Sources/TinyTouchiOSApp.swift"; sourceTree = "<group>"; };
-		000000000000000000000209 /* GamePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TinyTouchiOS/Sources/Views/GamePreviewView.swift"; sourceTree = "<group>"; };
-		00000000000000000000020B /* ParentDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TinyTouchiOS/Sources/Views/ParentDashboardView.swift"; sourceTree = "<group>"; };
-		00000000000000000000020D /* SafetyGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TinyTouchiOS/Sources/Views/SafetyGuideView.swift"; sourceTree = "<group>"; };
-		00000000000000000000020F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "TinyTouchiOS/Resources/Assets.xcassets"; sourceTree = "<group>"; };
-		000000000000000000000211 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "TinyTouchiOS/Resources/PrivacyInfo.xcprivacy"; sourceTree = "<group>"; };
-		000000000000000000000213 /* boing.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/boing.wav"; sourceTree = "<group>"; };
-		000000000000000000000215 /* bubble_pop.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/bubble_pop.wav"; sourceTree = "<group>"; };
-		000000000000000000000217 /* chime_a4.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/chime_a4.wav"; sourceTree = "<group>"; };
-		000000000000000000000219 /* chime_c4.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/chime_c4.wav"; sourceTree = "<group>"; };
-		00000000000000000000021B /* chime_c5.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/chime_c5.wav"; sourceTree = "<group>"; };
-		00000000000000000000021D /* chime_d4.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/chime_d4.wav"; sourceTree = "<group>"; };
-		00000000000000000000021F /* chime_e4.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/chime_e4.wav"; sourceTree = "<group>"; };
-		000000000000000000000221 /* chime_g4.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/chime_g4.wav"; sourceTree = "<group>"; };
-		000000000000000000000223 /* lullaby.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/lullaby.wav"; sourceTree = "<group>"; };
-		000000000000000000000225 /* meow.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/meow.wav"; sourceTree = "<group>"; };
-		000000000000000000000227 /* moo.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/moo.wav"; sourceTree = "<group>"; };
-		000000000000000000000229 /* quack.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/quack.wav"; sourceTree = "<group>"; };
-		00000000000000000000022B /* ribbit.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/ribbit.wav"; sourceTree = "<group>"; };
-		00000000000000000000022D /* sparkle.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/sparkle.wav"; sourceTree = "<group>"; };
-		00000000000000000000022F /* unlock.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/unlock.wav"; sourceTree = "<group>"; };
-		000000000000000000000231 /* woof.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/woof.wav"; sourceTree = "<group>"; };
-		000000000000000000000233 /* GameMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Models/GameMode.swift"; sourceTree = "<group>"; };
-		000000000000000000000235 /* HapticsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Services/HapticsManager.swift"; sourceTree = "<group>"; };
-		000000000000000000000237 /* SessionKeeper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Services/SessionKeeper.swift"; sourceTree = "<group>"; };
-		000000000000000000000239 /* SoundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Services/SoundManager.swift"; sourceTree = "<group>"; };
-		00000000000000000000023B /* WatchConnectivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Services/WatchConnectivityManager.swift"; sourceTree = "<group>"; };
-		00000000000000000000023D /* ToddlerPlayApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/ToddlerPlayApp.swift"; sourceTree = "<group>"; };
-		00000000000000000000023F /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/ViewModels/AppState.swift"; sourceTree = "<group>"; };
-		000000000000000000000241 /* ShapeViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Views/Components/ShapeViews.swift"; sourceTree = "<group>"; };
-		000000000000000000000243 /* AnimalFriendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Views/Games/AnimalFriendsView.swift"; sourceTree = "<group>"; };
-		000000000000000000000245 /* BubblePopView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Views/Games/BubblePopView.swift"; sourceTree = "<group>"; };
-		000000000000000000000247 /* SleepyMoonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Views/Games/SleepyMoonView.swift"; sourceTree = "<group>"; };
-		000000000000000000000249 /* SoundGardenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Views/Games/SoundGardenView.swift"; sourceTree = "<group>"; };
-		00000000000000000000024B /* SparkleCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Views/Games/SparkleCanvasView.swift"; sourceTree = "<group>"; };
-		00000000000000000000024D /* MainContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Views/MainContainerView.swift"; sourceTree = "<group>"; };
-		00000000000000000000024F /* ParentDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Views/ParentLock/ParentDashboardView.swift"; sourceTree = "<group>"; };
-		000000000000000000000251 /* ParentGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Views/ParentLock/ParentGuideView.swift"; sourceTree = "<group>"; };
-		000000000000000000000253 /* ParentShieldButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Views/ParentLock/ParentShieldButton.swift"; sourceTree = "<group>"; };
-		000000000000000000000255 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "ToddlerPlay/Resources/Assets.xcassets"; sourceTree = "<group>"; };
-		000000000000000000000257 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "ToddlerPlay/Resources/PrivacyInfo.xcprivacy"; sourceTree = "<group>"; };
-		000000000000000000000259 /* boing.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/boing.wav"; sourceTree = "<group>"; };
-		00000000000000000000025B /* bubble_pop.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/bubble_pop.wav"; sourceTree = "<group>"; };
-		00000000000000000000025D /* chime_a4.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/chime_a4.wav"; sourceTree = "<group>"; };
-		00000000000000000000025F /* chime_c4.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/chime_c4.wav"; sourceTree = "<group>"; };
-		000000000000000000000261 /* chime_c5.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/chime_c5.wav"; sourceTree = "<group>"; };
-		000000000000000000000263 /* chime_d4.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/chime_d4.wav"; sourceTree = "<group>"; };
-		000000000000000000000265 /* chime_e4.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/chime_e4.wav"; sourceTree = "<group>"; };
-		000000000000000000000267 /* chime_g4.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/chime_g4.wav"; sourceTree = "<group>"; };
-		000000000000000000000269 /* lullaby.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/lullaby.wav"; sourceTree = "<group>"; };
-		00000000000000000000026B /* meow.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/meow.wav"; sourceTree = "<group>"; };
-		00000000000000000000026D /* moo.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/moo.wav"; sourceTree = "<group>"; };
-		00000000000000000000026F /* quack.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/quack.wav"; sourceTree = "<group>"; };
-		000000000000000000000271 /* ribbit.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/ribbit.wav"; sourceTree = "<group>"; };
-		000000000000000000000273 /* sparkle.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/sparkle.wav"; sourceTree = "<group>"; };
-		000000000000000000000275 /* unlock.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/unlock.wav"; sourceTree = "<group>"; };
-		000000000000000000000277 /* woof.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/woof.wav"; sourceTree = "<group>"; };
-		000000000000000000000279 /* TinyTouchWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TinyTouchWidget/TinyTouchWidget.swift"; sourceTree = "<group>"; };
+		000000000000000000000207 /* ParentFeedback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TinyTouchiOS/Sources/Services/ParentFeedback.swift"; sourceTree = "<group>"; };
+		000000000000000000000209 /* TinyTouchiOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TinyTouchiOS/Sources/TinyTouchiOSApp.swift"; sourceTree = "<group>"; };
+		00000000000000000000020B /* GamePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TinyTouchiOS/Sources/Views/GamePreviewView.swift"; sourceTree = "<group>"; };
+		00000000000000000000020D /* ParentDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TinyTouchiOS/Sources/Views/ParentDashboardView.swift"; sourceTree = "<group>"; };
+		00000000000000000000020F /* SafetyGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TinyTouchiOS/Sources/Views/SafetyGuideView.swift"; sourceTree = "<group>"; };
+		000000000000000000000211 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "TinyTouchiOS/Resources/Assets.xcassets"; sourceTree = "<group>"; };
+		000000000000000000000213 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "TinyTouchiOS/Resources/PrivacyInfo.xcprivacy"; sourceTree = "<group>"; };
+		000000000000000000000215 /* boing.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/boing.wav"; sourceTree = "<group>"; };
+		000000000000000000000217 /* bubble_pop.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/bubble_pop.wav"; sourceTree = "<group>"; };
+		000000000000000000000219 /* chime_a4.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/chime_a4.wav"; sourceTree = "<group>"; };
+		00000000000000000000021B /* chime_c4.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/chime_c4.wav"; sourceTree = "<group>"; };
+		00000000000000000000021D /* chime_c5.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/chime_c5.wav"; sourceTree = "<group>"; };
+		00000000000000000000021F /* chime_d4.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/chime_d4.wav"; sourceTree = "<group>"; };
+		000000000000000000000221 /* chime_e4.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/chime_e4.wav"; sourceTree = "<group>"; };
+		000000000000000000000223 /* chime_g4.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/chime_g4.wav"; sourceTree = "<group>"; };
+		000000000000000000000225 /* lullaby.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/lullaby.wav"; sourceTree = "<group>"; };
+		000000000000000000000227 /* meow.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/meow.wav"; sourceTree = "<group>"; };
+		000000000000000000000229 /* moo.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/moo.wav"; sourceTree = "<group>"; };
+		00000000000000000000022B /* quack.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/quack.wav"; sourceTree = "<group>"; };
+		00000000000000000000022D /* ribbit.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/ribbit.wav"; sourceTree = "<group>"; };
+		00000000000000000000022F /* sparkle.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/sparkle.wav"; sourceTree = "<group>"; };
+		000000000000000000000231 /* unlock.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/unlock.wav"; sourceTree = "<group>"; };
+		000000000000000000000233 /* woof.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "TinyTouchiOS/Resources/Sounds/woof.wav"; sourceTree = "<group>"; };
+		000000000000000000000235 /* GameMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Models/GameMode.swift"; sourceTree = "<group>"; };
+		000000000000000000000237 /* HapticsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Services/HapticsManager.swift"; sourceTree = "<group>"; };
+		000000000000000000000239 /* SessionKeeper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Services/SessionKeeper.swift"; sourceTree = "<group>"; };
+		00000000000000000000023B /* SoundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Services/SoundManager.swift"; sourceTree = "<group>"; };
+		00000000000000000000023D /* WatchConnectivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Services/WatchConnectivityManager.swift"; sourceTree = "<group>"; };
+		00000000000000000000023F /* ToddlerPlayApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/ToddlerPlayApp.swift"; sourceTree = "<group>"; };
+		000000000000000000000241 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/ViewModels/AppState.swift"; sourceTree = "<group>"; };
+		000000000000000000000243 /* ShapeViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Views/Components/ShapeViews.swift"; sourceTree = "<group>"; };
+		000000000000000000000245 /* AnimalFriendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Views/Games/AnimalFriendsView.swift"; sourceTree = "<group>"; };
+		000000000000000000000247 /* BubblePopView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Views/Games/BubblePopView.swift"; sourceTree = "<group>"; };
+		000000000000000000000249 /* SleepyMoonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Views/Games/SleepyMoonView.swift"; sourceTree = "<group>"; };
+		00000000000000000000024B /* SoundGardenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Views/Games/SoundGardenView.swift"; sourceTree = "<group>"; };
+		00000000000000000000024D /* SparkleCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Views/Games/SparkleCanvasView.swift"; sourceTree = "<group>"; };
+		00000000000000000000024F /* MainContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Views/MainContainerView.swift"; sourceTree = "<group>"; };
+		000000000000000000000251 /* ParentDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Views/ParentLock/ParentDashboardView.swift"; sourceTree = "<group>"; };
+		000000000000000000000253 /* ParentGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Views/ParentLock/ParentGuideView.swift"; sourceTree = "<group>"; };
+		000000000000000000000255 /* ParentShieldButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToddlerPlay/Sources/Views/ParentLock/ParentShieldButton.swift"; sourceTree = "<group>"; };
+		000000000000000000000257 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "ToddlerPlay/Resources/Assets.xcassets"; sourceTree = "<group>"; };
+		000000000000000000000259 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "ToddlerPlay/Resources/PrivacyInfo.xcprivacy"; sourceTree = "<group>"; };
+		00000000000000000000025B /* boing.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/boing.wav"; sourceTree = "<group>"; };
+		00000000000000000000025D /* bubble_pop.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/bubble_pop.wav"; sourceTree = "<group>"; };
+		00000000000000000000025F /* chime_a4.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/chime_a4.wav"; sourceTree = "<group>"; };
+		000000000000000000000261 /* chime_c4.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/chime_c4.wav"; sourceTree = "<group>"; };
+		000000000000000000000263 /* chime_c5.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/chime_c5.wav"; sourceTree = "<group>"; };
+		000000000000000000000265 /* chime_d4.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/chime_d4.wav"; sourceTree = "<group>"; };
+		000000000000000000000267 /* chime_e4.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/chime_e4.wav"; sourceTree = "<group>"; };
+		000000000000000000000269 /* chime_g4.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/chime_g4.wav"; sourceTree = "<group>"; };
+		00000000000000000000026B /* lullaby.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/lullaby.wav"; sourceTree = "<group>"; };
+		00000000000000000000026D /* meow.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/meow.wav"; sourceTree = "<group>"; };
+		00000000000000000000026F /* moo.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/moo.wav"; sourceTree = "<group>"; };
+		000000000000000000000271 /* quack.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/quack.wav"; sourceTree = "<group>"; };
+		000000000000000000000273 /* ribbit.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/ribbit.wav"; sourceTree = "<group>"; };
+		000000000000000000000275 /* sparkle.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/sparkle.wav"; sourceTree = "<group>"; };
+		000000000000000000000277 /* unlock.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/unlock.wav"; sourceTree = "<group>"; };
+		000000000000000000000279 /* woof.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "ToddlerPlay/Resources/Sounds/woof.wav"; sourceTree = "<group>"; };
+		00000000000000000000027B /* TinyTouchWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TinyTouchWidget/TinyTouchWidget.swift"; sourceTree = "<group>"; };
 		002F002F002F002F002F002F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "TinyTouchWidget/Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -185,7 +188,9 @@
 		000F000F000F000F000F000F /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
-			files = ();
+			files = (
+				003200320032003200320032 /* FeedbackKit in Frameworks */,
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		001300130013001300130013 /* Frameworks */ = {
@@ -228,10 +233,11 @@
 				000000000000000000000201 /* IOSHapticsManager.swift */,
 				000000000000000000000203 /* IOSSettingsSyncManager.swift */,
 				000000000000000000000205 /* IOSSoundManager.swift */,
-				000000000000000000000207 /* TinyTouchiOSApp.swift */,
-				000000000000000000000209 /* GamePreviewView.swift */,
-				00000000000000000000020B /* ParentDashboardView.swift */,
-				00000000000000000000020D /* SafetyGuideView.swift */,
+				000000000000000000000207 /* ParentFeedback.swift */,
+				000000000000000000000209 /* TinyTouchiOSApp.swift */,
+				00000000000000000000020B /* GamePreviewView.swift */,
+				00000000000000000000020D /* ParentDashboardView.swift */,
+				00000000000000000000020F /* SafetyGuideView.swift */,
 			);
 			name = Sources;
 			sourceTree = "<group>";
@@ -239,24 +245,24 @@
 		000900090009000900090009 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
-				00000000000000000000020F /* Assets.xcassets */,
-				000000000000000000000211 /* PrivacyInfo.xcprivacy */,
-				000000000000000000000213 /* boing.wav */,
-				000000000000000000000215 /* bubble_pop.wav */,
-				000000000000000000000217 /* chime_a4.wav */,
-				000000000000000000000219 /* chime_c4.wav */,
-				00000000000000000000021B /* chime_c5.wav */,
-				00000000000000000000021D /* chime_d4.wav */,
-				00000000000000000000021F /* chime_e4.wav */,
-				000000000000000000000221 /* chime_g4.wav */,
-				000000000000000000000223 /* lullaby.wav */,
-				000000000000000000000225 /* meow.wav */,
-				000000000000000000000227 /* moo.wav */,
-				000000000000000000000229 /* quack.wav */,
-				00000000000000000000022B /* ribbit.wav */,
-				00000000000000000000022D /* sparkle.wav */,
-				00000000000000000000022F /* unlock.wav */,
-				000000000000000000000231 /* woof.wav */,
+				000000000000000000000211 /* Assets.xcassets */,
+				000000000000000000000213 /* PrivacyInfo.xcprivacy */,
+				000000000000000000000215 /* boing.wav */,
+				000000000000000000000217 /* bubble_pop.wav */,
+				000000000000000000000219 /* chime_a4.wav */,
+				00000000000000000000021B /* chime_c4.wav */,
+				00000000000000000000021D /* chime_c5.wav */,
+				00000000000000000000021F /* chime_d4.wav */,
+				000000000000000000000221 /* chime_e4.wav */,
+				000000000000000000000223 /* chime_g4.wav */,
+				000000000000000000000225 /* lullaby.wav */,
+				000000000000000000000227 /* meow.wav */,
+				000000000000000000000229 /* moo.wav */,
+				00000000000000000000022B /* quack.wav */,
+				00000000000000000000022D /* ribbit.wav */,
+				00000000000000000000022F /* sparkle.wav */,
+				000000000000000000000231 /* unlock.wav */,
+				000000000000000000000233 /* woof.wav */,
 			);
 			name = Resources;
 			sourceTree = "<group>";
@@ -273,23 +279,23 @@
 		000A000A000A000A000A000A /* Sources */ = {
 			isa = PBXGroup;
 			children = (
-				000000000000000000000233 /* GameMode.swift */,
-				000000000000000000000235 /* HapticsManager.swift */,
-				000000000000000000000237 /* SessionKeeper.swift */,
-				000000000000000000000239 /* SoundManager.swift */,
-				00000000000000000000023B /* WatchConnectivityManager.swift */,
-				00000000000000000000023D /* ToddlerPlayApp.swift */,
-				00000000000000000000023F /* AppState.swift */,
-				000000000000000000000241 /* ShapeViews.swift */,
-				000000000000000000000243 /* AnimalFriendsView.swift */,
-				000000000000000000000245 /* BubblePopView.swift */,
-				000000000000000000000247 /* SleepyMoonView.swift */,
-				000000000000000000000249 /* SoundGardenView.swift */,
-				00000000000000000000024B /* SparkleCanvasView.swift */,
-				00000000000000000000024D /* MainContainerView.swift */,
-				00000000000000000000024F /* ParentDashboardView.swift */,
-				000000000000000000000251 /* ParentGuideView.swift */,
-				000000000000000000000253 /* ParentShieldButton.swift */,
+				000000000000000000000235 /* GameMode.swift */,
+				000000000000000000000237 /* HapticsManager.swift */,
+				000000000000000000000239 /* SessionKeeper.swift */,
+				00000000000000000000023B /* SoundManager.swift */,
+				00000000000000000000023D /* WatchConnectivityManager.swift */,
+				00000000000000000000023F /* ToddlerPlayApp.swift */,
+				000000000000000000000241 /* AppState.swift */,
+				000000000000000000000243 /* ShapeViews.swift */,
+				000000000000000000000245 /* AnimalFriendsView.swift */,
+				000000000000000000000247 /* BubblePopView.swift */,
+				000000000000000000000249 /* SleepyMoonView.swift */,
+				00000000000000000000024B /* SoundGardenView.swift */,
+				00000000000000000000024D /* SparkleCanvasView.swift */,
+				00000000000000000000024F /* MainContainerView.swift */,
+				000000000000000000000251 /* ParentDashboardView.swift */,
+				000000000000000000000253 /* ParentGuideView.swift */,
+				000000000000000000000255 /* ParentShieldButton.swift */,
 			);
 			name = Sources;
 			sourceTree = "<group>";
@@ -297,24 +303,24 @@
 		000B000B000B000B000B000B /* Resources */ = {
 			isa = PBXGroup;
 			children = (
-				000000000000000000000255 /* Assets.xcassets */,
-				000000000000000000000257 /* PrivacyInfo.xcprivacy */,
-				000000000000000000000259 /* boing.wav */,
-				00000000000000000000025B /* bubble_pop.wav */,
-				00000000000000000000025D /* chime_a4.wav */,
-				00000000000000000000025F /* chime_c4.wav */,
-				000000000000000000000261 /* chime_c5.wav */,
-				000000000000000000000263 /* chime_d4.wav */,
-				000000000000000000000265 /* chime_e4.wav */,
-				000000000000000000000267 /* chime_g4.wav */,
-				000000000000000000000269 /* lullaby.wav */,
-				00000000000000000000026B /* meow.wav */,
-				00000000000000000000026D /* moo.wav */,
-				00000000000000000000026F /* quack.wav */,
-				000000000000000000000271 /* ribbit.wav */,
-				000000000000000000000273 /* sparkle.wav */,
-				000000000000000000000275 /* unlock.wav */,
-				000000000000000000000277 /* woof.wav */,
+				000000000000000000000257 /* Assets.xcassets */,
+				000000000000000000000259 /* PrivacyInfo.xcprivacy */,
+				00000000000000000000025B /* boing.wav */,
+				00000000000000000000025D /* bubble_pop.wav */,
+				00000000000000000000025F /* chime_a4.wav */,
+				000000000000000000000261 /* chime_c4.wav */,
+				000000000000000000000263 /* chime_c5.wav */,
+				000000000000000000000265 /* chime_d4.wav */,
+				000000000000000000000267 /* chime_e4.wav */,
+				000000000000000000000269 /* chime_g4.wav */,
+				00000000000000000000026B /* lullaby.wav */,
+				00000000000000000000026D /* meow.wav */,
+				00000000000000000000026F /* moo.wav */,
+				000000000000000000000271 /* quack.wav */,
+				000000000000000000000273 /* ribbit.wav */,
+				000000000000000000000275 /* sparkle.wav */,
+				000000000000000000000277 /* unlock.wav */,
+				000000000000000000000279 /* woof.wav */,
 			);
 			name = Resources;
 			sourceTree = "<group>";
@@ -322,7 +328,7 @@
 		002D002D002D002D002D002D /* TinyTouchWidget */ = {
 			isa = PBXGroup;
 			children = (
-				000000000000000000000279 /* TinyTouchWidget.swift */,
+				00000000000000000000027B /* TinyTouchWidget.swift */,
 				002F002F002F002F002F002F /* Info.plist */,
 			);
 			name = TinyTouchWidget;
@@ -355,6 +361,9 @@
 				001600160016001600160016 /* PBXTargetDependency */,
 			);
 			name = TinyTouch;
+			packageProductDependencies = (
+				003100310031003100310031 /* FeedbackKit */,
+			);
 			productName = TinyTouch;
 			productReference = 000C000C000C000C000C000C /* TinyTouch.app */;
 			productType = "com.apple.product-type.application";
@@ -427,6 +436,9 @@
 				Base,
 			);
 			mainGroup = 000400040004000400040004;
+			packageReferences = (
+				003000300030003000300030 /* XCRemoteSwiftPackageReference "feedback-kit" */,
+			);
 			productRefGroup = 000700070007000700070007 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -443,24 +455,24 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				000000000000000000000210 /* Assets.xcassets in Resources */,
-				000000000000000000000212 /* PrivacyInfo.xcprivacy in Resources */,
-				000000000000000000000214 /* boing.wav in Resources */,
-				000000000000000000000216 /* bubble_pop.wav in Resources */,
-				000000000000000000000218 /* chime_a4.wav in Resources */,
-				00000000000000000000021A /* chime_c4.wav in Resources */,
-				00000000000000000000021C /* chime_c5.wav in Resources */,
-				00000000000000000000021E /* chime_d4.wav in Resources */,
-				000000000000000000000220 /* chime_e4.wav in Resources */,
-				000000000000000000000222 /* chime_g4.wav in Resources */,
-				000000000000000000000224 /* lullaby.wav in Resources */,
-				000000000000000000000226 /* meow.wav in Resources */,
-				000000000000000000000228 /* moo.wav in Resources */,
-				00000000000000000000022A /* quack.wav in Resources */,
-				00000000000000000000022C /* ribbit.wav in Resources */,
-				00000000000000000000022E /* sparkle.wav in Resources */,
-				000000000000000000000230 /* unlock.wav in Resources */,
-				000000000000000000000232 /* woof.wav in Resources */,
+				000000000000000000000212 /* Assets.xcassets in Resources */,
+				000000000000000000000214 /* PrivacyInfo.xcprivacy in Resources */,
+				000000000000000000000216 /* boing.wav in Resources */,
+				000000000000000000000218 /* bubble_pop.wav in Resources */,
+				00000000000000000000021A /* chime_a4.wav in Resources */,
+				00000000000000000000021C /* chime_c4.wav in Resources */,
+				00000000000000000000021E /* chime_c5.wav in Resources */,
+				000000000000000000000220 /* chime_d4.wav in Resources */,
+				000000000000000000000222 /* chime_e4.wav in Resources */,
+				000000000000000000000224 /* chime_g4.wav in Resources */,
+				000000000000000000000226 /* lullaby.wav in Resources */,
+				000000000000000000000228 /* meow.wav in Resources */,
+				00000000000000000000022A /* moo.wav in Resources */,
+				00000000000000000000022C /* quack.wav in Resources */,
+				00000000000000000000022E /* ribbit.wav in Resources */,
+				000000000000000000000230 /* sparkle.wav in Resources */,
+				000000000000000000000232 /* unlock.wav in Resources */,
+				000000000000000000000234 /* woof.wav in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -468,24 +480,24 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				000000000000000000000256 /* Assets.xcassets in Resources */,
-				000000000000000000000258 /* PrivacyInfo.xcprivacy in Resources */,
-				00000000000000000000025A /* boing.wav in Resources */,
-				00000000000000000000025C /* bubble_pop.wav in Resources */,
-				00000000000000000000025E /* chime_a4.wav in Resources */,
-				000000000000000000000260 /* chime_c4.wav in Resources */,
-				000000000000000000000262 /* chime_c5.wav in Resources */,
-				000000000000000000000264 /* chime_d4.wav in Resources */,
-				000000000000000000000266 /* chime_e4.wav in Resources */,
-				000000000000000000000268 /* chime_g4.wav in Resources */,
-				00000000000000000000026A /* lullaby.wav in Resources */,
-				00000000000000000000026C /* meow.wav in Resources */,
-				00000000000000000000026E /* moo.wav in Resources */,
-				000000000000000000000270 /* quack.wav in Resources */,
-				000000000000000000000272 /* ribbit.wav in Resources */,
-				000000000000000000000274 /* sparkle.wav in Resources */,
-				000000000000000000000276 /* unlock.wav in Resources */,
-				000000000000000000000278 /* woof.wav in Resources */,
+				000000000000000000000258 /* Assets.xcassets in Resources */,
+				00000000000000000000025A /* PrivacyInfo.xcprivacy in Resources */,
+				00000000000000000000025C /* boing.wav in Resources */,
+				00000000000000000000025E /* bubble_pop.wav in Resources */,
+				000000000000000000000260 /* chime_a4.wav in Resources */,
+				000000000000000000000262 /* chime_c4.wav in Resources */,
+				000000000000000000000264 /* chime_c5.wav in Resources */,
+				000000000000000000000266 /* chime_d4.wav in Resources */,
+				000000000000000000000268 /* chime_e4.wav in Resources */,
+				00000000000000000000026A /* chime_g4.wav in Resources */,
+				00000000000000000000026C /* lullaby.wav in Resources */,
+				00000000000000000000026E /* meow.wav in Resources */,
+				000000000000000000000270 /* moo.wav in Resources */,
+				000000000000000000000272 /* quack.wav in Resources */,
+				000000000000000000000274 /* ribbit.wav in Resources */,
+				000000000000000000000276 /* sparkle.wav in Resources */,
+				000000000000000000000278 /* unlock.wav in Resources */,
+				00000000000000000000027A /* woof.wav in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -506,10 +518,11 @@
 				000000000000000000000202 /* IOSHapticsManager.swift in Sources */,
 				000000000000000000000204 /* IOSSettingsSyncManager.swift in Sources */,
 				000000000000000000000206 /* IOSSoundManager.swift in Sources */,
-				000000000000000000000208 /* TinyTouchiOSApp.swift in Sources */,
-				00000000000000000000020A /* GamePreviewView.swift in Sources */,
-				00000000000000000000020C /* ParentDashboardView.swift in Sources */,
-				00000000000000000000020E /* SafetyGuideView.swift in Sources */,
+				000000000000000000000208 /* ParentFeedback.swift in Sources */,
+				00000000000000000000020A /* TinyTouchiOSApp.swift in Sources */,
+				00000000000000000000020C /* GamePreviewView.swift in Sources */,
+				00000000000000000000020E /* ParentDashboardView.swift in Sources */,
+				000000000000000000000210 /* SafetyGuideView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -517,23 +530,23 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				000000000000000000000234 /* GameMode.swift in Sources */,
-				000000000000000000000236 /* HapticsManager.swift in Sources */,
-				000000000000000000000238 /* SessionKeeper.swift in Sources */,
-				00000000000000000000023A /* SoundManager.swift in Sources */,
-				00000000000000000000023C /* WatchConnectivityManager.swift in Sources */,
-				00000000000000000000023E /* ToddlerPlayApp.swift in Sources */,
-				000000000000000000000240 /* AppState.swift in Sources */,
-				000000000000000000000242 /* ShapeViews.swift in Sources */,
-				000000000000000000000244 /* AnimalFriendsView.swift in Sources */,
-				000000000000000000000246 /* BubblePopView.swift in Sources */,
-				000000000000000000000248 /* SleepyMoonView.swift in Sources */,
-				00000000000000000000024A /* SoundGardenView.swift in Sources */,
-				00000000000000000000024C /* SparkleCanvasView.swift in Sources */,
-				00000000000000000000024E /* MainContainerView.swift in Sources */,
-				000000000000000000000250 /* ParentDashboardView.swift in Sources */,
-				000000000000000000000252 /* ParentGuideView.swift in Sources */,
-				000000000000000000000254 /* ParentShieldButton.swift in Sources */,
+				000000000000000000000236 /* GameMode.swift in Sources */,
+				000000000000000000000238 /* HapticsManager.swift in Sources */,
+				00000000000000000000023A /* SessionKeeper.swift in Sources */,
+				00000000000000000000023C /* SoundManager.swift in Sources */,
+				00000000000000000000023E /* WatchConnectivityManager.swift in Sources */,
+				000000000000000000000240 /* ToddlerPlayApp.swift in Sources */,
+				000000000000000000000242 /* AppState.swift in Sources */,
+				000000000000000000000244 /* ShapeViews.swift in Sources */,
+				000000000000000000000246 /* AnimalFriendsView.swift in Sources */,
+				000000000000000000000248 /* BubblePopView.swift in Sources */,
+				00000000000000000000024A /* SleepyMoonView.swift in Sources */,
+				00000000000000000000024C /* SoundGardenView.swift in Sources */,
+				00000000000000000000024E /* SparkleCanvasView.swift in Sources */,
+				000000000000000000000250 /* MainContainerView.swift in Sources */,
+				000000000000000000000252 /* ParentDashboardView.swift in Sources */,
+				000000000000000000000254 /* ParentGuideView.swift in Sources */,
+				000000000000000000000256 /* ParentShieldButton.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -541,7 +554,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				00000000000000000000027A /* TinyTouchWidget.swift in Sources */,
+				00000000000000000000027C /* TinyTouchWidget.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -841,6 +854,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		003000300030003000300030 /* XCRemoteSwiftPackageReference "feedback-kit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/tianhaoz95/feedback-kit";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.62;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		003100310031003100310031 /* FeedbackKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 003000300030003000300030 /* XCRemoteSwiftPackageReference "feedback-kit" */;
+			productName = FeedbackKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 	};
 	rootObject = 000100010001000100010001 /* Project object */;

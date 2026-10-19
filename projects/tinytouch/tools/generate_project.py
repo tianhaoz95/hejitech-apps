@@ -63,6 +63,11 @@ def generate_project(ios_sources, ios_resources, watch_sources, watch_resources,
     
     ios_sources_phase_id = "000E000E000E000E000E000E"
     ios_frameworks_phase_id = "000F000F000F000F000F000F"
+
+    # FeedbackKit (Swift package, linked into the iPhone app only)
+    fk_package_ref_id = "003000300030003000300030"
+    fk_product_dep_id = "003100310031003100310031"
+    fk_build_file_id = "003200320032003200320032"
     ios_resources_phase_id = "001000100010001000100010"
     embed_watch_phase_id = "001100110011001100110011"
     
@@ -136,6 +141,7 @@ def generate_project(ios_sources, ios_resources, watch_sources, watch_resources,
     # PBXBuildFile section
     pbx.append("/* Begin PBXBuildFile section */")
     pbx.append(f"\t\t{watch_embed_build_file_id} /* ToddlerPlay.app in Embed Watch Content */ = {{isa = PBXBuildFile; fileRef = {watch_app_product_id} /* ToddlerPlay.app */; settings = {{ATTRIBUTES = (RemoveHeadersOnCopy, ); }}; }};")
+    pbx.append(f"\t\t{fk_build_file_id} /* FeedbackKit in Frameworks */ = {{isa = PBXBuildFile; productRef = {fk_product_dep_id} /* FeedbackKit */; }};")
     pbx.append(f"\t\t{widget_embed_build_file_id} /* TinyTouchWidget.appex in Embed App Extensions */ = {{isa = PBXBuildFile; fileRef = {widget_product_id} /* TinyTouchWidget.appex */; settings = {{ATTRIBUTES = (RemoveHeadersOnCopy, ); }}; }};")
     
     for f_ref, b_ref, fname, fpath, is_src, is_res in ios_file_entries:
@@ -232,7 +238,9 @@ def generate_project(ios_sources, ios_resources, watch_sources, watch_resources,
     pbx.append(f"\t\t{ios_frameworks_phase_id} /* Frameworks */ = {{")
     pbx.append("\t\t\tisa = PBXFrameworksBuildPhase;")
     pbx.append("\t\t\tbuildActionMask = 2147483647;")
-    pbx.append("\t\t\tfiles = ();")
+    pbx.append("\t\t\tfiles = (")
+    pbx.append(f"\t\t\t\t{fk_build_file_id} /* FeedbackKit in Frameworks */,")
+    pbx.append("\t\t\t);")
     pbx.append("\t\t\trunOnlyForDeploymentPostprocessing = 0;")
     pbx.append("\t\t};")
     pbx.append(f"\t\t{watch_frameworks_phase_id} /* Frameworks */ = {{")
@@ -368,6 +376,9 @@ def generate_project(ios_sources, ios_resources, watch_sources, watch_resources,
     pbx.append(f"\t\t\t\t{watch_dep_id} /* PBXTargetDependency */,")
     pbx.append("\t\t\t);")
     pbx.append("\t\t\tname = TinyTouch;")
+    pbx.append("\t\t\tpackageProductDependencies = (")
+    pbx.append(f"\t\t\t\t{fk_product_dep_id} /* FeedbackKit */,")
+    pbx.append("\t\t\t);")
     pbx.append("\t\t\tproductName = TinyTouch;")
     pbx.append(f"\t\t\tproductReference = {ios_app_product_id} /* TinyTouch.app */;")
     pbx.append("\t\t\tproductType = \"com.apple.product-type.application\";")
@@ -446,6 +457,9 @@ def generate_project(ios_sources, ios_resources, watch_sources, watch_resources,
     pbx.append("\t\t\t\tBase,")
     pbx.append("\t\t\t);")
     pbx.append(f"\t\t\tmainGroup = {main_group_id};")
+    pbx.append("\t\t\tpackageReferences = (")
+    pbx.append(f"\t\t\t\t{fk_package_ref_id} /* XCRemoteSwiftPackageReference \"feedback-kit\" */,")
+    pbx.append("\t\t\t);")
     pbx.append(f"\t\t\tproductRefGroup = {products_group_id} /* Products */;")
     pbx.append("\t\t\tprojectDirPath = \"\";")
     pbx.append("\t\t\tprojectRoot = \"\";")
@@ -843,6 +857,28 @@ def generate_project(ios_sources, ios_resources, watch_sources, watch_resources,
     pbx.append("\t\t\tdefaultConfigurationName = Release;")
     pbx.append("\t\t};")
     pbx.append("/* End XCConfigurationList section */")
+    pbx.append("")
+
+    # In-app feedback (FeedbackKit project "TinyTouch"), from its published repo: never a path into
+    # another project of the monorepo.
+    pbx.append("/* Begin XCRemoteSwiftPackageReference section */")
+    pbx.append(f"\t\t{fk_package_ref_id} /* XCRemoteSwiftPackageReference \"feedback-kit\" */ = {{")
+    pbx.append("\t\t\tisa = XCRemoteSwiftPackageReference;")
+    pbx.append("\t\t\trepositoryURL = \"https://github.com/tianhaoz95/feedback-kit\";")
+    pbx.append("\t\t\trequirement = {")
+    pbx.append("\t\t\t\tkind = upToNextMajorVersion;")
+    pbx.append("\t\t\t\tminimumVersion = 1.0.62;")
+    pbx.append("\t\t\t};")
+    pbx.append("\t\t};")
+    pbx.append("/* End XCRemoteSwiftPackageReference section */")
+    pbx.append("")
+    pbx.append("/* Begin XCSwiftPackageProductDependency section */")
+    pbx.append(f"\t\t{fk_product_dep_id} /* FeedbackKit */ = {{")
+    pbx.append("\t\t\tisa = XCSwiftPackageProductDependency;")
+    pbx.append(f"\t\t\tpackage = {fk_package_ref_id} /* XCRemoteSwiftPackageReference \"feedback-kit\" */;")
+    pbx.append("\t\t\tproductName = FeedbackKit;")
+    pbx.append("\t\t};")
+    pbx.append("/* End XCSwiftPackageProductDependency section */")
     pbx.append("")
     
     pbx.append("\t};")

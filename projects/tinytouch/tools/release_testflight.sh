@@ -15,6 +15,11 @@
 #   APPLE_TEAM_ID                        -- Apple Developer Team ID
 #
 # The build number (CFBundleVersion) is the current UTC timestamp, so uploads never collide.
+#
+# After the upload, `feedbackkit release` marks merged FeedbackKit fixes as shipped in this build so
+# reporters get asked "is it fixed?". CI passes FEEDBACKKIT_RELEASE_TOKEN (a project access token
+# with releases:write, secret TINYTOUCH_FEEDBACKKIT_RELEASE_TOKEN); without it, or
+# `npx feedbackkit-cli login` locally, it only warns and the upload still counts.
 
 set -euo pipefail
 
@@ -50,6 +55,8 @@ echo "-> Using build number $BUILD_NUMBER (CFBundleVersion)"
 mkdir -p "$BUILD_DIR"
 rm -rf "$ARCHIVE_PATH" "$EXPORT_PATH"
 
+# Development, not Distribution, for the archive: the FeedbackKit package's targets are always
+# signed as development; the export re-signs with the team's Apple Distribution cert.
 echo "-> Archiving TinyTouch (Release, embeds the watch app + widget)..."
 xcodebuild archive \
   -project "$PROJECT_DIR/ToddlerPlay.xcodeproj" \
@@ -61,6 +68,7 @@ xcodebuild archive \
   -authenticationKeyPath "$ASC_KEY_PATH" \
   -authenticationKeyID "$ASC_KEY_ID" \
   -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+  CODE_SIGN_IDENTITY="Apple Development" \
   DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
   CURRENT_PROJECT_VERSION="$BUILD_NUMBER"
 
@@ -94,4 +102,10 @@ xcodebuild -exportArchive \
   -authenticationKeyIssuerID "$ASC_ISSUER_ID"
 
 echo "✅ Build $BUILD_NUMBER uploaded to App Store Connect."
+
+echo "-> Announcing build $BUILD_NUMBER to FeedbackKit..."
+APP_VERSION="$(sed -nE 's/^[[:space:]]*MARKETING_VERSION = "?([0-9.]+)"?;.*/\1/p' "$PROJECT_DIR/ToddlerPlay.xcodeproj/project.pbxproj" | head -1)"
+if ! npx -y feedbackkit-cli release --build "$BUILD_NUMBER" --app-version "$APP_VERSION"; then
+  echo "warning: feedbackkit release failed; run it by hand: npx feedbackkit-cli release --build $BUILD_NUMBER" >&2
+fi
 echo "   It will appear in TestFlight once Apple finishes processing (usually a few minutes)."

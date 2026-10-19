@@ -29,6 +29,12 @@ since 2026-10-19 (imported with its history from `tianhaoz95/TinyTouch`, now arc
   distribution, `DEV_SIGNING_P12_*` development, `ASC_*`, `APPLE_TEAM_ID`) via
   `.github/actions/apple-signing`; the old repo's own secrets and `upload_ci_secrets.py` are gone.
   TinyTouch-only CI settings would be named `TINYTOUCH_…`.
+- **Feedback:** FeedbackKit project "TinyTouch" (`4b41d9bb-dbe4-4c88-b3d9-90a3ee08426f`, key `pk_66d3a549ae0915c22927f9c7b417ce337c85`, package from
+  `github.com/tianhaoz95/feedback-kit`). Shake to report only, behind a parent setting that defaults
+  to **off** (iPhone app only, `TinyTouchiOS/Sources/Services/ParentFeedback.swift`, toggle under Help & Feedback on the parent dashboard; the package reference is written by `tools/generate_project.py`); off means FeedbackKit is fully disabled (no shake, no "is it fixed?" card),
+  so a toddler can't open it. Never add a floating button or turn it on by default (Kids Category),
+  and keep the privacy policies in step. Releases announce each build to FeedbackKit with
+  `TINYTOUCH_FEEDBACKKIT_RELEASE_TOKEN`; fix commits get a `FeedbackKit: <id>` trailer.
 - **CI:** `.github/workflows/tinytouch-ci.yml` (`swift tools/run_tests.swift`, generator drift
   check, iPhone build with the watch app embedded).
 - **Site and docs:** the landing page, privacy policy and support page are `site/` (static, was
@@ -269,7 +275,7 @@ Outputs 16 lossless 44.1kHz 16-bit PCM WAVs to both `ToddlerPlay/Resources/Sound
 - **Graceful End-of-Session Transitions**: When play timers expire, never cut the screen black abruptly. Always transition into the calm `SleepyMoonView` with soothing music-box lullaby.
 
 ### Privacy & App Store Compliance
-- **Zero Data Collection**: No analytics SDKs, no tracking identifiers, no remote logging, no network requests other than local Bluetooth `WatchConnectivity`.
+- **Zero Data Collection**: No analytics SDKs, no tracking identifiers, no remote logging, no network requests other than local Bluetooth `WatchConnectivity` and feedback a parent opts into and sends (FeedbackKit, off by default; see "Feedback" above).
 - **Encryption Exemption**: Always ensure `INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO` is set across all targets to exempt the app from US export compliance questionnaires.
 - **Made for Kids**: Adhere to Apple's strict Kids category guidelines (no outside links without parental gate, no ads, no third-party libraries).
 

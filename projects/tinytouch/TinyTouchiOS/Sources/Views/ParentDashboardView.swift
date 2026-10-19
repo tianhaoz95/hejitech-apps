@@ -8,6 +8,7 @@ struct ParentDashboardView: View {
     @State private var showingSyncAlert = false
     @State private var syncAlertTitle = "Settings Synced"
     @State private var syncAlertMessage = ""
+    @AppStorage(ParentFeedback.key) private var shakeToReport = false
     
     let gameModes = [
         ("bubbles", "Bubble Pop", "circle.hexagongrid.circle.fill", Color.pink),
@@ -36,7 +37,10 @@ struct ParentDashboardView: View {
                     // 5. Guides & Sandbox Links
                     quickLinksSection
                     
-                    // 6. Screen Time & Privacy Notice
+                    // 6. Feedback to the developer (off by default)
+                    feedbackSection
+
+                    // 7. Screen Time & Privacy Notice
                     footerSection
                 }
                 .padding()
@@ -413,7 +417,32 @@ struct ParentDashboardView: View {
         }
     }
     
-    // MARK: - 6. Footer Section
+    // MARK: - 6. Feedback Section
+    private var feedbackSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Label("Help & Feedback", systemImage: "bubble.left.and.exclamationmark.bubble.right")
+                .font(.headline)
+
+            VStack(spacing: 0) {
+                ToggleRow(
+                    icon: "iphone.radiowaves.left.and.right",
+                    color: .indigo,
+                    title: "Shake to Send Feedback",
+                    subtitle: "Shake this iPhone to report a problem to the developer",
+                    isOn: $shakeToReport
+                )
+                .onChange(of: shakeToReport) { _, enabled in ParentFeedback.apply(enabled: enabled) }
+            }
+            .background(Color(uiColor: .secondarySystemBackground))
+            .cornerRadius(16)
+
+            Text("Sends a screenshot (you can mark it up first), your note, and the app version, device model and iOS version, only when you submit. Leave it off if your child uses this iPhone.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+    }
+
+    // MARK: - 7. Footer Section
     private var footerSection: some View {
         VStack(spacing: 14) {
             HStack(spacing: 12) {
@@ -424,7 +453,7 @@ struct ParentDashboardView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("100% Kid-Safe & Private")
                         .font(.footnote.weight(.semibold))
-                    Text("No tracking, no ads, no analytics. All settings sync directly over local Bluetooth.")
+                    Text("No tracking, no ads, no analytics. All settings sync directly over local Bluetooth; only feedback you choose to send leaves the phone.")
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
@@ -434,7 +463,7 @@ struct ParentDashboardView: View {
             .background(Color.green.opacity(0.1))
             .cornerRadius(14)
             
-            Text("TinyTouch v1.4 • Connected Apple Watch Companion")
+            Text("TinyTouch v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "") • Connected Apple Watch Companion")
                 .font(.caption2)
                 .foregroundColor(.secondary)
                 .padding(.bottom, 16)
