@@ -518,10 +518,15 @@ struct ToastView: View {
     var body: some View {
         if let toast = model.toast {
             HStack {
-                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                if toast.reopen != nil {
+                    Image(systemName: "note.text").foregroundStyle(.secondary)
+                } else {
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                }
                 Text(toast.text).lineLimit(2)
                 Spacer()
                 if let id = toast.undo { Button(toast.together ? "Undo all" : "Undo") { model.undo(id, together: toast.together) }.bold() }
+                if let reopen = toast.reopen { Button("Log it") { model.logInstead(reopen) }.bold() }
             }
             .padding()
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))

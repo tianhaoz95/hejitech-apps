@@ -75,4 +75,5 @@ quantization = "Q8_0"               # what the app bundles
 
 [publish]
 repo = "tianhaoz95/wee-hours-baby-activity"  # Hugging Face repo the publish stage uploads to
+dataset_repo = "tianhaoz95/wee-hours-baby-activity-data"  # its training data (publish_data, fetch)
 private = false

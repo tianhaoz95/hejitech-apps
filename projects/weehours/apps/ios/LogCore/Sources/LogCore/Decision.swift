@@ -244,7 +244,9 @@ public struct KeywordDecisionModel: DecisionModel {
             }
             if scores.allSatisfy({ $0 == 0 }) {
                 let fallback = q.options.firstIndex { ["not_stated", "now", "none_of_these"].contains($0.key) }
-                if let fallback { scores[fallback] = 6 }
+                // no keyword is no evidence it isn't an entry: keep "none" below the auto bar, so
+                // the sentence is asked about rather than kept as a note (Interpretation.isNotALog)
+                if let fallback { scores[fallback] = q.options[fallback].key == "none_of_these" ? 3 : 6 }
             }
             let m = scores.max() ?? 0
             let ex = scores.map { exp(($0 - m) / 1.5) }

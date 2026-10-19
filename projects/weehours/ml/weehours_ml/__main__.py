@@ -9,6 +9,7 @@ from .config import Run
 
 STAGES = ["plan", "utterances", "tts", "asr", "build", "train", "convert", "evaluate", "publish", "verify"]
 DATAGEN = STAGES[:5]
+EXTRA = ["fetch", "publish_data"]   # earlier runs' data from Hugging Face; this run's data to it
 
 
 def checks(run):
@@ -46,7 +47,7 @@ def verify(run, limit=None):
 
 def main():
     parser = argparse.ArgumentParser(prog="python -m weehours_ml", description=__doc__)
-    parser.add_argument("stage", choices=STAGES + ["datagen"])
+    parser.add_argument("stage", choices=STAGES + EXTRA + ["datagen"])
     parser.add_argument("--config", required=True, help="e.g. configs/pilot.toml")
     parser.add_argument("--limit", type=int, help="process at most N items (quick tries)")
     args = parser.parse_args()

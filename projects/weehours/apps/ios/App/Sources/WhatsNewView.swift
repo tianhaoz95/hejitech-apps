@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.4.0"
+    static let currentVersion = "0.4.1"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,24 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "0.4.1",
+            date: "October 2026",
+            tagline: "Fewer Questions",
+            features: [
+                WhatsNewItem(
+                    icon: "note.text",
+                    tint: .teal,
+                    title: "Not Everything Is a Log Entry",
+                    description: "Say \"grandma is coming at noon\" or \"we're out of wipes\" and Wee Hours keeps it as a note instead of asking you to pick an entry. Tap Log it if it was one after all.",
+                    highlights: [
+                        "No list to dismiss for plans, errands, questions or milestones",
+                        "Kept in your timeline as a note, never lost",
+                        "Better at telling \"we need more nappies\" from a diaper change"
+                    ]
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "0.4.0",
             date: "October 2026",

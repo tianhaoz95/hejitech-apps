@@ -30,16 +30,26 @@ public struct Interpretation: Codable, Hashable, Sendable {
     /// The children the entry is for (named in the sentence, or the device's current child);
     /// nil in interpretations from before children were a list, meaning the first child.
     public var babyIds: [UUID]? = nil
+    /// Set when "none of these" was the model's top answer: its probability. The candidates are
+    /// then every entry type, for the parent to log it anyway.
+    public var noneConfidence: Double? = nil
 
     enum CodingKeys: String, CodingKey {
         case transcript, tier, candidates, confidence, reference
         case modelVersion = "model_version"
         case decidingQuestion = "deciding_question"
         case babyIds = "baby_ids"
+        case noneConfidence = "none_confidence"
     }
 
     public var best: Candidate? { candidates.first }
     public var isNote: Bool { candidates.isEmpty }
+
+    /// The model is as sure it isn't a log entry as auto-commit needs to be about an entry: it's
+    /// kept as a note straight away instead of asking (LogService.processVoice).
+    public func isNotALog(policy: EventRegistry.Policy) -> Bool {
+        tier == .fullList && (noneConfidence ?? 0) >= policy.auto
+    }
 }
 
 public struct InterpretContext: Sendable {
@@ -252,8 +262,10 @@ public struct VoiceInterpreter: Sendable {
         let top = rankedTypes[0]
         guard top.key != Self.noneKey, let (best, conf) = candidate(type: top.key, typeP: top.p) else {
             let all = rankedTypes.filter { $0.key != Self.noneKey }.compactMap { candidate(type: $0.key, typeP: $0.p)?.0 }
-            return Interpretation(transcript: transcript, modelVersion: version, tier: .fullList, candidates: all,
-                                  confidence: ["event_type": top.p], decidingQuestion: "event_type", reference: context.reference)
+            var interp = Interpretation(transcript: transcript, modelVersion: version, tier: .fullList, candidates: all,
+                                        confidence: ["event_type": top.p], decidingQuestion: "event_type", reference: context.reference)
+            if top.key == Self.noneKey { interp.noneConfidence = top.p }
+            return interp
         }
 
         let weakest = conf.min { $0.value < $1.value }!

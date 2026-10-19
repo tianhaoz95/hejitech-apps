@@ -175,6 +175,7 @@ if args.fit {
 // 3. score
 let final = VoiceInterpreter(model: model, registry: registry, calibration: calibration, design: args.design)
 var typeOK = 0, fullOK = 0, auto = 0, autoWrong = 0, pick = 0, pickOK = 0, full = 0, fullListOK = 0
+var noneRows = 0, noneNoted = 0, entriesNoted = 0   // kept as a note without asking (isNotALog)
 var perQuestion: [String: (ok: Int, n: Int)] = [:]
 var failures: [[String: String]] = []
 for i in evalIdx {
@@ -187,6 +188,8 @@ for i in evalIdx {
     let isNone = expected == "none_of_these"
     let typeRight = isNone ? (result.tier == .fullList || best == nil) : gotType == expected
     if typeRight { typeOK += 1 }
+    if isNone { noneRows += 1 }
+    if result.isNotALog(policy: registry.policy) { if isNone { noneNoted += 1 } else { entriesNoted += 1 } }
     let allRight = isNone ? result.tier != .auto : (best.map { correct($0, row: row) } ?? false)
     if allRight { fullOK += 1 }
     switch result.tier {
@@ -215,6 +218,7 @@ for i in evalIdx {
         for q in ["category", "event_type"] {
             if let a = raws[i][q] { let t = calibration.apply(a, question: q).top; failure["model_\(q)"] = "\(t.key) \(Int((t.p * 100).rounded()))%" }
         }
+        if let p = result.noneConfidence { failure["none_confidence"] = "\(Int((p * 100).rounded()))%" }
         failures.append(failure)
     }
 }
@@ -235,6 +239,9 @@ let summary: [String: Any] = [
     "pick_rate": pct(pick, n),
     "pick_contains_correct": pct(pickOK, Double(pick)),
     "full_list_rate": pct(full, n),
+    // not-a-log sentences kept as a note without asking, and real entries wrongly kept as one (of all rows)
+    "none_noted_rate": pct(noneNoted, Double(noneRows)),
+    "lost_entry_rate": pct(entriesNoted, n),
     "per_question_accuracy": perQuestion.mapValues { pct($0.ok, Double($0.n)) },
     "temperatures": calibration.temperatures,
 ]

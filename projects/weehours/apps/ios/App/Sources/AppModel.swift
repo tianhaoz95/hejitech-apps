@@ -18,6 +18,9 @@ final class AppModel: ObservableObject {
         let undo: UUID?
         /// Undo takes back every entry logged together (one per child).
         var together = false
+        /// A sentence kept as a note (not a log entry): "Log it" reopens it.
+        var reopen: Reopen? = nil
+        struct Reopen: Equatable { let capture: UUID, note: UUID }
     }
 
     @Published var phase: Phase = .loading
@@ -500,6 +503,19 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// "Log it" on the saved-as-note toast: back to the full list for that sentence.
+    func logInstead(_ reopen: Toast.Reopen) {
+        guard let service else { return }
+        toast = nil
+        Task {
+            do {
+                try await service.reopenCapture(reopen.capture, note: reopen.note)
+                await refresh()
+                reviewing = reviews.first { $0.id == reopen.capture }
+            } catch { self.error = error.localizedDescription }
+        }
+    }
+
     func edit(_ e: LogEvent, fields: [String: FieldValue], at: Date, baby: UUID? = nil) {
         perform { try await $0.edit(e.id, fields: fields, occurredAt: at, baby: baby) }
     }
@@ -557,7 +573,10 @@ final class AppModel: ObservableObject {
             thinking = true
             defer { thinking = false }
             let r = try await service.processVoice(transcript: transcript, surface: surface, capturedAt: capturedAt, attachTo: attachTo, babies: babies ?? target)
-            if !r.events.isEmpty {
+            if r.capture.status == .dismissed, let note = r.events.first {
+                toast = Toast(text: "Not a log entry: saved as a note", undo: nil, reopen: .init(capture: r.capture.id, note: note.id))
+                await refresh()
+            } else if !r.events.isEmpty {
                 await did(r.events)
             } else {
                 await refresh()

@@ -1,8 +1,13 @@
 """Stage `publish`: uploads the GGUFs to the Hugging Face repo in [publish] with a model card
-(base model, data recipe, the eval report) and tags the commit with the run name. Shipping it in
-the app is a separate, deliberate change (README, 'Shipping a model')."""
+(base model, data recipe, the eval report) and a snapshot of the eval sentences, uploads the run's
+data to [publish] dataset_repo (`publish_data`), and tags both commits with the run name. Shipping
+it in the app is a separate, deliberate change (README, 'Shipping a model')."""
 
 import json
+import shutil
+
+from ..config import SPEC_DIR
+from . import publish_data
 
 
 def model_card(run):
@@ -21,6 +26,8 @@ def model_card(run):
         "transcribed by Whisper base.en with the app's prompt, so states carry real recognition "
         "errors. The app's eval utterances were held out.", "",
         f"- Training rows: {manifest['train']['rows']}; blind agreement {manifest['blind_agreement']}",
+        f"- Training data: https://huggingface.co/datasets/{run['publish']['dataset_repo']}/tree/{run['run']['name']}",
+        "- Eval sentences, as scored: `eval/utterances.jsonl` (the app's `spec/utterances.jsonl` at publish time)",
         f"- Source commit: {manifest['git_commit']}", "",
     ]
     if eval_md.exists():
@@ -38,6 +45,9 @@ def run_stage(run, limit=None):
     (folder / "README.md").write_text(model_card(run))
     if run.path("calibration.json").exists():
         (folder / "calibration.json").write_text(run.path("calibration.json").read_text())
+    (folder / "eval").mkdir(exist_ok=True)
+    shutil.copy(SPEC_DIR / "utterances.jsonl", folder / "eval" / "utterances.jsonl")
+    publish_data.upload(run)
     api = HfApi()
     api.create_repo(config["repo"], private=config["private"], exist_ok=True)
     commit = api.upload_folder(repo_id=config["repo"], folder_path=str(folder),

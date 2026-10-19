@@ -218,7 +218,20 @@ public actor LogService {
             capture.status = .done
         }
         try store.saveCapture(capture, synced: false)
+        if interp.isNotALog(policy: registry.policy), let note = try dismissCapture(captureId) {
+            // not a log entry: kept as a note without asking; `reopenCapture` logs it after all
+            capture.status = .dismissed
+            events = [note]
+        }
         return VoiceResult(capture: capture, interpretation: interp, events: events)
+    }
+
+    /// "Log it" on a sentence kept as a note: takes the note back and asks again (full list).
+    public func reopenCapture(_ id: UUID, note: UUID) throws {
+        guard var capture = try store.captures().first(where: { $0.id == id }) else { return }
+        try undo(note)
+        capture.status = .needsReview
+        try store.saveCapture(capture, synced: false)
     }
 
     /// The parent picked candidate `index` (pick mode or full list).
