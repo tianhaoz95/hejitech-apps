@@ -2,8 +2,9 @@
 # Cut a release of one project: bump its version, push, and publish GitHub Release
 # <prefix><version> (e.g. waypack-v1.9.0), which starts that project's release workflows.
 # Each project describes itself in projects/<name>/release.env:
-#   NAME, TAG_PREFIX, LEGACY_TAG_PREFIX (optional), VERSION_FILE (pubspec.yaml, package.json, or an
-#   XcodeGen project.yml whose MARKETING_VERSION is the version),
+#   NAME, TAG_PREFIX, LEGACY_TAG_PREFIX (optional), VERSION_FILE (pubspec.yaml, package.json, an
+#   XcodeGen project.yml whose MARKETING_VERSION is the version, or an Xcode project.pbxproj whose
+#   targets all share one MARKETING_VERSION),
 #   CI_WORKFLOW + CI_PATHS, RELEASE_WORKFLOWS, REQUIRED_SECRETS, LATEST (true for one project only)
 #   and optionally a bash function release_check <version> that must pass first (e.g. Voxbrief's
 #   in-app What's New has to describe the version being released)
@@ -107,7 +108,12 @@ case "$VERSION_FILE" in
     FILE_LINE="$(sed -nE 's/^[[:space:]]*MARKETING_VERSION:[[:space:]]*"?([0-9]+\.[0-9]+\.[0-9]+)"?.*/\1/p' "$VERSION_FILE" | head -1)"
     [ -n "$FILE_LINE" ] || die "$VERSION_FILE has no MARKETING_VERSION: x.y.z"
     FILE_VERSION="$FILE_LINE" FILE_BUILD="" ;;
-  *) die "$CONFIG: VERSION_FILE must be a pubspec.yaml, package.json or project.yml" ;;
+  *project.pbxproj)
+    FILE_LINE="$(sed -nE 's/^[[:space:]]*MARKETING_VERSION = "?([0-9]+\.[0-9]+\.[0-9]+)"?;.*/\1/p' "$VERSION_FILE" | sort -u)"
+    [ -n "$FILE_LINE" ] || die "$VERSION_FILE has no MARKETING_VERSION = x.y.z;"
+    [ "$(echo "$FILE_LINE" | wc -l | tr -d ' ')" = 1 ] || die "$VERSION_FILE: targets disagree on MARKETING_VERSION ($(echo $FILE_LINE))"
+    FILE_VERSION="$FILE_LINE" FILE_BUILD="" ;;
+  *) die "$CONFIG: VERSION_FILE must be a pubspec.yaml, package.json, project.yml or project.pbxproj" ;;
 esac
 set_version() { # $1 = new x.y.z
   case "$VERSION_FILE" in
@@ -117,6 +123,8 @@ set_version() { # $1 = new x.y.z
       node -e 'const f=process.argv[1],p=require("./"+f);p.version=process.argv[2];require("fs").writeFileSync(f,JSON.stringify(p,null,2)+"\n")' "$VERSION_FILE" "$1" ;;
     *project.yml)
       sed -i.bak -E "s/^([[:space:]]*MARKETING_VERSION:[[:space:]]*)\"?[0-9]+\.[0-9]+\.[0-9]+\"?/\1\"$1\"/" "$VERSION_FILE" && rm -f "$VERSION_FILE.bak" ;;
+    *project.pbxproj) # every target's build configurations
+      sed -i.bak -E "s/^([[:space:]]*MARKETING_VERSION = )\"?[0-9]+\.[0-9]+\.[0-9]+\"?;/\1$1;/" "$VERSION_FILE" && rm -f "$VERSION_FILE.bak" ;;
   esac
 }
 
