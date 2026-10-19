@@ -5,7 +5,7 @@ import os
 
 DEVICE_ID = "62C1FAD5-5800-4137-AEFD-7D43D3F5F6F2"
 BUNDLE_ID = "com.tianhaoz.tinytouch"
-OUT_DIR = "/Users/tianhaoz/GitHub/watch_game/screenshots"
+OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "screenshots")
 os.makedirs(OUT_DIR, exist_ok=True)
 
 modes = [

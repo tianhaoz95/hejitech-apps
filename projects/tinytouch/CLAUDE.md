@@ -1,6 +1,40 @@
-# AGENTS.md — Developer & Agent Guide for TinyTouch
+# CLAUDE.md — Developer & Agent Guide for TinyTouch
 
-Welcome to the **TinyTouch** (formerly ToddlerPlay) repository. This document serves as the single source of truth for AI agents and human contributors working on this codebase.
+Welcome to **TinyTouch** (formerly ToddlerPlay). This document is the source of truth for AI agents and human contributors working on this project (`AGENTS.md` links here).
+
+## In the HEJI monorepo (read first)
+
+TinyTouch lives in `projects/tinytouch` of [`tianhaoz95/hejitech-apps`](https://github.com/tianhaoz95/hejitech-apps)
+since 2026-10-19 (imported with its history from `tianhaoz95/TinyTouch`, now archived). The root
+`CLAUDE.md` has the shared rules; what matters here:
+
+- **Paths:** commands below run from `projects/tinytouch`. Never reference another project's files.
+- **No backend:** `backend.env` says `BACKEND=none`. If a feature ever needs one, it joins the
+  shared Supabase project in its own `tinytouch` schema (`supabase/README.md`), and the Kids
+  Category privacy promises (`site/privacy.html`, `metadata/privacy_policy.md`) change with it.
+- **Xcode project:** `tools/generate_project.py` writes `ToddlerPlay.xcodeproj` (no XcodeGen). It
+  keeps the `DEVELOPMENT_TEAM` and `MARKETING_VERSION` it finds in `project.pbxproj`; every target
+  shares that version, and Info.plist versions come from `$(MARKETING_VERSION)` /
+  `$(CURRENT_PROJECT_VERSION)`. CI fails if the committed project differs from the generator's
+  output, so change build settings in the generator, run it, and commit both.
+- **Releases:** from the repo root, `scripts/cut_release.sh tinytouch --dry-run`, then
+  `scripts/cut_release.sh tinytouch` (patch; or `minor`, `major`, `x.y.z`). It bumps
+  `MARKETING_VERSION` in `project.pbxproj` and publishes GitHub Release `tinytouch-v<version>`
+  (never "latest": that's Waypack's), which runs `.github/workflows/tinytouch-testflight.yml` →
+  `tools/release_testflight.sh` (archive with the watch app and widget embedded, upload to
+  TestFlight, build number = UTC timestamp). The same workflow runs weekly on Wednesdays (18:45 UTC)
+  from `main`. Pushes no longer upload builds. Don't run the script by hand in place of a release,
+  and don't create tags or releases yourself. App Store submission is by hand (`metadata/`).
+- **Signing:** team `68CTFST8W2`, automatic. CI uses the team-wide HEJI secrets (`SIGNING_P12_*`
+  distribution, `DEV_SIGNING_P12_*` development, `ASC_*`, `APPLE_TEAM_ID`) via
+  `.github/actions/apple-signing`; the old repo's own secrets and `upload_ci_secrets.py` are gone.
+  TinyTouch-only CI settings would be named `TINYTOUCH_…`.
+- **CI:** `.github/workflows/tinytouch-ci.yml` (`swift tools/run_tests.swift`, generator drift
+  check, iPhone build with the watch app embedded).
+- **Site and docs:** the landing page, privacy policy and support page are `site/` (static, was
+  `docs/`), published at https://tianhaoz95.github.io/hejitech-apps/tinytouch/site/; the developer
+  overview is `docs/index.md` (https://tianhaoz95.github.io/hejitech-apps/tinytouch/). Both deploy
+  with the repo's `pages.yml`. The old `tianhaoz95.github.io/TinyTouch/` URLs redirect there.
 
 ---
 
@@ -18,8 +52,8 @@ Welcome to the **TinyTouch** (formerly ToddlerPlay) repository. This document se
 - **watchOS App Bundle ID**: `com.tianhaoz.tinytouch.watchkitapp`
 - **Complication Widget Bundle ID**: `com.tianhaoz.tinytouch.watchkitapp.widget`
 - **Development Team ID**: `68CTFST8W2` (HEJI TECHNOLOGY LLC)
-- **Current Marketing Version**: `1.5`
-- **Current Build Number**: `7`
+- **Marketing Version**: `MARKETING_VERSION` in `ToddlerPlay.xcodeproj/project.pbxproj` (1.5.0 at the move; App Store Connect had 1.5)
+- **Build Number**: set by CI (UTC timestamp)
 - **Minimum Deployments**: iOS 17.0+ / watchOS 10.0+
 - **Category**: Games > Kids (Ages 5 and Under), Family
 
@@ -82,9 +116,10 @@ Welcome to the **TinyTouch** (formerly ToddlerPlay) repository. This document se
 ## 3. Directory Structure
 
 ```
-watch_game/
-├── AGENTS.md                                # This developer and agent guide
-├── CLAUDE.md -> AGENTS.md                   # Symlink for Claude Code compatibility
+projects/tinytouch/
+├── CLAUDE.md                                # This developer and agent guide
+├── AGENTS.md -> CLAUDE.md                   # Symlink for Codex and other agents
+├── backend.env, release.env                 # Monorepo declarations (no backend; cut_release.sh settings)
 ├── README.md                                # Public user-facing README
 ├── ToddlerPlay.xcodeproj/                   # Xcode project definition & schemes
 │   ├── project.pbxproj                      # Project configuration (targets, build settings)
@@ -145,7 +180,8 @@ watch_game/
 │   ├── capture_screens.py                   # Automated simulator screenshot taker
 │   ├── generate_project.py                  # Generates ToddlerPlay.xcodeproj from source trees
 │   ├── generate_sounds.py                   # Pure-Python mathematical audio synthesizer for 16 WAVs
-│   └── run_tests.swift                      # Standalone Swift test runner (80/80 passing tests)
+│   ├── release_testflight.sh                # Archive + TestFlight upload (CI: tinytouch-testflight.yml)
+│   └── run_tests.swift                      # Standalone Swift test runner
 │
 ├── metadata/                                # App Store Connect Submission Assets
 │   ├── app_review_notes.txt                 # App Review reviewer guidelines & parental gate notes
@@ -158,7 +194,8 @@ watch_game/
 │       ├── iphone_6_5_1284x2778/            # iPhone 6.5" Plus screenshots (1284x2778)
 │       └── ipad_13_2048x2732/               # 13" iPad Pro screenshots (2048x2732)
 │
-└── docs/                                    # Public Landing & Support Site (GitHub Pages)
+├── docs/                                    # Developer overview on the monorepo's Pages site
+└── site/                                    # Public Landing & Support Site (GitHub Pages)
     ├── index.html                           # Landing page
     ├── privacy.html                         # Public Privacy Policy
     ├── support.html                         # Public Support & Contact page
@@ -174,14 +211,14 @@ The project includes a self-contained Swift test suite covering models, state ma
 ```bash
 swift tools/run_tests.swift
 ```
-*Current status: 80/80 tests passing.*
+*Current status: 87/87 tests passing.*
 
 ### 2. Regenerate the Xcode Project
 When files are added or deleted, or when project build configurations change, run the generator:
 ```bash
 python3 tools/generate_project.py
 ```
-> **IMPORTANT**: The script dynamically discovers and preserves whatever `DEVELOPMENT_TEAM` is configured in `project.pbxproj` (or defaults to `68CTFST8W2`). Never overwrite this team ID.
+> **IMPORTANT**: The script discovers and preserves the `DEVELOPMENT_TEAM` (default `68CTFST8W2`) and `MARKETING_VERSION` in `project.pbxproj`. Never overwrite the team ID; bump versions only through `scripts/cut_release.sh tinytouch`.
 
 ### 3. Build via Command Line (`xcodebuild`)
 When building from terminal on macOS, point to the active Xcode toolchain:
@@ -237,7 +274,6 @@ Outputs 16 lossless 44.1kHz 16-bit PCM WAVs to both `ToddlerPlay/Resources/Sound
 - **Made for Kids**: Adhere to Apple's strict Kids category guidelines (no outside links without parental gate, no ads, no third-party libraries).
 
 ### Deployment & CI/CD Rules
-- **Automated TestFlight Releases via GitHub Actions**: The repository uses `.github/workflows/testflight-release.yml` to automatically run the unit tests, archive the universal app (iOS + embedded watchOS + Widget), and upload builds to TestFlight upon push to `main`, release tags (`v*`), or via manual `workflow_dispatch`.
-- **CI Secrets Provisioning**: Secrets are provisioned and updated using `python3 tools/upload_ci_secrets.py` via the `gh` CLI. Secrets include the Apple Distribution certificate (.p12), keychain passwords, App Store Connect API Key (`AuthKey_4GZ563TKJ9.p8`), Issuer ID, and Team ID.
-- **Manual / Local Distribution**: Developers can also build/archive locally from Xcode's **Organizer** window (`Product` > `Archive` > `Distribute App`).
+- **TestFlight Releases**: `scripts/cut_release.sh tinytouch` from the monorepo root publishes a `tinytouch-v<version>` release; `.github/workflows/tinytouch-testflight.yml` archives the universal app (iOS + embedded watchOS + Widget) and uploads it (also weekly, and from the Actions tab). See "In the HEJI monorepo" above.
+- **CI Secrets**: the team-wide HEJI signing secrets of the monorepo; nothing to provision per project.
 - **Preserve Team Settings**: Team ID must remain `68CTFST8W2` (`HEJI TECHNOLOGY LLC`).

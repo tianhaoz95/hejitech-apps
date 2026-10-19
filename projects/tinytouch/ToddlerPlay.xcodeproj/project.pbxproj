@@ -617,10 +617,10 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.5;
+				MARKETING_VERSION = 1.5.0;
 				CURRENT_PROJECT_VERSION = 7;
-				INFOPLIST_KEY_CFBundleShortVersionString = 1.5;
-				INFOPLIST_KEY_CFBundleVersion = 7;
+				INFOPLIST_KEY_CFBundleShortVersionString = "$(MARKETING_VERSION)";
+				INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -651,10 +651,10 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.5;
+				MARKETING_VERSION = 1.5.0;
 				CURRENT_PROJECT_VERSION = 7;
-				INFOPLIST_KEY_CFBundleShortVersionString = 1.5;
-				INFOPLIST_KEY_CFBundleVersion = 7;
+				INFOPLIST_KEY_CFBundleShortVersionString = "$(MARKETING_VERSION)";
+				INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -685,10 +685,10 @@
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "com.tianhaoz.tinytouch";
 				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
 				INFOPLIST_KEY_WKBackgroundModes = "self-care";
-				MARKETING_VERSION = 1.5;
+				MARKETING_VERSION = 1.5.0;
 				CURRENT_PROJECT_VERSION = 7;
-				INFOPLIST_KEY_CFBundleShortVersionString = 1.5;
-				INFOPLIST_KEY_CFBundleVersion = 7;
+				INFOPLIST_KEY_CFBundleShortVersionString = "$(MARKETING_VERSION)";
+				INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -721,10 +721,10 @@
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "com.tianhaoz.tinytouch";
 				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
 				INFOPLIST_KEY_WKBackgroundModes = "self-care";
-				MARKETING_VERSION = 1.5;
+				MARKETING_VERSION = 1.5.0;
 				CURRENT_PROJECT_VERSION = 7;
-				INFOPLIST_KEY_CFBundleShortVersionString = 1.5;
-				INFOPLIST_KEY_CFBundleVersion = 7;
+				INFOPLIST_KEY_CFBundleShortVersionString = "$(MARKETING_VERSION)";
+				INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -750,10 +750,10 @@
 				INFOPLIST_FILE = TinyTouchWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "TinyTouch";
 				INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier = "com.apple.widgetkit-extension";
-				MARKETING_VERSION = 1.5;
+				MARKETING_VERSION = 1.5.0;
 				CURRENT_PROJECT_VERSION = 7;
-				INFOPLIST_KEY_CFBundleShortVersionString = 1.5;
-				INFOPLIST_KEY_CFBundleVersion = 7;
+				INFOPLIST_KEY_CFBundleShortVersionString = "$(MARKETING_VERSION)";
+				INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -781,10 +781,10 @@
 				INFOPLIST_FILE = TinyTouchWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "TinyTouch";
 				INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier = "com.apple.widgetkit-extension";
-				MARKETING_VERSION = 1.5;
+				MARKETING_VERSION = 1.5.0;
 				CURRENT_PROJECT_VERSION = 7;
-				INFOPLIST_KEY_CFBundleShortVersionString = 1.5;
-				INFOPLIST_KEY_CFBundleVersion = 7;
+				INFOPLIST_KEY_CFBundleShortVersionString = "$(MARKETING_VERSION)";
+				INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

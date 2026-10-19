@@ -209,7 +209,7 @@ def make_unlock():
     return samples
 
 def main():
-    out_dir = "/Users/tianhaoz/GitHub/watch_game/ToddlerPlay/Resources/Sounds"
+    out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ToddlerPlay", "Resources", "Sounds")
     os.makedirs(out_dir, exist_ok=True)
     
     write_wav(f"{out_dir}/bubble_pop.wav", make_bubble_pop())

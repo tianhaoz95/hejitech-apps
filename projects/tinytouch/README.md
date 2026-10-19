@@ -3,11 +3,8 @@
 A child-development play experience and accidental-touch shield designed specifically for parents holding an 18-month-old toddler with an Apple Watch, paired with an iPhone companion remote.
 
 <p align="center">
-  <a href="https://github.com/tianhaoz95/TinyTouch/actions/workflows/testflight-release.yml">
-    <img src="https://github.com/tianhaoz95/TinyTouch/actions/workflows/testflight-release.yml/badge.svg" alt="TestFlight Release Status">
-  </a>
-  <a href="https://github.com/tianhaoz95/TinyTouch/actions/workflows/pages.yml">
-    <img src="https://github.com/tianhaoz95/TinyTouch/actions/workflows/pages.yml/badge.svg" alt="Deploy GitHub Pages Status">
+  <a href="https://github.com/tianhaoz95/hejitech-apps/actions/workflows/tinytouch-testflight.yml">
+    <img src="https://github.com/tianhaoz95/hejitech-apps/actions/workflows/tinytouch-testflight.yml/badge.svg" alt="TestFlight Release Status">
   </a>
   <a href="https://apps.apple.com/us/app/tinytouch-toddler-lock-play/id6809942800">
     <img src="https://img.shields.io/badge/App_Store-Ready_for_Sale-34C759?logo=apple&logoColor=white" alt="App Store Status">
@@ -16,7 +13,7 @@ A child-development play experience and accidental-touch shield designed specifi
 
 <p align="center">
   <a href="https://apps.apple.com/us/app/tinytouch-toddler-lock-play/id6809942800" target="_blank">
-    <img src="docs/assets/images/app_store_badge.svg" alt="Download on the App Store" height="52">
+    <img src="site/assets/images/app_store_badge.svg" alt="Download on the App Store" height="52">
   </a>
 </p>
 
@@ -24,9 +21,11 @@ A child-development play experience and accidental-touch shield designed specifi
 
 | 📱 Scan with iPhone to Download | 🎬 App Store Connect Promo Video |
 | :---: | :---: |
-| <a href="https://apps.apple.com/us/app/tinytouch-toddler-lock-play/id6809942800"><img src="docs/assets/images/app_store_qr.png" width="180" alt="App Store QR Code" /></a><br><sub><a href="https://apps.apple.com/us/app/tinytouch-toddler-lock-play/id6809942800"><b>View on App Store ↗</b></a></sub> | <video src="docs/assets/videos/app-store-connect-promo-video.mp4" poster="docs/assets/images/video_poster.jpg" width="190" controls loop muted playsinline></video><br><sub><a href="docs/assets/videos/app-store-connect-promo-video.mp4"><b>Watch Promo Video (MP4)</b></a></sub> |
+| <a href="https://apps.apple.com/us/app/tinytouch-toddler-lock-play/id6809942800"><img src="site/assets/images/app_store_qr.png" width="180" alt="App Store QR Code" /></a><br><sub><a href="https://apps.apple.com/us/app/tinytouch-toddler-lock-play/id6809942800"><b>View on App Store ↗</b></a></sub> | <video src="site/assets/videos/app-store-connect-promo-video.mp4" poster="site/assets/images/video_poster.jpg" width="190" controls loop muted playsinline></video><br><sub><a href="site/assets/videos/app-store-connect-promo-video.mp4"><b>Watch Promo Video (MP4)</b></a></sub> |
 
 </div>
+
+> Part of the [HEJI monorepo](https://github.com/tianhaoz95/hejitech-apps) (`projects/tinytouch`, moved from `tianhaoz95/TinyTouch` on 2026-10-19). Releases: `scripts/cut_release.sh tinytouch` from the repo root; see [`CLAUDE.md`](CLAUDE.md).
 
 ---
 
@@ -97,7 +96,7 @@ When holding a one-and-a-half-year-old toddler, their hands naturally reach for 
 ## 🛠️ Project Architecture (Universal iOS + watchOS)
 
 ```
-watch_game/
+projects/tinytouch/
 ├── TinyTouchiOS/                       # iPhone Parent Companion Target
 │   ├── Sources/
 │   │   ├── TinyTouchiOSApp.swift       # iOS @main entry point
@@ -170,26 +169,24 @@ When you create the app record:
 3. Uploading `TinyTouch` uploads the iPhone Companion App with the Apple Watch app (`com.tianhaoz.tinytouch.watchkitapp`) seamlessly embedded inside.
 4. When parents download TinyTouch on their iPhone, it automatically installs the game onto their paired Apple Watch!
 
-### Automated CI/CD TestFlight Release (GitHub Actions)
+### TestFlight Releases (HEJI monorepo)
 
-[![TestFlight Release](https://github.com/tianhaoz95/TinyTouch/actions/workflows/testflight-release.yml/badge.svg)](https://github.com/tianhaoz95/TinyTouch/actions/workflows/testflight-release.yml)
-[![Deploy GitHub Pages](https://github.com/tianhaoz95/TinyTouch/actions/workflows/pages.yml/badge.svg)](https://github.com/tianhaoz95/TinyTouch/actions/workflows/pages.yml)
-
-The repository includes a GitHub Actions workflow (`.github/workflows/testflight-release.yml`) that automatically runs tests, creates a universal signed archive (iOS + embedded watchOS + Widget), and uploads directly to TestFlight.
-
-- **Automatic Trigger**: Pushing to `main` or pushing a version tag (e.g., `git tag v1.4 && git push origin v1.4`).
-- **Manual Trigger**: Via GitHub Actions UI (**Actions** > **TestFlight Release** > **Run workflow**), with optional dry-run and custom build number.
-- **Sync / Re-provision Secrets**:
-  ```bash
-  python3 tools/upload_ci_secrets.py
-  ```
+From the monorepo root:
+```bash
+scripts/cut_release.sh tinytouch --dry-run   # look first
+scripts/cut_release.sh tinytouch             # next patch; or minor | major | x.y.z
+```
+This bumps `MARKETING_VERSION` in `ToddlerPlay.xcodeproj/project.pbxproj` and publishes GitHub Release
+`tinytouch-v<version>`, which runs `.github/workflows/tinytouch-testflight.yml`: a universal signed
+archive (iOS + embedded watchOS + Widget) uploaded to TestFlight with the team's signing identities.
+It also runs weekly so TestFlight builds never expire, and from the Actions tab.
 
 ---
 
 ## 🌐 Live Website & Links
 
 * **App Store**: [https://apps.apple.com/us/app/tinytouch-toddler-lock-play/id6809942800](https://apps.apple.com/us/app/tinytouch-toddler-lock-play/id6809942800)
-* **Landing Page**: [https://tianhaoz95.github.io/TinyTouch/](https://tianhaoz95.github.io/TinyTouch/)
-* **Support & Parent FAQ**: [https://tianhaoz95.github.io/TinyTouch/support.html](https://tianhaoz95.github.io/TinyTouch/support.html)
-* **Privacy Policy**: [https://tianhaoz95.github.io/TinyTouch/privacy.html](https://tianhaoz95.github.io/TinyTouch/privacy.html)
+* **Landing Page**: [https://tianhaoz95.github.io/hejitech-apps/tinytouch/site/](https://tianhaoz95.github.io/hejitech-apps/tinytouch/site/)
+* **Support & Parent FAQ**: [https://tianhaoz95.github.io/hejitech-apps/tinytouch/site/support.html](https://tianhaoz95.github.io/hejitech-apps/tinytouch/site/support.html)
+* **Privacy Policy**: [https://tianhaoz95.github.io/hejitech-apps/tinytouch/site/privacy.html](https://tianhaoz95.github.io/hejitech-apps/tinytouch/site/privacy.html)
 

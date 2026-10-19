@@ -1,0 +1,55 @@
+name: TinyTouch CI
+
+# The standalone Swift test suite (tools/run_tests.swift) and a build of the iPhone companion with
+# the watch app and widget embedded, when TinyTouch changes and from the Actions tab.
+# scripts/cut_release.sh tinytouch requires it green.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "projects/tinytouch/**"
+      - ".github/workflows/tinytouch-ci.yml"
+  pull_request:
+    paths:
+      - "projects/tinytouch/**"
+      - ".github/workflows/tinytouch-ci.yml"
+  workflow_dispatch: {}
+
+concurrency:
+  group: tinytouch-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: projects/tinytouch
+
+jobs:
+  test:
+    name: Tests + build
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "26"
+
+      - name: Run test suite
+        run: swift tools/run_tests.swift
+
+      # The committed project must be what tools/generate_project.py writes (releases regenerate).
+      - name: Xcode project is up to date
+        run: |
+          python3 tools/generate_project.py >/dev/null
+          git diff --exit-code -- ToddlerPlay.xcodeproj || { echo "::error::ToddlerPlay.xcodeproj differs from tools/generate_project.py's output: run it in projects/tinytouch and commit"; exit 1; }
+
+      - name: Build iPhone app (embeds the watch app and widget)
+        run: |
+          xcodebuild build -project ToddlerPlay.xcodeproj -scheme TinyTouch \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO

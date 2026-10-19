@@ -89,9 +89,9 @@ Deep starry night with a smiling crescent moon and a soothing music-box lullaby 
 ---
 
 ## Support & Marketing URLs
-* **Support URL**: `https://tianhaoz95.github.io/TinyTouch/support.html`
-* **Marketing URL**: `https://tianhaoz95.github.io/TinyTouch/`
-* **Privacy Policy URL**: `https://tianhaoz95.github.io/TinyTouch/privacy.html`
+* **Support URL**: `https://tianhaoz95.github.io/hejitech-apps/tinytouch/site/support.html`
+* **Marketing URL**: `https://tianhaoz95.github.io/hejitech-apps/tinytouch/site/`
+* **Privacy Policy URL**: `https://tianhaoz95.github.io/hejitech-apps/tinytouch/site/privacy.html`
 
 ---
 

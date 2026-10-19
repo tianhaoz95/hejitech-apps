@@ -19,11 +19,23 @@ def get_existing_development_team(default_team="68CTFST8W2"):
             pass
     return os.environ.get("DEVELOPMENT_TEAM", default_team)
 
+def get_existing_marketing_version(default_version="1.5.0"):
+    # The app version lives in project.pbxproj (scripts/cut_release.sh tinytouch bumps it there);
+    # regenerating keeps it, like the team id. CI sets CURRENT_PROJECT_VERSION per build.
+    pbx_path = "ToddlerPlay.xcodeproj/project.pbxproj"
+    if os.path.exists(pbx_path):
+        with open(pbx_path, "r") as f:
+            match = re.search(r'MARKETING_VERSION\s*=\s*"?([0-9.]+)"?;', f.read())
+        if match:
+            return match.group(1)
+    return default_version
+
 def generate_project(ios_sources, ios_resources, watch_sources, watch_resources, widget_sources=None, widget_resources=None):
     if widget_sources is None: widget_sources = []
     if widget_resources is None: widget_resources = []
     
     dev_team = get_existing_development_team()
+    marketing_version = get_existing_marketing_version()
     
     os.makedirs("ToddlerPlay.xcodeproj/xcshareddata/xcschemes", exist_ok=True)
     
@@ -592,10 +604,10 @@ def generate_project(ios_sources, ios_resources, watch_sources, watch_resources,
     pbx.append("\t\t\t\tINFOPLIST_KEY_UISupportedInterfaceOrientations = \"UIInterfaceOrientationPortrait\";")
     pbx.append("\t\t\t\tINFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = \"UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight\";")
     pbx.append("\t\t\t\tIPHONEOS_DEPLOYMENT_TARGET = 17.0;")
-    pbx.append("\t\t\t\tMARKETING_VERSION = 1.5;")
+    pbx.append(f"\t\t\t\tMARKETING_VERSION = {marketing_version};")
     pbx.append("\t\t\t\tCURRENT_PROJECT_VERSION = 7;")
-    pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleShortVersionString = 1.5;")
-    pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleVersion = 7;")
+    pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleShortVersionString = \"$(MARKETING_VERSION)\";")
+    pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleVersion = \"$(CURRENT_PROJECT_VERSION)\";")
     pbx.append("\t\t\t\tLD_RUNPATH_SEARCH_PATHS = (")
     pbx.append("\t\t\t\t\t\"$(inherited)\",")
     pbx.append("\t\t\t\t\t\"@executable_path/Frameworks\",")
@@ -628,10 +640,10 @@ def generate_project(ios_sources, ios_resources, watch_sources, watch_resources,
     pbx.append("\t\t\t\tINFOPLIST_KEY_UISupportedInterfaceOrientations = \"UIInterfaceOrientationPortrait\";")
     pbx.append("\t\t\t\tINFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = \"UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight\";")
     pbx.append("\t\t\t\tIPHONEOS_DEPLOYMENT_TARGET = 17.0;")
-    pbx.append("\t\t\t\tMARKETING_VERSION = 1.5;")
+    pbx.append(f"\t\t\t\tMARKETING_VERSION = {marketing_version};")
     pbx.append("\t\t\t\tCURRENT_PROJECT_VERSION = 7;")
-    pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleShortVersionString = 1.5;")
-    pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleVersion = 7;")
+    pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleShortVersionString = \"$(MARKETING_VERSION)\";")
+    pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleVersion = \"$(CURRENT_PROJECT_VERSION)\";")
     pbx.append("\t\t\t\tLD_RUNPATH_SEARCH_PATHS = (")
     pbx.append("\t\t\t\t\t\"$(inherited)\",")
     pbx.append("\t\t\t\t\t\"@executable_path/Frameworks\",")
@@ -664,10 +676,10 @@ def generate_project(ios_sources, ios_resources, watch_sources, watch_resources,
     pbx.append("\t\t\t\tINFOPLIST_KEY_WKCompanionAppBundleIdentifier = \"com.tianhaoz.tinytouch\";")
     pbx.append("\t\t\t\tINFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;")
     pbx.append("\t\t\t\tINFOPLIST_KEY_WKBackgroundModes = \"self-care\";")
-    pbx.append("\t\t\t\tMARKETING_VERSION = 1.5;")
+    pbx.append(f"\t\t\t\tMARKETING_VERSION = {marketing_version};")
     pbx.append("\t\t\t\tCURRENT_PROJECT_VERSION = 7;")
-    pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleShortVersionString = 1.5;")
-    pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleVersion = 7;")
+    pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleShortVersionString = \"$(MARKETING_VERSION)\";")
+    pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleVersion = \"$(CURRENT_PROJECT_VERSION)\";")
     pbx.append("\t\t\t\tLD_RUNPATH_SEARCH_PATHS = (")
     pbx.append("\t\t\t\t\t\"$(inherited)\",")
     pbx.append("\t\t\t\t\t\"@executable_path/Frameworks\",")
@@ -702,10 +714,10 @@ def generate_project(ios_sources, ios_resources, watch_sources, watch_resources,
     pbx.append("\t\t\t\tINFOPLIST_KEY_WKCompanionAppBundleIdentifier = \"com.tianhaoz.tinytouch\";")
     pbx.append("\t\t\t\tINFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;")
     pbx.append("\t\t\t\tINFOPLIST_KEY_WKBackgroundModes = \"self-care\";")
-    pbx.append("\t\t\t\tMARKETING_VERSION = 1.5;")
+    pbx.append(f"\t\t\t\tMARKETING_VERSION = {marketing_version};")
     pbx.append("\t\t\t\tCURRENT_PROJECT_VERSION = 7;")
-    pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleShortVersionString = 1.5;")
-    pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleVersion = 7;")
+    pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleShortVersionString = \"$(MARKETING_VERSION)\";")
+    pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleVersion = \"$(CURRENT_PROJECT_VERSION)\";")
     pbx.append("\t\t\t\tLD_RUNPATH_SEARCH_PATHS = (")
     pbx.append("\t\t\t\t\t\"$(inherited)\",")
     pbx.append("\t\t\t\t\t\"@executable_path/Frameworks\",")
@@ -733,10 +745,10 @@ def generate_project(ios_sources, ios_resources, watch_sources, watch_resources,
     pbx.append("\t\t\t\tINFOPLIST_FILE = TinyTouchWidget/Info.plist;")
     pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleDisplayName = \"TinyTouch\";")
     pbx.append("\t\t\t\tINFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier = \"com.apple.widgetkit-extension\";")
-    pbx.append("\t\t\t\tMARKETING_VERSION = 1.5;")
+    pbx.append(f"\t\t\t\tMARKETING_VERSION = {marketing_version};")
     pbx.append("\t\t\t\tCURRENT_PROJECT_VERSION = 7;")
-    pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleShortVersionString = 1.5;")
-    pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleVersion = 7;")
+    pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleShortVersionString = \"$(MARKETING_VERSION)\";")
+    pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleVersion = \"$(CURRENT_PROJECT_VERSION)\";")
     pbx.append("\t\t\t\tLD_RUNPATH_SEARCH_PATHS = (")
     pbx.append("\t\t\t\t\t\"$(inherited)\",")
     pbx.append("\t\t\t\t\t\"@executable_path/Frameworks\",")
@@ -766,10 +778,10 @@ def generate_project(ios_sources, ios_resources, watch_sources, watch_resources,
     pbx.append("\t\t\t\tINFOPLIST_FILE = TinyTouchWidget/Info.plist;")
     pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleDisplayName = \"TinyTouch\";")
     pbx.append("\t\t\t\tINFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier = \"com.apple.widgetkit-extension\";")
-    pbx.append("\t\t\t\tMARKETING_VERSION = 1.5;")
+    pbx.append(f"\t\t\t\tMARKETING_VERSION = {marketing_version};")
     pbx.append("\t\t\t\tCURRENT_PROJECT_VERSION = 7;")
-    pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleShortVersionString = 1.5;")
-    pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleVersion = 7;")
+    pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleShortVersionString = \"$(MARKETING_VERSION)\";")
+    pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleVersion = \"$(CURRENT_PROJECT_VERSION)\";")
     pbx.append("\t\t\t\tLD_RUNPATH_SEARCH_PATHS = (")
     pbx.append("\t\t\t\t\t\"$(inherited)\",")
     pbx.append("\t\t\t\t\t\"@executable_path/Frameworks\",")

@@ -280,23 +280,24 @@ testGroup("Watch Face Widget (Complication) Specifications") {
     
 }
 
-testGroup("CI/CD Automation & Release Workflow") {
-    let workflowPath = ".github/workflows/testflight-release.yml"
-    let workflowExists = FileManager.default.fileExists(atPath: workflowPath)
-    assertTrue(workflowExists, "GitHub Actions TestFlight workflow exists")
-    
-    if let content = try? String(contentsOfFile: workflowPath, encoding: .utf8) {
-        assertTrue(content.contains("name: TestFlight Release"), "Workflow name defined")
-        assertTrue(content.contains("swift tools/run_tests.swift"), "Unit tests executed in workflow")
+testGroup("CI/CD Automation & Release Script") {
+    // CI (.github/workflows/tinytouch-testflight.yml in the monorepo) imports the team's signing
+    // identities and runs this script on every tinytouch-v release.
+    let scriptPath = "tools/release_testflight.sh"
+    assertTrue(FileManager.default.fileExists(atPath: scriptPath), "TestFlight release script exists")
+    assertTrue(FileManager.default.isExecutableFile(atPath: scriptPath), "TestFlight release script is executable")
+
+    if let content = try? String(contentsOfFile: scriptPath, encoding: .utf8) {
         assertTrue(content.contains("xcodebuild archive"), "xcodebuild archive step defined")
         assertTrue(content.contains("xcodebuild -exportArchive"), "xcodebuild exportArchive step defined")
         assertTrue(content.contains("-allowProvisioningUpdates"), "Allow provisioning updates configured")
-        assertTrue(content.contains("security import"), "Distribution certificate keychain import configured")
-        assertTrue(content.contains("clean_up") || content.contains("Clean Up") || content.contains("delete-keychain"), "Keychain cleanup configured")
+        assertTrue(content.contains("CURRENT_PROJECT_VERSION="), "CI build number applied")
     }
-    
-    let uploaderPath = "tools/upload_ci_secrets.py"
-    assertTrue(FileManager.default.fileExists(atPath: uploaderPath), "Secrets uploader helper script exists")
+
+    let pbx = (try? String(contentsOfFile: "ToddlerPlay.xcodeproj/project.pbxproj", encoding: .utf8)) ?? ""
+    let versions = Set(pbx.components(separatedBy: "\n").filter { $0.contains("MARKETING_VERSION = ") })
+    assertEqual(versions.count, 1, "Every target shares one MARKETING_VERSION (scripts/cut_release.sh bumps it)")
+    assertTrue(!pbx.contains("INFOPLIST_KEY_CFBundleShortVersionString = 1"), "Info.plist version comes from MARKETING_VERSION")
 }
 
 
