@@ -271,3 +271,19 @@ push, expose it; (2) Worker sends the profile headers and falls back to `public`
 (rows, grants, RLS, indexes, triggers move; recreate functions whose bodies name `public`), push;
 (4) remove the fallback, write the declarative schema from a `pg_dump --schema-only -n <name>`
 and confirm no drift. List the historical migrations in `LEGACY_MIGRATIONS` (checked as `public`).
+
+## XcodeGen apps whose committed project drifted from project.yml (from ToddlerCam, 2026-10-19)
+
+- **Regenerate before trusting it:** the old repo's `KidsCam.xcodeproj` and Info.plists had been
+  edited by hand (team id, automatic signing, `ITSAppUsesNonExemptEncryption`, orientations, a
+  hard-coded version), and `xcodegen generate` silently drops all of that. Diff the plists'
+  keys before/after (`plutil -convert json`) and move every missing key into the target's
+  `info.properties` and the signing into `settings`, until regenerating changes nothing but the
+  version placeholders. CI and release scripts then regenerate, so the spec is the only truth.
+- **Version in Info.plist:** replace literal `CFBundleShortVersionString`/`CFBundleVersion` with
+  `$(MARKETING_VERSION)`/`$(CURRENT_PROJECT_VERSION)` and set `MARKETING_VERSION` (last shipped
+  version) in `project.yml`, so `cut_release.sh` can bump it.
+- **Own signing secrets:** an old workflow with its own `IOS_DIST_*`/`APP_STORE_CONNECT_*` secrets
+  maps onto the team-wide ones when its team id is the HEJI team (`68CTFST8W2`); nothing to copy.
+- **Absolute dev paths** (`/Users/<you>/GitHub/<old-repo>/…` in tests and simulator fallbacks)
+  become `#filePath`-relative.
