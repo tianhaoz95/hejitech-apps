@@ -127,18 +127,21 @@ public struct SystemOneHTTPModel: DecisionModel {
     public let apiKey: String?
     public let version: String
     public let session: URLSession
+    /// Short for the app, where a tap shouldn't hang; the eval raises it on slow CI runners.
+    public let timeout: TimeInterval
 
-    public init(endpoint: URL, apiKey: String? = nil, version: String = "laya-q8_0@http", session: URLSession = .shared) {
+    public init(endpoint: URL, apiKey: String? = nil, version: String = "laya-q8_0@http", session: URLSession = .shared, timeout: TimeInterval = 8) {
         self.endpoint = endpoint
         self.apiKey = apiKey
         self.version = version
         self.session = session
+        self.timeout = timeout
     }
 
     public func decide(_ request: DecisionRequest) async throws -> [String: DecisionAnswer] {
         var req = URLRequest(url: endpoint.appendingPathComponent("v1/systemone"))
         req.httpMethod = "POST"
-        req.timeoutInterval = 8
+        req.timeoutInterval = timeout
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let apiKey { req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization") }
         req.httpBody = request.systemOneJSON()

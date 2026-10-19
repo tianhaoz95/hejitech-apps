@@ -53,7 +53,7 @@ let registry = EventRegistry.shared
 let allRows: [Row] = try String(contentsOfFile: args.data, encoding: .utf8)
     .split(separator: "\n").map { try JSONDecoder().decode(Row.self, from: Data($0.utf8)) }
 
-let model: DecisionModel = args.model == "keywords" ? KeywordDecisionModel() : SystemOneHTTPModel(endpoint: URL(string: args.model)!)
+let model: DecisionModel = args.model == "keywords" ? KeywordDecisionModel() : SystemOneHTTPModel(endpoint: URL(string: args.model)!, timeout: 60)
 var calibration = Calibration.identity
 if let path = args.calibration, let data = FileManager.default.contents(atPath: path) {
     calibration = try JSONDecoder().decode(Calibration.self, from: data)
