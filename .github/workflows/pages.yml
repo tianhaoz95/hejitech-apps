@@ -23,9 +23,13 @@ on:
       - "package.json"
       - "package-lock.json"
   workflow_dispatch:
+  # The status page embeds each workflow's latest run at build time: keep it fresh.
+  schedule:
+    - cron: "23 */6 * * *"
 
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 
@@ -45,6 +49,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run pages:build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # status.data.ts: each workflow's latest run
       # FeedbackKit's docs are their own VitePress site (base /hejitech-apps/feedbackkit/).
       - name: Build FeedbackKit docs into the site
         working-directory: projects/feedbackkit/docs

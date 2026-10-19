@@ -1,9 +1,11 @@
 <script setup lang="ts">
 // The production status page (pages/status.md). Badges come from GitHub and shields.io and need no
 // API calls; the "Last run" column and Cloudflare's deploy checks come from the GitHub REST API in
-// the browser (unauthenticated: 60 requests an hour per visitor, so results are cached for a minute).
+// the browser (unauthenticated: 60 requests an hour per visitor, so results are cached for a minute),
+// over the repo's last 100 runs; workflows outside that window show their latest run as of the site
+// build (status.data.ts, refreshed every 6 hours by pages.yml).
 import { computed, onMounted, ref } from "vue";
-import { data, type Workflow } from "../../status.data";
+import { data, type RunInfo, type Workflow } from "../../status.data";
 
 const REPO = "tianhaoz95/hejitech-apps";
 
@@ -74,12 +76,18 @@ const stateLabel: Record<string, string> = {
 };
 const isBad = (s: string) => ["failure", "timed_out", "startup_failure", "action_required"].includes(s);
 
-const failing = computed(() => Object.values(runs.value).filter((r) => isBad(state(r))).length);
+/** A workflow's latest run: the live one unless it was skipped, else the one found at site build. */
+const runOf = (w: Workflow): Run | RunInfo | undefined => {
+  const live = runs.value[w.file];
+  if (live && live.conclusion !== "skipped") return live;
+  return w.lastRun ?? live;
+};
+const failing = computed(() => data.projects.flatMap((p) => p.workflows).filter((w) => isBad(state(runOf(w)))).length);
 const visibleProjects = computed(() =>
   data.projects
     .map((p) => ({
       ...p,
-      workflows: filter.value === "all" ? p.workflows : p.workflows.filter((w) => isBad(state(runs.value[w.file]))),
+      workflows: filter.value === "all" ? p.workflows : p.workflows.filter((w) => isBad(state(runOf(w)))),
     }))
     .filter((p) => p.workflows.length || (filter.value === "all" && p.tagPrefix)),
 );
@@ -127,7 +135,8 @@ function apply(runList: Run[], checkList: CheckRun[], releaseList: Release[], at
   // Newest first from the API: keep the first run seen per workflow file.
   for (const r of runList) {
     const file = r.path.split("/").pop()!.split("@")[0];
-    latest[file] ??= r;
+    // a skipped run (a release starts every project's release workflow) says less than a real one
+    if (!latest[file] || (latest[file].conclusion === "skipped" && r.conclusion !== "skipped")) latest[file] = r;
   }
   runs.value = latest;
   checks.value = checkList;
@@ -241,13 +250,13 @@ onMounted(() => void load());
               <td><span class="heji-kind" :class="w.kind">{{ kindLabel[w.kind] }}</span></td>
               <td><img :src="badge(w)" :alt="`${w.name} status`" loading="lazy"></td>
               <td>
-                <template v-if="runs[w.file]">
-                  <a :href="runs[w.file].html_url" target="_blank" rel="noopener" class="heji-pill" :class="state(runs[w.file])">
-                    {{ stateLabel[state(runs[w.file])] || state(runs[w.file]) }}
+                <template v-if="runOf(w)">
+                  <a :href="runOf(w)!.html_url" target="_blank" rel="noopener" class="heji-pill" :class="state(runOf(w))">
+                    {{ stateLabel[state(runOf(w))] || state(runOf(w)) }}
                   </a>
-                  <span class="heji-status-when">{{ ago(runs[w.file].run_started_at ?? runs[w.file].updated_at) }} · {{ runs[w.file].event }}</span>
+                  <span class="heji-status-when">{{ ago(runOf(w)!.run_started_at ?? runOf(w)!.updated_at) }} · {{ runOf(w)!.event }}</span>
                 </template>
-                <span v-else-if="loadedAt" class="heji-status-when">not in the last 100 runs</span>
+                <span v-else-if="loadedAt" class="heji-status-when">no runs yet</span>
               </td>
             </tr>
           </tbody>
