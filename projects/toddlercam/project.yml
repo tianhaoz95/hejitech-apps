@@ -9,7 +9,7 @@ settings:
     SWIFT_VERSION: "5.0"
     # The app, watch app and complications share one version. scripts/cut_release.sh toddlercam
     # bumps MARKETING_VERSION; CI sets CURRENT_PROJECT_VERSION (UTC timestamp build numbers).
-    MARKETING_VERSION: "1.2.3"
+    MARKETING_VERSION: "1.2.4"
     CURRENT_PROJECT_VERSION: "1"
     # The HEJI team. Automatic signing; simulator builds don't sign.
     DEVELOPMENT_TEAM: 68CTFST8W2
