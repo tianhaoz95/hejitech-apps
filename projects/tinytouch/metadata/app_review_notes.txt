@@ -1,0 +1,52 @@
+APP REVIEW INFORMATION FOR TINYTOUCH
+
+To the App Review Team:
+
+Thank you for reviewing TinyTouch! Here are specific instructions to assist in testing:
+
+1. HOW TO ACCESS PARENTAL CONTROLS / SETTINGS:
+TinyTouch features a toddler-proof "Parent Shield" to prevent children from accidentally opening menus:
+• In the top-left corner of the screen, you will see a small Lock icon.
+• To open the Parent Menu, PRESS AND HOLD THIS BUTTON FOR 3 CONTINUOUS SECONDS.
+• An animated circular progress indicator will fill up with ticking haptic feedback.
+• Upon completing 3 seconds, the Parent Dashboard modal will open.
+• Tapping the button briefly will NOT open settings; this is intentional to prevent accidental toddler touches.
+
+2. HARDWARE / SENSOR BEHAVIORS:
+• Digital Crown: Rotating the Digital Crown in any game mode is actively captured to drive gameplay interactions (e.g. musical glissando in Sound Garden, bubble inflation in Bubble Pop, or character spinning in Animal Friends).
+• Audio: The app plays local sound effects and speech cues. Please ensure watch volume is enabled or test with Bluetooth headphones / watch speaker.
+• Taptic Engine: The app provides light haptic pulses for touches, bubble pops, and the 3-second parent hold.
+
+3. IPHONE COMPANION & REMOTE SYNC:
+• The iPhone companion app ("TinyTouch Remote") communicates with the Apple Watch via WatchConnectivity.
+• Reviewers can test switching game modes, setting session timers, or toggling sounds from the iPhone app, which updates the watch app in real time.
+• The iPhone app also provides an interactive preview sandbox and toddler safety instructions.
+
+4. LOGIN & NETWORK:
+• No user account, registration, login, or network connection is required.
+• The application is 100% offline and collects zero user data.
+
+5. TARGET AUDIENCE:
+• Designed for parents holding an 18-month-old toddler (Made for Kids: Ages 5 and Under).
+
+6. CLARIFICATION -- NOT A PET APP:
+• TinyTouch contains an "Animal Friends" sensory mode featuring bouncy cartoon
+  animals (Puppy, Kitty, Duck, Cow, Frog, Bear) with authentic animal sounds
+  and gentle spoken words (e.g. "Duck! Quack quack!") to encourage early
+  speech mimicry.
+• This is a passive sensory/audio activity only. There is NO pet feeding,
+  pet care, pet breeding, virtual pet ownership, or any pet-management
+  simulation mechanic anywhere in this app.
+
+7. GUIDELINE 1.3 (KIDS CATEGORY) & PRIVACY COMPLIANCE:
+• Does the app include third-party analytics?
+  No. TinyTouch does not include any third-party analytics SDKs, libraries, or tracking frameworks.
+• Does the app include third-party advertising?
+  No. TinyTouch does not include any third-party advertising, ad networks, or promotional SDKs.
+• Will the data be shared with any third parties?
+  No. TinyTouch does not collect, store, or share any data with any third parties. The app operates 100% offline.
+• Is the app collecting any user or device data for purposes beyond third-party analytics or third-party advertising?
+  No. TinyTouch collects zero user data and zero device data. All audio synthesis, haptics, and game state logic run entirely on-device. The only inter-device communication is local peer-to-peer WatchConnectivity between the user's paired iPhone and Apple Watch over Bluetooth/Wi-Fi.
+
+Thank you for your time!
+

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Support & Parent FAQ — TinyTouch</title>
+  <link rel="icon" type="image/png" href="assets/images/app_icon.png">
+  <style>
+    :root {
+      --primary: #FF4081;
+      --secondary: #7C4DFF;
+      --dark: #0D1117;
+      --card-bg: #161B22;
+      --border: rgba(255, 255, 255, 0.1);
+      --text: #F0F6FC;
+      --text-muted: #8B949E;
+      --blue: #58A6FF;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--dark);
+      color: var(--text);
+      line-height: 1.7;
+    }
+    header {
+      background: rgba(13, 17, 23, 0.85);
+      border-bottom: 1px solid var(--border);
+    }
+    nav {
+      max-width: 900px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 24px;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: #fff;
+      font-weight: 700;
+      font-size: 1.2rem;
+    }
+    .logo img {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+    }
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-weight: 500;
+      margin-left: 20px;
+    }
+    .nav-links a:hover {
+      color: #fff;
+    }
+    .container {
+      max-width: 800px;
+      margin: 50px auto 80px;
+      padding: 0 24px;
+    }
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 12px;
+    }
+    .lead {
+      color: var(--text-muted);
+      font-size: 1.15rem;
+      margin-bottom: 40px;
+    }
+    .faq-item {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .faq-item h3 {
+      font-size: 1.25rem;
+      color: #fff;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .faq-item p {
+      color: #C9D1D9;
+      margin-bottom: 10px;
+    }
+    .faq-item ol {
+      margin-left: 24px;
+      color: #C9D1D9;
+      margin-bottom: 10px;
+    }
+    .faq-item li {
+      margin-bottom: 6px;
+    }
+    .contact-box {
+      background: linear-gradient(135deg, rgba(124, 77, 255, 0.15), rgba(255, 64, 129, 0.15));
+      border: 1px solid rgba(124, 77, 255, 0.3);
+      border-radius: 20px;
+      padding: 30px;
+      text-align: center;
+      margin-top: 40px;
+    }
+    .contact-box h3 {
+      font-size: 1.5rem;
+      margin-bottom: 10px;
+    }
+    .contact-box p {
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+    .btn-contact {
+      display: inline-block;
+      background: #fff;
+      color: #000;
+      font-weight: 700;
+      padding: 12px 28px;
+      border-radius: 25px;
+      text-decoration: none;
+      transition: transform 0.2s;
+    }
+    .btn-contact:hover {
+      transform: translateY(-2px);
+    }
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 30px 24px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+    footer a {
+      color: var(--text-muted);
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <nav>
+      <a href="index.html" class="logo">
+        <img src="assets/images/app_icon.png" alt="TinyTouch Icon">
+        TinyTouch
+      </a>
+      <div class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="support.html" style="color: #fff;">Support</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="https://apps.apple.com/us/app/tinytouch-toddler-lock-play/id6809942800" target="_blank" style="color: var(--primary); font-weight: 600;">Download App ↗</a>
+      </div>
+    </nav>
+  </header>
+
+  <div class="container">
+    <h1>Support & Parent Guide</h1>
+    <p class="lead">Need help with TinyTouch? Here are answers to common questions, safety setup instructions, and troubleshooting tips.</p>
+
+    <div class="faq-item">
+      <h3>🛡️ How do I open the Parent Menu / Settings on my Apple Watch?</h3>
+      <p>TinyTouch features a toddler-proof <strong>Parent Shield</strong> so your child cannot accidentally exit into settings:</p>
+      <ol>
+        <li>Look for the small <strong>Lock icon</strong> in the top-left corner of the watch screen.</li>
+        <li><strong>Press and hold this icon for 3 full seconds</strong>.</li>
+        <li>A circular charging ring will fill with rhythmic haptic ticks. Once full, the Parent Dashboard will open!</li>
+        <li><em>Note: Quick taps will intentionally be ignored to keep toddlers in the game.</em></li>
+      </ol>
+    </div>
+
+    <div class="faq-item">
+      <h3>🚨 How do I prevent my toddler from accidentally calling 911 (Emergency SOS)?</h3>
+      <p>Toddlers naturally grip the side of your Apple Watch, which can hold down the Side Button. By default, watchOS automatically dials emergency services after 5 seconds of holding the side button. You can easily turn this auto-dial feature off:</p>
+      <ol>
+        <li>Open the <strong>Watch app</strong> on your iPhone.</li>
+        <li>Scroll down and tap <strong>Emergency SOS</strong>.</li>
+        <li>Turn <strong>OFF</strong> <em>"Hold Side Button to Dial"</em>.</li>
+        <li>Now, holding the side button will display the power/SOS sliders rather than immediately calling emergency services.</li>
+      </ol>
+    </div>
+
+    <div class="faq-item">
+      <h3>💧 Can I completely lock the touchscreen so nothing reacts to touches?</h3>
+      <p>Yes! You can use Apple Watch's built-in <strong>Water Lock</strong> feature:</p>
+      <ol>
+        <li>Launch TinyTouch on your Apple Watch.</li>
+        <li>Open Control Center (swipe up or press Side Button on watchOS 10+).</li>
+        <li>Tap the <strong>Water Droplet</strong> icon.</li>
+        <li>The screen will now completely ignore all toddler finger taps, swipes, and presses while the game visuals remain on screen.</li>
+        <li>To unlock, press and hold the Digital Crown for 2 seconds.</li>
+      </ol>
+    </div>
+
+    <div class="faq-item">
+      <h3>📱 How do I switch games or set timers from my iPhone?</h3>
+      <p>Open <strong>TinyTouch Remote</strong> on your iPhone while the app is active on your Apple Watch:</p>
+      <ol>
+        <li>Under <strong>Switch Game on Watch</strong>, tap any of the 5 activity icons (Bubble Pop, Animal Friends, Sound Garden, Magic Sparkles, or Sleepy Moon) to immediately switch activities on the watch.</li>
+        <li>Under <strong>Session Timer</strong>, select 3m, 5m, 10m, or Unlimited.</li>
+        <li>Tap <strong>Start Calming Lullaby Now</strong> at any time to smoothly transition the watch to the bedtime lullaby mode without taking the watch away.</li>
+      </ol>
+    </div>
+
+    <div class="faq-item">
+      <h3>🔒 Does TinyTouch collect any personal data?</h3>
+      <p><strong>Never.</strong> TinyTouch collects zero data, has no accounts, no ads, and no tracking. All communication between your iPhone and Apple Watch occurs directly and locally over encrypted Bluetooth/Wi-Fi.</p>
+    </div>
+
+    <div class="contact-box">
+      <h3>Still Have Questions?</h3>
+      <p>We are happy to help! Reach out to us via email or open an issue on GitHub.</p>
+      <a href="https://github.com/tianhaoz95/TinyTouch/issues" class="btn-contact" target="_blank">Open a GitHub Issue</a>
+      <p style="margin-top: 14px; font-size: 0.85rem;">Or email us at: <a href="mailto:info@hejitech.com" style="color: #fff;">info@hejitech.com</a></p>
+    </div>
+  </div>
+
+  <footer>
+    <p>© 2026 TinyTouch. <a href="index.html">Back to Home</a> • <a href="privacy.html">Privacy Policy</a></p>
+  </footer>
+
+</body>
+</html>
