@@ -38,7 +38,23 @@ struct CareTile: View {
     var body: some View {
         let tile = Tile(title: type.label, subtitle: subtitle, icon: type.icon ?? "circle.fill", color: Care.color(type: type))
         Group {
-            if fields.isEmpty {
+            if type.isTimed, !running.isEmpty {
+                // running: one tap stops it (for every child it was started for)
+                Button { model.stopTimed(running) } label: {
+                    Tile(title: "Stop \(type.label.lowercased())", subtitle: runningText, icon: type.icon ?? "timer", color: Care.color(type: type))
+                }
+            } else if type.isTimed {
+                Menu {
+                    Button { model.startTimed(type.id) } label: { Label("Start now", systemImage: "play.fill") }
+                    if let f = fields.first, let presets = f.presets {
+                        Section("Already done") {
+                            ForEach(presets, id: \.self) { p in
+                                Button(VoiceInterpreter.numberText(p, unit: f.unit)) { model.log(type.id, [f.key: .number(p)]) }
+                            }
+                        }
+                    }
+                } label: { tile }
+            } else if fields.isEmpty {
                 Button { model.log(type.id) } label: { tile }
             } else if fields.count == 1, let f = fields.first, f.kind == "choice", let options = f.options {
                 Menu {
@@ -59,6 +75,16 @@ struct CareTile: View {
         .buttonStyle(.plain)
         .accessibilityIdentifier("careTile-\(type.id)")
         .sheet(isPresented: $entering) { CareSheet(type: type).presentationDetents([.medium, .large]) }
+    }
+
+    /// This type's running entries for the Log-for target.
+    private var running: [LogEvent] {
+        model.target.compactMap { model.logs[$0]?.effective.last { $0.type == type.id && $0.fields["ongoing"] == .bool(true) } }
+    }
+
+    private var runningText: String {
+        guard let since = running.map(\.occurredAt).min() else { return "" }
+        return "running " + StatusSnapshot.duration(Date().timeIntervalSince(since))
     }
 
     /// When it was last logged for the Log-for target ("2h 10m ago"), else a hint.

@@ -140,7 +140,8 @@ final class AcceptanceTests: XCTestCase {
         // logging a new feed moves the reminder: the old one is gone
         try await s.log(type: "feed.bottle.start", provenance: Provenance(surface: .phone, input: .tap))
         plan = ReminderPlanner.plan(log: try await s.derived(), household: h, me: A, now: Date())
-        XCTAssertTrue(plan.isEmpty)     // open session: no feed reminder
+        XCTAssertTrue(plan.filter { $0.kind == .feed }.isEmpty)     // open session: no feed-due reminder
+        XCTAssertEqual(plan.map(\.kind), [.stillFeeding])            // but a "still feeding?" nudge at 45 min
     }
 }
 

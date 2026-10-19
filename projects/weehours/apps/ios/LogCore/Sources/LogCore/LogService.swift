@@ -137,6 +137,25 @@ public actor LogService {
                        supersedes: id, sessionId: old.sessionId, baby: baby ?? old.babyId)
     }
 
+    /// Starts a timed activity (tummy time, play, a walk): an entry marked `ongoing` until `stopTimed`.
+    @discardableResult
+    public func startTimed(_ type: String, at: Date = Date(), baby: UUID? = nil, fields: [String: FieldValue] = [:],
+                           surface: Surface = .phone) throws -> LogEvent {
+        try log(type: type, fields: fields.merging(["ongoing": .bool(true)]) { $1 }, occurredAt: at,
+                provenance: Provenance(surface: surface, input: .tap), baby: baby)
+    }
+
+    /// Stops it: an edit of the entry with its minutes (at least 1) instead of `ongoing`, so every
+    /// household phone sees the same, finished entry.
+    @discardableResult
+    public func stopTimed(_ id: UUID, at: Date = Date(), surface: Surface = .phone) throws -> LogEvent {
+        guard let e = try store.events().first(where: { $0.id == id }) else { throw LogError.invalidField("id") }
+        var fields = e.fields
+        fields["ongoing"] = nil
+        fields["minutes"] = .number(max(1, (at.timeIntervalSince(e.occurredAt) / 60).rounded()))
+        return try edit(id, fields: fields, surface: surface)
+    }
+
     @discardableResult
     public func resolveDuplicate(original: UUID, duplicate: UUID, merge: Bool, surface: Surface = .phone) throws -> LogEvent {
         try log(type: SystemType.resolve, fields: ["original": .string(original.uuidString), "duplicate": .string(duplicate.uuidString),

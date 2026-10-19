@@ -520,6 +520,23 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// A timed activity (tummy time, play, a walk) starts for each child in the Log-for target.
+    func startTimed(_ type: String) {
+        performEach { s, baby, group in try s.startTimed(type, baby: baby, fields: group) }
+    }
+
+    /// Stops running timed activities (one per child): each entry gets the minutes it ran.
+    func stopTimed(_ events: [LogEvent]) {
+        guard let service else { return }
+        Task {
+            do {
+                var done: [LogEvent] = []
+                for e in events { done.append(try await service.stopTimed(e.id)) }
+                await did(done)
+            } catch { self.error = error.localizedDescription }
+        }
+    }
+
     func edit(_ e: LogEvent, fields: [String: FieldValue], at: Date, baby: UUID? = nil) {
         perform { try await $0.edit(e.id, fields: fields, occurredAt: at, baby: baby) }
     }

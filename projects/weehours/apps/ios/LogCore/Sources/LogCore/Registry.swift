@@ -48,6 +48,12 @@ public struct EventRegistry: Sendable {
         /// SF Symbol for types the spec gives one (the newer, tap-logged ones).
         public let icon: String?
         public let fields: [FieldSpec]?
+        /// Started and stopped from Now (an entry with `ongoing: true` until Stop records its
+        /// minutes), with a "still going?" reminder after `remindAfterMinutes`.
+        public let timed: Bool?
+        public let remindAfterMinutes: Int?
+
+        public var isTimed: Bool { timed ?? false }
 
         public var isFeed: Bool { id.hasPrefix("feed.") }
     }
@@ -75,6 +81,8 @@ public struct EventRegistry: Sendable {
     public let types: [EventType]
     public let questions: [String: QuestionSpec]
     public let policy: Policy
+    /// Minutes after which an open session (bottle, breast, sleep) asks "still going?".
+    public let sessionReminders: [String: Int]
     public let duplicateWindowDefault: TimeInterval
     public let duplicateWindowStart: TimeInterval
 
@@ -115,6 +123,7 @@ public struct EventRegistry: Sendable {
         categories = try decode([Category].self, root["categories"])
         types = try decode([EventType].self, root["types"])
         policy = try decode(Policy.self, root["policy"])
+        sessionReminders = (root["sessionReminders"] as? [String: Any] ?? [:]).compactMapValues { $0 as? Int }
         let windows = root["duplicateWindowsMinutes"] as? [String: Double] ?? [:]
         duplicateWindowDefault = (windows["default"] ?? 5) * 60
         duplicateWindowStart = (windows["start"] ?? 10) * 60

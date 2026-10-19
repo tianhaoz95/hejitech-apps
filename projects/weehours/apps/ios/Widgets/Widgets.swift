@@ -9,6 +9,8 @@ struct WeeHoursWidgets: WidgetBundle {
     var body: some Widget {
         StatusWidget()
         EveryoneWidget()
+        SpeakWidget()
+        SpeakControl()
         SessionLiveActivity()
     }
 }

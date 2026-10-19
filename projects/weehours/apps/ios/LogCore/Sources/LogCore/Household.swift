@@ -224,7 +224,11 @@ public struct Household: Codable, Hashable, Sendable {
 // MARK: - Reminders
 
 public struct PlannedReminder: Hashable, Sendable {
-    public enum Kind: String, Sendable { case feed, diaper }
+    public enum Kind: String, Sendable {
+        case feed, diaper
+        /// "Still going?": a session or timed activity open longer than its norm (forgot to stop).
+        case stillFeeding, stillSleeping, stillActivity
+    }
     public let kind: Kind
     public var baby: UUID? = nil
     public let fireAt: Date
@@ -269,6 +273,31 @@ public enum ReminderPlanner {
         }
         if let every = settings.diaperEveryMinutes, let last = status.lastDiaperAt {
             add(.diaper, due: last.addingTimeInterval(TimeInterval(every * 60)), text: "Diaper check due")
+        }
+
+        // "Still going?": one quiet nudge when something has run past its norm (spec sessionReminders,
+        // a timed type's remindAfterMinutes), in case the parent forgot to end it. No escalation.
+        func nudge(_ kind: PlannedReminder.Kind, since: Date, minutes: Int, text: String) {
+            let due = since.addingTimeInterval(TimeInterval(minutes * 60))
+            guard due > now.addingTimeInterval(-6 * 3600) else { return }   // long forgotten: don't nag on every refresh
+            let first = max(due, now)
+            if let snooze = snoozedUntil[kind], snooze > first { return }
+            if log.duty?.caregiver == nil, let c = household.caregivers.first(where: { $0.id == me }), inQuiet(first, c, calendar) { return }
+            out.append(PlannedReminder(kind: kind, fireAt: first, escalated: false, message: text))
+        }
+        let limits = EventRegistry.shared.sessionReminders
+        if let s = log.openFeedSession(), let start = s.start, let m = limits[s.kind.rawValue] {
+            let what = s.kind == .bottle ? "Still feeding? The bottle started" : "Still nursing? It started"
+            nudge(.stillFeeding, since: start, minutes: m, text: "\(what) \(StatusSnapshot.duration(Double(m * 60))) ago. Finish it if it's over.")
+        }
+        if let s = log.openSession(.sleep), let start = s.start, let m = limits["sleep"], !household.isNight(start, calendar: calendar) {
+            nudge(.stillSleeping, since: start, minutes: m,
+                  text: "Still napping? \(StatusSnapshot.duration(Double(m * 60))) so far. Log the wake-up if they're up.")
+        }
+        for e in log.effective where e.fields["ongoing"] == .bool(true) {
+            guard let t = EventRegistry.shared.type(e.type), let m = t.remindAfterMinutes else { continue }
+            nudge(.stillActivity, since: e.occurredAt, minutes: m,
+                  text: "\(t.label) has been going \(StatusSnapshot.duration(Double(m * 60))). Stop the timer if it's over.")
         }
         return out
     }
