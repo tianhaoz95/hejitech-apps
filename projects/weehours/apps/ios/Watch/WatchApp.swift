@@ -10,7 +10,11 @@ import WatchKit
 struct WeeHoursWatchApp: App {
     @StateObject private var link = PhoneLink()
     var body: some Scene {
-        WindowGroup { WatchHome().environmentObject(link) }
+        WindowGroup {
+            WatchHome().environmentObject(link)
+                // a complication: open already recording (tap Stop to send it to the phone)
+                .onOpenURL { url in if url.host == "record", !link.recording { link.toggleRecording() } }
+        }
     }
 }
 

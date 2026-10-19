@@ -90,6 +90,41 @@ await step("undo removes it from status", async () => {
   const s = await tool("get_status");
   assert.doesNotMatch(s.line, /diaper just now/);
 });
+await step("import_events: dry run, local times, re-runs skip, bad rows reported, undo_import", async () => {
+  const events = [
+    { type: "feed.bottle.start", occurred_at: "2026-01-05 14:30", source_id: "r1" },
+    { type: "feed.bottle.finish", occurred_at: "2026-01-05 14:50", fields: { consumed_ml: 90 }, source_id: "r1-end" },
+    { type: "diaper", occurred_at: "2026-01-05T15:10:00", fields: { kind: "wet" }, source_id: "r2" },
+    { type: "note", occurred_at: "2026-01-05T16:00:00Z", fields: { transcript: "first bath at grandma's" }, source_id: "r3" },
+    { type: "diaper", occurred_at: "2026-01-05 16:30", fields: { kind: "purple" }, source_id: "r4" },
+  ];
+  const args = { source: "test export", timezone: "America/Los_Angeles", events };
+  const dry = await tool("import_events", { ...args, dry_run: true });
+  assert.equal(dry.would_import, 4);
+  assert.equal(dry.errors.length, 1);
+  assert.match(dry.errors[0].error, /invalid kind/);
+  const first = await tool("import_events", args);
+  assert.equal(first.imported, 4);
+  const again = await tool("import_events", args);   // a retry writes nothing twice
+  assert.equal(again.imported, 0);
+  assert.equal(again.skipped_already_imported, 4);
+  const rows = await tool("list_events", { since: "2026-01-05T00:00:00Z", until: "2026-01-06T12:00:00Z" });
+  const start = rows.find((r) => r.type === "feed.bottle.start");
+  assert.equal(new Date(start.occurred_at).toISOString(), "2026-01-05T22:30:00.000Z");   // 14:30 PST
+  // a local time without a timezone is a row error, not a failed call
+  const naive = await tool("import_events", { source: "x", dry_run: true, events: [{ type: "diaper", occurred_at: "2026-01-05 10:00", fields: { kind: "wet" } }] });
+  assert.match(naive.errors[0].error, /no offset: pass timezone/);
+  const undone = await tool("undo_import", { import_id: first.import_id });
+  assert.equal(undone.undone, 4);
+  const after = await tool("list_events", { since: "2026-01-05T00:00:00Z", until: "2026-01-06T12:00:00Z" });
+  assert.equal(after.length, 0);
+});
+await step("set_tracking turns categories on", async () => {
+  const t = await tool("set_tracking", { enable: ["bath"] });
+  assert.ok(t.tracking.includes("bath"));
+  await assert.rejects(tool("set_tracking", { enable: ["juggling"] }), /unknown categories/);
+  await tool("set_tracking", { disable: ["bath"] });
+});
 await step("rejects an unknown access token", async () => {
   assert.equal((await rpc("tools/list", {}, "wh_not_a_real_token")).status, 401);
 });

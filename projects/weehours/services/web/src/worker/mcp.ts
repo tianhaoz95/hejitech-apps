@@ -11,7 +11,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 /** A service-role client on the `weehours` schema. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Db = SupabaseClient<any, any, any>;
-import { derive, eventTypes, fieldSpecs, status, statusLine, typeSpec, validate, type LogEvent } from "@weehours/core";
+import { derive, eventTypes, fieldSpecs, registry, status, statusLine, typeSpec, validate, type LogEvent } from "@weehours/core";
 
 const PROTOCOL_VERSION = "2025-06-18";
 export const SERVER_VERSION = "0.2.0";
@@ -92,6 +92,60 @@ const TOOLS = [
         fields: { type: "object", description: "Typed fields, e.g. {\"kind\":\"wet\"} or {\"consumed_fraction\":0.5}." },
         occurred_at: { type: "string", description: "ISO time it happened. Default: now." },
         child: CHILD,
+      },
+    },
+  },
+  {
+    name: "import_events",
+    description:
+      "Bulk-import history from another baby tracker's export (CSV, SQLite...), up to 500 entries per call; call it repeatedly for more. " +
+      "Read the export, map each row to a Wee Hours type and fields (list_event_types), then: 1) call with dry_run: true and fix every error, " +
+      "2) call set_tracking if a category you need is off, 3) import for real. Give every entry a stable source_id (the export's row id, or " +
+      "type+timestamp): re-running the same import skips what's already there, so it is safe to retry. Mapping: Wee Hours stores sessions as " +
+      "separate start and finish entries, so a feed or sleep row with a start and an end becomes two entries (feed.bottle.start + " +
+      "feed.bottle.finish with consumed_ml, feed.breast.start with side + feed.breast.finish, sleep.start + sleep.end); a bottle with only one " +
+      "time is feed.bottle.single with consumed_ml; breast feeds with time per side are start (first side), feed.breast.switch at the change, " +
+      "finish; free-text notes are type \"note\" with fields {\"transcript\": text}. Times without an offset are read in `timezone` (ask the " +
+      "user which zone the export is in). Everything one call writes shares an import_id that undo_import takes back.",
+    inputSchema: {
+      type: "object",
+      required: ["source", "events"],
+      properties: {
+        source: { type: "string", description: "Where the data comes from, e.g. \"Huckleberry CSV export\"." },
+        timezone: { type: "string", description: "IANA zone for times without an offset, e.g. \"America/Los_Angeles\"." },
+        dry_run: { type: "boolean", description: "Validate and report without writing. Default false." },
+        import_id: { type: "string", description: "Continue an earlier import (from its result) so undo_import covers every batch." },
+        events: {
+          type: "array",
+          maxItems: 500,
+          items: {
+            type: "object",
+            required: ["type", "occurred_at"],
+            properties: {
+              type: { type: "string" },
+              occurred_at: { type: "string", description: "ISO time; with an offset, or local time read in `timezone`." },
+              fields: { type: "object" },
+              child: CHILD,
+              source_id: { type: "string", description: "Stable id of the source row: makes re-imports skip it." },
+            },
+          },
+        },
+      },
+    },
+  },
+  {
+    name: "undo_import",
+    description: "Take back every entry an import_events import_id wrote (they stay in history as undone).",
+    inputSchema: { type: "object", required: ["import_id"], properties: { import_id: { type: "string" } } },
+  },
+  {
+    name: "set_tracking",
+    description: "Turn tracking categories on (or off) for the household, e.g. before importing pumping or growth history. Category ids are in list_event_types.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        enable: { type: "array", items: { type: "string" } },
+        disable: { type: "array", items: { type: "string" } },
       },
     },
   },
@@ -253,6 +307,97 @@ export async function callTool(name: string, args: Record<string, unknown>, call
       const out = rows.map((r) => ({ logged: r.id, type: r.type, occurred_at: r.occurred_at, child: childName(r.baby_id) }));
       return out.length === 1 ? out[0] : { logged: out };
     }
+    case "import_events": {
+      if (caller.scope !== "write") throw new Error("this token is read-only");
+      const events = (args.events as Record<string, unknown>[] | undefined) ?? [];
+      if (events.length > 500) throw new Error("at most 500 events per call; split the import into batches");
+      const source = String(args.source ?? "").trim();
+      if (!source) throw new Error("source is required (where the data comes from)");
+      const tz = args.timezone ? String(args.timezone) : undefined;
+      if (tz && !validZone(tz)) throw new Error(`unknown timezone ${tz}; use an IANA name like America/New_York`);
+      const importId = args.import_id ? String(args.import_id) : crypto.randomUUID();
+      const enabled = settings.categories as string[] | undefined;
+      const now = new Date().toISOString();
+      const rows: Record<string, unknown>[] = [];
+      const errors: { index: number; source_id?: string; error: string }[] = [];
+      for (const [index, e] of events.entries()) {
+        const sid = e.source_id === undefined ? undefined : String(e.source_id);
+        try {
+          const type = String(e.type ?? "");
+          const fields = { ...((e.fields as Record<string, unknown>) ?? {}) };
+          const err = type === "note" ? (typeof fields.transcript === "string" ? null : "note needs fields.transcript")
+            : validate(type, fields as never, enabled);
+          if (err) throw new Error(err);
+          const at = toInstant(String(e.occurred_at ?? ""), tz);
+          const targets = pick(e.child, true);
+          if (targets.length > 1) fields.group = await uuidFrom(`${caller.householdId}|${source}|${sid ?? index}|group`);
+          for (const c of targets) {
+            // a stable source_id gives a stable event id: a re-run finds it and skips it
+            const id = sid ? await uuidFrom(`${caller.householdId}|${source}|${sid}|${c.id}`) : crypto.randomUUID();
+            rows.push({
+              id, household_id: caller.householdId, baby_id: c.id, type, fields, occurred_at: at, logged_at: now,
+              logged_by: caller.userId, supersedes: null,
+              provenance: { surface: "mcp", input: "agent", caller: clientName, import_id: importId, import_source: source },
+            });
+          }
+        } catch (x) {
+          errors.push({ index, ...(sid ? { source_id: sid } : {}), error: (x as Error).message });
+        }
+      }
+      const existing = new Set<string>();
+      for (let i = 0; i < rows.length; i += 200) {
+        const ids = rows.slice(i, i + 200).map((r) => r.id as string);
+        const { data } = await admin.from("events").select("id").eq("household_id", caller.householdId).in("id", ids);
+        for (const r of data ?? []) existing.add(r.id as string);
+      }
+      const fresh = rows.filter((r) => !existing.has(r.id as string));
+      if (!args.dry_run && fresh.length) {
+        const { error } = await admin.from("events").insert(fresh);
+        if (error) throw new Error(error.message);
+      }
+      const byType: Record<string, number> = {};
+      for (const r of fresh) byType[r.type as string] = (byType[r.type as string] ?? 0) + 1;
+      return {
+        dry_run: Boolean(args.dry_run), import_id: importId,
+        [args.dry_run ? "would_import" : "imported"]: fresh.length, by_type: byType,
+        skipped_already_imported: existing.size, errors,
+        ...(errors.length ? { hint: "fix the rows in errors and send them again; rows without errors are unaffected" } : {}),
+      };
+    }
+    case "undo_import": {
+      const id = String(args.import_id ?? "");
+      const { data } = await admin.from("events").select("id, baby_id").eq("household_id", caller.householdId)
+        .eq("provenance->>import_id", id);
+      const all = await loadAll(admin, caller.householdId);
+      const undone = new Set(all.filter((e) => e.type === "undo" && e.supersedes).map((e) => e.supersedes as string));
+      const targets = (data ?? []).filter((e) => !undone.has(e.id as string));
+      if (caller.scope !== "write") throw new Error("this token is read-only");
+      const now = new Date().toISOString();
+      const rows = targets.map((t) => ({
+        id: crypto.randomUUID(), household_id: caller.householdId, baby_id: t.baby_id, type: "undo", fields: {}, occurred_at: now,
+        logged_at: now, logged_by: caller.userId, supersedes: t.id, provenance: { surface: "mcp", input: "agent", caller: clientName },
+      }));
+      for (let i = 0; i < rows.length; i += 500) {
+        const { error } = await admin.from("events").insert(rows.slice(i, i + 500));
+        if (error) throw new Error(error.message);
+      }
+      return { import_id: id, undone: rows.length };
+    }
+    case "set_tracking": {
+      if (caller.scope !== "write") throw new Error("this token is read-only");
+      const known = new Set(registry.categories.map((c) => c.id));
+      const enable = ((args.enable as string[] | undefined) ?? []).map(String);
+      const disable = ((args.disable as string[] | undefined) ?? []).map(String);
+      const unknown = [...enable, ...disable].filter((c) => !known.has(c));
+      if (unknown.length) throw new Error(`unknown categories ${unknown.join(", ")}; use ${[...known].join(", ")}`);
+      const current = new Set((settings.categories as string[] | undefined) ?? registry.categories.filter((c) => c.defaultEnabled).map((c) => c.id));
+      for (const c of enable) current.add(c);
+      for (const c of disable) current.delete(c);
+      const next = { ...settings, categories: [...current].sort() };
+      const { error } = await admin.from("households").update({ settings: next }).eq("id", caller.householdId);
+      if (error) throw new Error(error.message);
+      return { tracking: next.categories };
+    }
     case "undo_event": {
       const { data: target } = await admin.from("events").select("baby_id").eq("household_id", caller.householdId).eq("id", String(args.id)).maybeSingle();
       const row = await write("undo", {}, new Date().toISOString(), target?.baby_id ?? children[0].id, String(args.id));
@@ -268,7 +413,49 @@ export async function callTool(name: string, args: Record<string, unknown>, call
   }
 }
 
-function fieldDocs(type: string) {
+/** A UUID derived from `key` (SHA-256, version-5 layout): the same import row always gets the same event id. */
+export async function uuidFrom(key: string): Promise<string> {
+  const b = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(key))).slice(0, 16);
+  b[6] = (b[6] & 0x0f) | 0x50;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const h = [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
+
+function validZone(tz: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** An ISO time with an offset as is; a local one ("2026-01-05 14:30", "2026-01-05T14:30:00") read in `tz`. */
+export function toInstant(text: string, tz?: string): string {
+  const t = text.trim().replace(" ", "T");
+  if (/(Z|[+-]\d{2}:?\d{2})$/i.test(t)) {
+    const ms = Date.parse(t);
+    if (Number.isNaN(ms)) throw new Error(`can't read time ${text}`);
+    return new Date(ms).toISOString();
+  }
+  const m = t.match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2}))?)?/);
+  if (!m) throw new Error(`can't read time ${text}; use ISO 8601`);
+  if (!tz) throw new Error(`time ${text} has no offset: pass timezone`);
+  const [y, mo, d, h = "0", mi = "0", sec = "0"] = m.slice(1);
+  const wall = Date.UTC(+y, +mo - 1, +d, +h, +mi, +sec);
+  // the zone's offset at that moment, found by formatting a guess back into wall time (twice, for DST edges)
+  let guess = wall;
+  for (let i = 0; i < 2; i++) {
+    const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: tz, hourCycle: "h23", year: "numeric", month: "2-digit",
+      day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).formatToParts(new Date(guess)).map((x) => [x.type, x.value]));
+    const shown = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
+    guess += wall - shown;
+  }
+  return new Date(guess).toISOString();
+}
+
+export function fieldDocs(type: string) {
   const s = typeSpec(type);
   const docs: Record<string, string> = {};
   for (const q of s?.questions ?? []) {

@@ -18,7 +18,7 @@
 html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 17px/1.6 -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, system-ui, sans-serif; }
 a { color: var(--accent); text-underline-offset: 2px; }
-img { max-width: 100%; display: block; }
+img { max-width: 100%; height: auto; display: block; }   /* height: auto keeps the width/height attributes from stretching a shrunk image */
 code, pre, .mono { font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: .86em; }
 code { background: var(--bg2); padding: .1em .35em; border-radius: 6px; }
 pre { background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; overflow-x: auto; line-height: 1.5; margin: 0; }
