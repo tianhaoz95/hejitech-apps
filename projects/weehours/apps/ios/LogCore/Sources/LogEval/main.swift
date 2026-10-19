@@ -209,8 +209,13 @@ for i in evalIdx {
         perQuestion[q] = s
     }
     if !allRight || result.tier != .auto {
-        failures.append(["text": row.text, "expected": expected, "got": best?.label ?? "note", "tier": result.tier.rawValue,
-                         "deciding": result.decidingQuestion ?? "", "ok": allRight ? "yes" : "no"])
+        var failure = ["text": row.text, "expected": expected, "got": best?.label ?? "note", "tier": result.tier.rawValue,
+                       "deciding": result.decidingQuestion ?? "", "ok": allRight ? "yes" : "no"]
+        // the model's own top answer: a full list can mean "none of these" won (the app then lists every type)
+        for q in ["category", "event_type"] {
+            if let a = raws[i][q] { let t = calibration.apply(a, question: q).top; failure["model_\(q)"] = "\(t.key) \(Int((t.p * 100).rounded()))%" }
+        }
+        failures.append(failure)
     }
 }
 

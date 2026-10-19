@@ -73,7 +73,7 @@ public struct VoiceInterpreter: Sendable {
     public let design: Design
 
     public static let noneKey = "none_of_these"
-    static let noneDescription = "something else, not a feed, diaper, sleep, pumping or growth (weight, height, head size) entry"
+    static let noneDescription = "not reporting a feed, diaper change, sleep, pumping or measurement: errands, shopping, chores, plans, questions, health or milestones"
 
     public init(model: DecisionModel, registry: EventRegistry = .shared, calibration: Calibration = .identity, design: Design = .hierarchical) {
         self.model = model

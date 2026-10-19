@@ -126,7 +126,7 @@
       "instructions": "Which baby log entry does the parent's sentence describe?"
     },
     "category": {
-      "instructions": "What is the parent's sentence about?"
+      "instructions": "Which kind of baby log entry is the parent reporting?"
     },
     "phase": {
       "instructions": "Is it starting, switching, finishing, or a complete entry logged afterwards?",

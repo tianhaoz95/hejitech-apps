@@ -12,7 +12,7 @@ import subprocess
 from collections import Counter
 
 from .. import jsonl
-from ..config import SPEC_DIR
+from ..config import PROJECT_DIR, SPEC_DIR
 from ..laya import laya_questions, load_export, training_row
 
 HELD_OUT_SIMILARITY = 0.9
@@ -42,7 +42,9 @@ def _git_commit():
     try:
         return subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
     except (OSError, subprocess.CalledProcessError):
-        return None
+        # a synced copy without .git (the Spark): the sync writes the commit to GIT_COMMIT at the repo root
+        marker = PROJECT_DIR.parent.parent / "GIT_COMMIT"
+        return marker.read_text().strip() if marker.exists() else None
 
 
 def run_stage(run, limit=None):

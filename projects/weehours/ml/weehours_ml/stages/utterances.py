@@ -32,6 +32,13 @@ NONE_TOPICS = [
     "the baby being fussy or crying", "buying more diapers or formula", "a visitor", "bath time",
     "giving vitamin drops or medicine", "tummy time", "the parent's own tiredness",
     "washing or sterilizing bottles", "making up formula or bottles for later",
+    # near misses: they name a log topic without reporting one (the none top-up, 2026-10-19)
+    "running low on or ordering diapers, wipes or nappies", "the formula tin or milk supply at home",
+    "asking when the baby last ate, slept or was changed", "planning the next feed or nap",
+    "a doctor's or checkup appointment", "the baby's temperature or a fever",
+    "sleep training or a bedtime routine in general", "cleaning the changing table or pump parts",
+    "a chore that is finished, like laundry or the dishes", "clothes, outfits or the weather",
+    "a reminder or to-do for later", "the other parent or a babysitter taking over",
 ]
 
 
@@ -41,6 +48,8 @@ def describe(plan, registry):
         topic = NONE_TOPICS[int(plan["id"][1:]) % len(NONE_TOPICS)]
         parts = [f"Something about {topic} that is NOT a feed, diaper change, sleep, pumping or "
                  "growth measurement entry."]
+        if int(plan["id"][1:]) % 3 == 0:
+            parts.append("Keep it to a short fragment of two to five words.")
     else:
         spec = registry.types[plan["type"]]
         parts = [f"Meaning: {spec['voice']}."]

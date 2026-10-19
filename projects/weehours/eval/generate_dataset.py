@@ -37,8 +37,9 @@ for i, (a, key) in enumerate(AMOUNTS * 3):
     when_text, when = WHEN[i % len(WHEN)] if i % 3 == 0 else ("", "now")
     add(PREFIX[i % len(PREFIX)] + a + when_text, "feed.bottle.finish", open_=["bottle"] if i % 2 == 0 else [],
         amount=key, when=when)
-for t in ["finished drinking", "bottle's done", "done drinking", "he finished his bottle"]:
+for t in ["finished drinking", "bottle's done", "done drinking"]:
     add(t, "feed.bottle.finish", open_=["bottle"], amount="not_stated", when="now")
+add("he finished his bottle", "feed.bottle.finish", open_=["bottle"], amount="full", when="now")
 
 # singles
 for t, a in [("she had a bottle an hour ago, drank half", "half"), ("gave him a full bottle earlier", "full"),
@@ -101,7 +102,8 @@ for i, t in enumerate(["started a bottle", "she started drinking her bottle", "g
                        "began feeding him a bottle"]):
     for when_text, when in WHEN[1:]:
         contents = "formula" if "formula" in t else "not_stated"
-        add(t + when_text, "feed.bottle.start", contents=contents, when=when)
+        # "gave her a bottle … ago" is a feed told after it was over: one entry (user's call, 2026-10-18)
+        add(t + when_text, "feed.bottle.single" if t.startswith("gave") else "feed.bottle.start", contents=contents, when=when)
 for side in ["left", "right"]:
     for when_text, when in WHEN[1:]:
         add(f"started nursing on the {side}{when_text}", "feed.breast.start", side=side, when=when)
@@ -122,6 +124,19 @@ for t, a in [("finished the bottle, about half left", "half_left"), ("she only d
              ("finished, quarter of the bottle left", "quarter_left"), ("finished drinking 90 ml", "not_stated")]:
     add(t, "feed.bottle.finish", open_=["bottle"], amount=a, when="now")
 for t in ["what time is the appointment", "he sneezed a lot today", "need to wash the bottles", "hiccups again"]:
+    add(t, "none_of_these")
+# not log entries, written by hand and kept out of ml/'s training topics: health, plans,
+# milestones, errands and near-misses that use feeding, diaper or sleep words (2026-10-19)
+for t in ["she's teething I think", "he rolled over by himself", "baby's got a bit of a cough",
+          "we need more nappies", "is she due for her vaccines soon", "the formula tin is almost empty",
+          "put the bottles in the steriliser", "how long since she last ate", "remind me to order diapers",
+          "he's been really fussy tonight", "she grabbed my finger", "baby monitor battery is low",
+          "nail trimming done", "tummy time on the play mat", "gave her the vitamin D drops",
+          "he laughed at the dog", "pediatrician says she's doing great", "the washing machine is done",
+          "what's the weather tomorrow", "I need a coffee", "her eyes look a bit goopy",
+          "we're going for a walk", "car seat is installed", "she's got baby acne",
+          "can't find the pacifier", "he's wearing the blue onesie", "bath at seven tonight",
+          "she's staring at the ceiling fan", "booked the six week check", "time to clip his nails"]:
     add(t, "none_of_these")
 
 random.shuffle(rows)

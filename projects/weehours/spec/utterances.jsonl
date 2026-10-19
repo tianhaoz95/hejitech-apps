@@ -1,155 +1,185 @@
-{"text": "started nursing on the right five minutes ago", "open": [], "expect": {"type": "feed.breast.start", "side": "right", "when": "5"}}
-{"text": "just pee", "open": [], "expect": {"type": "diaper", "diaper_kind": "wet", "when": "now"}}
-{"text": "nursing on the right", "open": [], "expect": {"type": "feed.breast.start", "side": "right", "when": "now"}}
-{"text": "fed a bottle, drank a quarter", "open": [], "expect": {"type": "feed.bottle.single", "amount": "quarter"}}
-{"text": "all done, drank all of it", "open": [], "expect": {"type": "feed.bottle.finish", "amount": "full", "when": "now"}}
-{"text": "awake again", "open": ["sleep"], "expect": {"type": "sleep.end", "when": "now"}}
-{"text": "went to sleep half an hour ago", "open": [], "expect": {"type": "sleep.start", "when": "30"}}
-{"text": "he's awake", "open": ["sleep"], "expect": {"type": "sleep.end", "when": "now"}}
-{"text": "began feeding him a bottle about fifteen minutes ago", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "15"}}
-{"text": "began a bottle of formula", "open": [], "expect": {"type": "feed.bottle.start", "contents": "formula", "when": "now"}}
-{"text": "dirty diaper", "open": [], "expect": {"type": "diaper", "diaper_kind": "dirty", "when": "now"}}
-{"text": "she's done, drank three quarters", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "three_quarters", "when": "now"}}
-{"text": "woke up at 3:45", "open": [], "expect": {"type": "sleep.end", "when": "explicit"}}
-{"text": "weight is 5100 grams", "open": [], "expect": {"type": "weight"}}
-{"text": "diaper change, both pee and poop", "open": [], "expect": {"type": "diaper", "diaper_kind": "both", "when": "now"}}
-{"text": "start drinking", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "now"}}
-{"text": "she started drinking her bottle about fifteen minutes ago", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "15"}}
-{"text": "diaper change, both pee and poop about fifteen minutes ago", "open": [], "expect": {"type": "diaper", "diaper_kind": "both", "when": "15"}}
-{"text": "starting breastfeeding right side", "open": [], "expect": {"type": "feed.breast.start", "side": "right", "when": "now"}}
-{"text": "done with the bottle, finished the whole thing", "open": [], "expect": {"type": "feed.bottle.finish", "amount": "full", "when": "now"}}
-{"text": "she started drinking her bottle an hour ago", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "60"}}
-{"text": "weighed him, 8 pounds 3 ounces", "open": [], "expect": {"type": "weight"}}
-{"text": "blowout, poop everywhere five minutes ago", "open": [], "expect": {"type": "diaper", "diaper_kind": "dirty", "when": "5"}}
-{"text": "nappy was wet", "open": [], "expect": {"type": "diaper", "diaper_kind": "wet", "when": "now"}}
-{"text": "bottle started", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "now"}}
-{"text": "she's done, three quarters left over", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "three_quarters_left", "when": "now"}}
-{"text": "changed a wet one", "open": [], "expect": {"type": "diaper", "diaper_kind": "wet", "when": "now"}}
-{"text": "she has a little rash on her cheek", "open": [], "expect": {"type": "none_of_these"}}
-{"text": "he finished his bottle", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "full", "when": "now"}}
-{"text": "started a bottle half an hour ago", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "30"}}
-{"text": "nursing on the left", "open": [], "expect": {"type": "feed.breast.start", "side": "left", "when": "now"}}
-{"text": "pumped 120 ml", "open": [], "expect": {"type": "pump", "side": "not_stated"}}
-{"text": "starting a bottle", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "now"}}
-{"text": "done, three quarters gone", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "three_quarters", "when": "now"}}
-{"text": "hiccups again", "open": [], "expect": {"type": "none_of_these"}}
-{"text": "she had some banana puree", "open": [], "expect": {"type": "feed.solids", "solids_amount": "some"}}
-{"text": "poopy diaper an hour ago", "open": [], "expect": {"type": "diaper", "diaper_kind": "dirty", "when": "60"}}
-{"text": "what time is the appointment", "open": [], "expect": {"type": "none_of_these"}}
-{"text": "diaper change", "open": [], "expect": {"type": "diaper", "diaper_kind": "not_stated", "when": "now"}}
-{"text": "switched sides", "open": ["breast"], "expect": {"type": "feed.breast.switch", "side": "not_stated", "when": "now"}}
-{"text": "she started drinking her bottle half an hour ago", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "30"}}
-{"text": "asleep in the car seat", "open": [], "expect": {"type": "sleep.start", "when": "now"}}
-{"text": "gave her a bottle of formula about fifteen minutes ago", "open": [], "expect": {"type": "feed.bottle.single", "contents": "formula", "when": "15"}}
-{"text": "diaper was dry", "open": [], "expect": {"type": "diaper", "diaper_kind": "dry", "when": "now"}}
-{"text": "gave her a bottle of formula five minutes ago", "open": [], "expect": {"type": "feed.bottle.single", "contents": "formula", "when": "5"}}
-{"text": "all done, drank a quarter", "open": [], "expect": {"type": "feed.bottle.finish", "amount": "quarter", "when": "now"}}
-{"text": "changed a wet one five minutes ago", "open": [], "expect": {"type": "diaper", "diaper_kind": "wet", "when": "5"}}
-{"text": "poop and pee", "open": [], "expect": {"type": "diaper", "diaper_kind": "both", "when": "now"}}
-{"text": "bottle's done", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "not_stated", "when": "now"}}
-{"text": "eyes open, she's awake", "open": ["sleep"], "expect": {"type": "sleep.end", "when": "now"}}
-{"text": "finished drinking, drank three quarters half an hour ago", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "three_quarters", "when": "30"}}
-{"text": "just a taste of avocado", "open": [], "expect": {"type": "feed.solids", "solids_amount": "taste"}}
-{"text": "he's asleep five minutes ago", "open": [], "expect": {"type": "sleep.start", "when": "5"}}
-{"text": "ate most of the cereal", "open": [], "expect": {"type": "feed.solids", "solids_amount": "most"}}
-{"text": "switched to the right", "open": ["breast"], "expect": {"type": "feed.breast.switch", "side": "right", "when": "now"}}
-{"text": "finished, drank all of it", "open": [], "expect": {"type": "feed.bottle.finish", "amount": "full", "when": "now"}}
-{"text": "baby weighs 9 pounds", "open": [], "expect": {"type": "weight"}}
-{"text": "switched to the left", "open": ["breast"], "expect": {"type": "feed.breast.switch", "side": "left", "when": "now"}}
-{"text": "diaper was dry an hour ago", "open": [], "expect": {"type": "diaper", "diaper_kind": "dry", "when": "60"}}
-{"text": "finished, quarter of the bottle left", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "quarter_left", "when": "now"}}
-{"text": "big poop", "open": [], "expect": {"type": "diaper", "diaper_kind": "dirty", "when": "now"}}
-{"text": "finished, finished the whole thing half an hour ago", "open": [], "expect": {"type": "feed.bottle.finish", "amount": "full", "when": "30"}}
-{"text": "giving him a bottle now", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "now"}}
-{"text": "wet and dirty diaper half an hour ago", "open": [], "expect": {"type": "diaper", "diaper_kind": "both", "when": "30"}}
-{"text": "up from the nap", "open": ["sleep"], "expect": {"type": "sleep.end", "when": "now"}}
-{"text": "baby's sleeping about fifteen minutes ago", "open": [], "expect": {"type": "sleep.start", "when": "15"}}
-{"text": "start feeding left side", "open": [], "expect": {"type": "feed.breast.start", "side": "left", "when": "now"}}
 {"text": "temperature is 37.2", "open": [], "expect": {"type": "none_of_these"}}
-{"text": "she's starting her bottle", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "now"}}
-{"text": "she fell asleep", "open": [], "expect": {"type": "sleep.start", "when": "now"}}
-{"text": "swapped to left", "open": ["breast"], "expect": {"type": "feed.breast.switch", "side": "left", "when": "now"}}
-{"text": "she's up now", "open": ["sleep"], "expect": {"type": "sleep.end", "when": "now"}}
-{"text": "pumped both sides", "open": [], "expect": {"type": "pump", "side": "both"}}
-{"text": "changed a dirty nappy half an hour ago", "open": [], "expect": {"type": "diaper", "diaper_kind": "dirty", "when": "30"}}
-{"text": "gave him a full bottle earlier", "open": [], "expect": {"type": "feed.bottle.single", "amount": "full"}}
-{"text": "starting a bottle of breast milk", "open": [], "expect": {"type": "feed.bottle.start", "contents": "breast_milk", "when": "now"}}
+{"text": "blowout, poop everywhere five minutes ago", "open": [], "expect": {"type": "diaper", "diaper_kind": "dirty", "when": "5"}}
+{"text": "switched to the left", "open": ["breast"], "expect": {"type": "feed.breast.switch", "side": "left", "when": "now"}}
+{"text": "wet diaper", "open": [], "expect": {"type": "diaper", "diaper_kind": "wet", "when": "now"}}
+{"text": "bottle started", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "now"}}
 {"text": "just pee", "open": [], "expect": {"type": "diaper", "diaper_kind": "wet", "when": "now"}}
-{"text": "she unlatched, done", "open": ["breast"], "expect": {"type": "feed.breast.finish", "when": "now"}}
-{"text": "started nursing on the left about fifteen minutes ago", "open": [], "expect": {"type": "feed.breast.start", "side": "left", "when": "15"}}
-{"text": "started nursing on the left an hour ago", "open": [], "expect": {"type": "feed.breast.start", "side": "left", "when": "60"}}
-{"text": "start bottle", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "now"}}
-{"text": "remember to buy more formula", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "changed a wet one five minutes ago", "open": [], "expect": {"type": "diaper", "diaper_kind": "wet", "when": "5"}}
+{"text": "finished, finished the whole thing half an hour ago", "open": [], "expect": {"type": "feed.bottle.finish", "amount": "full", "when": "30"}}
+{"text": "diaper was dry an hour ago", "open": [], "expect": {"type": "diaper", "diaper_kind": "dry", "when": "60"}}
+{"text": "gave her a bottle of formula about fifteen minutes ago", "open": [], "expect": {"type": "feed.bottle.single", "contents": "formula", "when": "15"}}
+{"text": "call the pediatrician tomorrow", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "changed a wet one", "open": [], "expect": {"type": "diaper", "diaper_kind": "wet", "when": "now"}}
+{"text": "fed a bottle, drank a quarter", "open": [], "expect": {"type": "feed.bottle.single", "amount": "quarter"}}
+{"text": "diaper was dry", "open": [], "expect": {"type": "diaper", "diaper_kind": "dry", "when": "now"}}
+{"text": "ate most of the cereal", "open": [], "expect": {"type": "feed.solids", "solids_amount": "most"}}
+{"text": "booked the six week check", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "big poop", "open": [], "expect": {"type": "diaper", "diaper_kind": "dirty", "when": "now"}}
+{"text": "wet diaper about fifteen minutes ago", "open": [], "expect": {"type": "diaper", "diaper_kind": "wet", "when": "15"}}
+{"text": "the washing machine is done", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "gave her the vitamin D drops", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "wet diaper at 1:30 am", "open": [], "expect": {"type": "diaper", "when": "explicit", "diaper_kind": "wet"}}
+{"text": "she fell asleep", "open": [], "expect": {"type": "sleep.start", "when": "now"}}
+{"text": "began a bottle of formula", "open": [], "expect": {"type": "feed.bottle.start", "contents": "formula", "when": "now"}}
+{"text": "start drinking", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "now"}}
+{"text": "finished drinking, drank three quarters half an hour ago", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "three_quarters", "when": "30"}}
+{"text": "started a bottle at 11:50 pm", "open": [], "expect": {"type": "feed.bottle.start", "when": "explicit", "contents": "not_stated"}}
+{"text": "woke up at 3:45", "open": [], "expect": {"type": "sleep.end", "when": "explicit"}}
+{"text": "all done, drank all of it", "open": [], "expect": {"type": "feed.bottle.finish", "amount": "full", "when": "now"}}
+{"text": "went to sleep half an hour ago", "open": [], "expect": {"type": "sleep.start", "when": "30"}}
+{"text": "she started drinking her bottle five minutes ago", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "5"}}
+{"text": "what time is the appointment", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "finished, drank all of it", "open": [], "expect": {"type": "feed.bottle.finish", "amount": "full", "when": "now"}}
+{"text": "done with the bottle, finished the whole thing", "open": [], "expect": {"type": "feed.bottle.finish", "amount": "full", "when": "now"}}
+{"text": "giving him a bottle now", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "now"}}
+{"text": "she's done, three quarters left over", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "three_quarters_left", "when": "now"}}
+{"text": "baby's sleeping about fifteen minutes ago", "open": [], "expect": {"type": "sleep.start", "when": "15"}}
+{"text": "bath at seven tonight", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "hiccups again", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "she grabbed my finger", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "pumped 120 ml", "open": [], "expect": {"type": "pump", "side": "not_stated"}}
+{"text": "baby monitor battery is low", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "fell asleep at 2:10", "open": [], "expect": {"type": "sleep.start", "when": "explicit"}}
+{"text": "pee diaper", "open": [], "expect": {"type": "diaper", "diaper_kind": "wet", "when": "now"}}
+{"text": "she started drinking her bottle about fifteen minutes ago", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "15"}}
+{"text": "diaper change, both pee and poop", "open": [], "expect": {"type": "diaper", "diaper_kind": "both", "when": "now"}}
 {"text": "the bath water was too cold", "open": [], "expect": {"type": "none_of_these"}}
-{"text": "wet one again", "open": [], "expect": {"type": "diaper", "diaper_kind": "wet", "when": "now"}}
-{"text": "changed a dirty nappy", "open": [], "expect": {"type": "diaper", "diaper_kind": "dirty", "when": "now"}}
-{"text": "latched on the left", "open": [], "expect": {"type": "feed.breast.start", "side": "left", "when": "now"}}
-{"text": "put him down for the night", "open": [], "expect": {"type": "sleep.start", "when": "now"}}
-{"text": "she smiled for the first time", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "he finished his bottle", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "full", "when": "now"}}
+{"text": "what's the weather tomorrow", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "starting a bottle", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "now"}}
+{"text": "poopy diaper", "open": [], "expect": {"type": "diaper", "diaper_kind": "dirty", "when": "now"}}
+{"text": "started a bottle half an hour ago", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "30"}}
+{"text": "pumped both sides", "open": [], "expect": {"type": "pump", "side": "both"}}
+{"text": "switched sides", "open": ["breast"], "expect": {"type": "feed.breast.switch", "side": "not_stated", "when": "now"}}
+{"text": "awake again", "open": ["sleep"], "expect": {"type": "sleep.end", "when": "now"}}
+{"text": "grandma is coming at noon", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "she has a little rash on her cheek", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "soiled diaper", "open": [], "expect": {"type": "diaper", "diaper_kind": "dirty", "when": "now"}}
+{"text": "ugh another poop", "open": [], "expect": {"type": "diaper", "diaper_kind": "dirty", "when": "now"}}
+{"text": "finished drinking 90 ml", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "not_stated", "when": "now"}}
+{"text": "weighed him, 8 pounds 3 ounces", "open": [], "expect": {"type": "weight"}}
+{"text": "he laughed at the dog", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "baby's got a bit of a cough", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "wet and dirty diaper half an hour ago", "open": [], "expect": {"type": "diaper", "diaper_kind": "both", "when": "30"}}
+{"text": "dirty diaper", "open": [], "expect": {"type": "diaper", "diaper_kind": "dirty", "when": "now"}}
+{"text": "switched to the right", "open": ["breast"], "expect": {"type": "feed.breast.switch", "side": "right", "when": "now"}}
+{"text": "nail trimming done", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "bottle's done", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "not_stated", "when": "now"}}
+{"text": "starting breastfeeding right side", "open": [], "expect": {"type": "feed.breast.start", "side": "right", "when": "now"}}
+{"text": "diaper change", "open": [], "expect": {"type": "diaper", "diaper_kind": "not_stated", "when": "now"}}
+{"text": "finally asleep", "open": [], "expect": {"type": "sleep.start", "when": "now"}}
+{"text": "finished drinking, drank half a bottle", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "half", "when": "now"}}
+{"text": "poopy diaper an hour ago", "open": [], "expect": {"type": "diaper", "diaper_kind": "dirty", "when": "60"}}
 {"text": "he dozed off", "open": [], "expect": {"type": "sleep.start", "when": "now"}}
-{"text": "wet and dirty diaper", "open": [], "expect": {"type": "diaper", "diaper_kind": "both", "when": "now"}}
+{"text": "nursing on the right", "open": [], "expect": {"type": "feed.breast.start", "side": "right", "when": "now"}}
+{"text": "the formula tin is almost empty", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "finished the bottle at 4:05, drank half", "open": [], "expect": {"type": "feed.bottle.finish", "when": "explicit", "amount": "half"}}
+{"text": "wet one again", "open": [], "expect": {"type": "diaper", "diaper_kind": "wet", "when": "now"}}
+{"text": "all done, drank a quarter", "open": [], "expect": {"type": "feed.bottle.finish", "amount": "quarter", "when": "now"}}
+{"text": "she smiled for the first time", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "remind me to order diapers", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "I need a coffee", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "asleep in the car seat", "open": [], "expect": {"type": "sleep.start", "when": "now"}}
+{"text": "all done, finished the whole thing", "open": [], "expect": {"type": "feed.bottle.finish", "amount": "full", "when": "now"}}
+{"text": "start feeding left side", "open": [], "expect": {"type": "feed.breast.start", "side": "left", "when": "now"}}
+{"text": "finished breastfeeding", "open": ["breast"], "expect": {"type": "feed.breast.finish", "when": "now"}}
+{"text": "she's starting her bottle", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "now"}}
+{"text": "she had some banana puree", "open": [], "expect": {"type": "feed.solids", "solids_amount": "some"}}
+{"text": "she woke up", "open": ["sleep"], "expect": {"type": "sleep.end", "when": "now"}}
+{"text": "swapped to left", "open": ["breast"], "expect": {"type": "feed.breast.switch", "side": "left", "when": "now"}}
+{"text": "up from the nap", "open": ["sleep"], "expect": {"type": "sleep.end", "when": "now"}}
+{"text": "is she due for her vaccines soon", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "need to wash the bottles", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "baby weighs 9 pounds", "open": [], "expect": {"type": "weight"}}
+{"text": "time to clip his nails", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "gave him a full bottle earlier", "open": [], "expect": {"type": "feed.bottle.single", "amount": "full"}}
+{"text": "he's awake", "open": ["sleep"], "expect": {"type": "sleep.end", "when": "now"}}
+{"text": "we're going for a walk", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "starting a bottle of breast milk", "open": [], "expect": {"type": "feed.bottle.start", "contents": "breast_milk", "when": "now"}}
+{"text": "she started drinking her bottle an hour ago", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "60"}}
+{"text": "remember to buy more formula", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "changed his diaper", "open": [], "expect": {"type": "diaper", "diaper_kind": "not_stated", "when": "now"}}
+{"text": "she unlatched, done", "open": ["breast"], "expect": {"type": "feed.breast.finish", "when": "now"}}
+{"text": "drank the whole bottle", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "full", "when": "now"}}
+{"text": "finished, quarter of the bottle left", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "quarter_left", "when": "now"}}
+{"text": "start bottle", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "now"}}
+{"text": "done nursing", "open": ["breast"], "expect": {"type": "feed.breast.finish", "when": "now"}}
 {"text": "woke up from the nap", "open": ["sleep"], "expect": {"type": "sleep.end", "when": "now"}}
+{"text": "she only drank a quarter of it", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "quarter", "when": "now"}}
+{"text": "he's been really fussy tonight", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "she's got baby acne", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "latched on the left", "open": [], "expect": {"type": "feed.breast.start", "side": "left", "when": "now"}}
+{"text": "changed a dirty nappy half an hour ago", "open": [], "expect": {"type": "diaper", "diaper_kind": "dirty", "when": "30"}}
+{"text": "starting breastfeeding left side", "open": [], "expect": {"type": "feed.breast.start", "side": "left", "when": "now"}}
+{"text": "had a bottle half an hour ago and drank three quarters", "open": [], "expect": {"type": "feed.bottle.single", "amount": "three_quarters"}}
+{"text": "she's up now", "open": ["sleep"], "expect": {"type": "sleep.end", "when": "now"}}
+{"text": "just a taste of avocado", "open": [], "expect": {"type": "feed.solids", "solids_amount": "taste"}}
+{"text": "he sneezed a lot today", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "she started drinking her bottle half an hour ago", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "30"}}
+{"text": "wet and dirty diaper", "open": [], "expect": {"type": "diaper", "diaper_kind": "both", "when": "now"}}
+{"text": "put him down for the night", "open": [], "expect": {"type": "sleep.start", "when": "now"}}
+{"text": "pediatrician says she's doing great", "open": [], "expect": {"type": "none_of_these"}}
 {"text": "changed her diaper, it was wet", "open": [], "expect": {"type": "diaper", "diaper_kind": "wet", "when": "now"}}
 {"text": "okay starting the bottle", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "now"}}
-{"text": "she weighs 4.2 kilos", "open": [], "expect": {"type": "weight"}}
-{"text": "all done nursing", "open": ["breast"], "expect": {"type": "feed.breast.finish", "when": "now"}}
-{"text": "finished, drank a quarter an hour ago", "open": [], "expect": {"type": "feed.bottle.finish", "amount": "quarter", "when": "60"}}
-{"text": "pee diaper", "open": [], "expect": {"type": "diaper", "diaper_kind": "wet", "when": "now"}}
-{"text": "finally asleep", "open": [], "expect": {"type": "sleep.start", "when": "now"}}
-{"text": "all done, finished the whole thing", "open": [], "expect": {"type": "feed.bottle.finish", "amount": "full", "when": "now"}}
 {"text": "start feeding right side", "open": [], "expect": {"type": "feed.breast.start", "side": "right", "when": "now"}}
-{"text": "wet diaper", "open": [], "expect": {"type": "diaper", "diaper_kind": "wet", "when": "now"}}
-{"text": "she started drinking her bottle five minutes ago", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "5"}}
-{"text": "napping now", "open": [], "expect": {"type": "sleep.start", "when": "now"}}
-{"text": "wet diaper about fifteen minutes ago", "open": [], "expect": {"type": "diaper", "diaper_kind": "wet", "when": "15"}}
-{"text": "began feeding him a bottle half an hour ago", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "30"}}
-{"text": "wet diaper at 1:30 am", "open": [], "expect": {"type": "diaper", "when": "explicit", "diaper_kind": "wet"}}
-{"text": "she only drank a quarter of it", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "quarter", "when": "now"}}
-{"text": "starting breastfeeding left side", "open": [], "expect": {"type": "feed.breast.start", "side": "left", "when": "now"}}
-{"text": "started nursing", "open": [], "expect": {"type": "feed.breast.start", "side": "not_stated", "when": "now"}}
-{"text": "poopy diaper", "open": [], "expect": {"type": "diaper", "diaper_kind": "dirty", "when": "now"}}
-{"text": "we're out of wipes", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "began feeding him a bottle about fifteen minutes ago", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "15"}}
+{"text": "started nursing on the left an hour ago", "open": [], "expect": {"type": "feed.breast.start", "side": "left", "when": "60"}}
+{"text": "finished, drank a quarter an hour ago", "open": [], "expect": {"type": "feed.bottle.finish", "amount": "quarter", "when": "60"}}
+{"text": "nappy was wet", "open": [], "expect": {"type": "diaper", "diaper_kind": "wet", "when": "now"}}
+{"text": "nursing on the left", "open": [], "expect": {"type": "feed.breast.start", "side": "left", "when": "now"}}
+{"text": "finished the bottle, about half left", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "half_left", "when": "now"}}
+{"text": "eyes open, she's awake", "open": ["sleep"], "expect": {"type": "sleep.end", "when": "now"}}
+{"text": "can't find the pacifier", "open": [], "expect": {"type": "none_of_these"}}
 {"text": "changed her diaper, it was wet", "open": [], "expect": {"type": "diaper", "diaper_kind": "wet", "when": "now"}}
-{"text": "finished drinking, drank half a bottle", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "half", "when": "now"}}
-{"text": "grandma is coming at noon", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "she weighs 4.2 kilos", "open": [], "expect": {"type": "weight"}}
+{"text": "diaper change, both pee and poop about fifteen minutes ago", "open": [], "expect": {"type": "diaper", "diaper_kind": "both", "when": "15"}}
 {"text": "started a bottle five minutes ago", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "5"}}
-{"text": "changed his diaper", "open": [], "expect": {"type": "diaper", "diaper_kind": "not_stated", "when": "now"}}
-{"text": "soiled diaper", "open": [], "expect": {"type": "diaper", "diaper_kind": "dirty", "when": "now"}}
-{"text": "started nursing on the right half an hour ago", "open": [], "expect": {"type": "feed.breast.start", "side": "right", "when": "30"}}
-{"text": "finished the bottle at 4:05, drank half", "open": [], "expect": {"type": "feed.bottle.finish", "when": "explicit", "amount": "half"}}
-{"text": "need to wash the bottles", "open": [], "expect": {"type": "none_of_these"}}
-{"text": "gave her a bottle of formula half an hour ago", "open": [], "expect": {"type": "feed.bottle.single", "contents": "formula", "when": "30"}}
-{"text": "done nursing", "open": ["breast"], "expect": {"type": "feed.breast.finish", "when": "now"}}
-{"text": "call the pediatrician tomorrow", "open": [], "expect": {"type": "none_of_these"}}
-{"text": "started a bottle at 11:50 pm", "open": [], "expect": {"type": "feed.bottle.start", "when": "explicit", "contents": "not_stated"}}
-{"text": "finished breastfeeding", "open": ["breast"], "expect": {"type": "feed.breast.finish", "when": "now"}}
-{"text": "had a bottle half an hour ago and drank three quarters", "open": [], "expect": {"type": "feed.bottle.single", "amount": "three_quarters"}}
-{"text": "she woke up", "open": ["sleep"], "expect": {"type": "sleep.end", "when": "now"}}
+{"text": "gave her a bottle of formula five minutes ago", "open": [], "expect": {"type": "feed.bottle.single", "contents": "formula", "when": "5"}}
+{"text": "done, three quarters gone", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "three_quarters", "when": "now"}}
+{"text": "she's done, drank three quarters", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "three_quarters", "when": "now"}}
+{"text": "all done nursing", "open": ["breast"], "expect": {"type": "feed.breast.finish", "when": "now"}}
+{"text": "we need more nappies", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "started nursing", "open": [], "expect": {"type": "feed.breast.start", "side": "not_stated", "when": "now"}}
+{"text": "changed a dirty nappy", "open": [], "expect": {"type": "diaper", "diaper_kind": "dirty", "when": "now"}}
+{"text": "he's asleep five minutes ago", "open": [], "expect": {"type": "sleep.start", "when": "5"}}
+{"text": "weight is 5100 grams", "open": [], "expect": {"type": "weight"}}
+{"text": "we're out of wipes", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "just pee", "open": [], "expect": {"type": "diaper", "diaper_kind": "wet", "when": "now"}}
 {"text": "pumped four ounces", "open": [], "expect": {"type": "pump", "side": "not_stated"}}
+{"text": "gave her a bottle of formula half an hour ago", "open": [], "expect": {"type": "feed.bottle.single", "contents": "formula", "when": "30"}}
 {"text": "started a bottle about fifteen minutes ago", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "15"}}
 {"text": "latched on the right", "open": [], "expect": {"type": "feed.breast.start", "side": "right", "when": "now"}}
-{"text": "fell asleep at 2:10", "open": [], "expect": {"type": "sleep.start", "when": "explicit"}}
+{"text": "she's teething I think", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "put the bottles in the steriliser", "open": [], "expect": {"type": "none_of_these"}}
 {"text": "finished drinking, three quarters left over five minutes ago", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "three_quarters_left", "when": "5"}}
-{"text": "drank the whole bottle", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "full", "when": "now"}}
+{"text": "began feeding him a bottle half an hour ago", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "30"}}
+{"text": "car seat is installed", "open": [], "expect": {"type": "none_of_these"}}
 {"text": "nap time, she's out", "open": [], "expect": {"type": "sleep.start", "when": "now"}}
 {"text": "switching sides, now left", "open": ["breast"], "expect": {"type": "feed.breast.switch", "side": "left", "when": "now"}}
+{"text": "napping now", "open": [], "expect": {"type": "sleep.start", "when": "now"}}
+{"text": "started nursing on the right half an hour ago", "open": [], "expect": {"type": "feed.breast.start", "side": "right", "when": "30"}}
 {"text": "she's done, drank half a bottle", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "half", "when": "now"}}
 {"text": "she's nursing, left side", "open": [], "expect": {"type": "feed.breast.start", "side": "left", "when": "now"}}
+{"text": "started nursing on the left about fifteen minutes ago", "open": [], "expect": {"type": "feed.breast.start", "side": "left", "when": "15"}}
 {"text": "dirty diaper half an hour ago", "open": [], "expect": {"type": "diaper", "diaper_kind": "dirty", "when": "30"}}
+{"text": "started nursing on the right five minutes ago", "open": [], "expect": {"type": "feed.breast.start", "side": "right", "when": "5"}}
 {"text": "bottle done, a quarter left", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "quarter_left", "when": "now"}}
 {"text": "began feeding him a bottle five minutes ago", "open": [], "expect": {"type": "feed.bottle.start", "contents": "not_stated", "when": "5"}}
 {"text": "done drinking", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "not_stated", "when": "now"}}
-{"text": "she's out like a light", "open": [], "expect": {"type": "sleep.start", "when": "now"}}
+{"text": "tummy time on the play mat", "open": [], "expect": {"type": "none_of_these"}}
 {"text": "blowout, poop everywhere", "open": [], "expect": {"type": "diaper", "diaper_kind": "dirty", "when": "now"}}
 {"text": "finished drinking", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "not_stated", "when": "now"}}
 {"text": "started nursing on the left five minutes ago", "open": [], "expect": {"type": "feed.breast.start", "side": "left", "when": "5"}}
 {"text": "done with the bottle, drank a quarter", "open": [], "expect": {"type": "feed.bottle.finish", "amount": "quarter", "when": "now"}}
 {"text": "switching sides, now right", "open": ["breast"], "expect": {"type": "feed.breast.switch", "side": "right", "when": "now"}}
-{"text": "finished drinking 90 ml", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "not_stated", "when": "now"}}
-{"text": "he sneezed a lot today", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "he's wearing the blue onesie", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "she's staring at the ceiling fan", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "he rolled over by himself", "open": [], "expect": {"type": "none_of_these"}}
 {"text": "started nursing on the right about fifteen minutes ago", "open": [], "expect": {"type": "feed.breast.start", "side": "right", "when": "15"}}
-{"text": "ugh another poop", "open": [], "expect": {"type": "diaper", "diaper_kind": "dirty", "when": "now"}}
-{"text": "finished the bottle, about half left", "open": ["bottle"], "expect": {"type": "feed.bottle.finish", "amount": "half_left", "when": "now"}}
+{"text": "how long since she last ate", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "her eyes look a bit goopy", "open": [], "expect": {"type": "none_of_these"}}
+{"text": "poop and pee", "open": [], "expect": {"type": "diaper", "diaper_kind": "both", "when": "now"}}
+{"text": "she's out like a light", "open": [], "expect": {"type": "sleep.start", "when": "now"}}
 {"text": "swapped to right", "open": ["breast"], "expect": {"type": "feed.breast.switch", "side": "right", "when": "now"}}
 {"text": "finished, half left five minutes ago", "open": [], "expect": {"type": "feed.bottle.finish", "amount": "half_left", "when": "5"}}
 {"text": "started nursing on the left half an hour ago", "open": [], "expect": {"type": "feed.breast.start", "side": "left", "when": "30"}}
