@@ -60,6 +60,18 @@ final class CareTypesTests: XCTestCase {
         XCTAssertEqual(Parsers.field(f("temperature", "temp_c"), in: "took her temperature, 38.1"), .number(38.1))
         XCTAssertEqual(Parsers.field(f("temperature", "temp_c"), in: "fever of 100.4"), .number(38.0))
         XCTAssertNil(Parsers.field(f("temperature", "temp_c"), in: "she feels warm"))
+        XCTAssertEqual(Parsers.field(f("tummy_time", "minutes"), in: "tummy time for ten minutes"), .number(10))
+        XCTAssertEqual(Parsers.field(f("walk", "minutes"), in: "back from a 45 min walk"), .number(45))
+        XCTAssertNil(Parsers.field(f("play", "minutes"), in: "played on the mat 10 minutes ago"))
+    }
+
+    func testOptionalNumbersAreKeptWhenSaid() async throws {
+        let s = try service(enabled: EventRegistry.shared.categories.map(\.id))
+        let r = try await s.processVoice(transcript: "tummy time for ten minutes", surface: .phone)
+        XCTAssertEqual(r.interpretation.best?.type, "tummy_time")
+        XCTAssertEqual(r.interpretation.best?.fields["minutes"], .number(10))
+        let m = try await s.processVoice(transcript: "gave him some infant tylenol", surface: .phone)
+        XCTAssertNil(m.interpretation.best?.fields["dose"])   // an optional text isn't the sentence
     }
 
     func testFieldsAreValidatedFromTheSpec() async throws {

@@ -3,8 +3,8 @@
   "temperatures" : {
     "amount" : 0.05,
     "contents" : 0.05,
-    "diaper_kind" : 0.05,
-    "event_type" : 0.6,
+    "diaper_kind" : 0.35,
+    "event_type" : 1.05,
     "side" : 0.05
   }
 }

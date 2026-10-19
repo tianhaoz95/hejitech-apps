@@ -62,6 +62,13 @@ struct WhatsNewView: View {
                     tint: Theme.accent,
                     title: "Speak From Your Home Screen",
                     description: "Add the Speak widget to your Home Screen or Lock Screen, or the Speak control to Control Center: one tap opens Wee Hours already listening."
+                ),
+                WhatsNewItem(
+                    icon: "waveform",
+                    tint: .green,
+                    title: "Say It for Any Tracker",
+                    description: "Baths, medicine, temperatures, tummy time and every other tracker you've turned on can now be logged by voice too: \"just gave her a bath\", \"tummy time for ten minutes\".",
+                    highlights: ["Only the trackers you turned on are listened for", "Asks when it isn't sure, and every entry can be undone"]
                 )
             ],
             improvementsAndFixes: [

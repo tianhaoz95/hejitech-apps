@@ -415,6 +415,12 @@ public enum Parsers {
             if said.count == 1 { return .string(said[0].key) }
             if f.key == "result", t.contains(" pee") && t.contains(" poop") { return .string("both") }
             return options.contains { $0.key == "other" } && said.isEmpty ? .string("other") : nil
+        case "number" where f.unit == "minutes":
+            // a duration ("for ten minutes", "20 min"), not a time ("ten minutes ago")
+            let re = try! NSRegularExpression(pattern: #"(\d+(?:\.\d+)?|[a-z]+)\s*(?:minutes|minute|mins|min)\b(?!\s+ago)"#)
+            guard let m = re.firstMatch(in: t, range: NSRange(t.startIndex..., in: t)), let r = Range(m.range(at: 1), in: t),
+                  let n = Double(t[r]) ?? wordNumbers[String(t[r])], n > 0 else { return nil }
+            return .number(n)
         case "number" where f.unit == "celsius":
             guard let n = firstNumber(in: t) else { return nil }
             let c = n > 45 ? (n - 32) * 5 / 9 : n

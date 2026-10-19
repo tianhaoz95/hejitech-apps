@@ -268,9 +268,11 @@ public struct VoiceInterpreter: Sendable {
                 fields["consumed_fraction"] = nil
                 conf["amount"] = 1
             }
-            // spec-described fields (care, health, activity types): the required ones from the words
-            for f in spec.fields ?? [] where f.isRequired && fields[f.key] == nil {
-                if let v = Parsers.field(f, in: transcript) { fields[f.key] = v } else { ok = false }
+            // spec-described fields (care, health, activity types) from the words: a required one
+            // that wasn't said lowers confidence; an optional number or choice is kept when said
+            // (an optional text, a dose or a reason, would just be the whole sentence)
+            for f in spec.fields ?? [] where fields[f.key] == nil && (f.isRequired || f.kind != "text") {
+                if let v = Parsers.field(f, in: transcript) { fields[f.key] = v } else if f.isRequired { ok = false }
             }
             if !ok { conf["numbers"] = 0 }
             let label = Self.label(type: type, fields: fields, registry: registry)
