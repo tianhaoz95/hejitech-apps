@@ -70,7 +70,7 @@ jobs:
           path: |
             projects/weehours/apps/ios/App/Models/Laya-Q8_0.gguf
             projects/weehours/apps/ios/App/Models/whisper
-          key: weehours-models-${{ hashFiles('projects/weehours/scripts/fetch-models.sh') }}
+          key: weehours-models-${{ hashFiles('projects/weehours/scripts/fetch-models.sh', 'projects/weehours/eval/laya.env') }}
       - name: Fetch on-device models
         run: projects/weehours/scripts/fetch-models.sh
 

@@ -1,11 +1,11 @@
 {
-  "modelVersion" : "laya-q8_0@http",
+  "modelVersion" : "weehours-laya-ft-v0 (topup, Q8_0)",
   "temperatures" : {
-    "amount" : 1.05,
-    "category" : 2.35,
-    "contents" : 4,
-    "diaper_kind" : 0.3,
-    "phase" : 0.7,
-    "side" : 0.3
+    "amount" : 1.0,
+    "category" : 1.0,
+    "contents" : 1.0,
+    "diaper_kind" : 1.0,
+    "phase" : 1.0,
+    "side" : 1.0
   }
 }
