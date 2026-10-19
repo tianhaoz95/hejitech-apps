@@ -1,1126 +1,1126 @@
 [
   {
-    "tier" : "full_list",
     "deciding" : "event_type",
+    "none_confidence" : "52%",
+    "ok" : "yes",
+    "got" : "Pump",
     "text" : "temperature is 37.2",
     "expected" : "none_of_these",
-    "ok" : "yes",
     "model_category" : "none_of_these 51%",
-    "none_confidence" : "52%",
-    "got" : "Pump"
+    "tier" : "full_list"
   },
   {
-    "tier" : "pick",
-    "deciding" : "side",
-    "expected" : "feed.breast.switch",
-    "model_category" : "breast 97%",
     "text" : "switched to the left",
+    "expected" : "feed.breast.switch",
+    "ok" : "yes",
+    "model_category" : "breast 97%",
+    "deciding" : "side",
     "got" : "Switch side · left",
-    "ok" : "yes"
+    "tier" : "pick"
   },
   {
-    "expected" : "diaper",
-    "text" : "wet diaper",
     "model_category" : "diaper 89%",
-    "tier" : "pick",
     "ok" : "yes",
     "got" : "Diaper · wet",
-    "deciding" : "diaper_kind"
+    "text" : "wet diaper",
+    "expected" : "diaper",
+    "deciding" : "diaper_kind",
+    "tier" : "pick"
   },
   {
-    "deciding" : "event_type",
+    "expected" : "diaper",
+    "got" : "Diaper · wet",
     "model_category" : "diaper 51%",
-    "tier" : "pick",
+    "ok" : "yes",
     "text" : "just pee",
+    "tier" : "pick",
+    "deciding" : "event_type"
+  },
+  {
+    "deciding" : "event_type",
     "got" : "Diaper · wet",
-    "expected" : "diaper",
-    "ok" : "yes"
-  },
-  {
-    "deciding" : "event_type",
     "model_category" : "diaper 51%",
-    "text" : "changed a wet one five minutes ago",
-    "tier" : "pick",
-    "expected" : "diaper",
     "ok" : "yes",
-    "got" : "Diaper · wet"
+    "tier" : "pick",
+    "text" : "changed a wet one five minutes ago",
+    "expected" : "diaper"
   },
   {
     "deciding" : "event_type",
-    "text" : "finished, finished the whole thing half an hour ago",
-    "model_category" : "none_of_these 51%",
-    "none_confidence" : "54%",
     "ok" : "no",
-    "tier" : "full_list",
+    "got" : "Pump",
+    "model_category" : "none_of_these 51%",
+    "text" : "finished, finished the whole thing half an hour ago",
+    "none_confidence" : "54%",
     "expected" : "feed.bottle.finish",
-    "got" : "Pump"
+    "tier" : "full_list"
   },
   {
-    "expected" : "diaper",
-    "tier" : "pick",
-    "ok" : "yes",
     "model_category" : "diaper 89%",
     "got" : "Diaper · dry",
-    "deciding" : "diaper_kind",
-    "text" : "diaper was dry an hour ago"
-  },
-  {
-    "none_confidence" : "52%",
-    "text" : "gave her a bottle of formula about fifteen minutes ago",
-    "ok" : "no",
-    "got" : "Pump",
-    "expected" : "feed.bottle.single",
-    "tier" : "full_list",
-    "deciding" : "event_type",
-    "model_category" : "none_of_these 51%"
-  },
-  {
-    "expected" : "none_of_these",
-    "none_confidence" : "52%",
-    "got" : "Pump",
-    "ok" : "yes",
-    "text" : "call the pediatrician tomorrow",
-    "tier" : "full_list",
-    "deciding" : "event_type",
-    "model_category" : "none_of_these 51%"
-  },
-  {
     "expected" : "diaper",
-    "model_category" : "diaper 51%",
+    "text" : "diaper was dry an hour ago",
+    "tier" : "pick",
+    "deciding" : "diaper_kind",
+    "ok" : "yes"
+  },
+  {
+    "got" : "Pump",
+    "model_category" : "none_of_these 51%",
+    "none_confidence" : "52%",
+    "tier" : "full_list",
+    "deciding" : "event_type",
+    "ok" : "no",
+    "expected" : "feed.bottle.single",
+    "text" : "gave her a bottle of formula about fifteen minutes ago"
+  },
+  {
+    "tier" : "full_list",
+    "deciding" : "event_type",
+    "none_confidence" : "52%",
+    "got" : "Pump",
+    "text" : "call the pediatrician tomorrow",
+    "ok" : "yes",
+    "model_category" : "none_of_these 51%",
+    "expected" : "none_of_these"
+  },
+  {
+    "ok" : "yes",
     "deciding" : "event_type",
     "tier" : "pick",
-    "ok" : "yes",
+    "model_category" : "diaper 51%",
+    "got" : "Diaper · wet",
     "text" : "changed a wet one",
-    "got" : "Diaper · wet"
+    "expected" : "diaper"
   },
   {
+    "model_category" : "diaper 89%",
+    "deciding" : "diaper_kind",
     "expected" : "diaper",
     "text" : "diaper was dry",
     "tier" : "pick",
     "got" : "Diaper · dry",
+    "ok" : "yes"
+  },
+  {
+    "text" : "ate most of the cereal",
+    "got" : "Solids · most",
+    "deciding" : "solids_amount",
+    "ok" : "yes",
+    "expected" : "feed.solids",
+    "tier" : "pick",
+    "model_category" : "solids 89%"
+  },
+  {
+    "expected" : "none_of_these",
+    "text" : "booked the six week check",
+    "ok" : "yes",
+    "model_category" : "none_of_these 51%",
+    "none_confidence" : "52%",
+    "tier" : "full_list",
+    "deciding" : "event_type",
+    "got" : "Pump"
+  },
+  {
+    "got" : "Diaper · dirty",
+    "deciding" : "event_type",
+    "text" : "big poop",
+    "ok" : "yes",
+    "expected" : "diaper",
+    "tier" : "pick",
+    "model_category" : "diaper 67%"
+  },
+  {
+    "model_category" : "diaper 89%",
+    "expected" : "diaper",
+    "got" : "Diaper · wet",
+    "ok" : "yes",
+    "tier" : "pick",
+    "text" : "wet diaper about fifteen minutes ago",
+    "deciding" : "diaper_kind"
+  },
+  {
+    "ok" : "yes",
+    "deciding" : "event_type",
+    "text" : "the washing machine is done",
+    "got" : "Pump",
+    "expected" : "none_of_these",
+    "tier" : "full_list",
+    "none_confidence" : "54%",
+    "model_category" : "none_of_these 51%"
+  },
+  {
+    "tier" : "full_list",
+    "got" : "Pump",
+    "ok" : "yes",
+    "model_category" : "none_of_these 51%",
+    "text" : "gave her the vitamin D drops",
+    "deciding" : "event_type",
+    "expected" : "none_of_these",
+    "none_confidence" : "52%"
+  },
+  {
+    "ok" : "yes",
+    "deciding" : "diaper_kind",
+    "got" : "Diaper · wet",
+    "model_category" : "diaper 89%",
+    "expected" : "diaper",
+    "tier" : "pick",
+    "text" : "wet diaper at 1:30 am"
+  },
+  {
+    "tier" : "full_list",
+    "text" : "began a bottle of formula",
+    "model_category" : "none_of_these 51%",
+    "deciding" : "event_type",
+    "expected" : "feed.bottle.start",
+    "none_confidence" : "50%",
+    "got" : "Start bottle · formula",
+    "ok" : "yes"
+  },
+  {
+    "tier" : "pick",
+    "deciding" : "event_type",
+    "expected" : "sleep.end",
+    "text" : "woke up at 3:45",
+    "got" : "Woke up",
+    "model_category" : "sleep 94%",
+    "ok" : "yes"
+  },
+  {
+    "model_category" : "bottle 80%",
+    "expected" : "feed.bottle.finish",
+    "got" : "Finish bottle · drank all",
+    "text" : "all done, drank all of it",
+    "deciding" : "event_type",
+    "tier" : "pick",
+    "ok" : "yes"
+  },
+  {
+    "deciding" : "event_type",
+    "expected" : "sleep.start",
+    "ok" : "yes",
+    "model_category" : "sleep 100%",
+    "text" : "went to sleep half an hour ago",
+    "tier" : "pick",
+    "got" : "Fell asleep"
+  },
+  {
+    "none_confidence" : "52%",
+    "model_category" : "none_of_these 51%",
+    "tier" : "full_list",
+    "text" : "what time is the appointment",
+    "expected" : "none_of_these",
+    "got" : "Pump",
+    "ok" : "yes",
+    "deciding" : "event_type"
+  },
+  {
+    "text" : "giving him a bottle now",
+    "model_category" : "none_of_these 51%",
+    "ok" : "yes",
+    "none_confidence" : "50%",
+    "got" : "Start bottle",
+    "tier" : "full_list",
+    "expected" : "feed.bottle.start",
+    "deciding" : "event_type"
+  },
+  {
+    "expected" : "sleep.start",
+    "deciding" : "event_type",
+    "tier" : "pick",
+    "got" : "Fell asleep",
+    "text" : "baby's sleeping about fifteen minutes ago",
+    "model_category" : "sleep 97%",
+    "ok" : "yes"
+  },
+  {
+    "text" : "bath at seven tonight",
+    "none_confidence" : "52%",
+    "model_category" : "none_of_these 51%",
+    "deciding" : "event_type",
+    "tier" : "full_list",
+    "ok" : "yes",
+    "expected" : "none_of_these",
+    "got" : "Pump"
+  },
+  {
+    "model_category" : "none_of_these 51%",
+    "ok" : "yes",
+    "expected" : "none_of_these",
+    "text" : "hiccups again",
+    "tier" : "full_list",
+    "none_confidence" : "52%",
+    "got" : "Pump",
+    "deciding" : "event_type"
+  },
+  {
+    "deciding" : "event_type",
+    "got" : "Pump",
+    "expected" : "none_of_these",
+    "tier" : "full_list",
+    "text" : "she grabbed my finger",
+    "ok" : "yes",
+    "model_category" : "none_of_these 51%",
+    "none_confidence" : "52%"
+  },
+  {
+    "tier" : "full_list",
+    "ok" : "yes",
+    "model_category" : "none_of_these 51%",
+    "text" : "baby monitor battery is low",
+    "got" : "Pump",
+    "none_confidence" : "52%",
+    "expected" : "none_of_these",
+    "deciding" : "event_type"
+  },
+  {
+    "ok" : "yes",
+    "got" : "Diaper · wet",
+    "expected" : "diaper",
+    "tier" : "pick",
+    "deciding" : "diaper_kind",
+    "text" : "pee diaper",
+    "model_category" : "diaper 89%"
+  },
+  {
+    "got" : "Solids",
+    "tier" : "pick",
+    "text" : "the bath water was too cold",
+    "ok" : "yes",
+    "deciding" : "event_type",
+    "model_category" : "solids 51%",
+    "expected" : "none_of_these"
+  },
+  {
+    "text" : "he finished his bottle",
+    "expected" : "feed.bottle.finish",
+    "deciding" : "event_type",
+    "none_confidence" : "51%",
+    "ok" : "no",
+    "tier" : "full_list",
+    "model_category" : "none_of_these 51%",
+    "got" : "Finish bottle"
+  },
+  {
+    "expected" : "none_of_these",
+    "deciding" : "event_type",
+    "ok" : "yes",
+    "got" : "Pump",
+    "tier" : "full_list",
+    "model_category" : "none_of_these 51%",
+    "none_confidence" : "52%",
+    "text" : "what's the weather tomorrow"
+  },
+  {
+    "model_category" : "none_of_these 51%",
+    "none_confidence" : "52%",
+    "deciding" : "event_type",
+    "tier" : "full_list",
+    "got" : "Pump",
+    "ok" : "yes",
+    "text" : "grandma is coming at noon",
+    "expected" : "none_of_these"
+  },
+  {
+    "tier" : "full_list",
+    "ok" : "yes",
+    "expected" : "none_of_these",
+    "text" : "she has a little rash on her cheek",
+    "none_confidence" : "52%",
+    "deciding" : "event_type",
+    "got" : "Pump",
+    "model_category" : "none_of_these 51%"
+  },
+  {
+    "got" : "Diaper · dirty",
+    "expected" : "diaper",
+    "model_category" : "diaper 67%",
+    "tier" : "pick",
+    "ok" : "yes",
+    "text" : "ugh another poop",
+    "deciding" : "event_type"
+  },
+  {
+    "got" : "Pump",
+    "ok" : "yes",
+    "tier" : "full_list",
+    "deciding" : "event_type",
+    "none_confidence" : "52%",
+    "expected" : "none_of_these",
+    "model_category" : "none_of_these 51%",
+    "text" : "he laughed at the dog"
+  },
+  {
+    "got" : "Pump",
+    "deciding" : "event_type",
+    "text" : "baby's got a bit of a cough",
+    "tier" : "full_list",
+    "ok" : "yes",
+    "expected" : "none_of_these",
+    "none_confidence" : "52%",
+    "model_category" : "none_of_these 51%"
+  },
+  {
+    "expected" : "none_of_these",
+    "model_category" : "none_of_these 51%",
+    "tier" : "full_list",
+    "deciding" : "event_type",
+    "text" : "nail trimming done",
+    "got" : "Pump",
+    "none_confidence" : "54%",
+    "ok" : "yes"
+  },
+  {
+    "tier" : "full_list",
+    "deciding" : "event_type",
+    "expected" : "feed.bottle.finish",
+    "got" : "Finish bottle",
+    "text" : "bottle's done",
+    "ok" : "yes",
+    "model_category" : "none_of_these 51%",
+    "none_confidence" : "52%"
+  },
+  {
+    "ok" : "yes",
+    "model_category" : "diaper 89%",
+    "tier" : "full_list",
+    "deciding" : "diaper_kind",
+    "expected" : "diaper",
+    "got" : "Diaper",
+    "text" : "diaper change"
+  },
+  {
+    "got" : "Start bottle",
+    "tier" : "full_list",
+    "model_category" : "none_of_these 51%",
+    "text" : "he dozed off",
+    "ok" : "no",
+    "none_confidence" : "50%",
+    "deciding" : "event_type",
+    "expected" : "sleep.start"
+  },
+  {
+    "tier" : "full_list",
+    "expected" : "none_of_these",
+    "text" : "the formula tin is almost empty",
+    "ok" : "yes",
+    "deciding" : "event_type",
+    "got" : "Pump",
+    "model_category" : "none_of_these 51%",
+    "none_confidence" : "52%"
+  },
+  {
+    "ok" : "yes",
+    "model_category" : "diaper 51%",
+    "deciding" : "event_type",
+    "got" : "Diaper · wet",
+    "tier" : "pick",
+    "expected" : "diaper",
+    "text" : "wet one again"
+  },
+  {
+    "ok" : "yes",
+    "got" : "Finish bottle · drank ¼",
+    "model_category" : "bottle 80%",
+    "deciding" : "event_type",
+    "text" : "all done, drank a quarter",
+    "expected" : "feed.bottle.finish",
+    "tier" : "pick"
+  },
+  {
+    "tier" : "full_list",
+    "ok" : "yes",
+    "got" : "Pump",
+    "text" : "she smiled for the first time",
+    "expected" : "none_of_these",
+    "deciding" : "event_type",
+    "model_category" : "none_of_these 51%",
+    "none_confidence" : "52%"
+  },
+  {
+    "tier" : "full_list",
+    "expected" : "none_of_these",
+    "deciding" : "diaper_kind",
+    "ok" : "yes",
+    "got" : "Diaper",
+    "text" : "remind me to order diapers",
+    "model_category" : "diaper 89%"
+  },
+  {
+    "ok" : "yes",
+    "text" : "I need a coffee",
+    "got" : "Pump",
+    "deciding" : "event_type",
+    "model_category" : "none_of_these 51%",
+    "tier" : "full_list",
+    "expected" : "none_of_these",
+    "none_confidence" : "52%"
+  },
+  {
+    "model_category" : "none_of_these 51%",
+    "none_confidence" : "54%",
+    "ok" : "no",
+    "text" : "all done, finished the whole thing",
+    "got" : "Pump",
+    "expected" : "feed.bottle.finish",
+    "tier" : "full_list",
+    "deciding" : "event_type"
+  },
+  {
+    "got" : "Start breastfeeding · left",
+    "expected" : "feed.breast.start",
+    "model_category" : "breast 97%",
+    "text" : "start feeding left side",
+    "deciding" : "side",
+    "ok" : "yes",
+    "tier" : "pick"
+  },
+  {
+    "tier" : "full_list",
+    "none_confidence" : "50%",
+    "got" : "Start bottle",
+    "expected" : "feed.bottle.start",
+    "model_category" : "none_of_these 51%",
+    "ok" : "yes",
+    "deciding" : "event_type",
+    "text" : "she's starting her bottle"
+  },
+  {
+    "model_category" : "solids 89%",
+    "text" : "she had some banana puree",
+    "expected" : "feed.solids",
+    "got" : "Solids · some",
+    "deciding" : "solids_amount",
+    "tier" : "pick",
+    "ok" : "yes"
+  },
+  {
+    "text" : "swapped to left",
+    "ok" : "yes",
+    "got" : "Switch side · left",
+    "tier" : "pick",
+    "deciding" : "side",
+    "model_category" : "breast 94%",
+    "expected" : "feed.breast.switch"
+  },
+  {
+    "ok" : "no",
+    "expected" : "sleep.end",
+    "deciding" : "event_type",
+    "model_category" : "none_of_these 51%",
+    "tier" : "full_list",
+    "got" : "Pump",
+    "text" : "up from the nap",
+    "none_confidence" : "52%"
+  },
+  {
+    "none_confidence" : "52%",
+    "model_category" : "none_of_these 51%",
+    "text" : "is she due for her vaccines soon",
+    "tier" : "full_list",
+    "ok" : "yes",
+    "got" : "Pump",
+    "expected" : "none_of_these",
+    "deciding" : "event_type"
+  },
+  {
+    "none_confidence" : "52%",
+    "model_category" : "none_of_these 51%",
+    "deciding" : "event_type",
+    "expected" : "none_of_these",
+    "tier" : "full_list",
+    "text" : "need to wash the bottles",
+    "ok" : "yes",
+    "got" : "Pump"
+  },
+  {
+    "got" : "Pump",
+    "deciding" : "event_type",
+    "model_category" : "none_of_these 51%",
+    "none_confidence" : "52%",
+    "text" : "time to clip his nails",
+    "ok" : "yes",
+    "tier" : "full_list",
+    "expected" : "none_of_these"
+  },
+  {
+    "ok" : "yes",
+    "text" : "gave him a full bottle earlier",
+    "model_category" : "bottle 100%",
+    "tier" : "pick",
+    "got" : "Bottle (one entry) · drank all",
+    "deciding" : "when",
+    "expected" : "feed.bottle.single"
+  },
+  {
+    "got" : "Pump",
+    "text" : "we're going for a walk",
+    "model_category" : "none_of_these 51%",
+    "tier" : "full_list",
+    "deciding" : "event_type",
+    "expected" : "none_of_these",
+    "ok" : "yes",
+    "none_confidence" : "52%"
+  },
+  {
+    "got" : "Pump",
+    "deciding" : "event_type",
+    "ok" : "yes",
+    "none_confidence" : "52%",
+    "model_category" : "none_of_these 51%",
+    "text" : "remember to buy more formula",
+    "tier" : "full_list",
+    "expected" : "none_of_these"
+  },
+  {
+    "got" : "Diaper",
+    "expected" : "diaper",
+    "text" : "changed his diaper",
+    "tier" : "full_list",
     "ok" : "yes",
     "deciding" : "diaper_kind",
     "model_category" : "diaper 89%"
   },
   {
-    "expected" : "feed.solids",
-    "tier" : "pick",
-    "model_category" : "solids 89%",
-    "deciding" : "solids_amount",
-    "ok" : "yes",
-    "text" : "ate most of the cereal",
-    "got" : "Solids · most"
-  },
-  {
-    "expected" : "none_of_these",
-    "ok" : "yes",
-    "deciding" : "event_type",
-    "model_category" : "none_of_these 51%",
-    "none_confidence" : "52%",
-    "tier" : "full_list",
-    "text" : "booked the six week check",
-    "got" : "Pump"
-  },
-  {
-    "text" : "big poop",
-    "tier" : "pick",
-    "ok" : "yes",
-    "got" : "Diaper · dirty",
-    "expected" : "diaper",
-    "deciding" : "event_type",
-    "model_category" : "diaper 67%"
-  },
-  {
-    "text" : "wet diaper about fifteen minutes ago",
-    "tier" : "pick",
-    "model_category" : "diaper 89%",
-    "got" : "Diaper · wet",
-    "deciding" : "diaper_kind",
-    "ok" : "yes",
-    "expected" : "diaper"
-  },
-  {
-    "model_category" : "none_of_these 51%",
-    "text" : "the washing machine is done",
-    "ok" : "yes",
-    "deciding" : "event_type",
-    "none_confidence" : "54%",
-    "tier" : "full_list",
-    "got" : "Pump",
-    "expected" : "none_of_these"
-  },
-  {
-    "expected" : "none_of_these",
-    "deciding" : "event_type",
-    "ok" : "yes",
-    "none_confidence" : "52%",
-    "tier" : "full_list",
-    "got" : "Pump",
-    "text" : "gave her the vitamin D drops",
-    "model_category" : "none_of_these 51%"
-  },
-  {
-    "text" : "wet diaper at 1:30 am",
-    "expected" : "diaper",
-    "ok" : "yes",
-    "model_category" : "diaper 89%",
-    "deciding" : "diaper_kind",
-    "tier" : "pick",
-    "got" : "Diaper · wet"
-  },
-  {
-    "tier" : "full_list",
-    "deciding" : "event_type",
-    "text" : "began a bottle of formula",
-    "model_category" : "none_of_these 51%",
-    "ok" : "yes",
-    "got" : "Start bottle · formula",
-    "expected" : "feed.bottle.start",
-    "none_confidence" : "50%"
-  },
-  {
-    "text" : "woke up at 3:45",
-    "deciding" : "event_type",
-    "tier" : "pick",
-    "ok" : "yes",
-    "got" : "Woke up",
-    "expected" : "sleep.end",
-    "model_category" : "sleep 94%"
-  },
-  {
+    "text" : "drank the whole bottle",
     "expected" : "feed.bottle.finish",
     "ok" : "yes",
-    "deciding" : "event_type",
-    "got" : "Finish bottle · drank all",
-    "text" : "all done, drank all of it",
     "model_category" : "bottle 80%",
-    "tier" : "pick"
-  },
-  {
-    "model_category" : "sleep 100%",
-    "got" : "Fell asleep",
-    "expected" : "sleep.start",
-    "text" : "went to sleep half an hour ago",
     "deciding" : "event_type",
     "tier" : "pick",
-    "ok" : "yes"
+    "got" : "Finish bottle · drank all"
   },
   {
-    "text" : "what time is the appointment",
-    "tier" : "full_list",
-    "none_confidence" : "52%",
-    "ok" : "yes",
-    "got" : "Pump",
-    "deciding" : "event_type",
-    "model_category" : "none_of_these 51%",
-    "expected" : "none_of_these"
-  },
-  {
-    "none_confidence" : "50%",
-    "deciding" : "event_type",
-    "text" : "giving him a bottle now",
-    "expected" : "feed.bottle.start",
-    "tier" : "full_list",
-    "ok" : "yes",
-    "got" : "Start bottle",
-    "model_category" : "none_of_these 51%"
-  },
-  {
-    "tier" : "pick",
-    "model_category" : "sleep 97%",
-    "expected" : "sleep.start",
-    "deciding" : "event_type",
-    "got" : "Fell asleep",
-    "ok" : "yes",
-    "text" : "baby's sleeping about fifteen minutes ago"
-  },
-  {
-    "model_category" : "none_of_these 51%",
-    "got" : "Pump",
-    "tier" : "full_list",
-    "text" : "bath at seven tonight",
-    "none_confidence" : "52%",
-    "expected" : "none_of_these",
-    "ok" : "yes",
-    "deciding" : "event_type"
-  },
-  {
-    "model_category" : "none_of_these 51%",
-    "tier" : "full_list",
-    "none_confidence" : "52%",
-    "ok" : "yes",
-    "deciding" : "event_type",
-    "expected" : "none_of_these",
-    "got" : "Pump",
-    "text" : "hiccups again"
-  },
-  {
-    "text" : "she grabbed my finger",
-    "deciding" : "event_type",
-    "model_category" : "none_of_these 51%",
-    "expected" : "none_of_these",
-    "tier" : "full_list",
-    "ok" : "yes",
-    "got" : "Pump",
-    "none_confidence" : "52%"
-  },
-  {
-    "tier" : "full_list",
-    "deciding" : "event_type",
-    "expected" : "none_of_these",
-    "text" : "baby monitor battery is low",
-    "model_category" : "none_of_these 51%",
-    "ok" : "yes",
-    "none_confidence" : "52%",
-    "got" : "Pump"
-  },
-  {
-    "deciding" : "diaper_kind",
-    "model_category" : "diaper 89%",
-    "got" : "Diaper · wet",
-    "ok" : "yes",
-    "text" : "pee diaper",
-    "expected" : "diaper",
-    "tier" : "pick"
-  },
-  {
-    "expected" : "none_of_these",
-    "model_category" : "solids 51%",
-    "deciding" : "event_type",
-    "tier" : "pick",
-    "text" : "the bath water was too cold",
-    "ok" : "yes",
-    "got" : "Solids"
-  },
-  {
-    "got" : "Finish bottle",
-    "model_category" : "none_of_these 51%",
-    "deciding" : "event_type",
-    "ok" : "no",
-    "expected" : "feed.bottle.finish",
-    "text" : "he finished his bottle",
-    "none_confidence" : "51%",
-    "tier" : "full_list"
-  },
-  {
-    "model_category" : "none_of_these 51%",
-    "expected" : "none_of_these",
-    "none_confidence" : "52%",
-    "text" : "what's the weather tomorrow",
-    "deciding" : "event_type",
-    "got" : "Pump",
-    "tier" : "full_list",
-    "ok" : "yes"
-  },
-  {
-    "expected" : "none_of_these",
-    "text" : "grandma is coming at noon",
-    "deciding" : "event_type",
-    "got" : "Pump",
-    "ok" : "yes",
-    "model_category" : "none_of_these 51%",
-    "none_confidence" : "52%",
-    "tier" : "full_list"
-  },
-  {
-    "tier" : "full_list",
-    "expected" : "none_of_these",
-    "deciding" : "event_type",
-    "model_category" : "none_of_these 51%",
-    "ok" : "yes",
-    "none_confidence" : "52%",
-    "text" : "she has a little rash on her cheek",
-    "got" : "Pump"
-  },
-  {
-    "ok" : "yes",
-    "text" : "ugh another poop",
-    "tier" : "pick",
-    "got" : "Diaper · dirty",
-    "expected" : "diaper",
-    "model_category" : "diaper 67%",
-    "deciding" : "event_type"
-  },
-  {
-    "got" : "Pump",
-    "text" : "he laughed at the dog",
-    "deciding" : "event_type",
-    "model_category" : "none_of_these 51%",
-    "expected" : "none_of_these",
-    "ok" : "yes",
-    "none_confidence" : "52%",
-    "tier" : "full_list"
-  },
-  {
-    "text" : "baby's got a bit of a cough",
-    "got" : "Pump",
-    "none_confidence" : "52%",
-    "tier" : "full_list",
-    "expected" : "none_of_these",
-    "model_category" : "none_of_these 51%",
-    "ok" : "yes",
-    "deciding" : "event_type"
-  },
-  {
-    "text" : "nail trimming done",
-    "deciding" : "event_type",
-    "model_category" : "none_of_these 51%",
-    "got" : "Pump",
-    "none_confidence" : "54%",
-    "tier" : "full_list",
-    "expected" : "none_of_these",
-    "ok" : "yes"
-  },
-  {
-    "model_category" : "none_of_these 51%",
-    "ok" : "yes",
-    "none_confidence" : "52%",
-    "tier" : "full_list",
-    "got" : "Finish bottle",
-    "deciding" : "event_type",
-    "text" : "bottle's done",
-    "expected" : "feed.bottle.finish"
-  },
-  {
-    "ok" : "yes",
-    "expected" : "diaper",
-    "model_category" : "diaper 89%",
-    "text" : "diaper change",
-    "tier" : "full_list",
-    "got" : "Diaper",
-    "deciding" : "diaper_kind"
-  },
-  {
-    "model_category" : "none_of_these 51%",
-    "text" : "he dozed off",
-    "expected" : "sleep.start",
-    "tier" : "full_list",
-    "deciding" : "event_type",
-    "ok" : "no",
-    "got" : "Start bottle",
-    "none_confidence" : "50%"
-  },
-  {
-    "model_category" : "none_of_these 51%",
-    "none_confidence" : "52%",
-    "ok" : "yes",
-    "got" : "Pump",
-    "text" : "the formula tin is almost empty",
-    "deciding" : "event_type",
-    "expected" : "none_of_these",
-    "tier" : "full_list"
-  },
-  {
-    "tier" : "pick",
-    "ok" : "yes",
-    "text" : "wet one again",
-    "got" : "Diaper · wet",
-    "expected" : "diaper",
-    "model_category" : "diaper 51%",
-    "deciding" : "event_type"
-  },
-  {
-    "tier" : "pick",
-    "ok" : "yes",
     "got" : "Finish bottle · drank ¼",
-    "text" : "all done, drank a quarter",
-    "model_category" : "bottle 80%",
+    "deciding" : "amount",
+    "text" : "finished, quarter of the bottle left",
     "expected" : "feed.bottle.finish",
+    "ok" : "no",
+    "model_category" : "bottle 100%",
+    "tier" : "auto"
+  },
+  {
+    "got" : "Finish bottle · drank ¼",
+    "expected" : "feed.bottle.finish",
+    "text" : "she only drank a quarter of it",
+    "model_category" : "bottle 80%",
+    "ok" : "yes",
+    "tier" : "pick",
     "deciding" : "event_type"
   },
   {
-    "tier" : "full_list",
-    "expected" : "none_of_these",
-    "text" : "she smiled for the first time",
     "got" : "Pump",
-    "deciding" : "event_type",
+    "tier" : "full_list",
     "ok" : "yes",
-    "model_category" : "none_of_these 51%",
-    "none_confidence" : "52%"
-  },
-  {
-    "model_category" : "diaper 89%",
-    "tier" : "full_list",
-    "text" : "remind me to order diapers",
-    "expected" : "none_of_these",
-    "got" : "Diaper",
-    "deciding" : "diaper_kind",
-    "ok" : "yes"
-  },
-  {
+    "none_confidence" : "52%",
+    "text" : "he's been really fussy tonight",
     "deciding" : "event_type",
     "model_category" : "none_of_these 51%",
+    "expected" : "none_of_these"
+  },
+  {
+    "got" : "Pump",
     "tier" : "full_list",
-    "expected" : "none_of_these",
+    "deciding" : "event_type",
+    "model_category" : "none_of_these 51%",
     "none_confidence" : "52%",
     "ok" : "yes",
-    "text" : "I need a coffee",
-    "got" : "Pump"
+    "expected" : "none_of_these",
+    "text" : "she's got baby acne"
   },
   {
-    "none_confidence" : "54%",
-    "tier" : "full_list",
-    "expected" : "feed.bottle.finish",
-    "deciding" : "event_type",
-    "ok" : "no",
-    "got" : "Pump",
-    "text" : "all done, finished the whole thing",
-    "model_category" : "none_of_these 51%"
-  },
-  {
-    "deciding" : "side",
-    "model_category" : "breast 97%",
-    "text" : "start feeding left side",
-    "got" : "Start breastfeeding · left",
     "ok" : "yes",
+    "text" : "latched on the left",
+    "got" : "Start breastfeeding · left",
+    "deciding" : "side",
+    "model_category" : "breast 100%",
     "expected" : "feed.breast.start",
     "tier" : "pick"
   },
   {
-    "none_confidence" : "50%",
-    "got" : "Start bottle",
-    "tier" : "full_list",
-    "model_category" : "none_of_these 51%",
-    "expected" : "feed.bottle.start",
     "ok" : "yes",
-    "text" : "she's starting her bottle",
+    "text" : "changed a dirty nappy half an hour ago",
+    "model_category" : "diaper 80%",
+    "expected" : "diaper",
+    "tier" : "pick",
+    "got" : "Diaper · dirty",
     "deciding" : "event_type"
   },
   {
-    "deciding" : "solids_amount",
-    "text" : "she had some banana puree",
-    "tier" : "pick",
-    "got" : "Solids · some",
-    "model_category" : "solids 89%",
+    "text" : "starting breastfeeding left side",
+    "got" : "Start breastfeeding · left",
     "ok" : "yes",
-    "expected" : "feed.solids"
+    "deciding" : "side",
+    "tier" : "pick",
+    "model_category" : "breast 100%",
+    "expected" : "feed.breast.start"
   },
   {
-    "expected" : "feed.breast.switch",
     "ok" : "yes",
-    "model_category" : "breast 94%",
-    "got" : "Switch side · left",
-    "text" : "swapped to left",
+    "model_category" : "none_of_these 51%",
+    "none_confidence" : "51%",
+    "text" : "she's up now",
+    "tier" : "full_list",
+    "expected" : "sleep.end",
+    "got" : "Woke up",
+    "deciding" : "event_type"
+  },
+  {
+    "expected" : "none_of_these",
+    "got" : "Pump",
+    "tier" : "full_list",
+    "ok" : "yes",
+    "model_category" : "none_of_these 51%",
+    "none_confidence" : "52%",
+    "deciding" : "event_type",
+    "text" : "he sneezed a lot today"
+  },
+  {
+    "tier" : "full_list",
+    "ok" : "yes",
+    "none_confidence" : "52%",
+    "model_category" : "none_of_these 51%",
+    "text" : "pediatrician says she's doing great",
+    "deciding" : "event_type",
+    "got" : "Pump",
+    "expected" : "none_of_these"
+  },
+  {
+    "tier" : "pick",
+    "expected" : "diaper",
+    "ok" : "yes",
+    "deciding" : "diaper_kind",
+    "model_category" : "diaper 89%",
+    "text" : "changed her diaper, it was wet",
+    "got" : "Diaper · wet"
+  },
+  {
+    "ok" : "yes",
+    "expected" : "feed.bottle.start",
+    "text" : "okay starting the bottle",
+    "tier" : "full_list",
+    "deciding" : "event_type",
+    "none_confidence" : "50%",
+    "got" : "Start bottle",
+    "model_category" : "none_of_these 51%"
+  },
+  {
+    "model_category" : "none_of_these 51%",
+    "none_confidence" : "50%",
+    "expected" : "feed.bottle.start",
+    "tier" : "full_list",
+    "ok" : "yes",
+    "text" : "began feeding him a bottle about fifteen minutes ago",
+    "deciding" : "event_type",
+    "got" : "Start bottle"
+  },
+  {
+    "text" : "started nursing on the left an hour ago",
+    "expected" : "feed.breast.start",
+    "got" : "Start breastfeeding · left",
+    "ok" : "yes",
+    "model_category" : "breast 100%",
     "tier" : "pick",
     "deciding" : "side"
   },
   {
-    "model_category" : "none_of_these 51%",
-    "got" : "Pump",
-    "ok" : "no",
-    "deciding" : "event_type",
-    "tier" : "full_list",
-    "none_confidence" : "52%",
-    "text" : "up from the nap",
-    "expected" : "sleep.end"
-  },
-  {
-    "text" : "is she due for her vaccines soon",
-    "model_category" : "none_of_these 51%",
-    "deciding" : "event_type",
-    "got" : "Pump",
-    "tier" : "full_list",
-    "none_confidence" : "52%",
-    "expected" : "none_of_these",
-    "ok" : "yes"
-  },
-  {
-    "expected" : "none_of_these",
-    "deciding" : "event_type",
-    "ok" : "yes",
-    "got" : "Pump",
-    "model_category" : "none_of_these 51%",
-    "text" : "need to wash the bottles",
-    "tier" : "full_list",
-    "none_confidence" : "52%"
-  },
-  {
-    "none_confidence" : "52%",
-    "ok" : "yes",
-    "model_category" : "none_of_these 51%",
-    "text" : "time to clip his nails",
-    "tier" : "full_list",
-    "expected" : "none_of_these",
-    "got" : "Pump",
-    "deciding" : "event_type"
-  },
-  {
-    "text" : "gave him a full bottle earlier",
-    "deciding" : "when",
-    "model_category" : "bottle 100%",
-    "tier" : "pick",
-    "got" : "Bottle (one entry) · drank all",
-    "expected" : "feed.bottle.single",
-    "ok" : "yes"
-  },
-  {
-    "got" : "Pump",
-    "model_category" : "none_of_these 51%",
-    "none_confidence" : "52%",
-    "ok" : "yes",
-    "deciding" : "event_type",
-    "expected" : "none_of_these",
-    "text" : "we're going for a walk",
-    "tier" : "full_list"
-  },
-  {
-    "model_category" : "none_of_these 51%",
-    "ok" : "yes",
-    "none_confidence" : "52%",
-    "expected" : "none_of_these",
-    "tier" : "full_list",
-    "deciding" : "event_type",
-    "text" : "remember to buy more formula",
-    "got" : "Pump"
-  },
-  {
-    "text" : "changed his diaper",
-    "tier" : "full_list",
-    "deciding" : "diaper_kind",
-    "got" : "Diaper",
-    "ok" : "yes",
-    "expected" : "diaper",
-    "model_category" : "diaper 89%"
-  },
-  {
-    "ok" : "yes",
-    "deciding" : "event_type",
-    "got" : "Finish bottle · drank all",
-    "expected" : "feed.bottle.finish",
-    "text" : "drank the whole bottle",
-    "model_category" : "bottle 80%",
-    "tier" : "pick"
-  },
-  {
-    "text" : "finished, quarter of the bottle left",
-    "model_category" : "bottle 100%",
-    "expected" : "feed.bottle.finish",
-    "tier" : "auto",
-    "ok" : "no",
-    "got" : "Finish bottle · drank ¼",
-    "deciding" : "amount"
-  },
-  {
-    "text" : "she only drank a quarter of it",
-    "expected" : "feed.bottle.finish",
-    "deciding" : "event_type",
-    "tier" : "pick",
-    "got" : "Finish bottle · drank ¼",
-    "ok" : "yes",
-    "model_category" : "bottle 80%"
-  },
-  {
-    "deciding" : "event_type",
-    "tier" : "full_list",
-    "text" : "he's been really fussy tonight",
-    "model_category" : "none_of_these 51%",
-    "none_confidence" : "52%",
-    "ok" : "yes",
-    "expected" : "none_of_these",
-    "got" : "Pump"
-  },
-  {
-    "deciding" : "event_type",
-    "ok" : "yes",
-    "got" : "Pump",
-    "text" : "she's got baby acne",
-    "expected" : "none_of_these",
-    "model_category" : "none_of_these 51%",
-    "none_confidence" : "52%",
-    "tier" : "full_list"
-  },
-  {
-    "expected" : "feed.breast.start",
-    "ok" : "yes",
-    "got" : "Start breastfeeding · left",
-    "model_category" : "breast 100%",
-    "tier" : "pick",
-    "deciding" : "side",
-    "text" : "latched on the left"
-  },
-  {
-    "deciding" : "event_type",
-    "model_category" : "diaper 80%",
-    "ok" : "yes",
-    "text" : "changed a dirty nappy half an hour ago",
-    "tier" : "pick",
-    "got" : "Diaper · dirty",
-    "expected" : "diaper"
-  },
-  {
-    "model_category" : "breast 100%",
-    "text" : "starting breastfeeding left side",
-    "tier" : "pick",
-    "deciding" : "side",
-    "expected" : "feed.breast.start",
-    "got" : "Start breastfeeding · left",
-    "ok" : "yes"
-  },
-  {
-    "got" : "Woke up",
-    "deciding" : "event_type",
-    "none_confidence" : "51%",
-    "expected" : "sleep.end",
-    "model_category" : "none_of_these 51%",
-    "tier" : "full_list",
-    "ok" : "yes",
-    "text" : "she's up now"
-  },
-  {
-    "text" : "he sneezed a lot today",
-    "got" : "Pump",
-    "expected" : "none_of_these",
-    "deciding" : "event_type",
-    "ok" : "yes",
-    "tier" : "full_list",
-    "model_category" : "none_of_these 51%",
-    "none_confidence" : "52%"
-  },
-  {
-    "deciding" : "event_type",
-    "model_category" : "none_of_these 51%",
-    "got" : "Pump",
-    "tier" : "full_list",
-    "expected" : "none_of_these",
-    "ok" : "yes",
-    "text" : "pediatrician says she's doing great",
-    "none_confidence" : "52%"
-  },
-  {
-    "tier" : "pick",
-    "deciding" : "diaper_kind",
-    "text" : "changed her diaper, it was wet",
     "got" : "Diaper · wet",
     "expected" : "diaper",
     "ok" : "yes",
-    "model_category" : "diaper 89%"
-  },
-  {
-    "deciding" : "event_type",
-    "ok" : "yes",
-    "text" : "okay starting the bottle",
-    "expected" : "feed.bottle.start",
-    "tier" : "full_list",
-    "model_category" : "none_of_these 51%",
-    "got" : "Start bottle",
-    "none_confidence" : "50%"
-  },
-  {
-    "got" : "Start bottle",
-    "tier" : "full_list",
-    "expected" : "feed.bottle.start",
-    "ok" : "yes",
-    "text" : "began feeding him a bottle about fifteen minutes ago",
-    "none_confidence" : "50%",
-    "deciding" : "event_type",
-    "model_category" : "none_of_these 51%"
-  },
-  {
-    "expected" : "feed.breast.start",
-    "text" : "started nursing on the left an hour ago",
-    "ok" : "yes",
-    "tier" : "pick",
-    "model_category" : "breast 100%",
-    "deciding" : "side",
-    "got" : "Start breastfeeding · left"
-  },
-  {
     "text" : "nappy was wet",
-    "ok" : "yes",
     "tier" : "pick",
-    "deciding" : "diaper_kind",
-    "expected" : "diaper",
     "model_category" : "diaper 80%",
-    "got" : "Diaper · wet"
+    "deciding" : "diaper_kind"
   },
   {
-    "model_category" : "breast 100%",
+    "ok" : "yes",
     "got" : "Start breastfeeding · left",
-    "expected" : "feed.breast.start",
-    "ok" : "yes",
+    "model_category" : "breast 100%",
+    "tier" : "pick",
     "deciding" : "side",
-    "text" : "nursing on the left",
-    "tier" : "pick"
+    "expected" : "feed.breast.start",
+    "text" : "nursing on the left"
   },
   {
-    "tier" : "full_list",
-    "got" : "Pump",
-    "text" : "can't find the pacifier",
-    "model_category" : "none_of_these 51%",
-    "deciding" : "event_type",
     "none_confidence" : "52%",
+    "expected" : "none_of_these",
+    "deciding" : "event_type",
+    "got" : "Pump",
     "ok" : "yes",
-    "expected" : "none_of_these"
+    "tier" : "full_list",
+    "model_category" : "none_of_these 51%",
+    "text" : "can't find the pacifier"
   },
   {
-    "ok" : "yes",
+    "got" : "Diaper · wet",
     "tier" : "pick",
-    "text" : "changed her diaper, it was wet",
-    "expected" : "diaper",
+    "ok" : "yes",
     "deciding" : "diaper_kind",
-    "got" : "Diaper · wet",
-    "model_category" : "diaper 89%"
+    "model_category" : "diaper 89%",
+    "expected" : "diaper",
+    "text" : "changed her diaper, it was wet"
   },
   {
     "none_confidence" : "52%",
+    "tier" : "full_list",
     "model_category" : "none_of_these 51%",
+    "got" : "Pump",
+    "text" : "gave her a bottle of formula five minutes ago",
     "deciding" : "event_type",
     "expected" : "feed.bottle.single",
-    "got" : "Pump",
-    "ok" : "no",
-    "tier" : "full_list",
-    "text" : "gave her a bottle of formula five minutes ago"
-  },
-  {
-    "model_category" : "none_of_these 51%",
-    "text" : "done, three quarters gone",
-    "got" : "Finish bottle · drank ¾",
-    "deciding" : "event_type",
-    "tier" : "full_list",
-    "ok" : "yes",
-    "none_confidence" : "52%",
-    "expected" : "feed.bottle.finish"
-  },
-  {
-    "tier" : "pick",
-    "ok" : "yes",
-    "model_category" : "bottle 80%",
-    "got" : "Finish bottle · drank ¾",
-    "expected" : "feed.bottle.finish",
-    "text" : "she's done, drank three quarters",
-    "deciding" : "event_type"
-  },
-  {
-    "model_category" : "none_of_these 51%",
-    "expected" : "none_of_these",
-    "none_confidence" : "52%",
-    "got" : "Pump",
-    "deciding" : "event_type",
-    "tier" : "full_list",
-    "text" : "we need more nappies",
-    "ok" : "yes"
-  },
-  {
-    "tier" : "pick",
-    "model_category" : "diaper 80%",
-    "expected" : "diaper",
-    "got" : "Diaper · dirty",
-    "text" : "changed a dirty nappy",
-    "deciding" : "event_type",
-    "ok" : "yes"
-  },
-  {
-    "model_category" : "none_of_these 51%",
-    "got" : "Pump",
-    "none_confidence" : "52%",
-    "ok" : "yes",
-    "tier" : "full_list",
-    "text" : "we're out of wipes",
-    "expected" : "none_of_these",
-    "deciding" : "event_type"
-  },
-  {
-    "ok" : "yes",
-    "text" : "just pee",
-    "tier" : "pick",
-    "got" : "Diaper · wet",
-    "expected" : "diaper",
-    "model_category" : "diaper 51%",
-    "deciding" : "event_type"
-  },
-  {
-    "expected" : "feed.bottle.single",
-    "text" : "gave her a bottle of formula half an hour ago",
-    "none_confidence" : "52%",
-    "deciding" : "event_type",
-    "tier" : "full_list",
-    "model_category" : "none_of_these 51%",
-    "got" : "Pump",
     "ok" : "no"
   },
   {
-    "expected" : "none_of_these",
-    "model_category" : "none_of_these 51%",
-    "ok" : "yes",
-    "deciding" : "event_type",
-    "text" : "she's teething I think",
-    "got" : "Pump",
     "none_confidence" : "52%",
-    "tier" : "full_list"
-  },
-  {
-    "expected" : "none_of_these",
-    "got" : "Pump",
-    "none_confidence" : "52%",
-    "text" : "put the bottles in the steriliser",
-    "model_category" : "none_of_these 51%",
-    "ok" : "yes",
+    "got" : "Finish bottle · drank ¾",
     "tier" : "full_list",
+    "ok" : "yes",
+    "model_category" : "none_of_these 51%",
+    "expected" : "feed.bottle.finish",
+    "text" : "done, three quarters gone",
     "deciding" : "event_type"
   },
   {
-    "expected" : "feed.bottle.start",
-    "text" : "began feeding him a bottle half an hour ago",
-    "model_category" : "none_of_these 51%",
-    "none_confidence" : "50%",
-    "ok" : "yes",
-    "tier" : "full_list",
-    "got" : "Start bottle",
-    "deciding" : "event_type"
-  },
-  {
-    "expected" : "none_of_these",
-    "ok" : "yes",
-    "tier" : "full_list",
-    "text" : "car seat is installed",
-    "deciding" : "numbers",
-    "got" : "Height",
-    "model_category" : "growth 67%"
-  },
-  {
+    "text" : "she's done, drank three quarters",
     "tier" : "pick",
-    "model_category" : "breast 89%",
+    "expected" : "feed.bottle.finish",
+    "got" : "Finish bottle · drank ¾",
     "ok" : "yes",
-    "expected" : "feed.breast.switch",
-    "got" : "Switch side · left",
-    "deciding" : "side",
-    "text" : "switching sides, now left"
+    "deciding" : "event_type",
+    "model_category" : "bottle 80%"
   },
   {
-    "ok" : "no",
-    "deciding" : "event_type",
-    "none_confidence" : "50%",
-    "tier" : "full_list",
-    "expected" : "sleep.start",
-    "text" : "napping now",
+    "none_confidence" : "52%",
+    "expected" : "none_of_these",
     "model_category" : "none_of_these 51%",
+    "got" : "Pump",
+    "text" : "we need more nappies",
+    "deciding" : "event_type",
+    "tier" : "full_list",
+    "ok" : "yes"
+  },
+  {
+    "model_category" : "diaper 80%",
+    "text" : "changed a dirty nappy",
+    "expected" : "diaper",
+    "got" : "Diaper · dirty",
+    "deciding" : "event_type",
+    "tier" : "pick",
+    "ok" : "yes"
+  },
+  {
+    "ok" : "yes",
+    "none_confidence" : "52%",
+    "tier" : "full_list",
+    "deciding" : "event_type",
+    "model_category" : "none_of_these 51%",
+    "got" : "Pump",
+    "expected" : "none_of_these",
+    "text" : "we're out of wipes"
+  },
+  {
+    "model_category" : "diaper 51%",
+    "expected" : "diaper",
+    "got" : "Diaper · wet",
+    "deciding" : "event_type",
+    "tier" : "pick",
+    "ok" : "yes",
+    "text" : "just pee"
+  },
+  {
+    "text" : "gave her a bottle of formula half an hour ago",
+    "expected" : "feed.bottle.single",
+    "tier" : "full_list",
+    "ok" : "no",
+    "model_category" : "none_of_these 51%",
+    "none_confidence" : "52%",
+    "deciding" : "event_type",
     "got" : "Pump"
   },
   {
-    "text" : "she's done, drank half a bottle",
-    "model_category" : "bottle 80%",
+    "got" : "Pump",
+    "text" : "she's teething I think",
+    "deciding" : "event_type",
+    "tier" : "full_list",
+    "expected" : "none_of_these",
+    "ok" : "yes",
+    "none_confidence" : "52%",
+    "model_category" : "none_of_these 51%"
+  },
+  {
+    "text" : "put the bottles in the steriliser",
+    "deciding" : "event_type",
+    "model_category" : "none_of_these 51%",
+    "none_confidence" : "52%",
+    "ok" : "yes",
+    "tier" : "full_list",
+    "expected" : "none_of_these",
+    "got" : "Pump"
+  },
+  {
+    "expected" : "feed.bottle.start",
+    "ok" : "yes",
+    "tier" : "full_list",
+    "model_category" : "none_of_these 51%",
+    "text" : "began feeding him a bottle half an hour ago",
+    "deciding" : "event_type",
+    "none_confidence" : "50%",
+    "got" : "Start bottle"
+  },
+  {
+    "ok" : "yes",
+    "text" : "car seat is installed",
+    "expected" : "none_of_these",
+    "deciding" : "numbers",
+    "model_category" : "growth 67%",
+    "got" : "Height",
+    "tier" : "full_list"
+  },
+  {
+    "deciding" : "side",
+    "text" : "switching sides, now left",
+    "ok" : "yes",
+    "model_category" : "breast 89%",
+    "expected" : "feed.breast.switch",
+    "got" : "Switch side · left",
+    "tier" : "pick"
+  },
+  {
+    "got" : "Pump",
+    "ok" : "no",
+    "deciding" : "event_type",
+    "model_category" : "none_of_these 51%",
+    "text" : "napping now",
+    "none_confidence" : "50%",
+    "expected" : "sleep.start",
+    "tier" : "full_list"
+  },
+  {
     "expected" : "feed.bottle.finish",
-    "tier" : "pick",
     "deciding" : "event_type",
     "ok" : "yes",
+    "tier" : "pick",
+    "text" : "she's done, drank half a bottle",
+    "model_category" : "bottle 80%",
     "got" : "Finish bottle · drank ½"
   },
   {
     "tier" : "full_list",
     "model_category" : "breast 94%",
-    "deciding" : "event_type",
-    "got" : "Start breastfeeding · left",
     "text" : "she's nursing, left side",
+    "got" : "Start breastfeeding · left",
+    "deciding" : "event_type",
     "ok" : "yes",
     "expected" : "feed.breast.start"
   },
   {
     "model_category" : "breast 100%",
     "text" : "started nursing on the left about fifteen minutes ago",
+    "ok" : "yes",
     "expected" : "feed.breast.start",
+    "got" : "Start breastfeeding · left",
     "tier" : "pick",
-    "deciding" : "side",
-    "ok" : "yes",
-    "got" : "Start breastfeeding · left"
+    "deciding" : "side"
   },
   {
-    "model_category" : "none_of_these 51%",
     "expected" : "feed.bottle.start",
-    "ok" : "yes",
-    "text" : "began feeding him a bottle five minutes ago",
-    "none_confidence" : "50%",
     "deciding" : "event_type",
+    "ok" : "yes",
+    "model_category" : "none_of_these 51%",
+    "tier" : "full_list",
     "got" : "Start bottle",
-    "tier" : "full_list"
+    "text" : "began feeding him a bottle five minutes ago",
+    "none_confidence" : "50%"
   },
   {
-    "model_category" : "none_of_these 51%",
-    "ok" : "yes",
     "deciding" : "event_type",
-    "got" : "Pump",
     "expected" : "none_of_these",
     "text" : "tummy time on the play mat",
-    "none_confidence" : "52%",
-    "tier" : "full_list"
+    "ok" : "yes",
+    "got" : "Pump",
+    "tier" : "full_list",
+    "model_category" : "none_of_these 51%",
+    "none_confidence" : "52%"
   },
   {
-    "deciding" : "side",
-    "tier" : "pick",
-    "expected" : "feed.breast.start",
-    "ok" : "yes",
-    "text" : "started nursing on the left five minutes ago",
     "model_category" : "breast 100%",
+    "tier" : "pick",
+    "deciding" : "side",
+    "ok" : "yes",
+    "expected" : "feed.breast.start",
+    "text" : "started nursing on the left five minutes ago",
     "got" : "Start breastfeeding · left"
   },
   {
-    "expected" : "feed.breast.switch",
-    "ok" : "yes",
     "model_category" : "breast 89%",
+    "expected" : "feed.breast.switch",
     "text" : "switching sides, now right",
-    "deciding" : "event_type",
     "tier" : "pick",
-    "got" : "Switch side · right"
+    "got" : "Switch side · right",
+    "deciding" : "event_type",
+    "ok" : "yes"
   },
   {
+    "got" : "Pump",
+    "model_category" : "none_of_these 51%",
+    "none_confidence" : "52%",
     "text" : "he's wearing the blue onesie",
     "deciding" : "event_type",
-    "tier" : "full_list",
-    "got" : "Pump",
     "ok" : "yes",
-    "none_confidence" : "52%",
     "expected" : "none_of_these",
-    "model_category" : "none_of_these 51%"
+    "tier" : "full_list"
   },
   {
+    "model_category" : "none_of_these 51%",
+    "tier" : "full_list",
+    "got" : "Pump",
+    "none_confidence" : "52%",
     "text" : "she's staring at the ceiling fan",
     "ok" : "yes",
-    "expected" : "none_of_these",
-    "tier" : "full_list",
     "deciding" : "event_type",
-    "none_confidence" : "52%",
-    "got" : "Pump",
-    "model_category" : "none_of_these 51%"
+    "expected" : "none_of_these"
   },
   {
+    "text" : "he rolled over by himself",
+    "tier" : "full_list",
     "deciding" : "event_type",
     "expected" : "none_of_these",
+    "ok" : "yes",
+    "none_confidence" : "52%",
     "model_category" : "none_of_these 51%",
-    "got" : "Pump",
-    "none_confidence" : "52%",
-    "ok" : "yes",
-    "tier" : "full_list",
-    "text" : "he rolled over by himself"
-  },
-  {
-    "tier" : "pick",
-    "model_category" : "solids 51%",
-    "expected" : "none_of_these",
-    "text" : "how long since she last ate",
-    "ok" : "yes",
-    "got" : "Solids",
-    "deciding" : "event_type"
-  },
-  {
-    "tier" : "full_list",
-    "model_category" : "none_of_these 51%",
-    "none_confidence" : "52%",
-    "ok" : "yes",
-    "deciding" : "event_type",
-    "text" : "her eyes look a bit goopy",
-    "expected" : "none_of_these",
     "got" : "Pump"
   },
   {
+    "text" : "how long since she last ate",
+    "expected" : "none_of_these",
+    "model_category" : "solids 51%",
     "tier" : "pick",
+    "ok" : "yes",
+    "deciding" : "event_type",
+    "got" : "Solids"
+  },
+  {
+    "text" : "her eyes look a bit goopy",
+    "tier" : "full_list",
+    "expected" : "none_of_these",
+    "got" : "Pump",
+    "ok" : "yes",
+    "deciding" : "event_type",
+    "model_category" : "none_of_these 51%",
+    "none_confidence" : "52%"
+  },
+  {
+    "tier" : "pick",
+    "got" : "Diaper · dirty",
     "model_category" : "diaper 67%",
-    "expected" : "diaper",
     "deciding" : "diaper_kind",
     "ok" : "no",
-    "got" : "Diaper · dirty",
+    "expected" : "diaper",
     "text" : "poop and pee"
   },
   {
-    "model_category" : "none_of_these 51%",
+    "text" : "she's out like a light",
+    "got" : "Start bottle",
     "ok" : "no",
     "none_confidence" : "50%",
-    "tier" : "full_list",
     "expected" : "sleep.start",
-    "text" : "she's out like a light",
-    "deciding" : "event_type",
-    "got" : "Start bottle"
+    "tier" : "full_list",
+    "model_category" : "none_of_these 51%",
+    "deciding" : "event_type"
   },
   {
-    "ok" : "yes",
     "deciding" : "side",
-    "model_category" : "breast 100%",
-    "expected" : "feed.breast.start",
-    "tier" : "pick",
     "got" : "Start breastfeeding · left",
+    "expected" : "feed.breast.start",
+    "ok" : "yes",
+    "tier" : "pick",
+    "model_category" : "breast 100%",
     "text" : "started nursing on the left half an hour ago"
   },
   {
-    "tier" : "full_list",
-    "ok" : "yes",
+    "model_category" : "none_of_these 51%",
     "text" : "began feeding him a bottle an hour ago",
-    "deciding" : "event_type",
-    "got" : "Start bottle",
-    "expected" : "feed.bottle.start",
     "none_confidence" : "50%",
-    "model_category" : "none_of_these 51%"
+    "expected" : "feed.bottle.start",
+    "tier" : "full_list",
+    "got" : "Start bottle",
+    "ok" : "yes",
+    "deciding" : "event_type"
   },
   {
+    "got" : "Pump · 60 ml, left",
+    "model_category" : "pumping 89%",
+    "text" : "pumped the left side, 60 ml",
     "tier" : "pick",
     "ok" : "yes",
-    "got" : "Pump · 60 ml, left",
     "deciding" : "side",
-    "model_category" : "pumping 89%",
-    "expected" : "pump",
-    "text" : "pumped the left side, 60 ml"
+    "expected" : "pump"
   },
   {
-    "expected" : "feed.solids",
-    "tier" : "pick",
-    "got" : "Solids · all",
-    "text" : "ate all of her oatmeal",
-    "deciding" : "solids_amount",
+    "ok" : "yes",
     "model_category" : "solids 94%",
+    "expected" : "feed.solids",
+    "got" : "Solids · all",
+    "deciding" : "solids_amount",
+    "tier" : "pick",
+    "text" : "ate all of her oatmeal"
+  },
+  {
+    "none_confidence" : "50%",
+    "expected" : "feed.bottle.start",
+    "got" : "Pump",
+    "model_category" : "none_of_these 51%",
+    "tier" : "full_list",
+    "deciding" : "event_type",
+    "ok" : "no",
+    "text" : "he's drinking now"
+  },
+  {
+    "text" : "she's nursing, right side",
+    "got" : "Start breastfeeding · right",
+    "tier" : "full_list",
+    "deciding" : "event_type",
+    "model_category" : "breast 94%",
+    "expected" : "feed.breast.start",
     "ok" : "yes"
   },
   {
     "tier" : "full_list",
-    "expected" : "feed.bottle.start",
-    "none_confidence" : "50%",
-    "ok" : "no",
-    "text" : "he's drinking now",
-    "model_category" : "none_of_these 51%",
-    "deciding" : "event_type",
-    "got" : "Pump"
-  },
-  {
-    "expected" : "feed.breast.start",
-    "text" : "she's nursing, right side",
-    "got" : "Start breastfeeding · right",
-    "deciding" : "event_type",
-    "ok" : "yes",
-    "model_category" : "breast 94%",
-    "tier" : "full_list"
-  },
-  {
-    "tier" : "full_list",
-    "none_confidence" : "52%",
-    "ok" : "no",
     "expected" : "feed.bottle.single",
+    "got" : "Pump",
+    "ok" : "no",
     "model_category" : "none_of_these 51%",
+    "none_confidence" : "52%",
     "text" : "gave her a bottle of formula an hour ago",
-    "deciding" : "event_type",
-    "got" : "Pump"
+    "deciding" : "event_type"
   },
   {
-    "got" : "Woke up",
     "deciding" : "event_type",
-    "ok" : "yes",
+    "got" : "Woke up",
     "text" : "he woke from his nap",
+    "ok" : "yes",
     "tier" : "pick",
     "model_category" : "sleep 67%",
     "expected" : "sleep.end"
   },
   {
-    "deciding" : "event_type",
-    "got" : "Woke up",
     "ok" : "yes",
     "expected" : "sleep.end",
-    "text" : "baby's up",
+    "deciding" : "event_type",
+    "tier" : "full_list",
     "model_category" : "none_of_these 51%",
+    "text" : "baby's up",
     "none_confidence" : "50%",
-    "tier" : "full_list"
+    "got" : "Woke up"
   },
   {
-    "model_category" : "diaper 67%",
-    "ok" : "yes",
     "text" : "big poop about fifteen minutes ago",
-    "tier" : "pick",
-    "deciding" : "event_type",
     "expected" : "diaper",
-    "got" : "Diaper · dirty"
+    "ok" : "yes",
+    "got" : "Diaper · dirty",
+    "deciding" : "event_type",
+    "tier" : "pick",
+    "model_category" : "diaper 67%"
   }
 ]

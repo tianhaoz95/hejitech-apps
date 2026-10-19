@@ -1,5 +1,5 @@
 {
-  "modelVersion" : "weehours-laya-ft-v0 (topup, Q8_0)",
+  "modelVersion" : "weehours-laya-ft-v1 (none, Q8_0)",
   "temperatures" : {
     "amount" : 1.0,
     "category" : 1.0,

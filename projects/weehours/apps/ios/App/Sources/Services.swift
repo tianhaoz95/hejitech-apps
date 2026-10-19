@@ -124,7 +124,7 @@ enum DecisionBackend: String, CaseIterable, Identifiable, Codable {
 
 @MainActor
 final class ModelManager: ObservableObject {
-    static let modelURL = URL(string: "https://huggingface.co/tianhaoz95/wee-hours-baby-activity/resolve/topup/Laya-ft-Q8_0.gguf")!
+    static let modelURL = URL(string: "https://huggingface.co/tianhaoz95/wee-hours-baby-activity/resolve/none/Laya-ft-Q8_0.gguf")!
     @Published var progress: Double?
     @Published var error: String?
 
