@@ -23,6 +23,7 @@
 		5CCEE52A06AA5F19BA63CC04 /* ToddlerLockOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1375F06DC27B1EBFDEF4FDF4 /* ToddlerLockOverlay.swift */; };
 		604035586775CF2BF93006CB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6DB432D17380DD0B45B4027E /* Assets.xcassets */; };
 		657F4F09000A5550728189B2 /* KidsCamComplications.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9EA2C387B2F50EAC2B9EC2C /* KidsCamComplications.swift */; };
+		6D772AC86705A7BD6B5D7469 /* FeedbackKit in Frameworks */ = {isa = PBXBuildFile; productRef = B31FEB384CB967BA67E34CDE /* FeedbackKit */; };
 		6E82B753D99A974432735AE0 /* WatchConnectivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D87FC8AE6A69E1B464D91C1B /* WatchConnectivityManager.swift */; };
 		71ECB2F9839D24FA6589DCBA /* DualCameraManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E89F84A9C3784393466695C4 /* DualCameraManager.swift */; };
 		8AE2109A616A1FDF32BFF567 /* FaceEmojiType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04A7E6D233F2BAB0C4C244EF /* FaceEmojiType.swift */; };
@@ -34,6 +35,7 @@
 		9E07ED113DEDD0F307A47C89 /* front_video.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 40ACD898D567E453474F787C /* front_video.mp4 */; };
 		A18B22EA7641BC758EE96E91 /* WatchFaceStudioView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CBFAD201449588459ECEFDF /* WatchFaceStudioView.swift */; };
 		A45C0A52C45E73577A2AD490 /* woof.wav in Resources */ = {isa = PBXBuildFile; fileRef = 9E1C8B3AB108E225168F6AAC /* woof.wav */; };
+		A526B9E78C53E288CF70DEBF /* ParentFeedback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D8AA77E29D77EE60E4ABC46 /* ParentFeedback.swift */; };
 		AB7E9B133C628492332709E0 /* DualCameraPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB656FA5882BC918CF3B836B /* DualCameraPreviewView.swift */; };
 		B2764F240EFD58DA4C7F07C6 /* SimulatorCameraStreamer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0B73E51D610A5E00A7D7C2F /* SimulatorCameraStreamer.swift */; };
 		BA7518471A047F46AC434BC6 /* ParentHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FC650C66165A16F89CBEF8 /* ParentHubView.swift */; };
@@ -122,6 +124,7 @@
 		49D8280B1C25F9966D1442B3 /* ToddlerCameraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToddlerCameraView.swift; sourceTree = "<group>"; };
 		4E05CDE08E1253BC82F0747C /* ToddlerControlBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToddlerControlBar.swift; sourceTree = "<group>"; };
 		59CDA1A81B2A018FBAAA73C5 /* quack.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = quack.wav; sourceTree = "<group>"; };
+		5D8AA77E29D77EE60E4ABC46 /* ParentFeedback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParentFeedback.swift; sourceTree = "<group>"; };
 		5DABA965F2BE80FDBF7828BF /* KidsCamTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = KidsCamTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		6DB432D17380DD0B45B4027E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		70E59ABE2F465EAFC03E178E /* WatchFaceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchFaceManager.swift; sourceTree = "<group>"; };
@@ -152,6 +155,17 @@
 		E9EA2C387B2F50EAC2B9EC2C /* KidsCamComplications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KidsCamComplications.swift; sourceTree = "<group>"; };
 		F2B64254390B4030DCF8F0A0 /* DualVideoRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DualVideoRecorder.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A50E6D4178B1963B60D7688E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6D772AC86705A7BD6B5D7469 /* FeedbackKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		01197CE6D316CBA79AAEE4CC /* Remote */ = {
@@ -262,6 +276,7 @@
 			children = (
 				DEE652E593239E9C352E81D5 /* Info.plist */,
 				737216B573A6A29EDB38396B /* KidsCamApp.swift */,
+				5D8AA77E29D77EE60E4ABC46 /* ParentFeedback.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -369,6 +384,7 @@
 			buildPhases = (
 				43C1C36F90863FAAEEFB60A9 /* Sources */,
 				0EBDF618ED521795D5E8E2C5 /* Resources */,
+				A50E6D4178B1963B60D7688E /* Frameworks */,
 				5A0D32192314CDEE60F96757 /* Embed Watch Content */,
 			);
 			buildRules = (
@@ -378,6 +394,7 @@
 			);
 			name = KidsCam;
 			packageProductDependencies = (
+				B31FEB384CB967BA67E34CDE /* FeedbackKit */,
 			);
 			productName = KidsCam;
 			productReference = C5DBF52CF722DA7E57467F32 /* KidsCam.app */;
@@ -474,6 +491,9 @@
 			);
 			mainGroup = 35B42D2D3FE3169EFB05BCFC;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				BFA3470134766F89BC961218 /* XCRemoteSwiftPackageReference "feedback-kit" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = A7E6683853AE14DCCCD825E3 /* Products */;
 			projectDirPath = "";
@@ -531,6 +551,7 @@
 				9D9E4D209F0640E244CB6E0C /* GuidedAccessGuideView.swift in Sources */,
 				FEC484C1424F7AE4115358E8 /* GuidedAccessManager.swift in Sources */,
 				E47577B3F7CE4ABF75DF1865 /* KidsCamApp.swift in Sources */,
+				A526B9E78C53E288CF70DEBF /* ParentFeedback.swift in Sources */,
 				581CFAE9A399DC84D2405AFB /* ParentGateView.swift in Sources */,
 				BA7518471A047F46AC434BC6 /* ParentHubView.swift in Sources */,
 				E67A573CC2B04E6E875AF1D2 /* PhotoGalleryView.swift in Sources */,
@@ -647,7 +668,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.2.3;
+				MARKETING_VERSION = 1.2.4;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -751,7 +772,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.2.3;
+				MARKETING_VERSION = 1.2.4;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -928,6 +949,25 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		BFA3470134766F89BC961218 /* XCRemoteSwiftPackageReference "feedback-kit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/tianhaoz95/feedback-kit";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.62;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		B31FEB384CB967BA67E34CDE /* FeedbackKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BFA3470134766F89BC961218 /* XCRemoteSwiftPackageReference "feedback-kit" */;
+			productName = FeedbackKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 4A462AA8E98F0D5E2A7D4AB0 /* Project object */;
 }

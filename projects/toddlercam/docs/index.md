@@ -3,7 +3,7 @@ layout: home
 hero:
   name: "ToddlerCam"
   text: "A dual camera made for little hands"
-  tagline: "Front and rear cameras at once, a big bouncy shutter, face-tracking emoji masks and a toddler lock, with the parent's Apple Watch as the remote. No account, no tracking, everything stays on the device."
+  tagline: "Front and rear cameras at once, a big bouncy shutter, face-tracking emoji masks and a toddler lock, with the parent's Apple Watch as the remote. No account, no ads or tracking; photos stay on the device."
   image:
     src: /toddlercam/icon.png
     alt: ToddlerCam

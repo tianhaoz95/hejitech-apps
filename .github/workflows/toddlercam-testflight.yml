@@ -73,6 +73,8 @@ jobs:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Announces the build to FeedbackKit (fixes shipped → reporters asked "is it fixed?").
+          FEEDBACKKIT_RELEASE_TOKEN: ${{ secrets.TODDLERCAM_FEEDBACKKIT_RELEASE_TOKEN }}
         run: ASC_KEY_PATH="$FA_KEY_LOCATION" ./Scripts/release_testflight.sh
 
       - name: Clean up signing material

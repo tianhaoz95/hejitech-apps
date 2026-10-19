@@ -2,7 +2,8 @@
 
 ToddlerCam (`com.hejitech.kidscam`, App Store id6810526172) is a native Swift/SwiftUI iPhone/iPad
 dual-camera app for toddlers with an Apple Watch remote for the parent. Kids Category: no backend,
-no accounts, no third-party SDKs, no analytics. Everything runs on the devices.
+no accounts, no third-party SDKs, no analytics. Everything runs on the devices, except feedback a
+parent opts into (below).
 
 ## In the HEJI monorepo (read first)
 
@@ -30,6 +31,12 @@ v1.2.1 … v1.2.3 tags). The root `CLAUDE.md` has the shared rules; what matters
 - **Signing:** team `68CTFST8W2`, automatic. CI uses the team-wide HEJI secrets (`SIGNING_P12_*`
   distribution, `DEV_SIGNING_P12_*` development, `ASC_*`, `APPLE_TEAM_ID`) via
   `.github/actions/apple-signing`. ToddlerCam-only CI settings would be named `TODDLERCAM_…`.
+- **Feedback:** FeedbackKit project "ToddlerCam" (`d124f9ed-81eb-4d43-b02f-64c971bdb518`, key `pk_6619b4d70c72fd8f73413dc1d070e6ab0206`, package from
+  `github.com/tianhaoz95/feedback-kit`). Shake to report only, behind a parent setting that defaults
+  to **off** (`ParentFeedback.swift`, toggle in Parent Settings behind `ParentGateView`); off means FeedbackKit is fully disabled (no shake, no "is it fixed?" card),
+  so a toddler can't open it. Never add a floating button or turn it on by default (Kids Category),
+  and keep the privacy policies in step. Releases announce each build to FeedbackKit with
+  `TODDLERCAM_FEEDBACKKIT_RELEASE_TOKEN`; fix commits get a `FeedbackKit: <id>` trailer.
 - **CI:** `.github/workflows/toddlercam-ci.yml` builds the watch targets and runs the iOS unit tests.
 - **Site and docs:** the landing page, privacy policy, terms and support page are `site/` (static),
   published at https://tianhaoz95.github.io/hejitech-apps/toddlercam/site/; the developer overview

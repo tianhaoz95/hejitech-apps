@@ -8,6 +8,10 @@ struct KidsCamApp: App {
     @StateObject private var guidedAccess = GuidedAccessManager.shared
     @StateObject private var watchFace = WatchFaceManager.shared
 
+    init() {
+        ParentFeedback.configure()
+    }
+
     var body: some Scene {
         WindowGroup {
             ToddlerCameraView()

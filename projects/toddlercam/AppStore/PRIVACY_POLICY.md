@@ -17,13 +17,16 @@ ToddlerCam complies with:
 ---
 
 ### 2. Zero Data Collection
-**ToddlerCam does NOT collect, transmit, store, or sell any personal data.**
+**ToddlerCam does NOT collect, transmit, store, or sell any personal data.** The only exception is feedback a parent chooses to send (section 2a), which is off by default.
 - **No Personal Information:** We do not collect names, email addresses, phone numbers, birthdates, locations, or identifiers.
 - **No Accounts or Logins:** The app functions 100% locally on your devices without requiring any account or registration.
-- **No Third-Party SDKs or Trackers:** There are NO advertising frameworks, NO tracking analytics (e.g. Firebase, AppsFlyer, Mixpanel), and NO third-party SDKs embedded in ToddlerCam.
+- **No Third-Party SDKs or Trackers:** There are NO advertising frameworks, NO tracking analytics (e.g. Firebase, AppsFlyer, Mixpanel), and NO third-party SDKs embedded in ToddlerCam (FeedbackKit, below, is our own feedback tool).
 - **No Internet Transmission:** Camera streams, photos, audio effects, and watch communications never touch any external server or cloud service.
 
 ---
+
+### 2a. Optional Parent Feedback (Off by Default)
+In **Parent Settings** (behind the parental gate), a parent can turn on **Shake to Send Feedback**. Only then does shaking the iPhone open a feedback form. If the parent submits it, ToddlerCam sends a screenshot of the screen you shook from (you can mark it up or cover parts of it first), the note you type, and the app version, device model, iOS version and language, plus a random identifier created on the device so the app can tell you when the problem you reported is fixed. Reports go to FeedbackKit, our own feedback service, and are used only to fix the app; we never sell or share them. Nothing is sent unless you press send. Turning the setting off stops it. Leave it off while your toddler holds the phone.
 
 ### 3. Device Permissions & Usage
 
