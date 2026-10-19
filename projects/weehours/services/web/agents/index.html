@@ -86,12 +86,16 @@
             <thead><tr><th>Tool</th><th>What it does</th><th>Access</th></tr></thead>
             <tbody>
               <tr><td><code>get_status</code></td><td>The one-line status (last feed, next side, last diaper, sleep), who's on duty and any duplicates to resolve</td><td>read</td></tr>
-              <tr><td><code>get_baby_profile</code></td><td>Name, birth date, enabled categories and household settings</td><td>read</td></tr>
+              <tr><td><code>list_children</code></td><td>Every child (name, birth date, age, bottle size), the tracked categories and the caregivers</td><td>read</td></tr>
+              <tr><td><code>get_baby_profile</code></td><td>One child's name, birth date, enabled categories and household settings</td><td>read</td></tr>
               <tr><td><code>list_event_types</code></td><td>The kinds of entries and their fields</td><td>read</td></tr>
               <tr><td><code>list_events</code></td><td>Entries in a time range, optionally filtered by type</td><td>read</td></tr>
               <tr><td><code>log_event</code></td><td>Add an entry, validated exactly like the app</td><td>write</td></tr>
               <tr><td><code>undo_event</code></td><td>Undo an entry (it stays in history as undone)</td><td>write</td></tr>
               <tr><td><code>resolve_duplicate</code></td><td>Merge a duplicate or keep both</td><td>write</td></tr>
+              <tr><td><code>import_events</code></td><td>Bring in history from another tracker's export (dry run first; re-runs skip what's already there)</td><td>write</td></tr>
+              <tr><td><code>undo_import</code></td><td>Take a whole import back</td><td>write</td></tr>
+              <tr><td><code>set_tracking</code></td><td>Turn tracking categories on or off for the household</td><td>write</td></tr>
             </tbody>
           </table>
         </div>

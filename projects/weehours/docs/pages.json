@@ -17,6 +17,10 @@
           "link": "DEPLOY"
         },
         {
+          "text": "MCP directories",
+          "link": "MCP-DIRECTORIES"
+        },
+        {
           "text": "v0 design walkthrough ↗",
           "link": "report/index.html",
           "target": "_blank"

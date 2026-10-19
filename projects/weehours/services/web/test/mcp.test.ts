@@ -1,6 +1,6 @@
 // The MCP Worker's pure parts (the tools against a database are covered by scripts/test-mcp.mjs).
 import { describe, expect, it } from "vitest";
-import { caregivers, fieldDocs, toInstant, uuidFrom } from "../src/worker/mcp.ts";
+import { caregivers, fieldDocs, TOOLS, toInstant, uuidFrom } from "../src/worker/mcp.ts";
 
 describe("import_events helpers", () => {
   it("reads times with an offset as they are", () => {
@@ -43,5 +43,17 @@ describe("caregivers", () => {
     const members = [{ user_id: "a", display_name: "Sam" }, { user_id: "b", display_name: "Rita" }];
     expect(caregivers(members, { caregivers: [{ id: "a", role: "Dad" }, { id: "b", role: " " }] })).toEqual(["Sam (Dad)", "Rita"]);
     expect(caregivers(members, {})).toEqual(["Sam", "Rita"]);
+  });
+});
+
+describe("tools", () => {
+  // what the Claude and ChatGPT directories require of every tool
+  it("each has a title and says whether it only reads or can destroy", () => {
+    for (const t of TOOLS) {
+      expect(t.title, t.name).toBeTruthy();
+      expect(t.annotations?.title, t.name).toBe(t.title);
+      const a = t.annotations as { readOnlyHint?: boolean; destructiveHint?: boolean };
+      expect(a.readOnlyHint === true || typeof a.destructiveHint === "boolean", t.name).toBe(true);
+    }
   });
 });

@@ -38,35 +38,40 @@ const CHILD = {
   description: "A child's name or id (see list_children). Required when the household has several children; \"all\" logs for every child.",
 };
 
-const TOOLS = [
+export const TOOLS = [
   {
     name: "get_status",
+    title: "Get the current status",
     description:
       "Each child's one-line status (time since last feed, next breast side, last diaper, sleep state) with the raw status fields, plus the on-duty caregiver and unresolved duplicate flags. Pass child for one child only.",
     inputSchema: { type: "object", properties: { child: { type: "string", description: "A child's name or id. Default: every child." } } },
-    annotations: { readOnlyHint: true },
+    annotations: { title: "Get the current status", readOnlyHint: true, openWorldHint: false },
   },
   {
     name: "list_children",
+    title: "List the children",
     description:
       "The household's children: id, name, birth date and age in days, and bottle size; plus enabled tracking categories and caregivers. Use birth dates to reason about age-specific questions.",
     inputSchema: { type: "object", properties: {} },
-    annotations: { readOnlyHint: true },
+    annotations: { title: "List the children", readOnlyHint: true, openWorldHint: false },
   },
   {
     name: "get_baby_profile",
+    title: "Get a child's profile",
     description: "One child's profile (the first child, or `child`): name, birth date, age in days, bottle size, tracking categories and caregivers. Prefer list_children.",
     inputSchema: { type: "object", properties: { child: { type: "string", description: "A child's name or id." } } },
-    annotations: { readOnlyHint: true },
+    annotations: { title: "Get a child's profile", readOnlyHint: true, openWorldHint: false },
   },
   {
     name: "list_event_types",
+    title: "List entry types",
     description: "The closed set of entry types and their fields. Use before log_event.",
     inputSchema: { type: "object", properties: {} },
-    annotations: { readOnlyHint: true },
+    annotations: { title: "List entry types", readOnlyHint: true, openWorldHint: false },
   },
   {
     name: "list_events",
+    title: "List log entries",
     description:
       "Raw log entries (active ones only, edits applied, undone and merged entries removed), oldest first. Bottle entries include ml computed from the fraction and the household bottle size. No totals or summaries: compute what you need from these rows.",
     inputSchema: {
@@ -79,10 +84,11 @@ const TOOLS = [
         limit: { type: "number", description: "Max rows (default 500, max 5000)." },
       },
     },
-    annotations: { readOnlyHint: true },
+    annotations: { title: "List log entries", readOnlyHint: true, openWorldHint: false },
   },
   {
     name: "log_event",
+    title: "Log an entry",
     description: "Append a typed entry. Validated exactly like the app. Requires a write-scoped token.",
     inputSchema: {
       type: "object",
@@ -94,9 +100,11 @@ const TOOLS = [
         child: CHILD,
       },
     },
+    annotations: { title: "Log an entry", readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   },
   {
     name: "import_events",
+    title: "Import history from another tracker",
     description:
       "Bulk-import history from another baby tracker's export (CSV, SQLite...), up to 500 entries per call; call it repeatedly for more. " +
       "Read the export, map each row to a Wee Hours type and fields (list_event_types), then: 1) call with dry_run: true and fix every error, " +
@@ -132,14 +140,18 @@ const TOOLS = [
         },
       },
     },
+    annotations: { title: "Import history from another tracker", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
   {
     name: "undo_import",
+    title: "Undo an import",
     description: "Take back every entry an import_events import_id wrote (they stay in history as undone).",
     inputSchema: { type: "object", required: ["import_id"], properties: { import_id: { type: "string" } } },
+    annotations: { title: "Undo an import", readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
   },
   {
     name: "set_tracking",
+    title: "Turn tracking categories on or off",
     description: "Turn tracking categories on (or off) for the household, e.g. before importing pumping or growth history. Category ids are in list_event_types.",
     inputSchema: {
       type: "object",
@@ -148,20 +160,25 @@ const TOOLS = [
         disable: { type: "array", items: { type: "string" } },
       },
     },
+    annotations: { title: "Turn tracking categories on or off", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
   {
     name: "undo_event",
+    title: "Undo an entry",
     description: "Undo an entry by id (it stays in history as undone).",
     inputSchema: { type: "object", required: ["id"], properties: { id: { type: "string" } } },
+    annotations: { title: "Undo an entry", readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
   },
   {
     name: "resolve_duplicate",
+    title: "Resolve a duplicate",
     description: "Resolve a duplicate flag from get_status: merge (keep the earlier) or keep_both.",
     inputSchema: {
       type: "object",
       required: ["original", "duplicate", "resolution"],
       properties: { original: { type: "string" }, duplicate: { type: "string" }, resolution: { type: "string", enum: ["merge", "keep_both"] } },
     },
+    annotations: { title: "Resolve a duplicate", readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
   },
 ];
 
