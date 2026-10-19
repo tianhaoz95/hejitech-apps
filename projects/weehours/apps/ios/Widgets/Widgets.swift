@@ -195,22 +195,44 @@ struct SessionLiveActivity: Widget {
             .foregroundStyle(.white)
         } dynamicIsland: { context in
             DynamicIsland {
-                DynamicIslandExpandedRegion(.leading) { Image(systemName: icon(context.state.kind)) }
-                DynamicIslandExpandedRegion(.trailing) { Text(context.state.since, style: .timer).monospacedDigit() }
+                // what is being timed, for whom, and for how long
+                DynamicIslandExpandedRegion(.leading) {
+                    Label {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(title(context.state)).font(.headline).lineLimit(1)
+                            if !context.attributes.babyName.isEmpty {
+                                Text(context.attributes.babyName).font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                    } icon: {
+                        Image(systemName: icon(context.state.kind)).foregroundStyle(tint(context.state.kind))
+                    }
+                }
+                DynamicIslandExpandedRegion(.trailing) {
+                    Text(context.state.since, style: .timer).font(.title2.monospacedDigit().bold())
+                        .multilineTextAlignment(.trailing).frame(maxWidth: 90)
+                }
                 DynamicIslandExpandedRegion(.bottom) {
                     if context.state.kind == "sleep" {
                         Button(intent: ToggleSleepIntent(child: Self.child(context.attributes))) { Text("Woke up") }
                     } else {
-                        Button(intent: ToggleFeedIntent(child: Self.child(context.attributes))) { Text("Finish") }
+                        HStack {
+                            if context.state.kind == "breast" {
+                                Button(intent: SwitchSideIntent(child: Self.child(context.attributes))) { Text("Switch side") }
+                            }
+                            Button(intent: ToggleFeedIntent(child: Self.child(context.attributes))) { Text("Finish") }
+                        }
                     }
                 }
             } compactLeading: {
-                Image(systemName: icon(context.state.kind))
+                Image(systemName: icon(context.state.kind)).foregroundStyle(tint(context.state.kind))
             } compactTrailing: {
                 Text(context.state.since, style: .timer).monospacedDigit().frame(width: 44)
+                    .foregroundStyle(tint(context.state.kind))
             } minimal: {
-                Image(systemName: icon(context.state.kind))
+                Image(systemName: icon(context.state.kind)).foregroundStyle(tint(context.state.kind))
             }
+            .keylineTint(tint(context.state.kind))
         }
     }
 
@@ -218,6 +240,11 @@ struct SessionLiveActivity: Widget {
     static func child(_ a: SessionActivityAttributes) -> ChildEntity? {
         guard let id = a.babyId.flatMap(UUID.init(uuidString:)), let b = SharedStore.household?.baby(id) else { return nil }
         return ChildEntity(b)
+    }
+
+    /// The app's colours: feeds warm orange, sleep lavender (Theme in the app).
+    func tint(_ kind: String) -> Color {
+        kind == "sleep" ? Color(red: 0.62, green: 0.58, blue: 0.95) : Color(red: 0.98, green: 0.70, blue: 0.45)
     }
 
     func icon(_ kind: String) -> String {

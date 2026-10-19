@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.4.1"
+    static let currentVersion = "0.4.2"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,29 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "0.4.2",
+            date: "October 2026",
+            tagline: "From Your Wrist",
+            features: [
+                WhatsNewItem(
+                    icon: "applewatch.watchface",
+                    tint: .orange,
+                    title: "Speak From the Watch Face",
+                    description: "Add the Wee Hours complication to your watch face. One tap opens Wee Hours already listening; tap Stop and your iPhone logs it.",
+                    highlights: ["Circular, corner, rectangular and inline styles", "Starts recording straight away"]
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "timer",
+                    tint: .purple,
+                    title: "Clearer Live Activity",
+                    description: "The Dynamic Island and Lock Screen show what's being timed (bottle, nursing with the next side, or sleep), for which child, and for how long, with Finish, Switch side or Woke up a tap away.",
+                    kind: .improvement
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "0.4.1",
             date: "October 2026",

@@ -125,6 +125,7 @@ targets:
       - path: Watch
     dependencies:
       - package: LogCore
+      - target: WatchWidgets
     settings:
       base:
         PRODUCT_NAME: WeeHoursWatch
@@ -141,6 +142,29 @@ targets:
         WKCompanionAppBundleIdentifier: com.hejitech.$(PRODUCT_SLUG)
         WKApplication: true
         NSMicrophoneUsageDescription: Speak a log entry; your iPhone transcribes it.
+        # the complications open weehours://record
+        CFBundleURLTypes:
+          - CFBundleURLName: com.hejitech.$(PRODUCT_SLUG).watch
+            CFBundleURLSchemes: [weehours]
+
+  # Watch face complications: one tap opens the watch app recording (WatchWidgets.swift).
+  WatchWidgets:
+    type: app-extension
+    platform: watchOS
+    sources:
+      - path: WatchWidgets
+    settings:
+      base:
+        PRODUCT_NAME: WatchWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.$(PRODUCT_SLUG).watchkitapp.widgets
+    info:
+      path: WatchWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: $(APP_DISPLAY_NAME)
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
 
 schemes:
   App:
