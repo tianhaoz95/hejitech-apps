@@ -414,7 +414,7 @@ export async function callTool(name: string, args: Record<string, unknown>, call
 }
 
 /** A UUID derived from `key` (SHA-256, version-5 layout): the same import row always gets the same event id. */
-async function uuidFrom(key: string): Promise<string> {
+export async function uuidFrom(key: string): Promise<string> {
   const b = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(key))).slice(0, 16);
   b[6] = (b[6] & 0x0f) | 0x50;
   b[8] = (b[8] & 0x3f) | 0x80;
@@ -455,7 +455,7 @@ export function toInstant(text: string, tz?: string): string {
   return new Date(guess).toISOString();
 }
 
-function fieldDocs(type: string) {
+export function fieldDocs(type: string) {
   const s = typeSpec(type);
   const docs: Record<string, string> = {};
   for (const q of s?.questions ?? []) {
