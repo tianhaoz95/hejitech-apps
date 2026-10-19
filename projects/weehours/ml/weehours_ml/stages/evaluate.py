@@ -24,9 +24,10 @@ def shipped_model(run):
         return BUNDLED
     env = dict(line.split("=", 1) for line in (PROJECT_DIR / "eval" / "laya.env").read_text().splitlines()
                if "=" in line and not line.startswith("#"))
-    path = run.dir.parent / env["LAYA_FILE"]
+    revision = env.get("LAYA_REVISION", "main")
+    path = run.dir.parent / f"{revision}-{env['LAYA_FILE']}"
     if not path.exists():
-        url = f"https://huggingface.co/{env['LAYA_REPO']}/resolve/main/{env['LAYA_FILE']}"
+        url = f"https://huggingface.co/{env['LAYA_REPO']}/resolve/{revision}/{env['LAYA_FILE']}"
         print(f"evaluate: downloading {url}", flush=True)
         urllib.request.urlretrieve(url, path)
     return path

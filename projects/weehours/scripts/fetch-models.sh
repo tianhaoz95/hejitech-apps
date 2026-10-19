@@ -10,7 +10,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$ROOT/apps/ios/App/Models"
 HF="https://huggingface.co"
-source "$ROOT/eval/laya.env"   # LAYA_REPO, LAYA_FILE: the Laya model in use
+source "$ROOT/eval/laya.env"   # LAYA_REPO, LAYA_FILE, LAYA_REVISION: the Laya model in use
 mkdir -p "$OUT/whisper/tokenizer"
 
 if [[ ! -s "$OUT/Laya-Q8_0.gguf" ]]; then
@@ -18,7 +18,7 @@ if [[ ! -s "$OUT/Laya-Q8_0.gguf" ]]; then
     cp "$LAYA_MODEL" "$OUT/Laya-Q8_0.gguf"
   else
     echo "Downloading Laya-Q8_0.gguf…"
-    curl -fL --progress-bar -o "$OUT/Laya-Q8_0.gguf.part" "$HF/$LAYA_REPO/resolve/main/$LAYA_FILE"
+    curl -fL --progress-bar -o "$OUT/Laya-Q8_0.gguf.part" "$HF/$LAYA_REPO/resolve/${LAYA_REVISION:-main}/$LAYA_FILE"
     mv "$OUT/Laya-Q8_0.gguf.part" "$OUT/Laya-Q8_0.gguf"
   fi
 fi

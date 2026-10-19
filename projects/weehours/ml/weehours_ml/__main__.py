@@ -30,7 +30,7 @@ def checks(run):
         problems.append("[convert] llama_cpp_commit differs from scripts/build-llama-xcframework.sh")
     env = dict(line.split("=", 1) for line in (PROJECT_DIR / "eval/laya.env").read_text().splitlines()
                if "=" in line and not line.startswith("#"))
-    url = f"https://huggingface.co/{env['LAYA_REPO']}/resolve/main/{env['LAYA_FILE']}"
+    url = f"https://huggingface.co/{env['LAYA_REPO']}/resolve/{env.get('LAYA_REVISION', 'main')}/{env['LAYA_FILE']}"
     if url not in services:
         problems.append(f"Services.swift's ModelManager.modelURL isn't eval/laya.env's {url}")
     return problems

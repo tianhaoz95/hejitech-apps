@@ -61,6 +61,7 @@ jobs:
           set -a; source eval/laya.env; set +a
           echo "LAYA_REPO=$LAYA_REPO" >> "$GITHUB_ENV"
           echo "LAYA_FILE=$LAYA_FILE" >> "$GITHUB_ENV"
+          echo "LAYA_REVISION=${LAYA_REVISION:-main}" >> "$GITHUB_ENV"
 
       - name: Cache llama-server
         id: llama-cache
@@ -88,13 +89,13 @@ jobs:
         uses: actions/cache@v4
         with:
           path: projects/weehours/.laya-model
-          key: weehours-laya-${{ env.LAYA_REPO }}-${{ env.LAYA_FILE }}
+          key: weehours-laya-${{ env.LAYA_REPO }}-${{ env.LAYA_REVISION }}-${{ env.LAYA_FILE }}
 
       - name: Download model
         if: steps.model-cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p .laya-model
-          curl -fL -o ".laya-model/$LAYA_FILE" "https://huggingface.co/$LAYA_REPO/resolve/main/$LAYA_FILE"
+          curl -fL -o ".laya-model/$LAYA_FILE" "https://huggingface.co/$LAYA_REPO/resolve/$LAYA_REVISION/$LAYA_FILE"
 
       - uses: actions/setup-python@v5
         with:
@@ -125,7 +126,7 @@ jobs:
       - name: Report
         run: |
           {
-            echo "Model: \`$LAYA_REPO/$LAYA_FILE\` · llama.cpp \`$LLAMA_COMMIT\` (CPU)"
+            echo "Model: \`$LAYA_REPO/$LAYA_FILE@$LAYA_REVISION\` · llama.cpp \`$LLAMA_COMMIT\` (CPU)"
             echo
             python3 eval/report.py --title "Raw" now=/tmp/eval/laya-hierarchical.json \
               committed=eval/results/laya-hierarchical.json
