@@ -7,9 +7,15 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    DEVELOPMENT_TEAM: ""
-    CODE_SIGNING_ALLOWED: NO
-    CODE_SIGNING_REQUIRED: NO
+    # The app, watch app and complications share one version. scripts/cut_release.sh toddlercam
+    # bumps MARKETING_VERSION; CI sets CURRENT_PROJECT_VERSION (UTC timestamp build numbers).
+    MARKETING_VERSION: "1.2.3"
+    CURRENT_PROJECT_VERSION: "1"
+    # The HEJI team. Automatic signing; simulator builds don't sign.
+    DEVELOPMENT_TEAM: 68CTFST8W2
+    CODE_SIGN_STYLE: Automatic
+    "CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]": NO
+    "CODE_SIGNING_ALLOWED[sdk=watchsimulator*]": NO
 
 targets:
   KidsCam:
@@ -17,14 +23,28 @@ targets:
     platform: iOS
     deploymentTarget: "17.0"
     sources:
-      - KidsCam
+      - path: KidsCam
+        # Copies of the asset catalog's demo images (DualPhotoRenderer's simulator fallback).
+        excludes:
+          - "Resources/*.jpg"
     dependencies:
       - target: KidsCamWatch
         embed: true
     info:
       path: KidsCam/App/Info.plist
       properties:
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        ITSAppUsesNonExemptEncryption: false
         CFBundleDisplayName: ToddlerCam
+        UIRequiresFullScreen: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
         NSCameraUsageDescription: "ToddlerCam needs access to front and rear cameras so your toddler can explore photography with dual-camera view."
         NSPhotoLibraryAddUsageDescription: "ToddlerCam saves your toddler's dual photos to your photo library."
         NSPhotoLibraryUsageDescription: "ToddlerCam allows parents to view photos and create custom Apple Watch faces."
@@ -67,6 +87,10 @@ targets:
     info:
       path: KidsCamWatch/App/Info.plist
       properties:
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        ITSAppUsesNonExemptEncryption: false
+        CFBundleDisplayName: ToddlerCam
         WKCompanionAppBundleIdentifier: com.hejitech.kidscam
         WKApplication: true
     settings:
@@ -86,6 +110,10 @@ targets:
     info:
       path: KidsCamWatchWidgets/Info.plist
       properties:
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        ITSAppUsesNonExemptEncryption: false
+        CFBundleDisplayName: ToddlerCam Complications
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:

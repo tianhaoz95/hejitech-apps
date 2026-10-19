@@ -12,6 +12,7 @@ one npm workspace and the CI plumbing.
 | Voxbrief | Voice memos on Apple Watch → clean Markdown notes on iPhone/Mac, transcribed and rewritten on the device (Swift, Whisper + Qwen3). No backend (`BACKEND=none`) | [`projects/voxbrief`](projects/voxbrief/README.md) |
 | Meowtrix | Remote workspace for vibe engineering: self-hosted Node server (split panes of terminals, browsers, editor), macOS desktop apps (Tauri). No backend (`BACKEND=none`); standalone npm project with its own lockfile | [`projects/meowtrix`](projects/meowtrix/README.md) |
 | Contempo | AI-native hour tracker for STR material-participation tests: Android + Wear OS (Kotlin), iOS + watchOS (Swift), web app + admin + API on its Worker. Moved off Firebase onto the shared Supabase project (schema `contempo`) | [`projects/contempo`](projects/contempo/README.md) |
+| ToddlerCam | Dual-camera app for toddlers (front + rear at once, face-tracking masks, toddler lock) with an Apple Watch remote for the parent (Swift). Kids Category, no backend (`BACKEND=none`) | [`projects/toddlercam`](projects/toddlercam/README.md) |
 
 ## Layout
 ```

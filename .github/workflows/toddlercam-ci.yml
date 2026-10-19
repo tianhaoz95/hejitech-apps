@@ -1,0 +1,59 @@
+name: ToddlerCam CI
+
+# Builds every target (iPhone app, watch app, complications) and runs the iOS unit tests when
+# ToddlerCam changes, and from the Actions tab. scripts/cut_release.sh toddlercam requires it green.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "projects/toddlercam/**"
+      - ".github/workflows/toddlercam-ci.yml"
+  pull_request:
+    paths:
+      - "projects/toddlercam/**"
+      - ".github/workflows/toddlercam-ci.yml"
+  workflow_dispatch: {}
+
+concurrency:
+  group: toddlercam-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: projects/toddlercam
+
+jobs:
+  test:
+    name: Build + unit tests
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "26"
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      # project.yml is the source of truth (releases regenerate too): hand edits to
+      # KidsCam.xcodeproj or the Info.plists don't survive.
+      - name: Regenerate Xcode project
+        run: xcodegen generate
+
+      - name: Build watch app and complications
+        run: |
+          for scheme in KidsCamWatch KidsCamWatchWidgets; do
+            xcodebuild -project KidsCam.xcodeproj -scheme "$scheme" \
+              -destination "generic/platform=watchOS Simulator" build
+          done
+
+      - name: Run iOS unit tests
+        run: |
+          DEVICE_ID=$(xcrun simctl list devices available iPhone | grep -m1 -oE '[0-9A-F]{8}-([0-9A-F]{4}-){3}[0-9A-F]{12}')
+          xcodebuild -project KidsCam.xcodeproj -scheme KidsCam -destination "id=$DEVICE_ID" test

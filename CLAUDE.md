@@ -1,7 +1,7 @@
 # HEJI projects monorepo
 
-Several products live in `projects/<name>/` (`waypack`, `weehours`, `feedbackkit`, `voxbrief`, `meowtrix`, `contempo`), sharing one
-Supabase project (FeedbackKit keeps its own: `BACKEND=own`; Voxbrief and Meowtrix have none: `BACKEND=none`) (`supabase/`, read `supabase/README.md` before any schema change), npm workspaces and CI
+Several products live in `projects/<name>/` (`waypack`, `weehours`, `feedbackkit`, `voxbrief`, `meowtrix`, `contempo`, `toddlercam`), sharing one
+Supabase project (FeedbackKit keeps its own: `BACKEND=own`; Voxbrief, Meowtrix and ToddlerCam have none: `BACKEND=none`) (`supabase/`, read `supabase/README.md` before any schema change), npm workspaces and CI
 plumbing. Layout and how to add a project: `README.md`. Keep each project self-contained; put
 something at the root only when it is genuinely shared. Each project has its own `CLAUDE.md`
 (`projects/<name>/CLAUDE.md`, loaded when you work there) for its commands, architecture and
@@ -73,3 +73,7 @@ as `meowtrix-v<version>`, which runs `meowtrix-release.yml` (server tarballs) an
 For Contempo it bumps `MARKETING_VERSION` in `projects/contempo/ios/project.yml` and publishes
 `contempo-v<version>`, which runs `contempo-testflight.yml` (bundled model fetched in CI, same
 team-wide signing secrets). Android goes to Play Console by hand. See `projects/contempo/CLAUDE.md`.
+
+For ToddlerCam it bumps `MARKETING_VERSION` in `projects/toddlercam/project.yml` and publishes
+`toddlercam-v<version>`, which runs `toddlercam-testflight.yml` (iPhone app with the watch app and
+complications embedded, same team-wide signing secrets). See `projects/toddlercam/CLAUDE.md`.

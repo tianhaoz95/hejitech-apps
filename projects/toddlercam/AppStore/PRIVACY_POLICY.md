@@ -65,5 +65,5 @@ We may update our Privacy Policy from time to time. Any changes will be posted a
 ### 7. Contact Us
 If you have any questions or suggestions regarding our Privacy Policy, please contact:
 - **Email:** `info@hejitech.com`
-- **Website:** `https://tianhaoz95.github.io/peekaboo-cam/`
+- **Website:** `https://tianhaoz95.github.io/hejitech-apps/toddlercam/site/`
 - **Developer:** HEJI TECHNOLOGY LLC

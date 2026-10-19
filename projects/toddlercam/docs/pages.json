@@ -1,0 +1,18 @@
+{
+  "name": "ToddlerCam",
+  "sidebar": [
+    {
+      "text": "ToddlerCam",
+      "items": [
+        { "text": "Overview", "link": "" },
+        { "text": "Landing page ↗", "link": "site/index.html", "target": "_blank" },
+        { "text": "Privacy policy ↗", "link": "site/privacy.html", "target": "_blank" },
+        { "text": "Terms ↗", "link": "site/terms.html", "target": "_blank" },
+        { "text": "Support ↗", "link": "site/support.html", "target": "_blank" }
+      ]
+    }
+  ],
+  "static": {
+    "site": "../site"
+  }
+}

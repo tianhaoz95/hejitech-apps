@@ -4,6 +4,11 @@ import SwiftUI
 
 final class KidsCamTests: XCTestCase {
 
+    // AppStore/Screenshots in the checkout this file lives in (the simulator can write there).
+    static let screenshotsDir = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent().deletingLastPathComponent()
+        .appendingPathComponent("AppStore/Screenshots").path
+
     override func setUp() {
         super.setUp()
         GuidedAccessManager.shared.isGuidedAccessActive = false
@@ -499,7 +504,7 @@ final class KidsCamTests: XCTestCase {
         }
 
         if let data = image.pngData() {
-            let dir = "/Users/tianhaoz/GitHub/kids-cam/AppStore/Screenshots/iPhone"
+            let dir = Self.screenshotsDir + "/iPhone"
             try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
             let path = "\(dir)/\(filename)"
             try? data.write(to: URL(fileURLWithPath: path))
@@ -520,7 +525,7 @@ final class KidsCamTests: XCTestCase {
         }
 
         if let data = image.pngData() {
-            let dir = "/Users/tianhaoz/GitHub/kids-cam/AppStore/Screenshots/iPad"
+            let dir = Self.screenshotsDir + "/iPad"
             try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
             let path = "\(dir)/\(filename)"
             try? data.write(to: URL(fileURLWithPath: path))
@@ -600,7 +605,7 @@ final class KidsCamTests: XCTestCase {
         let renderer = ImageRenderer(content: view.frame(width: 208, height: 248))
         renderer.scale = 2.0
         if let uiImage = renderer.uiImage, let data = uiImage.pngData() {
-            let dir = "/Users/tianhaoz/GitHub/kids-cam/AppStore/Screenshots/Watch"
+            let dir = Self.screenshotsDir + "/Watch"
             try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
             let path = "\(dir)/\(filename)"
             try? data.write(to: URL(fileURLWithPath: path))

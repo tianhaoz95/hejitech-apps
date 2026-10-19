@@ -10,11 +10,10 @@
 		06D59D01FABBF9440FB24D9E /* SillySoundboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 944CF982CDD371490B52BE30 /* SillySoundboardView.swift */; };
 		0F99A9D7BD9E88B76C8F4B34 /* FaceTrackingEmojiOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 127CDB38D2716FD4E6FA4536 /* FaceTrackingEmojiOverlayView.swift */; };
 		1BE2C481F07BAFCC957D517C /* DualPhotoRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40BDCE52ED843B09CFE6B850 /* DualPhotoRenderer.swift */; };
-		A1B2C3D4E5F60001 /* DualVideoRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002 /* DualVideoRecorder.swift */; };
 		23EB0A594B950757FFC263CE /* SoundEffectManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 885BF7738A033DC6F5155B59 /* SoundEffectManager.swift */; };
 		2766B1CBF946903BD2756298 /* KidsCamWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83961FBD0C064E672550C000 /* KidsCamWatchApp.swift */; };
 		3A015E1F5529E1B4726AF7EA /* pop.wav in Resources */ = {isa = PBXBuildFile; fileRef = C70CC044D2B4FAD8407A5DD9 /* pop.wav */; };
-		3A53F5886B028174156BD6F1 /* ToddlerCamComplications.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 138EF078FCEED1B17A6E0985 /* ToddlerCamComplications.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		3A53F5886B028174156BD6F1 /* KidsCamWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 138EF078FCEED1B17A6E0985 /* KidsCamWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		3BFD0B2FF07FD830F7182279 /* ToddlerCameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49D8280B1C25F9966D1442B3 /* ToddlerCameraView.swift */; };
 		418EE08D8F5DBAC15374DA13 /* FaceEmojiType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04A7E6D233F2BAB0C4C244EF /* FaceEmojiType.swift */; };
 		4AA48F4A4B58B9DF6F788919 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 73354534561230FB9B1F035F /* Assets.xcassets */; };
@@ -31,6 +30,7 @@
 		99E3DABAA808D71A8FF46FD5 /* FaceTrackingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E11630D803D921EBF890A70 /* FaceTrackingManager.swift */; };
 		9CF94292F7726B1BDAB73551 /* WatchFaceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70E59ABE2F465EAFC03E178E /* WatchFaceManager.swift */; };
 		9D9E4D209F0640E244CB6E0C /* GuidedAccessGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 187D5522039C029EBF63DF00 /* GuidedAccessGuideView.swift */; };
+		9DA047839A98E43928AF934E /* DualVideoRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2B64254390B4030DCF8F0A0 /* DualVideoRecorder.swift */; };
 		9E07ED113DEDD0F307A47C89 /* front_video.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 40ACD898D567E453474F787C /* front_video.mp4 */; };
 		A18B22EA7641BC758EE96E91 /* WatchFaceStudioView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CBFAD201449588459ECEFDF /* WatchFaceStudioView.swift */; };
 		A45C0A52C45E73577A2AD490 /* woof.wav in Resources */ = {isa = PBXBuildFile; fileRef = 9E1C8B3AB108E225168F6AAC /* woof.wav */; };
@@ -40,7 +40,7 @@
 		C0556FF254384585D18D585E /* meow.wav in Resources */ = {isa = PBXBuildFile; fileRef = 02A9C93A4743FCECB1FAF742 /* meow.wav */; };
 		C17ECDBA2BA62B6326F1CE3A /* shutter.wav in Resources */ = {isa = PBXBuildFile; fileRef = 1B1BFAF8E56444F56E1B8E89 /* shutter.wav */; };
 		CA913D24FD2FA189291DE2BD /* KidsCamTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A2E5D13D16645BBDE61388 /* KidsCamTests.swift */; };
-		D47BC09F71E1A12C4B0B945C /* ToddlerCamWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 3679C3BD47BA9737BA8D7D52 /* ToddlerCamWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		D47BC09F71E1A12C4B0B945C /* KidsCamWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 3679C3BD47BA9737BA8D7D52 /* KidsCamWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		D5A60C303643640C701D4F28 /* WatchFaceEmojiSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A519B067B60A4040AFFF2F8 /* WatchFaceEmojiSettingsView.swift */; };
 		E47577B3F7CE4ABF75DF1865 /* KidsCamApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 737216B573A6A29EDB38396B /* KidsCamApp.swift */; };
 		E67A573CC2B04E6E875AF1D2 /* PhotoGalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16D0AFFEA3BDA24AA39B416D /* PhotoGalleryView.swift */; };
@@ -84,7 +84,7 @@
 			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
 			dstSubfolderSpec = 16;
 			files = (
-				D47BC09F71E1A12C4B0B945C /* ToddlerCamWatch.app in Embed Watch Content */,
+				D47BC09F71E1A12C4B0B945C /* KidsCamWatch.app in Embed Watch Content */,
 			);
 			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -95,7 +95,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				3A53F5886B028174156BD6F1 /* ToddlerCamComplications.appex in Embed Foundation Extensions */,
+				3A53F5886B028174156BD6F1 /* KidsCamWatchWidgets.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -108,26 +108,25 @@
 		0C55A040C3899AAFCA387AAE /* horn.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = horn.wav; sourceTree = "<group>"; };
 		127CDB38D2716FD4E6FA4536 /* FaceTrackingEmojiOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceTrackingEmojiOverlayView.swift; sourceTree = "<group>"; };
 		1375F06DC27B1EBFDEF4FDF4 /* ToddlerLockOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToddlerLockOverlay.swift; sourceTree = "<group>"; };
-		138EF078FCEED1B17A6E0985 /* ToddlerCamComplications.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ToddlerCamComplications.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		138EF078FCEED1B17A6E0985 /* KidsCamWatchWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = KidsCamWatchWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		16D0AFFEA3BDA24AA39B416D /* PhotoGalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoGalleryView.swift; sourceTree = "<group>"; };
 		187D5522039C029EBF63DF00 /* GuidedAccessGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuidedAccessGuideView.swift; sourceTree = "<group>"; };
 		1A0509690A5C4D01A34746EE /* WatchRemoteControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchRemoteControlView.swift; sourceTree = "<group>"; };
 		1A519B067B60A4040AFFF2F8 /* WatchFaceEmojiSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchFaceEmojiSettingsView.swift; sourceTree = "<group>"; };
 		1B1BFAF8E56444F56E1B8E89 /* shutter.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = shutter.wav; sourceTree = "<group>"; };
 		31A2E5D13D16645BBDE61388 /* KidsCamTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KidsCamTests.swift; sourceTree = "<group>"; };
-		3679C3BD47BA9737BA8D7D52 /* ToddlerCamWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ToddlerCamWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3679C3BD47BA9737BA8D7D52 /* KidsCamWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KidsCamWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3CBFAD201449588459ECEFDF /* WatchFaceStudioView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchFaceStudioView.swift; sourceTree = "<group>"; };
-		40ACD898D567E453474F787C /* front_video.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = front_video.mp4; sourceTree = "<group>"; };
+		40ACD898D567E453474F787C /* front_video.mp4 */ = {isa = PBXFileReference; path = front_video.mp4; sourceTree = "<group>"; };
 		40BDCE52ED843B09CFE6B850 /* DualPhotoRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DualPhotoRenderer.swift; sourceTree = "<group>"; };
-		A1B2C3D4E5F60002 /* DualVideoRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DualVideoRecorder.swift; sourceTree = "<group>"; };
 		49D8280B1C25F9966D1442B3 /* ToddlerCameraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToddlerCameraView.swift; sourceTree = "<group>"; };
 		4E05CDE08E1253BC82F0747C /* ToddlerControlBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToddlerControlBar.swift; sourceTree = "<group>"; };
 		59CDA1A81B2A018FBAAA73C5 /* quack.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = quack.wav; sourceTree = "<group>"; };
-		5DABA965F2BE80FDBF7828BF /* KidsCamTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KidsCamTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		5DABA965F2BE80FDBF7828BF /* KidsCamTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = KidsCamTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		6DB432D17380DD0B45B4027E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		70E59ABE2F465EAFC03E178E /* WatchFaceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchFaceManager.swift; sourceTree = "<group>"; };
 		73354534561230FB9B1F035F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		737097FEBCD00D66924E5DAD /* rear_video.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = rear_video.mp4; sourceTree = "<group>"; };
+		737097FEBCD00D66924E5DAD /* rear_video.mp4 */ = {isa = PBXFileReference; path = rear_video.mp4; sourceTree = "<group>"; };
 		737216B573A6A29EDB38396B /* KidsCamApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KidsCamApp.swift; sourceTree = "<group>"; };
 		7E11630D803D921EBF890A70 /* FaceTrackingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceTrackingManager.swift; sourceTree = "<group>"; };
 		83961FBD0C064E672550C000 /* KidsCamWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KidsCamWatchApp.swift; sourceTree = "<group>"; };
@@ -139,7 +138,7 @@
 		B2C33CA6E9AC81E7E5C52E6E /* WatchPhotoReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchPhotoReviewView.swift; sourceTree = "<group>"; };
 		B4BBECF15101BB4B055D52C9 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		BC499EB109839F5E5C6C4534 /* ParentGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParentGateView.swift; sourceTree = "<group>"; };
-		C5DBF52CF722DA7E57467F32 /* ToddlerCam.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ToddlerCam.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C5DBF52CF722DA7E57467F32 /* KidsCam.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = KidsCam.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C70CC044D2B4FAD8407A5DD9 /* pop.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = pop.wav; sourceTree = "<group>"; };
 		D0B73E51D610A5E00A7D7C2F /* SimulatorCameraStreamer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulatorCameraStreamer.swift; sourceTree = "<group>"; };
 		D87FC8AE6A69E1B464D91C1B /* WatchConnectivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityManager.swift; sourceTree = "<group>"; };
@@ -151,6 +150,7 @@
 		E60F3BBD12CAFA8B7942DC89 /* giggle.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = giggle.wav; sourceTree = "<group>"; };
 		E89F84A9C3784393466695C4 /* DualCameraManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DualCameraManager.swift; sourceTree = "<group>"; };
 		E9EA2C387B2F50EAC2B9EC2C /* KidsCamComplications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KidsCamComplications.swift; sourceTree = "<group>"; };
+		F2B64254390B4030DCF8F0A0 /* DualVideoRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DualVideoRecorder.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -287,10 +287,10 @@
 		A7E6683853AE14DCCCD825E3 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				C5DBF52CF722DA7E57467F32 /* ToddlerCam.app */,
+				C5DBF52CF722DA7E57467F32 /* KidsCam.app */,
 				5DABA965F2BE80FDBF7828BF /* KidsCamTests.xctest */,
-				3679C3BD47BA9737BA8D7D52 /* ToddlerCamWatch.app */,
-				138EF078FCEED1B17A6E0985 /* ToddlerCamComplications.appex */,
+				3679C3BD47BA9737BA8D7D52 /* KidsCamWatch.app */,
+				138EF078FCEED1B17A6E0985 /* KidsCamWatchWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -354,7 +354,7 @@
 				E89F84A9C3784393466695C4 /* DualCameraManager.swift */,
 				DB656FA5882BC918CF3B836B /* DualCameraPreviewView.swift */,
 				40BDCE52ED843B09CFE6B850 /* DualPhotoRenderer.swift */,
-				A1B2C3D4E5F60002 /* DualVideoRecorder.swift */,
+				F2B64254390B4030DCF8F0A0 /* DualVideoRecorder.swift */,
 				D0B73E51D610A5E00A7D7C2F /* SimulatorCameraStreamer.swift */,
 			);
 			path = Camera;
@@ -380,7 +380,7 @@
 			packageProductDependencies = (
 			);
 			productName = KidsCam;
-			productReference = C5DBF52CF722DA7E57467F32 /* ToddlerCam.app */;
+			productReference = C5DBF52CF722DA7E57467F32 /* KidsCam.app */;
 			productType = "com.apple.product-type.application";
 		};
 		682C11573BA0733EC3CFD5BA /* KidsCamWatchWidgets */ = {
@@ -397,7 +397,7 @@
 			packageProductDependencies = (
 			);
 			productName = KidsCamWatchWidgets;
-			productReference = 138EF078FCEED1B17A6E0985 /* ToddlerCamComplications.appex */;
+			productReference = 138EF078FCEED1B17A6E0985 /* KidsCamWatchWidgets.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 		73407A833061C95A21B4D61A /* KidsCamWatch */ = {
@@ -417,7 +417,7 @@
 			packageProductDependencies = (
 			);
 			productName = KidsCamWatch;
-			productReference = 3679C3BD47BA9737BA8D7D52 /* ToddlerCamWatch.app */;
+			productReference = 3679C3BD47BA9737BA8D7D52 /* KidsCamWatch.app */;
 			productType = "com.apple.product-type.application";
 		};
 		C2174E2097B127F7E2F724E7 /* KidsCamTests */ = {
@@ -448,25 +448,20 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					4A336778299F297ACB71FF1D = {
-						CreatedOnToolsVersion = 15.0;
 						DevelopmentTeam = 68CTFST8W2;
 						ProvisioningStyle = Automatic;
 					};
 					682C11573BA0733EC3CFD5BA = {
-						CreatedOnToolsVersion = 15.0;
 						DevelopmentTeam = 68CTFST8W2;
 						ProvisioningStyle = Automatic;
 					};
 					73407A833061C95A21B4D61A = {
-						CreatedOnToolsVersion = 15.0;
 						DevelopmentTeam = 68CTFST8W2;
 						ProvisioningStyle = Automatic;
 					};
 					C2174E2097B127F7E2F724E7 = {
-						CreatedOnToolsVersion = 15.0;
 						DevelopmentTeam = 68CTFST8W2;
 						ProvisioningStyle = Automatic;
-						TestTargetID = 4A336778299F297ACB71FF1D;
 					};
 				};
 			};
@@ -529,7 +524,7 @@
 				71ECB2F9839D24FA6589DCBA /* DualCameraManager.swift in Sources */,
 				AB7E9B133C628492332709E0 /* DualCameraPreviewView.swift in Sources */,
 				1BE2C481F07BAFCC957D517C /* DualPhotoRenderer.swift in Sources */,
-				A1B2C3D4E5F60001 /* DualVideoRecorder.swift in Sources */,
+				9DA047839A98E43928AF934E /* DualVideoRecorder.swift in Sources */,
 				418EE08D8F5DBAC15374DA13 /* FaceEmojiType.swift in Sources */,
 				0F99A9D7BD9E88B76C8F4B34 /* FaceTrackingEmojiOverlayView.swift in Sources */,
 				99E3DABAA808D71A8FF46FD5 /* FaceTrackingManager.swift in Sources */,
@@ -638,6 +633,7 @@
 				"CODE_SIGNING_ALLOWED[sdk=watchsimulator*]" = NO;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 68CTFST8W2;
 				ENABLE_NS_ASSERTIONS = NO;
@@ -651,6 +647,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.2.3;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -664,9 +661,6 @@
 		28BCAD99D25AF1B775468C69 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 68CTFST8W2;
 				INFOPLIST_FILE = KidsCamWatchWidgets/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -686,9 +680,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 68CTFST8W2;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -740,6 +731,7 @@
 				"CODE_SIGNING_ALLOWED[sdk=watchsimulator*]" = NO;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 68CTFST8W2;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -759,6 +751,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.2.3;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -774,9 +767,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 68CTFST8W2;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				ENABLE_TESTABILITY = YES;
 				INFOPLIST_FILE = KidsCam/App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ToddlerCam;
@@ -801,9 +792,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 68CTFST8W2;
 				INFOPLIST_FILE = KidsCamWatch/App/Info.plist;
 				PRODUCT_BUNDLE_IDENTIFIER = com.hejitech.kidscam.watchkitapp;
 				PRODUCT_NAME = ToddlerCamWatch;
@@ -819,9 +807,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 68CTFST8W2;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -840,9 +825,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 68CTFST8W2;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				ENABLE_TESTABILITY = YES;
 				INFOPLIST_FILE = KidsCam/App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ToddlerCam;
@@ -867,9 +850,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 68CTFST8W2;
 				INFOPLIST_FILE = KidsCamWatch/App/Info.plist;
 				PRODUCT_BUNDLE_IDENTIFIER = com.hejitech.kidscam.watchkitapp;
 				PRODUCT_NAME = ToddlerCamWatch;
@@ -884,9 +864,6 @@
 		E277CC93CEF533EB6462A7DB /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 68CTFST8W2;
 				INFOPLIST_FILE = KidsCamWatchWidgets/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

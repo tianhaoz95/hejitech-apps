@@ -334,9 +334,11 @@ public final class DualPhotoRenderer {
         if let path = Bundle.main.path(forResource: filename, ofType: "jpg"), let img = UIImage(contentsOfFile: path) {
             return img
         }
+        // Simulator runs from a checkout: KidsCam/Resources next to this file's KidsCam/Camera.
+        let resources = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Resources").path
         let devPaths = [
-            "/Users/tianhaoz/GitHub/kids-cam/KidsCam/Resources/" + filename + ".jpg",
-            "/Users/tianhaoz/GitHub/kids-cam/KidsCam/Resources/Assets.xcassets/" + name + ".imageset/" + filename + ".jpg"
+            resources + "/" + filename + ".jpg",
+            resources + "/Assets.xcassets/" + name + ".imageset/" + filename + ".jpg"
         ]
         for p in devPaths {
             if FileManager.default.fileExists(atPath: p), let img = UIImage(contentsOfFile: p) {

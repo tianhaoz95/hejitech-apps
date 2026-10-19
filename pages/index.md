@@ -75,6 +75,16 @@ hero:
 </div>
 
 <div class="heji-app">
+  <img src="/toddlercam/icon.png" alt="" width="64" height="64">
+  <div class="heji-app-body">
+    <h3><a class="no-icon" href="./toddlercam/">ToddlerCam</a></h3>
+    <p>A dual camera made for little hands. Front and rear cameras at once, a big bouncy shutter, face-tracking masks and a toddler lock, with the parent's Apple Watch as the remote. Nothing leaves the device.</p>
+    <span class="heji-tags"><span>iPhone · iPad</span><span>Apple Watch</span><span>Kids Category</span></span>
+    <span class="heji-links"><a class="heji-btn brand no-icon" target="_blank" rel="noopener" href="https://tianhaoz95.github.io/hejitech-apps/toddlercam/site/">Visit app</a><a class="heji-btn no-icon" target="_blank" rel="noopener" href="./toddlercam/">Docs →</a></span>
+  </div>
+</div>
+
+<div class="heji-app">
   <img src="/feedbackkit-logo.png" alt="" width="64" height="64">
   <div class="heji-app-body">
     <h3><a class="no-icon" href="https://tianhaoz95.github.io/hejitech-apps/feedbackkit/" target="_self">FeedbackKit</a></h3>

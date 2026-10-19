@@ -17,23 +17,19 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.2.3</string>
+	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
-	<string>5</string>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
-	<key>UIRequiresFullScreen</key>
-	<true/>
-	<key>UISupportedInterfaceOrientations</key>
+	<key>LSApplicationQueriesSchemes</key>
 	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-	</array>
-	<key>UISupportedInterfaceOrientations~ipad</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
+		<string>prefs</string>
+		<string>app-prefs</string>
+		<string>App-prefs</string>
+		<string>App-Prefs</string>
+		<string>itms-watch</string>
+		<string>watch</string>
 	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
@@ -52,14 +48,18 @@
 	<string>ToddlerCam allows parents to view photos and create custom Apple Watch faces.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
-	<key>LSApplicationQueriesSchemes</key>
+	<key>UIRequiresFullScreen</key>
+	<true/>
+	<key>UISupportedInterfaceOrientations</key>
 	<array>
-		<string>prefs</string>
-		<string>app-prefs</string>
-		<string>App-prefs</string>
-		<string>App-Prefs</string>
-		<string>itms-watch</string>
-		<string>watch</string>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 </dict>
 </plist>

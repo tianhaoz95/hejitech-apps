@@ -1,6 +1,8 @@
 # ToddlerCam: Dual Baby Camera & Watch Remote 📸⌚️
 
-[![TestFlight Release](https://github.com/tianhaoz95/peekaboo-cam/actions/workflows/testflight-release.yml/badge.svg)](https://github.com/tianhaoz95/peekaboo-cam/actions/workflows/testflight-release.yml)
+[![ToddlerCam → TestFlight](https://github.com/tianhaoz95/hejitech-apps/actions/workflows/toddlercam-testflight.yml/badge.svg)](https://github.com/tianhaoz95/hejitech-apps/actions/workflows/toddlercam-testflight.yml)
+
+> Part of the [HEJI monorepo](https://github.com/tianhaoz95/hejitech-apps) (`projects/toddlercam`, moved from `tianhaoz95/toddler-cam` on 2026-10-19). Releases: `scripts/cut_release.sh toddlercam` from the repo root; see [`CLAUDE.md`](CLAUDE.md).
 
 > **ToddlerCam** (`com.hejitech.kidscam`) is a child-friendly, privacy-focused iOS and watchOS dual-camera app tailored for toddlers and parents. It captures both the front and rear cameras simultaneously, features a parent Apple Watch remote control with attention-grabber animal sounds, includes an educational Guided Access toddler lock setup, and includes a dedicated Apple Watch Face & Complication Studio in the iPhone app.
 
@@ -61,7 +63,7 @@
 ## 📁 Repository Structure
 
 ```
-kids-cam/
+projects/toddlercam/
 ├── project.yml                     # XcodeGen project specification
 ├── KidsCam/                        # iOS App Target
 │   ├── App/
@@ -113,10 +115,10 @@ kids-cam/
 ├── AppStore/                       # Release Documentation & Assets
 │   ├── APP_STORE_METADATA.md       # Complete App Store Connect submission fields
 │   ├── PRIVACY_POLICY.md           # COPPA & Kids Category privacy policy
-│   ├── ExportOptions.plist         # Release archive export settings
 │   └── AppIcon-1024.png            # 1024x1024 App Store icon
 └── Scripts/
     ├── build.sh                    # Automated build script for all targets
+    ├── release_testflight.sh       # Archive + TestFlight upload (CI: toddlercam-testflight.yml)
     ├── run_tests.sh                # Automated unit test suite runner
     ├── generate_sounds.py          # PCM audio synthesizer
     └── generate_icons.swift        # AppKit vector icon generator
@@ -149,15 +151,15 @@ xcodebuild -project KidsCam.xcodeproj -scheme KidsCamWatch -destination "generic
 
 ---
 
-## 🚀 App Store Connect Release Guide
-All required metadata, descriptions, keywords, age rating responses, and privacy policies have been prepared in:
-- `AppStore/APP_STORE_METADATA.md`
-- `AppStore/PRIVACY_POLICY.md`
-- `AppStore/ExportOptions.plist`
-- `AppStore/AppIcon-1024.png`
+## 🚀 Releases
+From the monorepo root:
+```bash
+scripts/cut_release.sh toddlercam --dry-run   # look first
+scripts/cut_release.sh toddlercam             # next patch; or minor | major | x.y.z
+```
+This bumps `MARKETING_VERSION` in `project.yml` and publishes GitHub Release `toddlercam-v<version>`,
+which runs `.github/workflows/toddlercam-testflight.yml` (archive + upload to TestFlight with the
+team's signing identities). The workflow also runs weekly so TestFlight builds never expire.
 
-When you are ready to upload:
-1. Create a new App in [App Store Connect](https://appstoreconnect.apple.com) with Bundle ID `com.hejitech.kidscam`.
-2. Copy and paste the metadata from `AppStore/APP_STORE_METADATA.md`.
-3. Set your Team ID in `project.yml` or Xcode Signing & Capabilities.
-4. Archive and upload using Xcode Organizer or `xcodebuild -exportArchive`.
+App Store submission metadata, review answers and the privacy policy are in `AppStore/`
+(`APP_STORE_METADATA.md`, `APP_REVIEW_RESPONSE.txt`, `PRIVACY_POLICY.md`, `AppIcon-1024.png`).
