@@ -12,9 +12,9 @@ final class CareTypesTests: XCTestCase {
                           interpreter: VoiceInterpreter(model: KeywordDecisionModel()))
     }
 
-    func testNewCategoriesAreOffByDefaultAndNeverAskedOfTheModel() {
+    func testNewCategoriesAreOffByDefaultAndAskedThroughCare() {
         let r = EventRegistry.shared
-        let new = r.categories.filter { !$0.inModel }
+        let new = r.categories.filter { $0.group != nil }
         XCTAssertEqual(Set(new.map(\.id)), ["bath", "lotion", "toothbrush", "potty", "teething", "medication", "symptom",
                                             "temperature", "doctor", "vaccination", "tummy_time", "play", "walk"])
         XCTAssertTrue(new.allSatisfy { !$0.defaultEnabled })
@@ -23,6 +23,12 @@ final class CareTypesTests: XCTestCase {
             for: InterpretContext(reference: Date(), log: DerivedLog(events: []), enabledCategories: all))
         let options = Set(qs.first { $0.id == "category" }!.options.map(\.key))
         XCTAssertTrue(options.isDisjoint(with: new.map(\.id)))
+        XCTAssertTrue(options.contains(VoiceInterpreter.careKey))
+        XCTAssertEqual(Set(qs.first { $0.id == "care_type" }!.options.map(\.key)), Set(new.map(\.id)))
+        // none enabled: no care option, no care question (the prompt stays what it was)
+        let core = VoiceInterpreter(model: KeywordDecisionModel()).questions(
+            for: InterpretContext(reference: Date(), log: DerivedLog(events: []), enabledCategories: r.defaultCategories))
+        XCTAssertFalse(core.contains { $0.id == "care_type" || $0.options.contains { $0.key == VoiceInterpreter.careKey } })
         for t in r.types where new.contains(where: { $0.id == t.category }) {
             XCTAssertNotNil(t.icon, t.id)
             XCTAssertNotNil(t.fields, t.id)

@@ -189,6 +189,22 @@ public struct KeywordDecisionModel: DecisionModel {
         "head": ["head", "circumference", "head size"],
     ]
 
+    /// The grouped categories (care_type), and through them the category question's "care".
+    static let careLexicon: [String: [String]] = [
+        "bath": ["bath", "bathed", "bathtub"], "lotion": ["lotion", "cream", " ointment", "moisturiz"],   // " ointment": not "appointment"
+        "toothbrush": ["brushed her teeth", "brushed his teeth", "brush teeth", "brushed teeth", "toothbrush"],
+        "potty": ["potty", "toilet"], "teething": ["teething", "tooth coming", "new tooth", "gums"],
+        "medication": ["medicine", "medication", "drops", "vitamin", "tylenol", "ibuprofen", "dose", "antibiotic"],
+        "symptom": ["cough", "runny nose", "congest", "rash", "vomit", "threw up", "diarrhea", "sneez", "spit up", "spat up"],
+        "temperature": ["temperature", "fever", "degrees", "thermometer"],
+        // visits, not mentions ("call the pediatrician tomorrow" isn't one)
+        "doctor": ["back from the doctor", "back from the pediatrician", "saw the doctor", "saw the pediatrician", "at the doctor",
+                   "at the pediatrician", "doctor says", "pediatrician says", "doctor visit", "checkup", "check-up"],
+        "vaccination": ["vaccine", "vaccination", "shots", "jab", "immuniz"],
+        "tummy_time": ["tummy time", "on her tummy", "on his tummy"], "play": ["played", "playing", "play time", "playtime"],
+        "walk": ["walk", "stroller", "pram", "outside"],
+    ]
+
     static let fieldLexicon: [String: [String: [String]]] = [
         "amount": [
             "quarter": ["drank a quarter", "quarter of", "a quarter"],
@@ -223,6 +239,7 @@ public struct KeywordDecisionModel: DecisionModel {
         for (cat, prefixes) in categoryPrefixes {
             out[cat] = lexicon.filter { k, _ in prefixes.contains { k.hasPrefix($0) } }.flatMap(\.value)
         }
+        out[VoiceInterpreter.careKey] = careLexicon.flatMap(\.value)
         return out
     }
 
@@ -235,6 +252,7 @@ public struct KeywordDecisionModel: DecisionModel {
             case "event_type": lex = Self.lexicon
             case "category": lex = Self.categoryLexicon
             case "phase": lex = Self.phaseLexicon
+            case "care_type": lex = Self.careLexicon
             default: lex = Self.fieldLexicon[q.id] ?? [:]
             }
             var scores = q.options.map { opt -> Double in

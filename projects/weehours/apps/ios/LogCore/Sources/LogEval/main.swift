@@ -78,7 +78,11 @@ func gold(_ row: Row, question: String) -> String? {
     case "event_type": return type
     case "category":
         if type == "none_of_these" { return "none_of_these" }
-        return registry.type(type)?.category
+        guard let c = registry.type(type)?.category else { return nil }
+        return registry.category(c)?.group == nil ? c : VoiceInterpreter.careKey
+    case "care_type":
+        guard let c = registry.type(type)?.category, registry.category(c)?.group != nil else { return nil }
+        return c
     case "phase":
         guard let t = registry.type(type), registry.types.filter({ $0.category == t.category }).count > 1 else { return nil }
         return type == "feed.bottle.single" ? "single" : t.session?.role

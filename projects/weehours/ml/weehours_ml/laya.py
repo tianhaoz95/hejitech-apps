@@ -12,6 +12,7 @@ from pathlib import Path
 from .config import SPEC_DIR
 
 NONE = "none_of_these"
+CARE = "care"   # the category option for every grouped category; care_type picks which
 FIELD_QUESTIONS = ["amount", "side", "contents", "diaper_kind", "solids_amount"]
 
 
@@ -42,6 +43,8 @@ class Registry:
         if type_id == NONE:
             return {"category": NONE}
         spec = self.types[type_id]
+        if self.categories[spec["category"]].get("group"):   # VoiceInterpreter.careKey
+            return {"category": CARE, "care_type": spec["category"]}
         labels = {"category": spec["category"]}
         same_category = [t for t in self.types.values() if t["category"] == spec["category"]]
         role = self.role(type_id)
@@ -90,7 +93,7 @@ def verify_against_export(export, utterances_path=SPEC_DIR / "utterances.jsonl",
             problems.append(f"{row['text']!r}: ours {ours} != app {exported['gold']}")
     for q in export["questions"]:
         keys = [o["key"] for o in q["options"]]
-        if q["id"] in registry.questions and q["id"] not in ("category", "phase"):
+        if q["id"] in registry.questions and q["id"] not in ("category", "phase", "care_type"):   # options from categories
             spec_keys = list(registry.questions[q["id"]].get("options", {}))
             if keys != spec_keys:
                 problems.append(f"question {q['id']}: options {keys} != spec {spec_keys}")

@@ -83,6 +83,8 @@ public struct VoiceInterpreter: Sendable {
     public let design: Design
 
     public static let noneKey = "none_of_these"
+    /// The category option standing for every grouped category (care_type picks which).
+    public static let careKey = "care"
     static let noneDescription = "not reporting a feed, diaper change, sleep, pumping or measurement: errands, shopping, chores, plans, questions, health or milestones"
 
     public init(model: DecisionModel, registry: EventRegistry = .shared, calibration: Calibration = .identity, design: Design = .hierarchical) {
@@ -97,18 +99,27 @@ public struct VoiceInterpreter: Sendable {
         var qs: [DecisionQuestion] = []
         switch design {
         case .flat:
-            var typeOptions = types.map { DecisionQuestion.Option(key: $0.id, description: $0.voice) }
+            var typeOptions = types.filter { registry.category($0.category)?.group == nil }
+                .map { DecisionQuestion.Option(key: $0.id, description: $0.voice) }
             typeOptions.append(.init(key: Self.noneKey, description: Self.noneDescription))
             qs.append(DecisionQuestion(id: "event_type", instructions: registry.questions["event_type"]?.instructions ?? "Which entry?", options: typeOptions))
         case .hierarchical:
-            var catOptions = registry.categories.filter { context.enabledCategories.contains($0.id) && $0.inModel }
+            var catOptions = registry.categories.filter { context.enabledCategories.contains($0.id) && $0.inModel && $0.group == nil }
                 .map { DecisionQuestion.Option(key: $0.id, description: $0.voice ?? $0.label) }
+            let care = registry.careCategories(enabled: context.enabledCategories)
+            if !care.isEmpty, let spec = registry.questions["care_type"] {
+                catOptions.append(.init(key: Self.careKey, description: spec.categoryOption ?? "baby care, health or an activity"))
+            }
             catOptions.append(.init(key: Self.noneKey, description: Self.noneDescription))
             qs.append(DecisionQuestion(id: "category", instructions: registry.questions["category"]?.instructions ?? "What is it about?", options: catOptions))
             let roles = Set(types.compactMap { Self.role(of: $0) })
             if let phase = registry.questions["phase"] {
                 let opts = phase.options.filter { roles.contains($0.key) }.map { DecisionQuestion.Option(key: $0.key, description: $0.spec.description) }
                 if opts.count > 1 { qs.append(DecisionQuestion(id: "phase", instructions: phase.instructions, options: opts)) }
+            }
+            if !care.isEmpty, let spec = registry.questions["care_type"] {
+                qs.append(DecisionQuestion(id: "care_type", instructions: spec.instructions,
+                                           options: care.map { .init(key: $0.id, description: $0.voice ?? $0.label) }))
             }
         }
         let needed = Set(types.flatMap(\.questions))
@@ -156,6 +167,17 @@ public struct VoiceInterpreter: Sendable {
         var keys: [String] = []
         var probs: [Double] = []
         for c in cat.options where c != Self.noneKey {
+            if c == Self.careKey {   // P(type) = P(care) × P(care_type = its category), shared by its types
+                guard let care = answers["care_type"] else { continue }
+                for k in care.options {
+                    let inCare = types.filter { $0.category == k }
+                    for t in inCare {
+                        keys.append(t.id)
+                        probs.append(cat.p(c) * care.p(k) / Double(inCare.count))
+                    }
+                }
+                continue
+            }
             let inCat = types.filter { $0.category == c }
             let weights = inCat.map { t -> Double in
                 guard inCat.count > 1 else { return 1 }

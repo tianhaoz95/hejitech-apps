@@ -155,7 +155,8 @@ final class InterpreterTests: XCTestCase {
         let i = VoiceInterpreter(model: KeywordDecisionModel())
         let qs = i.questions(for: ctx())
         XCTAssertEqual(qs.first?.id, "category")
-        XCTAssertTrue(qs.allSatisfy { $0.options.count <= 9 })
+        // care_type lists the grouped categories (13); every other question stays at nine or fewer
+        XCTAssertTrue(qs.allSatisfy { $0.options.count <= ($0.id == "care_type" ? 13 : 9) })
         XCTAssertFalse(qs.contains { $0.id == "when" })   // times are parsed deterministically
     }
 

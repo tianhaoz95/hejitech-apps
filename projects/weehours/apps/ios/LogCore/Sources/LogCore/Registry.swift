@@ -63,6 +63,8 @@ public struct EventRegistry: Sendable {
         public let instructions: String
         /// Ordered as in the spec file.
         public let options: [(key: String, spec: OptionSpec)]
+        /// care_type only: the "care" option's text in the category question.
+        public var categoryOption: String? = nil
     }
 
     public struct Policy: Decodable, Sendable {
@@ -91,6 +93,13 @@ public struct EventRegistry: Sendable {
     }
 
     public func category(_ id: String) -> Category? { categories.first { $0.id == id } }
+
+    /// Grouped categories (care, health, activity) the model is asked about: through one "care"
+    /// option in the category question and the care_type question, which keeps the category
+    /// question short (laya caps the question and its options at 192 tokens).
+    public func careCategories(enabled: Set<String>) -> [Category] {
+        categories.filter { enabled.contains($0.id) && $0.inModel && $0.group != nil }
+    }
 
     public var defaultCategories: Set<String> {
         Set(categories.filter(\.defaultEnabled).map(\.id))
@@ -129,7 +138,8 @@ public struct EventRegistry: Sendable {
                 Self.position(of: a, question: qid, in: text) < Self.position(of: b, question: qid, in: text)
             }
             let parsed = try ordered.map { key in (key: key, spec: try decode(OptionSpec.self, opts[key])) }
-            qs[qid] = QuestionSpec(id: qid, instructions: q["instructions"] as? String ?? qid, options: parsed)
+            qs[qid] = QuestionSpec(id: qid, instructions: q["instructions"] as? String ?? qid, options: parsed,
+                                   categoryOption: q["categoryOption"] as? String)
         }
         questions = qs
     }

@@ -13,7 +13,7 @@ from collections import Counter
 
 from .. import jsonl
 from ..config import PROJECT_DIR, SPEC_DIR
-from ..laya import laya_questions, load_export, training_row
+from ..laya import NONE, laya_questions, load_export, training_row
 
 HELD_OUT_SIMILARITY = 0.9
 
@@ -54,6 +54,9 @@ def run_stage(run, limit=None):
     plans = {p["id"]: p for d in sources for p in jsonl.read(d / "utterances.jsonl")}
     heard = [r for d in sources for r in jsonl.read(d / "asr.jsonl")][:limit]
     held_out = eval_texts()
+    # included runs' "not a log entry" rows about topics that have since become entries (bath,
+    # medicine, tummy time…): their labels are wrong under today's spec, so they're left out
+    stale_none = [re.compile(p, re.I) for p in run["run"].get("drop_none_matching", [])]
     train, val, seen, dropped = [], [], set(), Counter()
     for record in heard:
         plan_id, index = record["id"].rsplit("-", 1)
@@ -65,6 +68,10 @@ def run_stage(run, limit=None):
             continue
         if near_eval(said, held_out) or near_eval(state, held_out):
             dropped["close to an eval utterance"] += 1
+            continue
+        if plan["type"] == NONE and not record["id"].startswith(run["run"].get("id_prefix", "p")) \
+                and any(p.search(said) for p in stale_none):
+            dropped["not-a-log topic that is now an entry"] += 1
             continue
         key = (normalize(state), json.dumps(plan["labels"], sort_keys=True))
         if key in seen:
