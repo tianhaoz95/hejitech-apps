@@ -327,6 +327,7 @@ public struct VoiceInterpreter: Sendable {
             else if let n = v.number { details.append(Self.numberText(n, unit: f.unit)) }
             else if let t = v.string, !t.isEmpty { details.append(t) }
         }
+        if fields["ongoing"] == .bool(true) { details.append("in progress") }
         if !details.isEmpty { label += " · " + details.joined(separator: ", ") }
         return label
     }

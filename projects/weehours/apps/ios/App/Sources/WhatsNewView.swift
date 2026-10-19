@@ -56,9 +56,31 @@ struct WhatsNewView: View {
                     title: "Speak From the Watch Face",
                     description: "Add the Wee Hours complication to your watch face. One tap opens Wee Hours already listening; tap Stop and your iPhone logs it.",
                     highlights: ["Circular, corner, rectangular and inline styles", "Starts recording straight away"]
+                ),
+                WhatsNewItem(
+                    icon: "mic.circle.fill",
+                    tint: Theme.accent,
+                    title: "Speak From Your Home Screen",
+                    description: "Add the Speak widget to your Home Screen or Lock Screen, or the Speak control to Control Center: one tap opens Wee Hours already listening."
                 )
             ],
             improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "bell.badge",
+                    tint: .orange,
+                    title: "Forgot to Stop? We'll Ask",
+                    description: "If a feed, a nap or a timed activity runs well past the usual, Wee Hours sends one gentle \"still going?\" so a forgotten timer doesn't stretch all day.",
+                    kind: .improvement,
+                    highlights: ["Bottle after 45 min, nursing after an hour", "Daytime naps after 3 hours (never at night)",
+                                 "Tummy time after 30 min, play after an hour, walks after 2 hours"]
+                ),
+                WhatsNewItem(
+                    icon: "stopwatch",
+                    tint: .green,
+                    title: "Time Tummy Time, Play and Walks",
+                    description: "Start them from their button on Now and tap again to stop: the minutes are logged for you, and your partner sees the timer too.",
+                    kind: .improvement
+                ),
                 WhatsNewItem(
                     icon: "timer",
                     tint: .purple,
