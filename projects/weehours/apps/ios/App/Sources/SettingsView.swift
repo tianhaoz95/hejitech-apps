@@ -14,6 +14,7 @@ struct SettingsView: View {
     @State private var showingWhatsNew = false
     @AppStorage(Feedback.key) private var shakeToReport = true
     @AppStorage(VoiceButtonPlacement.key) private var voicePlacement = VoiceButtonPlacement.right
+    @AppStorage(QuickCapture.key) private var quickCapture = false
 
     var body: some View {
         NavigationStack {
@@ -102,11 +103,12 @@ struct SettingsView: View {
                     }
                     }
                 }
-                Section("Voice") {
+                Section {
                     Picker("Mic button", selection: $voicePlacement) {
                         ForEach(VoiceButtonPlacement.allCases) { Text($0.title).tag($0) }
                     }
                     .accessibilityIdentifier("voicePlacement")
+                    Toggle("Quick capture", isOn: $quickCapture).accessibilityIdentifier("quickCapture")
                     Picker("Decision model", selection: Binding(get: { model.decisionBackend }, set: { model.decisionBackend = $0 })) {
                         ForEach(DecisionBackend.allCases) { Text($0.rawValue).tag($0) }
                     }
@@ -114,6 +116,8 @@ struct SettingsView: View {
                     if model.decisionBackend == .devServer {
                         TextField("llama-server URL", text: $model.devServer).textInputAutocapitalization(.never)
                     }
+                } header: { Text("Voice") } footer: {
+                    Text("Quick capture logs the most likely entry instead of asking when Wee Hours isn't sure. Tap Change on the confirmation to fix it.")
                 }
                 Section {
                     if !model.localOnly {

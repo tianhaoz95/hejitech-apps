@@ -477,6 +477,12 @@ enum VoiceButtonPlacement: String, CaseIterable, Identifiable {
 
 /// Floating mic button, on every tab: one tap opens ListeningView. The models start loading the
 /// moment it's tapped.
+/// Settings → Voice → Quick capture (this phone only, off by default): log the top guess instead
+/// of asking (LogService.processVoice `quickCapture`).
+enum QuickCapture {
+    static let key = "quickCapture"
+}
+
 struct VoiceButton: View {
     static let size: CGFloat = 68
     @EnvironmentObject var model: AppModel
@@ -518,7 +524,7 @@ struct ToastView: View {
     var body: some View {
         if let toast = model.toast {
             HStack {
-                if toast.reopen != nil {
+                if toast.reopen?.action == "Log it" {
                     Image(systemName: "note.text").foregroundStyle(.secondary)
                 } else {
                     Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
@@ -526,7 +532,7 @@ struct ToastView: View {
                 Text(toast.text).lineLimit(2)
                 Spacer()
                 if let id = toast.undo { Button(toast.together ? "Undo all" : "Undo") { model.undo(id, together: toast.together) }.bold() }
-                if let reopen = toast.reopen { Button("Log it") { model.logInstead(reopen) }.bold() }
+                if let reopen = toast.reopen { Button(reopen.action) { model.reopen(reopen) }.bold() }
             }
             .padding()
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))

@@ -37,12 +37,19 @@ final class NotALogTests: XCTestCase {
         let s = try service(none: 0.97)
         let r = try await s.processVoice(transcript: "grandma is coming at noon", surface: .phone)
         let note = try XCTUnwrap(r.events.first)
-        try await s.reopenCapture(r.capture.id, note: note.id)
+        try await s.reopenCapture(r.capture.id, undoing: [note.id])
         let capture = try await s.store.captures().first { $0.id == r.capture.id }
         XCTAssertEqual(capture?.status, .needsReview)
         XCTAssertFalse(capture?.interpretation?.candidates.isEmpty ?? true)
         let log = try await s.derived()
         XCTAssertEqual(log.status[note.id], .undone)
+    }
+
+    func testQuickCaptureKeepsAnUnsureNotALogAsANote() async throws {
+        let s = try service(none: 0.6)
+        let r = try await s.processVoice(transcript: "grandma is coming at noon", surface: .phone, quickCapture: true)
+        XCTAssertEqual(r.capture.status, .dismissed)
+        XCTAssertEqual(r.events.map(\.type), [SystemType.note])
     }
 
     func testUnsureNotALogStillAsks() async throws {
@@ -63,3 +70,26 @@ final class NotALogTests: XCTestCase {
 
 // the tests' usual service (keyword model); `service(none:)` above shadows its name inside the class
 private func keywordService() throws -> LogService { try service() }
+
+final class QuickCaptureTests: XCTestCase {
+    func testQuickCaptureLogsTheTopGuessInsteadOfAsking() async throws {
+        let s = try keywordService()
+        let asked = try await s.processVoice(transcript: "just pee", surface: .phone)
+        XCTAssertNotEqual(asked.interpretation.tier, .auto, "needs an unsure sentence")
+        XCTAssertTrue(asked.events.isEmpty)
+        let r = try await s.processVoice(transcript: "just pee", surface: .phone, quickCapture: true)
+        XCTAssertEqual(r.capture.status, .done)
+        XCTAssertEqual(r.events.first?.type, r.interpretation.best?.type)
+        XCTAssertEqual(r.events.first?.provenance.confidenceTier, r.interpretation.tier)   // marked as a guess
+    }
+
+    func testChangeTakesTheGuessBackAndAsks() async throws {
+        let s = try keywordService()
+        let r = try await s.processVoice(transcript: "just pee", surface: .phone, quickCapture: true)
+        try await s.reopenCapture(r.capture.id, undoing: r.events.map(\.id))
+        let log = try await s.derived()
+        XCTAssertTrue(r.events.allSatisfy { log.status[$0.id] == .undone })
+        let capture = try await s.store.captures().first { $0.id == r.capture.id }
+        XCTAssertEqual(capture?.status, .needsReview)
+    }
+}

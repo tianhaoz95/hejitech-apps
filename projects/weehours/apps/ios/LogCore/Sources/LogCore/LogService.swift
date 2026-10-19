@@ -201,8 +201,11 @@ public actor LogService {
     /// Runs the decision layer on a transcript captured at `capturedAt` and applies the policy:
     /// auto-commit, or keep the capture in `needs_review` with its candidates. The entry is for the
     /// children the sentence names, else `babies` (the device's current children), else the first.
+    /// `quickCapture` (a per-phone setting) logs the top guess instead of asking: the best candidate,
+    /// or a note when "none of these" won; `reopenCapture` asks after all.
     public func processVoice(transcript: String, surface: Surface, capturedAt: Date = Date(), attachTo: UUID? = nil,
-                             captureId: UUID = UUID(), loggedBy: UUID? = nil, babies: [UUID]? = nil) async throws -> VoiceResult {
+                             captureId: UUID = UUID(), loggedBy: UUID? = nil, babies: [UUID]? = nil,
+                             quickCapture: Bool = false) async throws -> VoiceResult {
         let current = (babies ?? []).filter { id in household.active.contains { $0.id == id } }
         let targets = Parsers.children(in: transcript, among: household.active) ?? (current.isEmpty ? [household.babyId] : current)
         let asOf = try derived(asOf: capturedAt, baby: targets[0])
@@ -213,12 +216,13 @@ public actor LogService {
                               loggedBy: loggedBy ?? me, transcript: transcript, attachTo: attachTo, babyId: current.first, status: .needsReview,
                               interpretation: interp, processedBy: me, processedAt: Date())
         var events: [LogEvent] = []
-        if interp.tier == .auto, let best = interp.best {
+        let noneWon = interp.noneConfidence != nil
+        if let best = interp.best, !noneWon, interp.tier == .auto || quickCapture {
             events = try commit(best, capture: capture, interpretation: interp)
             capture.status = .done
         }
         try store.saveCapture(capture, synced: false)
-        if interp.isNotALog(policy: registry.policy), let note = try dismissCapture(captureId) {
+        if noneWon, interp.isNotALog(policy: registry.policy) || quickCapture, let note = try dismissCapture(captureId) {
             // not a log entry: kept as a note without asking; `reopenCapture` logs it after all
             capture.status = .dismissed
             events = [note]
@@ -226,10 +230,11 @@ public actor LogService {
         return VoiceResult(capture: capture, interpretation: interp, events: events)
     }
 
-    /// "Log it" on a sentence kept as a note: takes the note back and asks again (full list).
-    public func reopenCapture(_ id: UUID, note: UUID) throws {
+    /// "Log it" on a sentence kept as a note, or "Change" on a quick-capture guess: takes those
+    /// events back and asks again with the capture's candidates.
+    public func reopenCapture(_ id: UUID, undoing events: [UUID]) throws {
         guard var capture = try store.captures().first(where: { $0.id == id }) else { return }
-        try undo(note)
+        for e in events { try undo(e) }
         capture.status = .needsReview
         try store.saveCapture(capture, synced: false)
     }

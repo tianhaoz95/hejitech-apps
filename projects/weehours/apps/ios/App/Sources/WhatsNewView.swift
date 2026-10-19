@@ -60,6 +60,17 @@ struct WhatsNewView: View {
                         "Kept in your timeline as a note, never lost",
                         "Better at telling \"we need more nappies\" from a diaper change"
                     ]
+                ),
+                WhatsNewItem(
+                    icon: "bolt.fill",
+                    tint: .yellow,
+                    title: "Quick Capture",
+                    description: "Turn on Settings → Voice → Quick capture and Wee Hours logs its best guess instead of asking when it isn't sure. Tap Change on the confirmation to fix it.",
+                    highlights: [
+                        "Off by default, set per phone",
+                        "Guesses are marked so you can spot them",
+                        "Change takes the guess back and shows the choices"
+                    ]
                 )
             ]
         ),

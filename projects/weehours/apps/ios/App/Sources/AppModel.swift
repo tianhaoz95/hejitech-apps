@@ -18,9 +18,9 @@ final class AppModel: ObservableObject {
         let undo: UUID?
         /// Undo takes back every entry logged together (one per child).
         var together = false
-        /// A sentence kept as a note (not a log entry): "Log it" reopens it.
+        /// A sentence kept as a note ("Log it") or a quick-capture guess ("Change"): reopens it.
         var reopen: Reopen? = nil
-        struct Reopen: Equatable { let capture: UUID, note: UUID }
+        struct Reopen: Equatable { let capture: UUID, events: [UUID], action: String }
     }
 
     @Published var phase: Phase = .loading
@@ -503,13 +503,13 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// "Log it" on the saved-as-note toast: back to the full list for that sentence.
-    func logInstead(_ reopen: Toast.Reopen) {
+    /// "Log it" (saved as a note) or "Change" (a quick-capture guess): back to the choices.
+    func reopen(_ reopen: Toast.Reopen) {
         guard let service else { return }
         toast = nil
         Task {
             do {
-                try await service.reopenCapture(reopen.capture, note: reopen.note)
+                try await service.reopenCapture(reopen.capture, undoing: reopen.events)
                 await refresh()
                 reviewing = reviews.first { $0.id == reopen.capture }
             } catch { self.error = error.localizedDescription }
@@ -572,10 +572,18 @@ final class AppModel: ObservableObject {
         do {
             thinking = true
             defer { thinking = false }
-            let r = try await service.processVoice(transcript: transcript, surface: surface, capturedAt: capturedAt, attachTo: attachTo, babies: babies ?? target)
+            let quick = UserDefaults.standard.bool(forKey: QuickCapture.key)
+            let r = try await service.processVoice(transcript: transcript, surface: surface, capturedAt: capturedAt, attachTo: attachTo,
+                                                   babies: babies ?? target, quickCapture: quick)
             if r.capture.status == .dismissed, let note = r.events.first {
-                toast = Toast(text: "Not a log entry: saved as a note", undo: nil, reopen: .init(capture: r.capture.id, note: note.id))
+                toast = Toast(text: "Not a log entry: saved as a note", undo: nil, reopen: .init(capture: r.capture.id, events: [note.id], action: "Log it"))
                 await refresh()
+            } else if !r.events.isEmpty, r.interpretation.tier != .auto {
+                // quick capture logged a guess: "Change" takes it back and shows the choices
+                toast = Toast(text: label(r.events) + " · best guess", undo: nil,
+                              reopen: .init(capture: r.capture.id, events: r.events.map(\.id), action: "Change"))
+                await refresh()
+                Task { await syncNow() }
             } else if !r.events.isEmpty {
                 await did(r.events)
             } else {
