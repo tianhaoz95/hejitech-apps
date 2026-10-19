@@ -1,0 +1,956 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		06D59D01FABBF9440FB24D9E /* SillySoundboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 944CF982CDD371490B52BE30 /* SillySoundboardView.swift */; };
+		0F99A9D7BD9E88B76C8F4B34 /* FaceTrackingEmojiOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 127CDB38D2716FD4E6FA4536 /* FaceTrackingEmojiOverlayView.swift */; };
+		1BE2C481F07BAFCC957D517C /* DualPhotoRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40BDCE52ED843B09CFE6B850 /* DualPhotoRenderer.swift */; };
+		A1B2C3D4E5F60001 /* DualVideoRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002 /* DualVideoRecorder.swift */; };
+		23EB0A594B950757FFC263CE /* SoundEffectManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 885BF7738A033DC6F5155B59 /* SoundEffectManager.swift */; };
+		2766B1CBF946903BD2756298 /* KidsCamWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83961FBD0C064E672550C000 /* KidsCamWatchApp.swift */; };
+		3A015E1F5529E1B4726AF7EA /* pop.wav in Resources */ = {isa = PBXBuildFile; fileRef = C70CC044D2B4FAD8407A5DD9 /* pop.wav */; };
+		3A53F5886B028174156BD6F1 /* ToddlerCamComplications.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 138EF078FCEED1B17A6E0985 /* ToddlerCamComplications.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		3BFD0B2FF07FD830F7182279 /* ToddlerCameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49D8280B1C25F9966D1442B3 /* ToddlerCameraView.swift */; };
+		418EE08D8F5DBAC15374DA13 /* FaceEmojiType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04A7E6D233F2BAB0C4C244EF /* FaceEmojiType.swift */; };
+		4AA48F4A4B58B9DF6F788919 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 73354534561230FB9B1F035F /* Assets.xcassets */; };
+		541164F18E72DC5CCD9DD274 /* rear_video.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 737097FEBCD00D66924E5DAD /* rear_video.mp4 */; };
+		581CFAE9A399DC84D2405AFB /* ParentGateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC499EB109839F5E5C6C4534 /* ParentGateView.swift */; };
+		5890E5CB520E352792F472FB /* boing.wav in Resources */ = {isa = PBXBuildFile; fileRef = 93E2F7C293F791EC5022149C /* boing.wav */; };
+		5CCEE52A06AA5F19BA63CC04 /* ToddlerLockOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1375F06DC27B1EBFDEF4FDF4 /* ToddlerLockOverlay.swift */; };
+		604035586775CF2BF93006CB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6DB432D17380DD0B45B4027E /* Assets.xcassets */; };
+		657F4F09000A5550728189B2 /* KidsCamComplications.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9EA2C387B2F50EAC2B9EC2C /* KidsCamComplications.swift */; };
+		6E82B753D99A974432735AE0 /* WatchConnectivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D87FC8AE6A69E1B464D91C1B /* WatchConnectivityManager.swift */; };
+		71ECB2F9839D24FA6589DCBA /* DualCameraManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E89F84A9C3784393466695C4 /* DualCameraManager.swift */; };
+		8AE2109A616A1FDF32BFF567 /* FaceEmojiType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04A7E6D233F2BAB0C4C244EF /* FaceEmojiType.swift */; };
+		9797473B1B0BA1CB36AE1BB8 /* horn.wav in Resources */ = {isa = PBXBuildFile; fileRef = 0C55A040C3899AAFCA387AAE /* horn.wav */; };
+		99E3DABAA808D71A8FF46FD5 /* FaceTrackingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E11630D803D921EBF890A70 /* FaceTrackingManager.swift */; };
+		9CF94292F7726B1BDAB73551 /* WatchFaceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70E59ABE2F465EAFC03E178E /* WatchFaceManager.swift */; };
+		9D9E4D209F0640E244CB6E0C /* GuidedAccessGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 187D5522039C029EBF63DF00 /* GuidedAccessGuideView.swift */; };
+		9E07ED113DEDD0F307A47C89 /* front_video.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 40ACD898D567E453474F787C /* front_video.mp4 */; };
+		A18B22EA7641BC758EE96E91 /* WatchFaceStudioView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CBFAD201449588459ECEFDF /* WatchFaceStudioView.swift */; };
+		A45C0A52C45E73577A2AD490 /* woof.wav in Resources */ = {isa = PBXBuildFile; fileRef = 9E1C8B3AB108E225168F6AAC /* woof.wav */; };
+		AB7E9B133C628492332709E0 /* DualCameraPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB656FA5882BC918CF3B836B /* DualCameraPreviewView.swift */; };
+		B2764F240EFD58DA4C7F07C6 /* SimulatorCameraStreamer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0B73E51D610A5E00A7D7C2F /* SimulatorCameraStreamer.swift */; };
+		BA7518471A047F46AC434BC6 /* ParentHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FC650C66165A16F89CBEF8 /* ParentHubView.swift */; };
+		C0556FF254384585D18D585E /* meow.wav in Resources */ = {isa = PBXBuildFile; fileRef = 02A9C93A4743FCECB1FAF742 /* meow.wav */; };
+		C17ECDBA2BA62B6326F1CE3A /* shutter.wav in Resources */ = {isa = PBXBuildFile; fileRef = 1B1BFAF8E56444F56E1B8E89 /* shutter.wav */; };
+		CA913D24FD2FA189291DE2BD /* KidsCamTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A2E5D13D16645BBDE61388 /* KidsCamTests.swift */; };
+		D47BC09F71E1A12C4B0B945C /* ToddlerCamWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 3679C3BD47BA9737BA8D7D52 /* ToddlerCamWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		D5A60C303643640C701D4F28 /* WatchFaceEmojiSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A519B067B60A4040AFFF2F8 /* WatchFaceEmojiSettingsView.swift */; };
+		E47577B3F7CE4ABF75DF1865 /* KidsCamApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 737216B573A6A29EDB38396B /* KidsCamApp.swift */; };
+		E67A573CC2B04E6E875AF1D2 /* PhotoGalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16D0AFFEA3BDA24AA39B416D /* PhotoGalleryView.swift */; };
+		ED436D5B4F93817AA69F56B8 /* WatchPhotoReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C33CA6E9AC81E7E5C52E6E /* WatchPhotoReviewView.swift */; };
+		F03ED3EB4B9BF1A68DA07A61 /* WatchRemoteControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0509690A5C4D01A34746EE /* WatchRemoteControlView.swift */; };
+		F9B4C76C4297C136199C1DAA /* ToddlerControlBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E05CDE08E1253BC82F0747C /* ToddlerControlBar.swift */; };
+		FBC5479D40A2087733ED6CDA /* quack.wav in Resources */ = {isa = PBXBuildFile; fileRef = 59CDA1A81B2A018FBAAA73C5 /* quack.wav */; };
+		FDDDE49DE1601E3BA66712DD /* WatchSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFCB4ADF7DD66A84F0F732B1 /* WatchSessionManager.swift */; };
+		FEC484C1424F7AE4115358E8 /* GuidedAccessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17683131EB0D338DC4A344E /* GuidedAccessManager.swift */; };
+		FF870C7923BDE10428A6CE80 /* giggle.wav in Resources */ = {isa = PBXBuildFile; fileRef = E60F3BBD12CAFA8B7942DC89 /* giggle.wav */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		2B1438612CF9A70BEA946E6A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4A462AA8E98F0D5E2A7D4AB0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 73407A833061C95A21B4D61A;
+			remoteInfo = KidsCamWatch;
+		};
+		AB6F94C89FC6C5F29A202ADA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4A462AA8E98F0D5E2A7D4AB0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4A336778299F297ACB71FF1D;
+			remoteInfo = KidsCam;
+		};
+		E7AE368F3792E1B92D80E511 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4A462AA8E98F0D5E2A7D4AB0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 682C11573BA0733EC3CFD5BA;
+			remoteInfo = KidsCamWatchWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		5A0D32192314CDEE60F96757 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				D47BC09F71E1A12C4B0B945C /* ToddlerCamWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C8F0B5AC005BD408FB64D23F /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				3A53F5886B028174156BD6F1 /* ToddlerCamComplications.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		02A9C93A4743FCECB1FAF742 /* meow.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = meow.wav; sourceTree = "<group>"; };
+		04A7E6D233F2BAB0C4C244EF /* FaceEmojiType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceEmojiType.swift; sourceTree = "<group>"; };
+		0C55A040C3899AAFCA387AAE /* horn.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = horn.wav; sourceTree = "<group>"; };
+		127CDB38D2716FD4E6FA4536 /* FaceTrackingEmojiOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceTrackingEmojiOverlayView.swift; sourceTree = "<group>"; };
+		1375F06DC27B1EBFDEF4FDF4 /* ToddlerLockOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToddlerLockOverlay.swift; sourceTree = "<group>"; };
+		138EF078FCEED1B17A6E0985 /* ToddlerCamComplications.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ToddlerCamComplications.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		16D0AFFEA3BDA24AA39B416D /* PhotoGalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoGalleryView.swift; sourceTree = "<group>"; };
+		187D5522039C029EBF63DF00 /* GuidedAccessGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuidedAccessGuideView.swift; sourceTree = "<group>"; };
+		1A0509690A5C4D01A34746EE /* WatchRemoteControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchRemoteControlView.swift; sourceTree = "<group>"; };
+		1A519B067B60A4040AFFF2F8 /* WatchFaceEmojiSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchFaceEmojiSettingsView.swift; sourceTree = "<group>"; };
+		1B1BFAF8E56444F56E1B8E89 /* shutter.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = shutter.wav; sourceTree = "<group>"; };
+		31A2E5D13D16645BBDE61388 /* KidsCamTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KidsCamTests.swift; sourceTree = "<group>"; };
+		3679C3BD47BA9737BA8D7D52 /* ToddlerCamWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ToddlerCamWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3CBFAD201449588459ECEFDF /* WatchFaceStudioView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchFaceStudioView.swift; sourceTree = "<group>"; };
+		40ACD898D567E453474F787C /* front_video.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = front_video.mp4; sourceTree = "<group>"; };
+		40BDCE52ED843B09CFE6B850 /* DualPhotoRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DualPhotoRenderer.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002 /* DualVideoRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DualVideoRecorder.swift; sourceTree = "<group>"; };
+		49D8280B1C25F9966D1442B3 /* ToddlerCameraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToddlerCameraView.swift; sourceTree = "<group>"; };
+		4E05CDE08E1253BC82F0747C /* ToddlerControlBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToddlerControlBar.swift; sourceTree = "<group>"; };
+		59CDA1A81B2A018FBAAA73C5 /* quack.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = quack.wav; sourceTree = "<group>"; };
+		5DABA965F2BE80FDBF7828BF /* KidsCamTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KidsCamTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		6DB432D17380DD0B45B4027E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		70E59ABE2F465EAFC03E178E /* WatchFaceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchFaceManager.swift; sourceTree = "<group>"; };
+		73354534561230FB9B1F035F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		737097FEBCD00D66924E5DAD /* rear_video.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = rear_video.mp4; sourceTree = "<group>"; };
+		737216B573A6A29EDB38396B /* KidsCamApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KidsCamApp.swift; sourceTree = "<group>"; };
+		7E11630D803D921EBF890A70 /* FaceTrackingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceTrackingManager.swift; sourceTree = "<group>"; };
+		83961FBD0C064E672550C000 /* KidsCamWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KidsCamWatchApp.swift; sourceTree = "<group>"; };
+		885BF7738A033DC6F5155B59 /* SoundEffectManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundEffectManager.swift; sourceTree = "<group>"; };
+		93E2F7C293F791EC5022149C /* boing.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = boing.wav; sourceTree = "<group>"; };
+		944CF982CDD371490B52BE30 /* SillySoundboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SillySoundboardView.swift; sourceTree = "<group>"; };
+		9E1C8B3AB108E225168F6AAC /* woof.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = woof.wav; sourceTree = "<group>"; };
+		A1FC650C66165A16F89CBEF8 /* ParentHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParentHubView.swift; sourceTree = "<group>"; };
+		B2C33CA6E9AC81E7E5C52E6E /* WatchPhotoReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchPhotoReviewView.swift; sourceTree = "<group>"; };
+		B4BBECF15101BB4B055D52C9 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		BC499EB109839F5E5C6C4534 /* ParentGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParentGateView.swift; sourceTree = "<group>"; };
+		C5DBF52CF722DA7E57467F32 /* ToddlerCam.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ToddlerCam.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C70CC044D2B4FAD8407A5DD9 /* pop.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = pop.wav; sourceTree = "<group>"; };
+		D0B73E51D610A5E00A7D7C2F /* SimulatorCameraStreamer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulatorCameraStreamer.swift; sourceTree = "<group>"; };
+		D87FC8AE6A69E1B464D91C1B /* WatchConnectivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityManager.swift; sourceTree = "<group>"; };
+		DB656FA5882BC918CF3B836B /* DualCameraPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DualCameraPreviewView.swift; sourceTree = "<group>"; };
+		DEE652E593239E9C352E81D5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		DFCB4ADF7DD66A84F0F732B1 /* WatchSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSessionManager.swift; sourceTree = "<group>"; };
+		E17683131EB0D338DC4A344E /* GuidedAccessManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuidedAccessManager.swift; sourceTree = "<group>"; };
+		E3EF1E36216EAEB36FD73373 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		E60F3BBD12CAFA8B7942DC89 /* giggle.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = giggle.wav; sourceTree = "<group>"; };
+		E89F84A9C3784393466695C4 /* DualCameraManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DualCameraManager.swift; sourceTree = "<group>"; };
+		E9EA2C387B2F50EAC2B9EC2C /* KidsCamComplications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KidsCamComplications.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		01197CE6D316CBA79AAEE4CC /* Remote */ = {
+			isa = PBXGroup;
+			children = (
+				944CF982CDD371490B52BE30 /* SillySoundboardView.swift */,
+				1A519B067B60A4040AFFF2F8 /* WatchFaceEmojiSettingsView.swift */,
+				B2C33CA6E9AC81E7E5C52E6E /* WatchPhotoReviewView.swift */,
+				1A0509690A5C4D01A34746EE /* WatchRemoteControlView.swift */,
+				DFCB4ADF7DD66A84F0F732B1 /* WatchSessionManager.swift */,
+			);
+			path = Remote;
+			sourceTree = "<group>";
+		};
+		278BFA48F0023663B1BB2ABA /* Gallery */ = {
+			isa = PBXGroup;
+			children = (
+				16D0AFFEA3BDA24AA39B416D /* PhotoGalleryView.swift */,
+			);
+			path = Gallery;
+			sourceTree = "<group>";
+		};
+		2B785DC26CDF7A308056C9A8 /* Vision */ = {
+			isa = PBXGroup;
+			children = (
+				04A7E6D233F2BAB0C4C244EF /* FaceEmojiType.swift */,
+				127CDB38D2716FD4E6FA4536 /* FaceTrackingEmojiOverlayView.swift */,
+				7E11630D803D921EBF890A70 /* FaceTrackingManager.swift */,
+			);
+			path = Vision;
+			sourceTree = "<group>";
+		};
+		31C797BB845E172AAC402FDD /* KidsCamWatch */ = {
+			isa = PBXGroup;
+			children = (
+				6F3BFA739D26A518EDBBEADE /* App */,
+				01197CE6D316CBA79AAEE4CC /* Remote */,
+				D889CD8AB987480C263D9639 /* Resources */,
+			);
+			path = KidsCamWatch;
+			sourceTree = "<group>";
+		};
+		35B42D2D3FE3169EFB05BCFC = {
+			isa = PBXGroup;
+			children = (
+				B9D15C3CA486C573B58FDD7A /* KidsCam */,
+				CBF6D89E4178DE2DDA41BBFE /* KidsCamTests */,
+				31C797BB845E172AAC402FDD /* KidsCamWatch */,
+				48A8BBBC96284E53CE9868C2 /* KidsCamWatchWidgets */,
+				A7E6683853AE14DCCCD825E3 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		3907172D4BD07AEBD4D3AA63 /* WatchFace */ = {
+			isa = PBXGroup;
+			children = (
+				70E59ABE2F465EAFC03E178E /* WatchFaceManager.swift */,
+				3CBFAD201449588459ECEFDF /* WatchFaceStudioView.swift */,
+			);
+			path = WatchFace;
+			sourceTree = "<group>";
+		};
+		48A8BBBC96284E53CE9868C2 /* KidsCamWatchWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				B4BBECF15101BB4B055D52C9 /* Info.plist */,
+				E9EA2C387B2F50EAC2B9EC2C /* KidsCamComplications.swift */,
+			);
+			path = KidsCamWatchWidgets;
+			sourceTree = "<group>";
+		};
+		63DF6101DF28BCBD4B50B9DA /* Audio */ = {
+			isa = PBXGroup;
+			children = (
+				93E2F7C293F791EC5022149C /* boing.wav */,
+				E60F3BBD12CAFA8B7942DC89 /* giggle.wav */,
+				0C55A040C3899AAFCA387AAE /* horn.wav */,
+				02A9C93A4743FCECB1FAF742 /* meow.wav */,
+				C70CC044D2B4FAD8407A5DD9 /* pop.wav */,
+				59CDA1A81B2A018FBAAA73C5 /* quack.wav */,
+				1B1BFAF8E56444F56E1B8E89 /* shutter.wav */,
+				885BF7738A033DC6F5155B59 /* SoundEffectManager.swift */,
+				9E1C8B3AB108E225168F6AAC /* woof.wav */,
+			);
+			path = Audio;
+			sourceTree = "<group>";
+		};
+		6897F845D51E56CFB7B4D5C1 /* GuidedAccess */ = {
+			isa = PBXGroup;
+			children = (
+				187D5522039C029EBF63DF00 /* GuidedAccessGuideView.swift */,
+				E17683131EB0D338DC4A344E /* GuidedAccessManager.swift */,
+			);
+			path = GuidedAccess;
+			sourceTree = "<group>";
+		};
+		6F3BFA739D26A518EDBBEADE /* App */ = {
+			isa = PBXGroup;
+			children = (
+				E3EF1E36216EAEB36FD73373 /* Info.plist */,
+				83961FBD0C064E672550C000 /* KidsCamWatchApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		7BEEBE02154AA0FCC627B97D /* App */ = {
+			isa = PBXGroup;
+			children = (
+				DEE652E593239E9C352E81D5 /* Info.plist */,
+				737216B573A6A29EDB38396B /* KidsCamApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		96C88F8FF2E5A7FBE194C6BD /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				BC499EB109839F5E5C6C4534 /* ParentGateView.swift */,
+				4E05CDE08E1253BC82F0747C /* ToddlerControlBar.swift */,
+				1375F06DC27B1EBFDEF4FDF4 /* ToddlerLockOverlay.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		A60135DD677D43B5467483AF /* Connectivity */ = {
+			isa = PBXGroup;
+			children = (
+				D87FC8AE6A69E1B464D91C1B /* WatchConnectivityManager.swift */,
+			);
+			path = Connectivity;
+			sourceTree = "<group>";
+		};
+		A7E6683853AE14DCCCD825E3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C5DBF52CF722DA7E57467F32 /* ToddlerCam.app */,
+				5DABA965F2BE80FDBF7828BF /* KidsCamTests.xctest */,
+				3679C3BD47BA9737BA8D7D52 /* ToddlerCamWatch.app */,
+				138EF078FCEED1B17A6E0985 /* ToddlerCamComplications.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		B8BC10A1FDBB86A3255E0D08 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				73354534561230FB9B1F035F /* Assets.xcassets */,
+				40ACD898D567E453474F787C /* front_video.mp4 */,
+				737097FEBCD00D66924E5DAD /* rear_video.mp4 */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		B9D15C3CA486C573B58FDD7A /* KidsCam */ = {
+			isa = PBXGroup;
+			children = (
+				7BEEBE02154AA0FCC627B97D /* App */,
+				63DF6101DF28BCBD4B50B9DA /* Audio */,
+				ED5E5750E1777686AC75ABBD /* Camera */,
+				A60135DD677D43B5467483AF /* Connectivity */,
+				278BFA48F0023663B1BB2ABA /* Gallery */,
+				6897F845D51E56CFB7B4D5C1 /* GuidedAccess */,
+				B8BC10A1FDBB86A3255E0D08 /* Resources */,
+				DB651C91C588BB9E1854C414 /* UI */,
+				2B785DC26CDF7A308056C9A8 /* Vision */,
+				3907172D4BD07AEBD4D3AA63 /* WatchFace */,
+			);
+			path = KidsCam;
+			sourceTree = "<group>";
+		};
+		CBF6D89E4178DE2DDA41BBFE /* KidsCamTests */ = {
+			isa = PBXGroup;
+			children = (
+				31A2E5D13D16645BBDE61388 /* KidsCamTests.swift */,
+			);
+			path = KidsCamTests;
+			sourceTree = "<group>";
+		};
+		D889CD8AB987480C263D9639 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				6DB432D17380DD0B45B4027E /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		DB651C91C588BB9E1854C414 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				A1FC650C66165A16F89CBEF8 /* ParentHubView.swift */,
+				49D8280B1C25F9966D1442B3 /* ToddlerCameraView.swift */,
+				96C88F8FF2E5A7FBE194C6BD /* Components */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		ED5E5750E1777686AC75ABBD /* Camera */ = {
+			isa = PBXGroup;
+			children = (
+				E89F84A9C3784393466695C4 /* DualCameraManager.swift */,
+				DB656FA5882BC918CF3B836B /* DualCameraPreviewView.swift */,
+				40BDCE52ED843B09CFE6B850 /* DualPhotoRenderer.swift */,
+				A1B2C3D4E5F60002 /* DualVideoRecorder.swift */,
+				D0B73E51D610A5E00A7D7C2F /* SimulatorCameraStreamer.swift */,
+			);
+			path = Camera;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		4A336778299F297ACB71FF1D /* KidsCam */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 889B242EAAE8F95F5249CB4D /* Build configuration list for PBXNativeTarget "KidsCam" */;
+			buildPhases = (
+				43C1C36F90863FAAEEFB60A9 /* Sources */,
+				0EBDF618ED521795D5E8E2C5 /* Resources */,
+				5A0D32192314CDEE60F96757 /* Embed Watch Content */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				12C9132A04EC5D472FC8794D /* PBXTargetDependency */,
+			);
+			name = KidsCam;
+			packageProductDependencies = (
+			);
+			productName = KidsCam;
+			productReference = C5DBF52CF722DA7E57467F32 /* ToddlerCam.app */;
+			productType = "com.apple.product-type.application";
+		};
+		682C11573BA0733EC3CFD5BA /* KidsCamWatchWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 87E1EE63D738FB0017005291 /* Build configuration list for PBXNativeTarget "KidsCamWatchWidgets" */;
+			buildPhases = (
+				61C8DEF871B939AF2A95F23F /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = KidsCamWatchWidgets;
+			packageProductDependencies = (
+			);
+			productName = KidsCamWatchWidgets;
+			productReference = 138EF078FCEED1B17A6E0985 /* ToddlerCamComplications.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		73407A833061C95A21B4D61A /* KidsCamWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9B4480B6CE6976928C80096F /* Build configuration list for PBXNativeTarget "KidsCamWatch" */;
+			buildPhases = (
+				7416DFB2B9A04C403315EA56 /* Sources */,
+				A0D7DAB6E690E2CE579AD7C4 /* Resources */,
+				C8F0B5AC005BD408FB64D23F /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				FB550A7AF2F4890A6AF44660 /* PBXTargetDependency */,
+			);
+			name = KidsCamWatch;
+			packageProductDependencies = (
+			);
+			productName = KidsCamWatch;
+			productReference = 3679C3BD47BA9737BA8D7D52 /* ToddlerCamWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
+		C2174E2097B127F7E2F724E7 /* KidsCamTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FEE512AD1C2DEE30A9F55DAB /* Build configuration list for PBXNativeTarget "KidsCamTests" */;
+			buildPhases = (
+				BC520B12F120C9C98A6B8AEC /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B4F22C4C12AA9A19CEDA9C6F /* PBXTargetDependency */,
+			);
+			name = KidsCamTests;
+			packageProductDependencies = (
+			);
+			productName = KidsCamTests;
+			productReference = 5DABA965F2BE80FDBF7828BF /* KidsCamTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		4A462AA8E98F0D5E2A7D4AB0 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					4A336778299F297ACB71FF1D = {
+						CreatedOnToolsVersion = 15.0;
+						DevelopmentTeam = 68CTFST8W2;
+						ProvisioningStyle = Automatic;
+					};
+					682C11573BA0733EC3CFD5BA = {
+						CreatedOnToolsVersion = 15.0;
+						DevelopmentTeam = 68CTFST8W2;
+						ProvisioningStyle = Automatic;
+					};
+					73407A833061C95A21B4D61A = {
+						CreatedOnToolsVersion = 15.0;
+						DevelopmentTeam = 68CTFST8W2;
+						ProvisioningStyle = Automatic;
+					};
+					C2174E2097B127F7E2F724E7 = {
+						CreatedOnToolsVersion = 15.0;
+						DevelopmentTeam = 68CTFST8W2;
+						ProvisioningStyle = Automatic;
+						TestTargetID = 4A336778299F297ACB71FF1D;
+					};
+				};
+			};
+			buildConfigurationList = 3FC1FD6AE11269614491C7BE /* Build configuration list for PBXProject "KidsCam" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 35B42D2D3FE3169EFB05BCFC;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = A7E6683853AE14DCCCD825E3 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				4A336778299F297ACB71FF1D /* KidsCam */,
+				73407A833061C95A21B4D61A /* KidsCamWatch */,
+				682C11573BA0733EC3CFD5BA /* KidsCamWatchWidgets */,
+				C2174E2097B127F7E2F724E7 /* KidsCamTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		0EBDF618ED521795D5E8E2C5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4AA48F4A4B58B9DF6F788919 /* Assets.xcassets in Resources */,
+				5890E5CB520E352792F472FB /* boing.wav in Resources */,
+				9E07ED113DEDD0F307A47C89 /* front_video.mp4 in Resources */,
+				FF870C7923BDE10428A6CE80 /* giggle.wav in Resources */,
+				9797473B1B0BA1CB36AE1BB8 /* horn.wav in Resources */,
+				C0556FF254384585D18D585E /* meow.wav in Resources */,
+				3A015E1F5529E1B4726AF7EA /* pop.wav in Resources */,
+				FBC5479D40A2087733ED6CDA /* quack.wav in Resources */,
+				541164F18E72DC5CCD9DD274 /* rear_video.mp4 in Resources */,
+				C17ECDBA2BA62B6326F1CE3A /* shutter.wav in Resources */,
+				A45C0A52C45E73577A2AD490 /* woof.wav in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A0D7DAB6E690E2CE579AD7C4 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				604035586775CF2BF93006CB /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		43C1C36F90863FAAEEFB60A9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				71ECB2F9839D24FA6589DCBA /* DualCameraManager.swift in Sources */,
+				AB7E9B133C628492332709E0 /* DualCameraPreviewView.swift in Sources */,
+				1BE2C481F07BAFCC957D517C /* DualPhotoRenderer.swift in Sources */,
+				A1B2C3D4E5F60001 /* DualVideoRecorder.swift in Sources */,
+				418EE08D8F5DBAC15374DA13 /* FaceEmojiType.swift in Sources */,
+				0F99A9D7BD9E88B76C8F4B34 /* FaceTrackingEmojiOverlayView.swift in Sources */,
+				99E3DABAA808D71A8FF46FD5 /* FaceTrackingManager.swift in Sources */,
+				9D9E4D209F0640E244CB6E0C /* GuidedAccessGuideView.swift in Sources */,
+				FEC484C1424F7AE4115358E8 /* GuidedAccessManager.swift in Sources */,
+				E47577B3F7CE4ABF75DF1865 /* KidsCamApp.swift in Sources */,
+				581CFAE9A399DC84D2405AFB /* ParentGateView.swift in Sources */,
+				BA7518471A047F46AC434BC6 /* ParentHubView.swift in Sources */,
+				E67A573CC2B04E6E875AF1D2 /* PhotoGalleryView.swift in Sources */,
+				B2764F240EFD58DA4C7F07C6 /* SimulatorCameraStreamer.swift in Sources */,
+				23EB0A594B950757FFC263CE /* SoundEffectManager.swift in Sources */,
+				3BFD0B2FF07FD830F7182279 /* ToddlerCameraView.swift in Sources */,
+				F9B4C76C4297C136199C1DAA /* ToddlerControlBar.swift in Sources */,
+				5CCEE52A06AA5F19BA63CC04 /* ToddlerLockOverlay.swift in Sources */,
+				6E82B753D99A974432735AE0 /* WatchConnectivityManager.swift in Sources */,
+				9CF94292F7726B1BDAB73551 /* WatchFaceManager.swift in Sources */,
+				A18B22EA7641BC758EE96E91 /* WatchFaceStudioView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		61C8DEF871B939AF2A95F23F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				657F4F09000A5550728189B2 /* KidsCamComplications.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7416DFB2B9A04C403315EA56 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8AE2109A616A1FDF32BFF567 /* FaceEmojiType.swift in Sources */,
+				2766B1CBF946903BD2756298 /* KidsCamWatchApp.swift in Sources */,
+				06D59D01FABBF9440FB24D9E /* SillySoundboardView.swift in Sources */,
+				D5A60C303643640C701D4F28 /* WatchFaceEmojiSettingsView.swift in Sources */,
+				ED436D5B4F93817AA69F56B8 /* WatchPhotoReviewView.swift in Sources */,
+				F03ED3EB4B9BF1A68DA07A61 /* WatchRemoteControlView.swift in Sources */,
+				FDDDE49DE1601E3BA66712DD /* WatchSessionManager.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BC520B12F120C9C98A6B8AEC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CA913D24FD2FA189291DE2BD /* KidsCamTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		12C9132A04EC5D472FC8794D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 73407A833061C95A21B4D61A /* KidsCamWatch */;
+			targetProxy = 2B1438612CF9A70BEA946E6A /* PBXContainerItemProxy */;
+		};
+		B4F22C4C12AA9A19CEDA9C6F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4A336778299F297ACB71FF1D /* KidsCam */;
+			targetProxy = AB6F94C89FC6C5F29A202ADA /* PBXContainerItemProxy */;
+		};
+		FB550A7AF2F4890A6AF44660 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 682C11573BA0733EC3CFD5BA /* KidsCamWatchWidgets */;
+			targetProxy = E7AE368F3792E1B92D80E511 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		1B930616AD5C30A9BBD66654 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				"CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]" = NO;
+				"CODE_SIGNING_ALLOWED[sdk=watchsimulator*]" = NO;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 68CTFST8W2;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		28BCAD99D25AF1B775468C69 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 68CTFST8W2;
+				INFOPLIST_FILE = KidsCamWatchWidgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.hejitech.kidscam.watchkitapp.complications;
+				PRODUCT_NAME = ToddlerCamComplications;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		5E97A13031EA15C4DD7C0834 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 68CTFST8W2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.hejitech.kidscam.tests;
+				PRODUCT_NAME = KidsCamTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ToddlerCam.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ToddlerCam";
+			};
+			name = Release;
+		};
+		973798EC8146D1D127AD3099 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				"CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]" = NO;
+				"CODE_SIGNING_ALLOWED[sdk=watchsimulator*]" = NO;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 68CTFST8W2;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		A89D376A5DA2A8D3E065FBD1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 68CTFST8W2;
+				ENABLE_TESTABILITY = YES;
+				INFOPLIST_FILE = KidsCam/App/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = ToddlerCam;
+				INFOPLIST_KEY_NSCameraUsageDescription = "ToddlerCam needs access to front and rear cameras so your toddler can explore photography with dual-camera view.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "ToddlerCam uses the microphone for fun camera reactions and sound effects.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "ToddlerCam saves your toddler's dual photos to your photo library.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "ToddlerCam allows parents to view photos and create custom Apple Watch faces.";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.hejitech.kidscam;
+				PRODUCT_NAME = ToddlerCam;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B69AABDCC8C02A1C8856F9C6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 68CTFST8W2;
+				INFOPLIST_FILE = KidsCamWatch/App/Info.plist;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hejitech.kidscam.watchkitapp;
+				PRODUCT_NAME = ToddlerCamWatch;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+				WKCompanionAppBundleIdentifier = com.hejitech.kidscam;
+			};
+			name = Debug;
+		};
+		BFDF92E4973848E2438D044D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 68CTFST8W2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.hejitech.kidscam.tests;
+				PRODUCT_NAME = KidsCamTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ToddlerCam.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ToddlerCam";
+			};
+			name = Debug;
+		};
+		C225FEF2D6BF9CC7F2057A4B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 68CTFST8W2;
+				ENABLE_TESTABILITY = YES;
+				INFOPLIST_FILE = KidsCam/App/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = ToddlerCam;
+				INFOPLIST_KEY_NSCameraUsageDescription = "ToddlerCam needs access to front and rear cameras so your toddler can explore photography with dual-camera view.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "ToddlerCam uses the microphone for fun camera reactions and sound effects.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "ToddlerCam saves your toddler's dual photos to your photo library.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "ToddlerCam allows parents to view photos and create custom Apple Watch faces.";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.hejitech.kidscam;
+				PRODUCT_NAME = ToddlerCam;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		D0DB991CC561DFEDFBA6A149 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 68CTFST8W2;
+				INFOPLIST_FILE = KidsCamWatch/App/Info.plist;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hejitech.kidscam.watchkitapp;
+				PRODUCT_NAME = ToddlerCamWatch;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+				WKCompanionAppBundleIdentifier = com.hejitech.kidscam;
+			};
+			name = Release;
+		};
+		E277CC93CEF533EB6462A7DB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 68CTFST8W2;
+				INFOPLIST_FILE = KidsCamWatchWidgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.hejitech.kidscam.watchkitapp.complications;
+				PRODUCT_NAME = ToddlerCamComplications;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		3FC1FD6AE11269614491C7BE /* Build configuration list for PBXProject "KidsCam" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				973798EC8146D1D127AD3099 /* Debug */,
+				1B930616AD5C30A9BBD66654 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		87E1EE63D738FB0017005291 /* Build configuration list for PBXNativeTarget "KidsCamWatchWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				28BCAD99D25AF1B775468C69 /* Debug */,
+				E277CC93CEF533EB6462A7DB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		889B242EAAE8F95F5249CB4D /* Build configuration list for PBXNativeTarget "KidsCam" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A89D376A5DA2A8D3E065FBD1 /* Debug */,
+				C225FEF2D6BF9CC7F2057A4B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		9B4480B6CE6976928C80096F /* Build configuration list for PBXNativeTarget "KidsCamWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B69AABDCC8C02A1C8856F9C6 /* Debug */,
+				D0DB991CC561DFEDFBA6A149 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		FEE512AD1C2DEE30A9F55DAB /* Build configuration list for PBXNativeTarget "KidsCamTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BFDF92E4973848E2438D044D /* Debug */,
+				5E97A13031EA15C4DD7C0834 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 4A462AA8E98F0D5E2A7D4AB0 /* Project object */;
+}

@@ -1,0 +1,21 @@
+Dear Apple App Review Team,
+
+Thank you for your feedback. Below are our responses regarding compliance with Guideline 1.3 for the Kids Category:
+
+- Does the app include third-party analytics? If so, please provide details about what data is collected for this purpose.
+No. The app does not include any third-party analytics SDKs, libraries, or tracking services. No analytics data is collected.
+
+- Does the app include third-party advertising? If so, please provide a link to the ad network's publicly-documented practices and policies for kids apps.
+No. The app does not include any third-party advertising or ad networks. The app is completely ad-free.
+
+- Will the data be shared with any third parties? If so, for what purposes and where will this information be stored?
+No. No data is shared with any third parties. All processing occurs 100% locally on-device. Captured photos and videos are saved directly to the user's native Apple Photos library on their device. We operate no external servers or cloud databases.
+
+- Is the app collecting any user or device data for purposes beyond third-party analytics or third-party advertising? If so, please provide a complete and clear explanation of all planned uses of this data.
+No. The app collects zero user or device data. No accounts, logins, or personal information are required. Device permissions (Camera, Microphone, and Photo Library) are used strictly on-device in real time to provide camera preview, record videos, apply interactive face masks via Apple Vision, and save captured photos locally. No biometric data, ambient audio recordings, or identifiers are ever collected, stored, or transmitted.
+
+Sincerely,
+Tianhao Zhao
+HEJI TECHNOLOGY LLC
+Developer of ToddlerCam (com.hejitech.kidscam)
+info@hejitech.com
