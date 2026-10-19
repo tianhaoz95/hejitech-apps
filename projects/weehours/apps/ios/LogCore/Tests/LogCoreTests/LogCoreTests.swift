@@ -155,19 +155,21 @@ final class InterpreterTests: XCTestCase {
         let i = VoiceInterpreter(model: KeywordDecisionModel())
         let qs = i.questions(for: ctx())
         XCTAssertEqual(qs.first?.id, "category")
-        // care_type lists the grouped categories (13); every other question stays at nine or fewer
-        XCTAssertTrue(qs.allSatisfy { $0.options.count <= ($0.id == "care_type" ? 13 : 9) })
+        // two levels keep every question short: 7 groups + none, at most 6 entries in a group
+        XCTAssertTrue(qs.allSatisfy { $0.options.count <= 8 })
         XCTAssertFalse(qs.contains { $0.id == "when" })   // times are parsed deterministically
     }
 
     func testCombinePhaseWithinCategory() {
         let i = VoiceInterpreter(model: KeywordDecisionModel())
         let c = ctx()
-        let cat = DecisionAnswer(options: ["bottle", "diaper", VoiceInterpreter.noneKey], probabilities: [0.9, 0.05, 0.05])
+        let cat = DecisionAnswer(options: ["feeding", "diaper", VoiceInterpreter.noneKey], probabilities: [0.9, 0.05, 0.05])
+        let entry = DecisionAnswer(options: ["bottle", "breast", "pumping", "solids"], probabilities: [0.85, 0.05, 0.05, 0.05])
         let phase = DecisionAnswer(options: ["start", "switch", "finish", "single"], probabilities: [0.1, 0.05, 0.8, 0.05])
-        let t = i.combine(["category": cat, "phase": phase], context: c)
+        let t = i.combine(["category": cat, "feeding_entry": entry, "phase": phase], context: c)
         XCTAssertEqual(t.top.key, "feed.bottle.finish")
-        XCTAssertEqual(t.p("diaper"), 0.05, accuracy: 0.001)
+        // the diaper group (diaper and potty, no diaper_entry answer) shares its 0.05
+        XCTAssertEqual(t.p("diaper") + t.p("potty"), 0.05, accuracy: 0.001)
     }
 
     func testPolicyTiers() {

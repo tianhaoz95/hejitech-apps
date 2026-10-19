@@ -189,7 +189,7 @@ public struct KeywordDecisionModel: DecisionModel {
         "head": ["head", "circumference", "head size"],
     ]
 
-    /// The grouped categories (care_type), and through them the category question's "care".
+    /// The care, health and activity categories (their `<group>_entry` options).
     static let careLexicon: [String: [String]] = [
         "bath": ["bath", "bathed", "bathtub"], "lotion": ["lotion", "cream", " ointment", "moisturiz"],   // " ointment": not "appointment"
         "toothbrush": ["brushed her teeth", "brushed his teeth", "brush teeth", "brushed teeth", "toothbrush"],
@@ -234,13 +234,19 @@ public struct KeywordDecisionModel: DecisionModel {
         "single": ["had a bottle", "gave him a full", "gave her a full", "fed a bottle", "earlier"],
     ]
 
-    static var categoryLexicon: [String: [String]] {
-        var out: [String: [String]] = [:]
+    /// Per category: the core categories' type words, and the care lexicon for the others.
+    static var categoryWords: [String: [String]] {
+        var out = careLexicon
         for (cat, prefixes) in categoryPrefixes {
             out[cat] = lexicon.filter { k, _ in prefixes.contains { k.hasPrefix($0) } }.flatMap(\.value)
         }
-        out[VoiceInterpreter.careKey] = careLexicon.flatMap(\.value)
         return out
+    }
+
+    /// Per model group (the category question): its categories' words together.
+    static var groupLexicon: [String: [String]] {
+        let words = categoryWords
+        return Dictionary(uniqueKeysWithValues: EventRegistry.shared.modelGroups.map { g in (g.id, g.categories.flatMap { words[$0] ?? [] }) })
     }
 
     public func decide(_ request: DecisionRequest) async throws -> [String: DecisionAnswer] {
@@ -250,9 +256,9 @@ public struct KeywordDecisionModel: DecisionModel {
             let lex: [String: [String]]
             switch q.id {
             case "event_type": lex = Self.lexicon
-            case "category": lex = Self.categoryLexicon
+            case "category": lex = Self.groupLexicon
             case "phase": lex = Self.phaseLexicon
-            case "care_type": lex = Self.careLexicon
+            case let id where id.hasSuffix("_entry"): lex = Self.categoryWords
             default: lex = Self.fieldLexicon[q.id] ?? [:]
             }
             var scores = q.options.map { opt -> Double in
@@ -389,6 +395,39 @@ public enum Parsers {
         "eleven": 11, "twelve": 12, "fifteen": 15, "a": 1, "an": 1, "forty-five": 45, "twenty-five": 25, "twenty": 20, "thirty": 30, "forty": 40, "fifty": 50, "sixty": 60,
         "seventy": 70, "eighty": 80, "ninety": 90, "hundred": 100,
     ]
+
+    /// A required spec field from what was said, so a voice entry is complete: text fields take the
+    /// sentence ("gave him some infant tylenol" as the medicine), a choice the option whose words
+    /// appear (else "other" where there is one), a temperature the number said (°F above 45).
+    /// nil when it can't be told: the entry is then asked about, not logged.
+    public static func field(_ f: EventRegistry.FieldSpec, in text: String) -> FieldValue? {
+        let t = " " + text.lowercased() + " "
+        switch f.kind {
+        case "text":
+            let s = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            return s.isEmpty ? nil : .string(s)
+        case "choice":
+            let options = f.options ?? []
+            let said = options.filter { o in
+                let words = [o.label.lowercased(), o.key.replacingOccurrences(of: "_", with: " ")]
+                return words.contains { t.contains(" " + $0) }
+            }
+            if said.count == 1 { return .string(said[0].key) }
+            if f.key == "result", t.contains(" pee") && t.contains(" poop") { return .string("both") }
+            return options.contains { $0.key == "other" } && said.isEmpty ? .string("other") : nil
+        case "number" where f.unit == "celsius":
+            guard let n = firstNumber(in: t) else { return nil }
+            let c = n > 45 ? (n - 32) * 5 / 9 : n
+            return (30...45).contains(c) ? .number((c * 10).rounded() / 10) : nil
+        default:
+            return nil
+        }
+    }
+
+    static func firstNumber(in t: String) -> Double? {
+        guard let r = t.range(of: #"\d+(\.\d+)?"#, options: .regularExpression) else { return nil }
+        return Double(t[r])
+    }
 
     static func number(before units: [String], in t: String) -> Double? {
         for u in units {

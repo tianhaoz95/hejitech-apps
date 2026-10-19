@@ -7,13 +7,14 @@ dataset/train.jsonl, dataset/val.jsonl and manifest.json."""
 import difflib
 import hashlib
 import json
+import random
 import re
 import subprocess
 from collections import Counter
 
 from .. import jsonl
 from ..config import PROJECT_DIR, SPEC_DIR
-from ..laya import NONE, laya_questions, load_export, training_row
+from ..laya import NONE, Registry, laya_questions, load_export, training_row
 
 HELD_OUT_SIMILARITY = 0.9
 
@@ -48,7 +49,12 @@ def _git_commit():
 
 
 def run_stage(run, limit=None):
-    questions = laya_questions(load_export(run.laya_export))
+    export = load_export(run.laya_export)
+    questions = laya_questions(export)
+    registry = Registry()
+    # a share of rows asks with only some categories on, as households do (Settings → Tracking)
+    subset_fraction = run["run"].get("subset_fraction", 0)
+    all_categories = [c for c in registry.categories if registry.in_model(c)]
     # `include`: earlier runs whose data this one adds to (a top-up run's ids have their own prefix).
     sources = [run.dir] + [run.dir.parent / name for name in run["run"].get("include", [])]
     plans = {p["id"]: p for d in sources for p in jsonl.read(d / "utterances.jsonl")}
@@ -57,6 +63,8 @@ def run_stage(run, limit=None):
     # included runs' "not a log entry" rows about topics that have since become entries (bath,
     # medicine, tummy time…): their labels are wrong under today's spec, so they're left out
     stale_none = [re.compile(p, re.I) for p in run["run"].get("drop_none_matching", [])]
+    # which runs' not-a-log rows it applies to (plan id prefixes); default: every run but this one
+    stale_prefixes = run["run"].get("drop_none_prefixes")
     train, val, seen, dropped = [], [], set(), Counter()
     for record in heard:
         plan_id, index = record["id"].rsplit("-", 1)
@@ -69,8 +77,9 @@ def run_stage(run, limit=None):
         if near_eval(said, held_out) or near_eval(state, held_out):
             dropped["close to an eval utterance"] += 1
             continue
-        if plan["type"] == NONE and not record["id"].startswith(run["run"].get("id_prefix", "p")) \
-                and any(p.search(said) for p in stale_none):
+        own = record["id"].startswith(run["run"].get("id_prefix", "p"))
+        stale_run = record["id"][0] in stale_prefixes if stale_prefixes is not None else not own
+        if plan["type"] == NONE and stale_run and any(p.search(said) for p in stale_none):
             dropped["not-a-log topic that is now an entry"] += 1
             continue
         key = (normalize(state), json.dumps(plan["labels"], sort_keys=True))
@@ -78,7 +87,15 @@ def run_stage(run, limit=None):
             dropped["duplicate"] += 1
             continue
         seen.add(key)
-        row = dict(training_row(state, questions, plan["labels"]), id=record["id"], type=plan["type"])
+        # labels from today's spec (the plan's stored ones predate later question redesigns)
+        labels = registry.labels(plan["type"], plan.get("fields", {}))
+        asked = questions
+        if subset_fraction and in_validation(record["id"] + "/subset", subset_fraction):
+            rng = random.Random(record["id"])
+            gold = None if plan["type"] == NONE else registry.types[plan["type"]]["category"]
+            enabled = {c for c in all_categories if c == gold or rng.random() < 0.5}
+            asked = laya_questions(registry.questions_for(export, enabled))
+        row = dict(training_row(state, asked, labels), id=record["id"], type=plan["type"])
         (val if in_validation(plan_id, run["run"]["val_fraction"]) else train).append(row)
 
     dataset = run.path("dataset")

@@ -12,7 +12,6 @@ from pathlib import Path
 from .config import SPEC_DIR
 
 NONE = "none_of_these"
-CARE = "care"   # the category option for every grouped category; care_type picks which
 FIELD_QUESTIONS = ["amount", "side", "contents", "diaper_kind", "solids_amount"]
 
 
@@ -25,6 +24,42 @@ class Registry:
         self.types = {t["id"]: t for t in spec["types"]}
         self.categories = {c["id"]: c for c in spec["categories"]}
         self.questions = spec["questions"]
+
+    def group_of(self, category):
+        """The spec's modelGroups entry holding `category` (EventRegistry.modelGroup(of:))."""
+        return next(g for g in self.spec["modelGroups"] if category in g["categories"])
+
+    def in_model(self, category):
+        return self.categories[category].get("model", True)
+
+    def questions_for(self, export, enabled):
+        """The app's questions for a household with only `enabled` categories on
+        (VoiceInterpreter.questions), cut from the all-categories export: groups without an enabled
+        category, entry questions left with one category, phases and field questions no enabled
+        type uses go; option order is kept."""
+        enabled = {c for c in enabled if self.in_model(c)}
+        types = [t for t in self.types.values() if t["category"] in enabled]
+        kept = {g["id"]: [c for c in g["categories"] if c in enabled] for g in self.spec["modelGroups"]}
+        roles = {self.role(t["id"]) for t in types} - {None}
+        needed = {q for t in types for q in t.get("questions", [])}
+        out = []
+        for q in export["questions"]:
+            qid, options = q["id"], q["options"]
+            if qid == "category":
+                options = [o for o in options if o["key"] == NONE or kept.get(o["key"])]
+            elif qid == "phase":
+                options = [o for o in options if o["key"] in roles]
+                if len(options) < 2:
+                    continue
+            elif qid.endswith("_entry"):
+                cats = kept.get(qid[: -len("_entry")], [])
+                if len(cats) < 2:
+                    continue
+                options = [o for o in options if o["key"] in cats]
+            elif qid not in needed:
+                continue
+            out.append(dict(q, options=options))
+        return dict(export, questions=out)
 
     def role(self, type_id):
         """VoiceInterpreter.role: the phase key of a type, if any."""
@@ -43,9 +78,10 @@ class Registry:
         if type_id == NONE:
             return {"category": NONE}
         spec = self.types[type_id]
-        if self.categories[spec["category"]].get("group"):   # VoiceInterpreter.careKey
-            return {"category": CARE, "care_type": spec["category"]}
-        labels = {"category": spec["category"]}
+        group = self.group_of(spec["category"])
+        labels = {"category": group["id"]}   # the first level is the model group
+        if len(group["categories"]) > 1:
+            labels[entry_question(group["id"])] = spec["category"]
         same_category = [t for t in self.types.values() if t["category"] == spec["category"]]
         role = self.role(type_id)
         if len(same_category) > 1 and role:
@@ -54,6 +90,11 @@ class Registry:
             if q in fields:
                 labels[q] = fields[q]
         return labels
+
+
+def entry_question(group):
+    """EventRegistry.entryQuestion: the question picking a category inside `group`."""
+    return f"{group}_entry"
 
 
 def load_export(path):
@@ -93,7 +134,7 @@ def verify_against_export(export, utterances_path=SPEC_DIR / "utterances.jsonl",
             problems.append(f"{row['text']!r}: ours {ours} != app {exported['gold']}")
     for q in export["questions"]:
         keys = [o["key"] for o in q["options"]]
-        if q["id"] in registry.questions and q["id"] not in ("category", "phase", "care_type"):   # options from categories
+        if q["id"] in registry.questions and q["id"] not in ("category", "phase"):
             spec_keys = list(registry.questions[q["id"]].get("options", {}))
             if keys != spec_keys:
                 problems.append(f"question {q['id']}: options {keys} != spec {spec_keys}")

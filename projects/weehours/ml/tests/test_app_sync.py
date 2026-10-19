@@ -14,3 +14,15 @@ def test_label_port_matches_logeval_on_every_eval_row(run):
     if not run.laya_export.exists():
         pytest.skip("needs `logeval --export` (see README)")
     assert verify_against_export(load_export(run.laya_export)) == []
+
+
+def test_question_cutting_matches_the_app_for_a_new_household(run):
+    """build's option subsets (households with categories off) ask exactly what the app asks."""
+    from weehours_ml.laya import Registry
+
+    default = run.laya_export.parent / "laya_export_groups_default.json"
+    if not run.laya_export.exists() or not default.exists():
+        pytest.skip("needs `logeval --export` and `logeval --categories default --export` (README)")
+    r = Registry()
+    defaults = {c["id"] for c in r.spec["categories"] if c["defaultEnabled"]}
+    assert r.questions_for(load_export(run.laya_export), defaults)["questions"] == load_export(default)["questions"]

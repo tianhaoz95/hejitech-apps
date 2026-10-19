@@ -269,12 +269,17 @@
       ]
     }
   ],
+  "modelGroups": [
+    { "id": "feeding", "voice": "feeding: a bottle, breastfeeding or nursing, pumping milk, or eating solid food", "entry": "Which kind of feeding is it?", "categories": ["bottle", "breast", "pumping", "solids"] },
+    { "id": "diaper", "voice": "a diaper or nappy change, pee or poop, or using the potty", "entry": "Is it a diaper change or the potty?", "categories": ["diaper", "potty"] },
+    { "id": "sleep", "voice": "sleeping, napping, falling asleep or waking up", "categories": ["sleep"] },
+    { "id": "growth", "voice": "weighing or measuring the baby: weight in kilos or pounds, length or height, head size", "categories": ["growth"] },
+    { "id": "health", "voice": "health: medicine or vitamins, a symptom, the temperature or a fever, teething, a doctor visit or a vaccine", "entry": "Which health entry is it?", "categories": ["medication", "symptom", "temperature", "teething", "doctor", "vaccination"] },
+    { "id": "care", "voice": "care: a bath, lotion or cream, brushing teeth", "entry": "Which care entry is it?", "categories": ["bath", "lotion", "toothbrush"] },
+    { "id": "activity", "voice": "an activity: tummy time, playing, a walk or a stroller outing", "entry": "Which activity is it?", "categories": ["tummy_time", "play", "walk"] }
+  ],
   "systemTypes": ["note", "undo", "resolve", "duty", "settings"],
   "questions": {
-    "care_type": {
-      "instructions": "Which care, health or activity entry is it?",
-      "categoryOption": "baby care, health or an activity: bath, lotion, teeth, potty, teething, medicine, symptoms, temperature, doctor, vaccines, tummy time, play, walks"
-    },
     "event_type": {
       "instructions": "Which baby log entry does the parent's sentence describe?"
     },
