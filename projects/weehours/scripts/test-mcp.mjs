@@ -238,4 +238,42 @@ await step("another user can't revoke it; disconnecting does", async () => {
   assert.equal(res.status, 200);
   assert.equal((await rpc("tools/list", {}, oauthToken)).status, 401);
 });
+// ---------------------------------------------------------------- profile and personal tokens (app + account page)
+
+/** A weehours RPC through PostgREST as a signed-in parent. */
+async function db(fn, args, jwt) {
+  const res = await fetch(`${supabase}/rest/v1/rpc/${fn}`, {
+    method: "POST",
+    headers: { apikey: ANON, Authorization: `Bearer ${jwt}`, "Content-Type": "application/json", "Content-Profile": "weehours", "Accept-Profile": "weehours" },
+    body: JSON.stringify(args),
+  });
+  const text = await res.text();
+  return { status: res.status, body: text ? JSON.parse(text) : null };
+}
+await step("a parent renames themselves; agents see the new name", async () => {
+  const me = "00000000-0000-4000-8000-00000000000a";   // parent1, seeded as Alex
+  const nameOf = async () => (await db("my_household", {}, session)).body.caregivers.find((c) => c.id === me)?.name;
+  assert.equal(await nameOf(), "Alex");
+  assert.equal((await db("set_display_name", { p_name: "  Jordan " }, session)).status, 204);
+  assert.equal(await nameOf(), "Jordan");
+  assert.ok((await db("set_display_name", { p_name: " " }, session)).status >= 400, "empty name refused");
+  assert.ok(JSON.stringify(await tool("list_children", {})).includes("Jordan"));
+  await db("set_display_name", { p_name: "Alex" }, session);
+});
+await step("a revoked token can be deleted; a live one can't", async () => {
+  const token = (await db("create_access_token", { p_name: "Temp", p_scope: "read" }, session)).body;
+  const list = async () => {
+    const res = await fetch(`${supabase}/rest/v1/access_tokens?select=id,name,revoked_at`, { headers: { apikey: ANON, Authorization: `Bearer ${session}`, "Accept-Profile": "weehours" } });
+    return (await res.json()).filter((t) => t.name === "Temp");
+  };
+  const [t] = await list();
+  assert.ok(t && token.startsWith("wh_"));
+  await db("delete_access_token", { p_id: t.id }, session);
+  assert.equal((await list()).length, 1, "live token kept");
+  await db("revoke_access_token", { p_id: t.id }, session);
+  await db("delete_access_token", { p_id: t.id }, await signIn("parent2@example.com"));
+  assert.equal((await list()).length, 1, "someone else can't delete it");
+  await db("delete_access_token", { p_id: t.id }, session);
+  assert.equal((await list()).length, 0, "deleted");
+});
 console.log(`MCP integration: ${steps.length} checks passed`);

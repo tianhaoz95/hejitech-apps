@@ -344,6 +344,16 @@ public final class SupabaseClient: @unchecked Sendable {
         _ = try await rpc("revoke_access_token", ["p_id": id.uuidString])
     }
 
+    /// Removes a revoked token from the list (the server refuses a live one).
+    public func deleteAccessToken(_ id: UUID) async throws {
+        _ = try await rpc("delete_access_token", ["p_id": id.uuidString])
+    }
+
+    /// Your name as the household sees it (`members.display_name`, which `my_household` reports).
+    public func setDisplayName(_ name: String) async throws {
+        _ = try await rpc("set_display_name", ["p_name": name])
+    }
+
     /// The household-wide settings; children live in their own rows.
     private func settingsJSON(_ h: Household) throws -> Any {
         var obj = try JSONSerialization.jsonObject(with: LogCoding.encoder.encode(h)) as? [String: Any] ?? [:]

@@ -227,6 +227,14 @@ begin
   return v_code;
 end $$;
 
+-- Your name as your household sees it (Settings → Household → you).
+create or replace function weehours.set_display_name(p_name text) returns void
+language plpgsql security definer set search_path = weehours, extensions as $$
+begin
+  if nullif(trim(p_name), '') is null then raise exception 'empty name'; end if;
+  update members set display_name = trim(p_name) where user_id = auth.uid() and household_id = my_household_id();
+end $$;
+
 create or replace function weehours.join_household(p_code text, p_display_name text) returns uuid
 language plpgsql security definer set search_path = weehours, extensions as $$
 declare v_household uuid;
@@ -283,6 +291,12 @@ end $$;
 create or replace function weehours.revoke_access_token(p_id uuid) returns void
 language sql security definer set search_path = weehours, extensions as $$
   update access_tokens set revoked_at = now() where id = p_id and user_id = auth.uid()
+$$;
+
+-- Deletes one of your revoked tokens; a live one has to be revoked first.
+create or replace function weehours.delete_access_token(p_id uuid) returns void
+language sql security definer set search_path = weehours, extensions as $$
+  delete from access_tokens where id = p_id and user_id = auth.uid() and revoked_at is not null
 $$;
 
 -- Used by the MCP edge function (service role) to resolve a bearer token.

@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.4.2"
+    static let currentVersion = "0.4.3"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,35 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "0.4.3",
+            date: "October 2026",
+            tagline: "Who's Who",
+            features: [
+                WhatsNewItem(
+                    icon: "person.crop.circle",
+                    tint: Theme.accent,
+                    title: "Your Name and Role",
+                    description: "Settings → Household → You: change the name your household sees, and add a role like Mom, Dad or Nanny. It shows next to your name for everyone."
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "person.text.rectangle",
+                    tint: .orange,
+                    title: "Child Details Save Right Away",
+                    description: "Changing a child's name, birthday, colour or feeding settings now saves as soon as you go back, instead of waiting for a Save button further down.",
+                    kind: .fix
+                ),
+                WhatsNewItem(
+                    icon: "key",
+                    tint: .purple,
+                    title: "Tidy Up Old Agent Tokens",
+                    description: "Revoked tokens in Settings → AI agents (and on your account page) can now be deleted, and the MCP server address shown there is the right one.",
+                    kind: .fix
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "0.4.2",
             date: "October 2026",

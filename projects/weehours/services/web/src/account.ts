@@ -11,7 +11,7 @@ interface Household {
   birth_date: string | null;
   bottle_ml?: number;
   babies?: Child[];
-  caregivers: { id: string; name: string }[];
+  caregivers: { id: string; name: string; role?: string | null }[];
 }
 
 interface Child {
@@ -106,7 +106,7 @@ async function allEvents(householdId: string): Promise<LogEvent[]> {
 function householdPanel(h: Household, ent: Entitlement | null, lines: { child: Child; line: string }[]) {
   const plan = access(ent);
   const one = lines.length === 1;
-  const sub = [one ? ageText(lines[0].child.birth_date) : "", h.caregivers.map((c) => c.name).join(", ")].filter(Boolean).join(" · ");
+  const sub = [one ? ageText(lines[0].child.birth_date) : "", h.caregivers.map((c) => (c.role ? `${c.name} (${c.role})` : c.name)).join(", ")].filter(Boolean).join(" · ");
   return el(
     "div",
     { class: "panel" },
@@ -178,7 +178,14 @@ function tokenList(tokens: Token[], reload: () => void) {
     ...tokens.map((t) => {
       const meta = `${t.scope === "write" ? "read + write" : "read only"} · created ${fmtDate(t.created_at)} · ${t.last_used_at ? `used ${relative(t.last_used_at)}` : "never used"}`;
       const action = t.revoked_at
-        ? el("span", { class: "pill" }, "revoked")
+        ? el("span", {}, el("span", { class: "pill" }, "revoked"), " ", el("button", {
+            class: "btn small",
+            type: "button",
+            onclick: async () => {
+              await rpc("delete_access_token", { p_id: t.id }).catch((e) => alert(e.message));
+              reload();
+            },
+          }, "Delete"))
         : el("button", {
             class: "btn danger small",
             type: "button",

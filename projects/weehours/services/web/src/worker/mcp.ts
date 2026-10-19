@@ -268,11 +268,11 @@ export async function callTool(name: string, args: Record<string, unknown>, call
     case "list_children":
       return {
         children: children.map(profile), archived: all.filter((b) => b.archived_at).map((b) => b.name),
-        tracking: settings.categories ?? null, caregivers: members.map((m) => m.display_name), household: h?.name,
+        tracking: settings.categories ?? null, caregivers: caregivers(members, settings), household: h?.name,
       };
     case "get_baby_profile": {
       const c = args.child ? pick(args.child, true)[0] : children[0];
-      return { ...profile(c), tracking: settings.categories ?? null, caregivers: members.map((m) => m.display_name), household: h?.name };
+      return { ...profile(c), tracking: settings.categories ?? null, caregivers: caregivers(members, settings), household: h?.name };
     }
     case "list_event_types":
       return eventTypes.map((t) => ({ type: t.id, category: t.category, label: t.label, fields: fieldDocs(t.id) }));
@@ -420,6 +420,15 @@ export async function uuidFrom(key: string): Promise<string> {
   b[8] = (b[8] & 0x3f) | 0x80;
   const h = [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
+
+/** Caregivers' names, with the role they gave themselves in the app ("Sam (Dad)"). */
+export function caregivers(members: { user_id: string; display_name: string }[], settings: Record<string, unknown>): string[] {
+  const listed = Array.isArray(settings.caregivers) ? (settings.caregivers as { id?: string; role?: string }[]) : [];
+  return members.map((m) => {
+    const role = listed.find((c) => c.id === m.user_id)?.role?.trim();
+    return role ? `${m.display_name} (${role})` : m.display_name;
+  });
 }
 
 function validZone(tz: string): boolean {

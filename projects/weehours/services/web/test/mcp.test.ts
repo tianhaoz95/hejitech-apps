@@ -1,6 +1,6 @@
 // The MCP Worker's pure parts (the tools against a database are covered by scripts/test-mcp.mjs).
 import { describe, expect, it } from "vitest";
-import { fieldDocs, toInstant, uuidFrom } from "../src/worker/mcp.ts";
+import { caregivers, fieldDocs, toInstant, uuidFrom } from "../src/worker/mcp.ts";
 
 describe("import_events helpers", () => {
   it("reads times with an offset as they are", () => {
@@ -35,5 +35,13 @@ describe("list_event_types field docs", () => {
     expect(fieldDocs("temperature")).toEqual({ temp_c: "number, degrees Celsius (required)" });
     expect(fieldDocs("potty").result).toBe("pee | poop | both | tried (required)");
     expect(fieldDocs("diaper")).toEqual({ kind: "wet | dirty | both | dry (required)" });
+  });
+});
+
+describe("caregivers", () => {
+  it("adds the role a caregiver gave themselves", () => {
+    const members = [{ user_id: "a", display_name: "Sam" }, { user_id: "b", display_name: "Rita" }];
+    expect(caregivers(members, { caregivers: [{ id: "a", role: "Dad" }, { id: "b", role: " " }] })).toEqual(["Sam (Dad)", "Rita"]);
+    expect(caregivers(members, {})).toEqual(["Sam", "Rita"]);
   });
 });

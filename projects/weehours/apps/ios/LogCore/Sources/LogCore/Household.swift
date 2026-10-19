@@ -3,19 +3,22 @@ import Foundation
 public struct Caregiver: Codable, Hashable, Sendable, Identifiable {
     public var id: UUID
     public var name: String
+    /// Optional: who they are to the children ("Mom", "Dad", "Nanny"…), shown next to the name.
+    public var role: String?
     /// Minutes after midnight; reminders are silent for this caregiver inside the window unless on duty.
     public var quietStart: Int?
     public var quietEnd: Int?
 
-    public init(id: UUID, name: String, quietStart: Int? = nil, quietEnd: Int? = nil) {
+    public init(id: UUID, name: String, role: String? = nil, quietStart: Int? = nil, quietEnd: Int? = nil) {
         self.id = id
         self.name = name
+        self.role = role
         self.quietStart = quietStart
         self.quietEnd = quietEnd
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, name
+        case id, name, role
         case quietStart = "quiet_start"
         case quietEnd = "quiet_end"
     }

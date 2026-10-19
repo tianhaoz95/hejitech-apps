@@ -65,7 +65,7 @@ struct SettingsView: View {
                         categoryToggles(group: group.id)
                     } header: { Text(group.title) } footer: {
                         if group.id == "activity" {
-                            Text("What's on is tracked for the household and gets a button on Now. These are logged by tap for now; voice comes later.")
+                            Text("What's on is tracked for the household and gets a button on Now, and can be logged by voice.")
                         }
                     }
                 }
@@ -82,17 +82,20 @@ struct SettingsView: View {
                     Text("Use your pediatrician's guidance. Reminders go to whoever is on duty, as a tap on the wrist first and a sound only when overdue.")
                 }
                 Section {
-                    Button("Save changes") {
-                        for i in draft.babies.indices {
-                            draft.babies[i].name = draft.babies[i].name.trimmingCharacters(in: .whitespacesAndNewlines)
-                            if draft.babies[i].name.isEmpty { draft.babies[i].name = "Baby" }
-                        }
-                        Task { await model.save(draft) }
-                    }
-                    .disabled(draft == model.household)
+                    Button("Save changes") { save() }
+                        .disabled(draft == model.household)
                 }
                 Section("Household") {
-                    ForEach(model.household.caregivers) { c in Label(c.name, systemImage: c.id == model.me ? "person.fill" : "person") }
+                    ForEach(model.household.caregivers) { c in
+                        if c.id == model.me {
+                            NavigationLink { ProfileEditor(caregiver: c) } label: {
+                                LabeledContent { Text("You").foregroundStyle(.secondary) } label: { CaregiverLabel(caregiver: c, me: true) }
+                            }
+                            .accessibilityIdentifier("settings-me")
+                        } else {
+                            CaregiverLabel(caregiver: c, me: false)
+                        }
+                    }
                     if model.localOnly {
                         Text("Sign in to invite your partner.").font(.footnote).foregroundStyle(.secondary)
                     } else {
@@ -163,6 +166,8 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            // a child's edits save when you go back, as adding one does
+            .onChange(of: editingChild) { old, new in if old != nil, new == nil { save() } }
             .navigationDestination(item: $editingChild) { id in
                 // bound by id, not position: the list can change while the editor is on screen
                 ChildEditor(baby: Binding(get: { draft.baby(id) ?? Baby(id: id, name: "") },
@@ -186,6 +191,15 @@ struct SettingsView: View {
                 Button("Delete everything", role: .destructive) { Task { await model.deleteAllData() } }
             }
         }
+    }
+
+    private func save() {
+        for i in draft.babies.indices {
+            draft.babies[i].name = draft.babies[i].name.trimmingCharacters(in: .whitespacesAndNewlines)
+            if draft.babies[i].name.isEmpty { draft.babies[i].name = "Baby" }
+        }
+        guard draft != model.household else { return }
+        Task { await model.save(draft) }
     }
 
     /// One toggle per category in a Settings → Tracking group (household-wide, Save to apply).
@@ -241,8 +255,8 @@ struct AddChildSheet: View {
     }
 }
 
-/// One child's settings. Name, birthday, colour and feeding apply household-wide (after Save);
-/// "Show on this iPhone" changes only this phone, right away.
+/// One child's settings. Name, birthday, colour and feeding apply household-wide, saved on the way
+/// back to Settings; "Show on this iPhone" changes only this phone, right away.
 struct ChildEditor: View {
     @EnvironmentObject var model: AppModel
     @Binding var baby: Baby
@@ -298,11 +312,61 @@ struct ChildEditor: View {
                         Button("Archive", role: .destructive) { baby.archived = true }
                     }
                 } footer: {
-                    Text("Archiving keeps the child's log and export, and removes them from every phone's Now. Save to apply.")
+                    Text("Archiving keeps the child's log and export, and removes them from every phone's Now.")
                 }
             }
         }
         .navigationTitle(baby.name.isEmpty ? "New child" : baby.name)
+    }
+}
+
+/// A caregiver's name, with their role when they gave one ("Sam · Dad").
+struct CaregiverLabel: View {
+    let caregiver: Caregiver
+    let me: Bool
+
+    var body: some View {
+        Label {
+            Text(caregiver.name) + Text(caregiver.role.map { " · \($0)" } ?? "").foregroundStyle(.secondary)
+        } icon: { Image(systemName: me ? "person.fill" : "person") }
+    }
+}
+
+/// Your own name and role as the household sees them; saved on the way back, like a child's.
+struct ProfileEditor: View {
+    @EnvironmentObject var model: AppModel
+    @State private var name: String
+    @State private var role: String
+
+    static let roles = ["Mom", "Dad", "Parent", "Grandma", "Grandpa", "Nanny", "Babysitter"]
+
+    init(caregiver: Caregiver) {
+        _name = State(initialValue: caregiver.name)
+        _role = State(initialValue: caregiver.role ?? "")
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("Your name", text: $name).accessibilityIdentifier("profileName")
+            } header: { Text("Name") } footer: {
+                Text("How you appear to the rest of the household, on entries you log and in reminders.")
+            }
+            Section {
+                TextField("Optional, e.g. Mom, Dad, Nanny", text: $role).accessibilityIdentifier("profileRole")
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack {
+                        ForEach(Self.roles, id: \.self) { r in
+                            Button(r) { role = r }
+                                .buttonStyle(.bordered).controlSize(.small)
+                                .tint(role == r ? Theme.accent : .secondary)
+                        }
+                    }
+                }
+            } header: { Text("Role") }
+        }
+        .navigationTitle("You")
+        .onDisappear { Task { await model.saveProfile(name: name, role: role) } }
     }
 }
 
@@ -396,6 +460,7 @@ struct AgentsView: View {
                             Button("Revoke", role: .destructive) { Task { await model.revoke(t) } }.buttonStyle(.borderless)
                         } else {
                             Text("revoked").font(.caption).foregroundStyle(.secondary)
+                            Button("Delete") { Task { await model.delete(t) } }.buttonStyle(.borderless)
                         }
                     }
                 }

@@ -327,6 +327,25 @@ final class AppModel: ObservableObject {
         } catch { self.error = error.localizedDescription }
     }
 
+    /// Your own name and role, as the household sees them. The role travels with the household's
+    /// settings; the name is your membership's (`set_display_name`), so it's saved separately.
+    func saveProfile(name: String, role: String?) async {
+        guard let me, let i = household.caregivers.firstIndex(where: { $0.id == me }) else { return }
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedRole = role?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let role = trimmedRole.isEmpty ? nil : trimmedRole
+        var h = household
+        if !name.isEmpty { h.caregivers[i].name = name }
+        h.caregivers[i].role = role
+        guard h != household else { return }
+        SharedStore.defaults.set(h.caregivers[i].name, forKey: "displayName")
+        await save(h)
+        guard !localOnly, !name.isEmpty else { return }
+        do { try await backend.setDisplayName(name) } catch {
+            syncError = "Your name is saved on this phone; it will reach the household when you're online."
+        }
+    }
+
     func invite() async -> String? {
         do { return try await backend.createInvite() } catch { self.error = error.localizedDescription; return nil }
     }
@@ -633,7 +652,10 @@ final class AppModel: ObservableObject {
 
     // MARK: agents (MCP)
 
-    var mcpURL: String { "\(backendURL)/functions/v1/mcp" }
+    /// The website's Worker serves MCP (`services/web/src/worker`), not Supabase; locally `dev:worker`.
+    var mcpURL: String {
+        backendURL.contains("127.0.0.1") || backendURL.contains("localhost") ? "http://127.0.0.1:8788/mcp" : "https://weehours.hejitech.workers.dev/mcp"
+    }
 
     func loadTokens() async {
         tokens = (try? await backend.accessTokens()) ?? []
@@ -649,6 +671,12 @@ final class AppModel: ObservableObject {
 
     func revoke(_ t: AccessToken) async {
         try? await backend.revokeAccessToken(t.id)
+        await loadTokens()
+    }
+
+    /// Removes a revoked token from the list.
+    func delete(_ t: AccessToken) async {
+        do { try await backend.deleteAccessToken(t.id) } catch { self.error = error.localizedDescription }
         await loadTokens()
     }
 
