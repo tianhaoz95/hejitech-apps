@@ -31,7 +31,7 @@ enum Keychain {
     }
 }
 
-// MARK: - Push-to-talk recorder (16 kHz mono WAV, what Whisper wants)
+// MARK: - Voice recorder (16 kHz mono WAV, what Whisper wants)
 
 final class Recorder: NSObject, @unchecked Sendable {
     private var recorder: AVAudioRecorder?
@@ -45,6 +45,7 @@ final class Recorder: NSObject, @unchecked Sendable {
         let settings: [String: Any] = [AVFormatIDKey: kAudioFormatLinearPCM, AVSampleRateKey: 16_000, AVNumberOfChannelsKey: 1,
                                        AVLinearPCMBitDepthKey: 16, AVLinearPCMIsFloatKey: false]
         recorder = try AVAudioRecorder(url: url, settings: settings)
+        recorder?.isMeteringEnabled = true
         recorder?.record()
         self.url = url
     }
@@ -54,6 +55,13 @@ final class Recorder: NSObject, @unchecked Sendable {
         recorder = nil
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         return url
+    }
+
+    /// The input level right now, 0 (silence, -50 dB and below) to 1, for the listening waveform.
+    func level() -> Float {
+        guard let recorder else { return 0 }
+        recorder.updateMeters()
+        return max(0, min(1, (recorder.averagePower(forChannel: 0) + 50) / 50))
     }
 }
 

@@ -57,7 +57,7 @@ struct TimelineView: View {
                     } description: {
                         Text(showUndone
                              ? "There are no entries, undone or not."
-                             : "Feeds, diapers, sleep and measurements show up here as soon as they're logged: hold the mic and say it, or tap a button on Now.")
+                             : "Feeds, diapers, sleep and measurements show up here as soon as they're logged: tap the mic and say it, or tap a button on Now.")
                     }
                 }
             }

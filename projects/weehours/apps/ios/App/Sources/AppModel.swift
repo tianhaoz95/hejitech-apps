@@ -208,7 +208,7 @@ final class AppModel: ObservableObject {
 
     /// Load Whisper and Laya in the background at launch, so the first voice entry doesn't pay
     /// for the one-time Core ML compile and model load. Laya is freed on a memory warning and
-    /// reloads on the next push-to-talk.
+    /// reloads the next time the mic is tapped.
     private func prewarmModels() {
         Task(priority: .utility) { [transcriber, service] in
             await transcriber.warmUp()
@@ -540,6 +540,15 @@ final class AppModel: ObservableObject {
             } catch { self.error = "Could not transcribe: \(error.localizedDescription)" }
         }
     }
+
+    /// Stops listening without logging anything (Cancel on the listening screen).
+    func cancelVoice() {
+        guard recording else { return }
+        recording = false
+        if let url = recorder.stop() { try? FileManager.default.removeItem(at: url) }
+    }
+
+    func voiceLevel() -> Float { recorder.level() }
 
     /// The voice pipeline from a transcript (phone and watch speech, or the `demoText` launch argument).
     func handle(transcript: String, capturedAt: Date = Date(), surface: Surface = .phone, attachTo: UUID? = nil, babies: [UUID]? = nil) async {

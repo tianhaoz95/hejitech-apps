@@ -63,6 +63,18 @@ struct WhatsNewView: View {
                     ]
                 ),
                 WhatsNewItem(
+                    icon: "waveform",
+                    tint: .orange,
+                    title: "Tap Once to Speak",
+                    description: "No more holding the mic button. Tap it once, say what happened while a waveform follows your voice, then tap Done to log it, or Cancel.",
+                    highlights: [
+                        "Hands free while you hold the baby",
+                        "Done logs it, Cancel throws the audio away",
+                        "Finishes by itself after 30 seconds",
+                        "The Action Button and Siri open the same screen"
+                    ]
+                ),
+                WhatsNewItem(
                     icon: "sparkles",
                     tint: .purple,
                     title: "What's New",

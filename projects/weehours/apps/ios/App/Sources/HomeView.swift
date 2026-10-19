@@ -21,9 +21,12 @@ struct MainView: View {
             ReviewSheet(capture: capture).presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $showingWhatsNew) { WhatsNewView() }
-        .overlay(alignment: placement.alignment) { VoiceButton().padding(.horizontal, 20).padding(.bottom, 64) }
+        .overlay(alignment: placement.alignment) { if !model.recording { VoiceButton().padding(.horizontal, 20).padding(.bottom, 64) } }
         .overlay(alignment: .bottom) { ToastView().padding(placement.toastClearance).padding(.bottom, 64) }
+        .overlay { if model.recording { ListeningView().transition(.opacity) } }
+        .animation(.easeInOut(duration: 0.25), value: model.recording)
         .onChange(of: model.screen, initial: true) { _, screen in FeedbackKit.currentScreen = screen }
+        .task { if model.screen == "listening" { model.screen = "home"; model.startVoice() } }
         .onChange(of: model.reviews) { _, reviews in
             if model.screen == "review", model.reviewing == nil, let first = reviews.first {
                 model.reviewing = first
@@ -472,49 +475,28 @@ enum VoiceButtonPlacement: String, CaseIterable, Identifiable {
     }
 }
 
-/// Floating hold-to-speak button, on every tab. Release to log. The models start loading the
-/// moment the press begins.
+/// Floating mic button, on every tab: one tap opens ListeningView. The models start loading the
+/// moment it's tapped.
 struct VoiceButton: View {
     static let size: CGFloat = 68
     @EnvironmentObject var model: AppModel
-    @AppStorage(VoiceButtonPlacement.key) private var placement = VoiceButtonPlacement.right
 
     var body: some View {
-        // The "Listening" hint goes on the open side: beside the button, or above it in the middle.
-        let layout = placement == .middle ? AnyLayout(VStackLayout(spacing: 10)) : AnyLayout(HStackLayout(spacing: 10))
-        layout {
-            if model.recording, placement != .left { listening }
-            button
-            if model.recording, placement == .left { listening }
-        }
-        .animation(.snappy, value: model.recording)
-    }
-
-    private var listening: some View {
-        Text("Listening… release to log")
-            .font(.footnote.weight(.medium))
-            .padding(.horizontal, 12).padding(.vertical, 8)
-            .background(.thinMaterial, in: Capsule())
-            .transition(.move(edge: [.left: .leading, .middle: .bottom, .right: .trailing][placement]!).combined(with: .opacity))
-    }
-
-    private var button: some View {
-        ZStack {
-            face
-                .scaleEffect(model.recording ? 1.15 : 1)
-                .animation(model.recording ? .easeInOut(duration: 0.6).repeatForever(autoreverses: true) : .default, value: model.recording)
-            if model.thinking {
-                ProgressView().tint(.white)
-            } else {
-                Image(systemName: "mic.fill").font(.system(size: 28)).foregroundStyle(.white)
+        Button { model.startVoice() } label: {
+            ZStack {
+                face
+                if model.thinking {
+                    ProgressView().tint(.white)
+                } else {
+                    Image(systemName: "mic.fill").font(.system(size: 28)).foregroundStyle(.white)
+                }
             }
+            .contentShape(Circle())
         }
-        .contentShape(Circle())
-        .gesture(DragGesture(minimumDistance: 0)
-            .onChanged { _ in if !model.recording { model.startVoice() } }
-            .onEnded { _ in model.stopVoice() })
+        .buttonStyle(.plain)
+        .disabled(model.thinking)
         .sensoryFeedback(.start, trigger: model.recording) { _, new in new }
-        .accessibilityLabel("Hold to speak")
+        .accessibilityLabel("Speak a log entry")
         .accessibilityIdentifier("voiceButton")
     }
 

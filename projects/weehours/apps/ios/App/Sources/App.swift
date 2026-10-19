@@ -58,7 +58,7 @@ struct WeeHoursShortcuts: AppShortcutsProvider {
     }
 }
 
-/// For the Action Button: opens straight into push-to-talk.
+/// For the Action Button: opens straight into listening.
 struct VoiceLogIntent: AppIntent {
     static let title: LocalizedStringResource = "Speak a log entry"
     static let openAppWhenRun = true
