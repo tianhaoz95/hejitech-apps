@@ -61,9 +61,9 @@ def upload(run):
     if not repo:
         raise SystemExit("publish_data: set [publish] dataset_repo in the config first")
     files = [f for f in FILES if run.path(f).exists()]
-    missing = {"utterances.jsonl", "asr.jsonl", "manifest.json"} - set(files)
-    if missing:
-        raise SystemExit(f"publish_data: {name} has no {', '.join(sorted(missing))}; run datagen first")
+    # a datagen run has its sentences and transcripts; a train-only run (all `include`) its rows
+    if not ({"utterances.jsonl", "asr.jsonl"} <= set(files) or {"dataset/train.jsonl", "manifest.json"} <= set(files)):
+        raise SystemExit(f"publish_data: {name} has neither utterances + asr nor a built dataset; run datagen or build first")
     api = HfApi()
     api.create_repo(repo, repo_type="dataset", private=config["private"], exist_ok=True)
     runs = sorted(set(runs_in(api, repo)) | {name})
@@ -72,7 +72,7 @@ def upload(run):
     ops.append(CommitOperationAdd("README.md", card.encode()))
     commit = api.create_commit(repo, repo_type="dataset", operations=ops, commit_message=f"Wee Hours data: {name}")
     api.create_tag(repo, repo_type="dataset", tag=name, revision=commit.oid, exist_ok=True)
-    manifest = json.loads(run.path("manifest.json").read_text())
+    manifest = json.loads(run.path("manifest.json").read_text()) if run.path("manifest.json").exists() else {}
     print(f"publish_data: https://huggingface.co/datasets/{repo}/tree/{name} ({len(files)} files, "
           f"{manifest.get('train', {}).get('rows', '?')} training rows; commit {commit.oid})")
     return commit.oid

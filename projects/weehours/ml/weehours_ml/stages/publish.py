@@ -18,7 +18,8 @@ def model_card(run):
         "tags: [gguf, laya, decision-model, wee-hours]", "pipeline_tag: text-classification", "---", "",
         f"# Laya for Wee Hours ({run['run']['name']})", "",
         f"{run['train']['base_model']} fine-tuned with `laya.train` (RLCD) for Wee Hours' voice log: "
-        "category × phase and field questions over what a parent said, as the app asks them "
+        "the app's decision questions over what a parent said (category, phase, fields; since `groups`, "
+        "the group first and then the entry within it), as the app asks them "
         "(llama.cpp `/v1/systemone`). GGUF converted with llama.cpp "
         f"{run['convert']['llama_cpp_commit']}; the app runs the {run['convert']['quantization']} file.", "",
         "Training data is synthetic: a large teacher model wrote utterances for labels fixed in "
