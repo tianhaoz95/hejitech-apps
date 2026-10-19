@@ -161,6 +161,20 @@ if it's not there.
 
 ## Conventions
 
+- **The questions are two levels** (spec `modelGroups`): the category question asks for a group
+  (feeding, diaper, sleep, growth, health, care, activity, or none of these), a group with
+  several enabled categories gets a `<group>_entry` question (feeding_entry: bottle, breast,
+  pumping, solids), and sessions keep the phase question. The app combines them:
+  P(type) = P(group) × P(category | group) × P(phase). Every question stays at 8 options or fewer
+  (laya caps a question and its options at 192 tokens).
+- **Labels come from today's spec at build time**, not from the plan: `build` recomputes each
+  row's labels from its type and fields (`Registry.labels`, the port of logeval's `gold()`). A
+  question redesign relabels every earlier run's rows for free; only new types need new data.
+- **Households turn categories off**, and the app then asks with fewer options. `subset_fraction`
+  asks that share of training rows with a random subset of categories on
+  (`Registry.questions_for`, checked against `logeval --categories default --export`), and
+  `logeval --categories default` scores a new household's setup (its 187 answerable rows).
+
 - **The option descriptions in `spec/event-types.json` are part of the prompt.** Laya scores
   `[MASK] key: description` per option, so rewording one changes both stock and fine-tuned
   behaviour. Score the shipped model with any wording change, and ship a model together with the
@@ -173,7 +187,8 @@ if it's not there.
   descriptions together, and ask the user first.
 - **The eval stays held out** and is typed text, so it never sees recognition errors (see Known
   weaknesses). One sentence is about 0.6 points: read the misses, not just the percentages.
-- **Tap-only categories** (`"model": false` in the spec: bath, lotion, tooth brushing, potty,
+- **`"model": false`** keeps a category out of the questions entirely (tap-only). Before the
+  groups redesign the care, health and activity categories were that way:
   teething, medication, symptoms, temperature, doctor visits, vaccinations, tummy time, play,
   walks) are never asked of the model, so they don't change its prompt. To add voice for them:
   flip `model`, add plans for their types, and relabel what is "not a log entry" today. Several

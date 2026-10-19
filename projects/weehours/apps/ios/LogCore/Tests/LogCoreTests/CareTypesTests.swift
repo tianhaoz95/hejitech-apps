@@ -12,21 +12,54 @@ final class CareTypesTests: XCTestCase {
                           interpreter: VoiceInterpreter(model: KeywordDecisionModel()))
     }
 
-    func testNewCategoriesAreOffByDefaultAndNeverAskedOfTheModel() {
+    func testNewCategoriesAreOffByDefaultAndAskedThroughTheirGroup() {
         let r = EventRegistry.shared
-        let new = r.categories.filter { !$0.inModel }
+        let new = r.categories.filter { $0.group != nil }
         XCTAssertEqual(Set(new.map(\.id)), ["bath", "lotion", "toothbrush", "potty", "teething", "medication", "symptom",
                                             "temperature", "doctor", "vaccination", "tummy_time", "play", "walk"])
         XCTAssertTrue(new.allSatisfy { !$0.defaultEnabled })
         let all = Set(r.categories.map(\.id))
         let qs = VoiceInterpreter(model: KeywordDecisionModel()).questions(
             for: InterpretContext(reference: Date(), log: DerivedLog(events: []), enabledCategories: all))
-        let options = Set(qs.first { $0.id == "category" }!.options.map(\.key))
-        XCTAssertTrue(options.isDisjoint(with: new.map(\.id)))
-        for t in r.types where new.contains(where: { $0.id == t.category }) {
-            XCTAssertNotNil(t.icon, t.id)
-            XCTAssertNotNil(t.fields, t.id)
-        }
+        XCTAssertEqual(qs.first { $0.id == "category" }!.options.map(\.key),
+                       ["feeding", "diaper", "sleep", "growth", "health", "care", "activity", VoiceInterpreter.noneKey])
+        XCTAssertEqual(qs.first { $0.id == "health_entry" }!.options.map(\.key),
+                       ["medication", "symptom", "temperature", "teething", "doctor", "vaccination"])
+        XCTAssertEqual(qs.first { $0.id == "diaper_entry" }!.options.map(\.key), ["diaper", "potty"])
+        // a new household: feeding (bottle, breast) needs an entry question; no care groups at all
+        let core = VoiceInterpreter(model: KeywordDecisionModel()).questions(
+            for: InterpretContext(reference: Date(), log: DerivedLog(events: []), enabledCategories: r.defaultCategories))
+        XCTAssertEqual(core.first { $0.id == "category" }!.options.map(\.key), ["feeding", "diaper", "sleep", "growth", VoiceInterpreter.noneKey])
+        XCTAssertEqual(Set(core.map(\.id)).intersection(["health_entry", "care_entry", "activity_entry", "diaper_entry"]), [])
+        XCTAssertEqual(core.first { $0.id == "feeding_entry" }!.options.map(\.key), ["bottle", "breast"])
+    }
+
+    func testGroupsCoverEveryCategoryOnce() {
+        let r = EventRegistry.shared
+        let grouped = r.modelGroups.flatMap(\.categories)
+        XCTAssertEqual(grouped.count, Set(grouped).count)
+        XCTAssertEqual(Set(grouped), Set(r.categories.map(\.id)))
+    }
+
+    func testCombinesGroupEntryAndPhase() async throws {
+        let s = try service(enabled: EventRegistry.shared.categories.map(\.id))
+        let r = try await s.processVoice(transcript: "gave her a bath", surface: .phone)
+        XCTAssertEqual(r.interpretation.best?.type, "bath")
+        let m = try await s.processVoice(transcript: "gave him some infant tylenol", surface: .phone)
+        XCTAssertEqual(m.interpretation.best?.type, "medication")
+        XCTAssertEqual(m.interpretation.best?.fields["medicine"], .string("gave him some infant tylenol"))
+    }
+
+    func testRequiredFieldsFromTheWords() {
+        func f(_ type: String, _ key: String) -> EventRegistry.FieldSpec { EventRegistry.shared.type(type)!.fields!.first { $0.key == key }! }
+        XCTAssertEqual(Parsers.field(f("symptom", "symptom"), in: "runny nose again"), .string("runny_nose"))
+        XCTAssertEqual(Parsers.field(f("symptom", "symptom"), in: "she's a bit off today"), .string("other"))
+        XCTAssertEqual(Parsers.field(f("potty", "result"), in: "pee in the potty"), .string("pee"))
+        XCTAssertEqual(Parsers.field(f("potty", "result"), in: "pee and poop on the potty"), .string("both"))
+        XCTAssertNil(Parsers.field(f("potty", "result"), in: "sat on the potty"))
+        XCTAssertEqual(Parsers.field(f("temperature", "temp_c"), in: "took her temperature, 38.1"), .number(38.1))
+        XCTAssertEqual(Parsers.field(f("temperature", "temp_c"), in: "fever of 100.4"), .number(38.0))
+        XCTAssertNil(Parsers.field(f("temperature", "temp_c"), in: "she feels warm"))
     }
 
     func testFieldsAreValidatedFromTheSpec() async throws {

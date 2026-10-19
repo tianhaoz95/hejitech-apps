@@ -28,24 +28,25 @@ WHEN_TEXT = {
     "vague": "Say the time vaguely (like a bit ago, earlier, just now).",
 }
 NONE_TOPICS = [
-    "a rash or symptom", "a question for the pediatrician", "a milestone like a first smile",
-    "the baby being fussy or crying", "buying more diapers or formula", "a visitor", "bath time",
-    "giving vitamin drops or medicine", "tummy time", "the parent's own tiredness",
+    "planning a bath or a checkup for later", "a question for the pediatrician", "a milestone like a first smile",
+    "the baby being fussy or crying", "buying more diapers or formula", "a visitor", "asking whether a medicine is safe",
+    "a question about a vaccine or a symptom", "the parent's own tiredness", "a milestone like rolling over",
     "washing or sterilizing bottles", "making up formula or bottles for later",
     # near misses: they name a log topic without reporting one (the none top-up, 2026-10-19)
     "running low on or ordering diapers, wipes or nappies", "the formula tin or milk supply at home",
     "asking when the baby last ate, slept or was changed", "planning the next feed or nap",
-    "a doctor's or checkup appointment", "the baby's temperature or a fever",
+    "booking a doctor's appointment", "running low on medicine or lotion at home",
     "sleep training or a bedtime routine in general", "cleaning the changing table or pump parts",
     "a chore that is finished, like laundry or the dishes", "clothes, outfits or the weather",
     "a reminder or to-do for later", "the other parent or a babysitter taking over",
 ]
 
 
-def describe(plan, registry):
+def describe(plan, registry, config=None):
     """The plan in words for the teacher, from the spec's own descriptions."""
     if plan["type"] == NONE:
-        topic = NONE_TOPICS[int(plan["id"][1:]) % len(NONE_TOPICS)]
+        topics = (config or {}).get("none_topics") or NONE_TOPICS   # a run can focus on its own near misses
+        topic = topics[int(plan["id"][1:]) % len(topics)]
         parts = [f"Something about {topic} that is NOT a feed, diaper change, sleep, pumping or "
                  "growth measurement entry."]
         if int(plan["id"][1:]) % 3 == 0:
@@ -99,7 +100,7 @@ async def _run(run, plans, questions, registry, out):
 
     async def worker(plan):
         written = await teacher.json(
-            WRITE_SYSTEM, f"Write {variants} different things a parent might say. {describe(plan, registry)}",
+            WRITE_SYSTEM, f"Write {variants} different things a parent might say. {describe(plan, registry, run["run"])}",
             validate=lambda v: isinstance(v.get("utterances"), list))
         if written is None:
             return None

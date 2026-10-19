@@ -25,6 +25,9 @@ struct Args {
     var out: String?
     var label: String?
     var export: String?
+    /// all (every category on, the default for scores and the export) or default (a new
+    /// household's categories: rows of types it can't log are left out).
+    var categories = "all"
 
     init() {
         var it = CommandLine.arguments.dropFirst().makeIterator()
@@ -38,6 +41,7 @@ struct Args {
             case "--out": out = it.next()
             case "--label": label = it.next()
             case "--export": export = it.next()
+            case "--categories": categories = it.next() ?? categories
             default: FileHandle.standardError.write(Data("unknown argument \(a)\n".utf8))
             }
         }
@@ -46,7 +50,7 @@ struct Args {
 
 let args = Args()
 let registry = EventRegistry.shared
-let rows: [Row] = try String(contentsOfFile: args.data, encoding: .utf8)
+let allRows: [Row] = try String(contentsOfFile: args.data, encoding: .utf8)
     .split(separator: "\n").map { try JSONDecoder().decode(Row.self, from: Data($0.utf8)) }
 
 let model: DecisionModel = args.model == "keywords" ? KeywordDecisionModel() : SystemOneHTTPModel(endpoint: URL(string: args.model)!)
@@ -55,6 +59,11 @@ if let path = args.calibration, let data = FileManager.default.contents(atPath: 
     calibration = try JSONDecoder().decode(Calibration.self, from: data)
 }
 let allCategories = Set(registry.categories.map(\.id))
+let enabledCategories = args.categories == "default" ? registry.defaultCategories : allCategories
+let rows = allRows.filter { row in
+    guard enabledCategories != allCategories, let t = row.expect["type"], t != "none_of_these" else { return true }
+    return registry.type(t).map { enabledCategories.contains($0.category) } ?? true
+}
 let household = UUID(), baby = UUID(), parent = UUID()
 let reference = Calendar.current.date(bySettingHour: 15, minute: 0, second: 0, of: Date())!
 
@@ -68,7 +77,7 @@ func context(for row: Row) -> InterpretContext {
                                occurredAt: reference.addingTimeInterval(-600), loggedAt: reference.addingTimeInterval(-600),
                                loggedBy: parent, provenance: Provenance(surface: .phone, input: .tap)))
     }
-    return InterpretContext(reference: reference, log: DerivedLog(events: events), enabledCategories: allCategories)
+    return InterpretContext(reference: reference, log: DerivedLog(events: events), enabledCategories: enabledCategories)
 }
 
 /// The gold option for each question asked, derived from the row's expectations.
@@ -76,9 +85,14 @@ func gold(_ row: Row, question: String) -> String? {
     let type = row.expect["type"]!
     switch question {
     case "event_type": return type
-    case "category":
+    case "category":   // the model group
         if type == "none_of_these" { return "none_of_these" }
-        return registry.type(type)?.category
+        guard let c = registry.type(type)?.category else { return nil }
+        return registry.modelGroup(of: c)?.id
+    case let q where q.hasSuffix("_entry"):
+        guard let c = registry.type(type)?.category, let g = registry.modelGroup(of: c),
+              EventRegistry.entryQuestion(g.id) == q, g.categories.count > 1 else { return nil }
+        return c
     case "phase":
         guard let t = registry.type(type), registry.types.filter({ $0.category == t.category }).count > 1 else { return nil }
         return type == "feed.bottle.single" ? "single" : t.session?.role
@@ -119,7 +133,7 @@ func correct(_ c: Candidate, row: Row) -> Bool {
 // 0. --export: the hierarchical questions (option order matters to Laya) and the gold answers
 // per row, so the fine-tuning pipeline (ml/) trains on exactly what the app asks.
 if let path = args.export {
-    let ctx = InterpretContext(reference: reference, log: DerivedLog(events: []), enabledCategories: allCategories)
+    let ctx = InterpretContext(reference: reference, log: DerivedLog(events: []), enabledCategories: enabledCategories)
     let questions = VoiceInterpreter(model: KeywordDecisionModel(), registry: registry, design: .hierarchical)
         .questions(for: ctx)
     let exported: [String: Any] = [
@@ -226,7 +240,8 @@ for i in evalIdx {
 let n = Double(evalIdx.count)
 func pct(_ x: Int, _ d: Double) -> Double { d == 0 ? 0 : (Double(x) / d * 1000).rounded() / 10 }
 let summary: [String: Any] = [
-    "label": args.label ?? "\(args.model == "keywords" ? "keywords" : "laya")-\(args.design.rawValue)\(args.fit ? "-calibrated" : "")",
+    "label": args.label ?? "\(args.model == "keywords" ? "keywords" : "laya")-\(args.design.rawValue)\(args.fit ? "-calibrated" : "")\(args.categories == "default" ? "-default" : "")",
+    "categories": args.categories,
     "model": model.version,
     "design": args.design.rawValue,
     "calibrated": args.fit || args.calibration != nil,

@@ -8,19 +8,19 @@
     { "id": "diaper", "voice": "diaper or nappy change, pee, poop", "label": "Diapers", "defaultEnabled": true },
     { "id": "sleep", "voice": "sleeping, napping, falling asleep or waking up", "label": "Sleep", "defaultEnabled": true },
     { "id": "growth", "voice": "weighing or measuring the baby: weight in kilos or pounds, length or height, head size", "label": "Growth", "defaultEnabled": true },
-    { "id": "bath", "group": "care", "voice": "giving the baby a bath", "label": "Bath", "defaultEnabled": false, "model": false },
-    { "id": "lotion", "group": "care", "voice": "putting lotion, cream or ointment on the baby's skin", "label": "Lotion", "defaultEnabled": false, "model": false },
-    { "id": "toothbrush", "group": "care", "voice": "brushing the baby's teeth or gums", "label": "Tooth brushing", "defaultEnabled": false, "model": false },
-    { "id": "potty", "group": "care", "voice": "sitting the child on the potty, potty training", "label": "Potty", "defaultEnabled": false, "model": false },
-    { "id": "teething", "group": "health", "voice": "teething, a tooth coming in, sore gums", "label": "Teething", "defaultEnabled": false, "model": false },
-    { "id": "medication", "group": "health", "voice": "giving medicine, drops or vitamins", "label": "Medication", "defaultEnabled": false, "model": false },
-    { "id": "symptom", "group": "health", "voice": "a symptom like a cough, runny nose, rash or vomiting", "label": "Symptoms", "defaultEnabled": false, "model": false },
-    { "id": "temperature", "group": "health", "voice": "taking the baby's temperature", "label": "Temperature", "defaultEnabled": false, "model": false },
-    { "id": "doctor", "group": "health", "voice": "a doctor or pediatrician visit or checkup", "label": "Doctor visits", "defaultEnabled": false, "model": false },
-    { "id": "vaccination", "group": "health", "voice": "a vaccination or immunization shot", "label": "Vaccinations", "defaultEnabled": false, "model": false },
-    { "id": "tummy_time", "group": "activity", "voice": "tummy time on the play mat", "label": "Tummy time", "defaultEnabled": false, "model": false },
-    { "id": "play", "group": "activity", "voice": "playing with the baby", "label": "Play time", "defaultEnabled": false, "model": false },
-    { "id": "walk", "group": "activity", "voice": "going for a walk outside, the stroller or carrier", "label": "Walk outside", "defaultEnabled": false, "model": false }
+    { "id": "bath", "group": "care", "voice": "giving the baby a bath", "label": "Bath", "defaultEnabled": false },
+    { "id": "lotion", "group": "care", "voice": "putting lotion, cream or ointment on the baby's skin", "label": "Lotion", "defaultEnabled": false },
+    { "id": "toothbrush", "group": "care", "voice": "brushing the baby's teeth or gums", "label": "Tooth brushing", "defaultEnabled": false },
+    { "id": "potty", "group": "care", "voice": "sitting the child on the potty, potty training", "label": "Potty", "defaultEnabled": false },
+    { "id": "teething", "group": "health", "voice": "teething, a tooth coming in, sore gums", "label": "Teething", "defaultEnabled": false },
+    { "id": "medication", "group": "health", "voice": "giving medicine, drops or vitamins", "label": "Medication", "defaultEnabled": false },
+    { "id": "symptom", "group": "health", "voice": "a symptom like a cough, runny nose, rash or vomiting", "label": "Symptoms", "defaultEnabled": false },
+    { "id": "temperature", "group": "health", "voice": "taking the baby's temperature", "label": "Temperature", "defaultEnabled": false },
+    { "id": "doctor", "group": "health", "voice": "a doctor or pediatrician visit or checkup", "label": "Doctor visits", "defaultEnabled": false },
+    { "id": "vaccination", "group": "health", "voice": "a vaccination or immunization shot", "label": "Vaccinations", "defaultEnabled": false },
+    { "id": "tummy_time", "group": "activity", "voice": "tummy time on the play mat", "label": "Tummy time", "defaultEnabled": false },
+    { "id": "play", "group": "activity", "voice": "playing with the baby", "label": "Play time", "defaultEnabled": false },
+    { "id": "walk", "group": "activity", "voice": "going for a walk outside, the stroller or carrier", "label": "Walk outside", "defaultEnabled": false }
   ],
   "types": [
     {
@@ -274,6 +274,15 @@
         {"key": "minutes", "kind": "number", "unit": "minutes", "presets": [10, 20, 30, 45, 60]}
       ]
     }
+  ],
+  "modelGroups": [
+    { "id": "feeding", "voice": "feeding: a bottle, breastfeeding or nursing, pumping milk, or eating solid food", "entry": "Which kind of feeding is it?", "categories": ["bottle", "breast", "pumping", "solids"] },
+    { "id": "diaper", "voice": "a diaper or nappy change, pee or poop, or using the potty", "entry": "Is it a diaper change or the potty?", "categories": ["diaper", "potty"] },
+    { "id": "sleep", "voice": "sleeping, napping, falling asleep or waking up", "categories": ["sleep"] },
+    { "id": "growth", "voice": "weighing or measuring the baby: weight in kilos or pounds, length or height, head size", "categories": ["growth"] },
+    { "id": "health", "voice": "health: medicine or vitamins, a symptom, the temperature or a fever, teething, a doctor visit or a vaccine", "entry": "Which health entry is it?", "categories": ["medication", "symptom", "temperature", "teething", "doctor", "vaccination"] },
+    { "id": "care", "voice": "care: a bath, lotion or cream, brushing teeth", "entry": "Which care entry is it?", "categories": ["bath", "lotion", "toothbrush"] },
+    { "id": "activity", "voice": "an activity: tummy time, playing, a walk or a stroller outing", "entry": "Which activity is it?", "categories": ["tummy_time", "play", "walk"] }
   ],
   "sessionReminders": {
     "_comment": "Minutes after which an open session asks \"still going?\" (norms: bottle feeds 15-30 min, nursing 10-45 min, newborn naps up to ~3 h; sleep only for naps started in the day). Used by ReminderPlanner.",

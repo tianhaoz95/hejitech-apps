@@ -97,18 +97,26 @@ public struct VoiceInterpreter: Sendable {
         var qs: [DecisionQuestion] = []
         switch design {
         case .flat:
-            var typeOptions = types.map { DecisionQuestion.Option(key: $0.id, description: $0.voice) }
+            var typeOptions = types.filter { registry.category($0.category)?.group == nil }
+                .map { DecisionQuestion.Option(key: $0.id, description: $0.voice) }
             typeOptions.append(.init(key: Self.noneKey, description: Self.noneDescription))
             qs.append(DecisionQuestion(id: "event_type", instructions: registry.questions["event_type"]?.instructions ?? "Which entry?", options: typeOptions))
         case .hierarchical:
-            var catOptions = registry.categories.filter { context.enabledCategories.contains($0.id) && $0.inModel }
-                .map { DecisionQuestion.Option(key: $0.id, description: $0.voice ?? $0.label) }
+            // two levels: a group (feeding, diaper, sleep, growth, health, care, activity), then the
+            // entry inside it when the group has several enabled categories (laya caps a question and
+            // its options at 192 tokens, so 20 categories can't share one question)
+            let groups = registry.modelGroups(enabled: context.enabledCategories)
+            var catOptions = groups.map { DecisionQuestion.Option(key: $0.group.id, description: $0.group.voice) }
             catOptions.append(.init(key: Self.noneKey, description: Self.noneDescription))
             qs.append(DecisionQuestion(id: "category", instructions: registry.questions["category"]?.instructions ?? "What is it about?", options: catOptions))
             let roles = Set(types.compactMap { Self.role(of: $0) })
             if let phase = registry.questions["phase"] {
                 let opts = phase.options.filter { roles.contains($0.key) }.map { DecisionQuestion.Option(key: $0.key, description: $0.spec.description) }
                 if opts.count > 1 { qs.append(DecisionQuestion(id: "phase", instructions: phase.instructions, options: opts)) }
+            }
+            for (g, cats) in groups where cats.count > 1 {
+                qs.append(DecisionQuestion(id: EventRegistry.entryQuestion(g.id), instructions: g.entry ?? "Which is it?",
+                                           options: cats.map { .init(key: $0.id, description: $0.voice ?? $0.label) }))
             }
         }
         let needed = Set(types.flatMap(\.questions))
@@ -146,7 +154,7 @@ public struct VoiceInterpreter: Sendable {
         return type.session?.role
     }
 
-    /// P(type) = P(category) × P(phase | the phases valid in that category). Growth measurements have
+    /// P(type) = P(group) × P(category | group) × P(phase | the phases valid in that category). Growth measurements have
     /// no phase: the units and words pick weight, height or head size deterministically.
     func combine(_ answers: [String: DecisionAnswer], context: InterpretContext, transcript: String = "") -> DecisionAnswer {
         let measure = Parsers.growthMeasure(in: transcript)
@@ -155,18 +163,25 @@ public struct VoiceInterpreter: Sendable {
         let phase = answers["phase"]
         var keys: [String] = []
         var probs: [Double] = []
-        for c in cat.options where c != Self.noneKey {
-            let inCat = types.filter { $0.category == c }
-            let weights = inCat.map { t -> Double in
-                guard inCat.count > 1 else { return 1 }
-                if c == "growth" { return measure.map { $0 == t.id ? 1 : 1e-6 } ?? 1 }
-                guard let r = Self.role(of: t), let phase else { return 1 }
-                return max(phase.p(r), 1e-6)
-            }
-            let total = weights.reduce(0, +)
-            for (t, w) in zip(inCat, weights) {
-                keys.append(t.id)
-                probs.append(cat.p(c) * w / total)
+        let groups = registry.modelGroups(enabled: context.enabledCategories)
+        for g in cat.options where g != Self.noneKey {
+            guard let cats = groups.first(where: { $0.group.id == g })?.categories else { continue }
+            let entry = answers[EventRegistry.entryQuestion(g)]
+            for c in cats.map(\.id) {
+                // P(category | group): the entry question, or 1 when the group has one category
+                let pc = cats.count == 1 ? 1 : max(entry?.p(c) ?? 1 / Double(cats.count), 1e-6)
+                let inCat = types.filter { $0.category == c }
+                let weights = inCat.map { t -> Double in
+                    guard inCat.count > 1 else { return 1 }
+                    if c == "growth" { return measure.map { $0 == t.id ? 1 : 1e-6 } ?? 1 }
+                    guard let r = Self.role(of: t), let phase else { return 1 }
+                    return max(phase.p(r), 1e-6)
+                }
+                let total = weights.reduce(0, +)
+                for (t, w) in zip(inCat, weights) {
+                    keys.append(t.id)
+                    probs.append(cat.p(g) * pc * w / total)
+                }
             }
         }
         keys.append(Self.noneKey)
@@ -252,6 +267,10 @@ public struct VoiceInterpreter: Sendable {
                 fields["consumed_ml"] = .number(ml)
                 fields["consumed_fraction"] = nil
                 conf["amount"] = 1
+            }
+            // spec-described fields (care, health, activity types): the required ones from the words
+            for f in spec.fields ?? [] where f.isRequired && fields[f.key] == nil {
+                if let v = Parsers.field(f, in: transcript) { fields[f.key] = v } else { ok = false }
             }
             if !ok { conf["numbers"] = 0 }
             let label = Self.label(type: type, fields: fields, registry: registry)

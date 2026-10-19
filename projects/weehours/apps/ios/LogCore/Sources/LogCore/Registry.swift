@@ -71,6 +71,15 @@ public struct EventRegistry: Sendable {
         public let options: [(key: String, spec: OptionSpec)]
     }
 
+    /// The model's first level (`modelGroups` in the spec): the category question asks for a group,
+    /// and a group with several enabled categories gets its own `<group>_entry` question.
+    public struct ModelGroup: Decodable, Sendable, Hashable {
+        public let id: String
+        public let voice: String
+        public let entry: String?
+        public let categories: [String]
+    }
+
     public struct Policy: Decodable, Sendable {
         public let auto: Double
         public let pick: Double
@@ -78,6 +87,7 @@ public struct EventRegistry: Sendable {
 
     public let version: Int
     public let categories: [Category]
+    public let modelGroups: [ModelGroup]
     public let types: [EventType]
     public let questions: [String: QuestionSpec]
     public let policy: Policy
@@ -100,6 +110,20 @@ public struct EventRegistry: Sendable {
 
     public func category(_ id: String) -> Category? { categories.first { $0.id == id } }
 
+    public func modelGroup(of category: String) -> ModelGroup? { modelGroups.first { $0.categories.contains(category) } }
+
+    /// The question that picks a category inside `group` ("feeding_entry").
+    public static func entryQuestion(_ group: String) -> String { "\(group)_entry" }
+
+    /// The groups to offer for these enabled categories, each with its enabled, model-asked
+    /// categories in the spec's order (groups with none are left out).
+    public func modelGroups(enabled: Set<String>) -> [(group: ModelGroup, categories: [Category])] {
+        modelGroups.compactMap { g in
+            let cats = g.categories.compactMap(category).filter { enabled.contains($0.id) && $0.inModel }
+            return cats.isEmpty ? nil : (g, cats)
+        }
+    }
+
     public var defaultCategories: Set<String> {
         Set(categories.filter(\.defaultEnabled).map(\.id))
     }
@@ -121,6 +145,7 @@ public struct EventRegistry: Sendable {
         }
         version = root["version"] as? Int ?? 1
         categories = try decode([Category].self, root["categories"])
+        modelGroups = try decode([ModelGroup].self, root["modelGroups"])
         types = try decode([EventType].self, root["types"])
         policy = try decode(Policy.self, root["policy"])
         sessionReminders = (root["sessionReminders"] as? [String: Any] ?? [:]).compactMapValues { $0 as? Int }

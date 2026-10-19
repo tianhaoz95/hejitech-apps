@@ -1,0 +1,102 @@
+# groups + the nearmiss top-up (care near misses). The two-level redesign, trained from base on every earlier run's data, relabelled: the category
+# question asks for a model group (feeding, diaper, sleep, growth, health, care, activity) and
+# each group with several enabled categories gets a <group>_entry question (spec modelGroups).
+# No new plans: build relabels full + topup + none + care from today's spec, and asks half the
+# rows with a random subset of categories on, as households with categories turned off do.
+
+[run]
+name = "groups2"
+seed = 29
+id_prefix = "h"             # no plans of its own
+include = ["full", "topup", "none", "care", "nearmiss"]  # build relabels these runs' rows
+plans = 0
+variants = 3
+val_fraction = 0.05
+laya_export = "runs/laya_export_groups.json"  # the two-level questions (logeval --export)
+subset_fraction = 0.5       # rows asked with a random subset of categories on (Settings → Tracking)
+drop_none_prefixes = ["p", "s", "n"]  # full, topup, none: their not-a-log rows predate the care types
+drop_none_matching = [
+  "\\b(bath|lotion|cream|ointment|teeth|tooth|toothbrush|potty|teething|gums?)\\b",
+  "\\b(medicine|medication|drops|vitamins?|tylenol|ibuprofen|antibiotics?)\\b",
+  "\\b(rash|cough(ing)?|sneez\\w*|runny nose|vomit\\w*|threw up|fever|temperature|thermometer)\\b",
+  "\\b(doctor|pediatrician|checkup|check-up|vaccines?|vaccinations?|shots?|jab)\\b",
+  "\\b(tummy time|play(ed|ing|time)?|walk(ed|ing)?|stroller)\\b",
+]
+
+[types]
+"bath" = 0.05
+"lotion" = 0.05
+"tooth_brushing" = 0.05
+"potty" = 0.05
+"teething" = 0.05
+"medication" = 0.05
+"symptom" = 0.05
+"temperature" = 0.05
+"doctor_visit" = 0.05
+"vaccination" = 0.05
+"tummy_time" = 0.05
+"play" = 0.05
+"walk" = 0.05
+"none_of_these" = 0.15
+"diaper" = 0.04
+"feed.bottle.start" = 0.04
+"feed.breast.start" = 0.04
+"sleep.start" = 0.04
+"feed.solids" = 0.04
+
+[fields]
+not_stated = 0.3            # share of field values left unsaid (the not_stated option)
+
+[when]                      # how the time is said; the app parses times itself, but they're part of real speech
+now = 0.45
+relative = 0.3              # "ten minutes ago"
+clock = 0.1                 # "at 3:40"
+vague = 0.15                # "a bit ago", "earlier"
+
+[children]
+names = ["Mia", "Leo", "Noah", "Ava", "Aarav", "Zoe", "Mateo", "Hana", "Ollie", "Amara"]
+probability = 0.2           # share of utterances that name the child
+
+[teacher]                   # any OpenAI-compatible server, e.g. `vllm serve` on the Spark
+base_url = "http://localhost:8000/v1"
+api_key = "EMPTY"
+model = "openai/gpt-oss-120b"
+concurrency = 128         # requests in flight (vLLM batches them; 32 left the Spark mostly idle)
+temperature = 0.9           # writing; the blind labelling uses 0
+max_tokens = 800
+reasoning_effort = "low"   # gpt-oss: short thinking (it counts against max_tokens)
+retries = 3
+
+[tts]
+voices = ["af_heart", "af_bella", "af_nicole", "am_michael", "am_adam", "bf_emma", "bf_isabella", "bm_george", "bm_lewis"]
+speed = [0.8, 1.1]          # tired parents, often slower
+noise_snr_db = [8, 30]      # night-time rooms: fans, white-noise machines, a crying baby
+reverb_probability = 0.4
+max_seconds = 29
+# Kokoro fails on the Spark's GPU (cuFFT error 50 under the container's CUDA forward compatibility);
+# on the CPU one utterance takes ~0.8 s, so it runs in parallel processes.
+device = "cpu"
+workers = 10
+
+[asr]
+model = "openai/whisper-base.en"   # same weights the app runs through WhisperKit
+device = "cuda"
+# Must equal the closed-vocabulary prompt in apps/ios/App/Sources/Services.swift (a test checks).
+prompt = "bottle, breastfeeding, nursing, diaper, wet, dirty, poop, asleep, woke up, quarter, half, three quarters, left, right, switched sides"
+
+[train]                     # laya.train.TrainConfig (RLCD); the defaults are the authors' recipe
+base_model = "convaiinnovations/laya"
+epochs = 4
+micro_batch = 8
+grad_accum = 8
+encoder_lr = 2.5e-5
+head_lr = 1e-4
+
+[convert]
+llama_cpp_commit = "e467e5b"        # must equal scripts/build-llama-xcframework.sh (a test checks)
+quantization = "Q8_0"               # what the app bundles
+
+[publish]
+repo = "tianhaoz95/wee-hours-baby-activity"  # Hugging Face repo the publish stage uploads to
+dataset_repo = "tianhaoz95/wee-hours-baby-activity-data"  # its training data (publish_data, fetch)
+private = false

@@ -91,9 +91,7 @@ for t in ["she weighs 4.2 kilos", "weighed him, 8 pounds 3 ounces", "weight is 5
     add(t, "weight")
 
 # none of these
-for t in ["call the pediatrician tomorrow", "we're out of wipes", "she has a little rash on her cheek",
-          "remember to buy more formula", "grandma is coming at noon", "the bath water was too cold",
-          "temperature is 37.2", "she smiled for the first time"]:
+for t in ["call the pediatrician tomorrow", "we're out of wipes", "remember to buy more formula", "grandma is coming at noon", "she smiled for the first time"]:
     add(t, "none_of_these")
 
 
@@ -123,21 +121,66 @@ for t, a in [("finished the bottle, about half left", "half_left"), ("she only d
              ("drank the whole bottle", "full"), ("done, three quarters gone", "three_quarters"),
              ("finished, quarter of the bottle left", "quarter_left"), ("finished drinking 90 ml", "not_stated")]:
     add(t, "feed.bottle.finish", open_=["bottle"], amount=a, when="now")
-for t in ["what time is the appointment", "he sneezed a lot today", "need to wash the bottles", "hiccups again"]:
+for t in ["what time is the appointment", "need to wash the bottles", "hiccups again"]:
     add(t, "none_of_these")
 # not log entries, written by hand and kept out of ml/'s training topics: health, plans,
 # milestones, errands and near-misses that use feeding, diaper or sleep words (2026-10-19)
-for t in ["she's teething I think", "he rolled over by himself", "baby's got a bit of a cough",
-          "we need more nappies", "is she due for her vaccines soon", "the formula tin is almost empty",
+for t in ["he rolled over by himself", "we need more nappies", "is she due for her vaccines soon", "the formula tin is almost empty",
           "put the bottles in the steriliser", "how long since she last ate", "remind me to order diapers",
           "he's been really fussy tonight", "she grabbed my finger", "baby monitor battery is low",
-          "nail trimming done", "tummy time on the play mat", "gave her the vitamin D drops",
-          "he laughed at the dog", "pediatrician says she's doing great", "the washing machine is done",
-          "what's the weather tomorrow", "I need a coffee", "her eyes look a bit goopy",
-          "we're going for a walk", "car seat is installed", "she's got baby acne",
-          "can't find the pacifier", "he's wearing the blue onesie", "bath at seven tonight",
+          "nail trimming done", "he laughed at the dog", "the washing machine is done",
+          "what's the weather tomorrow", "I need a coffee", "car seat is installed", "can't find the pacifier", "he's wearing the blue onesie", "bath at seven tonight",
           "she's staring at the ceiling fan", "booked the six week check", "time to clip his nails"]:
     add(t, "none_of_these")
+
+# care, health and activity entries (tap-logged categories the model is being trained on,
+# 2026-10-19), including sentences that were "not a log entry" before these types existed
+for t, ty in [
+        ("she's teething I think", "teething"),
+        ("gave her the vitamin D drops", "medication"),
+        ("tummy time on the play mat", "tummy_time"),
+        ("she has a little rash on her cheek", "symptom"),
+        ("baby's got a bit of a cough", "symptom"),
+        ("he sneezed a lot today", "symptom"),
+        ("her eyes look a bit goopy", "symptom"),
+        ("she's got baby acne", "symptom"),
+        ("temperature is 37.2", "temperature"),
+        ("pediatrician says she's doing great", "doctor_visit"),
+        ("we're going for a walk", "walk"),
+        ("the bath water was too cold", "bath"),
+        ("gave her a bath", "bath"),
+        ("bath time's over, she loved it", "bath"),
+        ("put some lotion on her legs", "lotion"),
+        ("rubbed cream on the dry patches", "lotion"),
+        ("lotion after the bath", "lotion"),
+        ("brushed his teeth", "tooth_brushing"),
+        ("did her teeth before bed", "tooth_brushing"),
+        ("toothbrush done", "tooth_brushing"),
+        ("she went on the potty", "potty"),
+        ("sat him on the potty, nothing", "potty"),
+        ("pee in the potty", "potty"),
+        ("another tooth is coming in", "teething"),
+        ("her gums are really sore", "teething"),
+        ("gave him some infant tylenol", "medication"),
+        ("two drops of the antibiotic", "medication"),
+        ("she threw up after lunch", "symptom"),
+        ("runny nose again", "symptom"),
+        ("took her temperature, 38.1", "temperature"),
+        ("fever of 100.4", "temperature"),
+        ("just back from the pediatrician", "doctor_visit"),
+        ("we saw the doctor about his ear", "doctor_visit"),
+        ("got her two month shots", "vaccination"),
+        ("vaccines done today", "vaccination"),
+        ("he had his flu jab", "vaccination"),
+        ("ten minutes of tummy time", "tummy_time"),
+        ("on her tummy for a bit", "tummy_time"),
+        ("played with the rattle for a while", "play"),
+        ("we played peekaboo", "play"),
+        ("playtime on the mat", "play"),
+        ("took her out in the stroller", "walk"),
+        ("back from a walk around the block", "walk"),
+    ]:
+    add(t, ty)
 
 random.shuffle(rows)
 OUT.write_text("".join(json.dumps(r) + "\n" for r in rows))
