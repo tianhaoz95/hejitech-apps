@@ -1,27 +1,29 @@
 {
-  "auto_commit_rate" : 51.100000000000001,
+  "auto_commit_rate" : 43.799999999999997,
   "calibrated" : false,
   "design" : "hierarchical",
-  "full_accuracy" : 92.099999999999994,
-  "full_list_rate" : 21.899999999999999,
+  "full_accuracy" : 93.299999999999997,
+  "full_list_rate" : 32.700000000000003,
   "label" : "keywords-hierarchical",
+  "lost_entry_rate" : 0,
   "model" : "keywords-1",
   "ms_per_utterance" : 0,
+  "none_noted_rate" : 0,
   "per_question_accuracy" : {
     "amount" : 94.900000000000006,
-    "category" : 86,
+    "category" : 86.5,
     "contents" : 100,
     "diaper_kind" : 97,
     "phase" : 95.799999999999997,
     "side" : 100,
     "solids_amount" : 100
   },
-  "pick_contains_correct" : 97.900000000000006,
-  "pick_rate" : 27,
-  "rows_evaluated" : 178,
+  "pick_contains_correct" : 98,
+  "pick_rate" : 23.600000000000001,
+  "rows_evaluated" : 208,
   "temperatures" : {
 
   },
-  "type_accuracy" : 93.299999999999997,
+  "type_accuracy" : 93.799999999999997,
   "wrong_auto_commit_rate" : 1.1000000000000001
 }

@@ -1,11 +1,11 @@
 {
   "modelVersion" : "laya-q8_0@http",
   "temperatures" : {
-    "amount" : 0.05,
-    "category" : 0.05,
+    "amount" : 0.25,
+    "category" : 0.85,
     "contents" : 0.05,
     "diaper_kind" : 0.05,
     "phase" : 0.05,
-    "side" : 1.55
+    "side" : 0.2
   }
 }

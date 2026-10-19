@@ -1,10 +1,10 @@
 {
   "modelVersion" : "laya-q8_0@http",
   "temperatures" : {
-    "amount" : 0.05,
+    "amount" : 0.25,
     "contents" : 0.05,
     "diaper_kind" : 0.05,
-    "event_type" : 0.85,
-    "side" : 1.55
+    "event_type" : 0.8,
+    "side" : 0.55
   }
 }
