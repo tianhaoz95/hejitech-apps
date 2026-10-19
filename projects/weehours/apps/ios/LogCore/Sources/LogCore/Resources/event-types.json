@@ -154,7 +154,7 @@
       "id": "tooth_brushing",
       "category": "toothbrush",
       "label": "Brushed teeth",
-      "icon": "mouth.fill",
+      "icon": "bubbles.and.sparkles.fill",
       "voice": "brushed the baby's teeth",
       "questions": [],
       "fields": []
@@ -174,7 +174,7 @@
       "id": "teething",
       "category": "teething",
       "label": "Teething",
-      "icon": "mouth",
+      "icon": "face.smiling",
       "voice": "the baby is teething, sore gums",
       "questions": [],
       "fields": []

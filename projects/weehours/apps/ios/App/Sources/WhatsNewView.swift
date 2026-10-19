@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.4.4"
+    static let currentVersion = "0.4.5"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,21 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "0.4.5",
+            date: "October 2026",
+            tagline: "Clearer Icons",
+            features: [],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "bubbles.and.sparkles.fill",
+                    tint: .teal,
+                    title: "New Tooth Brushing and Teething Icons",
+                    description: "Tooth brushing and teething have clearer icons on Now and in Settings.",
+                    kind: .improvement
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "0.4.4",
             date: "October 2026",
@@ -346,11 +361,13 @@ struct WhatsNewView: View {
                             Spacer()
                             Text(release.date).font(.caption).foregroundStyle(.secondary)
                         }
-                        VStack(alignment: .leading, spacing: 14) {
-                            Label("NEW FEATURES", systemImage: "sparkles")
-                                .font(.subheadline.weight(.bold)).foregroundStyle(.secondary)
-                            ForEach(release.features) { item in
-                                WhatsNewRow(item: item) { selectedItem = item }
+                        if !release.features.isEmpty {
+                            VStack(alignment: .leading, spacing: 14) {
+                                Label("NEW FEATURES", systemImage: "sparkles")
+                                    .font(.subheadline.weight(.bold)).foregroundStyle(.secondary)
+                                ForEach(release.features) { item in
+                                    WhatsNewRow(item: item) { selectedItem = item }
+                                }
                             }
                         }
                         if !release.improvementsAndFixes.isEmpty { improvementsCard }
