@@ -11,6 +11,7 @@ struct SettingsView: View {
     @State private var editingChild: UUID?
     @State private var newChild: Baby?
     @State private var loaded = false
+    @State private var showingWhatsNew = false
     @AppStorage(Feedback.key) private var shakeToReport = true
     @AppStorage(VoiceButtonPlacement.key) private var voicePlacement = VoiceButtonPlacement.right
 
@@ -130,6 +131,10 @@ struct SettingsView: View {
                 } footer: {
                     Text("Shake your iPhone to send the developer a screenshot and a note.")
                 }
+                Section("About") {
+                    Button { showingWhatsNew = true } label: { Label("What's New in Wee Hours", systemImage: "sparkles") }
+                    LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? WhatsNewView.currentVersion)
+                }
                 if model.localOnly {
                     Section {
                         LabeledContent("Account", value: "This iPhone only")
@@ -166,6 +171,7 @@ struct SettingsView: View {
             }
             // the draft keeps unsaved edits across the child editor and tab switches; a save (or
             // a change from another phone) brings it back in line
+            .sheet(isPresented: $showingWhatsNew) { WhatsNewView() }
             .onAppear { if !loaded { draft = model.household; loaded = true } }
             .onChange(of: model.household) { _, h in draft = h }
             .confirmationDialog("Delete every entry, capture and token for this household? This cannot be undone.", isPresented: $confirmDelete, titleVisibility: .visible) {

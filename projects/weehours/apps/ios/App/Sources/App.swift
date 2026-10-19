@@ -82,6 +82,10 @@ struct RootView: View {
             }
         }
         .tint(Theme.accent)
+        // a fresh install (or a new sign-in) starts at today's version: What's New is for updates
+        .onChange(of: model.phase) { _, phase in
+            if phase == .signedOut || phase == .needsHousehold { WhatsNewView.markSeen() }
+        }
         .alert("Something went wrong", isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) {
             Button("OK", role: .cancel) {}
         } message: {

@@ -5,6 +5,7 @@ import SwiftUI
 struct MainView: View {
     @EnvironmentObject var model: AppModel
     @AppStorage(VoiceButtonPlacement.key) private var placement = VoiceButtonPlacement.right
+    @State private var showingWhatsNew = WhatsNewView.shouldShowAutomatically
 
     var body: some View {
         TabView(selection: $model.screen) {
@@ -19,6 +20,7 @@ struct MainView: View {
         .sheet(item: $model.reviewing) { capture in
             ReviewSheet(capture: capture).presentationDetents([.medium, .large])
         }
+        .sheet(isPresented: $showingWhatsNew) { WhatsNewView() }
         .overlay(alignment: placement.alignment) { VoiceButton().padding(.horizontal, 20).padding(.bottom, 64) }
         .overlay(alignment: .bottom) { ToastView().padding(placement.toastClearance).padding(.bottom, 64) }
         .onChange(of: model.screen, initial: true) { _, screen in FeedbackKit.currentScreen = screen }

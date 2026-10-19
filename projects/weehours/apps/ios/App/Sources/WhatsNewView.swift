@@ -1,0 +1,419 @@
+import SwiftUI
+
+/// The in-app release notes, shown once after an update and from Settings → About. Every release
+/// adds an entry at the top of `releases` and sets `currentVersion` to it (release.env's
+/// release_check refuses to cut a version What's New doesn't describe). See CLAUDE.md.
+enum WhatsNewItemKind: String {
+    case feature = "Feature"
+    case improvement = "Improvement"
+    case fix = "Bug Fix"
+}
+
+struct WhatsNewItem: Identifiable {
+    let id = UUID()
+    let icon: String
+    let tint: Color
+    let title: String
+    let description: String
+    var kind: WhatsNewItemKind = .feature
+    var detailedDescription: String? = nil
+    var highlights: [String]? = nil
+}
+
+struct ReleaseHistoryItem: Identifiable {
+    let version: String
+    let date: String
+    let tagline: String
+    let features: [WhatsNewItem]
+    var improvementsAndFixes: [WhatsNewItem] = []
+    var id: String { version }
+}
+
+struct WhatsNewView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    static let currentVersion = "0.4.0"
+    static let lastSeenVersionKey = "last_seen_whats_new_version"
+
+    /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
+    static var shouldShowAutomatically: Bool {
+        UserDefaults.standard.string(forKey: lastSeenVersionKey) != currentVersion
+    }
+
+    static func markSeen() {
+        UserDefaults.standard.set(currentVersion, forKey: lastSeenVersionKey)
+    }
+
+    static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "0.4.0",
+            date: "October 2026",
+            tagline: "Voice That Speaks Baby",
+            features: [
+                WhatsNewItem(
+                    icon: "waveform.badge.mic",
+                    tint: Theme.accent,
+                    title: "Voice Understands You Better",
+                    description: "The on-device model behind voice logging was trained on thousands of the things parents actually say, so most entries now log straight away instead of asking you to pick.",
+                    detailedDescription: "Wee Hours still understands speech entirely on your iPhone: nothing you say leaves the phone. The model that turns a sentence into a log entry was fine-tuned for baby logging, which takes it from guessing at about four in five entries to getting nearly all of them right in our tests. When it isn't sure, it still asks with one tap.",
+                    highlights: [
+                        "Feeds, sides, diapers, sleep, pumping and solids, in your own words",
+                        "Logs right away far more often, and asks when it's unsure",
+                        "Still fully on-device and offline"
+                    ]
+                ),
+                WhatsNewItem(
+                    icon: "sparkles",
+                    tint: .purple,
+                    title: "What's New",
+                    description: "See what changed after each update, and browse earlier versions any time from Settings → About."
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "waterbottle",
+                    tint: .blue,
+                    title: "Past Bottles Log as One Entry",
+                    description: "\"She had a bottle an hour ago, drank half\" logs a finished bottle feed with its amount, instead of starting or ending a timer.",
+                    kind: .fix
+                ),
+                WhatsNewItem(
+                    icon: "text.bubble",
+                    tint: .orange,
+                    title: "Chores Aren't Logged",
+                    description: "Sentences that aren't a log entry, like \"need to wash the bottles\" or \"remember to buy more formula\", are recognised as such far more reliably.",
+                    kind: .improvement
+                )
+            ]
+        ),
+        ReleaseHistoryItem(
+            version: "0.3.2",
+            date: "October 2026",
+            tagline: "Your Mic, Your Side",
+            features: [
+                WhatsNewItem(
+                    icon: "mic.circle",
+                    tint: Theme.accent,
+                    title: "Choose Where the Mic Sits",
+                    description: "Put the mic button on the left, in the middle or on the right: Settings → Voice → Mic button."
+                )
+            ]
+        ),
+        ReleaseHistoryItem(
+            version: "0.3.1",
+            date: "October 2026",
+            tagline: "Adding a Child, Simpler",
+            features: [
+                WhatsNewItem(
+                    icon: "person.badge.plus",
+                    tint: .pink,
+                    title: "Add a Child From a Sheet",
+                    description: "Adding a child opens a sheet with Cancel and Add. Add stays off until the child has a name, and saves right away."
+                )
+            ]
+        ),
+        ReleaseHistoryItem(
+            version: "0.3.0",
+            date: "October 2026",
+            tagline: "More Than One Little One",
+            features: [
+                WhatsNewItem(
+                    icon: "person.2.fill",
+                    tint: .pink,
+                    title: "Several Children",
+                    description: "Every child's status on Now, with a Log-for bar to log for one child, both or all.",
+                    highlights: [
+                        "Settings → Children: add, colour, bottle size, show on this iPhone, archive",
+                        "Say the child's name when logging by voice",
+                        "Per-child widgets, reminders, Live Activities, watch and glasses",
+                        "AI agents (MCP) know which child an entry is for"
+                    ]
+                ),
+                WhatsNewItem(
+                    icon: "ruler",
+                    tint: .green,
+                    title: "A Tile per Measurement",
+                    description: "Growth shows weight, height and head size as their own tiles."
+                )
+            ]
+        ),
+        ReleaseHistoryItem(
+            version: "0.2.0",
+            date: "October 2026",
+            tagline: "Growing Up",
+            features: [
+                WhatsNewItem(
+                    icon: "chart.line.uptrend.xyaxis",
+                    tint: .green,
+                    title: "Growth Tracking",
+                    description: "Log weight, height and head size from the Growth tile or by voice."
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "mic.fill",
+                    tint: Theme.accent,
+                    title: "Liquid Glass Mic Button",
+                    description: "The mic button uses Liquid Glass on iOS 26.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "list.bullet.rectangle",
+                    tint: .blue,
+                    title: "Friendlier Empty Timeline",
+                    description: "An empty timeline explains how to log your first entry.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "person.crop.circle",
+                    tint: .gray,
+                    title: "Sign-in First",
+                    description: "A fresh install starts at sign-in, with a way to switch accounts during setup.",
+                    kind: .improvement
+                )
+            ]
+        )
+    ]
+
+    @State private var selectedVersion = WhatsNewView.currentVersion
+    @State private var showingImprovements = false
+    @State private var selectedItem: WhatsNewItem?
+
+    private var release: ReleaseHistoryItem {
+        Self.releases.first { $0.version == selectedVersion } ?? Self.releases[0]
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        VStack(spacing: 8) {
+                            Image(systemName: "sparkles").font(.system(size: 40, weight: .bold)).foregroundStyle(Theme.accent)
+                            Text("What's New in Wee Hours").font(.title2.bold()).multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity)
+                        versionSelector
+                        HStack {
+                            Text(release.tagline).font(.headline)
+                            Spacer()
+                            Text(release.date).font(.caption).foregroundStyle(.secondary)
+                        }
+                        VStack(alignment: .leading, spacing: 14) {
+                            Label("NEW FEATURES", systemImage: "sparkles")
+                                .font(.subheadline.weight(.bold)).foregroundStyle(.secondary)
+                            ForEach(release.features) { item in
+                                WhatsNewRow(item: item) { selectedItem = item }
+                            }
+                        }
+                        if !release.improvementsAndFixes.isEmpty { improvementsCard }
+                    }
+                    .padding(24)
+                }
+                Divider()
+                Button {
+                    Self.markSeen()
+                    dismiss()
+                } label: {
+                    Text("Continue").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
+                }
+                .buttonStyle(.borderedProminent)
+                .padding(20)
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") { Self.markSeen(); dismiss() }
+                }
+            }
+            .sheet(isPresented: $showingImprovements) { WhatsNewImprovementsView(release: release) }
+            .sheet(item: $selectedItem) { WhatsNewDetailView(item: $0, version: release.version) }
+        }
+    }
+
+    private var versionSelector: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(Self.releases) { r in
+                    let on = r.version == selectedVersion
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) { selectedVersion = r.version }
+                    } label: {
+                        HStack(spacing: 5) {
+                            Text("v\(r.version)").font(.subheadline.weight(.semibold))
+                            if r.version == Self.currentVersion {
+                                Text("LATEST").font(.system(size: 9, weight: .bold))
+                                    .padding(.horizontal, 5).padding(.vertical, 2)
+                                    .background(on ? Color.white.opacity(0.25) : Theme.accent.opacity(0.15), in: Capsule())
+                            }
+                        }
+                        .padding(.horizontal, 14).padding(.vertical, 7)
+                        .background(on ? Theme.accent : Color(.tertiarySystemFill), in: Capsule())
+                        .foregroundStyle(on ? .white : .primary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    private var improvementsCard: some View {
+        Button { showingImprovements = true } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "wrench.and.screwdriver.fill").font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Theme.accent)
+                    .frame(width: 38, height: 38)
+                    .background(Theme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Bug Fixes & Improvements").font(.headline)
+                    Text("\(release.improvementsAndFixes.count) more in v\(release.version)").font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.system(size: 13, weight: .bold)).foregroundStyle(.tertiary)
+            }
+            .padding(12)
+            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// One feature or fix: icon, title, description; tapping opens its detail sheet.
+private struct WhatsNewRow: View {
+    let item: WhatsNewItem
+    var showsKind = false
+    let open: () -> Void
+
+    var body: some View {
+        Button(action: open) {
+            HStack(alignment: .top, spacing: 14) {
+                Image(systemName: item.icon).font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(item.tint)
+                    .frame(width: 36, height: 36)
+                    .background(item.tint.opacity(0.15), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Text(item.title).font(.headline)
+                        if showsKind { KindBadge(item: item) }
+                    }
+                    Text(item.description).font(.subheadline).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.tertiary).padding(.top, 10)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct KindBadge: View {
+    let item: WhatsNewItem
+
+    var body: some View {
+        let color: Color = switch item.kind {
+        case .feature: item.tint
+        case .improvement: .blue
+        case .fix: .red
+        }
+        Text(item.kind.rawValue.uppercased()).font(.system(size: 10, weight: .bold))
+            .padding(.horizontal, 6).padding(.vertical, 2)
+            .background(color.opacity(0.15), in: Capsule())
+            .foregroundStyle(color)
+    }
+}
+
+/// The secondary list: a release's bug fixes and improvements.
+struct WhatsNewImprovementsView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedItem: WhatsNewItem?
+    let release: ReleaseHistoryItem
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Label("Bug Fixes & Improvements", systemImage: "wrench.and.screwdriver.fill").font(.title2.bold())
+                        Text("Wee Hours v\(release.version) · \(release.date)").font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    ForEach(release.improvementsAndFixes) { item in
+                        WhatsNewRow(item: item, showsKind: true) { selectedItem = item }
+                    }
+                }
+                .padding(24)
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .sheet(item: $selectedItem) { WhatsNewDetailView(item: $0, version: release.version) }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+}
+
+/// One item in full: its description, the optional deep dive and highlights.
+struct WhatsNewDetailView: View {
+    @Environment(\.dismiss) private var dismiss
+    let item: WhatsNewItem
+    let version: String
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    HStack(alignment: .top, spacing: 16) {
+                        Image(systemName: item.icon).font(.system(size: 24, weight: .semibold))
+                            .foregroundStyle(item.tint)
+                            .frame(width: 52, height: 52)
+                            .background(item.tint.opacity(0.15), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(item.title).font(.title3.bold())
+                            HStack(spacing: 6) {
+                                KindBadge(item: item)
+                                Text("v\(version)").font(.system(size: 10, weight: .semibold))
+                                    .padding(.horizontal, 7).padding(.vertical, 3)
+                                    .background(Color(.tertiarySystemFill), in: Capsule())
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    card { Text(item.description).font(.body).fixedSize(horizontal: false, vertical: true) }
+                    if let detailed = item.detailedDescription {
+                        card {
+                            Label("Deep Dive", systemImage: "text.alignleft").font(.subheadline.bold()).foregroundStyle(.secondary)
+                            Text(detailed).font(.body).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    if let highlights = item.highlights, !highlights.isEmpty {
+                        card {
+                            Label("Key Highlights", systemImage: "checkmark.circle.fill").font(.subheadline.bold()).foregroundStyle(.secondary)
+                            ForEach(highlights, id: \.self) { h in
+                                HStack(alignment: .top, spacing: 10) {
+                                    Image(systemName: "checkmark").font(.system(size: 11, weight: .bold))
+                                        .foregroundStyle(item.tint).padding(.top, 4)
+                                    Text(h).font(.subheadline).fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(24)
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+        }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private func card<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 10, content: content)
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+}
