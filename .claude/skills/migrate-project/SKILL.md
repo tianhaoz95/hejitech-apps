@@ -287,3 +287,18 @@ and confirm no drift. List the historical migrations in `LEGACY_MIGRATIONS` (che
   maps onto the team-wide ones when its team id is the HEJI team (`68CTFST8W2`); nothing to copy.
 - **Absolute dev paths** (`/Users/<you>/GitHub/<old-repo>/…` in tests and simulator fallbacks)
   become `#filePath`-relative.
+
+## Apps with their own Xcode project generator (from TinyTouch, 2026-10-19)
+
+- **Keep the generator** (TinyTouch's `tools/generate_project.py`) rather than porting to XcodeGen:
+  check it reproduces the committed project (`git diff` after running it), make it preserve the
+  pbxproj's `MARKETING_VERSION` like the team id, and point `release.env`'s `VERSION_FILE` at the
+  `project.pbxproj` (`cut_release.sh` bumps every target's `MARKETING_VERSION` there and refuses if
+  they disagree). Hard-coded `INFOPLIST_KEY_CFBundle*Version` overrides become `$(MARKETING_VERSION)`
+  / `$(CURRENT_PROJECT_VERSION)`; CI checks the generator's output matches the commit.
+- **Old CI that uploads on every push to main:** disable it as soon as the import is pushed, and
+  drop tests that assert on the old workflow file or secret-upload helpers.
+- **`docs/` holding the public site:** move it to `site/` (`docs/` is the monorepo's VitePress page).
+- **Status page:** projects and workflows appear automatically (`pages/status.data.ts` reads
+  `projects/*/CLAUDE.md`, `release.env`, `<name>-*.yml`); add production URLs (sites, Workers) to
+  its `DEPLOYMENTS` by hand.

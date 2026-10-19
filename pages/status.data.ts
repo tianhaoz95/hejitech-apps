@@ -60,6 +60,8 @@ const DEPLOYMENTS: Deployment[] = [
   { name: "Contempo web app + API", project: "contempo", url: "https://contempo.hejitech.workers.dev", via: "Cloudflare Workers" },
   { name: "FeedbackKit dashboard", project: "feedbackkit", url: "https://feedback-kit.hejitech.workers.dev", via: "Cloudflare Workers Builds" },
   { name: "FeedbackKit Edge Functions", project: "feedbackkit", url: "https://gpucoladcyvijefdjudf.supabase.co/functions/v1/ingest-feedback", via: "GitHub Actions → Supabase", workflow: "feedbackkit-deploy-functions.yml", health: false },
+  { name: "ToddlerCam site (App Store privacy/support URLs)", project: "toddlercam", url: "https://tianhaoz95.github.io/hejitech-apps/toddlercam/site/", via: "GitHub Pages", workflow: "pages.yml" },
+  { name: "TinyTouch site (App Store privacy/support URLs)", project: "tinytouch", url: "https://tianhaoz95.github.io/hejitech-apps/tinytouch/site/", via: "GitHub Pages", workflow: "pages.yml" },
   { name: "HEJI Apps site (this one)", project: "shared", url: "https://tianhaoz95.github.io/hejitech-apps/", via: "GitHub Pages", workflow: "pages.yml" },
 ];
 

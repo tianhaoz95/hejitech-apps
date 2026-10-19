@@ -1,7 +1,7 @@
 # HEJI projects monorepo
 
-Several products live in `projects/<name>/` (`waypack`, `weehours`, `feedbackkit`, `voxbrief`, `meowtrix`, `contempo`, `toddlercam`), sharing one
-Supabase project (FeedbackKit keeps its own: `BACKEND=own`; Voxbrief, Meowtrix and ToddlerCam have none: `BACKEND=none`) (`supabase/`, read `supabase/README.md` before any schema change), npm workspaces and CI
+Several products live in `projects/<name>/` (`waypack`, `weehours`, `feedbackkit`, `voxbrief`, `meowtrix`, `contempo`, `toddlercam`, `tinytouch`), sharing one
+Supabase project (FeedbackKit keeps its own: `BACKEND=own`; Voxbrief, Meowtrix, ToddlerCam and TinyTouch have none: `BACKEND=none`) (`supabase/`, read `supabase/README.md` before any schema change), npm workspaces and CI
 plumbing. Layout and how to add a project: `README.md`. Keep each project self-contained; put
 something at the root only when it is genuinely shared. Each project has its own `CLAUDE.md`
 (`projects/<name>/CLAUDE.md`, loaded when you work there) for its commands, architecture and
@@ -77,3 +77,7 @@ team-wide signing secrets). Android goes to Play Console by hand. See `projects/
 For ToddlerCam it bumps `MARKETING_VERSION` in `projects/toddlercam/project.yml` and publishes
 `toddlercam-v<version>`, which runs `toddlercam-testflight.yml` (iPhone app with the watch app and
 complications embedded, same team-wide signing secrets). See `projects/toddlercam/CLAUDE.md`.
+
+For TinyTouch it bumps `MARKETING_VERSION` in `projects/tinytouch/ToddlerPlay.xcodeproj/project.pbxproj`
+(written by its own `tools/generate_project.py`, no XcodeGen) and publishes `tinytouch-v<version>`,
+which runs `tinytouch-testflight.yml`. See `projects/tinytouch/CLAUDE.md`.

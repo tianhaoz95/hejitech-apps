@@ -13,6 +13,7 @@ one npm workspace and the CI plumbing.
 | Meowtrix | Remote workspace for vibe engineering: self-hosted Node server (split panes of terminals, browsers, editor), macOS desktop apps (Tauri). No backend (`BACKEND=none`); standalone npm project with its own lockfile | [`projects/meowtrix`](projects/meowtrix/README.md) |
 | Contempo | AI-native hour tracker for STR material-participation tests: Android + Wear OS (Kotlin), iOS + watchOS (Swift), web app + admin + API on its Worker. Moved off Firebase onto the shared Supabase project (schema `contempo`) | [`projects/contempo`](projects/contempo/README.md) |
 | ToddlerCam | Dual-camera app for toddlers (front + rear at once, face-tracking masks, toddler lock) with an Apple Watch remote for the parent (Swift). Kids Category, no backend (`BACKEND=none`) | [`projects/toddlercam`](projects/toddlercam/README.md) |
+| TinyTouch | Toddler lock + low-stimulation play on Apple Watch (touch shield, Digital Crown toys, 3-second parent hold) with an iPhone remote (Swift). Kids Category, no backend (`BACKEND=none`) | [`projects/tinytouch`](projects/tinytouch/README.md) |
 
 ## Layout
 ```

@@ -85,6 +85,16 @@ hero:
 </div>
 
 <div class="heji-app">
+  <img src="/tinytouch/icon.png" alt="" width="64" height="64">
+  <div class="heji-app-body">
+    <h3><a class="no-icon" href="./tinytouch/">TinyTouch</a></h3>
+    <p>Hand your Apple Watch to a toddler without 911 calls or swiped-away apps. Every touch becomes calm, pentatonic play, exits sit behind a 3-second parent hold, and the iPhone is the remote.</p>
+    <span class="heji-tags"><span>Apple Watch</span><span>iPhone</span><span>Kids Category</span></span>
+    <span class="heji-links"><a class="heji-btn brand no-icon" target="_blank" rel="noopener" href="https://tianhaoz95.github.io/hejitech-apps/tinytouch/site/">Visit app</a><a class="heji-btn no-icon" target="_blank" rel="noopener" href="./tinytouch/">Docs →</a></span>
+  </div>
+</div>
+
+<div class="heji-app">
   <img src="/feedbackkit-logo.png" alt="" width="64" height="64">
   <div class="heji-app-body">
     <h3><a class="no-icon" href="https://tianhaoz95.github.io/hejitech-apps/feedbackkit/" target="_self">FeedbackKit</a></h3>
