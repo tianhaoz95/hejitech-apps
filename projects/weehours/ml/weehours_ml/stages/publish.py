@@ -24,7 +24,7 @@ def model_card(run):
         f"- Source commit: {manifest['git_commit']}", "",
     ]
     if eval_md.exists():
-        lines += ["# Eval (the app's logeval, fine-tuned vs stock)", "", eval_md.read_text()]
+        lines += ["# Eval (the app's logeval, fine-tuned vs the model the app shipped before)", "", eval_md.read_text()]
     return "\n".join(lines) + "\n"
 
 

@@ -5,7 +5,7 @@
         baseline=eval/results/laya-hierarchical.json
 
 Used by the LLM eval workflow (this run vs the committed eval/results) and by the fine-tuning
-pipeline's `evaluate` stage (fine-tuned vs stock Laya). With exactly two columns a third shows
+pipeline's `evaluate` stage (fine-tuned vs the shipped Laya). With exactly two columns a third shows
 the first minus the second. Missing files are skipped. Standard library only.
 """
 

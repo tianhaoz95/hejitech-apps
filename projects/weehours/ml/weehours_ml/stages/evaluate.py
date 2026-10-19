@@ -1,8 +1,8 @@
 """Stage `evaluate` (Mac: needs Swift for `logeval`): runs the app's own eval harness on the
-fine-tuned GGUF and on the stock one, both through llama-server at the app's llama.cpp commit,
-raw and with fitted calibration, and writes runs/<name>/eval.md (eval/report.py). The fine-tuned
-model's fitted calibration lands in runs/<name>/calibration.json: it replaces
-spec/calibration.json when the model ships."""
+fine-tuned GGUF and on the one the app ships now (stock Laya until 0.4.0, the top-up fine-tune
+since), both through llama-server at the app's llama.cpp commit, raw and with fitted calibration,
+and writes runs/<name>/eval.md (eval/report.py). The fine-tuned model's fitted calibration lands in
+runs/<name>/calibration.json; adopt it only if it beats raw (README, 'Shipping a model')."""
 
 import shutil
 import socket
@@ -18,7 +18,7 @@ LOGCORE = PROJECT_DIR / "apps" / "ios" / "LogCore"
 BUNDLED = PROJECT_DIR / "apps" / "ios" / "App" / "Models" / "Laya-Q8_0.gguf"
 
 
-def stock_model(run):
+def shipped_model(run):
     """The Laya the app ships today (bundled copy, else downloaded per eval/laya.env)."""
     if BUNDLED.exists():
         return BUNDLED
@@ -69,13 +69,13 @@ def run_stage(run, limit=None):
         raise SystemExit(f"evaluate: {finetuned} missing; run `convert` first")
 
     results = run.path("eval")
-    for name, model in [("finetuned", finetuned), ("stock", stock_model(run))]:
+    for name, model in [("finetuned", finetuned), ("shipped", shipped_model(run))]:
         print(f"evaluate: {name} ({model})", flush=True)
         serve_and_eval(server, model, results / name, logeval)
 
     report = [subprocess.run(
         [sys.executable, str(PROJECT_DIR / "eval" / "report.py"), "--title", title,
-         f"fine-tuned={results / 'finetuned' / f'{label}.json'}", f"stock={results / 'stock' / f'{label}.json'}"],
+         f"fine-tuned={results / 'finetuned' / f'{label}.json'}", f"shipped={results / 'shipped' / f'{label}.json'}"],
         check=True, capture_output=True, text=True).stdout
         for title, label in [("Raw", "laya-hierarchical"), ("Calibrated (fit on even rows, scored on odd)",
                                                              "laya-hierarchical-calibrated")]]
