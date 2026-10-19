@@ -1,27 +1,27 @@
 {
-  "auto_commit_rate" : 2.7999999999999998,
+  "auto_commit_rate" : 88.200000000000003,
   "calibrated" : false,
   "design" : "hierarchical",
-  "full_accuracy" : 65.700000000000003,
-  "full_list_rate" : 87.099999999999994,
+  "full_accuracy" : 97.799999999999997,
+  "full_list_rate" : 8.4000000000000004,
   "label" : "laya-hierarchical",
   "model" : "laya-q8_0@http",
-  "ms_per_utterance" : 794,
+  "ms_per_utterance" : 319,
   "per_question_accuracy" : {
-    "amount" : 66.700000000000003,
-    "category" : 36,
-    "contents" : 22.199999999999999,
-    "diaper_kind" : 84.799999999999997,
-    "phase" : 64.200000000000003,
-    "side" : 83.900000000000006,
-    "solids_amount" : 75
+    "amount" : 97.400000000000006,
+    "category" : 98.299999999999997,
+    "contents" : 100,
+    "diaper_kind" : 100,
+    "phase" : 100,
+    "side" : 90.299999999999997,
+    "solids_amount" : 100
   },
-  "pick_contains_correct" : 61.100000000000001,
-  "pick_rate" : 10.1,
+  "pick_contains_correct" : 100,
+  "pick_rate" : 3.3999999999999999,
   "rows_evaluated" : 178,
   "temperatures" : {
 
   },
-  "type_accuracy" : 80.900000000000006,
-  "wrong_auto_commit_rate" : 0
+  "type_accuracy" : 99.400000000000006,
+  "wrong_auto_commit_rate" : 0.59999999999999998
 }

@@ -79,5 +79,5 @@ llama_cpp_commit = "e467e5b"        # must equal scripts/build-llama-xcframework
 quantization = "Q8_0"               # what the app bundles
 
 [publish]
-repo = ""                   # Hugging Face repo, e.g. "<user>/weehours-laya"; set before `publish`
+repo = "tianhaoz95/wee-hours-baby-activity"  # Hugging Face repo the publish stage uploads to
 private = false

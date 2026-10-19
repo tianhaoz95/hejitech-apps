@@ -10,7 +10,7 @@ A newborn log built for 3am. You log a feed, diaper or nap in under three second
 Fed 2h40m ago · left next · diaper 1h10m ago
 ```
 
-Voice is understood **on the iPhone** by [Laya](https://huggingface.co/ggml-org/Laya-GGUF), a 0.4B decision model running through llama.cpp. It scores predefined options, never generates text, and when it isn't sure it asks you to choose with one tap.
+Voice is understood **on the iPhone** by [Laya](https://huggingface.co/ggml-org/Laya-GGUF), a 0.4B decision model fine-tuned for baby logging ([wee-hours-baby-activity](https://huggingface.co/tianhaoz95/wee-hours-baby-activity), `ml/`), running through llama.cpp. It scores predefined options, never generates text, and when it isn't sure it asks you to choose with one tap.
 
 > The full design, architecture and implementation walkthrough (with diagrams, eval numbers and screenshots) is in `report/v0/site`. Run `report/v0/script/serve.sh` to view it.
 
