@@ -72,10 +72,18 @@ git fetch -q --force origin main --tags || die "git fetch origin main --tags fai
 HEAD_SHA="$(git rev-parse HEAD)"
 
 # The release ships whatever CI last checked. CI only runs on commits touching CI_PATHS, so check
-# the newest of those; later commits only changed other projects.
+# the newest of those; later commits only changed other projects. A push of several commits runs
+# CI on its head only: then the newest main run whose head contains CI_SHA checked the same files.
 CI_SHA="$(git log -1 --format=%H HEAD -- "${CI_PATHS[@]}")"
 if [ "$FORCE" -eq 0 ]; then
-  CI="$(gh run list --repo "$REPO" --workflow "$CI_WORKFLOW" --commit "$CI_SHA" --limit 1 --json status,conclusion -q '.[0] | "\(.status) \(.conclusion)"' 2>/dev/null || true)"
+  CI="$(gh run list --repo "$REPO" --workflow "$CI_WORKFLOW" --commit "$CI_SHA" --limit 1 --json status,conclusion -q '.[0] | select(.) | "\(.status) \(.conclusion)"' 2>/dev/null || true)"
+  if [ -z "$CI" ]; then
+    while read -r sha status conclusion; do
+      if git merge-base --is-ancestor "$CI_SHA" "$sha" 2>/dev/null; then
+        CI="$status $conclusion"; echo "==> no $CI_WORKFLOW run on ${CI_SHA:0:7} itself; using the one on ${sha:0:7}, which contains it"; break
+      fi
+    done < <(gh run list --repo "$REPO" --workflow "$CI_WORKFLOW" --branch main --event push --limit 20 --json headSha,status,conclusion -q '.[] | "\(.headSha) \(.status) \(.conclusion)"' 2>/dev/null || true)
+  fi
   case "$CI" in
     "completed success") echo "==> $CI_WORKFLOW is green on ${CI_SHA:0:7}" ;;
     "") die "no $CI_WORKFLOW run for ${CI_SHA:0:7} yet (push first, or --force)" ;;
