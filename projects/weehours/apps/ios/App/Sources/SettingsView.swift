@@ -205,10 +205,22 @@ struct SettingsView: View {
     /// One toggle per category in a Settings → Tracking group (household-wide, Save to apply).
     @ViewBuilder private func categoryToggles(group: String?) -> some View {
         ForEach(EventRegistry.shared.categories.filter { $0.group == group }, id: \.id) { c in
-            Toggle(c.label, isOn: Binding(get: { draft.categories.contains(c.id) }, set: { on in
+            Toggle(isOn: Binding(get: { draft.categories.contains(c.id) }, set: { on in
                 draft.categories.removeAll { $0 == c.id }
                 if on { draft.categories.append(c.id) }
-            }))
+            })) {
+                // the icon and colour of the category's first type, as on its Now tile
+                let type = EventRegistry.shared.types.first { $0.category == c.id }?.id ?? ""
+                Label {
+                    Text(c.label)
+                } icon: {
+                    Image(systemName: Theme.icon(for: type))
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 28, height: 28)
+                        .background(Theme.color(for: type), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                }
+            }
             .accessibilityIdentifier("category-\(c.id)")
         }
     }
