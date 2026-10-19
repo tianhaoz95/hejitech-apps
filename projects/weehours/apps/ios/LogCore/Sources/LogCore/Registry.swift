@@ -8,6 +8,28 @@ public struct EventRegistry: Sendable {
         public let label: String
         public let voice: String?
         public let defaultEnabled: Bool
+        /// Settings section: nil for the core categories, else care | health | activity.
+        public let group: String?
+        /// false: logged by tap (and MCP) only, never offered to the decision model, which hasn't
+        /// been trained on it yet (the option texts are part of its prompt).
+        public let model: Bool?
+
+        public var inModel: Bool { model ?? true }
+    }
+
+    /// One field of a type whose fields the spec describes (`fields`): validated, labelled and
+    /// entered from it, on the phone and in the TypeScript core.
+    public struct FieldSpec: Decodable, Sendable, Hashable {
+        public struct Option: Decodable, Sendable, Hashable { public let key: String, label: String }
+        public let key: String
+        public let kind: String          // choice | number | text
+        public let required: Bool?
+        public let options: [Option]?
+        public let unit: String?         // minutes | celsius
+        public let label: String?
+        public let presets: [Double]?    // quick picks for a number (Home tile menu)
+
+        public var isRequired: Bool { required ?? false }
     }
 
     public struct SessionSpec: Decodable, Sendable, Hashable {
@@ -23,6 +45,9 @@ public struct EventRegistry: Sendable {
         public let session: SessionSpec?
         public let questions: [String]
         public let numbers: [String]?
+        /// SF Symbol for types the spec gives one (the newer, tap-logged ones).
+        public let icon: String?
+        public let fields: [FieldSpec]?
 
         public var isFeed: Bool { id.hasPrefix("feed.") }
     }
@@ -58,6 +83,14 @@ public struct EventRegistry: Sendable {
     public func types(enabled categories: Set<String>) -> [EventType] {
         types.filter { categories.contains($0.category) }
     }
+
+    /// The enabled types the decision model may be asked about (`Category.model`).
+    public func modelTypes(enabled categories: Set<String>) -> [EventType] {
+        let asked = Set(self.categories.filter(\.inModel).map(\.id))
+        return types(enabled: categories).filter { asked.contains($0.category) }
+    }
+
+    public func category(_ id: String) -> Category? { categories.first { $0.id == id } }
 
     public var defaultCategories: Set<String> {
         Set(categories.filter(\.defaultEnabled).map(\.id))

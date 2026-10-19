@@ -387,6 +387,7 @@ struct QuickActions: View {
                     .accessibilityIdentifier("growthTile-\(type)")
                 }
             }
+            ForEach(Care.types(enabled: h.enabled), id: \.id) { CareTile(type: $0) }
         }
         .sheet(isPresented: Binding { measuring != nil } set: { if !$0 { measuring = nil } }) {
             if let measuring { GrowthSheet(type: measuring, babies: model.targetBabies).presentationDetents([.medium, .large]) }

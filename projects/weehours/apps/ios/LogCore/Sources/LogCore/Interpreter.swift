@@ -93,7 +93,7 @@ public struct VoiceInterpreter: Sendable {
     }
 
     public func questions(for context: InterpretContext) -> [DecisionQuestion] {
-        let types = registry.types(enabled: context.enabledCategories)
+        let types = registry.modelTypes(enabled: context.enabledCategories)
         var qs: [DecisionQuestion] = []
         switch design {
         case .flat:
@@ -101,7 +101,7 @@ public struct VoiceInterpreter: Sendable {
             typeOptions.append(.init(key: Self.noneKey, description: Self.noneDescription))
             qs.append(DecisionQuestion(id: "event_type", instructions: registry.questions["event_type"]?.instructions ?? "Which entry?", options: typeOptions))
         case .hierarchical:
-            var catOptions = registry.categories.filter { context.enabledCategories.contains($0.id) }
+            var catOptions = registry.categories.filter { context.enabledCategories.contains($0.id) && $0.inModel }
                 .map { DecisionQuestion.Option(key: $0.id, description: $0.voice ?? $0.label) }
             catOptions.append(.init(key: Self.noneKey, description: Self.noneDescription))
             qs.append(DecisionQuestion(id: "category", instructions: registry.questions["category"]?.instructions ?? "What is it about?", options: catOptions))
@@ -150,7 +150,7 @@ public struct VoiceInterpreter: Sendable {
     /// no phase: the units and words pick weight, height or head size deterministically.
     func combine(_ answers: [String: DecisionAnswer], context: InterpretContext, transcript: String = "") -> DecisionAnswer {
         let measure = Parsers.growthMeasure(in: transcript)
-        let types = registry.types(enabled: context.enabledCategories)
+        let types = registry.modelTypes(enabled: context.enabledCategories)
         guard let cat = answers["category"] else { return DecisionAnswer(options: [Self.noneKey], probabilities: [1]) }
         let phase = answers["phase"]
         var keys: [String] = []
@@ -302,8 +302,25 @@ public struct VoiceInterpreter: Sendable {
         if let a = fields["amount"]?.string { details.append(a) }
         if let g = fields["grams"]?.number { details.append(String(format: "%.2f kg", g / 1000)) }
         if let cm = fields["height_cm"]?.number ?? fields["head_cm"]?.number { details.append(String(format: "%.1f cm", cm)) }
+        for f in registry.type(type)?.fields ?? [] {
+            guard let v = fields[f.key] else { continue }
+            if let key = v.string, let o = f.options?.first(where: { $0.key == key }) { details.append(o.label) }
+            else if let n = v.number { details.append(Self.numberText(n, unit: f.unit)) }
+            else if let t = v.string, !t.isEmpty { details.append(t) }
+        }
         if !details.isEmpty { label += " · " + details.joined(separator: ", ") }
         return label
+    }
+
+    /// "15 min", or a body temperature in the phone's units ("38.2 °C", "100.8 °F").
+    public static func numberText(_ n: Double, unit: String?, locale: Locale = .current) -> String {
+        switch unit {
+        case "minutes": return "\(Int(n.rounded())) min"
+        case "celsius":
+            if locale.measurementSystem == .us { return String(format: "%.1f °F", n * 9 / 5 + 32) }
+            return String(format: "%.1f °C", n)
+        default: return n.rounded() == n ? "\(Int(n))" : String(format: "%.1f", n)
+        }
     }
 
     public static func fractionText(_ f: Double) -> String {

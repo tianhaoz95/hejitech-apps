@@ -106,6 +106,17 @@ public actor LogService {
         if type == "weight", fields["grams"] == nil { throw LogError.invalidField("grams") }
         if type == "height", fields["height_cm"] == nil { throw LogError.invalidField("height_cm") }
         if type == "head", fields["head_cm"] == nil { throw LogError.invalidField("head_cm") }
+        for f in registry.type(type)?.fields ?? [] {   // types the spec describes field by field
+            guard let v = fields[f.key] else {
+                if f.isRequired { throw LogError.invalidField(f.key) }
+                continue
+            }
+            switch f.kind {
+            case "choice": if !(v.string.map { s in f.options?.contains { $0.key == s } ?? false } ?? false) { throw LogError.invalidField(f.key) }
+            case "number": if !((v.number ?? -1) > 0) { throw LogError.invalidField(f.key) }
+            default: if (v.string ?? "").trimmingCharacters(in: .whitespaces).isEmpty { throw LogError.invalidField(f.key) }
+            }
+        }
     }
 
     @discardableResult

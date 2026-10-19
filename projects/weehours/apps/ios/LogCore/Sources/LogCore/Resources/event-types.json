@@ -7,7 +7,20 @@
     { "id": "solids", "voice": "eating solid food, puree, cereal", "label": "Solid food", "defaultEnabled": false },
     { "id": "diaper", "voice": "diaper or nappy change, pee, poop", "label": "Diapers", "defaultEnabled": true },
     { "id": "sleep", "voice": "sleeping, napping, falling asleep or waking up", "label": "Sleep", "defaultEnabled": true },
-    { "id": "growth", "voice": "weighing or measuring the baby: weight in kilos or pounds, length or height, head size", "label": "Growth", "defaultEnabled": true }
+    { "id": "growth", "voice": "weighing or measuring the baby: weight in kilos or pounds, length or height, head size", "label": "Growth", "defaultEnabled": true },
+    { "id": "bath", "group": "care", "voice": "giving the baby a bath", "label": "Bath", "defaultEnabled": false, "model": false },
+    { "id": "lotion", "group": "care", "voice": "putting lotion, cream or ointment on the baby's skin", "label": "Lotion", "defaultEnabled": false, "model": false },
+    { "id": "toothbrush", "group": "care", "voice": "brushing the baby's teeth or gums", "label": "Tooth brushing", "defaultEnabled": false, "model": false },
+    { "id": "potty", "group": "care", "voice": "sitting the child on the potty, potty training", "label": "Potty", "defaultEnabled": false, "model": false },
+    { "id": "teething", "group": "health", "voice": "teething, a tooth coming in, sore gums", "label": "Teething", "defaultEnabled": false, "model": false },
+    { "id": "medication", "group": "health", "voice": "giving medicine, drops or vitamins", "label": "Medication", "defaultEnabled": false, "model": false },
+    { "id": "symptom", "group": "health", "voice": "a symptom like a cough, runny nose, rash or vomiting", "label": "Symptoms", "defaultEnabled": false, "model": false },
+    { "id": "temperature", "group": "health", "voice": "taking the baby's temperature", "label": "Temperature", "defaultEnabled": false, "model": false },
+    { "id": "doctor", "group": "health", "voice": "a doctor or pediatrician visit or checkup", "label": "Doctor visits", "defaultEnabled": false, "model": false },
+    { "id": "vaccination", "group": "health", "voice": "a vaccination or immunization shot", "label": "Vaccinations", "defaultEnabled": false, "model": false },
+    { "id": "tummy_time", "group": "activity", "voice": "tummy time on the play mat", "label": "Tummy time", "defaultEnabled": false, "model": false },
+    { "id": "play", "group": "activity", "voice": "playing with the baby", "label": "Play time", "defaultEnabled": false, "model": false },
+    { "id": "walk", "group": "activity", "voice": "going for a walk outside, the stroller or carrier", "label": "Walk outside", "defaultEnabled": false, "model": false }
   ],
   "types": [
     {
@@ -118,6 +131,142 @@
       "voice": "measured the baby's head circumference in centimeters or inches",
       "questions": ["when"],
       "numbers": ["head_cm"]
+    },
+    {
+      "id": "bath",
+      "category": "bath",
+      "label": "Bath",
+      "icon": "bathtub.fill",
+      "voice": "gave the baby a bath",
+      "questions": [],
+      "fields": []
+    },
+    {
+      "id": "lotion",
+      "category": "lotion",
+      "label": "Lotion",
+      "icon": "hands.and.sparkles.fill",
+      "voice": "put lotion or cream on the baby",
+      "questions": [],
+      "fields": []
+    },
+    {
+      "id": "tooth_brushing",
+      "category": "toothbrush",
+      "label": "Brushed teeth",
+      "icon": "mouth.fill",
+      "voice": "brushed the baby's teeth",
+      "questions": [],
+      "fields": []
+    },
+    {
+      "id": "potty",
+      "category": "potty",
+      "label": "Potty",
+      "icon": "toilet.fill",
+      "voice": "the child used or sat on the potty",
+      "questions": [],
+      "fields": [
+        {"key": "result", "kind": "choice", "required": true, "options": [{"key": "pee", "label": "Pee"}, {"key": "poop", "label": "Poop"}, {"key": "both", "label": "Pee and poop"}, {"key": "tried", "label": "Tried, nothing"}]}
+      ]
+    },
+    {
+      "id": "teething",
+      "category": "teething",
+      "label": "Teething",
+      "icon": "mouth",
+      "voice": "the baby is teething, sore gums",
+      "questions": [],
+      "fields": []
+    },
+    {
+      "id": "medication",
+      "category": "medication",
+      "label": "Medication",
+      "icon": "pills.fill",
+      "voice": "gave the baby medicine, drops or vitamins",
+      "questions": [],
+      "fields": [
+        {"key": "medicine", "kind": "text", "required": true, "label": "Medicine"},
+        {"key": "dose", "kind": "text", "label": "Dose"}
+      ]
+    },
+    {
+      "id": "symptom",
+      "category": "symptom",
+      "label": "Symptom",
+      "icon": "stethoscope",
+      "voice": "the baby has a symptom",
+      "questions": [],
+      "fields": [
+        {"key": "symptom", "kind": "choice", "required": true, "options": [{"key": "cough", "label": "Cough"}, {"key": "runny_nose", "label": "Runny nose"}, {"key": "congestion", "label": "Congestion"}, {"key": "rash", "label": "Rash"}, {"key": "vomiting", "label": "Vomiting"}, {"key": "diarrhea", "label": "Diarrhea"}, {"key": "spit_up", "label": "Spit-up"}, {"key": "other", "label": "Other"}]}
+      ]
+    },
+    {
+      "id": "temperature",
+      "category": "temperature",
+      "label": "Temperature",
+      "icon": "thermometer.medium",
+      "voice": "took the baby's temperature",
+      "questions": [],
+      "fields": [
+        {"key": "temp_c", "kind": "number", "required": true, "unit": "celsius", "label": "Temperature"}
+      ]
+    },
+    {
+      "id": "doctor_visit",
+      "category": "doctor",
+      "label": "Doctor visit",
+      "icon": "cross.case.fill",
+      "voice": "went to the doctor or pediatrician",
+      "questions": [],
+      "fields": [
+        {"key": "reason", "kind": "text", "label": "Reason or notes"}
+      ]
+    },
+    {
+      "id": "vaccination",
+      "category": "vaccination",
+      "label": "Vaccination",
+      "icon": "syringe.fill",
+      "voice": "the baby got a vaccination",
+      "questions": [],
+      "fields": [
+        {"key": "vaccine", "kind": "text", "label": "Vaccine"}
+      ]
+    },
+    {
+      "id": "tummy_time",
+      "category": "tummy_time",
+      "label": "Tummy time",
+      "icon": "figure.mind.and.body",
+      "voice": "did tummy time",
+      "questions": [],
+      "fields": [
+        {"key": "minutes", "kind": "number", "unit": "minutes", "presets": [5, 10, 15, 20, 30]}
+      ]
+    },
+    {
+      "id": "play",
+      "category": "play",
+      "label": "Play time",
+      "icon": "teddybear.fill",
+      "voice": "played with the baby",
+      "questions": [],
+      "fields": [
+        {"key": "minutes", "kind": "number", "unit": "minutes", "presets": [5, 10, 15, 20, 30]}
+      ]
+    },
+    {
+      "id": "walk",
+      "category": "walk",
+      "label": "Walk outside",
+      "icon": "figure.walk",
+      "voice": "went for a walk outside",
+      "questions": [],
+      "fields": [
+        {"key": "minutes", "kind": "number", "unit": "minutes", "presets": [10, 20, 30, 45, 60]}
+      ]
     }
   ],
   "systemTypes": ["note", "undo", "resolve", "duty", "settings"],

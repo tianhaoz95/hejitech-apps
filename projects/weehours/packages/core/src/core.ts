@@ -300,5 +300,30 @@ export function validate(type: string, fields: Record<string, FieldValue>, enabl
   if (type === "weight" && fields.grams === undefined) return "weight needs grams";
   if (type === "height" && fields.height_cm === undefined) return "height needs height_cm";
   if (type === "head" && fields.head_cm === undefined) return "head needs head_cm";
+  for (const f of fieldSpecs(type)) {
+    const v = fields[f.key];
+    if (v === undefined) {
+      if (f.required) return `${type} needs ${f.key}`;
+      continue;
+    }
+    if (f.kind === "choice" && !f.options?.some((o) => o.key === v)) return `invalid ${f.key}: ${v} (allowed: ${f.options?.map((o) => o.key).join(", ")})`;
+    if (f.kind === "number" && !(typeof v === "number" && v > 0)) return `${f.key} must be a positive number`;
+    if (f.kind === "text" && !(typeof v === "string" && v.trim())) return `${f.key} must be non-empty text`;
+  }
   return null;
+}
+
+/** A field of a type the spec describes field by field (`fields`; the tap-logged care, health and activity types). */
+export interface FieldSpec {
+  key: string;
+  kind: "choice" | "number" | "text";
+  required?: boolean;
+  options?: { key: string; label: string }[];
+  unit?: string;
+  label?: string;
+  presets?: number[];
+}
+
+export function fieldSpecs(type: string): FieldSpec[] {
+  return ((typeSpec(type) as { fields?: FieldSpec[] } | undefined)?.fields ?? []) as FieldSpec[];
 }

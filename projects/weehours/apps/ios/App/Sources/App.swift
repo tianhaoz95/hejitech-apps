@@ -126,6 +126,7 @@ enum Theme {
         if type == "diaper" { return diaper }
         if type.hasPrefix("sleep") { return sleep }
         if Growth.types.contains(type) { return growth }
+        if let t = EventRegistry.shared.type(type), t.fields != nil { return Care.color(type: t) }
         return other
     }
 
@@ -142,7 +143,7 @@ enum Theme {
         case "height": return "ruler.fill"
         case "head": return "face.dashed"
         case "note": return "text.bubble.fill"
-        default: return "circle.fill"
+        default: return EventRegistry.shared.type(type)?.icon ?? "circle.fill"
         }
     }
 }

@@ -48,8 +48,20 @@ struct WhatsNewView: View {
         ReleaseHistoryItem(
             version: "0.4.1",
             date: "October 2026",
-            tagline: "Fewer Questions",
+            tagline: "Fewer Questions, More to Track",
             features: [
+                WhatsNewItem(
+                    icon: "list.bullet.clipboard",
+                    tint: .pink,
+                    title: "Track More Than Feeds and Sleep",
+                    description: "Bath, lotion, tooth brushing, potty, teething, medication, symptoms, temperature, doctor visits, vaccinations, tummy time, play time and walks. Turn on what you need in Settings → Tracking and each gets a button on Now.",
+                    detailedDescription: "Everything here is logged with a tap for now: one tap for a bath, a quick menu for a symptom or how long tummy time lasted, and a short form for a medicine, a vaccine or a temperature (in °C or °F). Medicines you've logged before are one tap away. Saying them out loud comes in a later update.",
+                    highlights: [
+                        "All off until you turn them on",
+                        "Shared with everyone in the household",
+                        "Shows in your timeline and to your AI assistant"
+                    ]
+                ),
                 WhatsNewItem(
                     icon: "note.text",
                     tint: .teal,

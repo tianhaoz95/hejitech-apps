@@ -161,6 +161,12 @@ if it's not there.
   descriptions together, and ask the user first.
 - **The eval stays held out** and is typed text, so it never sees recognition errors (see Known
   weaknesses). One sentence is about 0.6 points: read the misses, not just the percentages.
+- **Tap-only categories** (`"model": false` in the spec: bath, lotion, tooth brushing, potty,
+  teething, medication, symptoms, temperature, doctor visits, vaccinations, tummy time, play,
+  walks) are never asked of the model, so they don't change its prompt. To add voice for them:
+  flip `model`, add plans for their types, and relabel what is "not a log entry" today. Several
+  `NONE_TOPICS` (vitamin drops, tummy time, bath, teething) and eval rows ("tummy time on the
+  play mat", "gave her the vitamin D drops", "she's teething I think") would become entries.
 - **Ship raw unless the fitted calibration wins** (see Shipping). The trainer's own temperatures
   are inside the GGUF already.
 

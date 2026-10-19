@@ -11,7 +11,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 /** A service-role client on the `weehours` schema. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Db = SupabaseClient<any, any, any>;
-import { derive, eventTypes, status, statusLine, typeSpec, validate, type LogEvent } from "@weehours/core";
+import { derive, eventTypes, fieldSpecs, status, statusLine, typeSpec, validate, type LogEvent } from "@weehours/core";
 
 const PROTOCOL_VERSION = "2025-06-18";
 export const SERVER_VERSION = "0.2.0";
@@ -283,6 +283,11 @@ function fieldDocs(type: string) {
     if (n === "grams") docs.grams = "number (required)";
     if (n === "height_cm") docs.height_cm = "number, centimeters (required)";
     if (n === "head_cm") docs.head_cm = "number, centimeters, head circumference (required)";
+  }
+  for (const f of fieldSpecs(type)) {
+    const what = f.kind === "choice" ? f.options!.map((o) => o.key).join(" | ")
+      : f.kind === "number" ? `number${f.unit === "celsius" ? ", degrees Celsius" : f.unit ? `, ${f.unit}` : ""}` : "text";
+    docs[f.key] = what + (f.required ? " (required)" : "");
   }
   return docs;
 }

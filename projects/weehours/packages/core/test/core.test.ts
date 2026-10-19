@@ -52,4 +52,18 @@ describe("validation", () => {
     expect(validate("height", {})).toMatch(/needs height_cm/);
     expect(validate("head", { head_cm: 0 })).toMatch(/head_cm/);
   });
+
+  it("checks the spec-described fields of the tap-logged types like the phone", () => {
+    expect(validate("bath", {})).toBeNull();
+    expect(validate("medication", { medicine: "Vitamin D", dose: "1 drop" })).toBeNull();
+    expect(validate("medication", {})).toMatch(/needs medicine/);
+    expect(validate("medication", { medicine: " " })).toMatch(/non-empty/);
+    expect(validate("symptom", { symptom: "runny_nose" })).toBeNull();
+    expect(validate("symptom", { symptom: "sneezing" })).toMatch(/invalid symptom/);
+    expect(validate("temperature", { temp_c: 38.2 })).toBeNull();
+    expect(validate("temperature", {})).toMatch(/needs temp_c/);
+    expect(validate("tummy_time", {})).toBeNull();
+    expect(validate("tummy_time", { minutes: 0 })).toMatch(/minutes/);
+    expect(validate("potty", { result: "tried" }, ["diaper"])).toMatch(/turned off/);
+  });
 });

@@ -53,17 +53,21 @@ struct SettingsView: View {
                     Text("A child you add is shared with everyone in the household. Hiding a child only changes this iPhone.")
                 }
                 Section("Tracking") {
-                    ForEach(EventRegistry.shared.categories, id: \.id) { c in
-                        Toggle(c.label, isOn: Binding(get: { draft.categories.contains(c.id) }, set: { on in
-                            draft.categories.removeAll { $0 == c.id }
-                            if on { draft.categories.append(c.id) }
-                        }))
-                    }
+                    categoryToggles(group: nil)
                     Picker("Quick feed starts", selection: $draft.defaultFeed) {
                         Text("Bottle").tag("bottle")
                         Text("Breastfeeding").tag("breast")
                     }
                     Stepper("Bottle size \(Int(draft.bottleMl)) ml", value: $draft.bottleMl, in: 30...360, step: 10)
+                }
+                ForEach(Care.groups.dropFirst(), id: \.title) { group in
+                    Section {
+                        categoryToggles(group: group.id)
+                    } header: { Text(group.title) } footer: {
+                        if group.id == "activity" {
+                            Text("What's on is tracked for the household and gets a button on Now. These are logged by tap for now; voice comes later.")
+                        }
+                    }
                 }
                 Section {
                     IntervalPicker(title: "Feed every", minutes: $draft.reminders.feedEveryMinutes)
@@ -181,6 +185,17 @@ struct SettingsView: View {
             .confirmationDialog("Delete every entry, capture and token for this household? This cannot be undone.", isPresented: $confirmDelete, titleVisibility: .visible) {
                 Button("Delete everything", role: .destructive) { Task { await model.deleteAllData() } }
             }
+        }
+    }
+
+    /// One toggle per category in a Settings → Tracking group (household-wide, Save to apply).
+    @ViewBuilder private func categoryToggles(group: String?) -> some View {
+        ForEach(EventRegistry.shared.categories.filter { $0.group == group }, id: \.id) { c in
+            Toggle(c.label, isOn: Binding(get: { draft.categories.contains(c.id) }, set: { on in
+                draft.categories.removeAll { $0 == c.id }
+                if on { draft.categories.append(c.id) }
+            }))
+            .accessibilityIdentifier("category-\(c.id)")
         }
     }
 

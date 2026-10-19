@@ -134,7 +134,11 @@ final class AppModel: ObservableObject {
             localOnly = true   // automation: `-localSetup Mia` (or "Mia,Leo" for twins) sets up a local-only household
             let born = Date().addingTimeInterval(-21 * 86400)
             let babies = names.split(separator: ",").enumerated().map { Baby(name: String($1).trimmingCharacters(in: .whitespaces), birthDate: born, position: $0) }
-            await createHousehold(Household(babies: babies), displayName: "Alex")
+            var h = Household(babies: babies)
+            if let c = UserDefaults.standard.string(forKey: "categories") {   // `-categories all` or "bath,potty"
+                h.categories = c == "all" ? EventRegistry.shared.categories.map(\.id) : c.split(separator: ",").map(String.init)
+            }
+            await createHousehold(h, displayName: "Alex")
             return
         }
         await route()
