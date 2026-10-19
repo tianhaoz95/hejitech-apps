@@ -42,10 +42,11 @@ NONE_TOPICS = [
 ]
 
 
-def describe(plan, registry):
+def describe(plan, registry, config=None):
     """The plan in words for the teacher, from the spec's own descriptions."""
     if plan["type"] == NONE:
-        topic = NONE_TOPICS[int(plan["id"][1:]) % len(NONE_TOPICS)]
+        topics = (config or {}).get("none_topics") or NONE_TOPICS   # a run can focus on its own near misses
+        topic = topics[int(plan["id"][1:]) % len(topics)]
         parts = [f"Something about {topic} that is NOT a feed, diaper change, sleep, pumping or "
                  "growth measurement entry."]
         if int(plan["id"][1:]) % 3 == 0:
@@ -99,7 +100,7 @@ async def _run(run, plans, questions, registry, out):
 
     async def worker(plan):
         written = await teacher.json(
-            WRITE_SYSTEM, f"Write {variants} different things a parent might say. {describe(plan, registry)}",
+            WRITE_SYSTEM, f"Write {variants} different things a parent might say. {describe(plan, registry, run["run"])}",
             validate=lambda v: isinstance(v.get("utterances"), list))
         if written is None:
             return None
