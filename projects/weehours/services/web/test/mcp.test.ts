@@ -34,7 +34,10 @@ describe("list_event_types field docs", () => {
     expect(fieldDocs("medication")).toEqual({ medicine: "text (required)", dose: "text" });
     expect(fieldDocs("temperature")).toEqual({ temp_c: "number, degrees Celsius (required)" });
     expect(fieldDocs("potty").result).toBe("pee | poop | both | tried (required)");
-    expect(fieldDocs("diaper")).toEqual({ kind: "wet | dirty | both | dry (required)" });
+    expect(fieldDocs("diaper")).toEqual({
+      kind: "wet | dirty | both | dry (required)",
+      stool_color: "yellow | brown | green | black | red | white (optional, dirty diapers)",
+    });
   });
 });
 

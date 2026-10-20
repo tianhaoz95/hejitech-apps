@@ -4,8 +4,21 @@ import SwiftUI
 
 struct MainView: View {
     @EnvironmentObject var model: AppModel
-    @AppStorage(VoiceButtonPlacement.key) private var placement = VoiceButtonPlacement.right
+    @AppStorage(VoiceButtonPlacement.key) private var savedPlacement = VoiceButtonPlacement.right
+    @AppStorage(ThumbDock.key) private var dock = ThumbDock.off
+    @AppStorage(NightMode.key) private var nightMode = NightMode.off
+    @AppStorage(NightMode.fromKey) private var nightFrom = NightMode.defaultFrom
+    @AppStorage(NightMode.toKey) private var nightTo = NightMode.defaultTo
+    @AppStorage(NightMode.tintKey) private var nightTint = NightTint.amber
+    @Environment(\.scenePhase) private var scenePhase
     @State private var showingWhatsNew = WhatsNewView.shouldShowAutomatically
+    @State private var clock = Date()
+    private let minute = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+
+    /// The thumb dock puts the mic in its corner.
+    private var placement: VoiceButtonPlacement { dock == .off ? savedPlacement : dock.placement }
+    private var nightOn: Bool { NightMode.isActive(nightMode, from: nightFrom, to: nightTo, now: clock) }
+    private var showingHUD: Bool { nightOn && !model.nightDismissed }
 
     var body: some View {
         TabView(selection: $model.screen) {
@@ -21,10 +34,23 @@ struct MainView: View {
             ReviewSheet(capture: capture).presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $showingWhatsNew) { WhatsNewView() }
-        .overlay(alignment: placement.alignment) { if !model.recording { VoiceButton().padding(.horizontal, 20).padding(.bottom, 64) } }
+        .overlay(alignment: placement.alignment) {
+            if dock != .off, model.screen == "home", !model.recording, !showingHUD {
+                ThumbDockView(side: dock).padding(.horizontal, 20).padding(.bottom, 64)
+            }
+        }
+        .overlay { if showingHUD { NightHUD(tint: nightTint) { withAnimation(.snappy) { model.nightDismissed = true } }.transition(.opacity) } }
+        .overlay(alignment: placement.alignment) { if !model.recording, !showingHUD { VoiceButton().padding(.horizontal, 20).padding(.bottom, 64) } }
         .overlay(alignment: .bottom) { ToastView().padding(placement.toastClearance).padding(.bottom, 64) }
         .overlay { if model.recording { ListeningView().transition(.opacity) } }
         .animation(.easeInOut(duration: 0.25), value: model.recording)
+        .preferredColorScheme(nightOn ? .dark : nil)
+        .onReceive(minute) { clock = $0 }
+        .onChange(of: scenePhase) { _, phase in
+            clock = Date()
+            if phase == .background { model.nightDismissed = false }   // night screen again next time
+        }
+        .onChange(of: nightOn) { _, on in if !on { model.nightDismissed = false } }
         .onChange(of: model.screen, initial: true) { _, screen in FeedbackKit.currentScreen = screen }
         .task { if model.screen == "listening" { model.screen = "home"; model.startVoice() } }
         .onChange(of: model.reviews) { _, reviews in
@@ -38,6 +64,9 @@ struct MainView: View {
 
 struct HomeView: View {
     @EnvironmentObject var model: AppModel
+    @AppStorage(ThumbDock.key) private var dock = ThumbDock.off
+    @AppStorage(NightMode.key) private var nightMode = NightMode.off
+    @State private var showingSync = false
     @State private var now = Date()
     private let tick = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
@@ -46,7 +75,9 @@ struct HomeView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     // one shown child: today's single status card; several: the Log-for panel
+                    if let note = model.shiftNote { ShiftNoteCard(note: note, now: now) }
                     if model.shown.count > 1 { ChildrenPanel(now: now) } else { StatusCard(now: now) }
+                    PartnerPulse(now: now)
                     if model.showingShiftDigest, let shift = model.log.shiftSummary(household: model.household, now: now, includeCurrent: true) {
                         ShiftDigestCard(shift: shift, now: now)
                     }
@@ -58,12 +89,23 @@ struct HomeView: View {
                 }
                 .padding()
             }
+            .contentMargins(.bottom, dock == .off ? 0 : ThumbDock.clearance, for: .scrollContent)
             .navigationTitle(title)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    SyncBadge(now: now) { showingSync = true }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
-                    if let birth { Text(Self.age(birth)).font(.subheadline).foregroundStyle(.secondary) }
+                    HStack(spacing: 10) {
+                        if nightMode != .off, model.nightDismissed {
+                            Button { withAnimation(.snappy) { model.nightDismissed = false } } label: { Image(systemName: "moon.fill") }
+                                .accessibilityLabel("Night screen")
+                        }
+                        if let birth { Text(Self.age(birth)).font(.subheadline).foregroundStyle(.secondary) }
+                    }
                 }
             }
+            .sheet(isPresented: $showingSync) { SyncSheet().presentationDetents([.medium, .large]) }
             .refreshable { await model.syncNow() }
             .onReceive(tick) { now = $0 }
         }
@@ -106,9 +148,11 @@ struct StatusCard: View {
     }
 }
 
-/// Who is on duty (household-wide, for every child) and the hand-off button.
+/// Who is on duty (household-wide, for every child), the hand-off button and an optional note for
+/// the next shift.
 struct DutyRow: View {
     @EnvironmentObject var model: AppModel
+    @State private var showingNote = false
 
     var body: some View {
         HStack(spacing: 8) {
@@ -116,6 +160,10 @@ struct DutyRow: View {
             Image(systemName: onDuty == nil ? "person.2" : "person.fill.checkmark")
             Text(onDuty == nil ? "Nobody on duty · reminders go to everyone" : "\(model.household.caregiverName(onDuty)) is on duty")
             Spacer()
+            Button { showingNote = true } label: { Image(systemName: "square.and.pencil") }
+                .buttonStyle(.bordered).controlSize(.small)
+                .accessibilityLabel("Leave a note for the next shift")
+                .accessibilityIdentifier("shiftNoteButton")
             if model.log.shiftSummary(household: model.household, includeCurrent: true) != nil {
                 Button {
                     withAnimation(.snappy) { model.showingShiftDigest.toggle() }
@@ -130,6 +178,7 @@ struct DutyRow: View {
         }
         .font(.footnote)
         .foregroundStyle(.secondary)
+        .sheet(isPresented: $showingNote) { ShiftNoteSheet().presentationDetents([.medium]) }
     }
 }
 
@@ -484,6 +533,8 @@ struct QuickActions: View {
     @State private var measuring: String?   // the growth type whose sheet is open
     @State private var showingSolids = false
     @State private var showingPump = false
+    /// Start bottle tapped while another caregiver said they're making one.
+    @State private var confirmingBottle: [UUID]?
     private let columns = [GridItem(.flexible()), GridItem(.flexible())]
 
     /// The buttons act on the Log-for target: each applies to the children it makes sense for
@@ -542,8 +593,10 @@ struct QuickActions: View {
             if !idle.isEmpty {
                 if h.enabled.contains("bottle") {
                     ActionTile(title: idle.count > 1 ? "Start bottles" : "Start bottle", subtitle: bottleText(idle), icon: "waterbottle.fill", color: Theme.feed,
-                               action: { model.log("feed.bottle.start", for: idle) },
-                               backdate: { at in model.log("feed.bottle.start", at: at, for: idle) })
+                               action: {
+                        if model.partnerPrepping(for: idle) != nil { confirmingBottle = idle } else { model.log("feed.bottle.start", for: idle) }
+                    }, backdate: { at in model.log("feed.bottle.start", at: at, for: idle) },
+                               announce: model.localOnly ? nil : { model.announcePreppingBottle(for: idle) })
                 }
                 if h.enabled.contains("breast") {
                     ActionTile(title: "Start nursing", subtitle: sideText(idle), icon: "heart.fill", color: Theme.feed,
@@ -633,12 +686,22 @@ struct QuickActions: View {
         .sheet(isPresented: $showingPump) {
             PumpSheet().presentationDetents([.medium])
         }
+        .confirmationDialog(confirmTitle, isPresented: Binding { confirmingBottle != nil } set: { if !$0 { confirmingBottle = nil } },
+                            titleVisibility: .visible) {
+            Button("Start my bottle anyway") { if let ids = confirmingBottle { model.log("feed.bottle.start", for: ids) } }
+            Button("Cancel", role: .cancel) {}
+        }
         .onAppear {   // automation: `-screen growth` opens the sheet (screenshots)
             if model.screen == "growth" { model.screen = "home"; measuring = "weight" }
         }
     }
 
     private func names(_ ids: [UUID]) -> String { Household.names(ids.compactMap { model.household.baby($0) }) }
+
+    private var confirmTitle: String {
+        let who = confirmingBottle.flatMap { model.partnerPrepping(for: $0) }.map { model.household.caregiverName($0.caregiver) } ?? "Someone"
+        return "\(who) is making a bottle"
+    }
 
     /// "120 ml", or each child's size when they differ ("Mia 90 · Leo 110 ml").
     private func bottleText(_ ids: [UUID]) -> String {
@@ -686,6 +749,8 @@ struct ActionTile: View {
     let color: Color
     let action: () -> Void
     var backdate: ((Date) -> Void)? = nil
+    /// "Making it now": tells the other caregivers' phones (Start bottle).
+    var announce: (() -> Void)? = nil
     @State private var pickingTime = false
     @State private var customTime = Date()
 
@@ -694,6 +759,10 @@ struct ActionTile: View {
             .buttonStyle(.plain)
             .sensoryFeedback(.success, trigger: title)
             .contextMenu {
+                if let announce {
+                    Button { announce() } label: { Label("I'm making it · tell the household", systemImage: "person.wave.2") }
+                    Divider()
+                }
                 if let backdate {
                     Button { action() } label: { Label("Just now", systemImage: "clock") }
                     ForEach([5, 10, 15, 30], id: \.self) { mins in

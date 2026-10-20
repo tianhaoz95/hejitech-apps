@@ -97,6 +97,7 @@ public actor LogService {
             "side": ["left", "right", "both"], "contents": ["formula", "breast_milk"], "kind": ["wet", "dirty", "both", "dry"],
             "amount": ["taste", "some", "most", "all"], "storage": ["fridge", "freezer", "fed"],
             "reaction": ["none", "rash", "hives", "vomiting", "diarrhea", "gas", "spit_up"],
+            "stool_color": Set(StoolColor.allCases.map(\.rawValue)),
         ]
         for (k, v) in fields {
             if let set = allowed[k], !(v.string.map(set.contains) ?? false) { throw LogError.invalidField(k) }

@@ -332,6 +332,20 @@ final class ServiceTests: XCTestCase {
         } catch {}
     }
 
+    func testDiaperStoolColourIsOptionalAndChecked() async throws {
+        let s = try service(categories: ["diaper"])
+        let p = Provenance(surface: .phone, input: .tap)
+        let e = try await s.log(type: "diaper", fields: ["kind": .string("dirty"), "stool_color": .string("green")], provenance: p)
+        XCTAssertEqual(VoiceInterpreter.label(type: e.type, fields: e.fields), "Diaper · dirty, green")
+        do {
+            try await s.log(type: "diaper", fields: ["kind": .string("dirty"), "stool_color": .string("purple")], provenance: p)
+            XCTFail("expected invalid stool_color")
+        } catch {}
+        XCTAssertTrue(StoolColor.white.isFlagged(ageDays: 10))
+        XCTAssertFalse(StoolColor.black.isFlagged(ageDays: 2))   // meconium
+        XCTAssertTrue(StoolColor.black.isFlagged(ageDays: 10))
+    }
+
     func testGrowthMeasurementsNeedTheirNumber() async throws {
         let s = try service(categories: ["growth"])
         let p = Provenance(surface: .phone, input: .tap)

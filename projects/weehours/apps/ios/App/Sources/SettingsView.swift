@@ -16,6 +16,11 @@ struct SettingsView: View {
     @AppStorage(VoiceButtonPlacement.key) private var voicePlacement = VoiceButtonPlacement.right
     @AppStorage(QuickCapture.key) private var quickCapture = false
     @AppStorage(AutoStopVoice.key) private var autoStopVoice = false
+    @AppStorage(NightMode.key) private var nightMode = NightMode.off
+    @AppStorage(NightMode.fromKey) private var nightFrom = NightMode.defaultFrom
+    @AppStorage(NightMode.toKey) private var nightTo = NightMode.defaultTo
+    @AppStorage(NightMode.tintKey) private var nightTint = NightTint.amber
+    @AppStorage(ThumbDock.key) private var thumbDock = ThumbDock.off
 
     var body: some View {
         NavigationStack {
@@ -143,10 +148,34 @@ struct SettingsView: View {
                     }
                 }
                 Section {
-                    Picker("Mic button", selection: $voicePlacement) {
-                        ForEach(VoiceButtonPlacement.allCases) { Text($0.title).tag($0) }
+                    Picker("Night screen", selection: $nightMode) {
+                        ForEach(NightMode.allCases) { Text($0.title).tag($0) }
                     }
-                    .accessibilityIdentifier("voicePlacement")
+                    .accessibilityIdentifier("nightMode")
+                    if nightMode == .scheduled {
+                        DatePicker("From", selection: $nightFrom.asTime, displayedComponents: .hourAndMinute)
+                        DatePicker("Until", selection: $nightTo.asTime, displayedComponents: .hourAndMinute)
+                    }
+                    if nightMode != .off {
+                        Picker("Night colour", selection: $nightTint) {
+                            ForEach(NightTint.allCases) { Text($0.title).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                    Picker("One-handed dock", selection: $thumbDock) {
+                        ForEach(ThumbDock.allCases) { Text($0.title).tag($0) }
+                    }
+                    .accessibilityIdentifier("thumbDock")
+                } header: { Text("Night & one-handed") } footer: {
+                    Text("The night screen is true black with big amber or red buttons, so it won't light up the nursery. Swipe down on it for the full app. The one-handed dock puts feed, diaper and sleep on an arc around the mic, within reach of your thumb. Both are for this iPhone only.")
+                }
+                Section {
+                    if thumbDock == .off {
+                        Picker("Mic button", selection: $voicePlacement) {
+                            ForEach(VoiceButtonPlacement.allCases) { Text($0.title).tag($0) }
+                        }
+                        .accessibilityIdentifier("voicePlacement")
+                    }
                     Toggle("Quick capture", isOn: $quickCapture).accessibilityIdentifier("quickCapture")
                     Toggle("Auto-log when you stop speaking", isOn: $autoStopVoice).accessibilityIdentifier("autoStopVoice")
                     Picker("Decision model", selection: Binding(get: { model.decisionBackend }, set: { model.decisionBackend = $0 })) {

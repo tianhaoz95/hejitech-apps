@@ -492,7 +492,10 @@ export function fieldDocs(type: string) {
     if (q === "amount") docs.consumed_fraction = "0.25 | 0.5 | 0.75 | 1 (or consumed_ml: number)";
     if (q === "side") docs.side = "left | right | both";
     if (q === "contents") docs.contents = "formula | breast_milk";
-    if (q === "diaper_kind") docs.kind = "wet | dirty | both | dry (required)";
+    if (q === "diaper_kind") {
+      docs.kind = "wet | dirty | both | dry (required)";
+      docs.stool_color = "yellow | brown | green | black | red | white (optional, dirty diapers)";
+    }
     if (q === "solids_amount") {
       docs.amount = "taste | some | most | all";
       docs.foods = "text (comma-separated foods, e.g. 'Avocado, Egg')";

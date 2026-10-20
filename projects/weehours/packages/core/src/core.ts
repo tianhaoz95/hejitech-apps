@@ -278,6 +278,9 @@ export function statusLine(s: Status, now: number): string {
   return parts.join(" · ");
 }
 
+/** A dirty diaper's optional colour (added in the entry's details, never asked when logging). */
+export const STOOL_COLORS = ["yellow", "brown", "green", "black", "red", "white"];
+
 const ALLOWED: Record<string, string[]> = {
   side: ["left", "right", "both"],
   contents: ["formula", "breast_milk"],
@@ -285,6 +288,7 @@ const ALLOWED: Record<string, string[]> = {
   amount: ["taste", "some", "most", "all"],
   storage: ["fridge", "freezer", "fed"],
   reaction: ["none", "rash", "hives", "vomiting", "diarrhea", "gas", "spit_up"],
+  stool_color: STOOL_COLORS,
 };
 
 export interface ShiftSummary {

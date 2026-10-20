@@ -272,3 +272,30 @@ public enum LogCoding {
         return nil
     }
 }
+
+/// A dirty diaper's optional colour (`stool_color`), added from the entry's details, never asked
+/// when logging. Same list as `STOOL_COLORS` in `@weehours/core`.
+public enum StoolColor: String, CaseIterable, Sendable {
+    case yellow, brown, green, black, red, white
+
+    public var label: String {
+        switch self {
+        case .yellow: return "Mustard"
+        case .brown: return "Brown"
+        case .green: return "Green"
+        case .black: return "Black"
+        case .red: return "Red"
+        case .white: return "Pale/white"
+        }
+    }
+
+    /// Colours on the stool colour cards pediatricians hand out as ones to call about (black only
+    /// after the first few days, when it is no longer meconium).
+    public func isFlagged(ageDays: Int?) -> Bool {
+        switch self {
+        case .red, .white: return true
+        case .black: return (ageDays ?? 99) > 4
+        default: return false
+        }
+    }
+}

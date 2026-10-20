@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.5.0"
+    static let currentVersion = "0.6.0"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,72 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "0.6.0",
+            date: "October 2026",
+            tagline: "Night Screen, Lock Screen Bottles & Shift Notes",
+            features: [
+                WhatsNewItem(
+                    icon: "moon.fill",
+                    tint: Color(red: 1.0, green: 0.62, blue: 0.17),
+                    title: "Night Screen",
+                    description: "A true-black screen with four big amber or red buttons (feed, nursing, diaper, sleep) that won't light up the nursery. Turn it on, or schedule it (11 PM to 6 AM by default), in Settings → Night & one-handed. Swipe down for the full app."
+                ),
+                WhatsNewItem(
+                    icon: "lock.iphone",
+                    tint: Theme.feed,
+                    title: "Finish a Bottle from the Lock Screen",
+                    description: "The Lock Screen and Dynamic Island now finish a bottle with how much was drunk (½, ¾, All) and switch nursing to the named side, without unlocking."
+                ),
+                WhatsNewItem(
+                    icon: "hand.point.up.left.fill",
+                    tint: Theme.accent,
+                    title: "One-Handed Dock",
+                    description: "Feed, diaper and sleep on an arc around the mic, within reach of your thumb while the other arm holds the baby. Right or left hand, in Settings → Night & one-handed."
+                ),
+                WhatsNewItem(
+                    icon: "note.text",
+                    tint: Color(red: 0.90, green: 0.72, blue: 0.20),
+                    title: "Notes for the Next Shift",
+                    description: "Leave a short typed or dictated note from the pencil next to Hand off. It's pinned at the top of Now on everyone's phone until the next hand-off. Entirely optional."
+                ),
+                WhatsNewItem(
+                    icon: "person.wave.2.fill",
+                    tint: .teal,
+                    title: "See What Your Partner Is Doing",
+                    description: "Now shows when another caregiver started a feed or put the baby down, and long-pressing Start bottle tells everyone \"I'm making it\", so nobody makes a second bottle. Other phones also update within a second of each entry."
+                ),
+                WhatsNewItem(
+                    icon: "chart.bar.xaxis",
+                    tint: Theme.sleep,
+                    title: "Today vs Yesterday",
+                    description: "The Timeline compares today with yesterday on two 24-hour ribbons: sleep, feeds and diapers, totals against the same time yesterday, and cluster feeding marked. Tap a mark to open the entry."
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "square.grid.3x3",
+                    tint: Theme.accent,
+                    title: "Timeline Detail Levels",
+                    description: "Pinch the Timeline, or use the new switch, for a whole-day hour grid, the usual cards, or Audit, with each entry's id, where it came from and whether it has uploaded.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "icloud.slash",
+                    tint: .orange,
+                    title: "Offline Badge",
+                    description: "When entries can't upload, Now shows how many are saved on this iPhone. Tap it to see them and sync again.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "humidity.fill",
+                    tint: Theme.diaper,
+                    title: "Diaper Colour in the Details",
+                    description: "Open a diaper entry to change its kind with big buttons and, for a dirty one, note the colour. Logging a diaper still takes one tap.",
+                    kind: .improvement
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "0.5.0",
             date: "October 2026",

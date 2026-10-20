@@ -34,8 +34,8 @@ struct WeeHoursApp: App {
         }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
-            case .active: Task { await model.syncNow() }   // pending glasses captures are processed here first
-            case .background: AppModel.scheduleBackgroundSync()
+            case .active: Task { await model.syncNow(); model.setForeground(true) }   // pending glasses captures are processed here first
+            case .background: AppModel.scheduleBackgroundSync(); model.setForeground(false)
             default: break
             }
         }

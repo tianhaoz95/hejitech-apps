@@ -327,6 +327,7 @@ public struct VoiceInterpreter: Sendable {
         if let ml = fields["consumed_ml"]?.number ?? fields["amount_ml"]?.number { details.append("\(Int(ml)) ml") }
         if let s = fields["side"]?.string { details.append(s) }
         if let k = fields["kind"]?.string { details.append(k) }
+        if let c = fields["stool_color"]?.string.flatMap(StoolColor.init(rawValue:)) { details.append(c.label.lowercased()) }
         if let c = fields["contents"]?.string { details.append(c.replacingOccurrences(of: "_", with: " ")) }
         if let fds = fields["foods"]?.string, !fds.isEmpty { details.append(fds) }
         if let a = fields["amount"]?.string { details.append(a) }

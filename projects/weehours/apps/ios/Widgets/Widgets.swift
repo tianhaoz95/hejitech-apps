@@ -179,17 +179,8 @@ struct SessionLiveActivity: Widget {
                     Spacer()
                     Text(context.state.since, style: .timer).font(.title3.monospacedDigit().bold())
                 }
-                HStack {
-                    if context.state.kind == "sleep" {
-                        Button(intent: ToggleSleepIntent(child: child)) { Text("Woke up").frame(maxWidth: .infinity) }
-                    } else {
-                        if context.state.kind == "breast" {
-                            Button(intent: SwitchSideIntent(child: child)) { Text("Switch side").frame(maxWidth: .infinity) }
-                        }
-                        Button(intent: ToggleFeedIntent(child: child)) { Text("Finish").frame(maxWidth: .infinity) }
-                    }
-                }
-                .tint(Color(red: 0.95, green: 0.62, blue: 0.40))
+                Self.actions(context.state, child: child)
+                    .tint(Color(red: 0.95, green: 0.62, blue: 0.40))
             }
             .padding()
             .activityBackgroundTint(Color(red: 0.11, green: 0.10, blue: 0.22))
@@ -215,16 +206,8 @@ struct SessionLiveActivity: Widget {
                         .multilineTextAlignment(.trailing).frame(maxWidth: 90)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    if context.state.kind == "sleep" {
-                        Button(intent: ToggleSleepIntent(child: Self.child(context.attributes))) { Text("Woke up") }
-                    } else {
-                        HStack {
-                            if context.state.kind == "breast" {
-                                Button(intent: SwitchSideIntent(child: Self.child(context.attributes))) { Text("Switch side") }
-                            }
-                            Button(intent: ToggleFeedIntent(child: Self.child(context.attributes))) { Text("Finish") }
-                        }
-                    }
+                    Self.actions(context.state, child: Self.child(context.attributes))
+                        .tint(tint(context.state.kind))
                 }
             } compactLeading: {
                 Image(systemName: icon(context.state.kind)).foregroundStyle(tint(context.state.kind))
@@ -236,6 +219,28 @@ struct SessionLiveActivity: Widget {
             }
             .keylineTint(tint(context.state.kind))
         }
+    }
+
+    /// One-tap actions without unlocking: wake; switch to the other side or finish nursing; or
+    /// finish a bottle with how much was drunk.
+    @ViewBuilder static func actions(_ s: SessionActivityAttributes.ContentState, child: ChildEntity?) -> some View {
+        HStack(spacing: 6) {
+            switch s.kind {
+            case "sleep":
+                Button(intent: ToggleSleepIntent(child: child)) { Text("Woke up").frame(maxWidth: .infinity) }
+            case "breast":
+                Button(intent: SwitchSideIntent(child: child)) {
+                    Label("Switch to \(s.side ?? "other")", systemImage: "arrow.left.arrow.right").frame(maxWidth: .infinity)
+                }
+                Button(intent: ToggleFeedIntent(child: child)) { Text("Finish").frame(maxWidth: .infinity) }
+            default:
+                ForEach([(AmountOption.half, "½"), (.threeQuarters, "¾"), (.full, "All")], id: \.0) { amount, label in
+                    Button(intent: FinishBottleIntent(amount: amount, child: child)) { Text(label).frame(maxWidth: .infinity) }
+                }
+                Button(intent: ToggleFeedIntent(child: child)) { Text("Done").frame(maxWidth: .infinity) }
+            }
+        }
+        .font(.subheadline.weight(.semibold))
     }
 
     /// The activity's child (nil on activities from older builds: the first child).
@@ -256,8 +261,9 @@ struct SessionLiveActivity: Widget {
     func title(_ s: SessionActivityAttributes.ContentState) -> String {
         switch s.kind {
         case "sleep": return "Sleeping"
-        case "breast": return "Nursing" + (s.side.map { " · \($0) next" } ?? "")
-        default: return "Bottle"
+        // `side` is the side to switch to, so the baby is on the other one
+        case "breast": return "Nursing" + (s.side.map { " · on \($0 == "left" ? "right" : "left")" } ?? "")
+        default: return "Bottle · how much?"
         }
     }
 }

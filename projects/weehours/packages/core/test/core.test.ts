@@ -45,6 +45,8 @@ describe("validation", () => {
     expect(validate("diaper", { kind: "wet" })).toBeNull();
     expect(validate("diaper", {})).toMatch(/needs kind/);
     expect(validate("diaper", { kind: "purple" })).toMatch(/invalid kind/);
+    expect(validate("diaper", { kind: "dirty", stool_color: "green" })).toBeNull();
+    expect(validate("diaper", { kind: "dirty", stool_color: "purple" })).toMatch(/invalid stool_color/);
     expect(validate("feed.bottle.finish", { consumed_fraction: 1.5 })).toMatch(/consumed_fraction/);
     expect(validate("nope", {})).toMatch(/unknown type/);
     expect(validate("feed.bottle.start", {}, ["diaper"])).toMatch(/turned off/);

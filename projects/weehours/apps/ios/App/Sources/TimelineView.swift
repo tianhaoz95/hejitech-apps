@@ -29,6 +29,9 @@ struct TimelineView: View {
     @State private var categoryFilter = "all"
     /// Show one child's entries (nil: everyone's).
     @State private var child: UUID?
+    /// How much each day shows: a 24-hour grid, the usual cards, or every detail (pinch to change).
+    @AppStorage("timelineDensity") private var density = TimelineDensity.cards
+    @State private var hourCell: HourCell?
 
     private var several: Bool { model.household.babies.count > 1 }
 
@@ -67,6 +70,17 @@ struct TimelineView: View {
         return false
     }
 
+    /// Audit mode's line: id, when it was logged, where from, and whether it has uploaded.
+    private func audit(_ e: LogEvent) -> String {
+        var parts = ["#" + e.id.uuidString.prefix(8).lowercased()]
+        parts.append("logged \(e.loggedAt.formatted(date: .omitted, time: .standard))")
+        parts.append("\(e.provenance.input.rawValue) on \(e.provenance.surface.rawValue)")
+        if let s = e.supersedes { parts.append("edits #" + s.uuidString.prefix(8).lowercased()) }
+        if model.localOnly { parts.append("this iPhone only") }
+        else { parts.append(model.pending.contains { $0.id == e.id } ? "waiting to upload" : "synced") }
+        return parts.joined(separator: " · ")
+    }
+
     private var filteredEvents: [LogEvent] {
         model.log.all
             .filter { !SystemType.all.contains($0.type) || $0.type == SystemType.note }
@@ -79,7 +93,7 @@ struct TimelineView: View {
 
     private var days: [(Date, [TimelineItem])] {
         let events = filteredEvents
-        if !groupSessions || !search.isEmpty {
+        if !groupSessions || !search.isEmpty || density == .audit {
             let groups = Dictionary(grouping: events.map { TimelineItem.single($0) }) { Calendar.current.startOfDay(for: $0.occurredAt) }
             return groups.keys.sorted(by: >).map { ($0, groups[$0]!) }
         }
@@ -136,11 +150,27 @@ struct TimelineView: View {
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())
                 }
+                Section {
+                    Picker("Detail", selection: $density) {
+                        ForEach(TimelineDensity.allCases) { Label($0.title, systemImage: $0.icon).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .accessibilityIdentifier("timelineDensity")
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
+                }
                 if search.isEmpty {
                     Section {
-                        DayRhythmStrip(events: filteredEvents)
+                        RhythmCompare(log: model.log, child: child, household: model.household) { editing = $0 }
                     }
                 }
+                if density == .grid {
+                    ForEach(days, id: \.0) { day, _ in
+                        Section(day.formatted(date: .complete, time: .omitted)) {
+                            HourGrid(day: day, events: filteredEvents.filter { Calendar.current.isDate($0.occurredAt, inSameDayAs: day) }) { hourCell = $0 }
+                        }
+                    }
+                } else {
                 ForEach(days, id: \.0) { day, items in
                     Section(day.formatted(date: .complete, time: .omitted)) {
                         ForEach(items) { item in
@@ -148,7 +178,8 @@ struct TimelineView: View {
                             case .single(let e):
                                 EventRow(event: e, status: model.log.status[e.id] ?? .active, who: model.household.caregiverName(e.loggedBy),
                                          ml: model.household.milliliters(e),
-                                         child: several ? model.household.baby(e.babyId).map { ($0.name, Theme.color(for: $0, in: model.household)) } : nil)
+                                         child: several ? model.household.baby(e.babyId).map { ($0.name, Theme.color(for: $0, in: model.household)) } : nil,
+                                         audit: density == .audit ? audit(e) : nil)
                                     .contentShape(Rectangle())
                                     .onTapGesture { editing = e }
                                     .swipeActions {
@@ -169,6 +200,20 @@ struct TimelineView: View {
                         }
                     }
                 }
+                }
+            }
+            .simultaneousGesture(MagnifyGesture().onEnded { v in
+                // pinch out for more detail, in for the whole day at a glance
+                withAnimation(.snappy) {
+                    if v.magnification > 1.25 { density = density.more } else if v.magnification < 0.8 { density = density.less }
+                }
+            })
+            .sheet(item: $hourCell) { cell in
+                HourSheet(cell: cell) { e in
+                    hourCell = nil
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { editing = e }
+                }
+                .presentationDetents([.medium, .large])
             }
             .searchable(text: $search, prompt: "Search medicines, notes, foods…")
             .overlay {
@@ -198,57 +243,200 @@ struct TimelineView: View {
     }
 }
 
-/// 24-hour visual rhythm strip comparing Today and Yesterday for feeds, sleep and diapers.
-struct DayRhythmStrip: View {
-    let events: [LogEvent]
+/// Today and yesterday as two 24-hour ribbons aligned by clock time: sleep as bars, feeds as
+/// ticks, diapers as dots, with how today compares to yesterday at the same time of day. Tap a
+/// mark to open its entry.
+struct RhythmCompare: View {
+    let log: DerivedLog
+    let child: UUID?
+    let household: Household
+    let onSelect: (LogEvent) -> Void
+    @State private var now = Date()
+    private let tick = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+
+    struct Mark { let kind: Kind; let from: Double; let to: Double; let event: UUID? }
+    enum Kind { case sleep, feed, diaper, cluster }
+
+    private var cal: Calendar { Calendar.current }
 
     var body: some View {
-        let cal = Calendar.current
-        let todayStart = cal.startOfDay(for: Date())
-        let yesterdayStart = cal.date(byAdding: .day, value: -1, to: todayStart) ?? todayStart
-        VStack(alignment: .leading, spacing: 6) {
+        let today = cal.startOfDay(for: now)
+        let yesterday = cal.date(byAdding: .day, value: -1, to: today) ?? today
+        let cutoff = yesterday.addingTimeInterval(now.timeIntervalSince(today))
+        let t = totals(from: today, to: now), y = totals(from: yesterday, to: cutoff)
+        let cluster = clusterFeeding(today)
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("24h rhythm").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                Text("Today vs yesterday").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 Spacer()
                 HStack(spacing: 8) {
-                    legendDot(color: Theme.sleep, label: "Sleep")
-                    legendDot(color: Theme.feed, label: "Feed")
-                    legendDot(color: Theme.diaper, label: "Diaper")
+                    legend(Theme.sleep, "Sleep"); legend(Theme.feed, "Feed"); legend(Theme.diaper, "Diaper")
                 }
             }
-            rhythmBar(label: "Today", start: todayStart)
-            rhythmBar(label: "Yest", start: yesterdayStart)
+            ribbon("Today", start: today, extra: cluster.map { [Mark(kind: .cluster, from: frac($0.0, in: today), to: frac($0.1, in: today), event: nil)] } ?? [], nowMark: frac(now, in: today))
+            ribbon("Yest", start: yesterday, extra: [], nowMark: frac(cutoff, in: yesterday))
+            HStack(spacing: 0) {
+                Spacer().frame(width: 42)
+                ForEach(Array(["12a", "6a", "12p", "6p", "12a"].enumerated()), id: \.offset) { i, h in
+                    Text(h).font(.system(size: 9)).foregroundStyle(.tertiary)
+                    if i < 4 { Spacer(minLength: 0) }
+                }
+            }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    chip("moon.zzz.fill", Theme.sleep, "Sleep \(StatusSnapshot.duration(t.sleep))", delta(t.sleep - y.sleep, minutes: true))
+                    chip("waterbottle.fill", Theme.feed, "\(t.feeds) feed\(t.feeds == 1 ? "" : "s")", delta(Double(t.feeds - y.feeds)))
+                    if t.ml > 0 || y.ml > 0 { chip("drop.fill", Theme.feed, "\(Int(t.ml)) ml", delta(t.ml - y.ml, unit: " ml")) }
+                    chip("humidity.fill", Theme.diaper, "\(t.diapers) diaper\(t.diapers == 1 ? "" : "s")", delta(Double(t.diapers - y.diapers)))
+                    if let cluster {
+                        chip("bolt.heart.fill", .red, "Cluster feeding \(cluster.0.formatted(date: .omitted, time: .shortened))–\(cluster.1.formatted(date: .omitted, time: .shortened))", nil)
+                    }
+                }
+            }
+            Text("Compared with yesterday up to \(now.formatted(date: .omitted, time: .shortened))").font(.system(size: 10)).foregroundStyle(.tertiary)
         }
         .padding(.vertical, 4)
+        .onReceive(tick) { now = $0 }
+        .accessibilityIdentifier("rhythmCompare")
     }
 
-    private func legendDot(color: Color, label: String) -> some View {
+    // MARK: data
+
+    private var sessions: [Session] { log.sessions.filter { child == nil || $0.babyId == child } }
+    private var events: [LogEvent] { log.counted.filter { child == nil || $0.babyId == child } }
+
+    /// Position in the day by clock time (so both ribbons line up even across a DST change).
+    private func frac(_ d: Date, in dayStart: Date) -> Double {
+        guard let next = cal.date(byAdding: .day, value: 1, to: dayStart) else { return 0 }
+        if d <= dayStart { return 0 }
+        if d >= next { return 1 }
+        let c = cal.dateComponents([.hour, .minute], from: d)
+        return Double((c.hour ?? 0) * 60 + (c.minute ?? 0)) / 1440
+    }
+
+    private func marks(_ dayStart: Date) -> [Mark] {
+        guard let next = cal.date(byAdding: .day, value: 1, to: dayStart) else { return [] }
+        var out: [Mark] = []
+        for s in sessions where s.kind == .sleep {
+            guard let start = s.start else { continue }
+            let end = s.end ?? (s.isOpen ? now : start)
+            guard end > dayStart, start < next else { continue }
+            out.append(Mark(kind: .sleep, from: frac(max(start, dayStart), in: dayStart), to: frac(min(end, next), in: dayStart), event: s.startEvent))
+        }
+        for s in sessions where s.kind != .sleep && s.anchor >= dayStart && s.anchor < next {
+            let f = frac(s.anchor, in: dayStart)
+            out.append(Mark(kind: .feed, from: f, to: f, event: s.startEvent ?? s.endEvent))
+        }
+        for e in events where (e.type == "diaper" || e.type == "feed.solids") && e.occurredAt >= dayStart && e.occurredAt < next {
+            let f = frac(e.occurredAt, in: dayStart)
+            out.append(Mark(kind: e.type == "diaper" ? .diaper : .feed, from: f, to: f, event: e.id))
+        }
+        return out
+    }
+
+    private func totals(from: Date, to: Date) -> (sleep: Double, feeds: Int, ml: Double, diapers: Int) {
+        var sleep = 0.0, feeds = 0, ml = 0.0
+        for s in sessions {
+            if s.kind == .sleep, let start = s.start {
+                let end = s.end ?? (s.isOpen ? now : start)
+                sleep += max(0, min(end, to).timeIntervalSince(max(start, from)))
+            } else if s.kind != .sleep, s.anchor >= from, s.anchor < to {
+                feeds += 1
+                if s.kind == .bottle {
+                    ml += s.consumedMl ?? (s.consumedFraction.map { $0 * household.bottleMl(for: s.babyId) } ?? 0)
+                }
+            }
+        }
+        let diapers = events.filter { $0.type == "diaper" && $0.occurredAt >= from && $0.occurredAt < to }.count
+        return (sleep, feeds, ml, diapers)
+    }
+
+    /// Four or more feeds starting within three hours today: the stretch they cover.
+    private func clusterFeeding(_ today: Date) -> (Date, Date)? {
+        let starts = sessions.filter { $0.kind != .sleep && $0.anchor >= today }.map(\.anchor).sorted()
+        guard starts.count >= 4 else { return nil }
+        var best: (Date, Date)?
+        for i in 0...(starts.count - 4) {
+            var j = i + 3
+            guard starts[j].timeIntervalSince(starts[i]) <= 3 * 3600 else { continue }
+            while j + 1 < starts.count, starts[j + 1].timeIntervalSince(starts[i]) <= 3 * 3600 { j += 1 }
+            if best == nil || starts[j] > best!.1 { best = (starts[i], starts[j]) }
+        }
+        return best
+    }
+
+    // MARK: views
+
+    private func ribbon(_ label: String, start: Date, extra: [Mark], nowMark: Double) -> some View {
+        let items = extra + marks(start)
+        return HStack(spacing: 8) {
+            Text(label).font(.caption2.weight(.semibold)).foregroundStyle(.secondary).frame(width: 34, alignment: .leading)
+            GeometryReader { geo in
+                let w = geo.size.width
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 5).fill(Color(.tertiarySystemFill))
+                    ForEach(Array(items.enumerated()), id: \.offset) { _, m in
+                        switch m.kind {
+                        case .cluster:
+                            RoundedRectangle(cornerRadius: 5).fill(Color.red.opacity(0.18))
+                                .frame(width: max(6, (m.to - m.from) * w)).offset(x: m.from * w)
+                        case .sleep:
+                            RoundedRectangle(cornerRadius: 3).fill(Theme.sleep.opacity(0.85))
+                                .frame(width: max(3, (m.to - m.from) * w), height: 14).offset(x: m.from * w)
+                        case .feed:
+                            Capsule().fill(Theme.feed).frame(width: 3, height: 22).offset(x: min(w - 3, m.from * w - 1.5))
+                        case .diaper:
+                            Circle().fill(Theme.diaper).frame(width: 6, height: 6).offset(x: min(w - 6, max(0, m.from * w - 3)), y: 8)
+                        }
+                    }
+                    if nowMark > 0, nowMark < 1 {
+                        Rectangle().fill(Color.primary.opacity(0.35)).frame(width: 1, height: 26).offset(x: nowMark * w)
+                    }
+                }
+                .contentShape(Rectangle())
+                .onTapGesture { p in
+                    let x = p.x / max(1, w)
+                    // nearest tick or dot within ~12pt, else a sleep bar under the finger
+                    let points = items.filter { $0.kind == .feed || $0.kind == .diaper }
+                    if let hit = points.min(by: { abs($0.from - x) < abs($1.from - x) }), abs(hit.from - x) * w < 12, let id = hit.event {
+                        select(id)
+                    } else if let bar = items.first(where: { $0.kind == .sleep && x >= $0.from && x <= $0.to }), let id = bar.event {
+                        select(id)
+                    }
+                }
+            }
+            .frame(height: 26)
+        }
+    }
+
+    private func select(_ id: UUID) {
+        if let e = log.all.first(where: { $0.id == id }) { onSelect(e) }
+    }
+
+    private func legend(_ color: Color, _ label: String) -> some View {
         HStack(spacing: 3) {
             Circle().fill(color).frame(width: 6, height: 6)
             Text(label).font(.system(size: 10)).foregroundStyle(.secondary)
         }
     }
 
-    private func rhythmBar(label: String, start: Date) -> some View {
-        let end = start.addingTimeInterval(86_400)
-        let dayEvents = events.filter { $0.occurredAt >= start && $0.occurredAt < end }
-        return HStack(spacing: 8) {
-            Text(label).font(.caption2.monospacedDigit()).foregroundStyle(.secondary).frame(width: 34, alignment: .leading)
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 4).fill(Color(.tertiarySystemFill))
-                    ForEach(dayEvents) { e in
-                        let frac = max(0, min(1, e.occurredAt.timeIntervalSince(start) / 86_400))
-                        let x = frac * geo.size.width
-                        Circle()
-                            .fill(Theme.color(for: e.type))
-                            .frame(width: 7, height: 7)
-                            .offset(x: max(0, min(geo.size.width - 7, x - 3.5)))
-                    }
-                }
-            }
-            .frame(height: 12)
+    private func delta(_ d: Double, minutes: Bool = false, unit: String = "") -> String? {
+        if minutes {
+            guard abs(d) >= 60 else { return "same" }
+            return (d > 0 ? "+" : "−") + StatusSnapshot.duration(abs(d))
         }
+        guard d != 0 else { return "same" }
+        return (d > 0 ? "+" : "−") + "\(Int(abs(d).rounded()))\(unit)"
+    }
+
+    private func chip(_ icon: String, _ color: Color, _ text: String, _ delta: String?) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon).font(.caption2).foregroundStyle(color)
+            Text(text).font(.caption.weight(.medium))
+            if let delta { Text(delta).font(.caption).foregroundStyle(.secondary) }
+        }
+        .padding(.horizontal, 8).padding(.vertical, 4)
+        .background(Color(.tertiarySystemFill), in: Capsule())
     }
 }
 
@@ -333,6 +521,8 @@ struct EventRow: View {
     let ml: Double?
     /// The child's name and colour, when the household has several.
     var child: (name: String, color: Color)? = nil
+    /// Audit mode: id, provenance and sync state.
+    var audit: String? = nil
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -367,6 +557,13 @@ struct EventRow: View {
                 }
                 .font(.caption2)
                 .foregroundStyle(.secondary)
+                if let audit {
+                    Text(audit).font(.caption2.monospaced()).foregroundStyle(.tertiary).lineLimit(3)
+                    if !event.provenance.confidence.isEmpty {
+                        Text(event.provenance.confidence.sorted { $0.key < $1.key }.map { "\($0.key) \(Int($0.value * 100))%" }.joined(separator: " · "))
+                            .font(.caption2.monospaced()).foregroundStyle(.tertiary).lineLimit(2)
+                    }
+                }
             }
         }
         .opacity(status == .undone || status == .merged ? 0.5 : 1)
@@ -395,6 +592,7 @@ struct EditEventView: View {
     @State private var fraction = 0.5
     @State private var consumedMlText = ""
     @State private var kind = "wet"
+    @State private var stoolColor: StoolColor?
     @State private var side = "left"
     @State private var measure = ""
     @State private var baby = UUID()
@@ -438,8 +636,9 @@ struct EditEventView: View {
                     }
                 }
                 if event.type == "diaper" {
-                    Picker("Kind", selection: $kind) { ForEach(["wet", "dirty", "both", "dry"], id: \.self) { Text($0) } }
-                        .pickerStyle(.segmented)
+                    DiaperDetails(kind: $kind, color: $stoolColor, ageDays: model.household.baby(event.babyId)?.birthDate.map {
+                        Calendar.current.dateComponents([.day], from: $0, to: event.occurredAt).day ?? 0
+                    })
                 }
                 if event.fields["side"] != nil {
                     Picker("Side", selection: $side) {
@@ -553,7 +752,10 @@ struct EditEventView: View {
                                 f["consumed_ml"] = nil
                             }
                         }
-                        if event.type == "diaper" { f["kind"] = .string(kind) }
+                        if event.type == "diaper" {
+                            f["kind"] = .string(kind)
+                            f["stool_color"] = kind == "dirty" || kind == "both" ? stoolColor.map { .string($0.rawValue) } : nil
+                        }
                         if f["side"] != nil { f["side"] = .string(side) }
                         if event.type == "pump" {
                             if let ml = Growth.number(pumpMl), ml > 0 { f["amount_ml"] = .number(ml) }
@@ -596,6 +798,7 @@ struct EditEventView: View {
                     consumedMlText = "\(Int(ml))"
                 }
                 kind = event.string("kind") ?? "wet"
+                stoolColor = event.string("stool_color").flatMap(StoolColor.init(rawValue:))
                 side = event.string("side") ?? "left"
                 if let ml = event.number("amount_ml") { pumpMl = "\(Int(ml))" }
                 pumpStorage = event.string("storage") ?? "fridge"
@@ -612,6 +815,144 @@ struct EditEventView: View {
                     measure = (field == "grams" ? v / 1000 : v).formatted(.number.precision(.fractionLength(0...2)).grouping(.never))
                 }
             }
+        }
+    }
+}
+
+/// A diaper entry's details: the kind as four big buttons and, for a dirty one, the colour.
+/// Only here, in the entry's details: logging a diaper never asks for more than its kind.
+struct DiaperDetails: View {
+    @Binding var kind: String
+    @Binding var color: StoolColor?
+    let ageDays: Int?
+
+    static func swatch(_ c: StoolColor) -> Color {
+        switch c {
+        case .yellow: return Color(red: 0.86, green: 0.70, blue: 0.20)
+        case .brown: return Color(red: 0.52, green: 0.34, blue: 0.18)
+        case .green: return Color(red: 0.40, green: 0.52, blue: 0.22)
+        case .black: return Color(red: 0.12, green: 0.10, blue: 0.08)
+        case .red: return Color(red: 0.78, green: 0.16, blue: 0.14)
+        case .white: return Color(red: 0.93, green: 0.91, blue: 0.84)
+        }
+    }
+
+    var body: some View {
+        Section("Diaper") {
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                ForEach([("wet", "Wet", "drop.fill"), ("dirty", "Dirty", "circle.fill"), ("both", "Both", "circle.lefthalf.filled"), ("dry", "Dry", "sun.max")], id: \.0) { key, label, icon in
+                    let on = kind == key
+                    Button { kind = key } label: {
+                        Label(label, systemImage: icon).font(.headline)
+                            .frame(maxWidth: .infinity, minHeight: 48)
+                            .foregroundStyle(on ? .white : .primary)
+                            .background(on ? Theme.diaper : Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("diaperKind-\(key)")
+                    .accessibilityAddTraits(on ? .isSelected : [])
+                }
+            }
+            .padding(.vertical, 4)
+            if kind == "dirty" || kind == "both" {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Colour (optional)").font(.subheadline).foregroundStyle(.secondary)
+                    HStack(spacing: 0) {
+                        ForEach(StoolColor.allCases, id: \.self) { c in
+                            let on = color == c
+                            Button { color = on ? nil : c } label: {
+                                VStack(spacing: 4) {
+                                    Circle().fill(Self.swatch(c)).frame(width: 34, height: 34)
+                                        .overlay(Circle().strokeBorder(on ? Theme.accent : Color.secondary.opacity(0.3), lineWidth: on ? 3 : 1))
+                                    Text(c.label).font(.system(size: 10)).lineLimit(1).minimumScaleFactor(0.8)
+                                }
+                                .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("stool-\(c.rawValue)")
+                        }
+                    }
+                    if let color, color.isFlagged(ageDays: ageDays) {
+                        Label("\(color.label) stool is on the stool colour cards pediatricians give out as a colour to call them about.",
+                              systemImage: "exclamationmark.triangle.fill")
+                            .font(.footnote).foregroundStyle(.orange)
+                            .accessibilityIdentifier("stoolFlag")
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+        }
+    }
+}
+
+enum TimelineDensity: String, CaseIterable, Identifiable {
+    case grid, cards, audit
+    var id: String { rawValue }
+    var title: String { [.grid: "Day grid", .cards: "Cards", .audit: "Audit"][self]! }
+    var icon: String { [.grid: "square.grid.3x3", .cards: "list.bullet", .audit: "doc.text.magnifyingglass"][self]! }
+    var more: TimelineDensity { self == .grid ? .cards : .audit }
+    var less: TimelineDensity { self == .audit ? .cards : .grid }
+}
+
+struct HourCell: Identifiable {
+    let day: Date
+    let hour: Int
+    let events: [LogEvent]
+    var id: String { "\(day.timeIntervalSince1970)-\(hour)" }
+}
+
+/// A whole day on one screen: 24 hour cells, each with a dot per entry. Tap an hour to see it.
+struct HourGrid: View {
+    let day: Date
+    let events: [LogEvent]
+    let open: (HourCell) -> Void
+
+    var body: some View {
+        let byHour = Dictionary(grouping: events) { Calendar.current.component(.hour, from: $0.occurredAt) }
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 6), spacing: 4) {
+            ForEach(0..<24, id: \.self) { h in
+                let list = (byHour[h] ?? []).sorted { $0.occurredAt < $1.occurredAt }
+                Button { if !list.isEmpty { open(HourCell(day: day, hour: h, events: list)) } } label: {
+                    VStack(spacing: 3) {
+                        Text(Self.hourLabel(h)).font(.system(size: 9, weight: .semibold)).foregroundStyle(.secondary)
+                        HStack(spacing: 2) {
+                            ForEach(Array(list.prefix(4).enumerated()), id: \.offset) { _, e in
+                                Circle().fill(Theme.color(for: e.type)).frame(width: 7, height: 7)
+                            }
+                            if list.count > 4 { Text("+\(list.count - 4)").font(.system(size: 8)).foregroundStyle(.secondary) }
+                        }
+                        .frame(height: 9)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 38)
+                    .background(list.isEmpty ? Color(.tertiarySystemFill).opacity(0.5) : Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 7))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.vertical, 4)
+        .accessibilityIdentifier("hourGrid")
+    }
+
+    static func hourLabel(_ h: Int) -> String {
+        h == 0 ? "12a" : h < 12 ? "\(h)a" : h == 12 ? "12p" : "\(h - 12)p"
+    }
+}
+
+struct HourSheet: View {
+    @EnvironmentObject var model: AppModel
+    let cell: HourCell
+    let select: (LogEvent) -> Void
+
+    var body: some View {
+        NavigationStack {
+            List(cell.events) { e in
+                EventRow(event: e, status: model.log.status[e.id] ?? .active, who: model.household.caregiverName(e.loggedBy),
+                         ml: model.household.milliliters(e))
+                    .contentShape(Rectangle())
+                    .onTapGesture { select(e) }
+            }
+            .navigationTitle("\(HourGrid.hourLabel(cell.hour)) · \(cell.day.formatted(date: .abbreviated, time: .omitted))")
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }

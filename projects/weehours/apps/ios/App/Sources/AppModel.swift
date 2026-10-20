@@ -53,10 +53,18 @@ final class AppModel: ObservableObject {
     @Published var thinking = false
     @Published var liveTranscript = ""
     @Published var showingShiftDigest = false
+    /// The night screen put away until the app next goes to the background.
+    @Published var nightDismissed = false
     @Published var snoozedUntil: [PlannedReminder.Kind: Date] = [:]
     @Published var lastSync: Date?
     @Published var syncError: String?
     @Published var tokens: [AccessToken] = []
+    /// Entries saved on this phone that haven't reached the server yet (the outbox).
+    @Published var pending: [LogEvent] = []
+    /// Heads-ups from other caregivers' phones (Realtime broadcast), until they expire.
+    @Published var partnerActivity: [PartnerActivity] = []
+    /// Shift notes this phone has read and put away.
+    @AppStorage("dismissedShiftNotes") private var dismissedShiftNotesRaw = ""
 
     @AppStorage("backendURL") var backendURL = BackendConfig.standard.url.absoluteString
     @AppStorage("anonKey") var anonKey = BackendConfig.standard.anonKey
@@ -72,6 +80,8 @@ final class AppModel: ObservableObject {
     private var watch: WatchBridge?
     private var notifications: NotificationHandler?
     private var livePreviewTask: Task<Void, Never>?
+    private let presence = PresenceChannel()
+    private var changedSync: Task<Void, Never>?
 
     /// Local-only mode: the household lives on this phone with no account. Everything that only
     /// needs the phone works; signing in later uploads the log (`attachAccount`).
@@ -207,6 +217,7 @@ final class AppModel: ObservableObject {
             phase = .ready
             prewarmModels()
             await refresh()
+            setForeground(UIApplication.shared.applicationState != .background)
             if let demo = UserDefaults.standard.string(forKey: "demoText") {
                 try? await Task.sleep(for: .seconds(1))
                 await handle(transcript: demo)
@@ -491,6 +502,8 @@ final class AppModel: ObservableObject {
             statuses = all
             status = shown.first.flatMap { all[$0.id] }
             reviews = try service.store.captures().filter { $0.status == .needsReview }.sorted { $0.capturedAt > $1.capturedAt }
+            pending = localOnly ? [] : try service.store.unsyncedEvents().sorted { $0.loggedAt < $1.loggedAt }
+            partnerActivity.removeAll { $0.until < Date() }
             await SharedStore.publish(from: service)
             if let me { ReminderScheduler.apply(ReminderPlanner.plan(logs: children, household: household, me: me, now: Date(), snoozedUntil: snoozedUntil)) }
             let named = shown.count > 1
@@ -534,7 +547,7 @@ final class AppModel: ObservableObject {
         guard let e = events.first else { return }
         toast = Toast(text: label(events), undo: undoable ? e.id : nil, together: events.count > 1)
         await refresh()
-        Task { await syncNow() }
+        Task { await syncNow(); announceChange() }
     }
 
     private func did(_ e: LogEvent?, undoable: Bool = true) async {
@@ -572,7 +585,7 @@ final class AppModel: ObservableObject {
             do {
                 if together { try await service.undoGroup(of: id) } else { try await service.undo(id) }
                 await refresh()
-                Task { await syncNow() }
+                Task { await syncNow(); announceChange() }
             } catch { self.error = error.localizedDescription }
         }
     }
@@ -618,6 +631,83 @@ final class AppModel: ObservableObject {
     func setOnDuty(_ on: Bool) {
         showingShiftDigest = true
         perform { [me] in try await $0.setOnDuty(on ? me : nil) }
+    }
+
+    // MARK: household presence (Realtime broadcast) and shift notes
+
+    /// Joins the household's broadcast channel while the app is in front (never local-only).
+    func setForeground(_ active: Bool) {
+        guard active, phase == .ready, !localOnly, let session = backend.session else { presence.disconnect(); return }
+        presence.onChanged = { [weak self] who in
+            guard let self else { return }
+            if let who { self.partnerActivity.removeAll { $0.caregiver == who } }
+            self.changedSync?.cancel()
+            self.changedSync = Task { [weak self] in
+                try? await Task.sleep(for: .milliseconds(400))   // one sync for a burst of writes
+                guard !Task.isCancelled else { return }
+                await self?.syncNow()
+            }
+        }
+        presence.onActivity = { [weak self] a in
+            guard let self, a.caregiver != self.me, a.until > Date() else { return }
+            self.partnerActivity.removeAll { $0.id == a.id }
+            self.partnerActivity.append(a)
+        }
+        presence.connect(household: household.id, url: backend.config.url, anonKey: backend.config.anonKey,
+                         token: session.expiresAt > Date() ? session.accessToken : nil)
+    }
+
+    private func announceChange() {
+        presence.send("changed", ["caregiver": me?.uuidString ?? ""])
+    }
+
+    /// "I'm making a bottle": the other phones show it for 15 minutes, or until this phone logs.
+    func announcePreppingBottle(for babies: [UUID]) {
+        guard let me else { return }
+        let now = Date()
+        presence.send("activity", ["caregiver": me.uuidString, "kind": "prepping_bottle", "babies": babies.map(\.uuidString),
+                                   "at": now.timeIntervalSince1970, "until": now.addingTimeInterval(15 * 60).timeIntervalSince1970])
+        toast = Toast(text: localOnly ? "Sign in to tell your household" : "Told the household you're making a bottle", undo: nil)
+    }
+
+    /// Another caregiver said they're making a bottle for one of these children.
+    func partnerPrepping(for babies: [UUID]) -> PartnerActivity? {
+        partnerActivity.first { $0.kind == "prepping_bottle" && $0.until > Date() && ($0.babies.isEmpty || !Set($0.babies).isDisjoint(with: babies)) }
+    }
+
+    /// The shift note on Now: the newest one, for the shift after it was written. It goes away
+    /// on the next hand-off after that, after 12 hours, or when this phone puts it away.
+    var shiftNote: LogEvent? {
+        let dismissed = Set(dismissedShiftNotesRaw.split(separator: ",").map(String.init))
+        guard let note = log.counted.last(where: { $0.type == SystemType.note && $0.fields["shift_note"] == .bool(true) }),
+              Date().timeIntervalSince(note.loggedAt) < 12 * 3600, !dismissed.contains(note.id.uuidString) else { return nil }
+        let handOffs = log.counted.filter { $0.type == SystemType.duty && $0.loggedAt > note.loggedAt }.count
+        return handOffs >= 2 ? nil : note
+    }
+
+    func dismissShiftNote(_ note: LogEvent) {
+        let kept = dismissedShiftNotesRaw.split(separator: ",").suffix(20).map(String.init)
+        dismissedShiftNotesRaw = (kept + [note.id.uuidString]).joined(separator: ",")
+        objectWillChange.send()
+    }
+
+    /// A note for whoever takes over next, pinned on Now (optional; nothing asks for one).
+    func leaveShiftNote(_ text: String) {
+        let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        log(SystemType.note, ["transcript": .string(text), "shift_note": .bool(true)], for: Array(target.prefix(1)))
+    }
+
+    /// Dictating a note: the audio is transcribed here and deleted, as with voice entries.
+    func startDictation() throws {
+        try recorder.start()
+        Task { await transcriber.warmUp() }
+    }
+
+    func finishDictation() async -> String? {
+        guard let url = recorder.stop() else { return nil }
+        defer { try? FileManager.default.removeItem(at: url) }
+        return try? await transcriber.transcribe(fileURL: url)
     }
 
     // MARK: voice
