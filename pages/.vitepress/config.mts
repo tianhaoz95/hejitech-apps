@@ -6,6 +6,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { defineConfig, type DefaultTheme } from "vitepress";
 import { withMermaid } from "vitepress-plugin-mermaid";
+import { APPS } from "./theme/apps";
 
 const root = join(__dirname, "../..");
 const base = "/hejitech-apps/";
@@ -14,6 +15,10 @@ interface ProjectPages {
   name: string;
   sidebar?: DefaultTheme.SidebarItem[];
 }
+
+/** Search-only sections for the home page: one per app, under the card's anchor, with the words
+ * people search with that the card doesn't say ("baby log" finds Wee Hours). Not on the page. */
+const appSearchSections = APPS.map((a) => `## ${a.name} {#${a.id}}\n\n${a.tagline} ${a.platforms.join(", ")}. Also: ${a.synonyms.join(", ")}.`).join("\n\n");
 
 const projects = readdirSync(join(root, "projects")).filter((p) => existsSync(join(root, "projects", p, "docs", "index.md")) && !existsSync(join(root, "projects", p, "docs", ".vitepress")));
 
@@ -65,7 +70,17 @@ export default withMermaid(
       ],
       sidebar: Object.fromEntries(projects.map((p) => [`/${p}/`, sidebarFor(p)])),
       socialLinks: [{ icon: "github", link: "https://github.com/tianhaoz95/hejitech-apps" }],
-      search: { provider: "local" },
+      search: {
+        provider: "local",
+        options: {
+          detailedView: true,
+          _render(src, env, md) {
+            const html = md.render(src, env);
+            if (env.frontmatter?.search === false) return "";
+            return env.relativePath === "index.md" ? html + md.render(appSearchSections, { ...env }) : html;
+          },
+        },
+      },
       outline: { level: [2, 3] },
       footer: {
         message: "Source available under the PolyForm Perimeter License 1.0.1.",

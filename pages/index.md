@@ -7,13 +7,6 @@ hero:
   image:
     src: /heji.svg
     alt: HEJI
-  actions:
-    - theme: brand
-      text: See the apps
-      link: "#apps"
-    - theme: alt
-      text: How they're built
-      link: /monorepo
 ---
 
 <div class="heji-bg" aria-hidden="true"><span></span><span></span><span></span></div>
@@ -24,7 +17,7 @@ hero:
 
 <div class="heji-apps">
 
-<div class="heji-app">
+<div class="heji-app" id="waypack">
   <img src="/waypack/favicon.svg" alt="" width="64" height="64">
   <div class="heji-app-body">
     <h3><a class="no-icon" href="./waypack/">Waypack</a></h3>
@@ -34,7 +27,7 @@ hero:
   </div>
 </div>
 
-<div class="heji-app">
+<div class="heji-app" id="weehours">
   <img src="/weehours/icon.png" alt="" width="64" height="64">
   <div class="heji-app-body">
     <h3><a class="no-icon" href="./weehours/">Wee Hours</a></h3>
@@ -44,7 +37,7 @@ hero:
   </div>
 </div>
 
-<div class="heji-app">
+<div class="heji-app" id="voxbrief">
   <img src="/voxbrief/icon.png" alt="" width="64" height="64">
   <div class="heji-app-body">
     <h3><a class="no-icon" href="./voxbrief/">Voxbrief</a></h3>
@@ -54,7 +47,7 @@ hero:
   </div>
 </div>
 
-<div class="heji-app">
+<div class="heji-app" id="meowtrix">
   <img src="/meowtrix/icon.png" alt="" width="64" height="64">
   <div class="heji-app-body">
     <h3><a class="no-icon" href="./meowtrix/">Meowtrix</a></h3>
@@ -64,7 +57,7 @@ hero:
   </div>
 </div>
 
-<div class="heji-app">
+<div class="heji-app" id="contempo">
   <img src="/contempo/icon.png" alt="" width="64" height="64">
   <div class="heji-app-body">
     <h3><a class="no-icon" href="./contempo/">Contempo</a></h3>
@@ -74,7 +67,7 @@ hero:
   </div>
 </div>
 
-<div class="heji-app">
+<div class="heji-app" id="toddlercam">
   <img src="/toddlercam/icon.png" alt="" width="64" height="64">
   <div class="heji-app-body">
     <h3><a class="no-icon" href="./toddlercam/">ToddlerCam</a></h3>
@@ -84,7 +77,7 @@ hero:
   </div>
 </div>
 
-<div class="heji-app">
+<div class="heji-app" id="tinytouch">
   <img src="/tinytouch/icon.png" alt="" width="64" height="64">
   <div class="heji-app-body">
     <h3><a class="no-icon" href="./tinytouch/">TinyTouch</a></h3>
@@ -94,7 +87,7 @@ hero:
   </div>
 </div>
 
-<div class="heji-app">
+<div class="heji-app" id="feedbackkit">
   <img src="/feedbackkit-logo.png" alt="" width="64" height="64">
   <div class="heji-app-body">
     <h3><a class="no-icon" href="https://tianhaoz95.github.io/hejitech-apps/feedbackkit/" target="_self">FeedbackKit</a></h3>

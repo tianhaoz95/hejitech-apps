@@ -1,5 +1,9 @@
 import DefaultTheme from "vitepress/theme";
 import type { Theme } from "vitepress";
+import { h } from "vue";
+import HeroDock from "./HeroDock.vue";
+import HeroSearch from "./HeroSearch.vue";
+import NotFound from "./NotFound.vue";
 import "./custom.css";
 
 /** The deployed commit (pages.yml builds with GITHUB_SHA), for FeedbackKit's fix verification. */
@@ -20,6 +24,12 @@ const ENDPOINT = "https://gpucoladcyvijefdjudf.supabase.co/functions/v1/ingest-f
 
 export default {
   extends: DefaultTheme,
+  // The home hero gets a search field and the app dock under its tagline; missing pages get NotFound.
+  Layout: () =>
+    h(DefaultTheme.Layout, null, {
+      "home-hero-actions-after": () => [h(HeroSearch), h(HeroDock)],
+      "not-found": () => h(NotFound),
+    }),
   enhanceApp({ router }) {
     if (typeof window === "undefined") return;
     let current = "";
