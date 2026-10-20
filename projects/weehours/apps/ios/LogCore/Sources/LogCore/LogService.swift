@@ -104,7 +104,8 @@ public actor LogService {
             if ["consumed_fraction"].contains(k), !((v.number ?? -1) > 0 && (v.number ?? 2) <= 1) { throw LogError.invalidField(k) }
             if ["consumed_ml", "amount_ml", "grams", "height_cm", "head_cm"].contains(k), !((v.number ?? -1) > 0) { throw LogError.invalidField(k) }
         }
-        if type == "diaper", fields["kind"] == nil { throw LogError.invalidField("kind") }
+        // a watch tilt logs a diaper whose kind the iPhone asks for later (`needs_details`)
+        if type == "diaper", fields["kind"] == nil, fields[LogEvent.needsDetails] != .bool(true) { throw LogError.invalidField("kind") }
         if type == "weight", fields["grams"] == nil { throw LogError.invalidField("grams") }
         if type == "height", fields["height_cm"] == nil { throw LogError.invalidField("height_cm") }
         if type == "head", fields["head_cm"] == nil { throw LogError.invalidField("head_cm") }
@@ -142,9 +143,9 @@ public actor LogService {
     /// Starts a timed activity (tummy time, play, a walk): an entry marked `ongoing` until `stopTimed`.
     @discardableResult
     public func startTimed(_ type: String, at: Date = Date(), baby: UUID? = nil, fields: [String: FieldValue] = [:],
-                           surface: Surface = .phone) throws -> LogEvent {
+                           surface: Surface = .phone, input: InputKind = .tap) throws -> LogEvent {
         try log(type: type, fields: fields.merging(["ongoing": .bool(true)]) { $1 }, occurredAt: at,
-                provenance: Provenance(surface: surface, input: .tap), baby: baby)
+                provenance: Provenance(surface: surface, input: input), baby: baby)
     }
 
     /// Stops it: an edit of the entry with its minutes (at least 1) instead of `ongoing`, so every

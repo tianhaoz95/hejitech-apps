@@ -1,19 +1,39 @@
 import AVFoundation
+import LogCore
 import SwiftUI
 import WatchConnectivity
 import WatchKit
 
-/// The watch is an input and output surface: typed taps go to the phone as messages, voice is
-/// recorded here and transcribed and decided on the phone. The status line comes back as
+/// The watch is an input and output surface: typed taps and tilts go to the phone as messages,
+/// voice is recorded here and transcribed and decided on the phone. The status line comes back as
 /// application context.
 @main
 struct WeeHoursWatchApp: App {
     @StateObject private var link = PhoneLink()
     var body: some Scene {
         WindowGroup {
-            WatchHome().environmentObject(link)
-                // a complication: open already recording (tap Stop to send it to the phone)
-                .onOpenURL { url in if url.host == "record", !link.recording { link.toggleRecording() } }
+            WatchRoot().environmentObject(link)
+        }
+    }
+}
+
+/// Buttons or tilt mode: the iPhone's Settings → Apple Watch picks the one it opens in, and each
+/// has a button to switch to the other until the app is next launched.
+struct WatchRoot: View {
+    @EnvironmentObject var link: PhoneLink
+    @State private var tilt: Bool?
+
+    var body: some View {
+        NavigationStack {
+            if tilt ?? (link.startMode == "tilt") {
+                TiltModeView { tilt = false }
+            } else {
+                WatchHome { tilt = true }
+            }
+        }
+        // a complication: open already recording (tap Stop to send it to the phone)
+        .onOpenURL { url in
+            if url.host == "record", !link.recording { tilt = false; link.toggleRecording() }
         }
     }
 }
@@ -41,6 +61,19 @@ final class PhoneLink: NSObject, ObservableObject, WCSessionDelegate {
     /// The household's children shown on the iPhone; the watch logs for `child` (or `"all"`).
     @Published var children: [Child] = []
     @Published var pinned: [Pinned] = []
+    /// Tilt mode's four directions, as the iPhone lays them out.
+    @Published var compass: [TiltCompass.Slot] = PhoneLink.defaultCompass
+
+    /// Until the iPhone says otherwise (or for an iPhone app from before tilt mode).
+    static let defaultCompass = [
+        TiltCompass.Slot(direction: .north, action: "feed", label: "Feed", icon: "drop.fill"),
+        TiltCompass.Slot(direction: .east, action: "diaper", label: "Diaper", icon: "humidity.fill"),
+        TiltCompass.Slot(direction: .south, action: "sleep", label: "Sleep", icon: "moon.zzz.fill"),
+    ]
+    /// "buttons" or "tilt"; kept so the app opens in the right one before the iPhone answers.
+    @Published var startMode = UserDefaults.standard.string(forKey: "startMode") ?? "buttons" {
+        didSet { UserDefaults.standard.set(startMode, forKey: "startMode") }
+    }
     @Published var child = UserDefaults.standard.string(forKey: "child") ?? "" {
         didSet { UserDefaults.standard.set(child, forKey: "child"); applyChild() }
     }
@@ -58,24 +91,27 @@ final class PhoneLink: NSObject, ObservableObject, WCSessionDelegate {
         }
     }
 
-    func send(_ message: [String: Any]) {
+    /// Sends an action to the phone; `done` hears whether it was logged (`confirmation` says what).
+    func send(_ message: [String: Any], done: ((Bool) -> Void)? = nil) {
         var message = message
         if !child.isEmpty { message["baby"] = child }
         guard WCSession.default.isReachable else {
             confirmation = "iPhone not reachable"
             WKInterfaceDevice.current().play(.failure)
+            done?(false)
             return
         }
         WCSession.default.sendMessage(message) { reply in
             Task { @MainActor in
-                if let e = reply["error"] as? String { self.confirmation = e; return }
+                if let e = reply["error"] as? String { self.confirmation = e; done?(false); return }
                 self.confirmation = (reply["label"] as? String).map { "✓ \($0)" }
                 self.lastId = reply["id"] as? String
                 if let l = reply["line"] as? String { self.line = l }
                 WKInterfaceDevice.current().play(.success)
+                done?(true)
             }
         } errorHandler: { error in
-            Task { @MainActor in self.confirmation = error.localizedDescription }
+            Task { @MainActor in self.confirmation = error.localizedDescription; done?(false) }
         }
     }
 
@@ -127,6 +163,9 @@ final class PhoneLink: NSObject, ObservableObject, WCSessionDelegate {
             return Pinned(id: id, label: label, icon: p["icon"] as? String ?? "circle.fill",
                           runningId: p["runningId"] as? String ?? "")
         }
+        if let m = ctx["startMode"] as? String, m != startMode { startMode = m }
+        compass = (ctx["compass"] as? [[String: Any]])?.compactMap(TiltCompass.Slot.init(context:))
+            ?? Self.defaultCompass + pinned.prefix(1).map { TiltCompass.Slot(direction: .west, action: "care", type: $0.id, label: $0.label, icon: $0.icon, runningId: $0.runningId) }
         if child != "all", !children.contains(where: { $0.id == child }) {
             child = (ctx["target"] as? String).flatMap { t in t == "all" ? "all" : children.first { $0.id == t }?.id } ?? children.first?.id ?? ""
         }
@@ -150,6 +189,7 @@ final class PhoneLink: NSObject, ObservableObject, WCSessionDelegate {
 
 struct WatchHome: View {
     @EnvironmentObject var link: PhoneLink
+    let switchToTilt: () -> Void
     @State private var diaper = false
     @State private var finishingBottle = false
 
@@ -200,6 +240,12 @@ struct WatchHome: View {
                 if let id = link.lastId {
                     Button("Undo last") { link.send(["action": "undo", "id": id]); link.lastId = nil }.font(.caption)
                 }
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(action: switchToTilt) { Image(systemName: "gyroscope") }
+                    .accessibilityLabel("Tilt mode")
             }
         }
         .confirmationDialog("Diaper", isPresented: $diaper) {

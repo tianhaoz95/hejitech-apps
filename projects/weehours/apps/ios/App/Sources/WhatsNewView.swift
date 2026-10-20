@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.6.0"
+    static let currentVersion = "0.7.0"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,27 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "0.7.0",
+            date: "October 2026",
+            tagline: "Tilt Mode on Apple Watch",
+            features: [
+                WhatsNewItem(
+                    icon: "gyroscope",
+                    tint: Color(red: 0.98, green: 0.70, blue: 0.45),
+                    title: "Tilt Mode on Apple Watch",
+                    description: "Log with only the arm wearing the watch while the other holds the baby: tilt your wrist so the ball rolls into feed, diaper, sleep or a care action, hold it for a second, then double pinch. Nothing is asked on the watch.",
+                    detailedDescription: "Turn it on in Settings → Apple Watch, where you also choose what sits forward, right, back and left. Either screen on the watch has a button to switch to the other. Double pinch needs Apple Watch Series 9, Ultra 2 or later; on other watches, tap Log.",
+                    highlights: ["Hold a direction for a second to lock it", "Double pinch to log, or tilt away to cancel", "Double pinch again right after to undo"]
+                ),
+                WhatsNewItem(
+                    icon: "applewatch",
+                    tint: Color(red: 0.45, green: 0.75, blue: 0.95),
+                    title: "Needs Details",
+                    description: "A diaper or a bottle logged with a tilt waits on Now with one-tap answers for its kind or how much went down, for when your hands are free."
+                ),
+            ]
+        ),
         ReleaseHistoryItem(
             version: "0.6.0",
             date: "October 2026",

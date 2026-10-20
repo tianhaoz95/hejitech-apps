@@ -25,8 +25,14 @@ struct MainView: View {
             HomeView().fabClearance().tabItem { Label("Now", systemImage: "moon.stars.fill") }.tag("home")
             TimelineView().fabClearance().tabItem { Label("Timeline", systemImage: "list.bullet.rectangle") }.tag("timeline")
             SettingsView().fabClearance().tabItem { Label("Settings", systemImage: "gearshape.fill") }.tag("settings")
-            if model.screen == "paywall" || model.screen == "agents" {
-                NavigationStack { if model.screen == "paywall" { PaywallView() } else { AgentsView() } }
+            if ["paywall", "agents", "watch"].contains(model.screen) {
+                NavigationStack {
+                    switch model.screen {
+                    case "paywall": PaywallView()
+                    case "watch": WatchSettingsView()
+                    default: AgentsView()
+                    }
+                }
                     .tabItem { Label("More", systemImage: "ellipsis") }.tag(model.screen)
             }
         }
@@ -85,6 +91,9 @@ struct HomeView: View {
                         MilkStashCard(now: now)
                     }
                     if !model.reviews.isEmpty || !model.log.duplicates.isEmpty { ReviewBanner() }
+                    let shownIds = Set(model.shown.map(\.id))
+                    let blind = model.log.effective.filter { $0.needsDetails && shownIds.contains($0.babyId) }
+                    if !blind.isEmpty { NeedsDetailsCard(entries: blind.sorted { $0.occurredAt > $1.occurredAt }) }
                     QuickActions()
                 }
                 .padding()

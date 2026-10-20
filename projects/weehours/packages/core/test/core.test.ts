@@ -44,6 +44,7 @@ describe("validation", () => {
   it("matches the phone rules", () => {
     expect(validate("diaper", { kind: "wet" })).toBeNull();
     expect(validate("diaper", {})).toMatch(/needs kind/);
+    expect(validate("diaper", { needs_details: true })).toBeNull();   // watch tilt: kind asked later
     expect(validate("diaper", { kind: "purple" })).toMatch(/invalid kind/);
     expect(validate("diaper", { kind: "dirty", stool_color: "green" })).toBeNull();
     expect(validate("diaper", { kind: "dirty", stool_color: "purple" })).toMatch(/invalid stool_color/);

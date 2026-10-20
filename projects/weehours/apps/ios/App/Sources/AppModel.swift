@@ -943,6 +943,7 @@ final class WatchBridge: NSObject, WCSessionDelegate, @unchecked Sendable {
             ["id": b.id.uuidString, "name": b.name, "line": s.line(now: now), "openFeed": s.openFeedKind ?? "", "sleeping": s.sleepingSince != nil]
         }
         var pinned: [[String: String]] = []
+        var compass: [[String: String]] = []
         if let model {
             let enabled = model.household.enabled
             for t in EventRegistry.shared.types where enabled.contains(t.category) && (t.isTimed || ["bath", "tummy_time", "teething"].contains(t.id)) {
@@ -955,11 +956,13 @@ final class WatchBridge: NSObject, WCSessionDelegate, @unchecked Sendable {
                 ])
                 if pinned.count >= 2 { break }
             }
+            compass = WatchCompassSettings.slots(enabled: enabled, log: model.log).map(\.context)
         }
         try? WCSession.default.updateApplicationContext([
             "line": first.1.line(now: now), "openFeed": first.1.openFeedKind ?? "", "sleeping": first.1.sleepingSince != nil,
             "children": list, "target": target.count > 1 ? "all" : (target.first?.uuidString ?? ""),
             "pinned": pinned, "at": now.timeIntervalSince1970,
+            "compass": compass, "startMode": UserDefaults.standard.string(forKey: WatchStartMode.key) ?? WatchStartMode.buttons.rawValue,
         ])
     }
 
@@ -978,23 +981,29 @@ final class WatchBridge: NSObject, WCSessionDelegate, @unchecked Sendable {
                     : [(rawBaby.flatMap(UUID.init(uuidString:)).flatMap { id in model.shown.first { $0.id == id }?.id } ?? model.shown.first?.id).unsafelyUnwrapped]
                 var events: [LogEvent] = []
                 let extra: [String: FieldValue] = (message["fraction"] as? Double).map { ["consumed_fraction": .number($0)] } ?? [:]
+                // tilt mode logs without asking: what it skips (a diaper's kind, a bottle's amount)
+                // is flagged `needs_details` and asked on Now
+                let input: InputKind = message["input"] as? String == "gesture" ? .gesture : .tap
+                let blind: [String: FieldValue] = input == .gesture ? [LogEvent.needsDetails: .bool(true)] : [:]
                 switch message["action"] as? String {
                 case "toggleFeed":
                     events = try await service.forEach(babies) { s, b, g in
-                        try s.toggleFeed(baby: b, surface: .watch, fields: extra.merging(g) { $1 })
+                        let finishingBottle = try s.derived(baby: b).openFeedSession()?.kind == .bottle
+                        let ask = finishingBottle && extra["consumed_fraction"] == nil ? blind : [:]
+                        return try s.toggleFeed(baby: b, surface: .watch, input: input, fields: extra.merging(g) { $1 }.merging(ask) { $1 })
                     }
                 case "toggleSleep":
                     events = try await service.forEach(babies) { s, b, g in
-                        try s.toggleSleep(baby: b, surface: .watch, fields: g)
+                        try s.toggleSleep(baby: b, surface: .watch, input: input, fields: g)
                     }
                 case "switchSide":
                     events = try await service.forEach(babies) { s, b, g in
-                        try s.switchSide(baby: b, surface: .watch, fields: g)
+                        try s.switchSide(baby: b, surface: .watch, input: input, fields: g)
                     }
                 case "diaper":
-                    let kind = message["kind"] as? String ?? "wet"
+                    let kind: [String: FieldValue] = (message["kind"] as? String).map { ["kind": .string($0)] } ?? (blind.isEmpty ? ["kind": .string("wet")] : blind)
                     events = try await service.forEach(babies) { s, b, g in
-                        try s.log(type: "diaper", fields: ["kind": .string(kind)].merging(g) { $1 }, provenance: Provenance(surface: .watch, input: .tap), baby: b)
+                        try s.log(type: "diaper", fields: kind.merging(g) { $1 }, provenance: Provenance(surface: .watch, input: input), baby: b)
                     }
                 case "care":
                     if let runId = (message["runningId"] as? String).flatMap(UUID.init(uuidString:)) {
@@ -1002,8 +1011,8 @@ final class WatchBridge: NSObject, WCSessionDelegate, @unchecked Sendable {
                     } else if let type = message["type"] as? String {
                         let isTimed = EventRegistry.shared.type(type)?.isTimed ?? false
                         events = try await service.forEach(babies) { s, b, g in
-                            isTimed ? try s.startTimed(type, baby: b, fields: g, surface: .watch)
-                                    : try s.log(type: type, fields: g, provenance: Provenance(surface: .watch, input: .tap), baby: b)
+                            isTimed ? try s.startTimed(type, baby: b, fields: g, surface: .watch, input: input)
+                                    : try s.log(type: type, fields: g, provenance: Provenance(surface: .watch, input: input), baby: b)
                         }
                     }
                 case "undo":

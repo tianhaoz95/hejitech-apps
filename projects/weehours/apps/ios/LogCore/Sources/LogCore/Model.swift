@@ -299,3 +299,11 @@ public enum StoolColor: String, CaseIterable, Sendable {
         }
     }
 }
+
+extension LogEvent {
+    /// `needs_details: true` marks an entry logged blind (a watch tilt) that still misses an answer,
+    /// such as a diaper's kind or how much of a bottle went down; the iPhone asks for it later and
+    /// the answer is an edit without the flag.
+    public static let needsDetails = "needs_details"
+    public var needsDetails: Bool { fields[Self.needsDetails] == .bool(true) }
+}

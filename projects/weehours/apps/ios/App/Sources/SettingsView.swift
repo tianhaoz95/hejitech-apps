@@ -170,6 +170,10 @@ struct SettingsView: View {
                     Text("The night screen is true black with big amber or red buttons, so it won't light up the nursery. Swipe down on it for the full app. The one-handed dock puts feed, diaper and sleep on an arc around the mic, within reach of your thumb. Both are for this iPhone only.")
                 }
                 Section {
+                    NavigationLink { WatchSettingsView() } label: { Label("Apple Watch", systemImage: "applewatch") }
+                        .accessibilityIdentifier("settings-watch")
+                }
+                Section {
                     if thumbDock == .off {
                         Picker("Mic button", selection: $voicePlacement) {
                             ForEach(VoiceButtonPlacement.allCases) { Text($0.title).tag($0) }
