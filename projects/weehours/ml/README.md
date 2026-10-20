@@ -170,8 +170,8 @@ The full run: 7,000 plans → 20,966 utterances, blind agreement 0.605, about 1 
 teacher time and 40 min of training on the Spark. The top-up added one-entry bottles (190 → 1,195
 rows), bottle start/finish and none-of-these, with the new phase wording, and trained on full +
 top-up together. Hugging Face tag `topup` (sha256 `a0bc06ea…`). The run report (charts, misses,
-timeline) is `reports/wee-hours-model-train-v0` at the repo root, kept out of git: ask the user
-if it's not there.
+timeline) is `reports/archive/wee-hours-model-train-v0` at the repo root
+(`script/serve.sh` serves it).
 
 ## Conventions
 

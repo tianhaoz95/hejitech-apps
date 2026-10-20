@@ -45,7 +45,7 @@ The PRD ("Newborn Log — PRD") plus the changes agreed while planning, and the 
 
 | Topic | Decision | Why |
 |---|---|---|
-| Now screen | Direction 03 "Log-for bar" from `reports/weehours-multi-child`: every shown child's status side by side, a sticky "Log for" bar over the buttons (any number of children, plus Both/All), foldable to one line; with one shown child, no bar and no extra card | Owner's pick, with: arbitrary child count, no wasted space for one child, fold for long stretches with one child |
+| Now screen | Direction 03 "Log-for bar" from `reports/archive/weehours-multi-child`: every shown child's status side by side, a sticky "Log for" bar over the buttons (any number of children, plus Both/All), foldable to one line; with one shown child, no bar and no extra card | Owner's pick, with: arbitrary child count, no wasted space for one child, fold for long stretches with one child |
 | Which children a phone shows | Per phone (Settings → Children → Show on this iPhone); archiving is household-wide | Owner request: a family with three children can keep two on this phone |
 | Per child | Name, birth date, colour, bottle size and quick-feed override; categories, reminders' intervals, caregivers, night window and duty stay household-wide | Recommended in the proposal; nothing else asked for |
 | Several at once | One event per child sharing a `group` field; Undo takes them back together | Each child keeps a clean log; MCP and CSV need no new concept |
