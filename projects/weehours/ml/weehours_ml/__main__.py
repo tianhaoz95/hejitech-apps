@@ -4,6 +4,7 @@ Stages run in this order; `datagen` runs plan..build in one go. See README.md.""
 
 import argparse
 import importlib
+import re
 
 from .config import Run
 
@@ -23,7 +24,7 @@ def checks(run):
     else:
         problems.append(f"{run.laya_export} missing: run `logeval --export` (README)")
     services = (PROJECT_DIR / "apps/ios/App/Sources/Services.swift").read_text()
-    if f'let prompt = "{run["asr"]["prompt"]}"' not in services:
+    if not re.search(rf'let \w*[pP]rompt = "{re.escape(run["asr"]["prompt"])}"', services):
         problems.append("[asr] prompt differs from the Whisper prompt in Services.swift")
     build = (PROJECT_DIR / "scripts/build-llama-xcframework.sh").read_text()
     if f'LLAMA_COMMIT="${{LLAMA_COMMIT:-{run["convert"]["llama_cpp_commit"]}}}"' not in build:
