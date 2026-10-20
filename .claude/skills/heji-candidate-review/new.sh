@@ -3,7 +3,8 @@
 #
 #   .claude/skills/heji-candidate-review/new.sh <slug> "<Title>"
 #
-# Picks the first port from 8787 up that no other reports/*/script/serve.sh already uses.
+# Picks the first port from 8787 up that no other report (active or in reports/archive/) already uses:
+# browsers keep each site's hearts and ratings per port, so a reused port would mix two reviews.
 set -euo pipefail
 
 SLUG="${1:?usage: new.sh <slug> \"<Title>\"}"
@@ -14,8 +15,9 @@ SKILL="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(git -C "$SKILL" rev-parse --show-toplevel)"
 DEST="$ROOT/reports/$SLUG"
 [[ -e "$DEST" ]] && { echo "$DEST already exists; edit it instead (new round = new candidates in it)." >&2; exit 1; }
+[[ -e "$ROOT/reports/archive/$SLUG" ]] && { echo "reports/archive/$SLUG exists; restore it (heji-archive-reports) or pick another slug." >&2; exit 1; }
 
-used="$(grep -ho ':-[0-9]\{4,5\}' "$ROOT"/reports/*/script/serve.sh 2>/dev/null | grep -o '[0-9]*' || true)"
+used="$(grep -ho ':-[0-9]\{4,5\}' "$ROOT"/reports/*/script/serve.sh "$ROOT"/reports/archive/*/script/serve.sh 2>/dev/null | grep -o '[0-9]*' || true)"
 PORT=8787
 while grep -qx "$PORT" <<<"$used"; do PORT=$((PORT + 1)); done
 

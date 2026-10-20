@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FeedbackKit Monorepo Support</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23C8603A'/%3E%3Cpath d='M8 11h16v9H15l-5 4v-4H8z' fill='%23FFE7C2'/%3E%3Ccircle cx='23' cy='9' r='3' fill='%23F2B544'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="#top">
+      <span class="logo"></span>
+      <span><b>FeedbackKit · monorepo support</b><small>One repo, several apps: a project "root directory" carried through prompts, CLI, issues and releases</small></span>
+    </a>
+    <div class="seg" role="group" aria-label="Appearance">
+      <button data-mode="light">Light</button>
+      <button data-mode="dark">Dark</button>
+    </div>
+  </header>
+
+  <div class="layout" id="top">
+    <nav class="toc" aria-label="Sections">
+      <a href="#overview">1 · Overview</a>
+      <a href="#architecture">2 · Architecture</a>
+      <a href="#prompt">3 · The prompt</a>
+      <a href="#journey">4 · A report's journey</a>
+      <a href="#cli">5 · CLI: which project?</a>
+      <a href="#release">6 · Release check</a>
+      <a href="#model">7 · Data model</a>
+      <a href="#rollout">8 · Rollout</a>
+      <a href="#graduation">9 · Graduation</a>
+    </nav>
+
+    <main>
+      <!-- 1 -->
+      <section id="overview">
+        <p class="kicker">Design walkthrough · 2026-10-16</p>
+        <h1>Natively supporting monorepos in FeedbackKit</h1>
+        <p class="lede">The HEJI repo (<code>tianhaoz95/hejitech-apps</code>) holds two apps, Waypack and Wee Hours, each with its own FeedbackKit project. FeedbackKit already copes with several projects pointing at one repo. What it lacks is the idea of <b>where in the repo a project lives</b>. This walkthrough proposes one new setting, a project <b>root directory</b>, and follows it through every part of the loop.</p>
+
+        <div class="cards two">
+          <div class="card good">
+            <h3>Already works</h3>
+            <ul>
+              <li><b>One repo, many projects.</b> The GitHub webhook matches every project whose <code>github_repo</code> equals the pushed repo (<code>.ilike("github_repo", …)</code> in <code>supabase/functions/github-webhook</code>).</li>
+              <li><b>Unambiguous linking.</b> <code>FeedbackKit: &lt;id&gt;</code> trailers carry the report id, so a fix can't be credited to the wrong app.</li>
+              <li><b>Per-project releases.</b> Release tokens belong to one project, so a Wee Hours build only ships Wee Hours fixes.</li>
+            </ul>
+          </div>
+          <div class="card warn">
+            <h3>Gaps</h3>
+            <ol>
+              <li><b>Prompts don't say which app or folder.</b> An agent infers it from the project id buried in a screenshot URL.</li>
+              <li><b>The CLI can't tell where you are.</b> In a monorepo it stops with <i>"You're in several projects"</i> unless you pass <code>--project</code>.</li>
+              <li><b>Issues from every app land in one repo, unmarked.</b> Agent-runner workflows fire on a shared label and run at the repo root.</li>
+              <li><b>Release matching ignores paths.</b> A mistyped trailer on another app's commit goes unnoticed.</li>
+            </ol>
+          </div>
+        </div>
+        <div class="callout"><b>Proposal in one line:</b> add <code>projects.github_path</code> (for example <code>projects/weehours</code>; empty = repo root) and use it in the prompt, the CLI, GitHub issues and the release check. Projects map to apps; products stay platforms within an app (iPhone, Watch, web).</div>
+      </section>
+
+      <!-- 2 -->
+      <section id="architecture">
+        <h2><span>2</span>Architecture</h2>
+        <p>Toggle between today and the proposal. Dashed red marks a gap; green marks what the root directory adds.</p>
+        <div class="seg big" role="group" aria-label="Architecture view" id="archMode">
+          <button data-arch="today" class="on">Today</button>
+          <button data-arch="proposed">Proposed</button>
+        </div>
+        <figure class="diagram" id="archFig"></figure>
+        <p class="caption" id="archCaption"></p>
+      </section>
+
+      <!-- 3 -->
+      <section id="prompt">
+        <h2><span>3</span>The prompt</h2>
+        <p>The prompt is what an agent (or you, pasting it) acts on. Today it says nothing about the app or where its code is. Three new placeholders fill that in: <code>{{project_name}}</code>, <code>{{repo}}</code> and <code>{{project_path}}</code>. The default template opens with them.</p>
+        <div class="seg big" role="group" aria-label="Prompt version" id="promptMode">
+          <button data-prompt="today" class="on">Today</button>
+          <button data-prompt="proposed">Proposed</button>
+        </div>
+        <div class="promptwrap">
+          <pre class="prompt" id="promptText"></pre>
+          <aside class="card" id="promptNote"></aside>
+        </div>
+        <p class="note">The template is rendered in four places, and each needs the placeholders: the Edge Function (<code>supabase/functions/_shared/promptTemplate.ts</code>), the dashboard (<code>web/src/lib/prompt-template.ts</code>), the CLI (<code>cli/src/promptTemplate.ts</code>) and the Mac developer app (<code>DeveloperApp/Sources/Services/PromptGenerator.swift</code>), plus the merged multi-report prompt (<code>renderMergedPrompt</code>), which should group reports by project.</p>
+      </section>
+
+      <!-- 4 -->
+      <section id="journey">
+        <h2><span>4</span>A report's journey</h2>
+        <p>Follow one Wee Hours report from the parent's phone to "is it fixed?". Step through it; the active stage lights up.</p>
+        <div class="journey">
+          <figure class="diagram" id="journeyFig"></figure>
+          <div class="card stepcard">
+            <div class="stephead"><span id="stepNo">1 / 9</span><div class="btnrow"><button class="btn" id="prevStep">← Back</button><button class="btn pri" id="nextStep">Next →</button></div></div>
+            <h3 id="stepTitle"></h3>
+            <p id="stepBody"></p>
+            <div class="chips" id="stepChips"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5 -->
+      <section id="cli">
+        <h2><span>5</span>CLI: which project?</h2>
+        <p>A committed <code>feedbackkit.json</code> in each app's folder says which project it is. The CLI walks up from the current directory to the nearest one, the way git finds <code>.git</code>. Click a folder to see what each command would use.</p>
+        <div class="cliwrap">
+          <div class="card tree" id="tree"></div>
+          <div class="card" id="cliOut"></div>
+        </div>
+        <pre class="code"><span class="c">// projects/weehours/feedbackkit.json (written by `feedbackkit init`)</span>
+{ "projectId": "71d85688-ffc5-481c-8636-2b94dc5c1c90", "path": "projects/weehours" }</pre>
+        <p class="note">Precedence: <code>--project</code> &gt; <code>FEEDBACKKIT_PROJECT_ID</code> &gt; nearest <code>feedbackkit.json</code> &gt; your only project. With <code>--token</code>, the token decides, and the CLI warns if it disagrees with the folder.</p>
+      </section>
+
+      <!-- 6 -->
+      <section id="release">
+        <h2><span>6</span>Release check</h2>
+        <p><code>feedbackkit release</code> ships every linked fix whose commit is an ancestor of the build. With a root directory, it can also check that each fix commit touches that directory, which catches a trailer pasted onto the wrong app's commit. Toggle the commits in the build, then announce it.</p>
+        <div class="card">
+          <div class="relhead"><b>Wee Hours 0.2.1</b> · build <code>202610201000</code> · project path <code>projects/weehours</code></div>
+          <table class="commits" id="commits"></table>
+          <div class="btnrow"><button class="btn pri" id="announce">Announce build</button><label class="chk"><input type="checkbox" id="pathCheck" checked> Path check on</label></div>
+          <div id="relOut"></div>
+        </div>
+      </section>
+
+      <!-- 7 -->
+      <section id="model">
+        <h2><span>7</span>Data model</h2>
+        <p>One column, plus a stable label slug. Everything else derives from them.</p>
+        <figure class="diagram" id="modelFig"></figure>
+        <pre class="code"><span class="c">-- supabase/migrations/0030_project_path.sql</span>
+alter table projects
+  add column if not exists github_path text not null default ''
+    check (github_path !~ '(^/|/$|\.\.)'),            <span class="c">-- relative, no leading/trailing slash, no ..</span>
+  add column if not exists github_label text not null default '';  <span class="c">-- '' = derived slug, e.g. fk:weehours</span>
+
+<span class="c">-- Several projects may share a repo, but not the same folder of it.</span>
+create unique index if not exists projects_repo_path_uniq
+  on projects (lower(github_repo), github_path) where github_repo is not null;</pre>
+      </section>
+
+      <!-- 8 -->
+      <section id="rollout">
+        <h2><span>8</span>Rollout</h2>
+        <p>Ordered by value for effort. Each phase ships on its own and keeps single-repo projects unchanged (empty path = repo root).</p>
+        <div class="phases" id="phases"></div>
+      </section>
+
+      <!-- 9 -->
+      <section id="graduation">
+        <h2><span>9</span>Graduation and compatibility</h2>
+        <div class="cards two">
+          <div class="card">
+            <h3>When an app leaves the monorepo</h3>
+            <p>HEJI apps can graduate to their own repo and backend. In FeedbackKit that's an edit of two fields: <code>github_repo</code> to the new repo, <code>github_path</code> to empty. Report history, releases and tokens stay with the project; nothing references the old folder.</p>
+            <div class="mini" id="gradFig"></div>
+          </div>
+          <div class="card">
+            <h3>Compatibility</h3>
+            <ul>
+              <li>Existing projects get <code>github_path = ''</code>: same prompts (the new header just names the app and repo), same CLI behavior, same issues.</li>
+              <li>Custom templates keep working; the placeholders are opt-in, and only the default template uses them.</li>
+              <li><code>feedbackkit.json</code> is optional; the old precedence still applies when there's none.</li>
+              <li>The path check warns rather than blocks at first; make it an error once projects have set their paths.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+      <footer class="foot">Based on <code>tianhaoz95/feedback-kit</code> at <code>b1584c6</code> and <code>tianhaoz95/hejitech-apps</code> at <code>19fb8be</code>. Proposal only; nothing in FeedbackKit has changed yet.</footer>
+    </main>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -15,8 +15,8 @@ phone + web, plus the user's own "combo" added after feedback) and `feedback-kit
 The loop: **brief → candidates → user reviews in the browser → "Copy summary" pasted back →
 next round (variants, a combo) → winner → implement in the real project.**
 
-`reports/` is ignored locally (`.git/info/exclude`): review sites are scratch work and never
-committed. The skill and its template are.
+Review sites in `reports/` are committed with the work they belong to, so they stay reviewable
+from any checkout. Old ones move to `reports/archive/` (the `heji-archive-reports` skill).
 
 ## 1. Brief (ask only what blocks)
 

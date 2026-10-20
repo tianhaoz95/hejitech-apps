@@ -1,0 +1,173 @@
+// Sample trip templates. Each one is what a "template mode" share would publish:
+// a de-dated, de-personalised plan (relative days, season instead of dates, crew shape instead of names)
+// plus the part only a real trip can give: notes on what was kept, cut and surprising.
+window.WP = window.WP || {};
+
+WP.me = "Parker family";
+
+WP.templates = [
+  {
+    id: "sequoia", title: "Sequoia in the snow", region: "California, USA", lon: -118.7, lat: 36.5,
+    tagline: "Giant trees, a ranger snowshoe walk and early nights by the fire.",
+    month: 0, season: "Winter", months: [11, 0, 1, 2], nights: 2, days: 3, pace: "Easy", move: "Car",
+    crew: { adults: 2, kids: [9, 6], pets: 0 }, remixes: 128, traveled: "Jan 2026", author: "Mia R.", rating: 4.9, wouldAgain: true,
+    accent: "#3F6EA8", tags: ["Snow", "Big trees", "Kids", "Chains needed"], places: 14, drive: "4 h from SF Bay",
+    scene: { sky: ["#B9D3EE", "#EEF4FA"], sun: "sun", mountains: "snowy-peaks", trees: "snowy-pine", ground: "snow", water: "none" },
+    plan: [
+      { t: "Foothills to Giant Forest", s: ["Chain check at Hospital Rock", "General Sherman Tree", "Big Trees Trail (flat, 1.3 mi)", "Wuksachi Lodge"] },
+      { t: "Snowshoes and sledding", s: ["Ranger snowshoe walk, 10:00", "Lunch at the lodge", "Wolverton sledding hill", "Hot chocolate + stars"] },
+      { t: "Grant Grove and home", s: ["General Grant Tree", "Grant Grove village", "Kings Canyon overlook", "Drive home before dark"] },
+    ],
+    kept: ["The ranger snowshoe walk was the highlight. Sign up at the Giant Forest Museum by 9:30, snowshoes free."],
+    cut: ["Moro Rock: the stairs were iced over and closed.", "Crystal Cave is shut all winter, don't plan for it."],
+    surprise: ["Chains were required from Hospital Rock up. Rent in Three Rivers, not at the gate.", "No cell signal above 5,000 ft. Download everything."],
+    recheck: ["Road and chain controls on Generals Hwy", "Snowshoe walk days (weekends only some years)", "Lodge dates and rates"],
+  },
+  {
+    id: "kyoto", title: "Kyoto in autumn, kid pace", region: "Kyoto, Japan", lon: 135.8, lat: 35.0,
+    tagline: "Temples at opening time, a Nara deer day and a lot of snack breaks.",
+    month: 10, season: "Autumn", months: [9, 10, 11], nights: 5, days: 6, pace: "Easy", move: "Transit",
+    crew: { adults: 2, kids: [9, 6], pets: 0 }, remixes: 342, traveled: "Nov 2025", author: "a Waypacker", rating: 4.8, wouldAgain: true,
+    accent: "#C2562D", tags: ["Fall colours", "Temples", "Kids", "No car"], places: 22, drive: "Transit only",
+    scene: { sky: ["#F7C59F", "#FBE3C8"], sun: "low-sun", mountains: "rolling", trees: "autumn", ground: "grass", water: "none" },
+    plan: [
+      { t: "Arrive, Gion at dusk", s: ["Haruka from Kansai Airport", "Check in near Shijo", "Gion and Shirakawa walk", "Nishiki Market dinner"] },
+      { t: "Fushimi Inari early", s: ["Fushimi Inari gates at 7:30", "Tofuku-ji maple bridge", "Nap break", "Kamo River stepping stones"] },
+      { t: "Nara deer day", s: ["Kintetsu to Nara", "Nara Park deer", "Todai-ji Great Buddha", "Back by 16:00"] },
+      { t: "Arashiyama", s: ["Bamboo grove at 8:00", "Monkey Park Iwatayama", "Boat on the Hozu", "Okochi Sanso tea"] },
+    ],
+    kept: ["Being at every big sight in the first hour it opened. By 10 the crowds made it miserable with kids."],
+    cut: ["Kinkaku-ji: far, packed, and the kids lasted 15 minutes.", "The tea ceremony: lovely, but too long for a 6-year-old."],
+    surprise: ["Monkey Park was the kids' favourite thing all week.", "Buses were full. Taxis for 4 cost about the same as the bus."],
+    recheck: ["Peak foliage dates for this year", "Temple opening hours and night illuminations", "Rail pass prices"],
+  },
+  {
+    id: "lisbon", title: "Lisbon & Sintra long weekend", region: "Lisbon, Portugal", lon: -9.14, lat: 38.7,
+    tagline: "Trams, tiles, one Sintra day and a sunset at every miradouro.",
+    month: 2, season: "Spring", months: [2, 3, 4, 8, 9], nights: 3, days: 4, pace: "Moderate", move: "Transit",
+    crew: { adults: 2, kids: [], pets: 0 }, remixes: 211, traveled: "Mar 2026", author: "Jo & Sam", rating: 4.7, wouldAgain: true,
+    accent: "#2F7F9E", tags: ["City", "Food", "Couple", "No car"], places: 19, drive: "Transit only",
+    scene: { sky: ["#9ED0E6", "#FCE6C9"], sun: "sun", mountains: "none", water: "ocean", ground: "city", skyline: true },
+    plan: [
+      { t: "Alfama and the castle", s: ["Tram 28 from Martim Moniz", "Castelo de São Jorge", "Miradouro de Santa Luzia", "Fado in Alfama"] },
+      { t: "Sintra day", s: ["Train from Rossio, 8:11", "Pena Palace (timed entry)", "Quinta da Regaleira well", "Travesseiros at Piriquita"] },
+      { t: "Belém", s: ["Jerónimos Monastery", "Pastéis de Belém", "MAAT riverside walk", "LX Factory dinner"] },
+    ],
+    kept: ["Pena Palace on the first timed slot, then walking down to Regaleira (all downhill)."],
+    cut: ["Tram 28: the queue was an hour. We walked the route instead."],
+    surprise: ["Every street is a hill and the cobbles are slippery in rain. Bring real shoes."],
+    recheck: ["Pena Palace timed tickets", "Fado house booking", "Train times to Sintra"],
+  },
+  {
+    id: "zion", title: "Zion without the permits", region: "Utah, USA", lon: -113.0, lat: 37.3,
+    tagline: "Big views on trails you can just walk onto. No lottery needed.",
+    month: 3, season: "Spring", months: [2, 3, 4, 9, 10], nights: 2, days: 3, pace: "Moderate", move: "Car + shuttle",
+    crew: { adults: 2, kids: [], pets: 0 }, remixes: 96, traveled: "Apr 2026", author: "a Waypacker", rating: 4.6, wouldAgain: true,
+    accent: "#C0582E", tags: ["Hiking", "Desert", "Couple"], places: 11, drive: "2.5 h from Las Vegas",
+    scene: { sky: ["#F49B6C", "#FFD7A8"], sun: "low-sun", mountains: "peaks", trees: "none", ground: "rock", water: "river" },
+    plan: [
+      { t: "Arrive, Watchman at sunset", s: ["Springdale check-in", "Pa'rus Trail", "Watchman Trail", "Canyon Junction bridge"] },
+      { t: "Main canyon by shuttle", s: ["First shuttle, 6:00", "Scout Lookout", "Riverside Walk", "Emerald Pools"] },
+      { t: "Kolob and out", s: ["Kolob Canyons Road", "Timber Creek Overlook", "Drive out by noon"] },
+    ],
+    kept: ["Scout Lookout gives you 90% of the Angels Landing view without the permit."],
+    cut: ["The Narrows were closed for snowmelt the whole week. Spring often does this."],
+    surprise: ["The shuttle line at 8:00 was a 45-minute wait. At 6:00 there was none."],
+    recheck: ["Narrows flow rate and closures", "Shuttle season and first bus", "Campground or lodge availability"],
+  },
+  {
+    id: "olympic", title: "Olympic Peninsula loop with a dog", region: "Washington, USA", lon: -123.6, lat: 47.8,
+    tagline: "Rainforest, tide pools and beaches where the dog is welcome too.",
+    month: 7, season: "Summer", months: [6, 7, 8], nights: 4, days: 5, pace: "Easy", move: "Car",
+    crew: { adults: 2, kids: [10], pets: 1 }, remixes: 74, traveled: "Aug 2025", author: "the Parks", rating: 4.8, wouldAgain: true,
+    accent: "#4E7D4F", tags: ["Dog friendly", "Beaches", "Rainforest"], places: 16, drive: "Loop, 6 h total",
+    scene: { sky: ["#BFD9C2", "#F4EBD3"], sun: "sun", mountains: "peaks", trees: "pine", ground: "grass", water: "ocean" },
+    plan: [
+      { t: "Port Angeles", s: ["Ferry from Edmonds", "Hurricane Ridge (dog: parking lots only)", "Lake Crescent swim"] },
+      { t: "Rialto and Hoh", s: ["Rialto Beach (dogs OK to Ellen Creek)", "Hoh Rain Forest Hall of Mosses", "Forks dinner"] },
+      { t: "Ruby and Kalaloch", s: ["Ruby Beach tide pools at low tide", "Kalaloch Tree of Life", "Lodge cabins (pets OK)"] },
+    ],
+    kept: ["Planning each beach around low tide. The tide pools at Ruby were the trip."],
+    cut: ["Sol Duc Falls: no dogs on the trail, so one of us waited in the car."],
+    surprise: ["Dogs are banned on almost every trail in the park, but welcome on most beaches."],
+    recheck: ["Tide tables for your dates", "Pet rules by beach", "Hurricane Ridge road status"],
+  },
+  {
+    id: "maui", title: "Maui slow week", region: "Hawaii, USA", lon: -156.3, lat: 20.8,
+    tagline: "One big day (Haleakalā sunrise), the rest is beaches and naps.",
+    month: 3, season: "Spring", months: [3, 4, 5, 8, 9], nights: 7, days: 8, pace: "Easy", move: "Car",
+    crew: { adults: 2, kids: [8, 5], pets: 0 }, remixes: 188, traveled: "Apr 2026", author: "a Waypacker", rating: 4.9, wouldAgain: true,
+    accent: "#E0703A", tags: ["Beach", "Snorkel", "Kids", "Sunrise"], places: 20, drive: "Island loop",
+    scene: { sky: ["#F49B6C", "#FFD7A8"], sun: "low-sun", mountains: "rolling", water: "ocean", trees: "palm", ground: "sand" },
+    plan: [
+      { t: "Arrive, Kihei", s: ["Kahului airport", "Costco run", "Kamaole III sunset"] },
+      { t: "Haleakalā sunrise", s: ["Leave 3:00 (reservation)", "Summit sunrise", "Kula Lodge breakfast", "Nap"] },
+      { t: "Snorkel Napili", s: ["Napili Bay turtles", "Honolua lookout", "Lahaina-side shave ice"] },
+    ],
+    kept: ["One early day, then nothing before 9 for the rest of the week. The kids were happy."],
+    cut: ["The Road to Hana: too long with a 5-year-old. We went to Twin Falls only."],
+    surprise: ["Sunrise at the summit is near freezing. Bring hats and blankets."],
+    recheck: ["Haleakalā sunrise reservation", "West Maui reopening status", "Snorkel conditions"],
+  },
+  {
+    id: "iceland", title: "Iceland south coast", region: "South Iceland", lon: -19.0, lat: 63.6,
+    tagline: "Waterfalls, black sand and a glacier lagoon in six unhurried days.",
+    month: 8, season: "Autumn", months: [5, 6, 7, 8], nights: 5, days: 6, pace: "Moderate", move: "Car",
+    crew: { adults: 4, kids: [], pets: 0 }, remixes: 402, traveled: "Sep 2025", author: "Ana K.", rating: 4.9, wouldAgain: true,
+    accent: "#3E7A8C", tags: ["Road trip", "Waterfalls", "Friends"], places: 24, drive: "Ring road, 7 h",
+    scene: { sky: ["#B9D3EE", "#EEF4FA"], sun: "sun", mountains: "snowy-peaks", trees: "none", ground: "rock", water: "ocean" },
+    plan: [
+      { t: "Golden Circle", s: ["Þingvellir", "Geysir", "Gullfoss", "Secret Lagoon"] },
+      { t: "Waterfalls", s: ["Seljalandsfoss (walk behind)", "Skógafoss", "Kvernufoss", "Vík"] },
+      { t: "Glacier lagoon", s: ["Reynisfjara (watch the waves)", "Fjaðrárgljúfur", "Jökulsárlón", "Diamond Beach"] },
+    ],
+    kept: ["Sleeping in Vík and Höfn so the long drives were split in two."],
+    cut: ["The plane wreck walk: 2 hours round trip for a photo."],
+    surprise: ["Wind closed the road for half a day. Keep a spare afternoon."],
+    recheck: ["Road and wind warnings (safetravel.is)", "Glacier hike operators", "Aurora forecast"],
+  },
+  {
+    id: "smokies", title: "Smokies car camping", region: "Tennessee, USA", lon: -83.5, lat: 35.6,
+    tagline: "Creek swims, easy waterfalls and s'mores. Fireflies if you time it.",
+    month: 6, season: "Summer", months: [4, 5, 6, 8, 9], nights: 3, days: 4, pace: "Easy", move: "Car",
+    crew: { adults: 2, kids: [7, 4], pets: 1 }, remixes: 63, traveled: "Jul 2025", author: "a Waypacker", rating: 4.5, wouldAgain: true,
+    accent: "#4E7D4F", tags: ["Camping", "Creeks", "Kids", "Dog friendly"], places: 12, drive: "Camp base",
+    scene: { sky: ["#BFD9C2", "#F4EBD3"], sun: "sun", mountains: "peaks", trees: "pine", ground: "grass", water: "river" },
+    plan: [
+      { t: "Set up at Elkmont", s: ["Elkmont campground", "Little River swim", "Campfire"] },
+      { t: "Waterfalls", s: ["Laurel Falls (paved)", "Cades Cove loop (car)", "Abrams Creek"] },
+      { t: "Gatlinburg treat day", s: ["Gatlinburg Trail (dogs OK)", "Pancakes", "Rainy-day backup: aquarium"] },
+    ],
+    kept: ["Elkmont as the base: the river is right there and the kids swam every afternoon."],
+    cut: ["Clingmans Dome: fogged in, and the walk up was steep for the 4-year-old."],
+    surprise: ["Parking tags are required at every stop now. Buy them before you arrive."],
+    recheck: ["Parking tag rules", "Synchronous firefly lottery dates", "Campground reservations"],
+  },
+  {
+    id: "tahoe", title: "Tahoe first ski weekend", region: "California, USA", lon: -120.0, lat: 39.1,
+    tagline: "Lessons for the kids, one blue run together, hot tub after.",
+    month: 1, season: "Winter", months: [11, 0, 1, 2], nights: 3, days: 4, pace: "Moderate", move: "Car",
+    crew: { adults: 2, kids: [9, 6], pets: 0 }, remixes: 151, traveled: "Feb 2026", author: "a Waypacker", rating: 4.6, wouldAgain: true,
+    accent: "#3F6EA8", tags: ["Ski", "Snow", "Kids", "Chains needed"], places: 9, drive: "3.5 h from SF Bay",
+    scene: { sky: ["#B9D3EE", "#EEF4FA"], sun: "sun", mountains: "snowy-peaks", trees: "snowy-pine", ground: "snow", water: "frozen-lake" },
+    plan: [
+      { t: "Drive up Friday", s: ["Leave by 11 to beat the traffic", "Rentals in Truckee", "Check in"] },
+      { t: "Lesson day", s: ["Kids' ski school 8:30", "Parents' blue run", "Pick up 15:00", "Hot tub"] },
+      { t: "Snow play", s: ["Sledding at Tahoe City", "Emerald Bay lookout", "Pizza"] },
+    ],
+    kept: ["Renting in Truckee the night before. No line at the mountain in the morning."],
+    cut: ["A second ski day. Everyone was tired, so we sledded instead."],
+    surprise: ["Sunday's drive home took 6 hours. Leave Monday or before 9."],
+    recheck: ["Chain controls on I-80", "Ski school availability", "Lift ticket prices"],
+  },
+];
+
+WP.byId = Object.fromEntries(WP.templates.map((t) => [t.id, t]));
+WP.MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+WP.MONTHS_L = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+WP.collections = [
+  { name: "Snow with little kids", ids: ["sequoia", "tahoe"], c: "#C7D9EE" },
+  { name: "No car needed", ids: ["kyoto", "lisbon"], c: "#F6C3B2" },
+  { name: "Bring the dog", ids: ["olympic", "smokies"], c: "#C5E3D5" },
+  { name: "Long drives, big views", ids: ["iceland", "zion"], c: "#F7E2A6" },
+];

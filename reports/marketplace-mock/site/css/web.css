@@ -1,0 +1,91 @@
+/* ── review layout for this report (gallery cards with phone + browser, detail, compare) */
+.cgrid { display: grid; gap: 26px 22px; }
+.cand2 { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 16px 14px 16px; border-radius: 22px; background: var(--panel); box-shadow: var(--shadow); text-decoration: none; transition: transform .15s; min-width: 0; }
+.cand2:hover { transform: translateY(-2px); }
+.cand2.picked { box-shadow: 0 0 0 2.5px var(--win), var(--shadow); }
+.cand2 .hd { display: flex; gap: 8px; align-items: baseline; padding-right: 44px; }
+.cand2 .no { font-size: 12px; font-weight: 800; color: var(--acc); font-variant-numeric: tabular-nums; }
+.cand2 h3 { margin: 0; font-size: 17px; }
+.cand2 .r { font-size: 12px; font-weight: 700; color: var(--win); }
+.cand2 .eff { margin-left: auto; font-size: 11.5px; font-weight: 700; color: var(--mut); }
+.cand2 .win { position: static; padding: 2px 8px; border-radius: 99px; background: var(--win); color: #2B1A05; font-size: 11px; font-weight: 800; }
+.cand2 > p { margin: 0; font-size: 13px; color: var(--mut); line-height: 1.4; }
+.cand2 .frames { display: flex; gap: 16px; align-items: center; justify-content: center; margin-top: 6px; pointer-events: none; }
+.cand2 .fav { top: 12px; right: 12px; }
+.fav.on { color: var(--fav); }
+
+.bwrap { position: relative; flex: none; }
+.bwrap > .bw { position: absolute; top: 0; left: 0; transform-origin: top left; }
+
+.detail2 { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 32px; align-items: start; }
+.dleft { display: flex; flex-direction: column; gap: 28px; min-width: 0; }
+.dleft .phones { justify-content: flex-start; }
+.wfig { margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.wfig figcaption, .phones figcaption { font-size: 12px; font-weight: 700; color: var(--mut); text-align: center; }
+.pc2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; font-size: 13.5px; }
+.pc2 ul { padding-left: 16px; }
+.pick .sp { flex: 1; }
+.cmp2 { display: grid; gap: 30px 20px; justify-items: center; }
+.cmp2 figure { margin: 0; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.cmp2 figcaption { display: flex; gap: 8px; align-items: center; font-weight: 700; font-size: 14px; }
+.cmp2 figcaption a { text-decoration: none; }
+.cmp2 figcaption small { color: var(--win); }
+.cmp2 .fv { color: var(--fav); }
+.cmp2 .win { padding: 2px 8px; border-radius: 99px; background: var(--win); color: #2B1A05; font-size: 11px; font-weight: 800; }
+@media (max-width: 1100px) { .detail2 { grid-template-columns: 1fr; } .info { position: static; } }
+
+/* ═════════════ browser window + the Waypack web portal (site palette, scrapbook objects) ═════════════ */
+.bw { width: 1280px; height: 836px; border-radius: 14px; overflow: hidden; background: #E8E1D6; box-shadow: 0 0 0 1px rgba(60,40,20,.18), 0 30px 60px -30px rgba(40,20,10,.5); }
+.bw-chrome { height: 36px; display: flex; align-items: center; gap: 14px; padding: 0 14px; background: #E8E1D6; border-bottom: 1px solid rgba(60,40,20,.12); }
+.bw.dark .bw-chrome, .bw.dark { background: #1A1512; }
+.bw.dark .bw-chrome { border-color: rgba(255,255,255,.08); }
+.bw-chrome .dots { display: flex; gap: 7px; }
+.bw-chrome .dots i { width: 12px; height: 12px; border-radius: 50%; background: #F26B5E; }
+.bw-chrome .dots i:nth-child(2) { background: #F5BE4F; } .bw-chrome .dots i:nth-child(3) { background: #5FC453; }
+.bw-chrome .url { flex: 0 1 520px; margin: 0 auto; display: flex; gap: 6px; align-items: center; justify-content: center; height: 24px; border-radius: 7px; background: rgba(255,255,255,.7); font: 12.5px Inter, sans-serif; color: #5A4E44; }
+.bw.dark .bw-chrome .url { background: rgba(255,255,255,.08); color: #BFB2A4; }
+.bw-chrome .sp { width: 50px; }
+
+/* The page itself reuses the phone's scrapbook object classes via .sk-like tokens. */
+.wv { position: relative; height: 800px; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin;
+  --bg: #F3EADB; --ink: #3D332B; --mut: #75685C; --card: #FFFDF8; --paper: #FFFDF8; --acc: #B4523A; --ok: #4F8A62; --warn: #B87810; --err: #C0432B;
+  --line: rgba(120,90,60,.16); --pink: #F2A28B; --mint: #A9D3C0; --yel: #F3D27A; --sticky: #FFF6C9; --cap: #3D332B; --capm: #8C7D6E;
+  background: var(--bg); color: var(--ink); background-image: radial-gradient(rgba(120,90,60,.16) 1px, transparent 1.3px); background-size: 16px 16px;
+  font: 15px/1.45 Inter, -apple-system, system-ui, sans-serif; -webkit-font-smoothing: antialiased; text-align: left; }
+.bw.dark .wv { --bg: #231D18; --ink: #EFE4D6; --mut: #AB9B8B; --card: #2F2722; --paper: #EDE4D4; --acc: #E88468; --line: rgba(255,230,200,.1);
+  background-image: radial-gradient(rgba(255,230,200,.06) 1px, transparent 1.3px); }
+.wv * { box-sizing: border-box; }
+.wh { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 12px; height: 60px; padding: 0 32px; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.wl { width: 30px; height: 30px; border-radius: 8px; background: radial-gradient(circle at 68% 32%, #F2B544 0 5px, transparent 6px), linear-gradient(160deg, #F7C59F, #C8603A); }
+.wn { font-family: Caveat, cursive; font-size: 30px; line-height: 1; margin-right: 18px; }
+.wh nav { display: flex; gap: 4px; }
+.wh nav span { padding: 6px 12px; border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--mut); }
+.wh nav span.on { color: var(--ink); background: var(--card); box-shadow: 0 1px 2px rgba(60,40,20,.12); }
+.wsp { flex: 1; }
+.wbtn { display: inline-flex; gap: 6px; align-items: center; height: 34px; padding: 0 14px; border-radius: 17px; background: var(--card); font-size: 13.5px; font-weight: 700; box-shadow: 0 1px 2px rgba(60,40,20,.15); }
+.wav { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: #A9D3C0; color: #2B3A30; font-weight: 800; font-size: 14px; }
+.wpage { padding: 28px 40px 60px; }
+.whero { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-bottom: 26px; }
+.whero h1, .wv h1.hand { margin: 0; font-family: Caveat, cursive; font-size: 52px; line-height: .95; font-weight: 700; }
+.whero p { margin: 0; color: var(--mut); font-size: 16px; }
+.wsearch { display: flex; gap: 10px; align-items: center; width: 520px; height: 46px; padding: 0 18px; margin-top: 10px; border-radius: 23px; background: var(--card); color: var(--mut); box-shadow: 0 1px 3px rgba(60,40,20,.16); font-size: 15px; }
+.wcols { display: grid; grid-template-columns: 210px 1fr; gap: 32px; align-items: start; }
+.wf { position: sticky; top: 80px; display: flex; flex-direction: column; gap: 20px; }
+.wf h5 { margin: 0 0 6px; font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--mut); }
+.wf label { display: flex; gap: 8px; align-items: center; padding: 3px 0; font-size: 14px; }
+.wf label i { width: 16px; height: 16px; border-radius: 4px; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--ink) 30%, transparent); }
+.wf label i.on { background: var(--acc); box-shadow: none; }
+.wcrumb { font-size: 13px; color: var(--mut); margin-bottom: 14px; }
+.wv .lede { font-size: 17px; color: var(--mut); margin: 8px 0 12px; }
+.wmeta { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: 13.5px; }
+.wmeta > span:not(.stamp) { display: inline-flex; gap: 4px; align-items: center; }
+.wv h3.hand, .wv h2.hand { font-family: Caveat, cursive; font-size: 32px; line-height: 1; margin: 28px 0 12px; font-weight: 700; }
+.wv h4 { margin: 22px 0 8px; font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--mut); }
+.wcta { margin: 18px 0 6px; padding: 16px; border-radius: 10px; background: var(--card); box-shadow: 0 1px 2px rgba(60,40,20,.14), 0 10px 22px -16px rgba(60,40,20,.5); }
+.wcta-alt { display: flex; gap: 8px; margin-top: 10px; }
+.wcta-alt span { flex: 1; display: inline-flex; gap: 6px; justify-content: center; align-items: center; height: 34px; border-radius: 17px; font-size: 13px; font-weight: 700; box-shadow: inset 0 0 0 1.5px var(--line); }
+.wv .fine, .fine { font-size: 12.5px; margin: 10px 0 0; line-height: 1.45; }
+.wv .mut { color: var(--mut); }
+.wv .code { display: flex; gap: 10px; padding: 12px 14px; border-radius: 8px; background: color-mix(in srgb, var(--ink) 6%, transparent); font: 12.5px/1.5 ui-monospace, Menlo, monospace; }
+.wv .scene { display: block; width: 100%; height: 100%; }
+.wv .ic { display: block; flex: none; }

@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Multiple children · Architecture</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <style>
+    .wrap { display: grid; grid-template-columns: 220px minmax(0, 860px); gap: 40px; max-width: 1160px; margin: 0 auto; padding: 28px 24px 80px; }
+    .toc { position: sticky; top: 84px; align-self: start; display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; }
+    .toc a { padding: 5px 10px; border-radius: 8px; text-decoration: none; color: var(--mut); font-weight: 600; }
+    .toc a:hover { background: var(--panel); color: var(--ink); }
+    article h1 { margin: 0 0 6px; font-size: 34px; letter-spacing: -.02em; line-height: 1.1; }
+    article .lede { margin: 0 0 22px; font-size: 17px; color: var(--mut); max-width: 70ch; }
+    article h2 { margin: 44px 0 10px; font-size: 22px; letter-spacing: -.01em; scroll-margin-top: 80px; }
+    article h2 small { display: block; color: var(--acc); font-size: 12px; font-weight: 800; letter-spacing: .08em; }
+    article p, article li { line-height: 1.6; }
+    .callout { padding: 16px 18px; border-radius: 16px; background: color-mix(in srgb, var(--acc) 12%, var(--panel)); box-shadow: inset 4px 0 0 var(--acc); }
+    .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 16px 0; }
+    .cards > div { padding: 16px 18px; border-radius: 16px; background: var(--panel); box-shadow: var(--shadow); }
+    .cards h3 { margin: 0 0 6px; font-size: 14px; letter-spacing: .06em; text-transform: uppercase; }
+    .cards ul { margin: 0; padding-left: 18px; font-size: 14px; }
+    .ok h3 { color: #4E7D40; } .gap h3 { color: var(--fav); }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 12px 0; background: var(--panel); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); }
+    th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+    th { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--mut); }
+    tr:last-child td { border: 0; }
+    td b.rec { color: var(--acc); }
+    code, pre { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12.5px; }
+    code { padding: 1px 5px; border-radius: 5px; background: color-mix(in srgb, var(--ink) 7%, transparent); }
+    pre { margin: 12px 0; padding: 14px 16px; border-radius: 14px; background: var(--panel); box-shadow: var(--shadow); overflow-x: auto; line-height: 1.55; }
+    pre .add { color: #3E8E3E; } pre .del { color: var(--fav); } pre .c { color: var(--mut); }
+    :root[data-theme="dark"] pre .add { color: #8CCB7E; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) pre .add { color: #8CCB7E; } }
+    .q { display: inline-block; min-width: 26px; padding: 1px 7px; border-radius: 99px; background: var(--acc); color: var(--acc-ink); font-size: 12px; font-weight: 800; text-align: center; }
+    .bug { padding: 14px 16px; border-radius: 14px; background: color-mix(in srgb, var(--fav) 10%, var(--panel)); }
+    .steps { counter-reset: s; list-style: none; padding: 0; }
+    .steps li { counter-increment: s; position: relative; padding: 0 0 12px 40px; }
+    .steps li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--panel); box-shadow: 0 0 0 1px var(--line); font-size: 13px; font-weight: 800; }
+    @media (max-width: 820px) { .wrap { grid-template-columns: 1fr; } .toc { display: none; } .cards { grid-template-columns: 1fr; } table { display: block; overflow-x: auto; } }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="index.html#/"><span class="logo"></span><span><b>Wee Hours · Multiple children</b><small>Architecture &amp; decisions</small></span></a>
+    <nav class="tabs" aria-label="View">
+      <a href="index.html#/">Gallery</a>
+      <a href="index.html#/compare">Compare</a>
+      <a class="on" href="architecture.html">Architecture</a>
+    </nav>
+  </header>
+
+  <div class="wrap">
+    <nav class="toc">
+      <a href="#overview">Overview</a>
+      <a href="#decisions">Decisions for you</a>
+      <a href="#data">Data model</a>
+      <a href="#derive">Derivation per child</a>
+      <a href="#voice">Voice &amp; captures</a>
+      <a href="#surfaces">Every surface</a>
+      <a href="#compat">Compatibility</a>
+      <a href="#plan">Plan &amp; effort</a>
+    </nav>
+    <article>
+      <h1>Multiple children in one household</h1>
+      <p class="lede">The database already has room for several children; the apps assume one. The work is to make each child a first-class part of the household on every surface, without slowing down one-tap logging.</p>
+
+      <h2 id="overview"><small>1</small>Overview</h2>
+      <div class="cards">
+        <div class="ok"><h3>Already works</h3><ul>
+          <li><code>weehours.babies</code> is its own table (<code>household_id</code>, name, birth date)</li>
+          <li>Every event already carries <code>baby_id</code> (<code>events.baby_id</code>, <code>LogEvent.babyId</code>)</li>
+          <li>Sync (outbox + seq cursor), RLS and realtime are per household, so they need no change</li>
+          <li>Caregivers, duty, invites, billing are household-wide, which stays right with more children</li>
+        </ul></div>
+        <div class="gap"><h3>Gaps</h3><ul>
+          <li><code>Household</code> has one <code>babyId</code>/<code>babyName</code>; <code>my_household()</code> joins one baby; <code>update_household</code> renames <em>every</em> baby</li>
+          <li>Derivation runs over the whole household: twins fed together are flagged as <b>duplicates</b>, and one child's open feed blocks the other's</li>
+          <li><code>captures</code> (glasses voice) has no <code>baby_id</code>; the interpreter knows no names</li>
+          <li>Widgets, Live Activity, Siri, Watch, glasses, MCP, the account page and CSV all show one child</li>
+        </ul></div>
+      </div>
+      <p class="callout"><b>Proposal:</b> derive everything per child (status, sessions, duplicates, reminders), keep the household as the unit for people, duty and billing, give each child a few settings of their own, and pick the target child on every surface the same way: <b>a name said or chosen wins; otherwise the surface's current child</b>. On the phone that's the <a href="index.html#/d/logfor">Log-for bar (03)</a>, which I recommend.</p>
+
+      <h2 id="decisions"><small>2</small>Decisions for you</h2>
+      <p>My recommendation is in bold. Answer by number in your summary (e.g. “D3: per child”).</p>
+      <table>
+        <tr><th></th><th>Question</th><th>Options</th></tr>
+        <tr><td><span class="q">D1</span></td><td>Now screen</td><td>The five directions in the gallery. <b class="rec">03 Log-for bar</b>: everyone visible, one tap per entry, “Both” for twins.</td></tr>
+        <tr><td><span class="q">D2</span></td><td>What is per child?</td><td><b class="rec">Name, birth date, colour, bottle size, default feed (bottle/breast), reminder intervals.</b> Household-wide: tracked categories, caregivers, quiet hours, night window, duty. (Alternative: categories per child too, e.g. pumping only matters for the baby, not the toddler.)</td></tr>
+        <tr><td><span class="q">D3</span></td><td>On duty</td><td><b class="rec">One duty for all children</b> (the person up at night has both). Alternative: duty per child, so parents can split twins.</td></tr>
+        <tr><td><span class="q">D4</span></td><td>“Both” entries</td><td><b class="rec">One event per child, written together with a shared <code>group</code> id</b> so Undo and edits can offer “both”. Each child keeps a clean log; MCP and CSV need no new concept.</td></tr>
+        <tr><td><span class="q">D5</span></td><td>Voice with no name said</td><td><b class="rec">Goes to the surface's current child</b> (phone: the Log-for target; glasses: the focused child). “the twins”, “both”, “everyone” log for all. Alternative: always ask when there's more than one child (safer, slower).</td></tr>
+        <tr><td><span class="q">D6</span></td><td>Price</td><td><b class="rec">Unchanged: one purchase covers every child in the household.</b> Alternative: an add-on per extra child (I'd advise against it for families with twins).</td></tr>
+        <tr><td><span class="q">D7</span></td><td>Removing a child</td><td><b class="rec">Archive</b> (hidden from Now, widgets and voice; history kept and exportable). Permanent delete stays household-wide only.</td></tr>
+        <tr><td><span class="q">D8</span></td><td>Widgets</td><td><b class="rec">Each widget is configured for a child, plus a medium “everyone” widget</b> listing each child's line. Lock-screen widgets: one child each.</td></tr>
+      </table>
+
+      <h2 id="data"><small>3</small>Data model</h2>
+      <p>One migration in <code>supabase/schemas/weehours/schema.sql</code> (via <code>scripts/db_migration.sh weehours multi-child</code>). Events don't change: they already have <code>baby_id</code>.</p>
+<pre><span class="c">-- babies: per-child settings, order, archive</span>
+ create table weehours.babies (
+   id uuid primary key,
+   household_id uuid not null references weehours.households(id) on delete cascade,
+   name text not null,
+   birth_date date,
+<span class="add">+  settings jsonb not null default '{}'::jsonb,   -- color, bottle_ml, default_feed, reminders (D2)
++  position int not null default 0,
++  archived_at timestamptz,</span>
+   created_at timestamptz not null default now()
+ );
+<span class="add">+create policy "members add babies" on weehours.babies for insert with check (household_id = weehours.my_household_id());</span>
+
+<span class="c">-- captures: which child the glasses were focused on (null = let the transcript decide)</span>
+<span class="add">+alter table weehours.captures add column baby_id uuid;</span>
+
+<span class="c">-- RPCs</span>
+<span class="add">+add_baby(p_id, p_name, p_birth_date, p_settings)          -- members only
++update_baby(p_id, p_name, p_birth_date, p_settings, p_archived)</span>
+<span class="del">-update_household(p_id, p_name, p_baby_name, p_birth_date, p_settings)   -- renamed every baby</span>
+<span class="add">+update_household(p_id, p_name, p_settings)</span>
+ my_household()  <span class="c">-- adds "babies": [{id, name, birth_date, settings, position, archived_at}] ordered by position;
+                 --   keeps baby_id / baby_name / birth_date = first active child, for older app builds</span></pre>
+      <p>Swift <code>Household</code> gains <code>babies: [Baby]</code> (with <code>active</code> = not archived); <code>babyId</code>/<code>babyName</code> become computed from the first child so existing call sites keep compiling while they move over. TypeScript (<code>packages/core</code>, <code>services/web/src/account.ts</code>, <code>apps/glasses/src/api.ts</code>) gets the same <code>babies</code> array. <code>spec/event-types.json</code> documents the optional <code>group</code> field (D4).</p>
+
+      <h2 id="derive"><small>4</small>Derivation per child</h2>
+      <div class="bug"><b>Bug today if a second child existed:</b> Sam logs Mia's bottle on the phone at 1:52 and Alex logs Leo's on the watch at 1:52. <code>Derive.swift</code> step 4 flags “same type, close in time, other caregiver” as a <b>possible duplicate</b>; and <code>openFeedSession()</code> sees one household-wide open feed, so finishing Leo's bottle would close Mia's.</div>
+      <p><code>DerivedLog(events, babyId:)</code> derives over one child's events; the app keeps a <code>[UUID: DerivedLog]</code>. Duplicate detection, sessions, next side, growth, the status line and <code>ReminderPlanner</code> all become per child. Duty and household system events (<code>duty</code>) stay household-wide (D3). The same change goes into <code>packages/core/src/core.ts</code>, and <code>spec/fixtures/status.json</code> gets twin fixtures (simultaneous bottles aren't duplicates; finishing one child's feed leaves the other's open) so Swift and TypeScript stay locked together.</p>
+
+      <h2 id="voice"><small>5</small>Voice &amp; captures</h2>
+      <ul>
+        <li><b>Names are parsed deterministically</b>, like times and quantities (<code>Parsers</code> in <code>Decision.swift</code>): the children's names and nicknames (“Mia”, “Leo”), plus “both / the twins / everyone / the babies”. The Laya questions stay category × phase, so model accuracy doesn't change.</li>
+        <li>No name → the current child (D5). Two names in one sentence (“Mia had 90, Leo 110”) → one event each, with each amount split by the parser.</li>
+        <li>The confirmation bar always names the child: “Bottle · 90 ml · Mia”.</li>
+        <li>Glasses captures store the focused child in <code>captures.baby_id</code>; the phone that processes them uses it when the transcript has no name.</li>
+      </ul>
+
+      <h2 id="surfaces"><small>6</small>Every surface</h2>
+      <table>
+        <tr><th>Surface</th><th>Change</th><th>Size</th></tr>
+        <tr><td>Onboarding</td><td>“Add another child” after the first (twins: add both up front)</td><td>S</td></tr>
+        <tr><td>Now</td><td>D1's winner. Duplicate review banner names the child</td><td>M</td></tr>
+        <tr><td>Timeline</td><td>Child chip on each row, All / per-child filter, edit can move an entry to the other child (logged for the wrong one)</td><td>S</td></tr>
+        <tr><td>Settings</td><td>“Children” section: add, reorder, colour, per-child settings, archive (D2, D7)</td><td>M</td></tr>
+        <tr><td>Reminders</td><td>Planned per child: “Leo · feed due · right next”</td><td>S</td></tr>
+        <tr><td>Widgets</td><td>App-intent configuration with a child parameter; medium “everyone” widget (D8)</td><td>M</td></tr>
+        <tr><td>Live Activity</td><td>One activity per child with an open feed or sleep; finish/switch buttons target that child</td><td>S</td></tr>
+        <tr><td>Siri / Shortcuts</td><td>A <code>ChildEntity</code> parameter on every intent (“Log a diaper for Leo”); asks when omitted and there's more than one child</td><td>S</td></tr>
+        <tr><td>Watch</td><td>Child picker at the top (Mia | Leo | Both), remembered on the watch; status lists each child</td><td>S</td></tr>
+        <tr><td>Glasses + ring</td><td>HUD shows each child's line; ring tap logs for the focused child; double-tap switches focus; hold-to-speak sends the focus with the capture</td><td>M</td></tr>
+        <tr><td>MCP</td><td><code>get_status</code> returns one entry per child; <code>log_event</code>/<code>list_events</code> take an optional <code>baby</code> (name or id), required when the household has several; <code>get_baby_profile</code> → <code>list_children</code> (old name kept as an alias)</td><td>S</td></tr>
+        <tr><td>Website account</td><td>One card per child; delete confirmation types the household name instead of the baby's</td><td>S</td></tr>
+        <tr><td>CSV export</td><td>Adds a <code>child</code> column; file named after the household</td><td>S</td></tr>
+      </table>
+
+      <h2 id="compat"><small>7</small>Compatibility</h2>
+      <ul>
+        <li><b>Older app builds</b> keep working: <code>my_household()</code> still returns <code>baby_id</code>/<code>baby_name</code> for the first child, and they log to it. But once a second child exists, an old build would log everything to the first child, so “Add a child” in the new build first asks everyone in the household to update (step 1 adds the app version to each event's provenance, so the app can tell who is still on an old build).</li>
+        <li><b>Existing data</b> needs no backfill: every event already points at the household's single baby.</li>
+        <li><b>Local-only households</b> (no account) work the same; <code>Store.rehome</code> moves to a per-child map instead of one <code>baby</code>.</li>
+        <li><b>Graduation rules</b> are untouched: everything stays in the <code>weehours</code> schema.</li>
+      </ul>
+
+      <h2 id="plan"><small>8</small>Plan &amp; effort</h2>
+      <ol class="steps">
+        <li><b>Data + derivation</b>: migration, <code>Household.babies</code>, per-child <code>DerivedLog</code> in Swift and TS, twin fixtures. No UI change yet; single-child households behave exactly as today.</li>
+        <li><b>Phone</b>: Settings → Children, onboarding, the chosen Now design, Timeline chips/filter, per-child reminders, voice name parsing.</li>
+        <li><b>Extensions</b>: widgets, Live Activity, Siri, Watch.</li>
+        <li><b>Glasses, MCP, website, CSV.</b></li>
+        <li><b>Verify on the iPhone</b> with a twins household (<code>-localSetup</code> gains a second child) and screenshots of each surface; MCP checks in <code>scripts/test-mcp.mjs</code>.</li>
+      </ol>
+      <p>Overall: <b>L</b> (about 4 focused sessions). Step 1 is the riskiest and lands first, behind no flag, because it changes nothing for one child.</p>
+    </article>
+  </div>
+  <script>
+    try { const m = JSON.parse(localStorage.getItem("weehours-multi-child-v1") || "{}").mode; if (m === "light" || m === "dark") document.documentElement.dataset.theme = m; } catch {}
+  </script>
+</body>
+</html>

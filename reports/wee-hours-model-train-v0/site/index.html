@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Laya fine-tune v0</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/report.css">
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="#summary"><span class="logo"></span><span><b>Wee Hours · Laya fine-tune v0</b><small>Design, runs and results · 18 Oct 2026</small></span></a>
+    <nav class="tabs" aria-label="Sections">
+      <a href="#summary" class="on">Report</a>
+      <a href="#ship">Ship it?</a>
+    </nav>
+  </header>
+
+  <div class="wrap">
+    <nav class="toc">
+      <a href="#summary">Summary</a>
+      <a href="#role">What Laya does</a>
+      <a href="#design">Design</a>
+      <a href="#infra">Infrastructure</a>
+      <a href="#data">Data</a>
+      <a href="#training">Training</a>
+      <a href="#experiments">Experiments</a>
+      <a href="#results">Results</a>
+      <a href="#labels">Label decisions</a>
+      <a href="#ship">Ship it?</a>
+      <a href="#future">Future work</a>
+      <a href="#know">Things to know</a>
+      <a href="#repro">Reproduce</a>
+      <a href="#round2">Round 2: not a log</a>
+      <a href="#round3">Round 3: care types</a>
+      <a href="#round4">Round 4: two levels</a>
+    </nav>
+    <article>
+      <h1>Teaching Laya what a tired parent means</h1>
+      <p class="lede">Stock Laya picks the right category for a voice log 37% of the time, so the app almost never logs without asking. A fine-tune on ~12,700 synthetic, spoken-then-transcribed sentences takes it to 98% (type 99.4%) and lets the app log 88% of sentences on its own, with one wrong entry in 178, at the same speed and size.</p>
+
+      <div class="stats" id="headline"></div>
+
+      <h2 id="summary"><small>1</small>Summary</h2>
+      <div class="cards">
+        <div class="ok"><h3>What worked</h3><ul>
+          <li>Labels decided first, teacher only phrases them, blind relabel filters: 60% of what the teacher wrote survived, and the survivors are clean.</li>
+          <li>Real speech errors: Kokoro reads every sentence aloud in a noisy room, Whisper base.en (the app's model, with its prompt) transcribes it. More than half the transcripts differ from the text.</li>
+          <li>Training on the app's request verbatim means no prompt drift: the GGUF drops into the app's existing runtime.</li>
+          <li>Targeted data works: diagnosing why one class was starved (190 → 1,195 rows) fixed both past-bottle errors and the “wash the bottles” one in a single 1.5 h run.</li>
+          <li>The whole run fits in an afternoon on the DGX Spark: 1 h 41 min teacher, 40 min training.</li>
+        </ul></div>
+        <div class="gap"><h3>What's left</h3><ul>
+          <li>One wrong auto-commit left: “remember to buy more formula” logged as a bottle. “Not a feed” sentences that mention feeding things are the next weak class.</li>
+          <li>Side detection softened (“switching sides, now left” goes to pick-two; side accuracy 100 → 90%): not logged wrong, but an extra tap.</li>
+          <li>The eval is 178 hand-written sentences, all typed text: no real audio, no real parents yet.</li>
+          <li>Calibration temperatures are fitted on 89 rows; treat calibrated numbers as rough.</li>
+        </ul></div>
+      </div>
+      <p class="callout" id="verdict"><b>Recommendation:</b> filled in when the top-up finishes.</p>
+      <p class="callout"><b>Update, 2026-10-19.</b> The top-up shipped in 0.4.0. A second round fixed “not a log entry” and side detection and ships in 0.4.1 (<a href="#round2">§14</a>); a third round teaches the model the 13 new care, health and activity types (<a href="#round3">§15</a>).</p>
+
+      <h2 id="role"><small>2</small>What Laya does in the app</h2>
+      <p>Laya (<code>convaiinnovations/laya</code>, ModernBERT-large, 421M parameters) is not a chatbot: it scores options. The app asks it multiple-choice questions about the transcript and does everything else (numbers, clock times, names, sessions) deterministically.</p>
+      <div class="flow">
+        <div><b>Voice</b><span>phone, watch, glasses</span></div>
+        <div><b>Whisper base.en</b><span>closed-vocabulary prompt</span></div>
+        <div class="hl"><b>Laya</b><span>category → phase → fields</span></div>
+        <div><b>Priors</b><span>open sessions reweight types</span></div>
+        <div><b>Policy</b><span>auto ≥ 0.85 · pick ≥ 0.5 · list</span></div>
+        <div><b>Derive</b><span>sessions, status, reminders</span></div>
+      </div>
+      <ul>
+        <li><b>Hierarchical questions</b> (<code>Interpreter.swift</code>): “What is the sentence about?” (category), then “starting, switching, finishing, or a complete entry?” (phase), then the type's fields (amount, side, contents, diaper kind, solids amount). Each question is rendered as <code>[CLS]choice question: …[SEP][MASK] key: description…[SEP]{transcript}[SEP]</code> (<code>LayaPrompt.swift</code>).</li>
+        <li><b>The descriptions in <code>spec/event-types.json</code> are part of the prompt.</b> Changing a word there changes what the model sees, for stock and fine-tuned alike. That turned out to matter (<a href="#labels">§9</a>).</li>
+        <li><b>Laya sees only the transcript.</b> Whether a bottle is open is applied afterwards as priors (e.g. finish ×1.6 when a bottle is open, ×0.9 when not), so the model has to get past-tense one-entry bottles right from the words.</li>
+        <li><b>Confidence policy</b>: the weakest question's probability decides the tier. Auto-commit logs it, pick-two shows two choices, full list shows everything. A wrong auto-commit is the costly error: the parent has to notice and undo it.</li>
+      </ul>
+
+      <h2 id="design"><small>3</small>Design</h2>
+<pre>plan ─ utterances ─ tts ─ asr ─ build ─ train ─ convert ─ evaluate ─ publish
+labels  teacher     Kokoro Whisper rows  laya.   GGUF      app's      Hugging Face
+fixed   writes +    reads  base.en       train   Q8_0      logeval    (not done)
+first   labels      aloud  hears         (RLCD)            vs stock
+        blind</pre>
+      <table>
+        <tr><th>Choice</th><th>Why</th></tr>
+        <tr><td><b>Labels first</b> (<code>plan</code>)</td><td>Each plan fixes the type, field values, how the time is said and whether the child is named, from a seed, with the app's own labelling rule (logeval's <code>gold()</code>, ported to <code>weehours_ml/laya.py</code>). The mix is exact and reproducible; the teacher can't drift towards easy classes.</td></tr>
+        <tr><td><b>Teacher writes, then labels blind</b></td><td><code>gpt-oss-120b</code> writes 3 sentences per plan (2–16 words, fragments, fillers, self-corrections), then answers the app's questions about each sentence without seeing the plan. Only sentences whose blind answers equal the plan survive: the plan says what's true, the blind pass catches sentences that don't actually say it.</td></tr>
+        <tr><td><b>Real recognition errors</b></td><td>Kokoro TTS reads each survivor (9 voices, speed 0.8–1.1, night-room noise at 8–30 dB SNR, reverb 40% of the time); Whisper base.en transcribes it with the app's prompt. Whisper is used, never trained. Training sees what the app will actually hear.</td></tr>
+        <tr><td><b>The app's request verbatim</b></td><td>Training rows are <code>{state, questions, expected}</code> with the questions exported by <code>logeval --export</code> (same option order, same descriptions). No separate prompt to keep in sync.</td></tr>
+        <tr><td><b>The authors' trainer</b></td><td><code>laya.train.finetune</code>, 4 epochs, effective batch 64. Supervised fine-tuning of a classifier, not teacher forcing: Laya is an encoder that scores each option's <code>[MASK]</code> in one pass, and the targets are one-hot (the plan's label; the teacher only writes and filters). The default <code>rlcd</code> loss is soft cross-entropy plus a GRPO-style term: Gaussian noise on the detached option scores, 4 samples, each rewarded by a strictly proper scoring rule (log + spherical score), aimed at calibration. It also fits per-question-type temperatures that travel inside the GGUF.</td></tr>
+        <tr><td><b>Held-out eval</b></td><td>Anything within 0.9 similarity of a sentence in <code>spec/utterances.jsonl</code> is dropped from training (49 rows). <code>evaluate</code> runs the app's own <code>logeval</code> through llama-server at the app's llama.cpp commit, fine-tuned vs stock, raw and calibrated.</td></tr>
+      </table>
+
+      <h2 id="infra"><small>4</small>Infrastructure</h2>
+      <div class="cards">
+        <div><h3>DGX Spark (<code>ssh dgx</code>)</h3><ul>
+          <li>GB10, 121 GB unified memory, aarch64, CUDA 13</li>
+          <li>Code and hot data: <code>~/heji-remote-dev</code> (NVMe)</li>
+          <li>Bulk: <code>/mnt/AIML/heji-remote-dev</code> (HF cache, audio, checkpoints, GGUFs); <code>ml/runs</code> is a symlink there</li>
+          <li>NGC <code>nvcr.io/nvidia/vllm:26.09-py3</code> serves the teacher; <code>heji-ml</code> (<code>ml/spark/Dockerfile</code>) adds Kokoro, espeak-ng, laya</li>
+        </ul></div>
+        <div><h3>Mac</h3><ul>
+          <li>Question export (<code>logeval --export</code>, Swift)</li>
+          <li><code>evaluate</code>: builds llama-server at the app's commit, runs logeval on both GGUFs</li>
+          <li>Fine-tuned GGUFs: <code>projects/weehours/ml/runs/{full-v1,full-v2,full,topup}/gguf</code> (git-ignored)</li>
+        </ul></div>
+      </div>
+      <h3 class="sub">Full run timeline (Spark clock)</h3>
+      <div class="timeline" id="timeline"></div>
+      <p class="mut">Utterances took 1 h 41 min (my estimate was 3.3 h; 128 requests in flight kept vLLM at ~70 plans/min). TTS overlapped with writing on the CPU, so only the remainder shows after the teacher stops.</p>
+
+      <h2 id="data"><small>5</small>Data</h2>
+      <p><b>7,000 plans → 20,966 sentences → 12,689 kept by the blind check (60.5%) → 10,958 training + 652 validation rows</b> after dropping 4,124 duplicate transcripts and 49 near-eval sentences. Below, per type: <span class="key k1"></span>written <span class="key k2"></span>kept by the blind check <span class="key k3"></span>training rows.</p>
+      <div class="funnel" id="funnel"></div>
+      <p>Measurements pass the blind check every time (the question is only the category); sleep and breast finishes and <b>one-entry bottles</b> lose the most. One-entry bottles keep 19%, which is why they're the remaining weak spot (<a href="#experiments">§7</a>).</p>
+      <h3 class="sub">What Whisper does to them</h3>
+      <table class="asr">
+        <tr><th>Teacher wrote</th><th>Whisper heard (training input)</th></tr>
+        <tr><td>okay so Leo's diaper was wet, about fifteen minutes ago</td><td>Okay, so Lisa's dietil was wet, about 15 minutes ago</td></tr>
+        <tr><td>Okay, head's 34 cm now</td><td>Okay, head's 34C now now</td></tr>
+        <tr><td>Just finished nursing Mateo, ten minutes ago.</td><td>Just finished nursing the tail ten minutes ago</td></tr>
+        <tr><td>around two ate a bite, just a little bit</td><td>around 2.8 a bite, just a little bit</td></tr>
+        <tr><td>Noah just gave me that first smile, I think I'm melting</td><td>No one just gave me that first smile, I think I'm melting</td></tr>
+        <tr><td>Uh, dry, clean</td><td>I'll drive clean nothing else</td></tr>
+      </table>
+      <p class="mut">6,809 of 12,689 transcripts differ from the written text (some only in “ten” → “10”).</p>
+
+      <h2 id="training"><small>6</small>Training</h2>
+      <h3 class="sub">What kind of training this is</h3>
+      <p><b>Supervised fine-tuning of a classifier on distilled labels, not teacher forcing.</b> Teacher forcing applies to autoregressive generators (feed the gold prefix, predict the next token). Laya generates nothing: it's an encoder that reads <code>[CLS]choice question: …[SEP][MASK] start: …[MASK] finish: …[SEP]{transcript}[SEP]</code> in one pass and scores each option at its <code>[MASK]</code>; a softmax over those scores is the answer.</p>
+      <ul>
+        <li><b>Distillation through data only, hard labels.</b> gpt-oss-120b writes the sentences and its blind answers decide which survive, but the target is the plan's label, fixed before the teacher wrote anything. No teacher probabilities reach the student.</li>
+        <li><b>One-hot targets per question.</b> Each row becomes one item per question it answers (category, phase, fields): 10,958 rows → 22,286 items.</li>
+        <li><b>The loss (<code>rlcd</code>, the trainer's default)</b> = soft cross-entropy over the question's own options (the SFT part) + a GRPO-style policy-gradient term: Gaussian noise added to the detached option scores, 4 samples, each rewarded by a strictly proper scoring rule (log + spherical score), noise annealed over the epochs. That term targets calibrated probabilities, not accuracy, and makes per-step losses swing and dip below zero. The trainer's own notes (#741) found no gain from it over soft-CE alone (<a href="#future">§11</a>).</li>
+        <li><b>Option order is fixed</b> (shuffling is off by default), matching the app, which always presents options in spec order.</li>
+      </ul>
+      <div class="cards">
+        <div><h3>Setup</h3><ul>
+          <li>Base <code>convaiinnovations/laya</code>, <code>laya.train.finetune</code> (RLCD)</li>
+          <li>4 epochs, micro-batch 8 × grad-accum 8, encoder LR 2.5e-5, head LR 1e-4</li>
+          <li>22,286 question items (rows × the questions each answers), 1,396 optimizer updates</li>
+          <li>400 calibration items; 1,310 held-out synthetic items</li>
+          <li>~40 min on the Spark GPU; convert to Q8_0 GGUF (449 MB, same as stock) in 2 min</li>
+        </ul></div>
+        <div><h3>On held-out synthetic data</h3>
+          <div class="kvs">
+            <span>Accuracy</span><b>0.52 → 0.98</b>
+            <span>ECE</span><b>0.25 → 0.01</b>
+            <span>Brier (top-1)</span><b>0.31 → 0.016</b>
+            <span>Choice temperature</span><b>3.01 (in the GGUF)</b>
+          </div>
+          <p class="mut">v2 numbers. The top-up run, on a harder val mix (more one-entry bottles): 0.51 → 0.967, ECE 0.013, choice temperature 3.71 (9 of 1,641 val items overlap training). Synthetic val comes from the same pipeline, so it says the model learned the data, not that the data is right. The app's eval below is the real test.</p>
+        </div>
+      </div>
+      <h3 class="sub">Mean loss per epoch</h3>
+      <div id="loss"></div>
+
+      <h2 id="experiments"><small>7</small>Experiments</h2>
+      <table>
+        <tr><th>Run</th><th>What changed</th><th>Outcome</th></tr>
+        <tr><td><b>Pilot</b></td><td>200 plans × 3. Found: gpt-oss thinking ate the token budget (→ <code>reasoning_effort = "low"</code>), all records waited for the end (→ bounded in-flight), Kokoro fails on the Spark GPU (→ 10 CPU workers), openings all started with “um” (→ prompt).</td><td>336 rows. Full accuracy 66 → 88%, but 7 wrong auto-commits, all bottles: 6 of them were label-convention disagreements, which led to <a href="#labels">§9</a>.</td></tr>
+        <tr><td><b>v1 full</b></td><td>7,000 plans × 3, 128 in flight.</td><td>97.2% full accuracy, 4 wrong auto-commits.</td></tr>
+        <tr><td><b>v2 full</b></td><td>Same sentences; rows rebuilt with the corrected export (relabelled eval, sharper amount wording); retrained.</td><td>97.8%, 3 wrong auto-commits. “fed a bottle, drank a quarter” now right.</td></tr>
+        <tr><td><b>Phase wording</b></td><td>Diagnosis of the one-entry bottle losses: the type said “a whole bottle feed” (teacher wrote “the whole bottle” even when the amount was meant to be unstated), finish said “says how much was drunk” (blind labeller called past bottles finishes), and “now” plans told the writer “it is happening now”. Rewrote the wording and the writer prompt.</td><td>Stock Laya gets <b>worse</b> with the new wording (type 83.7 → 72.5%): it can only ship together with a model trained on it. Kept on branch <code>weehours-laya-wording</code>.</td></tr>
+        <tr><td><b>Top-up</b></td><td>1,200 plans, 60% one-entry bottles, 20% “not a feed” (incl. washing / making up bottles), 10% each bottle start / finish, under the new wording; trained together with the full run's rows.</td><td id="topup-outcome">Running.</td></tr>
+      </table>
+
+      <h2 id="results"><small>8</small>Results on the app's eval</h2>
+      <p><code>logeval</code> over <code>spec/utterances.jsonl</code> (178 sentences with open-session context), raw scores, through llama-server at the app's commit. The pilot was scored before the <a href="#labels">relabel</a>. The top-up and “stock, new wording” rows are scored on the <code>weehours-laya-wording</code> branch (the wording they ship with); the others on main. Calibrated (fit on 89 rows, scored on 89) the top-up does <i>worse</i>: 3.7% wrong auto-commits, so ship it raw.</p>
+      <div id="evaltable"></div>
+      <h3 class="sub">Every remaining miss</h3>
+      <div id="misses"></div>
+      <p class="mut">Latency is unchanged: ~310 ms per sentence through llama-server on the Mac for both models (same architecture and quantization). On-device latency wasn't measured here.</p>
+
+      <h2 id="labels"><small>9</small>Label decisions made today</h2>
+      <p>The pilot's wrong auto-commits were mostly the model and the eval disagreeing on convention. You chose to follow what parents mean (commit <code>4947814b</code>, on main):</p>
+      <table>
+        <tr><th>Sentence</th><th>Was</th><th>Now</th><th>Why</th></tr>
+        <tr><td>gave her a bottle of formula 5 / 15 / 30 / 60 minutes ago</td><td>bottle start</td><td><b>one-entry bottle</b></td><td>Past tense reports a finished feed. A start would leave “bottle in progress” until the next bottle abandons it (<code>Derive.swift</code>).</td></tr>
+        <tr><td>he finished his bottle</td><td>amount not stated</td><td><b>drank all</b></td><td>Everyday English.</td></tr>
+        <tr><td>bottle's done · all done, half left</td><td colspan="2">unchanged</td><td>“Done” alone says the feed is over, not how much.</td></tr>
+      </table>
+      <p>The amount wording also changed on main (“finished the whole bottle”; “done alone does not say how much”). The phase wording is on the branch (<a href="#experiments">§7</a>).</p>
+
+      <h2 id="ship"><small>10</small>Ship it?</h2>
+      <div id="shipverdict" class="callout">Filled in when the top-up finishes.</div>
+      <p><b>Shipped in Wee Hours 0.4.0</b> (2026-10-18, <a href="https://github.com/tianhaoz95/hejitech-apps/releases/tag/weehours-v0.4.0">weehours-v0.4.0</a>). What was done, in order (<code>ml/README.md</code> “Shipping a model”):</p>
+      <ol class="steps">
+        <li><b>Published</b> the Q8_0 GGUF with a model card to <a href="https://huggingface.co/tianhaoz95/wee-hours-baby-activity">tianhaoz95/wee-hours-baby-activity</a> (<code>python -m weehours_ml publish --config configs/topup.toml</code>, tag <code>topup</code>). The downloaded file's sha256 (<code>a0bc06ea…</code>) matches the Spark's.</li>
+        <li><b>Pointed the app at it</b>: <code>eval/laya.env</code> (<code>LAYA_FILE=Laya-ft-Q8_0.gguf</code>) and <code>ModelManager.modelURL</code>; <code>verify</code> passes. The TestFlight model cache key now includes <code>laya.env</code>, so CI fetches the new file.</li>
+        <li><b>Merged the phase wording</b> together with the model.</li>
+        <li><b>Calibration</b>: every temperature in <code>spec/calibration.json</code> set to 1.0 (raw), <code>modelVersion</code> “weehours-laya-ft-v0 (topup, Q8_0)”.</li>
+        <li><b>Checked</b>: <code>LayaParityTests</code> on the Mac with the new GGUF (692 ms for 6 questions), <code>eval/results</code> refreshed with <code>scripts/eval.sh</code> (99.4% type, 1 wrong auto-commit), LogCore tests and CI green. Not yet checked: speaking to it on an iPhone — do that on the TestFlight build.</li>
+        <li><b>Released</b> with <code>scripts/cut_release.sh weehours minor</code>, together with tap-once voice capture and the What's New screen.</li>
+      </ol>
+
+      <h2 id="future"><small>11</small>Future improvements</h2>
+      <table>
+        <tr><th>Idea</th><th>Why</th><th>Cost</th></tr>
+        <tr><td><b>Scale up? Measure first</b></td><td>Training loss still falls at epoch 4, but most steps are already ≈0 and the mean comes from a few spikes (likely teacher-label noise); the calibration temperature of 3.7 says the model is already overconfident, and the app's eval is nearly saturated (1 sentence ≈ 0.6 points). Log validation loss per epoch, build the real-audio and harder evals below, then compare 4 vs 6–8 epochs and add data for the gaps they show, rather than more epochs.</td><td>A trainer flag + one run.</td></tr>
+        <tr><td><b>Real audio eval</b></td><td>Record 100–200 sentences from a few people (quiet, white noise, whispered) and run them through the app's Whisper. The current eval is typed text, so it never tests recognition errors.</td><td>An evening of recording; logeval already takes transcripts.</td></tr>
+        <tr><td><b>Real usage loop</b></td><td>Corrections (a pick, an undo after auto-commit) are labelled examples. With consent, collect transcript + final entry and add them to training; keep a slice as eval.</td><td>Privacy design + opt-in UI; biggest long-term win.</td></tr>
+        <tr><td><b>Bigger, harder eval</b></td><td>178 rows means one sentence ≈ 0.6 points. Add ~300 more, weighted to the hard cases (past bottles, “done”, non-feeds that mention feeding things, two events in one sentence).</td><td>Hand labelling, or teacher draft + review.</td></tr>
+        <tr><td><b>Rebalance by survival</b></td><td>Plan types in proportion to <i>kept</i> rows, not written ones: classes the blind check rejects more need more plans.</td><td>Config change.</td></tr>
+        <tr><td><b>Open-session context in the state</b></td><td>Laya sees only the transcript; adding “(bottle open since 2:10)” to the state would let it learn start vs one entry from context instead of priors. Needs app and eval changes together.</td><td>Medium; changes the app's prompt.</td></tr>
+        <tr><td><b>Smaller model</b></td><td>Distil into ModernBERT-base (~150M) for the Watch and glasses phone path, if latency or memory matters there.</td><td>One more training run + eval.</td></tr>
+        <tr><td><b>Other languages</b></td><td>Same pipeline with a multilingual teacher, Kokoro voices and Whisper small; the app's labels are language-free.</td><td>Mostly teacher time.</td></tr>
+        <tr><td><b>Soft-CE only</b></td><td>The trainer's own notes (#741) found no gain from the RLCD term over plain soft cross-entropy; try <code>loss = "soft-ce"</code> and compare.</td><td>One 40-min run + eval.</td></tr>
+        <tr><td><b>Option-order shuffling</b></td><td>Off by default, so the model can learn position priors. Harmless while the app's option order is fixed; turn it on (<code>shuffle_options</code>) before ever reordering options.</td><td>Config + retrain.</td></tr>
+        <tr><td><b>Kokoro on the GPU</b></td><td>CPU TTS is ~3.6 sentences/s; fine now, a bottleneck at 10× data. Try the PyTorch NGC image or cuDNN off + CPU FFT only.</td><td>An hour of debugging.</td></tr>
+      </table>
+
+      <h2 id="know"><small>12</small>Things you should know</h2>
+      <ul class="know">
+        <li><b>The wording change on main affects the shipped app.</b> Commit <code>4947814b</code> relabelled 5 eval rows and touched the amount descriptions only; stock still scores 83.7% type accuracy with it. The phase wording, which hurts stock, is <i>not</i> on main.</li>
+        <li><b>The LLM eval workflow reran</b> on main for <code>4947814b</code> (the spec changed) and passed (run 39169587785).</li>
+        <li><b>Calibrated numbers are noisy</b>: temperatures are fitted on even rows and scored on odd (89 rows). Raw is the fairer comparison today.</li>
+        <li><b>Spark housekeeping</b>: <code>/mnt/AIML</code> has no fstab entry seen, so it may not remount after a reboot (runs, HF cache and the <code>ml/runs</code> symlink live there). A few GB of orphan <code>.incomplete</code> files from the stalled Xet download sit in the HF cache. The <code>openshell-cluster-nemoclaw</code> container crash-loops (not ours, no GPU).</li>
+        <li><b>The Spark checkout has no <code>.git</code></b> (it's a <code>git archive</code>), so manifests record <code>git_commit: null</code>; the commits are listed in <a href="#repro">§13</a>.</li>
+        <li><b>Kokoro runs on the CPU</b> on the Spark (cuDNN/cuFFT failures under the container's CUDA forward compatibility); <code>[tts] device = "cpu"</code>, 10 workers.</li>
+        <li><b>A dead end:</b> the first unattended runner died at TTS and my watcher missed it (lost ~37 min). Watchers now match every terminal state.</li>
+      </ul>
+
+      <h2 id="repro"><small>13</small>Reproduce</h2>
+<pre><span class="c"># Mac: export the app's questions (on the branch whose wording you train)</span>
+cd projects/weehours/apps/ios/LogCore && swift run -c release logeval --export "$PWD/../../../ml/runs/laya_export.json"
+<span class="c"># copy spec/ + ml/ + runs/laya_export.json to the Spark, then there:</span>
+ml/spark/run.sh configs/full.toml teacher-up verify plan utterances teacher-down tts asr build train convert
+ml/spark/run.sh configs/topup.toml teacher-up plan utterances teacher-down tts asr build train convert
+<span class="c"># Mac: copy runs/&lt;name&gt;/gguf back, then</span>
+python -m weehours_ml evaluate --config configs/topup.toml   <span class="c"># → runs/topup/eval.md, calibration.json</span></pre>
+      <table>
+        <tr><th>Commit</th><th>What</th></tr>
+        <tr><td><code>6b9b4969</code></td><td>Spark runner (vLLM image, pilot gate), short gpt-oss reasoning</td></tr>
+        <tr><td><code>4d24a938</code></td><td>Bounded plans in flight; 128 for the full run</td></tr>
+        <tr><td><code>729500b3</code></td><td>TTS on CPU workers, varied openings</td></tr>
+        <tr><td><code>4947814b</code></td><td>Eval: bottle labels match what parents mean</td></tr>
+        <tr><td><code>4ca00b42</code></td><td>Top-up run for one-entry bottles (<code>id_prefix</code>, <code>include</code>)</td></tr>
+        <tr><td><code>8309ea9f</code></td><td>Phase wording, branch <code>weehours-laya-wording</code> (ship with the model)</td></tr>
+        <tr><td><code>13b7ff32</code></td><td>Round 2: not-a-log eval rows, category wording, <code>configs/none.toml</code></td></tr>
+        <tr><td><code>726a064a</code></td><td>Confident not-a-log kept as a note; data on Hugging Face (<code>publish_data</code>, <code>fetch</code>)</td></tr>
+        <tr><td><code>e6c0b2a0</code></td><td><code>LAYA_REVISION</code>: the app pins its model to a tag</td></tr>
+        <tr><td><code>638e5880</code></td><td>Ship the <code>none</code> fine-tune (0.4.1)</td></tr>
+        <tr><td><code>ab0812df</code></td><td>Round 3 (branch <code>weehours-laya-care</code>): care option + care_type, 239-row eval, <code>configs/care.toml</code></td></tr>
+      </table>
+
+      <h2 id="round2"><small>14</small>Round 2: “not a log entry” (shipped in 0.4.1)</h2>
+      <p>The weakness listed for the top-up, “11 of 12 not-a-log sentences open the full list”, was mostly the app, not the model.</p>
+      <div class="cards">
+        <div class="gap"><h3>What the diagnosis found</h3><ul>
+          <li><code>Interpreter.swift</code> sent <i>every</i> “none of these” answer to the full list on purpose, and logeval's review file then showed the first listed entry as “got”. So “hiccups again → Diaper” meant the model had said <i>none</i>.</li>
+          <li>With the model's own answer recorded (new <code>model_category</code>, <code>none_confidence</code> in the review), the top-up said “none” for 32 of 42 not-a-log sentences, mostly at 89–97%.</li>
+          <li>The 10 real misses were near misses that <i>name</i> a log topic without reporting one: “we need more nappies” → diaper 94%, “remember to buy more formula” → bottle, “booked the six week check” → growth. The category question literally asked “What is the parent's sentence about?”.</li>
+          <li>The eval had only 12 not-a-log sentences, so one sentence was 8% of the class.</li>
+        </ul></div>
+        <div class="ok"><h3>What changed</h3><ul>
+          <li><b>App:</b> a confident “not a log entry” (at the 85% auto bar) is kept as a note without asking, with a “Log it” toast. The keyword fallback keeps “none” below the bar: without that it would have turned 11.5% of real entries into notes.</li>
+          <li><b>Wording:</b> “Which kind of baby log entry is the parent reporting?”, and the none option names errands, plans, questions, chores, health and milestones.</li>
+          <li><b>Eval:</b> 30 hand-written not-a-log sentences (208 rows). The generator now carries the earlier bottle relabels, which had only been made in the generated file.</li>
+          <li><b>Data:</b> <code>configs/none.toml</code>, 1,000 plans, 60% not-a-log over 12 new near-miss topics plus short fragments, with real entries of the same topics for contrast; trained with full + top-up (14,490 rows). Teacher 10 min, training 57 min.</li>
+          <li><b>Infrastructure:</b> every run's text data is on Hugging Face (<a href="https://huggingface.co/datasets/tianhaoz95/wee-hours-baby-activity-data">wee-hours-baby-activity-data</a>, tags = run names; <code>publish_data</code>, <code>fetch</code>), and the app pins its model to a tag (<code>LAYA_REVISION</code>), so publishing a newer run never changes what a released version downloads.</li>
+        </ul></div>
+      </div>
+      <table>
+        <tr><th>208-row eval, raw</th><th class="n">Top-up (0.4.0)</th><th class="n">none (0.4.1)</th></tr>
+        <tr><td>Type accuracy</td><td class="n">99.5</td><td class="n">99.0</td></tr>
+        <tr><td>Full accuracy (type + fields + time)</td><td class="n">98.1</td><td class="n">99.0</td></tr>
+        <tr><td>Category</td><td class="n">94.7</td><td class="n">98.6</td></tr>
+        <tr><td>Phase</td><td class="n">100</td><td class="n">98.3</td></tr>
+        <tr><td>Side</td><td class="n">90.3</td><td class="n">96.8</td></tr>
+        <tr><td>Not-a-log kept as a note without asking</td><td class="n">47.6</td><td class="n">95.2</td></tr>
+        <tr><td>Real entries lost to a note</td><td class="n">0</td><td class="n">0</td></tr>
+        <tr><td>Auto-commit rate</td><td class="n">75.5</td><td class="n">76.9</td></tr>
+        <tr><td>Wrong auto-commits</td><td class="n">1 (“the formula tin is almost empty” → bottle)</td><td class="n">1 (“eyes open, she's awake” → Fell asleep)</td></tr>
+      </table>
+      <p><b>Decision:</b> shipped. It misses the README's bar by one sentence each on type and phase, but it gets 2 sentences wrong or unsure against the top-up's 4, fixes side after a switch, and asks about half as often for things that aren't entries. Its one wrong auto-commit (a wake-up logged as falling asleep) is the first thing to fix next. Calibration stays raw (the fitted one loses pick-two).</p>
+
+      <h2 id="round3"><small>15</small>Round 3: care, health and activity types</h2>
+      <p>0.4.1 adds 13 tap-logged trackers (bath, lotion, tooth brushing, potty, teething, medication, symptoms, temperature, doctor visits, vaccinations, tummy time, play time, walks). In the app they are <code>"model": false</code>: never offered to the model, so its prompt is byte-for-byte what it was trained on. This round, on branch <code>weehours-laya-care</code>, teaches it them.</p>
+      <ul class="know">
+        <li><b>Design: a “care” option and a care_type question.</b> Laya caps a question and all its option descriptions at 192 tokens (<code>head_max_len</code>), so 21 category options won't fit. The category question gets one “care” option (9 options, ~112 words) and a care_type question picks among the enabled trackers (13 options, ~106 words); P(type) = P(care) × P(care_type), the same shape as category × phase.</li>
+        <li><b>Eval (239 rows):</b> 31 new care sentences, and 12 sentences that were “not a log entry” relabelled as entries now that the types exist. <b>These are my calls, for your review:</b> rash, cough, sneezing, goopy eyes, baby acne → symptom; “gave her the vitamin D drops” → medication; “tummy time on the play mat” → tummy time; “she's teething I think” → teething; “temperature is 37.2” → temperature; “pediatrician says she's doing great” → doctor visit; “we're going for a walk” → walk; “the bath water was too cold” → bath. Plans and questions stay not-a-log (“bath at seven tonight”, “is she due for her vaccines soon”, “booked the six week check”), and so do hiccups and nail clipping.</li>
+        <li><b>Data:</b> <code>configs/care.toml</code>, 1,500 plans: 65% the 13 types, 15% not-a-log near misses (planning a bath, asking about a medicine or vaccine), 20% core entries; trained with full + top-up + none. The earlier runs' not-a-log rows about topics that are now entries (bath, drops, tummy time…) are wrong labels today, so <code>build</code> drops them (<code>drop_none_matching</code>).</li>
+        <li><b>Keyword fallback:</b> a care lexicon keeps CI's keyword gate green (type 93.3%, wrong auto-commits 1.0%); “ointment” had to become “ ointment” (it matched “appointment”).</li>
+        <li><b>Not done in the app yet:</b> voice for types with required fields (medicine name, temperature value, symptom, potty result) needs a voice path for those fields; the branch only trains and measures the type.</li>
+      </ul>
+      <p><b>Run:</b> 1,500 plans, teacher 27 min (blind agreement 0.629), TTS 15 min, training 68 min on 16,838 rows (135–245 per new type); 916 stale not-a-log rows dropped.</p>
+      <table>
+        <tr><th>239-row eval, raw</th><th class="n">Shipped none (main's 208 rows)</th><th class="n">care</th></tr>
+        <tr><td>Type accuracy</td><td class="n">99.0</td><td class="n">97.5</td></tr>
+        <tr><td>Core sentences right (196)</td><td class="n">194</td><td class="n">192</td></tr>
+        <tr><td>Tracker sentences right (43)</td><td class="n">– (not offered)</td><td class="n">40</td></tr>
+        <tr><td>care_type accuracy</td><td class="n">–</td><td class="n">93.0</td></tr>
+        <tr><td>Auto-commit rate</td><td class="n">76.9</td><td class="n">84.9</td></tr>
+        <tr><td>Wrong auto-commits</td><td class="n">0.6%</td><td class="n">2.5%</td></tr>
+        <tr><td>Not-a-log kept as a note / real entries lost to a note</td><td class="n">95.2 / 0</td><td class="n">83.3 / 0.8</td></tr>
+      </table>
+      <p><b>Not shipped.</b> It learns the new types (40 of 43), but its wrong auto-commits are a new kind of near miss: plans and questions <i>about</i> the new topics logged as entries (“is she due for her vaccines soon” → Vaccination, “bath at seven tonight” → Bath, “call the pediatrician tomorrow” → Doctor visit), plus “fever of 100.4” → Symptom and “playtime on the mat” → Tummy time. The round's near-miss data (15% of plans) covered chores and errands, not plans about the new topics.</p>
+
+      <h2 id="round4"><small>16</small>Round 4: two-level questions, retrained from base</h2>
+      <p>Folding 13 categories into one “care” option grouped by the token cap, not by meaning (a bath, a fever and a walk side by side). The redesign (branch <code>weehours-laya-groups</code>) asks two levels: a <b>group</b> (feeding, diaper, sleep, growth, health, care, activity, none of these), then, for a group with several enabled categories, a <code>&lt;group&gt;_entry</code> question (e.g. health: medication, symptom, temperature, teething, doctor, vaccination). Sessions keep the phase question. Every question has at most 8 options.</p>
+      <ul class="know">
+        <li><b>No new teacher data:</b> <code>build</code> now recomputes every row's labels from its type and fields (the port of logeval's <code>gold()</code>), so full + top-up + none + care are relabelled for the new questions and the model is trained from base on all of it.</li>
+        <li><b>Categories turned off:</b> the app only offers enabled categories, but every training row and the eval used all of them. Half the training rows are now asked with a random subset (the Python cut is tested against the app's own default-household export), and <code>logeval --categories default</code> scores a new household (187 rows).</li>
+        <li><b>Voice for the new types:</b> required fields come from the words (medicine name = the sentence, symptom and potty result by keyword or “other”, temperature from the number, °F above 45); if one can't be filled the entry is asked about, never logged incomplete.</li>
+        <li><b>Near-miss top-up:</b> a 700-plan <code>nearmiss</code> run (plans and questions about baths, medicine, vaccines, doctors, walks) feeds a second model, <code>groups2</code>, queued after <code>groups</code>.</li>
+      </ul>
+      <h3 id="round4-results">Results</h3>
+      <p>Both trained from base on the Spark (<code>groups</code> done 00:55, 16,834 rows; <code>groups2</code> done 02:54, 17,613 rows with the near-miss run), scored on the Mac with the branch's <code>logeval</code>. The shipped model was rescored the same morning on main's 208 rows.</p>
+      <table>
+        <tr><th>Raw</th><th class="n">none (shipped, 208)</th><th class="n">care</th><th class="n">groups</th><th class="n">groups2</th><th class="n">groups2, defaults (187)</th></tr>
+        <tr><td>Type accuracy</td><td class="n">99.0</td><td class="n">97.5</td><td class="n">97.1</td><td class="n">97.1</td><td class="n">99.5</td></tr>
+        <tr><td>Core sentences right</td><td class="n">206/208</td><td class="n">192/196</td><td class="n">191/196</td><td class="n">192/196</td><td class="n">185/187</td></tr>
+        <tr><td>Tracker sentences right (43)</td><td class="n">–</td><td class="n">40</td><td class="n">38</td><td class="n">40</td><td class="n">–</td></tr>
+        <tr><td>Auto-commit rate</td><td class="n">76.9</td><td class="n">84.9</td><td class="n">84.1</td><td class="n">84.1</td><td class="n">81.8</td></tr>
+        <tr><td>Wrong auto-commits</td><td class="n">0.6% (1)</td><td class="n">2.5% (5)</td><td class="n">3% (6)</td><td class="n">2% (4)</td><td class="n">0.7% (1)</td></tr>
+        <tr><td>Not-a-log kept as a note</td><td class="n">95.2</td><td class="n">83.3</td><td class="n">90</td><td class="n">90</td><td class="n">100</td></tr>
+        <tr><td>ms per sentence (Mac)</td><td class="n">~300</td><td class="n">–</td><td class="n">–</td><td class="n">518</td><td class="n">302</td></tr>
+      </table>
+      <p><b>groups2 shipped in 0.4.2</b> (Hugging Face tag <code>groups2</code>, sha256 <code>00a0f9ee…</code>; the user's call after this comparison). For a new household it matches the shipped model: one wrong auto-commit each (“she unlatched, done” → Start breastfeeding; the old model's was “eyes open, she's awake” → Fell asleep), it asks less, and it kept every not-a-log sentence as a note. The near-miss data fixed the doctor and vaccine plans that sank <code>care</code>. With every tracker on, its wrong auto-commits are “bath at seven tonight” → Bath, “hiccups again” → Symptom and “playtime on the mat” → Tummy time; “goopy eyes” and “infant tylenol” went to the full list with a wrong top answer. The fitted calibration was barely better (1.9% vs 2% wrong) and only with temperatures of 0.05, so it ships raw.</p>
+      <p>A simulator check of the on-device model logged “tummy time for ten minutes” as Tummy time, but without the ten minutes: only required fields were read from the words. Optional numbers (minutes for tummy time, play and walks) are now kept when said, and “ten minutes ago” stays a time.</p>
+      <p>Every run is now on Hugging Face as its own commit and tag (<code>pilot</code>, <code>full</code>, <code>topup</code>, <code>none</code>, <code>care</code>, <code>groups</code>, <code>groups2</code>; data also <code>nearmiss</code>), each card with its eval and the eval set it was scored on.</p>
+      <p><b>Next:</b> near-miss plans per tracker (“bath at seven”, “hiccups”), a play vs tummy-time distinction in the descriptions, symptoms and brand-name medicines, and “unlatched” as a finish.</p>
+
+    </article>
+  </div>
+  <script src="js/data.js"></script>
+  <script src="js/report.js"></script>
+</body>
+</html>
