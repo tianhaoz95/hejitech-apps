@@ -9,7 +9,7 @@ struct KidsCamApp: App {
     @StateObject private var watchFace = WatchFaceManager.shared
 
     init() {
-        ParentFeedback.configure()
+        ParentFeedback.shared.start()
     }
 
     var body: some Scene {

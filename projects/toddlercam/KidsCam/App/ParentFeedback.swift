@@ -1,32 +1,54 @@
 import FeedbackKit
+import StoreKit
 import UIKit
 
-/// Shake to report a problem (FeedbackKit project "ToddlerCam"). Off by default: a parent turns it
-/// on in the Parent Settings hub (behind `ParentGateView`). While it's off, FeedbackKit does nothing
-/// at all (no shake trigger, no "is it fixed?" card), so a toddler shaking the phone never opens a
-/// report. Nothing is sent unless the parent submits one.
-enum ParentFeedback {
+/// Shake to report a problem (FeedbackKit project "ToddlerCam"), for TestFlight testers only.
+///
+/// App Store installs never configure FeedbackKit and never show the setting, so the released app
+/// sends nothing and its privacy policy ("no data collection") stays true. On TestFlight (and Debug
+/// builds) a parent can turn it on in Parent Settings (behind `ParentGateView`); it defaults to off,
+/// and while off FeedbackKit does nothing at all (no shake trigger, no "is it fixed?" card), so a
+/// toddler shaking the phone never opens a report.
+@MainActor
+final class ParentFeedback: ObservableObject {
+    static let shared = ParentFeedback()
     static let key = "shakeToReport"
 
-    static var isEnabled: Bool { UserDefaults.standard.bool(forKey: key) }
+    /// True once the app knows it's a TestFlight (or Debug) install. Drives the settings toggle.
+    @Published private(set) var isAvailable = false
 
-    /// Once at launch (the app's init): configures FeedbackKit and applies the saved setting.
-    static func configure() {
-        FeedbackKit.configure(.init(
-            endpointURL: URL(string: "https://gpucoladcyvijefdjudf.supabase.co/functions/v1/ingest-feedback")!,
-            projectKey: "pk_6619b4d70c72fd8f73413dc1d070e6ab0206"
-        ))
-        apply(enabled: isEnabled)
+    /// Once at launch: finds out where the app came from, and only then configures FeedbackKit.
+    func start() {
+        Task {
+            guard await Self.isTestFlightOrDebug() else { return }
+            FeedbackKit.configure(.init(
+                endpointURL: URL(string: "https://gpucoladcyvijefdjudf.supabase.co/functions/v1/ingest-feedback")!,
+                projectKey: "pk_6619b4d70c72fd8f73413dc1d070e6ab0206"
+            ))
+            isAvailable = true
+            apply(enabled: UserDefaults.standard.bool(forKey: Self.key))
+        }
     }
 
-    static func apply(enabled: Bool) {
-        if enabled {
-            FeedbackKit.enableShakeToReport(presenter: topViewController)
-            FeedbackKit.enableFixVerification(presenter: topViewController)
+    func apply(enabled: Bool) {
+        if isAvailable && enabled {
+            FeedbackKit.enableShakeToReport(presenter: Self.topViewController)
+            FeedbackKit.enableFixVerification(presenter: Self.topViewController)
         } else {
             FeedbackKit.disableShakeToReport()
             FeedbackKit.disableFixVerification()
         }
+    }
+
+    /// TestFlight builds are signed for the sandbox; App Store builds for production. Anything we
+    /// can't verify (no receipt yet, offline first launch) counts as the App Store.
+    private static func isTestFlightOrDebug() async -> Bool {
+        #if DEBUG
+        return true
+        #else
+        guard let transaction = try? await AppTransaction.shared else { return false }
+        return transaction.unsafePayloadValue.environment == .sandbox
+        #endif
     }
 
     private static func topViewController() -> UIViewController? {

@@ -11,6 +11,7 @@ public struct ParentHubView: View {
     @State private var showWatchFaceSheet = false
     @State private var showGallerySheet = false
     @AppStorage(ParentFeedback.key) private var shakeToReport = false
+    @ObservedObject private var feedback = ParentFeedback.shared
 
     private var appVersionString: String {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.2.0"
@@ -156,13 +157,15 @@ public struct ParentHubView: View {
                     Toggle("Demo Mode", isOn: $cameraManager.isDemoMode)
                 }
 
-                // Section 6: Feedback (parents only: this hub is behind the parental gate)
-                Section(
-                    header: Text("Help & Feedback"),
-                    footer: Text("When on, shaking the iPhone opens a form to send the developer a screenshot (you can mark it up first), your note, and the app version, device model and iOS version. Nothing is sent unless you submit. Leave it off while your toddler holds the phone.")
-                ) {
-                    Toggle("Shake to Send Feedback", isOn: $shakeToReport)
-                        .onChange(of: shakeToReport) { _, enabled in ParentFeedback.apply(enabled: enabled) }
+                // Section 6: Feedback, TestFlight builds only (this hub is behind the parental gate)
+                if feedback.isAvailable {
+                    Section(
+                        header: Text("Beta Feedback"),
+                        footer: Text("TestFlight builds only. When on, shaking the iPhone opens a form to send the developer a screenshot (you can mark it up first), your note, and the app version, device model and iOS version. Nothing is sent unless you submit. Leave it off while your toddler holds the phone.")
+                    ) {
+                        Toggle("Shake to Send Feedback", isOn: $shakeToReport)
+                            .onChange(of: shakeToReport) { _, enabled in feedback.apply(enabled: enabled) }
+                    }
                 }
 
                 // Section 7: App Info
@@ -176,7 +179,7 @@ public struct ParentHubView: View {
                     HStack {
                         Text("Child Privacy")
                         Spacer()
-                        Text("No Ads or Tracking / COPPA Compliant")
+                        Text("100% Offline / COPPA Compliant")
                             .foregroundColor(.green)
                     }
                 }
