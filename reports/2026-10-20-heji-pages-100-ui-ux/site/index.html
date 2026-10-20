@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HEJI Pages · 100 UI/UX Improvements</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23C8603A'/%3E%3Ccircle cx='21' cy='11' r='4' fill='%23F2B544'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Add the candidates' own fonts to this one request. -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/candidates.css">
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="#/">
+      <span class="logo"></span>
+      <span><b id="title"></b><small id="subtitle"></small></span>
+    </a>
+    <nav class="tabs" aria-label="View">
+      <a href="#/" data-route="gallery">Gallery</a>
+      <a href="#/compare" data-route="compare">Compare</a>
+    </nav>
+    <div class="seg" id="modes" role="group" aria-label="Mock appearance"></div>
+  </header>
+
+  <main id="view"></main>
+
+  <footer class="picks" id="picks"></footer>
+  <div class="toast" id="toast" role="status"></div>
+  <div id="measure" aria-hidden="true"></div>
+
+  <!-- Order: shared kit (icons, sample data, helpers) → design blocks → candidates → the review engine. -->
+  <script src="js/kit.js"></script>
+  <script src="js/design.js"></script>
+  <script src="js/candidates.js"></script>
+  <script src="js/review.js"></script>
+</body>
+</html>
