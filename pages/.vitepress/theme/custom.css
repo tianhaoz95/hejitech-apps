@@ -144,6 +144,9 @@
 .heji-status-page .VPDoc .container { max-width: 1152px !important; }
 .heji-status-page .VPDoc .content { max-width: none !important; }
 
+/* Keep the scrollbar's space when the search box locks scrolling, so the page doesn't jump sideways. */
+html { scrollbar-gutter: stable; }
+
 /* ---------- home hero: search field (HeroSearch.vue) ---------- */
 .heji-hero-search { max-width: 480px; margin: 28px auto 0; }
 @media (min-width: 960px) { .heji-hero-search { margin-left: 0; } }
@@ -156,7 +159,7 @@
 }
 .heji-hero-search-field:hover, .heji-hero-search-field:focus-visible { border-color: var(--vp-c-brand-1); box-shadow: 0 0 0 3px var(--vp-c-brand-soft); outline: none; }
 .heji-hero-search-field span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.heji-hero-search-field kbd, .heji-dock-key {
+.heji-hero-search-field kbd {
   font: 600 11px var(--vp-font-family-mono); padding: 1px 6px; border-radius: 5px;
   border: 1px solid var(--vp-c-divider); background: var(--vp-c-default-soft); color: var(--vp-c-text-2);
 }
@@ -169,50 +172,71 @@
 .heji-hero-search-chips button:hover { background: color-mix(in srgb, var(--vp-c-brand-1) 22%, transparent); }
 
 /* ---------- home hero: app dock (HeroDock.vue) ---------- */
-.heji-dock-row { display: flex; align-items: flex-end; justify-content: center; gap: 10px; margin-top: 22px; }
-@media (min-width: 960px) { .heji-dock-row { justify-content: flex-start; } }
 .heji-dock {
-  position: relative; z-index: 10; display: flex; align-items: flex-end; gap: 8px; padding: 10px 12px 6px; border-radius: 22px;
-  background: color-mix(in srgb, var(--vp-c-bg) 72%, transparent); border: 1px solid var(--vp-c-divider);
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 14px 36px rgba(15, 23, 42, .1);
+  --heji-icon: 48px;
+  position: relative; z-index: 10; display: flex; align-items: flex-end; width: fit-content;
+  margin: 26px auto 0; padding: 7px 7px 0; border-radius: 22px;
+  background: color-mix(in srgb, var(--vp-c-bg) 62%, transparent);
+  border: 1px solid color-mix(in srgb, var(--vp-c-text-1) 9%, transparent);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .5) inset, 0 18px 40px -18px rgba(15, 23, 42, .35);
+  backdrop-filter: blur(18px) saturate(1.6); -webkit-backdrop-filter: blur(18px) saturate(1.6);
 }
-.heji-dock-item { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none !important; color: var(--vp-c-text-1); outline: none; }
-.heji-dock-item img { width: 44px; height: 44px; border-radius: 11px; transition: transform .2s cubic-bezier(.34, 1.56, .64, 1); transform-origin: 50% 100%; }
-.heji-dock-name { display: none; font-size: 11px; font-weight: 600; white-space: nowrap; }
-.heji-dock-key { font-size: 9.5px; padding: 0 4px; line-height: 14px; }
-.heji-dock-live { position: absolute; left: 50%; bottom: -4px; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--vp-c-green-1); }
-.heji-dock-item:focus-visible img { box-shadow: 0 0 0 3px var(--vp-c-brand-1); }
-.heji-dock-tip {
-  position: absolute; top: calc(100% + 12px); left: 50%; z-index: 20; width: 240px; transform: translateX(-50%);
-  display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 12px; text-align: left;
-  background: var(--vp-c-bg-elv); border: 1px solid var(--vp-c-divider); box-shadow: var(--vp-shadow-3);
-  font-size: 12px; line-height: 1.45; color: var(--vp-c-text-1);
-  opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .15s;
+.dark .heji-dock { box-shadow: 0 1px 0 rgba(255, 255, 255, .06) inset, 0 18px 40px -18px rgba(0, 0, 0, .8); }
+@media (min-width: 960px) { .heji-dock { margin-left: 0; } }
+.heji-dock-item {
+  --s: 1;
+  position: relative; display: flex; flex-direction: column; align-items: center;
+  width: calc(var(--heji-icon) * var(--s) + 8px); transition: width .12s ease-out;
+  text-decoration: none !important; color: var(--vp-c-text-1); outline: none;
 }
-.heji-dock-tip b { font-size: 14px; }
-.heji-dock-tip-line { color: var(--vp-c-text-2); }
-.heji-dock-tip-row { display: flex; gap: 8px; }
-.heji-dock-tip-row i { flex: none; width: 52px; font-style: normal; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--vp-c-text-3); padding-top: 1px; }
-.heji-dock-tip-row code { font-size: 11px; }
-.heji-dock-item:hover .heji-dock-tip, .heji-dock-item:focus-visible .heji-dock-tip { opacity: 1; visibility: visible; }
-@media (hover: hover) and (min-width: 641px) {
-  .heji-dock-item:hover img { transform: scale(1.3) translateY(-4px); }
-  .heji-dock-item:has(+ .heji-dock-item:hover) img, .heji-dock-item:hover + .heji-dock-item img { transform: scale(1.12) translateY(-1px); }
+.heji-dock-item img {
+  width: var(--heji-icon); height: var(--heji-icon); border-radius: 23%;
+  transform: scale(var(--s)); transform-origin: 50% 100%; transition: transform .12s ease-out;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .18), 0 4px 10px -4px rgba(15, 23, 42, .25);
 }
-@media (prefers-reduced-motion: reduce) { .heji-dock-item img { transition: none; } }
-.heji-lens { display: flex; flex-direction: column; gap: 3px; padding: 3px; border-radius: 12px; background: var(--vp-c-default-soft); }
-.heji-lens button { display: grid; place-items: center; width: 32px; height: 28px; border-radius: 9px; color: var(--vp-c-text-3); transition: background-color .2s, color .2s; }
-.heji-lens button span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-.heji-lens button[aria-pressed="true"] { background: var(--vp-c-bg); color: var(--vp-c-brand-1); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+.heji-dock-item:focus-visible img { outline: 2px solid var(--vp-c-brand-1); outline-offset: 2px; }
+.heji-dock-name { display: none; }
+.heji-dock-dot { width: 4px; height: 4px; margin: 3px 0 4px; border-radius: 50%; background: transparent; }
+.heji-dock-dot.on { background: var(--vp-c-green-1); }
+/* The name label floats above the (magnified) icon, like the macOS Dock's. */
+.heji-dock-label {
+  position: absolute; left: 50%; bottom: calc(11px + var(--heji-icon) * var(--s) + 10px); z-index: 20;
+  display: grid; grid-template-columns: auto auto; align-items: center; gap: 2px 8px;
+  width: max-content; max-width: 240px; padding: 7px 11px; border-radius: 10px;
+  background: rgba(24, 24, 27, .92); color: #fafafa; text-align: left; font-size: 13px; line-height: 1.35;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .25);
+  opacity: 0; transform: translate(-50%, 4px); pointer-events: none; transition: opacity .12s, transform .12s;
+}
+.dark .heji-dock-label { background: rgba(244, 244, 245, .95); color: #18181b; }
+.heji-dock-label::after { content: ""; position: absolute; left: 50%; bottom: -4px; width: 8px; height: 8px; margin-left: -4px; transform: rotate(45deg); background: inherit; }
+.heji-dock-label kbd { justify-self: end; font: 600 10px var(--vp-font-family-mono); padding: 0 5px; border-radius: 4px; background: rgba(255, 255, 255, .16); }
+.dark .heji-dock-label kbd { background: rgba(0, 0, 0, .1); }
+.heji-dock-label small { grid-column: 1 / -1; font-size: 12px; opacity: .72; }
+.heji-dock-label small.ok { opacity: 1; color: #4ade80; }
+.dark .heji-dock-label small.ok { color: #15803d; }
+.heji-dock-item:hover .heji-dock-label, .heji-dock-item:focus-visible .heji-dock-label { opacity: 1; transform: translate(-50%, 0); }
+@media (prefers-reduced-motion: reduce) { .heji-dock-item, .heji-dock-item img, .heji-dock-label { transition: none; } }
 /* Touch and narrow screens: no hover, so a labelled grid; a tap jumps to the card. */
 @media (hover: none), (max-width: 640px) {
-  .heji-dock-row { flex-direction: column; align-items: stretch; }
-  .heji-dock { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px 6px; padding: 14px 8px; border-radius: 20px; }
-  .heji-dock-item img { width: 52px; height: 52px; border-radius: 14px; }
-  .heji-dock-name { display: block; }
-  .heji-dock-key, .heji-dock-tip, .heji-lens, .heji-hero-search-field kbd { display: none; }
-  .heji-dock-live { bottom: 18px; }
+  .heji-dock { --heji-icon: 54px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px 4px; width: auto; padding: 14px 6px 8px; }
+  .heji-dock-item { width: auto; --s: 1 !important; }
+  .heji-dock-name { display: block; margin-top: 6px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+  .heji-dock-dot { margin-top: 2px; }
+  .heji-dock-label, .heji-hero-search-field kbd { display: none; }
 }
+
+/* ---------- app cards' lens switch (AppCards.vue) ---------- */
+#apps { position: relative; }
+.heji-lens { display: inline-flex; padding: 3px; border-radius: 10px; background: var(--vp-c-default-soft); }
+.heji-lens button { padding: 5px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--vp-c-text-2); transition: background-color .2s, color .2s; }
+.heji-lens button:hover { color: var(--vp-c-text-1); }
+.heji-lens button[aria-pressed="true"] { background: var(--vp-c-bg); color: var(--vp-c-text-1); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+@media (min-width: 641px) { .heji-section > .heji-lens { position: absolute; right: 24px; top: 48px; } }
+@media (max-width: 640px) { .heji-section > .heji-lens { margin-top: 4px; } }
+.heji-stack { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin: 0 0 12px; font-size: 13.5px; line-height: 1.45; }
+.heji-stack dt { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--vp-c-text-3); padding-top: 2px; }
+.heji-stack dd { margin: 0; color: var(--vp-c-text-1); }
+.heji-stack code { font-size: 12.5px; }
 /* The card a dock jump lands on. */
 .heji-app { scroll-margin-top: calc(var(--vp-nav-height) + 24px); }
 .heji-app.heji-flash { animation: heji-flash .9s ease-out; }

@@ -1,25 +1,41 @@
 <script setup lang="ts">
-// The home hero's app dock: one icon per app, magnified on hover, keys 1–8 and a click jump to the
-// app's card. The lens toggle switches what the tooltips say: what the app does, or how it's built.
-// The green dot means the app's TestFlight workflow last passed, as of the site build.
+// The home hero's app dock: one icon per app, magnified around the pointer like the macOS Dock;
+// a click or keys 1–8 jump to the app's card. The label above an icon follows the page's lens
+// (lens.ts). The dot under an icon means the app's TestFlight workflow last passed, as of the build.
 import { onMounted, onUnmounted, ref } from "vue";
 import { withBase } from "vitepress";
 import { APPS } from "./apps";
+import { useLens } from "./lens";
 import { data } from "../../status.data";
 
-type Lens = "user" | "builder";
-const LENS_KEY = "heji-dock-lens";
-// Server-rendered as "user"; the saved lens is applied after hydration so the HTML matches.
-const lens = ref<Lens>("user");
+const { lens } = useLens();
+const ICON = 48;
+const dock = ref<HTMLElement>();
+const scales = ref<number[]>(APPS.map(() => 1));
+let centers: number[] = [];
 
 const testflightPassing = (id: string) =>
   data.projects.find((p) => p.id === id)?.workflows.find((w) => w.file === `${id}-testflight.yml`)?.lastRun?.conclusion === "success";
 
-function setLens(next: Lens) {
-  lens.value = next;
-  try {
-    localStorage.setItem(LENS_KEY, next);
-  } catch {}
+const magnifies = () => matchMedia("(hover: hover) and (min-width: 641px) and (prefers-reduced-motion: no-preference)").matches;
+
+// Centers are measured once per entry, at rest, so growing icons don't move the targets.
+function enter() {
+  if (!magnifies() || !dock.value) return;
+  centers = [...dock.value.querySelectorAll<HTMLElement>(".heji-dock-item")].map((el) => {
+    const r = el.getBoundingClientRect();
+    return r.left + r.width / 2;
+  });
+}
+
+function move(e: PointerEvent) {
+  if (!centers.length) return;
+  scales.value = centers.map((c) => 1 + 0.45 * Math.exp(-((e.clientX - c) ** 2) / (2 * 55 ** 2)));
+}
+
+function leave() {
+  centers = [];
+  scales.value = APPS.map(() => 1);
 }
 
 function jump(id: string) {
@@ -44,53 +60,29 @@ function onKey(e: KeyboardEvent) {
   jump(app.id);
 }
 
-onMounted(() => {
-  try {
-    if (localStorage.getItem(LENS_KEY) === "builder") lens.value = "builder";
-  } catch {}
-  window.addEventListener("keydown", onKey);
-});
+onMounted(() => window.addEventListener("keydown", onKey));
 onUnmounted(() => window.removeEventListener("keydown", onKey));
 </script>
 
 <template>
-  <div class="heji-dock-row">
-    <nav class="heji-dock" aria-label="Apps">
-      <a
-        v-for="(app, i) in APPS"
-        :key="app.id"
-        class="heji-dock-item no-icon"
-        :href="`#${app.id}`"
-        :aria-describedby="`heji-tip-${app.id}`"
-        @click.prevent="jump(app.id)"
-      >
-        <img :src="withBase(app.icon)" alt="" width="44" height="44" />
-        <span class="heji-dock-name">{{ app.name }}</span>
-        <kbd class="heji-dock-key">{{ i + 1 }}</kbd>
-        <span v-if="testflightPassing(app.id)" class="heji-dock-live" title="TestFlight build passing"></span>
-        <span :id="`heji-tip-${app.id}`" class="heji-dock-tip" role="tooltip">
-          <b>{{ app.name }}</b>
-          <template v-if="lens === 'user'">
-            <span class="heji-dock-tip-line">{{ app.tagline }}</span>
-            <span class="heji-dock-tip-row"><i>On</i>{{ app.platforms.join(" · ") }}</span>
-          </template>
-          <template v-else>
-            <span class="heji-dock-tip-row"><i>Backend</i>{{ app.backend }}</span>
-            <span class="heji-dock-tip-row"><i>AI</i>{{ app.ai }}</span>
-            <span class="heji-dock-tip-row"><i>Code</i><code>{{ app.code }}/</code></span>
-          </template>
-        </span>
-      </a>
-    </nav>
-    <div class="heji-lens" role="group" aria-label="Show in tooltips">
-      <button type="button" :aria-pressed="lens === 'user'" title="What each app does" @click="setLens('user')">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 4-6 8-6s8 2 8 6" /></svg>
-        <span>What it does</span>
-      </button>
-      <button type="button" :aria-pressed="lens === 'builder'" title="How each app is built" @click="setLens('builder')">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z" /></svg>
-        <span>How it's built</span>
-      </button>
-    </div>
-  </div>
+  <nav ref="dock" class="heji-dock" aria-label="Apps" @pointerenter="enter" @pointermove="move" @pointerleave="leave">
+    <a
+      v-for="(app, i) in APPS"
+      :key="app.id"
+      class="heji-dock-item no-icon"
+      :href="`#${app.id}`"
+      :style="{ '--s': scales[i] }"
+      :aria-label="`${app.name}: ${app.tagline}`"
+      @click.prevent="jump(app.id)"
+    >
+      <img :src="withBase(app.icon)" alt="" :width="ICON" :height="ICON" />
+      <span class="heji-dock-name">{{ app.name }}</span>
+      <span class="heji-dock-dot" :class="{ on: testflightPassing(app.id) }"></span>
+      <span class="heji-dock-label" aria-hidden="true">
+        <b>{{ app.name }}</b><kbd>{{ i + 1 }}</kbd>
+        <small>{{ lens === "user" ? app.tagline : app.backend }}</small>
+        <small v-if="testflightPassing(app.id)" class="ok">TestFlight build passing</small>
+      </span>
+    </a>
+  </nav>
 </template>

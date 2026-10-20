@@ -16,9 +16,10 @@ interface ProjectPages {
   sidebar?: DefaultTheme.SidebarItem[];
 }
 
-/** Search-only sections for the home page: one per app, under the card's anchor, with the words
- * people search with that the card doesn't say ("baby log" finds Wee Hours). Not on the page. */
-const appSearchSections = APPS.map((a) => `## ${a.name} {#${a.id}}\n\n${a.tagline} ${a.platforms.join(", ")}. Also: ${a.synonyms.join(", ")}.`).join("\n\n");
+/** Search-only sections for the home page: one per app card (AppCards.vue, which the search index
+ * can't render), under the card's anchor, plus the words people search with that the card doesn't
+ * say ("baby log" finds Wee Hours). */
+const appSearchSections = APPS.map((a) => `## ${a.name} {#${a.id}}\n\n${a.tagline} ${a.desc} ${a.platforms.join(", ")}. Also: ${a.synonyms.join(", ")}.`).join("\n\n");
 
 const projects = readdirSync(join(root, "projects")).filter((p) => existsSync(join(root, "projects", p, "docs", "index.md")) && !existsSync(join(root, "projects", p, "docs", ".vitepress")));
 
