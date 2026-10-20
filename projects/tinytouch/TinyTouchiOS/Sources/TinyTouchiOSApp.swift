@@ -3,7 +3,7 @@ import SwiftUI
 @main
 struct TinyTouchiOSApp: App {
     init() {
-        ParentFeedback.configure()
+        ParentFeedback.shared.start()
     }
 
     var body: some Scene {

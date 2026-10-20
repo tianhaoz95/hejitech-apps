@@ -9,6 +9,7 @@ struct ParentDashboardView: View {
     @State private var syncAlertTitle = "Settings Synced"
     @State private var syncAlertMessage = ""
     @AppStorage(ParentFeedback.key) private var shakeToReport = false
+    @ObservedObject private var feedback = ParentFeedback.shared
     
     let gameModes = [
         ("bubbles", "Bubble Pop", "circle.hexagongrid.circle.fill", Color.pink),
@@ -37,8 +38,10 @@ struct ParentDashboardView: View {
                     // 5. Guides & Sandbox Links
                     quickLinksSection
                     
-                    // 6. Feedback to the developer (off by default)
-                    feedbackSection
+                    // 6. Feedback to the developer (TestFlight builds only, off by default)
+                    if feedback.isAvailable {
+                        feedbackSection
+                    }
 
                     // 7. Screen Time & Privacy Notice
                     footerSection
@@ -420,7 +423,7 @@ struct ParentDashboardView: View {
     // MARK: - 6. Feedback Section
     private var feedbackSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label("Help & Feedback", systemImage: "bubble.left.and.exclamationmark.bubble.right")
+            Label("Beta Feedback", systemImage: "bubble.left.and.exclamationmark.bubble.right")
                 .font(.headline)
 
             VStack(spacing: 0) {
@@ -431,12 +434,12 @@ struct ParentDashboardView: View {
                     subtitle: "Shake this iPhone to report a problem to the developer",
                     isOn: $shakeToReport
                 )
-                .onChange(of: shakeToReport) { _, enabled in ParentFeedback.apply(enabled: enabled) }
+                .onChange(of: shakeToReport) { _, enabled in feedback.apply(enabled: enabled) }
             }
             .background(Color(uiColor: .secondarySystemBackground))
             .cornerRadius(16)
 
-            Text("Sends a screenshot (you can mark it up first), your note, and the app version, device model and iOS version, only when you submit. Leave it off if your child uses this iPhone.")
+            Text("TestFlight builds only. Sends a screenshot (you can mark it up first), your note, and the app version, device model and iOS version, only when you submit. Leave it off if your child uses this iPhone.")
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
@@ -453,7 +456,7 @@ struct ParentDashboardView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("100% Kid-Safe & Private")
                         .font(.footnote.weight(.semibold))
-                    Text("No tracking, no ads, no analytics. All settings sync directly over local Bluetooth; only feedback you choose to send leaves the phone.")
+                    Text("No tracking, no ads, no analytics. All settings sync directly over local Bluetooth.")
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
