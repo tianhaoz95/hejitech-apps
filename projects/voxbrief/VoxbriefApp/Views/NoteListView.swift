@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 #if canImport(FeedbackKit)
 import FeedbackKit
 #endif
@@ -20,6 +21,10 @@ public struct NoteListView: View {
     @ScaledMetric(relativeTo: .body) private var captureIconSize: CGFloat = 26
     @ScaledMetric(relativeTo: .body) private var captureButtonSize: CGFloat = 66
     @FocusState private var isSearchFieldFocused: Bool
+    @State private var showingAsk = false
+    @State private var showingBrief = false
+    @State private var showingAudioImporter = false
+    @State private var importError: String?
 
     public init() {}
 
@@ -111,6 +116,29 @@ public struct NoteListView: View {
             .sheet(isPresented: $showingWhatsNew) {
                 WhatsNewView()
             }
+            .fileImporter(isPresented: $showingAudioImporter, allowedContentTypes: [.audio, .movie], allowsMultipleSelection: true) { result in
+                guard case .success(let urls) = result else { return }
+                Task {
+                    for url in urls {
+                        let scoped = url.startAccessingSecurityScopedResource()
+                        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+                        do {
+                            try await AudioImportService.shared.importFile(at: url)
+                        } catch {
+                            importError = "\(url.lastPathComponent): \(error.localizedDescription)"
+                        }
+                    }
+                }
+            }
+            .alert("Couldn't Import", isPresented: Binding(get: { importError != nil }, set: { if !$0 { importError = nil } })) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(importError ?? "")
+            }
+            .sheet(isPresented: $showingAsk) {
+                AskView()
+                    .environmentObject(NoteRepository.shared)
+            }
             .confirmationDialog("Delete Selected Notes?", isPresented: $showingBatchDeleteAlert, titleVisibility: .visible) {
                 Button("Delete \(selectedNoteIDs.count) Notes", role: .destructive) {
                     viewModel.bulkDelete(ids: selectedNoteIDs)
@@ -125,6 +153,10 @@ public struct NoteListView: View {
                 NoteMergePickerSheet(source: source, candidates: viewModel.mergeCandidates(excluding: source)) { target in
                     viewModel.confirmMerge(source: source, into: target)
                 }
+            }
+            .navigationDestination(isPresented: $showingBrief) {
+                DailyBriefView()
+                    .environmentObject(NoteRepository.shared)
             }
             .navigationDestination(item: $selectedDetailNote) { note in
                 NoteDetailView(note: note, initialTab: selectedDetailTab)
@@ -221,6 +253,9 @@ public struct NoteListView: View {
             viewModel.showingRecordSheet = true
         case "keyboardRecord":
             keyboardRecordTrigger = KeyboardRecordTrigger()
+        case "brief":
+            collapseSearch()
+            showingBrief = true
         case "settings":
             viewModel.showingSettings = true
         case "sync":
@@ -234,6 +269,20 @@ public struct NoteListView: View {
 
     private var notesList: some View {
         List {
+            if !viewModel.showArchived && viewModel.searchText.isEmpty && !isSelectMode {
+                let brief = DailyBrief.build(notes: NoteRepository.shared.notes, since: DailyBrief.sinceDate())
+                if !brief.openItems.isEmpty {
+                    Section {
+                        Button {
+                            showingBrief = true
+                        } label: {
+                            DailyBriefCard(brief: brief)
+                        }
+                        .foregroundStyle(.primary)
+                    }
+                }
+            }
+
             if viewModel.notes.isEmpty {
                 emptyStateView
                     .listRowInsets(EdgeInsets())
@@ -373,12 +422,12 @@ public struct NoteListView: View {
             searchToolbarButton
 
             Button {
-                viewModel.showingSyncStatus = true
+                showingAsk = true
             } label: {
-                Image(systemName: "applewatch")
-                    .foregroundStyle(watchIconColor)
+                Image(systemName: "sparkles")
             }
-            .accessibilityLabel(syncService.isReachable ? "Apple Watch connected" : "Apple Watch disconnected")
+            .disabled(viewModel.notes.isEmpty)
+            .accessibilityLabel("Ask Voxbrief")
 
             Menu {
                 Section {
@@ -390,6 +439,12 @@ public struct NoteListView: View {
                         Label("Select Notes", systemImage: "checkmark.circle")
                     }
                     .disabled(viewModel.notes.isEmpty)
+
+                    Button {
+                        showingAudioImporter = true
+                    } label: {
+                        Label("Import Audio…", systemImage: "square.and.arrow.down")
+                    }
                 }
 
                 Section("Sort By") {
@@ -526,10 +581,6 @@ public struct NoteListView: View {
         } else {
             return ""
         }
-    }
-
-    private var watchIconColor: Color {
-        syncService.isReachable ? .green : .secondary
     }
 
     private var searchAndTagsHeader: some View {

@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.26.7"
+    public static let currentVersion = "1.27.0"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,109 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.27.0",
+            date: "October 2026",
+            tagline: "Ask, Brief, and Long Memos",
+            features: [
+                WhatsNewItem(
+                    icon: "sparkles",
+                    tint: .purple,
+                    title: "Ask Voxbrief",
+                    description: "Ask a question about your notes and get a short answer with links to the notes it came from. Tap the sparkles in the toolbar.",
+                    detailedDescription: "Answers are written on this iPhone by the same model that writes your notes. Voxbrief first turns your question into search words (with a few synonyms), finds the passages that match across your notes, then answers from those passages only and shows which notes it used. Nothing leaves the device.",
+                    highlights: [
+                        "Cites the notes it used; tap one to open it, or play from that moment",
+                        "Understands \"last week\" and \"yesterday\"",
+                        "Open action items and \"what did I record yesterday\" are listed straight from your notes",
+                        "When the model can't answer, the passages that mention your question are quoted instead",
+                        "Protected notes are never searched"
+                    ]
+                ),
+                WhatsNewItem(
+                    icon: "sun.horizon.fill",
+                    tint: .orange,
+                    title: "Your Daily Brief",
+                    description: "Every open action item across your notes in one place, high priority first, with a short recap of what you recorded since you last looked.",
+                    highlights: [
+                        "Tick items off right in the brief",
+                        "Optional morning notification at the time you choose",
+                        "Opens from the card at the top of your notes",
+                        "Home Screen and Lock Screen widget with your open items"
+                    ]
+                ),
+                WhatsNewItem(
+                    icon: "text.bubble",
+                    tint: .red,
+                    title: "Live Transcript",
+                    description: "See your words appear while you record on iPhone. When the live transcript keeps up, your note skips the transcription step after you stop.",
+                    highlights: [
+                        "Runs on this iPhone while you speak",
+                        "Turn it off in Settings → Live Transcript"
+                    ]
+                ),
+                WhatsNewItem(
+                    icon: "square.and.arrow.down",
+                    tint: .green,
+                    title: "Import Recordings",
+                    description: "Turn any audio or video into a note: share it to Voxbrief from another app or Files, or use Import Audio… in the notes menu.",
+                    highlights: [
+                        "Calls, lectures, voice messages, old voice memos",
+                        "Video files work too; Voxbrief keeps just the audio",
+                        "Pick Voxbrief in the share sheet; the note is written next time you open the app"
+                    ]
+                ),
+                WhatsNewItem(
+                    icon: "doc.on.doc",
+                    tint: .blue,
+                    title: "Long Memos, Fully Read",
+                    description: "Memos longer than about ten minutes are now read in parts and merged, so a 30-minute meeting gets a complete note instead of only its beginning.",
+                    detailedDescription: "Apple Intelligence can only read about 15 minutes of speech at once, and longer memos used to fall back to Lite with everything in one pass. Long memos are now split on sentence boundaries, each part is turned into notes on its own, and the parts are merged without repeats. The note shows the parts with their start times; tap one to listen from there.",
+                    highlights: [
+                        "Every minute counts toward the action items and decisions",
+                        "Parts outline with start times",
+                        "Light Cleanup of long memos no longer gets cut short"
+                    ]
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "moon.zzz",
+                    tint: .indigo,
+                    title: "Keeps Processing After You Leave",
+                    description: "On iOS 26, notes still processing when you leave Voxbrief keep going with a progress indicator, and notes interrupted by a quit now finish the next time Voxbrief starts.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "memorychip",
+                    tint: .teal,
+                    title: "Lighter on Memory",
+                    description: "The on-device models are unloaded after a few idle minutes, on low memory and in the background, so Voxbrief is less likely to be closed by iOS.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "stopwatch",
+                    tint: .teal,
+                    title: "Step Timings in the Pipeline Tab",
+                    description: "Each note shows how long transcription and each AI step took on your device.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "bolt",
+                    tint: .yellow,
+                    title: "Faster Template Detection",
+                    description: "Picking a note's template now reads the opening of the memo instead of all of it, which saves a full read of long memos.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "exclamationmark.triangle",
+                    tint: .orange,
+                    title: "Background Notes No Longer Fail",
+                    description: "A note whose AI step couldn't run in the background now waits and finishes when you open Voxbrief, instead of showing as failed.",
+                    kind: .fix
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.26.7",
             date: "October 2026",

@@ -5,6 +5,7 @@ public struct QuickRecordSheet: View {
     @StateObject private var recordingService = AudioRecordingService.shared
     @ObservedObject private var pipeline = NoteProcessingPipeline.shared
     @ObservedObject private var repository = NoteRepository.shared
+    @ObservedObject private var liveTranscriber = LiveTranscriber.shared
     private let coordinator = RecordingCoordinator.shared
 
     @State private var hasStarted = false
@@ -95,6 +96,10 @@ public struct QuickRecordSheet: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
 
+            if liveTranscriber.isActive {
+                liveTranscriptCard
+            }
+
             if let errorMessage = errorMessage {
                 Text(errorMessage)
                     .font(.caption)
@@ -103,6 +108,41 @@ public struct QuickRecordSheet: View {
                     .padding(.horizontal)
             }
         }
+    }
+
+    /// The words so far (`LiveTranscriber`): confirmed text solid, the still-changing tail grey.
+    private var liveTranscriptCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    Group {
+                        if liveTranscriber.confirmedText.isEmpty && liveTranscriber.tentativeText.isEmpty {
+                            Text("Start speaking…")
+                                .foregroundStyle(.tertiary)
+                        } else {
+                            Text(liveTranscriber.confirmedText)
+                                .foregroundStyle(.primary)
+                            + Text(liveTranscriber.confirmedText.isEmpty ? "" : " ")
+                            + Text(liveTranscriber.tentativeText)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .font(.body)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .id("liveText")
+                }
+                .frame(maxHeight: 160)
+                .onChange(of: liveTranscriber.tentativeText) { _, _ in
+                    proxy.scrollTo("liveText", anchor: .bottom)
+                }
+            }
+            Label("Transcribing as you speak, on this iPhone", systemImage: "cpu")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .padding(14)
+        .background(Color.appSecondaryBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(.horizontal)
     }
 
     // MARK: - Processing View (Streaming Transcription)

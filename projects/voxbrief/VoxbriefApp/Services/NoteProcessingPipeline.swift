@@ -31,6 +31,13 @@ public final class NoteProcessingPipeline: ObservableObject {
         (UserDefaults.standard.object(forKey: lightCleanupEnabledKey) as? Bool) ?? true
     }
 
+    /// Whether the app is in the background right now. The iOS app points this at
+    /// `UIApplication.applicationState` (see `BackgroundProcessingManager`); the Mac app keeps the
+    /// default, since a Mac app keeps its GPU when it isn't frontmost. A Stage 2 that fails while
+    /// backgrounded is left pending instead of failed, because on iOS the cause is almost always
+    /// the system withholding the GPU, and it runs fine once the app is back.
+    public static var isAppInBackground: @MainActor () -> Bool = { false }
+
     public init(
         asrService: ASRServiceProtocol = ASRService.shared,
         llmService: LLMCopywriterServiceProtocol = LLMCopywriterService.shared,
@@ -63,8 +70,10 @@ public final class NoteProcessingPipeline: ObservableObject {
         }
     }
 
-    /// Executes the two-stage processing pipeline for a given voice note
-    public func process(note: VoiceNote) async {
+    /// Executes the two-stage processing pipeline for a given voice note. `liveTranscript`, when
+    /// the iPhone's live transcript kept up with the recording (`LiveTranscriber`), stands in for
+    /// Stage 1, so the note goes straight to Stage 2.
+    public func process(note: VoiceNote, liveTranscript: (transcript: String, segments: [TranscriptTimingSegment])? = nil) async {
         guard !inFlightNoteIds.contains(note.id) else { return }
 
         guard let audioFileName = note.audioFileName else {
@@ -91,19 +100,27 @@ public final class NoteProcessingPipeline: ObservableObject {
 
             // Stage 1: ASR Speech-to-Text
             repository.updateStatus(for: note.id, status: .transcribingASR)
-            let (asrTranscript, timingSegments) = try await asrService.transcribeAudioWithTimings(
-                at: audioURL,
-                vocabulary: dictionaryEntries.map(\.term),
-                onProgress: { [weak self, noteId = note.id] partialText in
-                    Task { @MainActor [weak self] in
-                        self?.streamingTranscripts[noteId] = partialText
+            let asrStart = ContinuousClock.now
+            let (asrTranscript, timingSegments): (String, [TranscriptTimingSegment])
+            if let liveTranscript {
+                (asrTranscript, timingSegments) = liveTranscript
+            } else {
+                (asrTranscript, timingSegments) = try await asrService.transcribeAudioWithTimings(
+                    at: audioURL,
+                    vocabulary: dictionaryEntries.map(\.term),
+                    onProgress: { [weak self, noteId = note.id] partialText in
+                        Task { @MainActor [weak self] in
+                            self?.streamingTranscripts[noteId] = partialText
+                        }
                     }
-                }
-            )
+                )
+            }
             let rawTranscript = DictionaryCorrector.apply(to: asrTranscript, entries: dictionaryEntries)
             streamingTranscripts[note.id] = rawTranscript
+            let transcribeTiming = ProcessingTiming(name: liveTranscript == nil ? "Transcribe" : "Transcribe (live)", seconds: Self.seconds(since: asrStart))
 
             var transcribed = note
+            transcribed.processingTimings = [transcribeTiming]
             transcribed.rawTranscript = rawTranscript
             transcribed.transcriptSegments = timingSegments
             transcribed.segments = [
@@ -142,6 +159,8 @@ public final class NoteProcessingPipeline: ObservableObject {
             updatedNote.templateSections = llmResult.sections
             updatedNote.templateId = llmResult.templateId
             updatedNote.templateName = llmResult.templateName.isEmpty ? nil : llmResult.templateName
+            updatedNote.longMemoParts = llmResult.parts
+            updatedNote.processingTimings = [transcribeTiming] + llmResult.timings
             // Deliberately left nil -- see generateLightCleanup, called lazily on demand.
             updatedNote.lightCleanedNote = nil
             updatedNote.lightCleanupEngine = nil
@@ -150,6 +169,18 @@ public final class NoteProcessingPipeline: ObservableObject {
             
             print("[NoteProcessingPipeline] Successfully processed note: \(note.id) -> '\(llmResult.title)'")
         } catch {
+            if var pending = transcribedNote, Self.isAppInBackground() {
+                // Transcribed, but Stage 2 couldn't run in the background: keep it pending so
+                // `resumeInterruptedNotes` finishes it (Stage 2 only) when the app is back.
+                print("[NoteProcessingPipeline] Stage 2 deferred until foreground for note \(note.id): \(error)")
+                pending.status = .cleaningLLM
+                pending.errorMessage = nil
+                if pending.title == "Processing Voice Note...", let title = Self.provisionalTitle(from: pending.rawTranscript) {
+                    pending.title = title
+                }
+                repository.save(pending)
+                return
+            }
             print("[NoteProcessingPipeline] Processing failed for note \(note.id): \(error)")
             var failedNote = transcribedNote ?? note
             failedNote.status = .failed
@@ -338,18 +369,58 @@ public final class NoteProcessingPipeline: ObservableObject {
         note.templateSections = llmResult.sections
         note.templateId = llmResult.templateId
         note.templateName = llmResult.templateName.isEmpty ? nil : llmResult.templateName
+        note.longMemoParts = llmResult.parts
+        // Keep the note's last transcription time; Stage 2's are replaced.
+        note.processingTimings = note.processingTimings.filter { $0.name.hasPrefix("Transcribe") } + llmResult.timings
         note.lightCleanedNote = nil
         note.lightCleanupEngine = nil
         repository.save(note)
     }
 
-    /// `reprocessStage2` with auto-detection, marking the note failed (content kept) on error.
+    /// `reprocessStage2` with auto-detection, marking the note failed (content kept) on error --
+    /// or leaving it pending when the app is in the background (see `isAppInBackground`).
     private func reprocessStage2MarkingFailure(for noteId: UUID) async {
         do {
             try await reprocessStage2(for: noteId)
         } catch {
-            repository.updateStatus(for: noteId, status: .failed, errorMessage: error.localizedDescription)
+            if Self.isAppInBackground() {
+                repository.updateStatus(for: noteId, status: .cleaningLLM)
+            } else {
+                repository.updateStatus(for: noteId, status: .failed, errorMessage: error.localizedDescription)
+            }
         }
+    }
+
+    /// Notes left mid-pipeline by a quit, a crash or the app being suspended, oldest first.
+    public var interruptedNotes: [VoiceNote] {
+        repository.notes
+            .filter { $0.status.isProcessing && !inFlightNoteIds.contains($0.id) }
+            .sorted { $0.createdAt < $1.createdAt }
+    }
+
+    /// Finishes every interrupted note, one at a time: a note that already has its transcript
+    /// and was waiting on Stage 2 re-runs only Stage 2; anything else runs the whole pipeline.
+    /// Called at launch and whenever the app becomes active (and by pull-to-refresh).
+    public func resumeInterruptedNotes() async {
+        for note in interruptedNotes {
+            guard let current = repository.note(withId: note.id),
+                  current.status.isProcessing,
+                  !inFlightNoteIds.contains(current.id) else { continue }
+            if current.status == .cleaningLLM && !current.rawTranscript.isEmpty {
+                inFlightNoteIds.insert(current.id)
+                activeProcessingCount += 1
+                await reprocessStage2MarkingFailure(for: current.id)
+                inFlightNoteIds.remove(current.id)
+                activeProcessingCount -= 1
+            } else {
+                await process(note: current)
+            }
+        }
+    }
+
+    static func seconds(since start: ContinuousClock.Instant) -> Double {
+        let elapsed = ContinuousClock.now - start
+        return Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18
     }
 
     /// A title for a note whose transcript exists but whose Stage 2 failed: its first few words.

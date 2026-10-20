@@ -231,6 +231,21 @@ public final class NoteRepository: ObservableObject {
         }
     }
 
+    /// Ticks an action item off (or back on), keeping the note's Markdown checklist in step --
+    /// the same change `NoteDetailViewModel.toggleActionItem` makes, for callers outside a note
+    /// (the Daily Brief).
+    public func toggleActionItem(id: UUID, item: String) {
+        guard var note = note(withId: id) else { return }
+        if let index = note.completedActionItems.firstIndex(of: item) {
+            note.completedActionItems.remove(at: index)
+            note.cleanedNote = note.cleanedNote.replacingOccurrences(of: "- [x] \(item)", with: "- [ ] \(item)")
+        } else {
+            note.completedActionItems.append(item)
+            note.cleanedNote = note.cleanedNote.replacingOccurrences(of: "- [ ] \(item)", with: "- [x] \(item)")
+        }
+        save(note)
+    }
+
     public func setActionItemPriority(id: UUID, actionItem: String, priority: String?) {
         guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
         if let priority = priority {
@@ -310,6 +325,8 @@ public final class NoteRepository: ObservableObject {
 
     private func loadNotes() {
         guard FileManager.default.fileExists(atPath: storageURL.path) else { return }
+        let start = ContinuousClock.now
+        defer { print("[NoteRepository] Loaded \(notes.count) notes in \(ContinuousClock.now - start)") }
         do {
             let data = try Data(contentsOf: storageURL)
             let decoder = JSONDecoder()
@@ -572,8 +589,10 @@ private actor NotePersistenceWriter {
 
     private static func write(_ notes: [VoiceNote], to url: URL) {
         do {
+            // Compact: the store is read by the app only (backups have their own export), and
+            // pretty-printing a library of long transcripts made every save and every launch
+            // slower for indentation nobody reads. Older pretty-printed stores still decode.
             let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             encoder.dateEncodingStrategy = .iso8601
             let data = try encoder.encode(notes)
             try data.write(to: url, options: .atomic)

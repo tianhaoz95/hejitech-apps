@@ -10,10 +10,12 @@ public struct SettingsView: View {
     @AppStorage(ASRService.languageStorageKey) private var asrLanguage: String = "auto"
     @AppStorage("app_appearance") private var appearance: String = "system"
     @AppStorage(NoteProcessingPipeline.lightCleanupEnabledKey) private var lightCleanupEnabled: Bool = true
+    @AppStorage(LiveTranscriber.enabledKey) private var liveTranscriptEnabled: Bool = true
     @AppStorage(FeedbackSettings.shakeEnabledKey) private var feedbackShakeEnabled: Bool = true
     @StateObject private var llmService = OnDeviceLLMService.shared
     @StateObject private var dictionaryStore = PersonalDictionaryStore.shared
     @StateObject private var templateStore = TemplateStore.shared
+    @StateObject private var watchSync = WatchSyncService.shared
     @State private var showingSimulationAlert = false
     @State private var simulatedTitle = ""
     @State private var keyboardStatus: KeyboardSetupStatus = .notAdded
@@ -195,6 +197,13 @@ public struct SettingsView: View {
                 }
 
                 Section(
+                    header: Text("Live Transcript"),
+                    footer: Text("Shows your words while you record on this iPhone. When it keeps up, the note skips the transcription step after you stop. Uses a little more battery while recording; Apple Watch recordings are transcribed after they sync, as before.")
+                ) {
+                    Toggle("Transcribe While Recording", isOn: $liveTranscriptEnabled)
+                }
+
+                Section(
                     header: Text("Light Cleanup"),
                     footer: Text("The Light Cleanup tab shows a lightly-proofread, near-verbatim version of the transcript alongside the fully restructured note. It's generated on demand the first time you open that tab, not automatically for every note -- turn it off here to skip it entirely.")
                 ) {
@@ -331,6 +340,19 @@ public struct SettingsView: View {
                     } label: {
                         Label("Purge Audio Older Than 30 Days", systemImage: "trash")
                             .foregroundColor(.red)
+                    }
+                }
+
+                Section(header: Text("Apple Watch")) {
+                    NavigationLink {
+                        WatchSyncStatusView(syncService: watchSync, embedded: true)
+                    } label: {
+                        HStack {
+                            Label("Watch Companion", systemImage: "applewatch")
+                            Spacer()
+                            Text(watchSync.isReachable ? "Connected" : (watchSync.isPaired ? "Idle" : "Not Paired"))
+                                .foregroundColor(watchSync.isReachable ? .green : .secondary)
+                        }
                     }
                 }
 

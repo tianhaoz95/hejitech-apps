@@ -153,10 +153,34 @@ public final class OnDeviceLLMService: ObservableObject {
     private static var isSafeToUseMLXRightNow: Bool {
         guard isSupportedOnThisDevice else { return false }
         #if os(iOS)
-        return UIApplication.shared.applicationState != .background
+        return UIApplication.shared.applicationState != .background || backgroundGPUGranted
         #else
         return true
         #endif
+    }
+
+    /// True while a continued-processing background task holds the system's GPU grant (see
+    /// `BackgroundProcessingManager`): the one case where generating while backgrounded is
+    /// allowed, because the system keeps GPU access for the task instead of revoking it.
+    public static var backgroundGPUGranted = false
+
+    /// MLX keeps freed GPU buffers for reuse; without a limit that cache grows to the size of the
+    /// largest generation and stays. 128 MB keeps reuse for a note's calls without holding on to
+    /// hundreds of megabytes after.
+    private static let gpuCacheLimitBytes = 128 * 1024 * 1024
+    private var didSetGPUCacheLimit = false
+
+    /// Drops the loaded models so their memory (~350 MB for Lite, ~2.3 GB for Flash) goes back to
+    /// the system: after the processing queue has been idle for a while, on a memory warning, and
+    /// when the app goes to the background with nothing to process. The next `generate()` loads
+    /// again (a few seconds for Lite). A generation already running keeps its own reference to the
+    /// container, so it finishes normally; a model still loading is left alone.
+    public func unloadModels() {
+        guard Self.isSupportedOnThisDevice, smallLoadTask == nil, largeLoadTask == nil else { return }
+        guard smallContainer != nil || largeContainer != nil else { return }
+        smallContainer = nil
+        largeContainer = nil
+        MLX.GPU.clearCache()
     }
 
     // MARK: - Large (downloadable) model lifecycle
@@ -356,6 +380,10 @@ public final class OnDeviceLLMService: ObservableObject {
     }
 
     private func bestAvailableContainer() async throws -> ModelContainer {
+        if !didSetGPUCacheLimit {
+            MLX.GPU.set(cacheLimit: Self.gpuCacheLimitBytes)
+            didSetGPUCacheLimit = true
+        }
         if isUsingLargeModel {
             do {
                 return try await loadLargeContainer()

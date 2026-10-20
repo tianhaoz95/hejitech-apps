@@ -2,8 +2,39 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER).processing.*</string>
+	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Audio</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.audio</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Video</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.movie</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -31,16 +62,18 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<false/>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Voxbrief can export voice notes as scheduled events into Apple Calendar.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Voxbrief can export voice notes as scheduled events into Apple Calendar.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Voxbrief uses your microphone to record voice notes and capture ideas.</string>
 	<key>NSRemindersFullAccessUsageDescription</key>
 	<string>Voxbrief can export action items from your voice notes into Apple Reminders.</string>
 	<key>NSRemindersUsageDescription</key>
 	<string>Voxbrief can export action items from your voice notes into Apple Reminders.</string>
-	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>Voxbrief can export voice notes as scheduled events into Apple Calendar.</string>
-	<key>NSCalendarsUsageDescription</key>
-	<string>Voxbrief can export voice notes as scheduled events into Apple Calendar.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

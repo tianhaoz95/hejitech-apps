@@ -795,5 +795,47 @@
         "share"
       ]
     }
+  },
+  {
+    "id": "light-many-sentences",
+    "category": "light",
+    "mode": "light",
+    "transcript": "Okay so the meeting is at three. Uh bring the slides. We also need the budget numbers from Lena. And um remind Tom about the venue.",
+    "expect": {
+      "contains_ci": [
+        "three",
+        "slides",
+        "budget",
+        "lena",
+        "tom",
+        "venue"
+      ],
+      "not_words_ci": [
+        "um",
+        "uh"
+      ]
+    }
+  },
+  {
+    "id": "light-long-details",
+    "category": "light",
+    "mode": "light",
+    "transcript": "So for the trip I, uh, booked the train for Friday at eight fifteen. The hotel is near the river and check-in is after two. Um, we still need to buy the museum tickets, and Dana said the Tuesday slot is cheaper. Also, you know, pack the charger for the camera, because last time we forgot it.",
+    "expect": {
+      "contains_ci": [
+        "friday",
+        "river",
+        "museum",
+        "tuesday",
+        "charger"
+      ],
+      "not_contains_ci": [
+        "you know"
+      ],
+      "not_words_ci": [
+        "um",
+        "uh"
+      ]
+    }
   }
 ]

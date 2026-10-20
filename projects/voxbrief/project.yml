@@ -52,6 +52,23 @@ targets:
         UIBackgroundModes:
           - audio
           - fetch
+        # BackgroundProcessingManager's continued-processing task (iOS 26+).
+        BGTaskSchedulerPermittedIdentifiers:
+          - "$(PRODUCT_BUNDLE_IDENTIFIER).processing.*"
+        # "Open in Voxbrief" from the share sheet and Files for audio and video (AudioImportService).
+        # Not in place: iOS copies the file into Documents/Inbox and hands the app that copy.
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Audio
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes:
+              - public.audio
+          - CFBundleTypeName: Video
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes:
+              - public.movie
+        LSSupportsOpeningDocumentsInPlace: false
         CFBundleURLTypes:
           - CFBundleURLName: com.jacksonzhou666.voxbrief.app
             CFBundleURLSchemes:
@@ -91,6 +108,8 @@ targets:
       - target: VoxbriefWatch
         embed: true
       - target: VoxbriefKeyboard
+        embed: true
+      - target: VoxbriefShare
         embed: true
       - package: ArgmaxOSS
         product: WhisperKit
@@ -181,6 +200,39 @@ targets:
       PRODUCT_BUNDLE_IDENTIFIER: com.jacksonzhou666.voxbrief.app.keyboard
       TARGETED_DEVICE_FAMILY: "1,2"
 
+  VoxbriefShare:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      # Only copies shared files into the App Group; the app imports them (SharedImportInbox).
+      - path: Shared/Services/KeyboardHandoff.swift
+      - path: Shared/Services/SharedImportInbox.swift
+      - path: VoxbriefShare
+    entitlements:
+      path: VoxbriefShare/Share.entitlements
+      # XcodeGen owns this file's content (see the NOTE on Voxbrief's entitlements).
+      properties:
+        com.apple.security.application-groups:
+          - group.com.jacksonzhou666.voxbrief
+    info:
+      path: VoxbriefShare/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          NSExtensionAttributes:
+            NSExtensionActivationRule: >-
+              SUBQUERY (extensionItems, $extensionItem, SUBQUERY ($extensionItem.attachments,
+              $attachment, ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.audio"
+              || ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.movie").@count >= 1).@count >= 1
+        CFBundleDisplayName: "Voxbrief"
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.jacksonzhou666.voxbrief.app.share
+      TARGETED_DEVICE_FAMILY: "1,2"
+
   VoxbriefWidgets:
     type: app-extension
     platform: iOS
@@ -189,7 +241,16 @@ targets:
       - path: Shared/Models/VoiceNoteActivityAttributes.swift
       # Control intents must be compiled into the app as well as this extension (see the file).
       - path: VoxbriefApp/Intents/ControlLaunchIntent.swift
+      # The Daily Brief widget reads the snapshot the app writes to the App Group.
+      - path: Shared/Models/DailyBriefSnapshot.swift
+      - path: Shared/Services/KeyboardHandoff.swift
       - path: VoxbriefWidgets
+    entitlements:
+      path: VoxbriefWidgets/Widgets.entitlements
+      # XcodeGen owns this file's content (see the NOTE on Voxbrief's entitlements).
+      properties:
+        com.apple.security.application-groups:
+          - group.com.jacksonzhou666.voxbrief
     info:
       path: VoxbriefWidgets/Info.plist
       properties:

@@ -48,6 +48,7 @@ public final class RecordingCoordinator: ObservableObject {
     public func beginRecording(appendingTo targetNoteId: UUID? = nil) async throws {
         let noteId = UUID()
         try recordingService.startRecording(for: noteId)
+        LiveTranscriber.shared.start(vocabulary: PersonalDictionaryStore.shared.entries.map(\.term))
         activeNoteId = noteId
         appendTargetNoteId = targetNoteId
         liveActivity.start(noteId: noteId, source: "iPhone")
@@ -82,6 +83,8 @@ public final class RecordingCoordinator: ObservableObject {
 
         if let targetNoteId = appendTargetNoteId {
             appendTargetNoteId = nil
+            // Appending re-transcribes the new audio in the pipeline; the live text was preview only.
+            LiveTranscriber.shared.cancel()
             Task {
                 defer { self.endActiveBackgroundTask() }
                 await pipeline.appendRecording(
@@ -116,7 +119,9 @@ public final class RecordingCoordinator: ObservableObject {
         repository.save(note)
         Task {
             defer { self.endActiveBackgroundTask() }
-            await pipeline.process(note: note)
+            // The live transcript, when it kept up, replaces Stage 1 for this note.
+            let live = await LiveTranscriber.shared.finish()
+            await pipeline.process(note: note, liveTranscript: live)
             let finished = repository.note(withId: note.id)
             liveActivity.finish(success: finished?.status == .ready)
         }
@@ -125,6 +130,7 @@ public final class RecordingCoordinator: ObservableObject {
 
     public func cancelRecording() {
         recordingService.cancelRecording()
+        LiveTranscriber.shared.cancel()
         liveActivity.cancel()
         activeNoteId = nil
         appendTargetNoteId = nil

@@ -8,8 +8,11 @@ struct VoxbriefApp: App {
     @StateObject private var watchSyncService = WatchSyncService.shared
     @StateObject private var noteRepository = NoteRepository.shared
     @StateObject private var pipeline = NoteProcessingPipeline.shared
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
+        BackgroundProcessingManager.shared.install()
+
         #if canImport(FeedbackKit)
         FeedbackKit.configure(.init(
             endpointURL: URL(string: "https://gpucoladcyvijefdjudf.supabase.co/functions/v1/ingest-feedback")!,
@@ -26,6 +29,9 @@ struct VoxbriefApp: App {
                 .environmentObject(watchSyncService)
                 .environmentObject(noteRepository)
                 .environmentObject(pipeline)
+                .onChange(of: scenePhase) { _, phase in
+                    BackgroundProcessingManager.shared.scenePhaseChanged(to: phase)
+                }
         }
     }
 }
@@ -73,6 +79,17 @@ private struct RootView: View {
     }
 
     private func handleDeepLink(_ url: URL) {
+        if url.isFileURL {
+            // "Open in Voxbrief" for an audio or video file (CFBundleDocumentTypes).
+            Task {
+                do {
+                    try await AudioImportService.shared.importOpenedFile(url)
+                } catch {
+                    print("[VoxbriefApp] Import of \(url.lastPathComponent) failed: \(error)")
+                }
+            }
+            return
+        }
         guard let host = url.host else { return }
         let queryItems = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         var params: [String: String] = [:]

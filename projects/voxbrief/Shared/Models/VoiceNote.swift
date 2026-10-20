@@ -7,6 +7,15 @@ public enum NoteSource: String, Codable, CaseIterable, Sendable {
     case watchApp = "watch_app"
     case phoneApp = "phone_app"
     case macApp = "mac_app"
+    /// A file shared or imported into Voxbrief (share sheet, Files), not recorded by it.
+    case imported = "imported"
+
+    /// Unknown raw values (a source added by a newer build) decode as `.phoneApp` instead of
+    /// failing the whole note -- and with it, `NoteRepository`'s whole store.
+    public init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = NoteSource(rawValue: raw) ?? .phoneApp
+    }
 
     public var displayName: String {
         switch self {
@@ -15,6 +24,7 @@ public enum NoteSource: String, Codable, CaseIterable, Sendable {
         case .watchApp: return "Apple Watch"
         case .phoneApp: return "iPhone"
         case .macApp: return "Mac"
+        case .imported: return "Imported"
         }
     }
 
@@ -25,6 +35,7 @@ public enum NoteSource: String, Codable, CaseIterable, Sendable {
         case .watchApp: return "applewatch"
         case .phoneApp: return "iphone"
         case .macApp: return "macbook"
+        case .imported: return "square.and.arrow.down"
         }
     }
 }
@@ -174,6 +185,32 @@ public struct TranscriptTimingSegment: Codable, Hashable, Sendable, Identifiable
     }
 }
 
+/// One part of a long memo that Stage 2 read in several passes (see
+/// `LLMCopywriterService.longTranscriptWordThreshold`): where the part starts, as a fraction of
+/// the transcript's words (times are derived from the note's duration, so they stay valid
+/// without word-level timings), and the one-sentence summary Stage 2 wrote for that part.
+public struct LongMemoPart: Codable, Hashable, Sendable {
+    public let startFraction: Double
+    public let summary: String
+
+    public init(startFraction: Double, summary: String) {
+        self.startFraction = startFraction
+        self.summary = summary
+    }
+}
+
+/// How long one pipeline step took on the device, for the Pipeline tab and for measuring Stage 2
+/// changes ("Transcribe", "Pick template", "Write note", "Part 2 of 3", "Overview").
+public struct ProcessingTiming: Codable, Hashable, Sendable {
+    public let name: String
+    public let seconds: Double
+
+    public init(name: String, seconds: Double) {
+        self.name = name
+        self.seconds = seconds
+    }
+}
+
 /// Complete Voice Note model containing raw audio metadata, ASR transcript, and LLM-processed note
 public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
     public let id: UUID
@@ -247,6 +284,14 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
     /// Time-indexed segments produced during speech-to-text, enabling interactive audio-transcript sync.
     public var transcriptSegments: [TranscriptTimingSegment] = []
 
+    /// Parts of a long memo that Stage 2 summarised separately and merged. Empty for a memo short
+    /// enough to read in one pass, and for notes processed before this field existed.
+    public var longMemoParts: [LongMemoPart] = []
+
+    /// Step timings of the last pipeline run, in order. Empty for notes processed before this
+    /// field existed.
+    public var processingTimings: [ProcessingTiming] = []
+
     public init(
         id: UUID = UUID(),
         createdAt: Date = Date(),
@@ -277,7 +322,8 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
         templateSections: [TemplateSectionContent] = [],
         templateId: UUID? = nil,
         templateName: String? = nil,
-        transcriptSegments: [TranscriptTimingSegment] = []
+        transcriptSegments: [TranscriptTimingSegment] = [],
+        longMemoParts: [LongMemoPart] = []
     ) {
         self.id = id
         self.createdAt = createdAt
@@ -309,6 +355,7 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
         self.templateId = templateId
         self.templateName = templateName
         self.transcriptSegments = transcriptSegments
+        self.longMemoParts = longMemoParts
     }
 
     /// Hand-written (rather than relying on synthesized `Decodable`) solely so `segments` can use
@@ -346,6 +393,8 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
         templateId = try container.decodeIfPresent(UUID.self, forKey: .templateId)
         templateName = try container.decodeIfPresent(String.self, forKey: .templateName)
         transcriptSegments = try container.decodeIfPresent([TranscriptTimingSegment].self, forKey: .transcriptSegments) ?? []
+        longMemoParts = try container.decodeIfPresent([LongMemoPart].self, forKey: .longMemoParts) ?? []
+        processingTimings = try container.decodeIfPresent([ProcessingTiming].self, forKey: .processingTimings) ?? []
     }
 
     /// `templateSections` if this note has any (every note processed after multi-template

@@ -856,6 +856,10 @@ public struct NoteDetailView: View {
 
     private var cleanedNoteSection: some View {
         VStack(alignment: .leading, spacing: 16) {
+            if !viewModel.note.longMemoParts.isEmpty {
+                longMemoPartsCard
+            }
+
             ForEach(Array(viewModel.note.effectiveTemplateSections.enumerated()), id: \.offset) { _, section in
                 infoCard(
                     icon: icon(for: section.style),
@@ -884,6 +888,50 @@ public struct NoteDetailView: View {
             .padding(16)
             .background(Color.appSecondaryBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
+    }
+
+    /// Shown when Stage 2 read a long memo in parts (`VoiceNote.longMemoParts`): says so, and
+    /// lists each part's start time and summary. Tapping a part seeks the audio there, for a
+    /// single-recording note (a multi-recording note's parts span several files).
+    private var longMemoPartsCard: some View {
+        let parts = viewModel.note.longMemoParts
+        let canSeek = viewModel.hasAudio && viewModel.note.segments.count <= 1
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "doc.on.doc")
+                    .foregroundStyle(Color.accentColor)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Long memo, read in \(parts.count) parts")
+                        .font(.subheadline.weight(.semibold))
+                    Text("Each part was summarized on its own, then merged, so nothing past the first few minutes is dropped.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            ForEach(Array(parts.enumerated()), id: \.offset) { _, part in
+                let time = part.startFraction * viewModel.note.duration
+                Button {
+                    viewModel.seek(toTime: time)
+                } label: {
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        Text(time.formattedDuration)
+                            .font(.subheadline.weight(.semibold).monospacedDigit())
+                            .foregroundStyle(canSeek ? Color.accentColor : .secondary)
+                            .frame(minWidth: 44, alignment: .leading)
+                        Text(part.summary.isEmpty ? "Part summary unavailable" : part.summary)
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+                            .multilineTextAlignment(.leading)
+                        Spacer(minLength: 0)
+                    }
+                }
+                .buttonStyle(.plain)
+                .disabled(!canSeek)
+            }
+        }
+        .padding(16)
+        .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     // MARK: - Light Cleanup Section
@@ -1249,6 +1297,11 @@ public struct NoteDetailView: View {
                 state: llmStepState
             )
 
+            if !viewModel.note.processingTimings.isEmpty {
+                timingsCard
+                    .padding(.top, 12)
+            }
+
             if viewModel.isReprocessing {
                 liveProgressBanner
             } else {
@@ -1264,6 +1317,52 @@ public struct NoteDetailView: View {
                 .padding(.top, 12)
             }
         }
+    }
+
+    /// How long each step of the last run took on this device (`VoiceNote.processingTimings`),
+    /// as bars against the slowest step.
+    private var timingsCard: some View {
+        let timings = viewModel.note.processingTimings
+        let longest = max(timings.map(\.seconds).max() ?? 1, 0.001)
+        let total = timings.map(\.seconds).reduce(0, +)
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                sectionHeader(icon: "stopwatch", tint: .teal, title: "Last Run")
+                Spacer()
+                Text("Ready after \(Self.formatSeconds(total))")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(Array(timings.enumerated()), id: \.offset) { _, timing in
+                HStack(spacing: 10) {
+                    Text(timing.name)
+                        .font(.caption)
+                        .frame(width: 104, alignment: .leading)
+                        .lineLimit(1)
+                    GeometryReader { proxy in
+                        Capsule()
+                            .fill(Color.teal.opacity(0.75))
+                            .frame(width: max(4, proxy.size.width * timing.seconds / longest))
+                    }
+                    .frame(height: 8)
+                    Text(Self.formatSeconds(timing.seconds))
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .frame(width: 48, alignment: .trailing)
+                }
+            }
+            if let engine = viewModel.note.cleanupEngine {
+                Text("Stage 2 on \(CleanupEngineLabel.displayName(for: engine)), on this device.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(16)
+        .background(Color.appSecondaryBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private static func formatSeconds(_ seconds: Double) -> String {
+        seconds < 10 ? String(format: "%.1f s", seconds) : String(format: "%.0f s", seconds)
     }
 
     /// Live status card shown while a reprocess/retry is in flight -- reflects the note's actual

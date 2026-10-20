@@ -38,11 +38,14 @@
 		247B77735A22A2E94332CF96 /* ActionButtonControlsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE3C08A8A1C82DE876A2A0AF /* ActionButtonControlsTests.swift */; };
 		2550CDDFC2FBAD0D6C9CE25E /* DictionaryEntryEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCD4292051768197FA3A125E /* DictionaryEntryEditView.swift */; };
 		267A23EAAF919E87855480BA /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EB9E3588235BEFC67D80649 /* UpdateChecker.swift */; };
+		275B4403976F111E79E3767E /* AskService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE87D7287DCE466F347E5168 /* AskService.swift */; };
 		288FA067DC651A77B996F459 /* AudioStorageManagementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C20D11D5E1327FBD57ADC9F /* AudioStorageManagementTests.swift */; };
 		29A7E9237247703B7C122B19 /* WatchSyncServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF568BAA055854561F1C46D7 /* WatchSyncServiceTests.swift */; };
 		2B59299D3C9E168E12F85A77 /* VoxbriefIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F573238A907947FE34CFE239 /* VoxbriefIntents.swift */; };
+		2D349ED7228694BF96824E30 /* DailyBriefSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4DEA392C84B36408EE59E0A /* DailyBriefSnapshot.swift */; };
 		2D4CF8A23ED4AE84CB00AE5B /* WatchSyncStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE056827F75E2A918AABC197 /* WatchSyncStatusView.swift */; };
 		2EE6397EB9199A3EFDFE3F97 /* MacAddRecordingSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9ABAAFC8C134B12CC78DDF2 /* MacAddRecordingSheet.swift */; };
+		2F7AAE9C8169FC2E3684BF53 /* AskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88E9E057B7B2F83410B3D87D /* AskView.swift */; };
 		30E4F805542B50692A1BC813 /* FeedbackShortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = E94D52B1598816198564D875 /* FeedbackShortcut.swift */; };
 		323928B1ACEEF960BF7791FA /* NoteCompletionNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41B60172558E506D5CCB8962 /* NoteCompletionNotifier.swift */; };
 		34A5560EA93CB6451772516B /* NoteProcessingPipelineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 692D6EB7A748E001F15872BD /* NoteProcessingPipelineTests.swift */; };
@@ -50,17 +53,21 @@
 		385DAF7EA122261732E3B57D /* NoteProcessingPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C1F160AB952E32457620BAC /* NoteProcessingPipeline.swift */; };
 		39E925D85BA3EFE37B62D842 /* DataBackupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFF66F19623979C59C602106 /* DataBackupService.swift */; };
 		3D9D0AA84E166AEA9A87B10D /* VoxbriefWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 2657ABEEE26CAC4BC36968D1 /* VoxbriefWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		3E92239163BF05231D433FD7 /* DailyBriefTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 372B2FCF84714C6CEF641AB1 /* DailyBriefTests.swift */; };
 		41E4356939685BCA41DE71AA /* OverlayWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DCD76CBD9A8D9599353A83C /* OverlayWindowController.swift */; };
 		4277699DD73B200D23E0FA2B /* ASRServiceHelpersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7E7A1ECFE8A61810E0AA7FB /* ASRServiceHelpersTests.swift */; };
 		42B91CC41B6C79D2A68C0DE1 /* NoteRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = D04388B08F3A85CF017C8018 /* NoteRepository.swift */; };
 		434B61EB575DCFD7CD63EBA6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 653DA86C0171A62565403BC9 /* Assets.xcassets */; };
+		44A7147B33E3F534E5B755D4 /* NoteSearchIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE514F4FCBBBF278BDF6591E /* NoteSearchIndex.swift */; };
 		47CBBC52F36344B462A01B3F /* NoteListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79425446C4B377940835B987 /* NoteListViewModel.swift */; };
 		49148D29E3161E1F6859E6CD /* PlatformUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1862EF9B360D46D07DCD314 /* PlatformUI.swift */; };
 		4A2ABDE0C5875306300E17FB /* PersonalDictionaryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03F942BDF0E561E09CD54BC4 /* PersonalDictionaryStore.swift */; };
 		4B056B84EC62B04E005A0F43 /* WatchNotesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A37729BD151097071676D002 /* WatchNotesListView.swift */; };
+		4BE778CE416E3D1F0214CED4 /* KeyboardHandoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38326DAFB38C97F2FF11D41B /* KeyboardHandoff.swift */; };
 		4BF2DE9581C4EB5E0BA69348 /* PersonalDictionaryStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97AB4E8DC194919B938B0739 /* PersonalDictionaryStoreTests.swift */; };
 		4C8C7B5A91D38B015B734673 /* TranscriptSegmentTokenTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AC48BED1DFCD0A055C763CE /* TranscriptSegmentTokenTests.swift */; };
 		4CFDE4244EBDE1DA1D7479C6 /* CalendarExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB742F1A46A47B6A091AB793 /* CalendarExportService.swift */; };
+		4DA5C4630866C2922DC5B479 /* BackgroundProcessingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7672C160D148FE5C0D2E7C7 /* BackgroundProcessingManager.swift */; };
 		4DBFA9233C26DDEB7049630D /* Qwen3-0.6B-4bit in Resources */ = {isa = PBXBuildFile; fileRef = E7C3731F89B9CAC7ECDD9D86 /* Qwen3-0.6B-4bit */; };
 		4F7C18686C7D1DC467E52161 /* AudioRecordingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E37077EC9E2F16A4D7C2E54 /* AudioRecordingService.swift */; };
 		51CC7CC68DBE2F229C298885 /* MLXLLM in Frameworks */ = {isa = PBXBuildFile; productRef = 5217B63305D7FA96D559DE40 /* MLXLLM */; };
@@ -79,10 +86,13 @@
 		5CE3791D4401A16E5051E00F /* VoiceNote.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17FEE0D93589E948738A6156 /* VoiceNote.swift */; };
 		5E5BDB04ACA4C9DA8D990692 /* SyncPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 196C6F6CC1AAC7FF5E616A8D /* SyncPayload.swift */; };
 		61F408C2E43D4E8D9B0D1C27 /* VoxbriefWatchWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48925CE7621616AF282F7CAF /* VoxbriefWatchWidgets.swift */; };
+		63BC7A37BED88DE7F24A4EEE /* DailyBriefSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4DEA392C84B36408EE59E0A /* DailyBriefSnapshot.swift */; };
 		64449EC42EE8123A116A08EB /* TemplateEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B14742A80B04804C7A613CF4 /* TemplateEditView.swift */; };
 		67642845892E3B515B0D78D2 /* AudioConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 988E0BDCC158250481339E11 /* AudioConstants.swift */; };
+		689757FD1E6FA235DD108957 /* LongMemoTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55974E872286B4E9013399AE /* LongMemoTests.swift */; };
 		691B6C26A9E7585D09DB058C /* LLMCopywriterServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F9E58587D34FC957F4AE403 /* LLMCopywriterServiceTests.swift */; };
 		6B525DE5AD2D8696C40BB67C /* FeedbackKit in Frameworks */ = {isa = PBXBuildFile; productRef = 6B9699D1165BEDA06BDDC1BA /* FeedbackKit */; };
+		6E48C5AC1369E689C2FB1C21 /* AudioImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C91C6D08A783909886979019 /* AudioImportService.swift */; };
 		6EED439BD3EA57E562221FF3 /* WhatsNewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F86DF18F199D2BAE7E4340C0 /* WhatsNewView.swift */; };
 		6EFD59944A2D0C5BE2124937 /* TemplateDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8F69D56A035DF1728B39998 /* TemplateDetailView.swift */; };
 		6FAA4F848EB104338AE8033E /* AppleFoundationModelService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A55BD86ABB9C619659AB8C0E /* AppleFoundationModelService.swift */; };
@@ -90,6 +100,7 @@
 		71CB99209CAB27623629CD5C /* NoteProcessingPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C1F160AB952E32457620BAC /* NoteProcessingPipeline.swift */; };
 		7524CA93D74217B1B6652CB9 /* NoteMergePickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43B54E6F4FF7B03C6D263908 /* NoteMergePickerSheet.swift */; };
 		786A6E2CADE1460308135F30 /* KeyboardRecordSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 670AD08FF352905287D03FB1 /* KeyboardRecordSheet.swift */; };
+		7B17F6CCC77F6E383AC8419F /* LiveTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8215EFF297FF83FFB001EA8 /* LiveTranscriber.swift */; };
 		7B601703CC60D67467A0BF51 /* PlatformUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1862EF9B360D46D07DCD314 /* PlatformUI.swift */; };
 		7B82D093883725D30E45366C /* WatchMainRecordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31C3CF9D1D01A0040528A669 /* WatchMainRecordView.swift */; };
 		7BAFE2D1C0D7F25718044393 /* VoxbriefLogoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEAB8ED548C10EF91501EFE9 /* VoxbriefLogoView.swift */; };
@@ -104,6 +115,7 @@
 		845CFE1177B9118D762C4B21 /* WatchStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10E24B4B7F2AE722E9E2DF9 /* WatchStorage.swift */; };
 		84F9325B22C21FFC803309B0 /* CaptureWaveformView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214322359CF4DEE6753E172E /* CaptureWaveformView.swift */; };
 		87478723C6F1041048676D05 /* ExtensionDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FD5F519993C6DB394849326 /* ExtensionDelegate.swift */; };
+		880825FABEFE75FA9C0A66F6 /* NoteStoreBenchmarkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F25310C14F1AD2D04EE8A5BF /* NoteStoreBenchmarkTests.swift */; };
 		8A33B8791FF0B81B31C2EB69 /* NoteRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F47B06B91C0E08B3E8267051 /* NoteRowView.swift */; };
 		8C3723A863D6F1B1E3BDDC93 /* FormattingExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0F20D0BCE0BE7D3E7E931A7 /* FormattingExtensions.swift */; };
 		8E62084FAAC0B96BF129C31A /* NoteExportServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF5CDE95EFC5F0A340223DED /* NoteExportServiceTests.swift */; };
@@ -120,12 +132,15 @@
 		99AA4206F5D1BA2FF4C6DD3D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 251979C32C445301C3EDD38D /* Assets.xcassets */; };
 		99C50F6E5DA466503D6155E0 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 015D2CED079AC4D35BFD7889 /* SettingsView.swift */; };
 		9B57A74F93E88D5B0C0714C9 /* NoteTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4670A66832BC3EDB51D04C99 /* NoteTemplate.swift */; };
+		9C1E40A93CD775968AD15251 /* DailyBriefSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4DEA392C84B36408EE59E0A /* DailyBriefSnapshot.swift */; };
 		9C867C1A7E73EB35DDFDB8FC /* VoxbriefLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C7490BC66ADC2FB729D084B /* VoxbriefLiveActivity.swift */; };
 		9D9217FE131009665D20487F /* DictionaryCorrector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61F11F8A2D3B21ECC69ECA27 /* DictionaryCorrector.swift */; };
 		9FC398BFE659FBB91B0799FF /* ControlLaunchIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3485189A77FCBD8DF9269E1D /* ControlLaunchIntent.swift */; };
 		9FDF6E8ED886E932926D1504 /* VoiceNoteActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46B6B4EE56273273351A6104 /* VoiceNoteActivityAttributes.swift */; };
 		A107309BA37A89B6EEEA12F3 /* WatchSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78E48B7C8B1A7E448BFE671F /* WatchSettingsView.swift */; };
 		A155FBBE8E8FF88CE47060DE /* NoteRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F47B06B91C0E08B3E8267051 /* NoteRowView.swift */; };
+		A20CEFDDFC967B45440688BD /* SharedImportInbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AB77797B5736409F865936D /* SharedImportInbox.swift */; };
+		A2A9D8F95C2F7CC77F1D6818 /* DailyBrief.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16D525E2C065D446511110E0 /* DailyBrief.swift */; };
 		A2DC25FC3CC4733F84BD302E /* MLXLMCommon in Frameworks */ = {isa = PBXBuildFile; productRef = FE66E50CF58B0A68756AB6D7 /* MLXLMCommon */; };
 		A4084D5D0EE82481B4728AC5 /* KeyboardHandoffTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D52BAB96F04983304C68D2E5 /* KeyboardHandoffTests.swift */; };
 		A43DE437BF1B5614D5BAB5E7 /* NoteDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB22B631A6BEF68F67B5C15A /* NoteDetailView.swift */; };
@@ -136,9 +151,12 @@
 		A808D4C88874D0E9F9B5E423 /* TemplateStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFAE3474C430320E937A5196 /* TemplateStoreTests.swift */; };
 		A86C54BEF5F63D130A04800A /* FormattingExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0F20D0BCE0BE7D3E7E931A7 /* FormattingExtensions.swift */; };
 		AC516D74FDEFF94F2309199B /* DictionaryEntryEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCD4292051768197FA3A125E /* DictionaryEntryEditView.swift */; };
+		AD9B0EDA3CAF315F5FB2E2FD /* DailyBriefSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4DEA392C84B36408EE59E0A /* DailyBriefSnapshot.swift */; };
 		ADB6871DEBDFCDD7C91574C0 /* RemindersExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8172E2275DD7247F30084A5 /* RemindersExportService.swift */; };
+		AF051E0DA4FAE480AFD3E810 /* AskServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5CDF159F713F6245D1F4C78 /* AskServiceTests.swift */; };
 		B251DF3E962992EACB6E51B7 /* NoteTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4670A66832BC3EDB51D04C99 /* NoteTemplate.swift */; };
 		B31BAFA3116C01975E3C6AFC /* NoteRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CBD578AD77C823CEBF8C5B8 /* NoteRepositoryTests.swift */; };
+		B38865822A27C98C60C233A9 /* DailyBriefWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC9595E1BFBE6BF8F12CCB9E /* DailyBriefWidget.swift */; };
 		B3D2E5CCE28D62709F3D12D5 /* WatchSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5D2678B30255AFCCA761999 /* WatchSyncService.swift */; };
 		B573595E0689A89D4E29A477 /* AudioConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 988E0BDCC158250481339E11 /* AudioConstants.swift */; };
 		B6905623D3E79C67D0815966 /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8EE276FCE431704528A2B82 /* PreferencesView.swift */; };
@@ -151,7 +169,9 @@
 		BAD2245B1C48E6D0BF8E10BB /* AccessibilityPermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14F96EF59E1D7F971D62EEE7 /* AccessibilityPermissionManager.swift */; };
 		BC2CE7EB4558C82A86E19B14 /* LLMCopywriterService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD147AE1BD15A3E6E9E9EA8C /* LLMCopywriterService.swift */; };
 		BD85B8FD65199388DF835C50 /* MicrophonePermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D816BE4FBE91E1B52B14A93 /* MicrophonePermissionManager.swift */; };
+		BD8C03A04362C8BB3321F08A /* KeyboardHandoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38326DAFB38C97F2FF11D41B /* KeyboardHandoff.swift */; };
 		BE88A4CECC3B12120B6C2919 /* NoteExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87305FD3E2876F8BDBAFB53A /* NoteExportService.swift */; };
+		BEF45FAE6603F74BC55AD5E6 /* SharedImportInbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AB77797B5736409F865936D /* SharedImportInbox.swift */; };
 		C18574E5E77EE031411CBCA2 /* NoteDetailViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1408F482A93D5BC763F22E74 /* NoteDetailViewModelTests.swift */; };
 		C1EA532E936389527D9A6CEF /* ControlLaunchIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3485189A77FCBD8DF9269E1D /* ControlLaunchIntent.swift */; };
 		C4711C0DE2015BF180A7077A /* CaptureWaveformView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214322359CF4DEE6753E172E /* CaptureWaveformView.swift */; };
@@ -160,7 +180,9 @@
 		C92DECFED0FCCFF3EFCE56E3 /* LLMPromptExportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CEECC0352AAD60D2E540189 /* LLMPromptExportTests.swift */; };
 		C9CF200D94495FFBAEA7FA37 /* AudioConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 988E0BDCC158250481339E11 /* AudioConstants.swift */; };
 		CB36FED367B66F0719E37778 /* VoxbriefMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F61EA36A51AF152AC8E9882D /* VoxbriefMacApp.swift */; };
+		CB3824E10654F1BF9CA51C32 /* SharedImportInbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AB77797B5736409F865936D /* SharedImportInbox.swift */; };
 		CC8A8294AA9C21B91FA4CB8C /* KeyboardSetupStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C774501050A357DEB4FA1AA /* KeyboardSetupStatus.swift */; };
+		CC9AAE85CA9E2652B9B0F876 /* SharedImportInbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AB77797B5736409F865936D /* SharedImportInbox.swift */; };
 		CDFA9F1211A2F2E5993DD218 /* CaptureCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 917D0366004B01DE5CC2CEA7 /* CaptureCoordinator.swift */; };
 		CF522D7A437072483BE0EF9A /* VoiceNoteActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46B6B4EE56273273351A6104 /* VoiceNoteActivityAttributes.swift */; };
 		D0D4AF5513324D94E0624D1C /* TemplateEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B14742A80B04804C7A613CF4 /* TemplateEditView.swift */; };
@@ -169,15 +191,19 @@
 		D490C9DFFA124F618A0E7531 /* CalendarExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB742F1A46A47B6A091AB793 /* CalendarExportService.swift */; };
 		D564B3C8474F757F4DD291D3 /* SyncPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 196C6F6CC1AAC7FF5E616A8D /* SyncPayload.swift */; };
 		D7A10B5FEDFBABA164E6386D /* FeedbackShortcutStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A647E8F8AEC2253D09373C81 /* FeedbackShortcutStore.swift */; };
+		D80AA1D55A48303D3C71C290 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB087B34B9D103EA7EB6E2ED /* ShareViewController.swift */; };
+		D8E188B34B32256F2378F540 /* DailyBriefView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63219D18DAA04445A93C64C0 /* DailyBriefView.swift */; };
 		D99F810CE255C259E1726018 /* LiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFEB07D6090DC24A5902E9AE /* LiveActivityManager.swift */; };
 		DCDE66379E089E740318E929 /* CaptureWaveformView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214322359CF4DEE6753E172E /* CaptureWaveformView.swift */; };
 		DE23A3F2D3F700A37D4AA4FC /* FormattingExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0F20D0BCE0BE7D3E7E931A7 /* FormattingExtensions.swift */; };
 		DE4532B8F73D8A8BCCC7DA10 /* AudioPlaybackServiceExtendedTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E16EF8E03690A86F8E50308 /* AudioPlaybackServiceExtendedTests.swift */; };
+		DE56D75157190DB50B90B9EB /* DailyBriefSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4DEA392C84B36408EE59E0A /* DailyBriefSnapshot.swift */; };
 		E1D308246D3EC0EA8365543B /* PDFExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91DB9C8B41B64EF6818E14D5 /* PDFExportService.swift */; };
 		E20D02A281F31B8C69CE1682 /* VoxbriefKeyboard.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 16793BFCF0CAFCD8D5316281 /* VoxbriefKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		E23BCA997624918D6E0BA43C /* PersonalDictionaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACC7690F2E9CCCD9AC1D86CF /* PersonalDictionaryView.swift */; };
 		E820F921C0CB44339F74C770 /* SyncPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 196C6F6CC1AAC7FF5E616A8D /* SyncPayload.swift */; };
 		E8496FC62FF5A7CE92419DEA /* PasteInjector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4769D6DA1245703C529EFE21 /* PasteInjector.swift */; };
+		EA42BEE522CDA06A2E2BE2B5 /* SharedImportInbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AB77797B5736409F865936D /* SharedImportInbox.swift */; };
 		EAB97948647254097F03D47D /* RecordingCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57C43AFCEE906F715A993001 /* RecordingCoordinator.swift */; };
 		EACCE41A539C3FB1E8B76E71 /* VoiceNoteActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46B6B4EE56273273351A6104 /* VoiceNoteActivityAttributes.swift */; };
 		EB714002C57569EB559FA748 /* FeedbackShortcutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45BC8B9500EFFF14E2F325BD /* FeedbackShortcutTests.swift */; };
@@ -192,6 +218,7 @@
 		FADF466CC1C50C89D346636D /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = 2040CA9F4A672DFAAEAC0B47 /* WhisperKit */; };
 		FC2D61023706ACC2C26C773C /* AppleFoundationModelService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A55BD86ABB9C619659AB8C0E /* AppleFoundationModelService.swift */; };
 		FC46BA9131E163CA0959E701 /* NoteDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB22B631A6BEF68F67B5C15A /* NoteDetailView.swift */; };
+		FE849AF93B5EE456E546EC95 /* VoxbriefShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7DD201E1D2FBDF5A6332E5C4 /* VoxbriefShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -215,6 +242,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = CC23F4EAFB9EE223EC6B90D7;
 			remoteInfo = VoxbriefKeyboard;
+		};
+		76D5F43F45134237C099ED82 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C7BA46F9711F1D39443D0410 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 504010F5E1447930F4CAC3D0;
+			remoteInfo = VoxbriefShare;
 		};
 		A128B3EE4D0763CE36F47B6F /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -259,6 +293,7 @@
 			files = (
 				3D9D0AA84E166AEA9A87B10D /* VoxbriefWidgets.appex in Embed Foundation Extensions */,
 				E20D02A281F31B8C69CE1682 /* VoxbriefKeyboard.appex in Embed Foundation Extensions */,
+				FE849AF93B5EE456E546EC95 /* VoxbriefShare.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -283,6 +318,7 @@
 		1408F482A93D5BC763F22E74 /* NoteDetailViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteDetailViewModelTests.swift; sourceTree = "<group>"; };
 		14F96EF59E1D7F971D62EEE7 /* AccessibilityPermissionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityPermissionManager.swift; sourceTree = "<group>"; };
 		16793BFCF0CAFCD8D5316281 /* VoxbriefKeyboard.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = VoxbriefKeyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		16D525E2C065D446511110E0 /* DailyBrief.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyBrief.swift; sourceTree = "<group>"; };
 		17618C9F07139808472E6688 /* AudioPlaybackService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlaybackService.swift; sourceTree = "<group>"; };
 		17FEE0D93589E948738A6156 /* VoiceNote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceNote.swift; sourceTree = "<group>"; };
 		196C6F6CC1AAC7FF5E616A8D /* SyncPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncPayload.swift; sourceTree = "<group>"; };
@@ -294,10 +330,13 @@
 		26D9161722A62F745EEBA731 /* QuickRecordSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickRecordSheet.swift; sourceTree = "<group>"; };
 		28512E25F720540CC78E0532 /* NoteRepositoryExtendedTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteRepositoryExtendedTests.swift; sourceTree = "<group>"; };
 		2887D77F3766E9B5992BF4CD /* VoxbriefApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoxbriefApp.swift; sourceTree = "<group>"; };
+		2FD412B540AF34DFA7A19C02 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		316AAE5323E87405498B6594 /* VoiceCommandProcessorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCommandProcessorTests.swift; sourceTree = "<group>"; };
 		31C3CF9D1D01A0040528A669 /* WatchMainRecordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchMainRecordView.swift; sourceTree = "<group>"; };
 		3485189A77FCBD8DF9269E1D /* ControlLaunchIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlLaunchIntent.swift; sourceTree = "<group>"; };
+		372B2FCF84714C6CEF641AB1 /* DailyBriefTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyBriefTests.swift; sourceTree = "<group>"; };
 		38326DAFB38C97F2FF11D41B /* KeyboardHandoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardHandoff.swift; sourceTree = "<group>"; };
+		39134F2904F8AED6204A0889 /* Share.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Share.entitlements; sourceTree = "<group>"; };
 		406D633D5C4879AF1E20107B /* NoteListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteListView.swift; sourceTree = "<group>"; };
 		41B60172558E506D5CCB8962 /* NoteCompletionNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteCompletionNotifier.swift; sourceTree = "<group>"; };
 		43B54E6F4FF7B03C6D263908 /* NoteMergePickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteMergePickerSheet.swift; sourceTree = "<group>"; };
@@ -314,11 +353,13 @@
 		4E1023302B3222C429215588 /* DataBackupServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataBackupServiceTests.swift; sourceTree = "<group>"; };
 		4F9E58587D34FC957F4AE403 /* LLMCopywriterServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMCopywriterServiceTests.swift; sourceTree = "<group>"; };
 		54395C5812867FD9F3A80474 /* cases.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = cases.json; sourceTree = "<group>"; };
+		55974E872286B4E9013399AE /* LongMemoTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LongMemoTests.swift; sourceTree = "<group>"; };
 		560015483170C2C0F42ED686 /* TemplateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateStore.swift; sourceTree = "<group>"; };
 		5719502D7118C6E4D80CEED3 /* WhatsNewViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsNewViewTests.swift; sourceTree = "<group>"; };
 		57C43AFCEE906F715A993001 /* RecordingCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingCoordinator.swift; sourceTree = "<group>"; };
 		5FD5F519993C6DB394849326 /* ExtensionDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionDelegate.swift; sourceTree = "<group>"; };
 		61F11F8A2D3B21ECC69ECA27 /* DictionaryCorrector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryCorrector.swift; sourceTree = "<group>"; };
+		63219D18DAA04445A93C64C0 /* DailyBriefView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyBriefView.swift; sourceTree = "<group>"; };
 		653DA86C0171A62565403BC9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		670AD08FF352905287D03FB1 /* KeyboardRecordSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardRecordSheet.swift; sourceTree = "<group>"; };
 		68B3FA6D53152C4F4D6ADBB9 /* VoxbriefWatchWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = VoxbriefWatchWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -334,10 +375,13 @@
 		78E48B7C8B1A7E448BFE671F /* WatchSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSettingsView.swift; sourceTree = "<group>"; };
 		79425446C4B377940835B987 /* NoteListViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteListViewModel.swift; sourceTree = "<group>"; };
 		7BB5149C264CEC3EE04592CE /* VoxbriefTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = VoxbriefTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		7DD201E1D2FBDF5A6332E5C4 /* VoxbriefShare.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = VoxbriefShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		7E1C901FC850A304A4560918 /* ActionButtonGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionButtonGuideView.swift; sourceTree = "<group>"; };
 		805582BA92BDC768F983C370 /* AudioFileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioFileManager.swift; sourceTree = "<group>"; };
 		85FA4EC385ED9D0FC96F7955 /* NoteDetailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteDetailViewModel.swift; sourceTree = "<group>"; };
 		87305FD3E2876F8BDBAFB53A /* NoteExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteExportService.swift; sourceTree = "<group>"; };
+		88E9E057B7B2F83410B3D87D /* AskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AskView.swift; sourceTree = "<group>"; };
+		8AB77797B5736409F865936D /* SharedImportInbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedImportInbox.swift; sourceTree = "<group>"; };
 		8C20D11D5E1327FBD57ADC9F /* AudioStorageManagementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioStorageManagementTests.swift; sourceTree = "<group>"; };
 		8C774501050A357DEB4FA1AA /* KeyboardSetupStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardSetupStatus.swift; sourceTree = "<group>"; };
 		8CEECC0352AAD60D2E540189 /* LLMPromptExportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMPromptExportTests.swift; sourceTree = "<group>"; };
@@ -356,8 +400,10 @@
 		A5D2678B30255AFCCA761999 /* WatchSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSyncService.swift; sourceTree = "<group>"; };
 		A647E8F8AEC2253D09373C81 /* FeedbackShortcutStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackShortcutStore.swift; sourceTree = "<group>"; };
 		A722022C9E282A8840CA734E /* NoteListViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteListViewModelTests.swift; sourceTree = "<group>"; };
+		A7672C160D148FE5C0D2E7C7 /* BackgroundProcessingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundProcessingManager.swift; sourceTree = "<group>"; };
 		A7E7A1ECFE8A61810E0AA7FB /* ASRServiceHelpersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ASRServiceHelpersTests.swift; sourceTree = "<group>"; };
 		A94C1768854EC4735174DF30 /* KeyboardViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardViewController.swift; sourceTree = "<group>"; };
+		AAC89669FDDD5C9C3EB80917 /* Widgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Widgets.entitlements; sourceTree = "<group>"; };
 		AB22B631A6BEF68F67B5C15A /* NoteDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteDetailView.swift; sourceTree = "<group>"; };
 		AB742F1A46A47B6A091AB793 /* CalendarExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarExportService.swift; sourceTree = "<group>"; };
 		ACC7690F2E9CCCD9AC1D86CF /* PersonalDictionaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalDictionaryView.swift; sourceTree = "<group>"; };
@@ -375,21 +421,27 @@
 		B4D8DB31CA5D5DAFA4A7FB0A /* DictionaryCorrectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryCorrectorTests.swift; sourceTree = "<group>"; };
 		B890732A2E9F6A9C8361C2B2 /* TemplatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplatesView.swift; sourceTree = "<group>"; };
 		B8DA59D4AB6880238B419BA0 /* GlobalHotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalHotkeyManager.swift; sourceTree = "<group>"; };
+		BC9595E1BFBE6BF8F12CCB9E /* DailyBriefWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyBriefWidget.swift; sourceTree = "<group>"; };
 		BFF47C7AC8DE99A52D14D5E7 /* Voxbrief.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Voxbrief.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C41C69644021D649EBA14B88 /* OnDeviceLLMService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnDeviceLLMService.swift; sourceTree = "<group>"; };
+		C4DEA392C84B36408EE59E0A /* DailyBriefSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyBriefSnapshot.swift; sourceTree = "<group>"; };
 		C68109B867643A9EC95BA83A /* NotesBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesBrowserView.swift; sourceTree = "<group>"; };
 		C8EE276FCE431704528A2B82 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
+		C91C6D08A783909886979019 /* AudioImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioImportService.swift; sourceTree = "<group>"; };
 		C9E355E590054B01A75FB779 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		CBCCE4CBCC64C9FC561BE96C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		CE87D7287DCE466F347E5168 /* AskService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AskService.swift; sourceTree = "<group>"; };
 		CEAD3B4021131DA58668E5C9 /* ASRService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ASRService.swift; sourceTree = "<group>"; };
 		D04388B08F3A85CF017C8018 /* NoteRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteRepository.swift; sourceTree = "<group>"; };
 		D0F20D0BCE0BE7D3E7E931A7 /* FormattingExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormattingExtensions.swift; sourceTree = "<group>"; };
 		D2D3F046FB5B1E53224E38BF /* VoiceCommandProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCommandProcessor.swift; sourceTree = "<group>"; };
 		D52BAB96F04983304C68D2E5 /* KeyboardHandoffTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardHandoffTests.swift; sourceTree = "<group>"; };
 		D7875C4076C495328336A671 /* VoiceNoteStatsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceNoteStatsTests.swift; sourceTree = "<group>"; };
+		D8215EFF297FF83FFB001EA8 /* LiveTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTranscriber.swift; sourceTree = "<group>"; };
 		D9ABAAFC8C134B12CC78DDF2 /* MacAddRecordingSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacAddRecordingSheet.swift; sourceTree = "<group>"; };
 		DCD4292051768197FA3A125E /* DictionaryEntryEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryEntryEditView.swift; sourceTree = "<group>"; };
 		DDF370D074CADB2C25254782 /* MarkdownLiteText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownLiteText.swift; sourceTree = "<group>"; };
+		DE514F4FCBBBF278BDF6591E /* NoteSearchIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteSearchIndex.swift; sourceTree = "<group>"; };
 		DFEB07D6090DC24A5902E9AE /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityManager.swift; sourceTree = "<group>"; };
 		E7C3731F89B9CAC7ECDD9D86 /* Qwen3-0.6B-4bit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "Qwen3-0.6B-4bit"; path = "VoxbriefApp/Resources/Models/Qwen3-0.6B-4bit"; sourceTree = SOURCE_ROOT; };
 		E8F69D56A035DF1728B39998 /* TemplateDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateDetailView.swift; sourceTree = "<group>"; };
@@ -399,12 +451,15 @@
 		EF5CDE95EFC5F0A340223DED /* NoteExportServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteExportServiceTests.swift; sourceTree = "<group>"; };
 		EFDB8F3410645F05130FB1DA /* VoxbriefMacTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VoxbriefMacTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		EFF66F19623979C59C602106 /* DataBackupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataBackupService.swift; sourceTree = "<group>"; };
+		F25310C14F1AD2D04EE8A5BF /* NoteStoreBenchmarkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteStoreBenchmarkTests.swift; sourceTree = "<group>"; };
 		F31650658660C07E730BB8C7 /* VoxbriefControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoxbriefControls.swift; sourceTree = "<group>"; };
 		F47B06B91C0E08B3E8267051 /* NoteRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteRowView.swift; sourceTree = "<group>"; };
 		F573238A907947FE34CFE239 /* VoxbriefIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoxbriefIntents.swift; sourceTree = "<group>"; };
+		F5CDF159F713F6245D1F4C78 /* AskServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AskServiceTests.swift; sourceTree = "<group>"; };
 		F61EA36A51AF152AC8E9882D /* VoxbriefMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoxbriefMacApp.swift; sourceTree = "<group>"; };
 		F8172E2275DD7247F30084A5 /* RemindersExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemindersExportService.swift; sourceTree = "<group>"; };
 		F86DF18F199D2BAE7E4340C0 /* WhatsNewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsNewView.swift; sourceTree = "<group>"; };
+		FB087B34B9D103EA7EB6E2ED /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		FC779C7DEFBC23A48D6A366A /* MacAudioRecorderService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacAudioRecorderService.swift; sourceTree = "<group>"; };
 		FCE2B224A5B2AD796EFD2862 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -447,20 +502,26 @@
 			isa = PBXGroup;
 			children = (
 				A55BD86ABB9C619659AB8C0E /* AppleFoundationModelService.swift */,
+				CE87D7287DCE466F347E5168 /* AskService.swift */,
 				CEAD3B4021131DA58668E5C9 /* ASRService.swift */,
 				805582BA92BDC768F983C370 /* AudioFileManager.swift */,
+				C91C6D08A783909886979019 /* AudioImportService.swift */,
 				17618C9F07139808472E6688 /* AudioPlaybackService.swift */,
 				6E37077EC9E2F16A4D7C2E54 /* AudioRecordingService.swift */,
+				A7672C160D148FE5C0D2E7C7 /* BackgroundProcessingManager.swift */,
 				AB742F1A46A47B6A091AB793 /* CalendarExportService.swift */,
+				16D525E2C065D446511110E0 /* DailyBrief.swift */,
 				EFF66F19623979C59C602106 /* DataBackupService.swift */,
 				61F11F8A2D3B21ECC69ECA27 /* DictionaryCorrector.swift */,
 				8C774501050A357DEB4FA1AA /* KeyboardSetupStatus.swift */,
 				DFEB07D6090DC24A5902E9AE /* LiveActivityManager.swift */,
+				D8215EFF297FF83FFB001EA8 /* LiveTranscriber.swift */,
 				AD147AE1BD15A3E6E9E9EA8C /* LLMCopywriterService.swift */,
 				41B60172558E506D5CCB8962 /* NoteCompletionNotifier.swift */,
 				87305FD3E2876F8BDBAFB53A /* NoteExportService.swift */,
 				1C1F160AB952E32457620BAC /* NoteProcessingPipeline.swift */,
 				D04388B08F3A85CF017C8018 /* NoteRepository.swift */,
+				DE514F4FCBBBF278BDF6591E /* NoteSearchIndex.swift */,
 				C41C69644021D649EBA14B88 /* OnDeviceLLMService.swift */,
 				91DB9C8B41B64EF6818E14D5 /* PDFExportService.swift */,
 				03F942BDF0E561E09CD54BC4 /* PersonalDictionaryStore.swift */,
@@ -510,6 +571,16 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
+		18F01648D9716157AB899B4E /* VoxbriefShare */ = {
+			isa = PBXGroup;
+			children = (
+				2FD412B540AF34DFA7A19C02 /* Info.plist */,
+				39134F2904F8AED6204A0889 /* Share.entitlements */,
+				FB087B34B9D103EA7EB6E2ED /* ShareViewController.swift */,
+			);
+			path = VoxbriefShare;
+			sourceTree = "<group>";
+		};
 		29061DF6783E3601BFFDAD04 /* App */ = {
 			isa = PBXGroup;
 			children = (
@@ -555,6 +626,7 @@
 			isa = PBXGroup;
 			children = (
 				38326DAFB38C97F2FF11D41B /* KeyboardHandoff.swift */,
+				8AB77797B5736409F865936D /* SharedImportInbox.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -562,6 +634,7 @@
 		3EFFB945655B3E47AB7896BE /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				C4DEA392C84B36408EE59E0A /* DailyBriefSnapshot.swift */,
 				4670A66832BC3EDB51D04C99 /* NoteTemplate.swift */,
 				196C6F6CC1AAC7FF5E616A8D /* SyncPayload.swift */,
 				17FEE0D93589E948738A6156 /* VoiceNote.swift */,
@@ -630,6 +703,8 @@
 			isa = PBXGroup;
 			children = (
 				7E1C901FC850A304A4560918 /* ActionButtonGuideView.swift */,
+				88E9E057B7B2F83410B3D87D /* AskView.swift */,
+				63219D18DAA04445A93C64C0 /* DailyBriefView.swift */,
 				DCD4292051768197FA3A125E /* DictionaryEntryEditView.swift */,
 				670AD08FF352905287D03FB1 /* KeyboardRecordSheet.swift */,
 				DDF370D074CADB2C25254782 /* MarkdownLiteText.swift */,
@@ -662,9 +737,11 @@
 		81D7B833EEED62C20A6078ED /* VoxbriefWidgets */ = {
 			isa = PBXGroup;
 			children = (
+				BC9595E1BFBE6BF8F12CCB9E /* DailyBriefWidget.swift */,
 				496BFAFDCF52A425981CEADC /* Info.plist */,
 				F31650658660C07E730BB8C7 /* VoxbriefControls.swift */,
 				4C7490BC66ADC2FB729D084B /* VoxbriefLiveActivity.swift */,
+				AAC89669FDDD5C9C3EB80917 /* Widgets.entitlements */,
 			);
 			path = VoxbriefWidgets;
 			sourceTree = "<group>";
@@ -736,6 +813,7 @@
 				16793BFCF0CAFCD8D5316281 /* VoxbriefKeyboard.appex */,
 				4BF5A0AD3173094058B72D91 /* VoxbriefMac.app */,
 				EFDB8F3410645F05130FB1DA /* VoxbriefMacTests.xctest */,
+				7DD201E1D2FBDF5A6332E5C4 /* VoxbriefShare.appex */,
 				7BB5149C264CEC3EE04592CE /* VoxbriefTests.xctest */,
 				959851115743BB9596288C80 /* VoxbriefWatch.app */,
 				68B3FA6D53152C4F4D6ADBB9 /* VoxbriefWatchWidgets.appex */,
@@ -801,20 +879,24 @@
 			isa = PBXGroup;
 			children = (
 				AE3C08A8A1C82DE876A2A0AF /* ActionButtonControlsTests.swift */,
+				F5CDF159F713F6245D1F4C78 /* AskServiceTests.swift */,
 				A7E7A1ECFE8A61810E0AA7FB /* ASRServiceHelpersTests.swift */,
 				8E16EF8E03690A86F8E50308 /* AudioPlaybackServiceExtendedTests.swift */,
 				8C20D11D5E1327FBD57ADC9F /* AudioStorageManagementTests.swift */,
+				372B2FCF84714C6CEF641AB1 /* DailyBriefTests.swift */,
 				4E1023302B3222C429215588 /* DataBackupServiceTests.swift */,
 				B4D8DB31CA5D5DAFA4A7FB0A /* DictionaryCorrectorTests.swift */,
 				0BFF1B48591E606188875EF7 /* FormattingExtensionsTests.swift */,
 				D52BAB96F04983304C68D2E5 /* KeyboardHandoffTests.swift */,
 				4F9E58587D34FC957F4AE403 /* LLMCopywriterServiceTests.swift */,
+				55974E872286B4E9013399AE /* LongMemoTests.swift */,
 				1408F482A93D5BC763F22E74 /* NoteDetailViewModelTests.swift */,
 				EF5CDE95EFC5F0A340223DED /* NoteExportServiceTests.swift */,
 				A722022C9E282A8840CA734E /* NoteListViewModelTests.swift */,
 				692D6EB7A748E001F15872BD /* NoteProcessingPipelineTests.swift */,
 				28512E25F720540CC78E0532 /* NoteRepositoryExtendedTests.swift */,
 				9CBD578AD77C823CEBF8C5B8 /* NoteRepositoryTests.swift */,
+				F25310C14F1AD2D04EE8A5BF /* NoteStoreBenchmarkTests.swift */,
 				97AB4E8DC194919B938B0739 /* PersonalDictionaryStoreTests.swift */,
 				AFAE3474C430320E937A5196 /* TemplateStoreTests.swift */,
 				6AC48BED1DFCD0A055C763CE /* TranscriptSegmentTokenTests.swift */,
@@ -835,6 +917,7 @@
 				8A4AD2D1CD9D7BF090B2A3D8 /* VoxbriefApp */,
 				44151DCF70641E31AAF8A683 /* VoxbriefKeyboard */,
 				33977FAC88B0AC881A82EC86 /* VoxbriefMac */,
+				18F01648D9716157AB899B4E /* VoxbriefShare */,
 				D9AD3A2D1EA28068EFF810C4 /* VoxbriefWatch */,
 				6438D5EAF0A789F98B0338C2 /* VoxbriefWatchWidgets */,
 				81D7B833EEED62C20A6078ED /* VoxbriefWidgets */,
@@ -897,6 +980,7 @@
 				365A987A6A53AD11964A1DEC /* PBXTargetDependency */,
 				E2E42D8DD70EEFEF2914D3E0 /* PBXTargetDependency */,
 				3C41409BE668BD40711A1240 /* PBXTargetDependency */,
+				53DD9A1E2A0D912AC2CCB2A1 /* PBXTargetDependency */,
 			);
 			name = Voxbrief;
 			packageProductDependencies = (
@@ -908,6 +992,23 @@
 			productName = Voxbrief;
 			productReference = BFF47C7AC8DE99A52D14D5E7 /* Voxbrief.app */;
 			productType = "com.apple.product-type.application";
+		};
+		504010F5E1447930F4CAC3D0 /* VoxbriefShare */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C3ABB5CA7C77EC085C53980A /* Build configuration list for PBXNativeTarget "VoxbriefShare" */;
+			buildPhases = (
+				325F898D0516F8178C726B8D /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = VoxbriefShare;
+			packageProductDependencies = (
+			);
+			productName = VoxbriefShare;
+			productReference = 7DD201E1D2FBDF5A6332E5C4 /* VoxbriefShare.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 		7CFB19EE60B3ECE261FD7585 /* VoxbriefMac */ = {
 			isa = PBXNativeTarget;
@@ -1036,6 +1137,9 @@
 					37352116B16272A1D780DF2D = {
 						DevelopmentTeam = "";
 					};
+					504010F5E1447930F4CAC3D0 = {
+						DevelopmentTeam = "";
+					};
 					7CFB19EE60B3ECE261FD7585 = {
 						DevelopmentTeam = "";
 					};
@@ -1078,6 +1182,7 @@
 				37352116B16272A1D780DF2D /* Voxbrief */,
 				98AF90C393567ADA1B2E4ADF /* VoxbriefWatch */,
 				CC23F4EAFB9EE223EC6B90D7 /* VoxbriefKeyboard */,
+				504010F5E1447930F4CAC3D0 /* VoxbriefShare */,
 				E1776B3060ABFCE1C160CC43 /* VoxbriefWidgets */,
 				E817BB0ABEC329AE291877EC /* VoxbriefWatchWidgets */,
 				7CFB19EE60B3ECE261FD7585 /* VoxbriefMac */,
@@ -1125,16 +1230,28 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		325F898D0516F8178C726B8D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4BE778CE416E3D1F0214CED4 /* KeyboardHandoff.swift in Sources */,
+				D80AA1D55A48303D3C71C290 /* ShareViewController.swift in Sources */,
+				A20CEFDDFC967B45440688BD /* SharedImportInbox.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		362A93D1BA0D6F36B2354C69 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				C9CF200D94495FFBAEA7FA37 /* AudioConstants.swift in Sources */,
+				AD9B0EDA3CAF315F5FB2E2FD /* DailyBriefSnapshot.swift in Sources */,
 				8C3723A863D6F1B1E3BDDC93 /* FormattingExtensions.swift in Sources */,
 				B84E867E9F65474B0C93D3DF /* KeyboardHandoff.swift in Sources */,
 				55E5EF8D8F25F9CB2F004DF9 /* KeyboardView.swift in Sources */,
 				A60CF0894662CF1C4B6E2ABD /* KeyboardViewController.swift in Sources */,
 				579753AFFD8E2094702404DD /* NoteTemplate.swift in Sources */,
+				EA42BEE522CDA06A2E2BE2B5 /* SharedImportInbox.swift in Sources */,
 				D564B3C8474F757F4DD291D3 /* SyncPayload.swift in Sources */,
 				5CE3791D4401A16E5051E00F /* VoiceNote.swift in Sources */,
 				F1CA0E60E1E8BFF625653422 /* VoxbriefLogoView.swift in Sources */,
@@ -1155,19 +1272,23 @@
 			files = (
 				4277699DD73B200D23E0FA2B /* ASRServiceHelpersTests.swift in Sources */,
 				247B77735A22A2E94332CF96 /* ActionButtonControlsTests.swift in Sources */,
+				AF051E0DA4FAE480AFD3E810 /* AskServiceTests.swift in Sources */,
 				DE4532B8F73D8A8BCCC7DA10 /* AudioPlaybackServiceExtendedTests.swift in Sources */,
 				288FA067DC651A77B996F459 /* AudioStorageManagementTests.swift in Sources */,
+				3E92239163BF05231D433FD7 /* DailyBriefTests.swift in Sources */,
 				1C30267519A8147F86A77564 /* DataBackupServiceTests.swift in Sources */,
 				11DA807354F3130FCE674588 /* DictionaryCorrectorTests.swift in Sources */,
 				04A7C1C55D6A3448A20CEDEC /* FormattingExtensionsTests.swift in Sources */,
 				A4084D5D0EE82481B4728AC5 /* KeyboardHandoffTests.swift in Sources */,
 				691B6C26A9E7585D09DB058C /* LLMCopywriterServiceTests.swift in Sources */,
+				689757FD1E6FA235DD108957 /* LongMemoTests.swift in Sources */,
 				C18574E5E77EE031411CBCA2 /* NoteDetailViewModelTests.swift in Sources */,
 				8E62084FAAC0B96BF129C31A /* NoteExportServiceTests.swift in Sources */,
 				0AD043C3BB7E0B09A1667977 /* NoteListViewModelTests.swift in Sources */,
 				34A5560EA93CB6451772516B /* NoteProcessingPipelineTests.swift in Sources */,
 				0C5993A5339E44F47299C1BE /* NoteRepositoryExtendedTests.swift in Sources */,
 				B31BAFA3116C01975E3C6AFC /* NoteRepositoryTests.swift in Sources */,
+				880825FABEFE75FA9C0A66F6 /* NoteStoreBenchmarkTests.swift in Sources */,
 				4BF2DE9581C4EB5E0BA69348 /* PersonalDictionaryStoreTests.swift in Sources */,
 				A808D4C88874D0E9F9B5E423 /* TemplateStoreTests.swift in Sources */,
 				4C8C7B5A91D38B015B734673 /* TranscriptSegmentTokenTests.swift in Sources */,
@@ -1184,10 +1305,12 @@
 			files = (
 				67642845892E3B515B0D78D2 /* AudioConstants.swift in Sources */,
 				84F9325B22C21FFC803309B0 /* CaptureWaveformView.swift in Sources */,
+				9C1E40A93CD775968AD15251 /* DailyBriefSnapshot.swift in Sources */,
 				87478723C6F1041048676D05 /* ExtensionDelegate.swift in Sources */,
 				DE23A3F2D3F700A37D4AA4FC /* FormattingExtensions.swift in Sources */,
 				596D2A7698F542FB058A8317 /* KeyboardHandoff.swift in Sources */,
 				9B57A74F93E88D5B0C0714C9 /* NoteTemplate.swift in Sources */,
+				BEF45FAE6603F74BC55AD5E6 /* SharedImportInbox.swift in Sources */,
 				E820F921C0CB44339F74C770 /* SyncPayload.swift in Sources */,
 				5A9747356B47EEBC29B887B5 /* VoiceNote.swift in Sources */,
 				EACCE41A539C3FB1E8B76E71 /* VoiceNoteActivityAttributes.swift in Sources */,
@@ -1207,6 +1330,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				9FC398BFE659FBB91B0799FF /* ControlLaunchIntent.swift in Sources */,
+				DE56D75157190DB50B90B9EB /* DailyBriefSnapshot.swift in Sources */,
+				B38865822A27C98C60C233A9 /* DailyBriefWidget.swift in Sources */,
+				BD8C03A04362C8BB3321F08A /* KeyboardHandoff.swift in Sources */,
 				9FDF6E8ED886E932926D1504 /* VoiceNoteActivityAttributes.swift in Sources */,
 				8FAA8599394238A18B4DB999 /* VoxbriefControls.swift in Sources */,
 				9C867C1A7E73EB35DDFDB8FC /* VoxbriefLiveActivity.swift in Sources */,
@@ -1220,13 +1346,20 @@
 				1619FD1E6146DC91861DAE7B /* ASRService.swift in Sources */,
 				0D76D907EBF53F6EB0F7E8EE /* ActionButtonGuideView.swift in Sources */,
 				6FAA4F848EB104338AE8033E /* AppleFoundationModelService.swift in Sources */,
+				275B4403976F111E79E3767E /* AskService.swift in Sources */,
+				2F7AAE9C8169FC2E3684BF53 /* AskView.swift in Sources */,
 				B573595E0689A89D4E29A477 /* AudioConstants.swift in Sources */,
 				5BB8B8634927112B555DB910 /* AudioFileManager.swift in Sources */,
+				6E48C5AC1369E689C2FB1C21 /* AudioImportService.swift in Sources */,
 				0F3402B7A31F2FBC8F90A113 /* AudioPlaybackService.swift in Sources */,
 				4F7C18686C7D1DC467E52161 /* AudioRecordingService.swift in Sources */,
+				4DA5C4630866C2922DC5B479 /* BackgroundProcessingManager.swift in Sources */,
 				4CFDE4244EBDE1DA1D7479C6 /* CalendarExportService.swift in Sources */,
 				DCDE66379E089E740318E929 /* CaptureWaveformView.swift in Sources */,
 				C1EA532E936389527D9A6CEF /* ControlLaunchIntent.swift in Sources */,
+				A2A9D8F95C2F7CC77F1D6818 /* DailyBrief.swift in Sources */,
+				63BC7A37BED88DE7F24A4EEE /* DailyBriefSnapshot.swift in Sources */,
+				D8E188B34B32256F2378F540 /* DailyBriefView.swift in Sources */,
 				B90FD5655C652A49820FA219 /* DataBackupService.swift in Sources */,
 				ECCD86C67706C6FB7641FDE3 /* DictionaryCorrector.swift in Sources */,
 				12F7739BB4B4B4DEC309F902 /* DictionaryEntry.swift in Sources */,
@@ -1237,6 +1370,7 @@
 				CC8A8294AA9C21B91FA4CB8C /* KeyboardSetupStatus.swift in Sources */,
 				97423C8D59C66715E3817F3A /* LLMCopywriterService.swift in Sources */,
 				D99F810CE255C259E1726018 /* LiveActivityManager.swift in Sources */,
+				7B17F6CCC77F6E383AC8419F /* LiveTranscriber.swift in Sources */,
 				8EFFC638DE223E39D228C688 /* MarkdownLiteText.swift in Sources */,
 				323928B1ACEEF960BF7791FA /* NoteCompletionNotifier.swift in Sources */,
 				A43DE437BF1B5614D5BAB5E7 /* NoteDetailView.swift in Sources */,
@@ -1248,6 +1382,7 @@
 				385DAF7EA122261732E3B57D /* NoteProcessingPipeline.swift in Sources */,
 				42B91CC41B6C79D2A68C0DE1 /* NoteRepository.swift in Sources */,
 				8A33B8791FF0B81B31C2EB69 /* NoteRowView.swift in Sources */,
+				44A7147B33E3F534E5B755D4 /* NoteSearchIndex.swift in Sources */,
 				B251DF3E962992EACB6E51B7 /* NoteTemplate.swift in Sources */,
 				B6AC1161972BFA9EB301A4B9 /* OnDeviceLLMService.swift in Sources */,
 				2338B06275B314ABB2F489C3 /* OnboardingView.swift in Sources */,
@@ -1259,6 +1394,7 @@
 				EAB97948647254097F03D47D /* RecordingCoordinator.swift in Sources */,
 				1A5C700F22FC6AEC0B797EB5 /* RemindersExportService.swift in Sources */,
 				99C50F6E5DA466503D6155E0 /* SettingsView.swift in Sources */,
+				CC9AAE85CA9E2652B9B0F876 /* SharedImportInbox.swift in Sources */,
 				5E5BDB04ACA4C9DA8D990692 /* SyncPayload.swift in Sources */,
 				6EFD59944A2D0C5BE2124937 /* TemplateDetailView.swift in Sources */,
 				64449EC42EE8123A116A08EB /* TemplateEditView.swift in Sources */,
@@ -1289,6 +1425,7 @@
 				D490C9DFFA124F618A0E7531 /* CalendarExportService.swift in Sources */,
 				CDFA9F1211A2F2E5993DD218 /* CaptureCoordinator.swift in Sources */,
 				C4711C0DE2015BF180A7077A /* CaptureWaveformView.swift in Sources */,
+				2D349ED7228694BF96824E30 /* DailyBriefSnapshot.swift in Sources */,
 				39E925D85BA3EFE37B62D842 /* DataBackupService.swift in Sources */,
 				9D9217FE131009665D20487F /* DictionaryCorrector.swift in Sources */,
 				0473F467D03D78330B7B0432 /* DictionaryEntry.swift in Sources */,
@@ -1324,6 +1461,7 @@
 				49148D29E3161E1F6859E6CD /* PlatformUI.swift in Sources */,
 				B6905623D3E79C67D0815966 /* PreferencesView.swift in Sources */,
 				ADB6871DEBDFCDD7C91574C0 /* RemindersExportService.swift in Sources */,
+				CB3824E10654F1BF9CA51C32 /* SharedImportInbox.swift in Sources */,
 				36FCFED4761E494C449A67EF /* SyncPayload.swift in Sources */,
 				80650E05F1C3663BC7FE7915 /* TemplateDetailView.swift in Sources */,
 				D0D4AF5513324D94E0624D1C /* TemplateEditView.swift in Sources */,
@@ -1370,6 +1508,11 @@
 			isa = PBXTargetDependency;
 			target = CC23F4EAFB9EE223EC6B90D7 /* VoxbriefKeyboard */;
 			targetProxy = 704E6E9E4A99C8A296411D61 /* PBXContainerItemProxy */;
+		};
+		53DD9A1E2A0D912AC2CCB2A1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 504010F5E1447930F4CAC3D0 /* VoxbriefShare */;
+			targetProxy = 76D5F43F45134237C099ED82 /* PBXContainerItemProxy */;
 		};
 		65799C023138BF302035644C /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -1485,6 +1628,7 @@
 		72686414E95D13E208A8D8F3 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = VoxbriefWidgets/Widgets.entitlements;
 				INFOPLIST_FILE = VoxbriefWidgets/Info.plist;
 				INFOPLIST_KEY_NSExtensionPointIdentifier = "com.apple.widgetkit-extension";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -1751,9 +1895,44 @@
 			};
 			name = Debug;
 		};
+		BABC9694C761FF542ADE6F2C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = VoxbriefShare/Share.entitlements;
+				INFOPLIST_FILE = VoxbriefShare/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.jacksonzhou666.voxbrief.app.share;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		CB08DB297FFAA86E3F851D27 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = VoxbriefShare/Share.entitlements;
+				INFOPLIST_FILE = VoxbriefShare/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.jacksonzhou666.voxbrief.app.share;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		ED0E2FDC56D17CC7B4615D33 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = VoxbriefWidgets/Widgets.entitlements;
 				INFOPLIST_FILE = VoxbriefWidgets/Info.plist;
 				INFOPLIST_KEY_NSExtensionPointIdentifier = "com.apple.widgetkit-extension";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -1847,6 +2026,15 @@
 			buildConfigurations = (
 				9FF31E30C14DBC1F1FE1F4A0 /* Debug */,
 				B2703CDC94350D5E2DAE5E40 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C3ABB5CA7C77EC085C53980A /* Build configuration list for PBXNativeTarget "VoxbriefShare" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BABC9694C761FF542ADE6F2C /* Debug */,
+				CB08DB297FFAA86E3F851D27 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

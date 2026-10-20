@@ -233,9 +233,7 @@ public final class NoteListViewModel: ObservableObject {
     }
 
     public func refresh() async {
-        for note in repository.notes where note.status.isProcessing {
-            await pipeline.process(note: note)
-        }
+        await pipeline.resumeInterruptedNotes()
     }
 
     public func exportAllNotesMarkdown() -> String {

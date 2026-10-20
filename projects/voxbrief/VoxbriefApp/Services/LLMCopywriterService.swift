@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// Human-readable labels identifying which Stage 2 engine actually ran. Kept as plain strings
 /// (rather than an enum with associated values) so `LLMProcessingResult`/`VoiceNote` stay
@@ -61,6 +62,11 @@ public struct LLMProcessingResult: Sendable, Codable {
     public let sections: [TemplateSectionContent]
     public let templateId: UUID?
     public let templateName: String
+    /// The parts a long memo was read in (see `LLMCopywriterService.splitIntoParts`), empty when
+    /// the transcript fit in one pass.
+    public let parts: [LongMemoPart]
+    /// How long each Stage 2 call took, in order (empty for the Ollama path).
+    public let timings: [ProcessingTiming]
 
     public init(
         title: String,
@@ -73,7 +79,9 @@ public struct LLMProcessingResult: Sendable, Codable {
         engine: String,
         sections: [TemplateSectionContent] = [],
         templateId: UUID? = nil,
-        templateName: String = ""
+        templateName: String = "",
+        parts: [LongMemoPart] = [],
+        timings: [ProcessingTiming] = []
     ) {
         self.title = title
         self.summary = summary
@@ -86,6 +94,8 @@ public struct LLMProcessingResult: Sendable, Codable {
         self.sections = sections
         self.templateId = templateId
         self.templateName = templateName
+        self.parts = parts
+        self.timings = timings
     }
 }
 
@@ -230,7 +240,9 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
             engine: result.engine,
             sections: result.sections,
             templateId: result.templateId,
-            templateName: result.templateName
+            templateName: result.templateName,
+            parts: result.parts,
+            timings: result.timings
         )
     }
 
@@ -244,41 +256,137 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
     }
 
     private func processWithOnDeviceLLM(transcript: String, mode: RewriteMode, dictionary: [DictionaryEntry], templates: [NoteTemplate]) async throws -> LLMProcessingResult {
+        let engine = StageTwoEngine(label: CleanupEngineLabel.onDeviceLLM(model: await OnDeviceLLMService.shared.mlxModelDisplayName)) { system, user, maxTokens in
+            try await OnDeviceLLMService.shared.generate(systemPrompt: system, userPrompt: user, maxTokens: maxTokens)
+        }
+        return try await process(transcript: transcript, mode: mode, dictionary: dictionary, templates: templates, engine: engine)
+    }
+
+    /// The on-device engines Stage 2 uses, in the order `processTranscript` tries them: Apple
+    /// Intelligence where it's the one in use, then MLX (Flash or Lite). Ask Voxbrief answers
+    /// with these, so questions go to the same model that writes the notes.
+    func onDeviceEngines() async -> [StageTwoEngine] {
+        var engines: [StageTwoEngine] = []
+        if await OnDeviceLLMService.shared.isUsingAppleFoundationModel {
+            engines.append(StageTwoEngine(label: CleanupEngineLabel.appleFoundationModel) { system, user, _ in
+                try await AppleFoundationModelService.shared.generate(systemPrompt: system, userPrompt: user)
+            })
+        }
+        engines.append(StageTwoEngine(label: CleanupEngineLabel.onDeviceLLM(model: await OnDeviceLLMService.shared.mlxModelDisplayName)) { system, user, maxTokens in
+            try await OnDeviceLLMService.shared.generate(systemPrompt: system, userPrompt: user, maxTokens: maxTokens)
+        })
+        return engines
+    }
+
+    /// `extractJSONObject` for callers outside this type (Ask Voxbrief's answer parsing).
+    static func jsonObjectSubstring(in text: String) -> String? {
+        extractJSONObject(from: text)
+    }
+
+    // MARK: - Engine-independent Stage 2 (Apple Intelligence and MLX share it)
+
+    /// One Stage 2 engine's raw text generation plus the label stored on the note. Apple
+    /// Intelligence ignores `maxTokens` (its session manages the answer length itself).
+    struct StageTwoEngine: Sendable {
+        let label: String
+        let generate: @Sendable (_ system: String, _ user: String, _ maxTokens: Int) async throws -> String
+    }
+
+    /// A long transcript is read in parts once it passes this many words. Apple Intelligence's
+    /// context is 4,096 tokens for prompt and answer together, so a 1,500-word transcript (about
+    /// 2,000 tokens) plus the system prompt and a full answer is about all that fits; longer ones
+    /// used to throw there and land on Lite with the whole transcript. Measured in words, not
+    /// tokens, because no tokenizer is shared by every engine; English runs ~1.35 tokens a word.
+    static let longTranscriptWordThreshold = 1500
+    /// Target words per part for the full rewrite (~1,350 tokens in, room for a 1,024-token answer).
+    static let longMemoPartWordTarget = 1000
+    /// The light rewrite answers with the whole text again, so its parts are smaller.
+    static let lightTranscriptWordThreshold = 700
+    static let lightPartWordTarget = 600
+    /// Answer budget for one light pass: the corrected text is about as long as its input.
+    static let lightMaxTokens = 1536
+
+    /// One slice of a transcript read on its own, with where its own (non-overlap) text starts
+    /// as a fraction of the transcript's words.
+    struct TranscriptPart: Equatable, Sendable {
+        let text: String
+        let startFraction: Double
+    }
+
+    /// `internal` so tests can drive it with a scripted engine.
+    func process(transcript: String, mode: RewriteMode, dictionary: [DictionaryEntry], templates: [NoteTemplate], engine: StageTwoEngine) async throws -> LLMProcessingResult {
         switch mode {
         case .full:
-            return try await processWithOnDeviceLLMFull(transcript: transcript, dictionary: dictionary, templates: templates)
+            let parts = Self.splitIntoParts(transcript, threshold: Self.longTranscriptWordThreshold, target: Self.longMemoPartWordTarget, overlap: true)
+            if parts.count > 1 {
+                return try await processLongFull(parts: parts, transcript: transcript, dictionary: dictionary, templates: templates, engine: engine)
+            }
+            return try await processFull(transcript: transcript, dictionary: dictionary, templates: templates, engine: engine)
         case .light:
-            return try await processWithOnDeviceLLMLight(transcript: transcript, dictionary: dictionary)
+            // No overlap: the parts' corrected texts are joined back into one text.
+            let parts = Self.splitIntoParts(transcript, threshold: Self.lightTranscriptWordThreshold, target: Self.lightPartWordTarget, overlap: false)
+            if parts.count > 1 {
+                return try await processLongLight(parts: parts, transcript: transcript, dictionary: dictionary, engine: engine)
+            }
+            return try await processLight(transcript: transcript, dictionary: dictionary, engine: engine)
         }
     }
 
-    /// Two on-device calls instead of one: first classify which template best fits this
-    /// transcript (a short completion -- cheap even though it's a second round trip, since
-    /// `OnDeviceLLMService` caches the loaded model after first use, so this only costs a second
-    /// generation pass, not a cold load), then generate content using only that one template's
-    /// schema. Deliberately not a single combined prompt: asking a small on-device model to hold
-    /// every template's schema in context simultaneously and self-select is exactly the kind of
-    /// capacity strain multi-template support needs to avoid.
-    private func processWithOnDeviceLLMFull(transcript: String, dictionary: [DictionaryEntry], templates: [NoteTemplate]) async throws -> LLMProcessingResult {
+    private static let signposter = OSSignposter(subsystem: "com.jacksonzhou666.voxbrief", category: "Stage2")
+
+    /// Runs one engine call, timing it (and marking it for Instruments' Points of Interest).
+    private func measured(_ name: String, into timings: inout [ProcessingTiming], _ call: () async throws -> String) async throws -> String {
+        let state = Self.signposter.beginInterval("Stage2Call", "\(name, privacy: .public)")
+        let start = ContinuousClock.now
+        defer { Self.signposter.endInterval("Stage2Call", state) }
+        let result = try await call()
+        let elapsed = ContinuousClock.now - start
+        timings.append(ProcessingTiming(name: name, seconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18))
+        return result
+    }
+
+    /// Words of the transcript the template classification reads. Telling a meeting from a to-do
+    /// list takes the opening, not the whole memo, and the classification prompt is a full
+    /// prefill of whatever it's given, so a long memo used to pay for reading itself twice.
+    static let classificationInputWords = 400
+
+    /// The transcript as the classification call sees it: its first `classificationInputWords`
+    /// words (all of it when shorter). `internal` for tests and the prompt export.
+    func classificationInput(_ transcript: String) -> String {
+        let words = transcript.split(whereSeparator: \.isWhitespace)
+        guard words.count > Self.classificationInputWords else { return transcript }
+        return words.prefix(Self.classificationInputWords).joined(separator: " ") + " …"
+    }
+
+    /// Picks the template: the only one there is, or a short classification call. A long memo
+    /// is classified on its first part, which is plenty to tell a meeting from a to-do list.
+    private func chooseTemplate(for transcript: String, templates: [NoteTemplate], engine: StageTwoEngine, timings: inout [ProcessingTiming]) async throws -> NoteTemplate {
         let availableTemplates = templates.isEmpty ? NoteTemplate.builtIns : templates
-        let fallback = effectiveFallbackTemplate(in: availableTemplates)
-
-        let chosenTemplate: NoteTemplate
         if let only = Self.singleTemplate(in: availableTemplates) {
-            chosenTemplate = only
-        } else {
-            let classificationRaw = try await OnDeviceLLMService.shared.generate(
-                systemPrompt: buildClassificationSystemPrompt(templates: availableTemplates),
-                userPrompt: transcript,
-                maxTokens: 24
-            )
-            chosenTemplate = resolveTemplate(fromClassificationRaw: classificationRaw, candidates: availableTemplates, fallback: fallback)
+            return only
         }
+        let classificationRaw = try await measured("Pick template", into: &timings) {
+            try await engine.generate(buildClassificationSystemPrompt(templates: availableTemplates), classificationInput(transcript), 24)
+        }
+        return resolveTemplate(fromClassificationRaw: classificationRaw, candidates: availableTemplates, fallback: effectiveFallbackTemplate(in: availableTemplates))
+    }
 
-        let generationRaw = try await OnDeviceLLMService.shared.generate(
-            systemPrompt: buildGenerationSystemPrompt(template: chosenTemplate, dictionary: dictionary),
-            userPrompt: transcriptUserPrompt(transcript, dictionary: dictionary)
-        )
+    /// Two calls instead of one: first classify which template best fits this transcript (a
+    /// short completion), then generate content using only that one template's schema.
+    /// Deliberately not a single combined prompt: asking a small on-device model to hold every
+    /// template's schema in context simultaneously and self-select is exactly the kind of
+    /// capacity strain multi-template support needs to avoid.
+    private func processFull(transcript: String, dictionary: [DictionaryEntry], templates: [NoteTemplate], engine: StageTwoEngine) async throws -> LLMProcessingResult {
+        var timings: [ProcessingTiming] = []
+        let chosenTemplate = try await chooseTemplate(for: transcript, templates: templates, engine: engine, timings: &timings)
+
+        let generationRaw = try await measured("Write note", into: &timings) {
+            try await engine.generate(
+                buildGenerationSystemPrompt(template: chosenTemplate, dictionary: dictionary),
+                transcriptUserPrompt(transcript, dictionary: dictionary),
+                1024
+            )
+        }
         let parsed = try parseGenerationResponse(generationRaw, template: chosenTemplate)
 
         let title: String
@@ -307,11 +415,228 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
             actionItems: actionItems,
             cleanedMarkdown: markdown,
             tags: tags,
-            engine: CleanupEngineLabel.onDeviceLLM(model: await OnDeviceLLMService.shared.mlxModelDisplayName),
+            engine: engine.label,
             sections: parsed.sections,
             templateId: chosenTemplate.id,
-            templateName: chosenTemplate.name
+            templateName: chosenTemplate.name,
+            timings: timings
         )
+    }
+
+    /// A long memo, read in parts: every part goes through the same generation prompt (so each
+    /// answer fits the engine's context), the parts' sections are merged and de-duplicated, and
+    /// one short call titles and summarises the whole memo from the parts' summaries and points.
+    /// A part whose answer can't be parsed is skipped rather than failing the memo; the memo
+    /// fails only when no part could be read.
+    private func processLongFull(parts: [TranscriptPart], transcript: String, dictionary: [DictionaryEntry], templates: [NoteTemplate], engine: StageTwoEngine) async throws -> LLMProcessingResult {
+        var timings: [ProcessingTiming] = []
+        let chosenTemplate = try await chooseTemplate(for: parts[0].text, templates: templates, engine: engine, timings: &timings)
+        let systemPrompt = buildGenerationSystemPrompt(template: chosenTemplate, dictionary: dictionary)
+
+        var readParts: [(part: TranscriptPart, parsed: (title: String?, summary: String?, tags: [String]?, sections: [TemplateSectionContent]))] = []
+        for (index, part) in parts.enumerated() {
+            try Task.checkCancellation()
+            do {
+                let raw = try await measured("Part \(index + 1) of \(parts.count)", into: &timings) {
+                    try await engine.generate(systemPrompt, longMemoPartUserPrompt(part.text, index: index, count: parts.count, dictionary: dictionary), 1024)
+                }
+                readParts.append((part, try parseGenerationResponse(raw, template: chosenTemplate)))
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                print("[LLMCopywriterService] Long memo part \(index + 1)/\(parts.count) failed: \(error)")
+            }
+        }
+        guard !readParts.isEmpty else { throw LLMCopywriterError.unparsableResponse }
+
+        let sections = Self.mergePartSections(readParts.map(\.parsed.sections))
+        let partSummaries = readParts.map { $0.parsed.summary?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "" }
+
+        var overview: GenerationUniversalFields?
+        do {
+            let raw = try await measured("Overview", into: &timings) {
+                try await engine.generate(
+                    buildLongMemoOverviewSystemPrompt(dictionary: dictionary),
+                    longMemoOverviewUserPrompt(partSummaries: partSummaries, sections: sections),
+                    256
+                )
+            }
+            if let json = Self.extractJSONObject(from: raw) {
+                overview = try? JSONDecoder().decode(GenerationUniversalFields.self, from: Data(json.utf8))
+            }
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            print("[LLMCopywriterService] Long memo overview failed, using the parts' own: \(error)")
+        }
+
+        let firstPartTitle = readParts.lazy.compactMap { $0.parsed.title?.trimmingCharacters(in: .whitespacesAndNewlines) }.first { !$0.isEmpty }
+        let title = Self.nonEmpty(overview?.title)
+            ?? firstPartTitle
+            ?? generateTitle(from: splitIntoSentences(sanitizeSpeechTranscript(transcript)), raw: transcript)
+        let summary = Self.nonEmpty(overview?.summary)
+            ?? Self.nonEmpty(partSummaries.filter { !$0.isEmpty }.prefix(2).joined(separator: " "))
+            ?? "Long voice memo captured and structured on-device."
+        let tags = (overview?.tags?.isEmpty == false) ? overview!.tags! : Self.mergedTags(readParts.map { $0.parsed.tags ?? [] })
+
+        let (requirements, conditions, actionItems) = Self.legacyFields(from: sections)
+        return LLMProcessingResult(
+            title: title,
+            summary: summary,
+            requirements: requirements,
+            conditions: conditions,
+            actionItems: actionItems,
+            cleanedMarkdown: assembleMarkdown(title: title, summary: summary, sections: sections),
+            tags: tags.isEmpty ? extractTags(from: transcript) : tags,
+            engine: engine.label,
+            sections: sections,
+            templateId: chosenTemplate.id,
+            templateName: chosenTemplate.name,
+            parts: readParts.map { LongMemoPart(startFraction: $0.part.startFraction, summary: $0.parsed.summary ?? "") },
+            timings: timings
+        )
+    }
+
+    private static func nonEmpty(_ text: String?) -> String? {
+        guard let trimmed = text?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else { return nil }
+        return trimmed
+    }
+
+    /// Splits a transcript into parts of about `target` words on sentence boundaries, or returns
+    /// it as one part when it has `threshold` words or fewer. A sentence longer than a part (an
+    /// unpunctuated transcript is one "sentence") is cut into word windows. With `overlap`, each
+    /// part after the first repeats the previous part's last sentence, so a point spoken across
+    /// the cut isn't lost. A short tail is folded into the part before it. `internal` for tests.
+    static func splitIntoParts(_ transcript: String, threshold: Int, target: Int, overlap: Bool) -> [TranscriptPart] {
+        let totalWords = transcript.split(whereSeparator: \.isWhitespace).count
+        guard totalWords > threshold, target > 0 else {
+            return [TranscriptPart(text: transcript, startFraction: 0)]
+        }
+
+        var sentences: [[Substring]] = []
+        transcript.enumerateSubstrings(in: transcript.startIndex..<transcript.endIndex, options: [.bySentences]) { substring, _, _, _ in
+            guard let substring else { return }
+            let words = substring.split(whereSeparator: \.isWhitespace)
+            guard !words.isEmpty else { return }
+            stride(from: 0, to: words.count, by: target).forEach { start in
+                sentences.append(Array(words[start..<min(start + target, words.count)]))
+            }
+        }
+
+        // Group sentences into parts: (first sentence index, sentence count).
+        var groups: [(start: Int, count: Int, words: Int)] = []
+        var start = 0, count = 0, words = 0
+        for (index, sentence) in sentences.enumerated() {
+            if count > 0 && words + sentence.count > target {
+                groups.append((start, count, words))
+                start = index; count = 0; words = 0
+            }
+            count += 1
+            words += sentence.count
+        }
+        if count > 0 { groups.append((start, count, words)) }
+        if groups.count > 1, let last = groups.last, last.words < target / 3 {
+            groups.removeLast()
+            groups[groups.count - 1].count += last.count
+            groups[groups.count - 1].words += last.words
+        }
+
+        var wordsBefore = 0
+        return groups.map { group in
+            var slice = Array(sentences[group.start..<(group.start + group.count)])
+            if overlap, group.start > 0 {
+                slice.insert(sentences[group.start - 1], at: 0)
+            }
+            let part = TranscriptPart(
+                text: slice.map { $0.joined(separator: " ") }.joined(separator: " "),
+                startFraction: Double(wordsBefore) / Double(totalWords)
+            )
+            wordsBefore += group.words
+            return part
+        }
+    }
+
+    /// Merges the parts' sections (all from the same template, so index-aligned): items are
+    /// concatenated in order, dropping ones that repeat an earlier item (same words, or 80% of
+    /// the same words, which is how the overlap sentence usually comes back). `internal` for tests.
+    static func mergePartSections(_ partSections: [[TemplateSectionContent]]) -> [TemplateSectionContent] {
+        guard let first = partSections.first else { return [] }
+        return first.indices.map { index in
+            var items: [String] = []
+            var seen: [Set<String>] = []
+            for sections in partSections where index < sections.count {
+                for item in sections[index].items {
+                    let words = Self.comparisonWords(item)
+                    guard !words.isEmpty else { continue }
+                    let repeats = seen.contains { other in
+                        let shared = Double(words.intersection(other).count)
+                        return shared / Double(max(words.count, other.count)) >= 0.8
+                    }
+                    if !repeats {
+                        items.append(item)
+                        seen.append(words)
+                    }
+                }
+            }
+            return TemplateSectionContent(title: first[index].title, style: first[index].style, items: items)
+        }
+    }
+
+    private static func comparisonWords(_ text: String) -> Set<String> {
+        Set(text.lowercased().split { !$0.isLetter && !$0.isNumber }.map(String.init))
+    }
+
+    /// Union of the parts' tags, most frequent first, at most six.
+    static func mergedTags(_ partTags: [[String]]) -> [String] {
+        var counts: [String: (count: Int, firstSeen: Int, spelling: String)] = [:]
+        var order = 0
+        for tags in partTags {
+            for tag in tags {
+                let key = tag.lowercased()
+                if let existing = counts[key] {
+                    counts[key] = (existing.count + 1, existing.firstSeen, existing.spelling)
+                } else {
+                    counts[key] = (1, order, tag)
+                    order += 1
+                }
+            }
+        }
+        return counts.values
+            .sorted { $0.count != $1.count ? $0.count > $1.count : $0.firstSeen < $1.firstSeen }
+            .prefix(6)
+            .map(\.spelling)
+    }
+
+    /// The user message for one part of a long memo: which part it is, so the model extracts
+    /// only what this part says instead of inventing a whole-memo framing. `internal` for tests.
+    func longMemoPartUserPrompt(_ text: String, index: Int, count: Int, dictionary: [DictionaryEntry]) -> String {
+        "This is part \(index + 1) of \(count) of one long voice memo. Extract only what this part says; "
+            + "the other parts are handled separately.\n\n" + transcriptUserPrompt(text, dictionary: dictionary)
+    }
+
+    /// System prompt for the last call on a long memo: title, summary and tags for the whole memo
+    /// from its parts' summaries and merged points. `internal` for tests.
+    func buildLongMemoOverviewSystemPrompt(dictionary: [DictionaryEntry]) -> String {
+        """
+        You write the title and summary of one long voice memo. You are given a one-sentence \
+        summary of each of its parts, in order, and the key points taken from them. Respond with \
+        ONLY one valid JSON object -- no markdown code fences, no commentary before or after -- \
+        using exactly these keys: "title" (string, 8 words or fewer, about the whole memo), \
+        "summary" (one or two sentences covering the whole memo, not just its start), "tags" \
+        (array of short hashtags starting with #).\(dictionaryInstructionBlock(dictionary))
+        """
+    }
+
+    /// At most 30 points, so the overview prompt stays small whatever the memo's length.
+    func longMemoOverviewUserPrompt(partSummaries: [String], sections: [TemplateSectionContent]) -> String {
+        let summaries = partSummaries.enumerated()
+            .filter { !$0.element.isEmpty }
+            .map { "\($0.offset + 1). \($0.element)" }
+            .joined(separator: "\n")
+        let points = sections.flatMap { section in section.items.map { "- \(section.title): \($0)" } }
+            .prefix(30)
+            .joined(separator: "\n")
+        return "Part summaries:\n\(summaries)\n\nKey points:\n\(points)"
     }
 
     // MARK: - Multi-template classification & generation
@@ -435,18 +760,21 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
     /// System prompt for the `.light` proofread (Apple Intelligence and MLX). `internal` for
     /// unit tests and the prompt export the LLM eval reads (`evals/llm`).
     func buildLightSystemPrompt(dictionary: [DictionaryEntry]) -> String {
+        // `cleanedText` comes first: asked for a summary first, the small model wrote one and then
+        // copied it into `cleanedText`, dropping sentences (the eval's light cases failed on lost
+        // content). No worked example: Lite copied an example answer verbatim on longer inputs.
         """
-        You lightly proofread a rough spoken voice-memo transcript. Fix only typos, grammar \
-        mistakes, and obvious speech-to-text errors, and remove filler words (um, uh, you know, \
-        sort of, kind of). Also remove any bracketed non-speech annotations the speech recognizer \
-        inserted, such as [Laughter], [Music], [Inaudible Remark], or [BLANK_AUDIO] -- these are \
-        the recognizer's own audio-event tags, not spoken words. Do NOT reorganize, summarize, \
-        restructure into lists, or drop any actual spoken content -- keep the original wording, \
-        sentence order, and level of detail as close to verbatim as possible. Respond with ONLY \
-        one valid JSON object -- no markdown code fences, \
-        no commentary before or after -- using exactly these keys: "title" (string, 8 words or \
-        fewer), "summary" (one sentence string), "cleanedText" (string, the full lightly-corrected \
-        transcript as continuous prose), "tags" (array of short hashtags starting with #).\(dictionaryInstructionBlock(dictionary))
+        You lightly proofread a rough spoken voice-memo transcript. Keep every sentence and every \
+        piece of content, in the original order and wording: do not summarize, merge, shorten or \
+        restructure into lists. Only fix typos, grammar and obvious speech-to-text errors, and \
+        delete filler words (um, uh, you know, like, sort of, kind of, basically) and the commas \
+        around them. Also delete bracketed non-speech tags the speech recognizer inserted, such as \
+        [Laughter], [Music], [Inaudible Remark] or [BLANK_AUDIO]. Respond with ONLY one valid JSON \
+        object -- no markdown code fences, no commentary before or after -- using exactly these \
+        keys, in this order: "cleanedText" (string, the full lightly-corrected transcript, sentence \
+        by sentence, with as many sentences as the transcript), "title" (a short topic label of 2 \
+        to 6 words, not a sentence from the transcript), "summary" (one sentence string), "tags" \
+        (array of short hashtags starting with #).\(dictionaryInstructionBlock(dictionary))
         """
     }
 
@@ -499,10 +827,8 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
         return (requirements, conditions, actionItems)
     }
 
-    private func processWithOnDeviceLLMLight(transcript: String, dictionary: [DictionaryEntry]) async throws -> LLMProcessingResult {
-        let systemPrompt = buildLightSystemPrompt(dictionary: dictionary)
-
-        let raw = try await OnDeviceLLMService.shared.generate(systemPrompt: systemPrompt, userPrompt: transcriptUserPrompt(transcript, dictionary: dictionary))
+    private func processLight(transcript: String, dictionary: [DictionaryEntry], engine: StageTwoEngine) async throws -> LLMProcessingResult {
+        let raw = try await engine.generate(buildLightSystemPrompt(dictionary: dictionary), transcriptUserPrompt(transcript, dictionary: dictionary), Self.lightMaxTokens)
 
         guard let jsonSubstring = Self.extractJSONObject(from: raw) else {
             throw LLMCopywriterError.unparsableResponse
@@ -544,120 +870,48 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
             actionItems: [],
             cleanedMarkdown: cleanedText,
             tags: tags,
-            engine: CleanupEngineLabel.onDeviceLLM(model: await OnDeviceLLMService.shared.mlxModelDisplayName)
+            engine: engine.label
+        )
+    }
+
+    /// The light rewrite of a long memo: each part is proofread on its own and the texts are
+    /// joined as paragraphs. A part that fails keeps its own sanitized transcript, so no words
+    /// go missing; title and summary come from the first part that had them.
+    private func processLongLight(parts: [TranscriptPart], transcript: String, dictionary: [DictionaryEntry], engine: StageTwoEngine) async throws -> LLMProcessingResult {
+        var results: [LLMProcessingResult] = []
+        var texts: [String] = []
+        for part in parts {
+            try Task.checkCancellation()
+            do {
+                let result = try await processLight(transcript: part.text, dictionary: dictionary, engine: engine)
+                results.append(result)
+                texts.append(result.cleanedMarkdown)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                texts.append(stripASRSpecialTokens(sanitizeSpeechTranscript(part.text)))
+            }
+        }
+        guard let first = results.first else { throw LLMCopywriterError.unparsableResponse }
+        return LLMProcessingResult(
+            title: first.title,
+            summary: first.summary,
+            requirements: [],
+            conditions: [],
+            actionItems: [],
+            cleanedMarkdown: texts.joined(separator: "\n\n"),
+            tags: Self.mergedTags(results.map(\.tags)),
+            engine: engine.label
         )
     }
 
     // MARK: - Apple Foundation Model (System FoundationModels Framework)
 
     private func processWithAppleFoundationModel(transcript: String, mode: RewriteMode, dictionary: [DictionaryEntry], templates: [NoteTemplate]) async throws -> LLMProcessingResult {
-        switch mode {
-        case .full:
-            return try await processWithAppleFoundationModelFull(transcript: transcript, dictionary: dictionary, templates: templates)
-        case .light:
-            return try await processWithAppleFoundationModelLight(transcript: transcript, dictionary: dictionary)
+        let engine = StageTwoEngine(label: CleanupEngineLabel.appleFoundationModel) { system, user, _ in
+            try await AppleFoundationModelService.shared.generate(systemPrompt: system, userPrompt: user)
         }
-    }
-
-    private func processWithAppleFoundationModelFull(transcript: String, dictionary: [DictionaryEntry], templates: [NoteTemplate]) async throws -> LLMProcessingResult {
-        let availableTemplates = templates.isEmpty ? NoteTemplate.builtIns : templates
-        let fallback = effectiveFallbackTemplate(in: availableTemplates)
-
-        let chosenTemplate: NoteTemplate
-        if let only = Self.singleTemplate(in: availableTemplates) {
-            chosenTemplate = only
-        } else {
-            let classificationRaw = try await AppleFoundationModelService.shared.generate(
-                systemPrompt: buildClassificationSystemPrompt(templates: availableTemplates),
-                userPrompt: transcript
-            )
-            chosenTemplate = resolveTemplate(fromClassificationRaw: classificationRaw, candidates: availableTemplates, fallback: fallback)
-        }
-
-        let generationRaw = try await AppleFoundationModelService.shared.generate(
-            systemPrompt: buildGenerationSystemPrompt(template: chosenTemplate, dictionary: dictionary),
-            userPrompt: transcriptUserPrompt(transcript, dictionary: dictionary)
-        )
-        let parsed = try parseGenerationResponse(generationRaw, template: chosenTemplate)
-
-        let title: String
-        if let candidate = parsed.title?.trimmingCharacters(in: .whitespacesAndNewlines), !candidate.isEmpty {
-            title = candidate
-        } else {
-            title = generateTitle(from: splitIntoSentences(sanitizeSpeechTranscript(transcript)), raw: transcript)
-        }
-
-        let summary: String
-        if let candidate = parsed.summary?.trimmingCharacters(in: .whitespacesAndNewlines), !candidate.isEmpty {
-            summary = candidate
-        } else {
-            summary = "Voice memo captured and structured on-device."
-        }
-
-        let tags = (parsed.tags?.isEmpty == false) ? parsed.tags! : extractTags(from: transcript)
-        let (requirements, conditions, actionItems) = Self.legacyFields(from: parsed.sections)
-        let markdown = assembleMarkdown(title: title, summary: summary, sections: parsed.sections)
-
-        return LLMProcessingResult(
-            title: title,
-            summary: summary,
-            requirements: requirements,
-            conditions: conditions,
-            actionItems: actionItems,
-            cleanedMarkdown: markdown,
-            tags: tags,
-            engine: CleanupEngineLabel.appleFoundationModel,
-            sections: parsed.sections,
-            templateId: chosenTemplate.id,
-            templateName: chosenTemplate.name
-        )
-    }
-
-    private func processWithAppleFoundationModelLight(transcript: String, dictionary: [DictionaryEntry]) async throws -> LLMProcessingResult {
-        let systemPrompt = buildLightSystemPrompt(dictionary: dictionary)
-
-        let raw = try await AppleFoundationModelService.shared.generate(systemPrompt: systemPrompt, userPrompt: transcriptUserPrompt(transcript, dictionary: dictionary))
-
-        guard let jsonSubstring = Self.extractJSONObject(from: raw) else {
-            throw LLMCopywriterError.unparsableResponse
-        }
-        let decoded = try JSONDecoder().decode(OnDeviceLLMLightJSONResult.self, from: Data(jsonSubstring.utf8))
-
-        let sanitizedFallback = stripASRSpecialTokens(sanitizeSpeechTranscript(transcript))
-
-        let title: String
-        if let candidate = decoded.title?.trimmingCharacters(in: .whitespacesAndNewlines), !candidate.isEmpty {
-            title = candidate
-        } else {
-            title = generateTitle(from: splitIntoSentences(sanitizedFallback), raw: transcript)
-        }
-
-        let summary: String
-        if let candidate = decoded.summary?.trimmingCharacters(in: .whitespacesAndNewlines), !candidate.isEmpty {
-            summary = candidate
-        } else {
-            summary = "Voice memo lightly proofread on-device."
-        }
-
-        let cleanedText: String
-        if let candidate = decoded.cleanedText?.trimmingCharacters(in: .whitespacesAndNewlines), !candidate.isEmpty {
-            cleanedText = sanitizeSpeechTranscript(stripASRSpecialTokens(candidate))
-        } else {
-            cleanedText = sanitizedFallback
-        }
-
-        let tags = (decoded.tags?.isEmpty == false) ? decoded.tags! : extractTags(from: transcript)
-
-        return LLMProcessingResult(
-            title: title,
-            summary: summary,
-            requirements: [],
-            conditions: [],
-            actionItems: [],
-            cleanedMarkdown: cleanedText,
-            tags: tags,
-            engine: CleanupEngineLabel.appleFoundationModel
-        )
+        return try await process(transcript: transcript, mode: mode, dictionary: dictionary, templates: templates, engine: engine)
     }
 
     /// Small models occasionally wrap valid JSON in prose or code fences despite instructions;

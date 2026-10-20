@@ -57,7 +57,7 @@ final class LLMPromptExportTests: XCTestCase {
                     // maxTokens matches the MLX classification call.
                     item["classification"] = [
                         "system": service.buildClassificationSystemPrompt(templates: templates),
-                        "user": transcript,
+                        "user": service.classificationInput(transcript),
                         "maxTokens": 24
                     ] as [String: Any]
                 }

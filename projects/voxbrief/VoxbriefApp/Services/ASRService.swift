@@ -175,6 +175,26 @@ public actor ASRService: ASRServiceProtocol {
         }
     }
 
+    /// Transcribes raw 16 kHz mono samples (the live transcript's window, see
+    /// `LiveTranscriber`). Segment times are relative to the first sample. Returns no segments
+    /// for silence instead of throwing, since a quiet stretch mid-recording is normal.
+    public func transcribeSamples(_ samples: [Float], vocabulary: [String] = []) async throws -> [TranscriptTimingSegment] {
+        guard !samples.isEmpty else { return [] }
+        let whisperKit: WhisperKit
+        do {
+            whisperKit = try await loadedPipe()
+        } catch {
+            throw ASRError.modelLoadFailed(error.localizedDescription)
+        }
+        let decodeOptions = Self.buildDecodingOptions(vocabulary: vocabulary, tokenizer: whisperKit.tokenizer)
+        let results = try await whisperKit.transcribe(audioArray: samples, decodeOptions: decodeOptions)
+        return results.flatMap(\.segments).compactMap { segment in
+            let text = segment.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { return nil }
+            return TranscriptTimingSegment(start: TimeInterval(segment.start), end: TimeInterval(segment.end), text: text)
+        }
+    }
+
     /// `nil` (not a `DecodingOptions` with empty `promptTokens`) when there's no vocabulary, no
     /// language override, or no tokenizer loaded yet.
     static func buildDecodingOptions(
@@ -207,6 +227,14 @@ public actor ASRService: ASRServiceProtocol {
             .filter { !$0.isEmpty }
         guard !cleaned.isEmpty else { return nil }
         return cleaned.prefix(maxTerms).joined(separator: ", ")
+    }
+
+    /// Drops the loaded WhisperKit pipeline to give its memory back (see
+    /// `OnDeviceLLMService.unloadModels`); the next transcription loads it again from the
+    /// on-disk model cache. A load in progress is left alone.
+    public func unload() {
+        guard loadTask == nil else { return }
+        pipe = nil
     }
 
     /// Loads (or returns the already-loaded) WhisperKit pipeline. Concurrent callers await the
