@@ -31,10 +31,13 @@ enum Keychain {
     }
 }
 
-// MARK: - Voice recorder (16 kHz mono WAV, what Whisper wants)
+// MARK: - Voice recorder (16 kHz mono WAV, what Whisper wants, plus live 16 kHz float tap)
 
 final class Recorder: NSObject, @unchecked Sendable {
     private var recorder: AVAudioRecorder?
+    private var engine: AVAudioEngine?
+    private let lock = NSLock()
+    private var liveSamples: [Float] = []
     private(set) var url: URL?
 
     func start() throws {
@@ -48,9 +51,77 @@ final class Recorder: NSObject, @unchecked Sendable {
         recorder?.isMeteringEnabled = true
         recorder?.record()
         self.url = url
+
+        lock.lock()
+        liveSamples.removeAll(keepingCapacity: true)
+        lock.unlock()
+        startTap()
+    }
+
+    private func startTap() {
+        let engine = AVAudioEngine()
+        let input = engine.inputNode
+        let inFormat = input.outputFormat(forBus: 0)
+        guard inFormat.sampleRate > 0, inFormat.channelCount > 0,
+              let outFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16_000, channels: 1, interleaved: false),
+              let converter = AVAudioConverter(from: inFormat, to: outFormat) else { return }
+
+        input.installTap(onBus: 0, bufferSize: 4096, format: inFormat) { [weak self] pcm, _ in
+            guard let self else { return }
+            let capacity = AVAudioFrameCount(Double(pcm.frameLength) * 16_000 / inFormat.sampleRate) + 64
+            guard let out = AVAudioPCMBuffer(pcmFormat: outFormat, frameCapacity: capacity) else { return }
+            var supplied = false
+            var error: NSError?
+            converter.convert(to: out, error: &error) { _, status in
+                if supplied { status.pointee = .noDataNow; return nil }
+                supplied = true
+                status.pointee = .haveData
+                return pcm
+            }
+            if error == nil, let channel = out.floatChannelData?[0], out.frameLength > 0 {
+                let buf = UnsafeBufferPointer(start: channel, count: Int(out.frameLength))
+                self.lock.lock()
+                self.liveSamples.append(contentsOf: buf)
+                self.lock.unlock()
+            }
+        }
+        do {
+            engine.prepare()
+            try engine.start()
+            self.engine = engine
+        } catch {
+            input.removeTap(onBus: 0)
+        }
+    }
+
+    private func stopTap() {
+        guard let engine else { return }
+        engine.inputNode.removeTap(onBus: 0)
+        engine.stop()
+        self.engine = nil
+    }
+
+    func samples() -> [Float] {
+        lock.lock()
+        let copy = liveSamples
+        lock.unlock()
+        if !copy.isEmpty { return copy }
+        // Fallback: read raw 16-bit PCM samples directly from the active WAV file (skipping the 44-byte header)
+        guard let url, let data = try? Data(contentsOf: url), data.count > 44 else { return [] }
+        let pcm = data.subdata(in: 44..<data.count)
+        let count = pcm.count / 2
+        return pcm.withUnsafeBytes { raw in
+            guard let ptr = raw.baseAddress?.assumingMemoryBound(to: Int16.self) else { return [] }
+            var out = [Float](repeating: 0, count: count)
+            for i in 0..<count {
+                out[i] = Float(Int16(littleEndian: ptr[i])) / 32768.0
+            }
+            return out
+        }
     }
 
     func stop() -> URL? {
+        stopTap()
         recorder?.stop()
         recorder = nil
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
@@ -103,13 +174,29 @@ actor WhisperTranscriber: Transcriber {
         return p
     }
 
+    private static let vocabPrompt = "bottle, breastfeeding, nursing, diaper, wet, dirty, poop, asleep, woke up, quarter, half, three quarters, left, right, switched sides"
+
     func transcribe(fileURL: URL) async throws -> String {
         let p = try await loaded()
         // Prompt with the closed vocabulary so "poopy" and "three quarters" come out right.
-        let prompt = "bottle, breastfeeding, nursing, diaper, wet, dirty, poop, asleep, woke up, quarter, half, three quarters, left, right, switched sides"
-        let options = DecodingOptions(language: "en", promptTokens: p.tokenizer?.encode(text: " " + prompt))
+        let options = DecodingOptions(language: "en", promptTokens: p.tokenizer?.encode(text: " " + Self.vocabPrompt))
         let results = try await p.transcribe(audioPath: fileURL.path, decodeOptions: options)
         return results.map(\.text).joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Live preview transcription directly from in-memory 16 kHz mono samples while recording.
+    func transcribe(samples: [Float]) async throws -> String {
+        guard samples.count >= 8_000 else { return "" }
+        let p = try await loaded()
+        let options = DecodingOptions(language: "en", promptTokens: p.tokenizer?.encode(text: " " + Self.vocabPrompt))
+        let results = try await p.transcribe(audioArray: samples, decodeOptions: options)
+        let raw = results.map(\.text).joined(separator: " ")
+        return Self.cleanLiveText(raw)
+    }
+
+    private static func cleanLiveText(_ raw: String) -> String {
+        let stripped = raw.replacingOccurrences(of: #"\[[^\]]*\]|\([^\)]*\)"#, with: "", options: .regularExpression)
+        return stripped.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 
@@ -177,7 +264,16 @@ final class ModelManager: ObservableObject {
 // MARK: - Reminders → local notifications
 
 enum ReminderScheduler {
+    static func registerCategories() {
+        let snooze15 = UNNotificationAction(identifier: "SNOOZE_15", title: "Snooze 15 min", options: [])
+        let snooze30 = UNNotificationAction(identifier: "SNOOZE_30", title: "Snooze 30 min", options: [])
+        let startFeed = UNNotificationAction(identifier: "START_FEED", title: "Start feed", options: [.foreground])
+        let category = UNNotificationCategory(identifier: "reminder", actions: [startFeed, snooze15, snooze30], intentIdentifiers: [])
+        UNUserNotificationCenter.current().setNotificationCategories([category])
+    }
+
     static func requestPermission() async {
+        registerCategories()
         _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge, .timeSensitive])
     }
 
@@ -195,9 +291,10 @@ enum ReminderScheduler {
         center.removeAllPendingNotificationRequests()
         for r in plan {
             let content = UNMutableNotificationContent()
-            content.title = r.kind == .feed ? "Feed" : "Diaper"
+            content.title = r.kind == .feed || r.kind == .stillFeeding ? "Feed" : r.kind == .diaper ? "Diaper" : "Wee Hours"
             content.body = r.message
             content.categoryIdentifier = "reminder"
+            content.userInfo = ["kind": r.kind.rawValue, "baby": r.baby?.uuidString ?? ""]
             // first stage is silent (the watch taps the wrist); the escalation plays a sound
             content.sound = r.escalated ? .defaultCritical : nil
             content.interruptionLevel = r.escalated ? .timeSensitive : .active
@@ -205,6 +302,37 @@ enum ReminderScheduler {
             let trigger = UNTimeIntervalNotificationTrigger(timeInterval: interval, repeats: false)
             center.add(UNNotificationRequest(identifier: "\(r.kind.rawValue)-\(r.baby?.uuidString ?? "")-\(r.escalated)", content: content, trigger: trigger))
         }
+    }
+}
+
+final class NotificationHandler: NSObject, UNUserNotificationCenterDelegate, @unchecked Sendable {
+    weak var model: AppModel?
+
+    init(model: AppModel) {
+        self.model = model
+        super.init()
+        ReminderScheduler.registerCategories()
+        UNUserNotificationCenter.current().delegate = self
+    }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        let info = response.notification.request.content.userInfo
+        let kindRaw = info["kind"] as? String ?? "feed"
+        let babyStr = info["baby"] as? String ?? ""
+        let action = response.actionIdentifier
+        Task { @MainActor [weak model] in
+            guard let model else { return }
+            let kind = PlannedReminder.Kind(rawValue: kindRaw) ?? .feed
+            switch action {
+            case "SNOOZE_15": model.snoozeReminder(kind, minutes: 15)
+            case "SNOOZE_30": model.snoozeReminder(kind, minutes: 30)
+            case "START_FEED":
+                let babies = UUID(uuidString: babyStr).map { [$0] }
+                model.log(model.household.defaultFeed == "breast" ? "feed.breast.start" : "feed.bottle.start", for: babies)
+            default: break
+            }
+        }
+        completionHandler()
     }
 }
 

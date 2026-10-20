@@ -51,6 +51,9 @@ final class AppModel: ObservableObject {
     @Published var error: String?
     @Published var recording = false
     @Published var thinking = false
+    @Published var liveTranscript = ""
+    @Published var showingShiftDigest = false
+    @Published var snoozedUntil: [PlannedReminder.Kind: Date] = [:]
     @Published var lastSync: Date?
     @Published var syncError: String?
     @Published var tokens: [AccessToken] = []
@@ -67,6 +70,8 @@ final class AppModel: ObservableObject {
     private var backend: SupabaseClient
     private(set) var service: LogService?
     private var watch: WatchBridge?
+    private var notifications: NotificationHandler?
+    private var livePreviewTask: Task<Void, Never>?
 
     /// Local-only mode: the household lives on this phone with no account. Everything that only
     /// needs the phone works; signing in later uploads the log (`attachAccount`).
@@ -127,6 +132,7 @@ final class AppModel: ObservableObject {
         guard !started else { return }
         started = true
         watch = WatchBridge(model: self)
+        notifications = NotificationHandler(model: self)
         if backend.session == nil, let email = UserDefaults.standard.string(forKey: "autoSignIn") {
             _ = try? await backend.signIn(email: email, password: UserDefaults.standard.string(forKey: "autoPassword") ?? "newborn-dev")
         }
@@ -327,9 +333,9 @@ final class AppModel: ObservableObject {
         } catch { self.error = error.localizedDescription }
     }
 
-    /// Your own name and role, as the household sees them. The role travels with the household's
-    /// settings; the name is your membership's (`set_display_name`), so it's saved separately.
-    func saveProfile(name: String, role: String?) async {
+    /// Your own name, role and quiet hours, as the household sees them. The role and quiet hours
+    /// travel with the household's settings; the name is your membership's (`set_display_name`).
+    func saveProfile(name: String, role: String?, quietStart: Int? = nil, quietEnd: Int? = nil) async {
         guard let me, let i = household.caregivers.firstIndex(where: { $0.id == me }) else { return }
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedRole = role?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -337,12 +343,57 @@ final class AppModel: ObservableObject {
         var h = household
         if !name.isEmpty { h.caregivers[i].name = name }
         h.caregivers[i].role = role
+        h.caregivers[i].quietStart = quietStart
+        h.caregivers[i].quietEnd = quietEnd
         guard h != household else { return }
         SharedStore.defaults.set(h.caregivers[i].name, forKey: "displayName")
         await save(h)
         guard !localOnly, !name.isEmpty else { return }
         do { try await backend.setDisplayName(name) } catch {
             syncError = "Your name is saved on this phone; it will reach the household when you're online."
+        }
+    }
+
+    var activeSnoozeUntil: Date? { snoozedUntil.values.max() }
+
+    func snoozeReminder(_ kind: PlannedReminder.Kind, minutes: Int) {
+        snoozedUntil[kind] = Date().addingTimeInterval(TimeInterval(minutes * 60))
+        toast = Toast(text: "Snoozed \(minutes)m", undo: nil)
+        Task { await refresh() }
+    }
+
+    func snoozeReminders(minutes: Int) {
+        if minutes <= 0 {
+            snoozedUntil.removeAll()
+            toast = Toast(text: "Reminders resumed", undo: nil)
+        } else {
+            let until = Date().addingTimeInterval(TimeInterval(minutes * 60))
+            snoozedUntil[.feed] = until
+            snoozedUntil[.diaper] = until
+            toast = Toast(text: "Snoozed \(minutes)m", undo: nil)
+        }
+        Task { await refresh() }
+    }
+
+    var passBaseURL: String {
+        backendURL.contains("127.0.0.1") || backendURL.contains("localhost") ? "http://127.0.0.1:8788" : "https://weehours.hejitech.workers.dev"
+    }
+
+    func createCaregiverPass(name: String, hours: Int, note: String) async -> String? {
+        let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "|", with: " ")
+        let cleanNote = note.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "|", with: " ")
+        let expires = Int(Date().addingTimeInterval(Double(hours * 3600)).timeIntervalSince1970)
+        let meta = "pass:\(cleanName.isEmpty ? "Caregiver" : cleanName)|\(expires)|\(cleanNote)"
+        if localOnly {
+            return "\(passBaseURL)/pass/wh_local_\(UUID().uuidString.prefix(8))"
+        }
+        defer { Task { await loadTokens() } }
+        do {
+            let token = try await backend.createAccessToken(name: meta, scope: "write")
+            return "\(passBaseURL)/pass/\(token)"
+        } catch {
+            self.error = error.localizedDescription
+            return nil
         }
     }
 
@@ -441,7 +492,7 @@ final class AppModel: ObservableObject {
             status = shown.first.flatMap { all[$0.id] }
             reviews = try service.store.captures().filter { $0.status == .needsReview }.sorted { $0.capturedAt > $1.capturedAt }
             await SharedStore.publish(from: service)
-            if let me { ReminderScheduler.apply(ReminderPlanner.plan(logs: children, household: household, me: me, now: Date())) }
+            if let me { ReminderScheduler.apply(ReminderPlanner.plan(logs: children, household: household, me: me, now: Date(), snoozedUntil: snoozedUntil)) }
             let named = shown.count > 1
             if !UserDefaults.standard.bool(forKey: "skipPermissions") {
                 SessionActivities.sync(shown.compactMap { b in all[b.id].map { (b, $0) } }, named: named)
@@ -565,6 +616,7 @@ final class AppModel: ObservableObject {
     }
 
     func setOnDuty(_ on: Bool) {
+        showingShiftDigest = true
         perform { [me] in try await $0.setOnDuty(on ? me : nil) }
     }
 
@@ -573,22 +625,38 @@ final class AppModel: ObservableObject {
     func startVoice() {
         guard !recording else { return }
         do {
+            liveTranscript = ""
             try recorder.start()
             recording = true
             // load both models while the parent is still talking
             Task { await transcriber.warmUp() }
             Task { await service?.interpreter.model.warmUp() }
+            livePreviewTask?.cancel()
+            livePreviewTask = Task { [weak self, recorder, transcriber] in
+                await transcriber.warmUp()
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .milliseconds(750))
+                    guard !Task.isCancelled, let self, self.recording else { break }
+                    let samples = recorder.samples()
+                    guard samples.count >= 8_000 else { continue }
+                    if let partial = try? await transcriber.transcribe(samples: samples), !partial.isEmpty, self.recording {
+                        self.liveTranscript = partial
+                    }
+                }
+            }
         } catch { self.error = "Microphone unavailable: \(error.localizedDescription)" }
     }
 
     func stopVoice() {
         guard recording else { return }
         recording = false
+        livePreviewTask?.cancel()
+        livePreviewTask = nil
         let capturedAt = Date()
         guard let url = recorder.stop() else { return }
         thinking = true
         Task {
-            defer { thinking = false }
+            defer { thinking = false; liveTranscript = "" }
             do {
                 let text = try await transcriber.transcribe(fileURL: url)
                 try? FileManager.default.removeItem(at: url)   // audio never leaves the phone
@@ -601,6 +669,9 @@ final class AppModel: ObservableObject {
     func cancelVoice() {
         guard recording else { return }
         recording = false
+        livePreviewTask?.cancel()
+        livePreviewTask = nil
+        liveTranscript = ""
         if let url = recorder.stop() { try? FileManager.default.removeItem(at: url) }
     }
 
@@ -773,16 +844,32 @@ final class WatchBridge: NSObject, WCSessionDelegate, @unchecked Sendable {
     }
 
     /// Each shown child's line and state; `line`/`openFeed`/`sleeping` are the first child's, for
-    /// watch builds from before several children.
+    /// watch builds from before several children. Also pushes running timed activities and top care trackers.
+    @MainActor
     func push(children: [(Baby, StatusSnapshot)], target: [UUID]) {
         guard WCSession.isSupported(), WCSession.default.activationState == .activated, let first = children.first else { return }
         let now = Date()
         let list: [[String: Any]] = children.map { b, s in
             ["id": b.id.uuidString, "name": b.name, "line": s.line(now: now), "openFeed": s.openFeedKind ?? "", "sleeping": s.sleepingSince != nil]
         }
+        var pinned: [[String: String]] = []
+        if let model {
+            let enabled = model.household.enabled
+            for t in EventRegistry.shared.types where enabled.contains(t.category) && (t.isTimed || ["bath", "tummy_time", "teething"].contains(t.id)) {
+                let running = model.log.effective.last { $0.type == t.id && $0.fields["ongoing"] == .bool(true) }
+                pinned.append([
+                    "id": t.id,
+                    "label": running != nil ? "Stop \(t.label.lowercased())" : t.label,
+                    "icon": t.icon ?? "circle.fill",
+                    "runningId": running?.id.uuidString ?? "",
+                ])
+                if pinned.count >= 2 { break }
+            }
+        }
         try? WCSession.default.updateApplicationContext([
             "line": first.1.line(now: now), "openFeed": first.1.openFeedKind ?? "", "sleeping": first.1.sleepingSince != nil,
-            "children": list, "target": target.first?.uuidString ?? "", "at": now.timeIntervalSince1970,
+            "children": list, "target": target.count > 1 ? "all" : (target.first?.uuidString ?? ""),
+            "pinned": pinned, "at": now.timeIntervalSince1970,
         ])
     }
 
@@ -794,22 +881,54 @@ final class WatchBridge: NSObject, WCSessionDelegate, @unchecked Sendable {
         Task { @MainActor in
             guard let model, let service = model.service else { replyHandler(["error": "Open the iPhone app"]); return }
             do {
-                // the watch's child; older watch builds send none and get the first shown child
-                let baby = (message["baby"] as? String).flatMap(UUID.init(uuidString:)).flatMap { id in model.shown.first { $0.id == id }?.id }
-                    ?? model.shown.first?.id
-                var e: LogEvent?
+                let rawBaby = message["baby"] as? String
+                let isAll = rawBaby == "all" && model.shown.count > 1
+                let babies: [UUID] = isAll
+                    ? model.shown.map(\.id)
+                    : [(rawBaby.flatMap(UUID.init(uuidString:)).flatMap { id in model.shown.first { $0.id == id }?.id } ?? model.shown.first?.id).unsafelyUnwrapped]
+                var events: [LogEvent] = []
+                let extra: [String: FieldValue] = (message["fraction"] as? Double).map { ["consumed_fraction": .number($0)] } ?? [:]
                 switch message["action"] as? String {
-                case "toggleFeed": e = try await service.toggleFeed(baby: baby, surface: .watch)
-                case "toggleSleep": e = try await service.toggleSleep(baby: baby, surface: .watch)
-                case "switchSide": e = try await service.switchSide(baby: baby, surface: .watch)
-                case "diaper": e = try await service.log(type: "diaper", fields: ["kind": .string(message["kind"] as? String ?? "wet")], provenance: Provenance(surface: .watch, input: .tap), baby: baby)
-                case "undo": if let id = (message["id"] as? String).flatMap(UUID.init) { e = try await service.undo(id, surface: .watch) }
+                case "toggleFeed":
+                    events = try await service.forEach(babies) { s, b, g in
+                        try s.toggleFeed(baby: b, surface: .watch, fields: extra.merging(g) { $1 })
+                    }
+                case "toggleSleep":
+                    events = try await service.forEach(babies) { s, b, g in
+                        try s.toggleSleep(baby: b, surface: .watch, fields: g)
+                    }
+                case "switchSide":
+                    events = try await service.forEach(babies) { s, b, g in
+                        try s.switchSide(baby: b, surface: .watch, fields: g)
+                    }
+                case "diaper":
+                    let kind = message["kind"] as? String ?? "wet"
+                    events = try await service.forEach(babies) { s, b, g in
+                        try s.log(type: "diaper", fields: ["kind": .string(kind)].merging(g) { $1 }, provenance: Provenance(surface: .watch, input: .tap), baby: b)
+                    }
+                case "care":
+                    if let runId = (message["runningId"] as? String).flatMap(UUID.init(uuidString:)) {
+                        events = [try await service.stopTimed(runId, surface: .watch)]
+                    } else if let type = message["type"] as? String {
+                        let isTimed = EventRegistry.shared.type(type)?.isTimed ?? false
+                        events = try await service.forEach(babies) { s, b, g in
+                            isTimed ? try s.startTimed(type, baby: b, fields: g, surface: .watch)
+                                    : try s.log(type: type, fields: g, provenance: Provenance(surface: .watch, input: .tap), baby: b)
+                        }
+                    }
+                case "undo":
+                    if let id = (message["id"] as? String).flatMap(UUID.init) {
+                        events = try await service.undoGroup(of: id, surface: .watch)
+                    }
                 default: break
                 }
                 await model.refresh()
                 Task { await model.syncNow() }
-                let line = baby.flatMap { model.statuses[$0] }?.line(now: Date()) ?? model.status?.line(now: Date()) ?? ""
-                replyHandler(["label": e.map { model.label([$0]) } ?? "", "id": e?.id.uuidString ?? "", "line": line])
+                let firstBaby = babies.first
+                let line = isAll
+                    ? model.shown.map { "\($0.name): \(model.statuses[$0.id]?.line(now: Date()).components(separatedBy: " · ").first ?? "")" }.joined(separator: " · ")
+                    : (firstBaby.flatMap { model.statuses[$0] }?.line(now: Date()) ?? model.status?.line(now: Date()) ?? "")
+                replyHandler(["label": events.isEmpty ? "" : model.label(events), "id": events.first?.id.uuidString ?? "", "line": line])
             } catch {
                 replyHandler(["error": error.localizedDescription])
             }

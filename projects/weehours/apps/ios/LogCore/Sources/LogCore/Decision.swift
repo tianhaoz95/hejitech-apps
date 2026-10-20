@@ -450,4 +450,105 @@ public enum Parsers {
         }
         return nil
     }
+
+    /// Storage destination for pumped milk ("fridge", "freezer", "fed").
+    public static func milkStorage(in text: String) -> String? {
+        let t = " " + text.lowercased() + " "
+        if ["freezer", "froze", "frozen", "freeze"].contains(where: { t.contains($0) }) { return "freezer" }
+        if ["fridge", "refrigerator", "refrigerated"].contains(where: { t.contains($0) }) { return "fridge" }
+        if ["fed right away", "fed now", "gave right away", "fed immediately"].contains(where: { t.contains($0) }) { return "fed" }
+        return nil
+    }
+
+    static let foodVocabulary: [(phrase: String, label: String)] = [
+        ("peanut butter", "Peanut butter"), ("sweet potato", "Sweet potato"), ("rice cereal", "Rice cereal"),
+        ("green beans", "Green beans"), ("egg yolk", "Egg"), ("scrambled egg", "Egg"),
+        ("avocado", "Avocado"), ("banana", "Banana"), ("oatmeal", "Oatmeal"), ("egg", "Egg"),
+        ("peanut", "Peanut"), ("yogurt", "Yogurt"), ("cheese", "Cheese"), ("apple", "Apple"),
+        ("applesauce", "Applesauce"), ("pear", "Pear"), ("carrot", "Carrot"), ("broccoli", "Broccoli"),
+        ("peas", "Peas"), ("squash", "Squash"), ("pumpkin", "Pumpkin"), ("mango", "Mango"),
+        ("peach", "Peach"), ("strawberry", "Strawberry"), ("strawberries", "Strawberry"),
+        ("blueberry", "Blueberry"), ("blueberries", "Blueberry"), ("raspberry", "Raspberry"),
+        ("salmon", "Salmon"), ("cod", "Cod"), ("tuna", "Tuna"), ("fish", "Fish"),
+        ("chicken", "Chicken"), ("turkey", "Turkey"), ("beef", "Beef"), ("tofu", "Tofu"),
+        ("edamame", "Edamame"), ("hummus", "Hummus"), ("tahini", "Tahini"), ("sesame", "Sesame"),
+        ("toast", "Toast"), ("bread", "Bread"), ("pasta", "Pasta"), ("noodles", "Noodles"),
+        ("beans", "Beans"), ("lentils", "Lentils"), ("spinach", "Spinach"), ("zucchini", "Zucchini"),
+        ("plum", "Plum"), ("prune", "Prune"), ("almond", "Almond"), ("cashew", "Cashew"),
+        ("walnut", "Walnut"), ("shrimp", "Shrimp"), ("cereal", "Cereal"), ("porridge", "Porridge"),
+    ]
+
+    /// Extracts known solid food items mentioned in `text`.
+    public static func foods(in text: String) -> [String] {
+        let t = " " + text.lowercased() + " "
+        var found: [String] = []
+        for (phrase, label) in foodVocabulary {
+            let pattern = #"\b"# + NSRegularExpression.escapedPattern(for: phrase) + #"\b"#
+            if t.range(of: pattern, options: .regularExpression) != nil, !found.contains(label) {
+                found.append(label)
+            }
+        }
+        return found
+    }
+
+    /// Extracts any reaction mentioned in a solid food sentence.
+    public static func reaction(in text: String) -> String? {
+        let t = " " + text.lowercased() + " "
+        if t.contains("no reaction") || t.contains("without reaction") { return "none" }
+        if t.contains("hive") { return "hives" }
+        if t.contains("rash") || t.contains("redness") { return "rash" }
+        if t.contains("vomit") || t.contains("threw up") { return "vomiting" }
+        if t.contains("diarrhea") { return "diarrhea" }
+        if t.contains("spit up") || t.contains("spit-up") || t.contains("spat up") { return "spit_up" }
+        if t.contains("gassy") || t.contains(" gas ") { return "gas" }
+        return nil
+    }
+
+    /// True when the note is phrased as a question to ask the pediatrician/doctor.
+    public static func isDoctorQuestion(_ text: String) -> Bool {
+        let t = text.lowercased()
+        return t.contains("ask the doctor") || t.contains("ask the pediatrician")
+            || t.contains("ask doctor") || t.contains("ask pediatrician")
+            || t.contains("question for the doctor") || t.contains("question for the pediatrician")
+    }
+
+    /// Fast, non-blocking preview pills for `ListeningView` while the user is speaking.
+    public static func liveChips(in text: String, reference: Date = Date()) -> [String] {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+        var chips: [String] = []
+        let t = " " + trimmed.lowercased() + " "
+        for (typeId, phrases) in KeywordDecisionModel.lexicon {
+            if phrases.contains(where: { t.contains($0) }), let label = EventRegistry.shared.type(typeId)?.label {
+                if !chips.contains(label) { chips.append(label); break }
+            }
+        }
+        if chips.isEmpty {
+            for (catId, phrases) in KeywordDecisionModel.careLexicon {
+                if phrases.contains(where: { t.contains($0) }),
+                   let label = EventRegistry.shared.types.first(where: { $0.category == catId })?.label {
+                    chips.append(label); break
+                }
+            }
+        }
+        if let ml = milliliters(in: trimmed) { chips.append("\(Int(ml)) ml") }
+        else if let g = grams(in: trimmed) { chips.append(String(format: "%.2f kg", g / 1000)) }
+        else if let cm = centimeters(in: trimmed) { chips.append(String(format: "%.1f cm", cm)) }
+        for (key, phrases) in KeywordDecisionModel.fieldLexicon["amount"] ?? [:] {
+            if phrases.contains(where: { t.contains($0) }),
+               let f = EventRegistry.shared.questions["amount"]?.options.first(where: { $0.key == key })?.spec.fraction {
+                chips.append(VoiceInterpreter.fractionText(f)); break
+            }
+        }
+        for (key, phrases) in KeywordDecisionModel.fieldLexicon["diaper_kind"] ?? [:] {
+            if phrases.contains(where: { t.contains($0) }) { chips.append(key); break }
+        }
+        let fds = foods(in: trimmed)
+        if !fds.isEmpty { chips.append(fds.prefix(2).joined(separator: " + ")) }
+        if let m = minutesAgo(in: trimmed) { chips.append("-\(m)m") }
+        else if let at = explicitTime(in: trimmed, reference: reference) {
+            chips.append(at.formatted(date: .omitted, time: .shortened))
+        }
+        return Array(chips.prefix(4))
+    }
 }

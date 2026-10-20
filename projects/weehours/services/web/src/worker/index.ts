@@ -12,6 +12,7 @@
 
 import { AuthorizationError, OAuthProvider, type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import { createClient } from "@supabase/supabase-js";
+import { derive, status, statusLine, validate, type LogEvent } from "@weehours/core";
 import { handleMcp, type Caller, type Db } from "./mcp.ts";
 
 export interface Env {
@@ -161,11 +162,119 @@ async function grants(req: Request, env: Env, url: URL): Promise<Response> {
   return json({ error: "not found" }, 404);
 }
 
+const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+/** Time-boxed Caregiver Pass (`/pass/<token>`): mobile web view for a babysitter or grandparent. */
+async function caregiverPass(req: Request, env: Env, url: URL): Promise<Response> {
+  const m = url.pathname.match(/^\/pass\/(wh_[A-Za-z0-9_-]+)(\/log)?$/);
+  if (!m) return new Response("Not found", { status: 404 });
+  const token = m[1];
+  const isLog = m[2] === "/log";
+  const db = admin(env);
+  const { data } = await db.rpc("resolve_access_token", { p_token: token });
+  const row = Array.isArray(data) ? (data[0] as { user_id: string; household_id: string; scope: "read" | "write" } | undefined) : undefined;
+  if (!row) {
+    return new Response(passHtml("Pass expired or revoked", `<div class="card"><p>This caregiver pass is no longer active. Ask the parents to share a new link from Wee Hours → Settings.</p></div>`),
+      { status: 403, headers: { "Content-Type": "text/html; charset=utf-8" } });
+  }
+  const { data: tokens } = await db.from("access_tokens").select("name, revoked_at").eq("household_id", row.household_id).is("revoked_at", null).order("last_used_at", { ascending: false }).limit(10);
+  const passMeta = (tokens ?? []).map((t) => String(t.name ?? "")).find((n) => n.startsWith("pass:")) ?? "pass:Caregiver|0|";
+  const [, rawBody = "Caregiver|0|"] = passMeta.split("pass:");
+  const [sitterName = "Caregiver", expStr = "0", pinnedNote = ""] = rawBody.split("|");
+  const expiresSec = Number(expStr) || 0;
+  if (expiresSec > 0 && Date.now() / 1000 > expiresSec) {
+    return new Response(passHtml("Pass expired", `<div class="card"><p>This caregiver pass for <b>${esc(sitterName)}</b> expired. Ask the parents for a fresh link if you're still on shift.</p></div>`),
+      { status: 403, headers: { "Content-Type": "text/html; charset=utf-8" } });
+  }
+
+  const { data: babies } = await db.from("babies").select("id, name, settings, archived_at").eq("household_id", row.household_id).order("position");
+  const active = ((babies ?? []) as { id: string; name: string; settings: Record<string, unknown> | null; archived_at: string | null }[]).filter((b) => !b.archived_at);
+  const children = active.length ? active : [{ id: "", name: "Baby", settings: null, archived_at: null }];
+
+  if (req.method === "POST" && isLog && row.scope === "write") {
+    const form = await req.formData();
+    const type = String(form.get("type") ?? "");
+    const babyId = String(form.get("baby") ?? children[0].id);
+    const kind = String(form.get("kind") ?? "");
+    const note = String(form.get("note") ?? "").trim();
+    const fields: Record<string, string | number | boolean> = {};
+    if (type === "diaper") fields.kind = kind || "wet";
+    if (type === "feed.bottle.finish") fields.consumed_fraction = Number(form.get("fraction") ?? 1);
+    if (type === "note" && note) fields.transcript = `[${sitterName}] ${note}`;
+    if (type === "note" ? Boolean(note) : validate(type, fields) === null) {
+      const now = new Date().toISOString();
+      await db.from("events").insert({
+        id: crypto.randomUUID(), household_id: row.household_id, baby_id: babyId, type, fields,
+        occurred_at: now, logged_at: now, logged_by: row.user_id,
+        provenance: { surface: "mcp", input: "tap", caller: `pass:${sitterName}` },
+      });
+    }
+    return Response.redirect(`${url.origin}/pass/${token}?logged=1`, 303);
+  }
+
+  const { data: evRows } = await db.from("events").select("*").eq("household_id", row.household_id).order("seq", { ascending: false }).limit(300);
+  const events = ((evRows ?? []) as LogEvent[]).reverse();
+  const childId = url.searchParams.get("child") ?? children[0].id;
+  const chosen = children.find((c) => c.id === childId) ?? children[0];
+  const d = derive(events, chosen.id);
+  const s = status(d);
+  const line = statusLine(s, Date.now());
+  const expText = expiresSec > 0 ? `Valid until ${new Date(expiresSec * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : "Active caregiver pass";
+
+  const body = `
+    <div class="top"><span>🔒 Wee Hours · Caregiver Pass</span><b>${esc(sitterName)} · ${esc(expText)}</b></div>
+    ${url.searchParams.get("logged") ? `<div class="toast">✓ Logged for ${esc(chosen.name)}</div>` : ""}
+    ${children.length > 1 ? `<div class="tabs">${children.map((c) => `<a class="${c.id === chosen.id ? "on" : ""}" href="/pass/${token}?child=${encodeURIComponent(c.id)}">${esc(c.name)}</a>`).join("")}</div>` : ""}
+    <h1>${esc(chosen.name)}</h1>
+    <div class="card status"><p class="line">${esc(line)}</p><small>Parents see everything you log here automatically.</small></div>
+    ${pinnedNote ? `<div class="card note"><b>Pinned by parents</b><p>${esc(pinnedNote)}</p></div>` : ""}
+    <form method="POST" action="/pass/${token}/log" class="grid">
+      <input type="hidden" name="baby" value="${esc(chosen.id)}"/>
+      ${s.open_feed_kind === "bottle"
+        ? `<button name="type" value="feed.bottle.finish" class="tile feed"><b>Finish bottle</b><small>drank all</small></button>`
+        : `<button name="type" value="feed.bottle.start" class="tile feed"><b>Start bottle</b><small>tap when starting</small></button>`}
+      <button name="type" value="diaper" onclick="this.form.kind.value='wet'" class="tile diaper"><b>Wet diaper</b><small>pee</small></button>
+      <button name="type" value="diaper" onclick="this.form.kind.value='dirty'" class="tile diaper"><b>Dirty diaper</b><small>poop</small></button>
+      <input type="hidden" name="kind" value="wet"/>
+      ${s.sleeping_since
+        ? `<button name="type" value="sleep.end" class="tile sleep"><b>Woke up</b><small>end nap / sleep</small></button>`
+        : `<button name="type" value="sleep.start" class="tile sleep"><b>Fell asleep</b><small>start nap / sleep</small></button>`}
+    </form>
+    <form method="POST" action="/pass/${token}/log" class="card note-form">
+      <input type="hidden" name="baby" value="${esc(chosen.id)}"/>
+      <input type="hidden" name="type" value="note"/>
+      <input type="text" name="note" placeholder="Leave a note for the parents…" required/>
+      <button type="submit">Send note</button>
+    </form>`;
+  return new Response(passHtml(`${chosen.name} · Wee Hours Pass`, body), { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
+}
+
+function passHtml(title: string, body: string): string {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>${esc(title)}</title>
+  <style>
+    body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#111216;color:#f5f5f7;margin:0;padding:16px;max-width:460px;margin-inline:auto}
+    .top{display:flex;justify-content:space-between;font-size:12px;color:#9ea3b0;background:#1c1d24;padding:8px 12px;border-radius:10px;margin-bottom:14px}
+    .top b{color:#f29e66}.toast{background:#1b3b2b;color:#6ee7b7;padding:10px 14px;border-radius:12px;margin-bottom:12px;font-weight:600;font-size:14px}
+    .tabs{display:flex;gap:8px;margin-bottom:10px}.tabs a{padding:6px 14px;border-radius:99px;background:#1c1d24;color:#f5f5f7;text-decoration:none;font-weight:600;font-size:14px}
+    .tabs a.on{background:#f29e66;color:#111}h1{margin:4px 0 12px;font-size:28px}
+    .card{background:#1c1d24;padding:14px 16px;border-radius:16px;margin-bottom:12px}.line{font-size:18px;font-weight:600;margin:0 0 6px}
+    .card small{color:#9ea3b0;font-size:12px}.note{border-left:3px solid #f29e66}.note b{font-size:12px;text-transform:uppercase;color:#f29e66}
+    .note p{margin:6px 0 0;font-size:14px;line-height:1.4}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+    .tile{border:0;border-radius:16px;padding:16px;text-align:left;color:#f5f5f7;cursor:pointer;display:flex;flex-direction:column;gap:4px}
+    .tile b{font-size:16px}.tile small{font-size:12px;opacity:.75}
+    .tile.feed{background:rgba(250,179,115,.18)}.tile.diaper{background:rgba(115,191,242,.18)}.tile.sleep{background:rgba(158,148,242,.18)}
+    .note-form{display:flex;gap:8px}.note-form input{flex:1;background:#111216;border:1px solid #2e303d;color:#fff;border-radius:10px;padding:10px;font-size:14px}
+    .note-form button{background:#f29e66;color:#111;border:0;border-radius:10px;padding:0 14px;font-weight:600;cursor:pointer}
+  </style></head><body>${body}</body></html>`;
+}
+
 const app = {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
     if (url.pathname === "/authorize") return authorize(req, env);
     if (url.pathname === "/api/grants" || url.pathname.startsWith("/api/grants/")) return grants(req, env, url);
+    if (url.pathname.startsWith("/pass/")) return caregiverPass(req, env, url);
     return env.ASSETS.fetch(req);
   },
 };

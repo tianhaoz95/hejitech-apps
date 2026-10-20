@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.4.5"
+    static let currentVersion = "0.5.0"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,87 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "0.5.0",
+            date: "October 2026",
+            tagline: "Shift Hand-offs, Milk Stash, Solids & Doctor Visits",
+            features: [
+                WhatsNewItem(
+                    icon: "arrow.triangle.2.circlepath.circle.fill",
+                    tint: Theme.accent,
+                    title: "Duty Hand-off Digest",
+                    description: "Tap I've got it or Hand off to see a factual summary of the last shift: feeds, bottle ml, wet and dirty diapers, sleep time, medicines and notes."
+                ),
+                WhatsNewItem(
+                    icon: "drop.triangle.fill",
+                    tint: Theme.other,
+                    title: "Optional Milk Stash & Bottle Ledger",
+                    description: "Turn on Settings → Tracking → Track milk stash to track pumped milk in the fridge and freezer, with oldest-bag age and automatic deduction when a breast-milk bottle is finished."
+                ),
+                WhatsNewItem(
+                    icon: "qrcode.viewfinder",
+                    tint: .teal,
+                    title: "Temporary Caregiver Pass",
+                    description: "Share an expiring QR or web link from Settings → Household → Temporary caregiver pass so a grandparent, nanny or sitter can see live status and log with one tap in their browser."
+                ),
+                WhatsNewItem(
+                    icon: "fork.knife",
+                    tint: Theme.feed,
+                    title: "Solids First-Foods & Reactions",
+                    description: "Log specific foods, track Top-9 allergen exposures, and record any reaction from the Solids sheet or by voice."
+                ),
+                WhatsNewItem(
+                    icon: "stethoscope",
+                    tint: .red,
+                    title: "Doctor Visit Fact Sheet & Question Queue",
+                    description: "Doctor Visit builds a 7-day fact sheet (feeds, diapers, sleep, growth deltas and health entries since the last visit) alongside questions you've saved for the pediatrician."
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "pills.fill",
+                    tint: .pink,
+                    title: "Medication Last-Dose & 1-Tap Repeat",
+                    description: "The Medication tile shows the last medicine, time elapsed and 24-hour count, and its sheet repeats recent medicine + dose pairs in one tap.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "clock.arrow.circlepath",
+                    tint: .orange,
+                    title: "Long-Press to Backdate Any Tile",
+                    description: "Hold any Now tile to log it 5, 10, 15 or 30 minutes ago, or pick an exact time.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "calendar.day.timeline.left",
+                    tint: .blue,
+                    title: "Timeline Search, Category Chips & 24h Rhythm Strip",
+                    description: "Filter the timeline by category, search medicines, notes or foods, paired sessions, and compare Today vs Yesterday on a 24-hour rhythm strip.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "waveform",
+                    tint: Theme.accent,
+                    title: "Live Transcript Preview & Optional Auto-Log",
+                    description: "Watch your words and parsed fields appear live while speaking, and optionally turn on Settings → Voice → Auto-log when you stop speaking.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "applewatch",
+                    tint: .green,
+                    title: "Apple Watch Bottle Amounts, Both Target & Care Tiles",
+                    description: "Pick bottle fractions (¼, ½, ¾, All), log for Both/All children, and tap enabled care trackers right from your wrist.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "moon.zzz.fill",
+                    tint: .indigo,
+                    title: "Quiet Hours, Adaptive Reminders & Notification Snooze",
+                    description: "Set personal quiet hours in Settings → Household → You, adapt feed intervals to your last 3 days, and snooze or start a feed directly from reminder notifications.",
+                    kind: .improvement
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "0.4.5",
             date: "October 2026",

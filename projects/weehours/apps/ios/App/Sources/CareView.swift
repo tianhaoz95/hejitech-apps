@@ -38,7 +38,9 @@ struct CareTile: View {
     var body: some View {
         let tile = Tile(title: type.label, subtitle: subtitle, icon: type.icon ?? "circle.fill", color: Care.color(type: type))
         Group {
-            if type.isTimed, !running.isEmpty {
+            if type.id == "doctor_visit" {
+                Button { entering = true } label: { tile }
+            } else if type.isTimed, !running.isEmpty {
                 // running: one tap stops it (for every child it was started for)
                 Button { model.stopTimed(running) } label: {
                     Tile(title: "Stop \(type.label.lowercased())", subtitle: runningText, icon: type.icon ?? "timer", color: Care.color(type: type))
@@ -73,8 +75,28 @@ struct CareTile: View {
             }
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            if fields.isEmpty {
+                Button { model.log(type.id) } label: { Label("Just now", systemImage: "clock") }
+                ForEach([5, 10, 15, 30], id: \.self) { mins in
+                    Button {
+                        model.log(type.id, at: Date().addingTimeInterval(-Double(mins * 60)))
+                    } label: {
+                        Label("\(mins) min ago", systemImage: "clock.arrow.circlepath")
+                    }
+                }
+            } else {
+                Button { entering = true } label: { Label("Open \(type.label.lowercased())…", systemImage: "square.and.pencil") }
+            }
+        }
         .accessibilityIdentifier("careTile-\(type.id)")
-        .sheet(isPresented: $entering) { CareSheet(type: type).presentationDetents([.medium, .large]) }
+        .sheet(isPresented: $entering) {
+            if type.id == "doctor_visit" {
+                DoctorVisitSheet().presentationDetents([.large])
+            } else {
+                CareSheet(type: type).presentationDetents([.medium, .large])
+            }
+        }
     }
 
     /// This type's running entries for the Log-for target.
@@ -87,8 +109,35 @@ struct CareTile: View {
         return "running " + StatusSnapshot.duration(Date().timeIntervalSince(since))
     }
 
-    /// When it was last logged for the Log-for target ("2h 10m ago"), else a hint.
+    /// Rich subtitle for medication (last medicine, elapsed, 24h count), temperature (latest + delta),
+    /// doctor visit (queued questions count), or when it was last logged.
     private var subtitle: String {
+        let log = model.target.first.flatMap { model.logs[$0] } ?? model.log
+        if type.id == "medication" {
+            let meds = log.effective.filter { $0.type == "medication" }
+            guard let last = meds.last else { return "tap to log" }
+            let name = last.string("medicine") ?? "Medicine"
+            let count24h = meds.filter { Date().timeIntervalSince($0.occurredAt) <= 86_400 }.count
+            let ago = StatusSnapshot.duration(Date().timeIntervalSince(last.occurredAt))
+            return "\(name) \(ago) ago · \(count24h) in 24h"
+        }
+        if type.id == "temperature" {
+            let temps = log.effective.filter { $0.type == "temperature" }
+            guard let last = temps.last, let c = last.number("celsius") else { return "tap to log" }
+            let ago = StatusSnapshot.duration(Date().timeIntervalSince(last.occurredAt))
+            let prev = temps.dropLast().last?.number("celsius")
+            let delta = prev.map { d -> String in
+                let diff = ((c - d) * 10).rounded() / 10
+                return diff == 0 ? "" : (diff > 0 ? " (+\(diff)°)" : " (\(diff)°)")
+            } ?? ""
+            return "\(VoiceInterpreter.numberText(c, unit: "celsius"))\(delta) · \(ago) ago"
+        }
+        if type.id == "doctor_visit" {
+            let pack = log.doctorVisitPack(household: model.household)
+            if !pack.questions.isEmpty {
+                return "\(pack.questions.count) question\(pack.questions.count == 1 ? "" : "s") queued"
+            }
+        }
         let last = model.target.compactMap { model.logs[$0]?.effective.last { $0.type == type.id }?.occurredAt }.max()
         guard let last else { return "tap to log" }
         return StatusSnapshot.duration(Date().timeIntervalSince(last)) + " ago"
@@ -108,9 +157,49 @@ struct CareSheet: View {
 
     private var fields: [EventRegistry.FieldSpec] { type.fields ?? [] }
 
+    /// Recent (medicine, dose) pairs for 1-tap repeat on Medication.
+    private var recentMedPairs: [(medicine: String, dose: String, lastAt: Date)] {
+        guard type.id == "medication" else { return [] }
+        let log = model.target.first.flatMap { model.logs[$0] } ?? model.log
+        var seen: Set<String> = []
+        var out: [(String, String, Date)] = []
+        for e in log.effective.reversed() where e.type == "medication" {
+            guard let med = e.string("medicine"), !med.isEmpty else { continue }
+            let dose = e.string("dose") ?? ""
+            let key = "\(med.lowercased())|\(dose.lowercased())"
+            if seen.insert(key).inserted {
+                out.append((med, dose, e.occurredAt))
+                if out.count >= 4 { break }
+            }
+        }
+        return out
+    }
+
     var body: some View {
         NavigationStack {
             Form {
+                if type.id == "medication", !recentMedPairs.isEmpty {
+                    Section("1-tap repeat") {
+                        ForEach(Array(recentMedPairs.enumerated()), id: \.offset) { _, pair in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(pair.dose.isEmpty ? pair.medicine : "\(pair.medicine) · \(pair.dose)")
+                                        .font(.subheadline.weight(.semibold))
+                                    Text("Last given \(StatusSnapshot.duration(Date().timeIntervalSince(pair.lastAt))) ago (\(pair.lastAt.formatted(date: .omitted, time: .shortened)))")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Button("Log now") {
+                                    var f: [String: FieldValue] = ["medicine": .string(pair.medicine)]
+                                    if !pair.dose.isEmpty { f["dose"] = .string(pair.dose) }
+                                    model.log("medication", f, at: at)
+                                    dismiss()
+                                }
+                                .buttonStyle(.borderedProminent).controlSize(.small)
+                            }
+                        }
+                    }
+                }
                 ForEach(fields, id: \.key) { f in
                     Section {
                         input(f)
@@ -194,4 +283,111 @@ struct CareSheet: View {
     }
 
     private var complete: Bool { fields.allSatisfy { !$0.isRequired || entered[$0.key] != nil } }
+}
+
+/// Pediatrician Visit Fact Sheet & Question Queue (`doctor_visit`).
+struct DoctorVisitSheet: View {
+    @EnvironmentObject var model: AppModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var newQuestion = ""
+    @State private var visitNotes = ""
+    @State private var at = Date()
+    @State private var copied = false
+
+    var body: some View {
+        let log = model.target.first.flatMap { model.logs[$0] } ?? model.log
+        let babyName = model.targetBabies.first?.name ?? model.household.babyName
+        let pack = log.doctorVisitPack(household: model.household)
+        NavigationStack {
+            Form {
+                Section {
+                    LabeledContent("Feeds / day (7d)", value: String(format: "%.1f", pack.feedsPerDay7d))
+                    if pack.bottleMlPerDay7d > 0 {
+                        LabeledContent("Bottle / day (7d)", value: "\(Int(pack.bottleMlPerDay7d)) ml")
+                    }
+                    LabeledContent("Diapers / day (7d)", value: String(format: "%.1f wet · %.1f dirty", pack.wetDiapersPerDay7d, pack.dirtyDiapersPerDay7d))
+                    if let w = pack.latestWeightGrams {
+                        let deltaText = pack.weightDeltaGrams.map { d in
+                            let sign = d >= 0 ? "+" : ""
+                            return " (\(sign)\(Int(d)) g)"
+                        } ?? ""
+                        LabeledContent("Weight", value: String(format: "%.2f kg%@", w / 1000, deltaText))
+                    }
+                    if let h = pack.latestHeightCm {
+                        LabeledContent("Height", value: String(format: "%.1f cm", h))
+                    }
+                    if let hc = pack.latestHeadCm {
+                        LabeledContent("Head", value: String(format: "%.1f cm", hc))
+                    }
+                    Button {
+                        UIPasteboard.general.string = pack.plainTextSummary(babyName: babyName, household: model.household)
+                        copied = true
+                    } label: {
+                        Label(copied ? "Copied fact sheet" : "Copy fact sheet", systemImage: copied ? "checkmark.circle.fill" : "doc.on.doc")
+                    }
+                } header: {
+                    Text(pack.lastVisitAt.map { "Fact sheet since \($0.formatted(date: .abbreviated, time: .omitted))" } ?? "7-day fact sheet")
+                }
+
+                Section("Questions for the doctor (\(pack.questions.count))") {
+                    ForEach(pack.questions) { q in
+                        HStack {
+                            Text(q.string("transcript") ?? "")
+                            Spacer()
+                            Button {
+                                model.undo(q.id)
+                            } label: {
+                                Image(systemName: "checkmark.circle").foregroundStyle(.green)
+                            }
+                            .buttonStyle(.borderless)
+                            .accessibilityLabel("Mark answered")
+                        }
+                    }
+                    HStack {
+                        TextField("Add a question to ask…", text: $newQuestion)
+                        if !newQuestion.trimmingCharacters(in: .whitespaces).isEmpty {
+                            Button("Add") {
+                                let text = newQuestion.trimmingCharacters(in: .whitespacesAndNewlines)
+                                model.log("note", ["transcript": .string(text), "for_doctor": .bool(true)])
+                                newQuestion = ""
+                            }
+                        }
+                    }
+                }
+
+                if !pack.healthEvents.isEmpty {
+                    Section("Health entries since last visit") {
+                        ForEach(pack.healthEvents.suffix(5).reversed()) { e in
+                            HStack {
+                                Text(VoiceInterpreter.label(type: e.type, fields: e.fields))
+                                Spacer()
+                                Text(e.occurredAt.formatted(date: .abbreviated, time: .shortened))
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+
+                Section("Log today's visit") {
+                    TextField("Visit notes (optional)", text: $visitNotes)
+                    DatePicker("When", selection: $at, in: ...Date())
+                }
+            }
+            .navigationTitle("Doctor visit")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Log visit") {
+                        var f: [String: FieldValue] = [:]
+                        let clean = visitNotes.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if !clean.isEmpty { f["notes"] = .string(clean) }
+                        model.log("doctor_visit", f, at: at)
+                        dismiss()
+                    }
+                    .accessibilityIdentifier("doctorVisitLog")
+                }
+            }
+        }
+    }
 }

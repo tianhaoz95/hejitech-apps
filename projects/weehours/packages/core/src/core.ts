@@ -283,7 +283,129 @@ const ALLOWED: Record<string, string[]> = {
   contents: ["formula", "breast_milk"],
   kind: ["wet", "dirty", "both", "dry"],
   amount: ["taste", "some", "most", "all"],
+  storage: ["fridge", "freezer", "fed"],
+  reaction: ["none", "rash", "hives", "vomiting", "diarrhea", "gas", "spit_up"],
 };
+
+export interface ShiftSummary {
+  caregiver: string | null;
+  started_at: string;
+  ended_at: string;
+  feed_count: number;
+  bottle_ml: number;
+  wet_diapers: number;
+  dirty_diapers: number;
+  sleep_seconds: number;
+  sleep_stretches: number;
+  medications: { id: string; medicine: string; dose?: string; occurred_at: string }[];
+  notes: { id: string; text: string; occurred_at: string; logged_by: string }[];
+}
+
+export function shiftSummary(d: Derived, bottleMlFor: (baby?: string) => number, now = Date.now()): ShiftSummary | null {
+  const duties = d.all.filter((e) => e.type === "duty" && d.status.get(e.id) === "active").sort((a, b) => t(a.occurred_at) - t(b.occurred_at));
+  if (duties.length === 0) return null;
+  const startAt = duties.length >= 2 ? t(duties[duties.length - 2].occurred_at) : t(duties[duties.length - 1].occurred_at);
+  const endAt = duties.length >= 2 ? t(duties[duties.length - 1].occurred_at) : now;
+  const caregiver = ((duties.length >= 2 ? duties[duties.length - 2] : duties[duties.length - 1]).fields.caregiver as string | undefined) ?? null;
+  const counted = d.effective.filter((e) => d.status.get(e.id) === "active");
+  const inWindow = counted.filter((e) => t(e.occurred_at) >= startAt && t(e.occurred_at) <= endAt);
+  const feedSessions = d.sessions.filter((s) => s.kind !== "sleep" && anchor(s) >= startAt && anchor(s) <= endAt);
+  const solidsCount = inWindow.filter((e) => e.type === "feed.solids").length;
+  const bottleMl = inWindow
+    .filter((e) => e.type === "feed.bottle.finish" || e.type === "feed.bottle.single")
+    .reduce((sum, e) => {
+      const ml = typeof e.fields.consumed_ml === "number" ? e.fields.consumed_ml
+        : typeof e.fields.consumed_fraction === "number" ? Math.round(e.fields.consumed_fraction * bottleMlFor(e.baby_id)) : 0;
+      return sum + ml;
+    }, 0);
+  const diapers = inWindow.filter((e) => e.type === "diaper");
+  const wetDiapers = diapers.filter((e) => e.fields.kind === "wet" || e.fields.kind === "both").length;
+  const dirtyDiapers = diapers.filter((e) => e.fields.kind === "dirty" || e.fields.kind === "both").length;
+  const sleepList = d.sessions.filter((s) => s.kind === "sleep" && (s.end ?? now) > startAt && (s.start ?? startAt) < endAt);
+  const sleepSeconds = Math.round(
+    sleepList.reduce((sum, s) => sum + Math.max(0, Math.min(s.end ?? now, endAt) - Math.max(s.start ?? startAt, startAt)) / 1000, 0),
+  );
+  const medications = inWindow
+    .filter((e) => e.type === "medication")
+    .map((e) => ({ id: e.id, medicine: String(e.fields.medicine ?? "Medication"), dose: e.fields.dose ? String(e.fields.dose) : undefined, occurred_at: e.occurred_at }));
+  const notes = d.all
+    .filter((e) => e.type === "note" && d.status.get(e.id) === "active" && t(e.occurred_at) >= startAt && t(e.occurred_at) <= endAt)
+    .map((e) => ({ id: e.id, text: String(e.fields.transcript ?? e.provenance.raw_transcript ?? "").trim(), occurred_at: e.occurred_at, logged_by: e.logged_by }))
+    .filter((n) => n.text.length > 0);
+  return {
+    caregiver,
+    started_at: new Date(startAt).toISOString(),
+    ended_at: new Date(endAt).toISOString(),
+    feed_count: feedSessions.length + solidsCount,
+    bottle_ml: bottleMl,
+    wet_diapers: wetDiapers,
+    dirty_diapers: dirtyDiapers,
+    sleep_seconds: sleepSeconds,
+    sleep_stretches: sleepList.length,
+    medications,
+    notes,
+  };
+}
+
+export interface MilkStash {
+  fridge_ml: number;
+  freezer_ml: number;
+  fridge_lots: number;
+  freezer_bags: number;
+  oldest_fridge_at: string | null;
+  oldest_freezer_at: string | null;
+}
+
+export function milkStash(d: Derived, bottleMlFor: (baby?: string) => number): MilkStash {
+  const fridge: { ml: number; at: string }[] = [];
+  const freezer: { ml: number; at: string }[] = [];
+  const startContents = new Map<string, string>();
+  for (const s of d.sessions) {
+    if (s.kind === "bottle" && s.endEvent && s.contents) startContents.set(s.endEvent, s.contents);
+  }
+  const counted = d.effective.filter((e) => d.status.get(e.id) === "active");
+  for (const e of counted) {
+    if (e.type === "pump") {
+      const ml = typeof e.fields.amount_ml === "number" ? e.fields.amount_ml : bottleMlFor(e.baby_id);
+      if (ml <= 0) continue;
+      const storage = String(e.fields.storage ?? "fridge");
+      if (storage === "freezer") {
+        if (e.fields.from_fridge === true) {
+          let rem = ml;
+          while (rem > 0 && fridge.length > 0) {
+            const take = Math.min(fridge[0].ml, rem);
+            fridge[0].ml -= take;
+            rem -= take;
+            if (fridge[0].ml <= 0.1) fridge.shift();
+          }
+        }
+        freezer.push({ ml, at: e.occurred_at });
+      } else if (storage === "fridge") {
+        fridge.push({ ml, at: e.occurred_at });
+      }
+    } else if (e.type === "feed.bottle.finish" || e.type === "feed.bottle.single") {
+      const contents = (e.fields.contents as string | undefined) ?? startContents.get(e.id);
+      if (contents !== "breast_milk") continue;
+      let rem = typeof e.fields.consumed_ml === "number" ? e.fields.consumed_ml
+        : typeof e.fields.consumed_fraction === "number" ? Math.round(e.fields.consumed_fraction * bottleMlFor(e.baby_id))
+        : bottleMlFor(e.baby_id);
+      while (rem > 0 && fridge.length > 0) {
+        const take = Math.min(fridge[0].ml, rem);
+        fridge[0].ml -= take;
+        rem -= take;
+        if (fridge[0].ml <= 0.1) fridge.shift();
+      }
+    }
+  }
+  return {
+    fridge_ml: Math.round(fridge.reduce((s, l) => s + l.ml, 0)),
+    freezer_ml: Math.round(freezer.reduce((s, l) => s + l.ml, 0)),
+    fridge_lots: fridge.length,
+    freezer_bags: freezer.length,
+    oldest_fridge_at: fridge[0]?.at ?? null,
+    oldest_freezer_at: freezer[0]?.at ?? null,
+  };
+}
 
 /** Same validation rules as LogService.validate on the phone. Returns an error message or null. */
 export function validate(type: string, fields: Record<string, FieldValue>, enabledCategories?: string[]): string | null {

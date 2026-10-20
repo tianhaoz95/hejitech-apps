@@ -95,7 +95,8 @@ public actor LogService {
     func validate(type: String, fields: [String: FieldValue]) throws {
         let allowed: [String: Set<String>] = [
             "side": ["left", "right", "both"], "contents": ["formula", "breast_milk"], "kind": ["wet", "dirty", "both", "dry"],
-            "amount": ["taste", "some", "most", "all"],
+            "amount": ["taste", "some", "most", "all"], "storage": ["fridge", "freezer", "fed"],
+            "reaction": ["none", "rash", "hives", "vomiting", "diarrhea", "gas", "spit_up"],
         ]
         for (k, v) in fields {
             if let set = allowed[k], !(v.string.map(set.contains) ?? false) { throw LogError.invalidField(k) }
@@ -286,7 +287,10 @@ public actor LogService {
     @discardableResult
     public func dismissCapture(_ id: UUID) throws -> LogEvent? {
         guard var capture = try store.captures().first(where: { $0.id == id }) else { return nil }
-        let e = try log(type: SystemType.note, fields: ["transcript": .string(capture.transcript ?? "")],
+        let text = capture.transcript ?? ""
+        var noteFields: [String: FieldValue] = ["transcript": .string(text)]
+        if Parsers.isDoctorQuestion(text) { noteFields["for_doctor"] = .bool(true) }
+        let e = try log(type: SystemType.note, fields: noteFields,
                         occurredAt: capture.capturedAt,
                         provenance: Provenance(surface: capture.surface, input: .voice, rawTranscript: capture.transcript,
                                                confidenceTier: .fullList, modelVersion: capture.interpretation?.modelVersion, captureId: capture.id),

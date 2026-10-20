@@ -11,7 +11,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 /** A service-role client on the `weehours` schema. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Db = SupabaseClient<any, any, any>;
-import { derive, eventTypes, fieldSpecs, registry, status, statusLine, typeSpec, validate, type LogEvent } from "@weehours/core";
+import { derive, eventTypes, fieldSpecs, milkStash, registry, shiftSummary, status, statusLine, typeSpec, validate, type LogEvent } from "@weehours/core";
 
 const PROTOCOL_VERSION = "2025-06-18";
 export const SERVER_VERSION = "0.2.0";
@@ -274,9 +274,13 @@ export async function callTool(name: string, args: Record<string, unknown>, call
           last_diaper: s.last_diaper_at ? { at: iso(s.last_diaper_at), kind: s.last_diaper_kind } : null,
         };
       };
+      const shift = shiftSummary(household, bottleMlFor);
+      const stash = settings.track_milk_stash ? milkStash(household, bottleMlFor) : undefined;
       const shared = {
         on_duty: who(household.duty?.caregiver ?? null), pending_voice_captures: count ?? 0,
         duplicates_to_review: household.duplicates.map((x) => ({ original: x.original, duplicate: x.duplicate })),
+        ...(shift ? { last_shift_summary: { ...shift, caregiver: who(shift.caregiver) } } : {}),
+        ...(stash ? { milk_stash: stash } : {}),
       };
       const chosen = pick(args.child, false);
       // one child (or one asked for): the flat shape older agents read; several: one entry each
@@ -489,8 +493,13 @@ export function fieldDocs(type: string) {
     if (q === "side") docs.side = "left | right | both";
     if (q === "contents") docs.contents = "formula | breast_milk";
     if (q === "diaper_kind") docs.kind = "wet | dirty | both | dry (required)";
-    if (q === "solids_amount") docs.amount = "taste | some | most | all";
+    if (q === "solids_amount") {
+      docs.amount = "taste | some | most | all";
+      docs.foods = "text (comma-separated foods, e.g. 'Avocado, Egg')";
+      docs.reaction = "none | rash | hives | vomiting | diarrhea | gas | spit_up";
+    }
   }
+  if (type === "pump") docs.storage = "fridge | freezer | fed";
   for (const n of (s as { numbers?: string[] } | undefined)?.numbers ?? []) {
     if (n === "ml") docs.amount_ml = "number";
     if (n === "grams") docs.grams = "number (required)";

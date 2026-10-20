@@ -28,11 +28,19 @@ final class PhoneLink: NSObject, ObservableObject, WCSessionDelegate {
         let sleeping: Bool
     }
 
+    struct Pinned: Identifiable, Equatable {
+        let id: String
+        let label: String
+        let icon: String
+        let runningId: String
+    }
+
     @Published var line = "Open the iPhone app"
     @Published var openFeed = ""
     @Published var sleeping = false
-    /// The household's children shown on the iPhone; the watch logs for `child`.
+    /// The household's children shown on the iPhone; the watch logs for `child` (or `"all"`).
     @Published var children: [Child] = []
+    @Published var pinned: [Pinned] = []
     @Published var child = UserDefaults.standard.string(forKey: "child") ?? "" {
         didSet { UserDefaults.standard.set(child, forKey: "child"); applyChild() }
     }
@@ -114,12 +122,25 @@ final class PhoneLink: NSObject, ObservableObject, WCSessionDelegate {
             guard let id = c["id"] as? String, let name = c["name"] as? String else { return nil }
             return Child(id: id, name: name, line: c["line"] as? String ?? "", openFeed: c["openFeed"] as? String ?? "", sleeping: c["sleeping"] as? Bool ?? false)
         }
-        if !children.contains(where: { $0.id == child }) { child = (ctx["target"] as? String).flatMap { t in children.first { $0.id == t }?.id } ?? children.first?.id ?? "" }
+        pinned = (ctx["pinned"] as? [[String: Any]] ?? []).compactMap { p in
+            guard let id = p["id"] as? String, let label = p["label"] as? String else { return nil }
+            return Pinned(id: id, label: label, icon: p["icon"] as? String ?? "circle.fill",
+                          runningId: p["runningId"] as? String ?? "")
+        }
+        if child != "all", !children.contains(where: { $0.id == child }) {
+            child = (ctx["target"] as? String).flatMap { t in t == "all" ? "all" : children.first { $0.id == t }?.id } ?? children.first?.id ?? ""
+        }
         applyChild()
     }
 
-    /// Shows the chosen child's line and state.
+    /// Shows the chosen child's line and state (or combined state when "all" is selected).
     private func applyChild() {
+        if child == "all", children.count > 1 {
+            line = children.map { "\($0.name): \($0.line.components(separatedBy: " · ").first ?? $0.line)" }.joined(separator: " · ")
+            openFeed = children.first(where: { !$0.openFeed.isEmpty })?.openFeed ?? ""
+            sleeping = children.allSatisfy(\.sleeping)
+            return
+        }
         guard let c = children.first(where: { $0.id == child }) else { return }
         line = c.line
         openFeed = c.openFeed
@@ -130,6 +151,7 @@ final class PhoneLink: NSObject, ObservableObject, WCSessionDelegate {
 struct WatchHome: View {
     @EnvironmentObject var link: PhoneLink
     @State private var diaper = false
+    @State private var finishingBottle = false
 
     var body: some View {
         ScrollView {
@@ -137,6 +159,7 @@ struct WatchHome: View {
                 if link.children.count > 1 {
                     Picker("Child", selection: $link.child) {
                         ForEach(link.children) { Text($0.name).tag($0.id) }
+                        Text(link.children.count == 2 ? "Both" : "All").tag("all")
                     }
                     .pickerStyle(.navigationLink)
                 }
@@ -147,8 +170,15 @@ struct WatchHome: View {
                         .frame(maxWidth: .infinity)
                 }
                 .tint(link.recording ? .red : .orange)
-                Button { link.send(["action": "toggleFeed"]) } label: {
-                    Label(link.openFeed.isEmpty ? "Start feed" : "Finish feed", systemImage: "drop.fill").frame(maxWidth: .infinity)
+                Button {
+                    if link.openFeed == "bottle" {
+                        finishingBottle = true
+                    } else {
+                        link.send(["action": "toggleFeed"])
+                    }
+                } label: {
+                    Label(link.openFeed.isEmpty ? "Start feed" : (link.openFeed == "bottle" ? "Finish bottle" : "Finish feed"),
+                          systemImage: "drop.fill").frame(maxWidth: .infinity)
                 }
                 if link.openFeed == "breast" {
                     Button { link.send(["action": "switchSide"]) } label: { Label("Switch side", systemImage: "arrow.left.arrow.right") }
@@ -156,6 +186,16 @@ struct WatchHome: View {
                 Button { diaper = true } label: { Label("Diaper", systemImage: "humidity.fill").frame(maxWidth: .infinity) }
                 Button { link.send(["action": "toggleSleep"]) } label: {
                     Label(link.sleeping ? "Woke up" : "Asleep", systemImage: link.sleeping ? "sun.max.fill" : "moon.zzz.fill").frame(maxWidth: .infinity)
+                }
+                ForEach(link.pinned) { item in
+                    Button {
+                        var msg: [String: Any] = ["action": "care", "type": item.id]
+                        if !item.runningId.isEmpty { msg["runningId"] = item.runningId }
+                        link.send(msg)
+                    } label: {
+                        Label(item.label, systemImage: item.icon)
+                            .frame(maxWidth: .infinity)
+                    }
                 }
                 if let id = link.lastId {
                     Button("Undo last") { link.send(["action": "undo", "id": id]); link.lastId = nil }.font(.caption)
@@ -165,6 +205,11 @@ struct WatchHome: View {
         .confirmationDialog("Diaper", isPresented: $diaper) {
             ForEach(["wet", "dirty", "both", "dry"], id: \.self) { k in
                 Button(k.capitalized) { link.send(["action": "diaper", "kind": k]) }
+            }
+        }
+        .confirmationDialog("How much did they drink?", isPresented: $finishingBottle) {
+            ForEach([(0.25, "¼"), (0.5, "½"), (0.75, "¾"), (1.0, "All")], id: \.0) { f, label in
+                Button(label) { link.send(["action": "toggleFeed", "fraction": f]) }
             }
         }
     }

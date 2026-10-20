@@ -268,6 +268,14 @@ public struct VoiceInterpreter: Sendable {
                 fields["consumed_fraction"] = nil
                 conf["amount"] = 1
             }
+            if type == "feed.solids" {
+                let items = Parsers.foods(in: transcript)
+                if !items.isEmpty { fields["foods"] = .string(items.joined(separator: ", ")) }
+                if let r = Parsers.reaction(in: transcript) { fields["reaction"] = .string(r) }
+            }
+            if type == "pump", let storage = Parsers.milkStorage(in: transcript) {
+                fields["storage"] = .string(storage)
+            }
             // spec-described fields (care, health, activity types) from the words: a required one
             // that wasn't said lowers confidence; an optional number or choice is kept when said
             // (an optional text, a dose or a reason, would just be the whole sentence)
@@ -320,7 +328,10 @@ public struct VoiceInterpreter: Sendable {
         if let s = fields["side"]?.string { details.append(s) }
         if let k = fields["kind"]?.string { details.append(k) }
         if let c = fields["contents"]?.string { details.append(c.replacingOccurrences(of: "_", with: " ")) }
+        if let fds = fields["foods"]?.string, !fds.isEmpty { details.append(fds) }
         if let a = fields["amount"]?.string { details.append(a) }
+        if let r = fields["reaction"]?.string, r != "none", !r.isEmpty { details.append("reaction: \(r.replacingOccurrences(of: "_", with: " "))") }
+        if let st = fields["storage"]?.string, !st.isEmpty { details.append(st) }
         if let g = fields["grams"]?.number { details.append(String(format: "%.2f kg", g / 1000)) }
         if let cm = fields["height_cm"]?.number ?? fields["head_cm"]?.number { details.append(String(format: "%.1f cm", cm)) }
         for f in registry.type(type)?.fields ?? [] {

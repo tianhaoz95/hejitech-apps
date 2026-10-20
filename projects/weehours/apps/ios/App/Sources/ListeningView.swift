@@ -1,33 +1,100 @@
+import LogCore
 import SwiftUI
 
-/// Full screen while the phone listens: a waveform that follows the voice, Done to log, Cancel to
-/// throw the audio away. Opens on a tap of the mic button, the Action Button or the Siri shortcut.
+enum AutoStopVoice {
+    static let key = "autoStopVoice"
+}
+
+/// Full screen while the phone listens: a waveform that follows the voice, live transcript + parsed
+/// field pills, optional silence auto-stop (Settings → Voice), Done to log, Cancel to throw away.
 struct ListeningView: View {
     /// Whisper reads 30 s at a time; a forgotten recording finishes itself there.
     static let maxDuration: TimeInterval = 30
+    static let silenceAutoStopSeconds: TimeInterval = 1.8
     @EnvironmentObject var model: AppModel
+    @AppStorage(AutoStopVoice.key) private var autoStop = false
     @State private var started = Date()
     @State private var meter = Meter()
+    @State private var spokeAt: Date?
+    @State private var silentSince: Date?
 
     var body: some View {
+        let chips = Parsers.liveChips(in: model.liveTranscript, reference: started)
         ZStack {
             Rectangle().fill(.ultraThinMaterial).ignoresSafeArea()
             Theme.accent.opacity(0.12).ignoresSafeArea()
-            VStack(spacing: 28) {
+            VStack(spacing: 22) {
                 Spacer()
+                if autoStop {
+                    Label("Auto-logs after pause", systemImage: "waveform.badge.checkmark")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.accent)
+                        .padding(.horizontal, 12).padding(.vertical, 6)
+                        .background(Theme.accent.opacity(0.15), in: Capsule())
+                }
                 Text("Listening…").font(.largeTitle.bold())
-                Text("Say what happened, like “left side, ten minutes” or “wet diaper”.")
-                    .font(.body).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
+                VStack(spacing: 10) {
+                    if model.liveTranscript.isEmpty {
+                        if spokeAt != nil {
+                            HStack(spacing: 8) {
+                                ProgressView().controlSize(.small)
+                                Text("Transcribing live…")
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(.secondary)
+                            }
+                        } else {
+                            Text("Say what happened, like “left side, ten minutes” or “wet diaper”.")
+                                .font(.body).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                        }
+                    } else {
+                        Text("“\(model.liveTranscript)”")
+                            .font(.title3.weight(.semibold))
+                            .multilineTextAlignment(.center)
+                            .accessibilityIdentifier("liveTranscript")
+                        if !chips.isEmpty {
+                            HStack(spacing: 6) {
+                                ForEach(chips, id: \.self) { chip in
+                                    Text(chip)
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(Theme.accent)
+                                        .padding(.horizontal, 10).padding(.vertical, 5)
+                                        .background(Theme.accent.opacity(0.18), in: Capsule())
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 14)
+                .frame(maxWidth: .infinity, minHeight: 76)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .padding(.horizontal, 24)
                 SwiftUI.TimelineView(.animation) { context in
+                    let raw = model.voiceLevel()
+                    let smoothed = meter.next(raw)
                     let elapsed = context.date.timeIntervalSince(started)
                     VStack(spacing: 18) {
-                        Waveform(level: meter.next(model.voiceLevel()), time: context.date.timeIntervalSinceReferenceDate)
+                        Waveform(level: smoothed, time: context.date.timeIntervalSinceReferenceDate)
                             .frame(height: 140)
-                        Text(Duration.seconds(elapsed).formatted(.time(pattern: .minuteSecond)))
+                        Text(Duration.seconds(elapsed).formatted(.time(pattern: .minuteSecond)) + (autoStop && spokeAt != nil ? " · pause to log" : ""))
                             .font(.title3.monospacedDigit()).foregroundStyle(.secondary)
                     }
                     .onChange(of: elapsed >= Self.maxDuration) { _, over in if over { model.stopVoice() } }
+                    .onChange(of: Int(elapsed * 10)) { _, _ in
+                        let now = context.date
+                        if raw > 0.20 {
+                            if spokeAt == nil { spokeAt = now }
+                            silentSince = nil
+                        } else if autoStop, let spoke = spokeAt, now.timeIntervalSince(spoke) >= 0.8, raw < 0.08 {
+                            if let silent = silentSince {
+                                if now.timeIntervalSince(silent) >= Self.silenceAutoStopSeconds {
+                                    model.stopVoice()
+                                }
+                            } else {
+                                silentSince = now
+                            }
+                        }
+                    }
                 }
                 .padding(.horizontal, 24)
                 Spacer()
@@ -46,7 +113,11 @@ struct ListeningView: View {
                     .padding(.bottom, 24)
             }
         }
-        .onAppear { started = Date() }
+        .onAppear {
+            started = Date()
+            spokeAt = nil
+            silentSince = nil
+        }
     }
 
     /// Smooths the mic level: rises fast, falls slowly, so the wave breathes instead of flickering.

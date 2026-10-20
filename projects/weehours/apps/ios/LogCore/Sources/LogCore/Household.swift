@@ -112,12 +112,14 @@ public struct Household: Codable, Hashable, Sendable {
     public var caregivers: [Caregiver]
     public var nightStart: Int
     public var nightEnd: Int
+    /// Optional setting (off by default): track fridge and freezer breast-milk stash from pump and bottle events.
+    public var trackMilkStash: Bool
 
     public init(id: UUID = UUID(), name: String = "Our family", babyId: UUID = UUID(), babyName: String = "Baby",
                 birthDate: Date? = nil, babies: [Baby]? = nil, bottleMl: Double = 120,
                 categories: [String] = Array(EventRegistry.shared.defaultCategories).sorted(),
                 defaultFeed: String = "bottle", reminders: ReminderSettings = .init(), caregivers: [Caregiver] = [],
-                nightStart: Int = 21 * 60, nightEnd: Int = 7 * 60) {
+                nightStart: Int = 21 * 60, nightEnd: Int = 7 * 60, trackMilkStash: Bool = false) {
         self.id = id
         self.name = name
         self.babies = babies ?? [Baby(id: babyId, name: babyName, birthDate: birthDate)]
@@ -128,6 +130,7 @@ public struct Household: Codable, Hashable, Sendable {
         self.caregivers = caregivers
         self.nightStart = nightStart
         self.nightEnd = nightEnd
+        self.trackMilkStash = trackMilkStash
     }
 
     enum CodingKeys: String, CodingKey {
@@ -139,6 +142,7 @@ public struct Household: Codable, Hashable, Sendable {
         case defaultFeed = "default_feed"
         case nightStart = "night_start"
         case nightEnd = "night_end"
+        case trackMilkStash = "track_milk_stash"
     }
 
     /// Households saved before children were a list (and older servers) only have the first
@@ -160,6 +164,7 @@ public struct Household: Codable, Hashable, Sendable {
         caregivers = try c.decodeIfPresent([Caregiver].self, forKey: .caregivers) ?? []
         nightStart = try c.decodeIfPresent(Int.self, forKey: .nightStart) ?? 21 * 60
         nightEnd = try c.decodeIfPresent(Int.self, forKey: .nightEnd) ?? 7 * 60
+        trackMilkStash = try c.decodeIfPresent(Bool.self, forKey: .trackMilkStash) ?? false
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -177,6 +182,7 @@ public struct Household: Codable, Hashable, Sendable {
         try c.encode(caregivers, forKey: .caregivers)
         try c.encode(nightStart, forKey: .nightStart)
         try c.encode(nightEnd, forKey: .nightEnd)
+        if trackMilkStash { try c.encode(trackMilkStash, forKey: .trackMilkStash) }
     }
 
     /// Children that are not archived, in display order.
@@ -271,7 +277,8 @@ public enum ReminderPlanner {
                                        escalated: true, message: text + " (overdue)"))
         }
 
-        if let every = settings.feedEveryMinutes, status.openFeedSince == nil, let last = status.lastFeedAt {
+        let feedEvery = (settings.adaptive ? suggestedFeedInterval(log: log, now: now) : nil) ?? settings.feedEveryMinutes
+        if let every = feedEvery, status.openFeedSince == nil, let last = status.lastFeedAt {
             add(.feed, due: last.addingTimeInterval(TimeInterval(every * 60)), text: "Feed due · \(status.nextSide.map { "\($0) next" } ?? "")")
         }
         if let every = settings.diaperEveryMinutes, let last = status.lastDiaperAt {

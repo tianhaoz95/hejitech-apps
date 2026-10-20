@@ -603,3 +603,66 @@ final class ChildrenTests: XCTestCase {
         XCTAssertNotNil(leo.lastDiaperAt)
     }
 }
+
+final class RoadmapFeaturesTests: XCTestCase {
+    func testShiftSummaryOnDutyHandoff() {
+        let now = fixedNow()
+        let h = Household(id: H, babyId: B, bottleMl: 120, caregivers: [Caregiver(id: A, name: "Alex"), Caregiver(id: P2, name: "Sam")])
+        let start = now.addingTimeInterval(-4 * 3600)
+        let end = now.addingTimeInterval(-60)
+        let events = [
+            LogEvent(householdId: H, babyId: B, type: "duty", fields: ["caregiver": .string(A.uuidString)], occurredAt: start, loggedBy: A, provenance: Provenance(surface: .phone, input: .tap)),
+            LogEvent(householdId: H, babyId: B, type: "feed.bottle.single", fields: ["consumed_fraction": .number(0.75)], occurredAt: start.addingTimeInterval(1800), loggedBy: A, provenance: Provenance(surface: .phone, input: .tap)),
+            LogEvent(householdId: H, babyId: B, type: "diaper", fields: ["kind": .string("both")], occurredAt: start.addingTimeInterval(3600), loggedBy: A, provenance: Provenance(surface: .phone, input: .tap)),
+            LogEvent(householdId: H, babyId: B, type: "medication", fields: ["medicine": .string("Tylenol"), "dose": .string("2.5 ml")], occurredAt: start.addingTimeInterval(5400), loggedBy: A, provenance: Provenance(surface: .phone, input: .tap)),
+            LogEvent(householdId: H, babyId: B, type: "duty", fields: ["caregiver": .string(P2.uuidString)], occurredAt: end, loggedBy: P2, provenance: Provenance(surface: .phone, input: .tap)),
+        ]
+        let log = DerivedLog(events: events)
+        let summary = log.shiftSummary(household: h, now: now)
+        XCTAssertNotNil(summary)
+        XCTAssertEqual(summary?.caregiver, A)
+        XCTAssertEqual(summary?.feedCount, 1)
+        XCTAssertEqual(summary?.bottleMl, 90)
+        XCTAssertEqual(summary?.wetDiapers, 1)
+        XCTAssertEqual(summary?.dirtyDiapers, 1)
+        XCTAssertEqual(summary?.medications.map(\.medicine), ["Tylenol"])
+    }
+
+    func testMilkStashFIFODeduction() {
+        let now = fixedNow()
+        var h = Household(id: H, babyId: B, bottleMl: 120)
+        h.trackMilkStash = true
+        let t1 = now.addingTimeInterval(-6 * 3600)
+        let t2 = now.addingTimeInterval(-3 * 3600)
+        let t3 = now.addingTimeInterval(-1 * 3600)
+        let events = [
+            LogEvent(householdId: H, babyId: B, type: "pump", fields: ["side": .string("both"), "amount_ml": .number(100), "storage": .string("fridge")], occurredAt: t1, loggedBy: A, provenance: Provenance(surface: .phone, input: .tap)),
+            LogEvent(householdId: H, babyId: B, type: "pump", fields: ["side": .string("both"), "amount_ml": .number(140), "storage": .string("freezer")], occurredAt: t2, loggedBy: A, provenance: Provenance(surface: .phone, input: .tap)),
+            LogEvent(householdId: H, babyId: B, type: "feed.bottle.single", fields: ["consumed_fraction": .number(0.5), "contents": .string("breast_milk")], occurredAt: t3, loggedBy: A, provenance: Provenance(surface: .phone, input: .tap)),
+        ]
+        let stash = DerivedLog(events: events).milkStash(household: h)
+        XCTAssertEqual(stash.fridgeMl, 40) // 100 - 60 = 40
+        XCTAssertEqual(stash.freezerMl, 140)
+        XCTAssertEqual(stash.oldestFridgeAt, t1)
+    }
+
+    func testSolidsAndDoctorVisitPack() {
+        let now = fixedNow()
+        let h = Household(id: H, babyId: B, bottleMl: 120)
+        let events = [
+            LogEvent(householdId: H, babyId: B, type: "feed.solids", fields: ["amount": .string("some"), "foods": .string("avocado,egg"), "reaction": .string("rash")], occurredAt: now.addingTimeInterval(-3600), loggedBy: A, provenance: Provenance(surface: .phone, input: .tap)),
+            LogEvent(householdId: H, babyId: B, type: "note", fields: ["transcript": .string("ask pediatrician about vitamin D"), "for_doctor": .bool(true)], occurredAt: now.addingTimeInterval(-1800), loggedBy: A, provenance: Provenance(surface: .phone, input: .voice)),
+            LogEvent(householdId: H, babyId: B, type: "weight", fields: ["grams": .number(5400)], occurredAt: now.addingTimeInterval(-600), loggedBy: A, provenance: Provenance(surface: .phone, input: .tap)),
+        ]
+        let log = DerivedLog(events: events)
+        let solids = log.solidsSummary()
+        XCTAssertEqual(Set(solids.triedFoods), ["Avocado", "Egg"])
+        XCTAssertEqual(solids.allergenCounts["egg"], 1)
+        XCTAssertEqual(solids.reactions.count, 1)
+
+        let pack = log.doctorVisitPack(household: h, now: now)
+        XCTAssertEqual(pack.questions.count, 1)
+        XCTAssertEqual(pack.latestWeightGrams, 5400)
+        XCTAssertTrue(pack.plainTextSummary(babyName: "Mia", household: h).contains("ask pediatrician about vitamin D"))
+    }
+}

@@ -15,6 +15,7 @@ struct SettingsView: View {
     @AppStorage(Feedback.key) private var shakeToReport = true
     @AppStorage(VoiceButtonPlacement.key) private var voicePlacement = VoiceButtonPlacement.right
     @AppStorage(QuickCapture.key) private var quickCapture = false
+    @AppStorage(AutoStopVoice.key) private var autoStopVoice = false
 
     var body: some View {
         NavigationStack {
@@ -54,6 +55,20 @@ struct SettingsView: View {
                 }
                 Section("Tracking") {
                     categoryToggles(group: nil)
+                    if draft.categories.contains("pumping") {
+                        Toggle(isOn: $draft.trackMilkStash) {
+                            Label {
+                                Text("Track milk stash (fridge & freezer)")
+                            } icon: {
+                                Image(systemName: "refrigerator.fill")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 28, height: 28)
+                                    .background(Theme.color(for: "pump"), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                            }
+                        }
+                        .accessibilityIdentifier("trackMilkStash")
+                    }
                     Picker("Quick feed starts", selection: $draft.defaultFeed) {
                         Text("Bottle").tag("bottle")
                         Text("Breastfeeding").tag("breast")
@@ -71,11 +86,25 @@ struct SettingsView: View {
                 }
                 Section {
                     IntervalPicker(title: "Feed every", minutes: $draft.reminders.feedEveryMinutes)
+                    Toggle("Adapt feed interval to last 3 days", isOn: $draft.reminders.adaptive)
                     IntervalPicker(title: "Diaper check every", minutes: $draft.reminders.diaperEveryMinutes)
                     Stepper("Sound after \(draft.reminders.overdueMarginMinutes) min overdue", value: $draft.reminders.overdueMarginMinutes, in: 5...90, step: 5)
                     if let suggestion = ReminderPlanner.suggestedFeedInterval(log: model.log, now: Date()) {
                         Button("Use your last 3 days: every \(StatusSnapshot.duration(Double(suggestion) * 60))") {
                             draft.reminders.feedEveryMinutes = suggestion
+                        }
+                    }
+                    if let until = model.activeSnoozeUntil, until > Date() {
+                        HStack {
+                            Text("Snoozed until \(until.formatted(date: .omitted, time: .shortened))").foregroundStyle(.secondary)
+                            Spacer()
+                            Button("Resume") { model.snoozeReminders(minutes: 0) }
+                        }
+                    } else {
+                        Menu("Snooze reminders…") {
+                            Button("15 minutes") { model.snoozeReminders(minutes: 15) }
+                            Button("30 minutes") { model.snoozeReminders(minutes: 30) }
+                            Button("1 hour") { model.snoozeReminders(minutes: 60) }
                         }
                     }
                 } header: { Text("Reminders") } footer: {
@@ -99,15 +128,18 @@ struct SettingsView: View {
                     if model.localOnly {
                         Text("Sign in to invite your partner.").font(.footnote).foregroundStyle(.secondary)
                     } else {
-                    Button("Invite a caregiver") { Task { invite = await model.invite() } }
-                    if let invite {
-                        VStack(spacing: 8) {
-                            QRCode(text: "weehours://join/\(invite)").frame(width: 160, height: 160)
-                            Text(invite).font(.title2.monospaced().bold())
-                            Text("Enter this code in the app on their phone. Valid for 7 days.").font(.caption).foregroundStyle(.secondary)
+                        Button("Invite a caregiver") { Task { invite = await model.invite() } }
+                        if let invite {
+                            VStack(spacing: 8) {
+                                QRCode(text: "weehours://join/\(invite)").frame(width: 160, height: 160)
+                                Text(invite).font(.title2.monospaced().bold())
+                                Text("Enter this code in the app on their phone. Valid for 7 days.").font(.caption).foregroundStyle(.secondary)
+                            }
+                            .frame(maxWidth: .infinity)
                         }
-                        .frame(maxWidth: .infinity)
-                    }
+                        NavigationLink { CaregiverPassView() } label: {
+                            Label("Temporary caregiver pass", systemImage: "qrcode.viewfinder")
+                        }
                     }
                 }
                 Section {
@@ -116,6 +148,7 @@ struct SettingsView: View {
                     }
                     .accessibilityIdentifier("voicePlacement")
                     Toggle("Quick capture", isOn: $quickCapture).accessibilityIdentifier("quickCapture")
+                    Toggle("Auto-log when you stop speaking", isOn: $autoStopVoice).accessibilityIdentifier("autoStopVoice")
                     Picker("Decision model", selection: Binding(get: { model.decisionBackend }, set: { model.decisionBackend = $0 })) {
                         ForEach(DecisionBackend.allCases) { Text($0.rawValue).tag($0) }
                     }
@@ -124,7 +157,7 @@ struct SettingsView: View {
                         TextField("llama-server URL", text: $model.devServer).textInputAutocapitalization(.never)
                     }
                 } header: { Text("Voice") } footer: {
-                    Text("Quick capture logs the most likely entry instead of asking when Wee Hours isn't sure. Tap Change on the confirmation to fix it.")
+                    Text("Quick capture logs the most likely entry instead of asking when Wee Hours isn't sure. Auto-log stops listening automatically after a brief pause in speech.")
                 }
                 Section {
                     if !model.localOnly {
@@ -344,17 +377,23 @@ struct CaregiverLabel: View {
     }
 }
 
-/// Your own name and role as the household sees them; saved on the way back, like a child's.
+/// Your own name, role and quiet hours as the household sees them; saved on the way back, like a child's.
 struct ProfileEditor: View {
     @EnvironmentObject var model: AppModel
     @State private var name: String
     @State private var role: String
+    @State private var hasQuietHours: Bool
+    @State private var quietStartHour: Int
+    @State private var quietEndHour: Int
 
     static let roles = ["Mom", "Dad", "Parent", "Grandma", "Grandpa", "Nanny", "Babysitter"]
 
     init(caregiver: Caregiver) {
         _name = State(initialValue: caregiver.name)
         _role = State(initialValue: caregiver.role ?? "")
+        _hasQuietHours = State(initialValue: caregiver.quietStart != nil && caregiver.quietEnd != nil)
+        _quietStartHour = State(initialValue: (caregiver.quietStart ?? 22 * 60) / 60)
+        _quietEndHour = State(initialValue: (caregiver.quietEnd ?? 7 * 60) / 60)
     }
 
     var body: some View {
@@ -376,9 +415,109 @@ struct ProfileEditor: View {
                     }
                 }
             } header: { Text("Role") }
+            Section {
+                Toggle("Quiet hours", isOn: $hasQuietHours)
+                if hasQuietHours {
+                    Picker("Starts", selection: $quietStartHour) {
+                        ForEach(0..<24, id: \.self) { h in Text(Self.hourLabel(h)).tag(h) }
+                    }
+                    Picker("Ends", selection: $quietEndHour) {
+                        ForEach(0..<24, id: \.self) { h in Text(Self.hourLabel(h)).tag(h) }
+                    }
+                }
+            } header: { Text("Quiet hours") } footer: {
+                Text("During your quiet hours, reminders are held unless you are explicitly on duty.")
+            }
         }
         .navigationTitle("You")
-        .onDisappear { Task { await model.saveProfile(name: name, role: role) } }
+        .onDisappear {
+            Task {
+                await model.saveProfile(
+                    name: name,
+                    role: role,
+                    quietStart: hasQuietHours ? quietStartHour * 60 : nil,
+                    quietEnd: hasQuietHours ? quietEndHour * 60 : nil
+                )
+            }
+        }
+    }
+
+    private static func hourLabel(_ h: Int) -> String {
+        let hour12 = h % 12 == 0 ? 12 : h % 12
+        let ampm = h < 12 ? "AM" : "PM"
+        return "\(hour12):00 \(ampm)"
+    }
+}
+
+/// Share a time-limited web pass with a babysitter, grandparent or nanny — no app install needed.
+struct CaregiverPassView: View {
+    @EnvironmentObject var model: AppModel
+    @State private var name = "Grandma"
+    @State private var hours = 8
+    @State private var note = ""
+    @State private var createdURL: String?
+
+    private var passes: [AccessToken] {
+        model.tokens.filter { $0.name.hasPrefix("pass:") && $0.revokedAt == nil }
+    }
+
+    private func passTitle(_ raw: String) -> String {
+        let stripped = raw.replacingOccurrences(of: "pass:", with: "")
+        return stripped.components(separatedBy: "|").first ?? stripped
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("Caregiver name (e.g. Grandma, Nanny)", text: $name)
+                Picker("Expires in", selection: $hours) {
+                    Text("4 hours").tag(4)
+                    Text("8 hours").tag(8)
+                    Text("24 hours").tag(24)
+                    Text("48 hours").tag(48)
+                }
+                TextField("Pinned note (optional, e.g. 120 ml bottle in fridge)", text: $note, axis: .vertical)
+                    .lineLimit(2...4)
+                Button("Create caregiver pass") {
+                    Task { createdURL = await model.createCaregiverPass(name: name, hours: hours, note: note) }
+                }
+                .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+            } header: { Text("New pass") } footer: {
+                Text("Opens a simple web card in any phone browser with live status and one-tap logging for feeds, diapers and sleep. No app install or account needed.")
+            }
+            if let url = createdURL {
+                Section("Share pass") {
+                    VStack(spacing: 10) {
+                        QRCode(text: url).frame(width: 170, height: 170)
+                        Text(url).font(.caption.monospaced()).textSelection(.enabled).multilineTextAlignment(.center)
+                        if let link = URL(string: url) {
+                            ShareLink(item: link) { Label("Share link", systemImage: "square.and.arrow.up") }
+                                .buttonStyle(.borderedProminent)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+                }
+            }
+            if !passes.isEmpty {
+                Section("Active passes") {
+                    ForEach(passes) { p in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(passTitle(p.name))
+                                Text(p.lastUsedAt.map { "used \($0.formatted(.relative(presentation: .named)))" } ?? "not opened yet")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Button("Revoke", role: .destructive) { Task { await model.revoke(p) } }
+                                .buttonStyle(.borderless)
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle("Caregiver pass")
+        .task { await model.loadTokens() }
     }
 }
 
