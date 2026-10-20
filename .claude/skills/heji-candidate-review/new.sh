@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Scaffold a candidate-review site at reports/<slug>/ from the template next to this script.
+# Scaffold a heji-candidate-review site at reports/<slug>/ from the template next to this script.
 #
-#   .claude/skills/candidate-review/new.sh <slug> "<Title>"
+#   .claude/skills/heji-candidate-review/new.sh <slug> "<Title>"
 #
 # Picks the first port from 8787 up that no other reports/*/script/serve.sh already uses.
 set -euo pipefail

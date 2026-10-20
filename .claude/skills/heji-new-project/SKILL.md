@@ -1,13 +1,13 @@
 ---
-name: new-project
-description: Start a brand-new app in this HEJI monorepo (projects/<name>/) on the shared Supabase project, with its own schema, Cloudflare Worker (site + API + MCP with its own OAuth), native/Flutter app, CI, releases, docs page and the isolation rules that let it graduate to its own backend later. Use when asked to create, scaffold, bootstrap or add a new project/app/product to hejitech-apps. For moving an existing repo in, use migrate-project instead.
+name: heji-new-project
+description: Start a brand-new app in this HEJI monorepo (projects/<name>/) on the shared Supabase project, with its own schema, Cloudflare Worker (site + API + MCP with its own OAuth), native/Flutter app, CI, releases, docs page and the isolation rules that let it graduate to its own backend later. Use when asked to create, scaffold, bootstrap or add a new project/app/product to hejitech-apps. For moving an existing repo in, use heji-migrate-project instead.
 ---
 
 # Creating a new project in the monorepo
 
 Distilled from building Waypack and Wee Hours here (2026-10). The rules live in the root
 `CLAUDE.md`, `README.md` ("Adding a project"), `supabase/README.md` and `supabase/GRADUATION.md`;
-`.claude/skills/migrate-project/SKILL.md` has the detailed traps for each area. This is the order
+`.claude/skills/heji-migrate-project/SKILL.md` has the detailed traps for each area. This is the order
 of work for a project that starts from nothing, using Wee Hours as the reference implementation.
 
 **Done means:** `projects/<name>/` builds and tests in `<name>-ci.yml`, ships with

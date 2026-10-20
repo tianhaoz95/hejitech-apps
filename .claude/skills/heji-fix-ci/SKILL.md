@@ -1,5 +1,5 @@
 ---
-name: fix-ci
+name: heji-fix-ci
 description: Check every CI/CD signal of this HEJI monorepo (GitHub Actions workflows, scheduled and release runs, Cloudflare Workers Builds and other commit checks on main), find what failed recently, investigate the cause, and present a proposal (why it fails + the fix) for approval; only after the user approves, fix it, verify, commit and push. Use when asked to "check CI", "what's failing", "fix the build", "why is the pipeline red", or when cut_release.sh refuses because main is CI-red.
 ---
 

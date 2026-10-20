@@ -1,5 +1,5 @@
 ---
-name: migrate-project
+name: heji-migrate-project
 description: Move an existing app repository into this HEJI monorepo (projects/<name>/) onto the shared Supabase project, with its history, CI, releases, Cloudflare Worker, docs and the isolation rules that let it graduate to its own backend later. Use when asked to absorb, import, merge or migrate another repo/project into hejitech-apps, or to add a project that already has its own Supabase/CI/release setup.
 ---
 

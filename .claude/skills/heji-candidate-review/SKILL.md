@@ -1,6 +1,6 @@
 ---
-name: candidate-review
-description: Build a local review site (reports/<slug>/) that shows several candidate designs for something the user wants to build (a screen, a whole app flow, a logo/app icon, a web page, a feature's UX) as live HTML mocks, so the user can browse, compare side by side, heart, rate, write change requests, pick a winner and paste a summary back for the next round. Use when the user asks for "candidates", "options", "directions", "mockups to choose from", a "redesign" to pick from, or invokes /candidate-review with a description of what they want built. Also covers the explainer variant (a design walkthrough site for a technical proposal).
+name: heji-candidate-review
+description: Build a local review site (reports/<slug>/) that shows several candidate designs for something the user wants to build (a screen, a whole app flow, a logo/app icon, a web page, a feature's UX) as live HTML mocks, so the user can browse, compare side by side, heart, rate, write change requests, pick a winner and paste a summary back for the next round. Use when the user asks for "candidates", "options", "directions", "mockups to choose from", a "redesign" to pick from, or invokes /heji-candidate-review with a description of what they want built. Also covers the explainer variant (a design walkthrough site for a technical proposal).
 ---
 
 # Candidate review sites
@@ -33,7 +33,7 @@ from the request or the project's code:
 ## 2. Scaffold
 
 ```sh
-.claude/skills/candidate-review/new.sh <slug> "<Title>"   # → reports/<slug>/, picks a free port
+.claude/skills/heji-candidate-review/new.sh <slug> "<Title>"   # → reports/<slug>/, picks a free port
 ```
 
 The template (`template/`) is a working 3-candidate example. You edit only:
