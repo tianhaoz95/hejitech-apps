@@ -52,7 +52,8 @@ The template (`template/`) is a working 3-candidate example. You edit only:
 `new.sh` fills in `dir`, `repo` and `port`. Fill in `project`, `context` and `brief` yourself: the
 hand-off only includes them once they're no longer the template's placeholders.
 
-`site/js/review.js` is the engine (gallery → detail → compare, ♥, ★, notes, winner per group,
+`site/js/review.js` is the engine (gallery → detail → compare, ♥, ★, a note box per candidate on
+its card, compare column and page, winner per group,
 overall notes, Copy summary → hand-off, ←/→/F keys, light/dark/preferred toggle, localStorage), and
 `site/js/design.js` renders the design section (§3b) on the page and as text in the hand-off. Don't fork
 it per review; if a review needs a new engine feature, add it to the template so the next one
@@ -156,7 +157,9 @@ Pure visual candidates (a restyle) need no design section.
    stub `navigator.clipboard.writeText` and click `#copy`) and check it names the project, the
    context files and the brief, and carries the design sections as text.
 3. Tell the user the command and URL, the candidate list (number · name · tagline, one line each)
-   and how to respond: ♥ / ★ / notes per candidate, the "Overall direction" box, then
+   and how to respond: ♥ / ★ per candidate, notes in the box under each candidate (on its gallery
+   card, in Compare or on its page; all the same note), the "Overall direction" box only for what
+   cuts across candidates, then
    **Copy summary** and paste it to any agent (this session or a new one).
 
 ## 5. Next rounds

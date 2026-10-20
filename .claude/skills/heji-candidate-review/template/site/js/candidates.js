@@ -17,7 +17,7 @@
     title: "__TITLE__",
     subtitle: "3 candidates + today's screen",
     heading: "Pick a direction",
-    intro: "Each mock is live HTML: open one to scroll inside it. Heart the ones you like, rate them, write what you'd change, crown a winner, then <b>Copy summary</b> and paste it back to Claude.",
+    intro: "Each mock is live HTML: open one to scroll inside it. Heart the ones you like, rate them, write what you'd change in the box under each candidate, crown a winner, then <b>Copy summary</b> and paste it to any agent.",
     legend: ["<b>3</b> sample items"],
     round: 1,                            // bump when adding candidates in response to feedback
     frame: "phone",                      // "phone" | "browser" (with url) | "card" / "icon" (with size: [w, h])

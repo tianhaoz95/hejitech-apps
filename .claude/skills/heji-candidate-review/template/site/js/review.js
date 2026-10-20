@@ -61,15 +61,18 @@
   };
 
   // ── views
+  // One note per candidate, editable wherever the candidate is shown (card, compare column, detail).
+  const noteBox = (c, cls = "") => (c.baseline ? "" :
+    `<textarea class="note ${cls}" data-note="${c.id}" rows="2" placeholder="Notes on ${esc(c.name)}: what to keep, what to change">${esc(st.notes[c.id] || "")}</textarea>`);
   const card = (c) => `
-    <a class="cand${c.baseline ? " base" : ""}" href="#/d/${c.id}">
+    <div class="cand${c.baseline ? " base" : ""}"><a class="open" href="#/d/${c.id}">
       ${c.baseline ? "" : `<button class="fav${st.fav[c.id] ? " on" : ""}" data-fav="${c.id}" aria-label="Shortlist ${esc(c.name)}">${HEART}</button>`}
       ${isWin(c) ? '<span class="win">Winner</span>' : ""}${c.mine ? '<span class="mine">Your combo</span>' : isNew(c) ? '<span class="new">New</span>' : ""}
       ${frame(c, THUMB)}
       <div class="hd"><span class="no">${no(c)}</span><h3>${esc(c.name)}</h3>${st.rating[c.id] ? `<span class="r">${st.rating[c.id]}★</span>` : ""}</div>
       <p>${esc(c.tagline || "")}</p>
       ${chips(c)}
-    </a>`;
+    </a>${noteBox(c, "inline")}</div>`;
 
   const gallery = () => `
     <section class="intro">
@@ -84,7 +87,7 @@
     }).join("")}
     <section class="overall">
       <h3>Overall direction</h3>
-      <p>Anything that cuts across candidates: "combine 03's header with 07's rows", "all too busy", "try a darker take". It goes into the summary.</p>
+      <p>Only for what cuts across candidates: "combine 03's header with 07's rows", "all too busy", "try a darker take". Notes on one candidate go in the box on its card. Both go into the hand-off.</p>
       <textarea id="overall" placeholder="What should the next round do?">${esc(st.overall || "")}</textarea>
     </section>`;
 
@@ -112,7 +115,7 @@
         ${facts.length ? `<dl class="kv">${facts.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>` : ""}
         ${c.baseline ? "" : `
         <div><h4>Your rating</h4><div class="stars">${[1, 2, 3, 4, 5].map((n) => `<button data-star="${n}" class="${n <= r ? "on" : ""}" aria-label="${n} stars">${STAR}</button>`).join("")}</div></div>
-        <div><h4>Notes &amp; changes</h4><textarea id="notes" placeholder="What do you like, what would you change?">${esc(st.notes[c.id] || "")}</textarea></div>
+        <div><h4>Notes &amp; changes</h4><textarea id="notes" data-note="${c.id}" placeholder="What do you like, what would you change?">${esc(st.notes[c.id] || "")}</textarea></div>
         <div class="btnrow">
           <button class="btn${st.fav[c.id] ? " on-fav" : ""}" data-fav="${c.id}">${HEART}${st.fav[c.id] ? "Shortlisted" : "Shortlist"}</button>
           <button class="btn ${isWin(c) ? "on-win" : "pri"}" data-win="${c.id}">${TROPHY}${isWin(c) ? "Winner" : "Pick this one"}</button>
@@ -133,7 +136,7 @@
     <section class="intro"><div><h1>Side by side</h1><p>Toggle candidates to line them up. Defaults to your shortlist.</p></div></section>
     <div class="pick">${D.map((c) => `<button data-cmp="${c.id}" class="${ids.includes(c.id) ? "on" : ""}">${c.baseline ? "Current" : c.n + " · " + esc(c.name)}</button>`).join("")}</div>
     ${ids.length ? `<div class="cmp">${ids.map((id) => byId[id]).filter(Boolean).map((c) => `
-      <figure>${frame(c, COMPARE)}<figcaption><a href="#/d/${c.id}">${c.baseline ? "Current" : c.n + " · " + esc(c.name)}</a>${st.fav[c.id] ? `<span style="color:var(--fav)">${HEART}</span>` : ""}${st.rating[c.id] ? `<small>${st.rating[c.id]}★</small>` : ""}</figcaption></figure>`).join("")}</div>` : `<div class="empty">Pick at least one candidate above.</div>`}`;
+      <figure>${frame(c, COMPARE)}<figcaption><a href="#/d/${c.id}">${c.baseline ? "Current" : c.n + " · " + esc(c.name)}</a>${st.fav[c.id] ? `<span style="color:var(--fav)">${HEART}</span>` : ""}${st.rating[c.id] ? `<small>${st.rating[c.id]}★</small>` : ""}</figcaption><div style="width:${COMPARE}px">${noteBox(c, "inline")}</div></figure>`).join("")}</div>` : `<div class="empty">Pick at least one candidate above.</div>`}`;
   };
 
   const picksBar = () => {
@@ -253,7 +256,7 @@
     save(); rerender();
   });
   document.addEventListener("input", (e) => {
-    if (e.target.id === "notes") st.notes[curId()] = e.target.value;
+    if (e.target.dataset.note) st.notes[e.target.dataset.note] = e.target.value;
     else if (e.target.id === "overall") st.overall = e.target.value;
     else return;
     save();
