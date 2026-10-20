@@ -37,8 +37,11 @@ from the request or the project's code:
 ## 2. Scaffold
 
 ```sh
-.claude/skills/heji-candidate-review/new.sh <slug> "<Title>"   # → reports/<slug>/, picks a free port
+.claude/skills/heji-candidate-review/new.sh <slug> "<Title>"   # → reports/<YYYY-MM-DD>-<slug>/, picks a free port
 ```
+
+Every report folder starts with the date it was generated (`reports/2026-10-20-voxbrief-ask/`): pass
+the slug without a date and `new.sh` adds today's. Below, `<slug>` means that full dated name.
 
 The template (`template/`) is a working 3-candidate example. You edit only:
 

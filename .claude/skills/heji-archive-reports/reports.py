@@ -2,7 +2,7 @@
 """Archive review sites from reports/ into reports/archive/ and prove they still work.
 
   .claude/skills/heji-archive-reports/reports.py                      # list active + archived, oldest first
-  .claude/skills/heji-archive-reports/reports.py archive <slug>...    # move to reports/archive/<slug>
+  .claude/skills/heji-archive-reports/reports.py archive <slug>...    # move to reports/archive/<slug> (<slug>-2… if taken)
   .claude/skills/heji-archive-reports/reports.py archive --older-than 7
   .claude/skills/heji-archive-reports/reports.py restore <slug>...    # move back to reports/<slug>
   .claude/skills/heji-archive-reports/reports.py check [<slug>...]    # verify (default: every report)
@@ -271,8 +271,12 @@ def move(slug, src_base, dst_base):
     src, dst = src_base / slug, dst_base / slug
     if not src.is_dir():
         sys.exit(f"{src.relative_to(ROOT)} doesn't exist")
-    if dst.exists():
-        sys.exit(f"{dst.relative_to(ROOT)} already exists; pick one to keep first")
+    if dst.exists():   # never overwrite: the moved report takes the next free name, <slug>-2, -3, …
+        n = 2
+        while (dst_base / f"{slug}-{n}").exists():
+            n += 1
+        print(f"==> {dst.relative_to(ROOT)} already exists; {slug} becomes {slug}-{n}")
+        dst = dst_base / f"{slug}-{n}"
     bad = problems_before_move(src)
     if bad:
         print(f"!! {slug} would break if moved; fix these first (make them relative and inside the report):")

@@ -39,7 +39,9 @@ that memory or the conversation says is still awaiting the user's decisions with
    absolute local path (`file://`, the repo's absolute path) or a symlink out of the report. Fix
    those to relative paths inside the report first, then rerun.
 2. Stops any server serving the old folder (`python3 -m http.server` / `http-server`).
-3. Moves the folder (plain `mv`; nothing is staged).
+3. Moves the folder (plain `mv`; nothing is staged). If `reports/archive/<slug>` already exists, it
+   never overwrites or refuses: the newly archived report becomes `reports/archive/<slug>-2` (then
+   `-3`, …), and the steps below use that name. Tell the user about any rename.
 4. Rewrites `reports/<slug>` → `reports/archive/<slug>` everywhere it's written as a path: every
    report (its own `serve.sh` usage lines, the `dir:` that goes into the pasted review summary,
    other reports' "copied from" notes), tracked repo files and this repo's Claude memory

@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# Scaffold a heji-candidate-review site at reports/<slug>/ from the template next to this script.
+# Scaffold a heji-candidate-review site at reports/<date>-<slug>/ from the template next to this script.
 #
-#   .claude/skills/heji-candidate-review/new.sh <slug> "<Title>"
+#   .claude/skills/heji-candidate-review/new.sh <slug> "<Title>"   # → reports/2026-10-20-<slug>/
 #
+# The folder (and so the review's dir, key and serve.sh paths) always starts with today's date,
+# YYYY-MM-DD; a slug that already starts with a date keeps it.
 # Picks the first port from 8787 up that no other report (active or in reports/archive/) already uses:
 # browsers keep each site's hearts and ratings per port, so a reused port would mix two reviews.
 set -euo pipefail
@@ -10,12 +12,12 @@ set -euo pipefail
 SLUG="${1:?usage: new.sh <slug> \"<Title>\"}"
 TITLE="${2:?usage: new.sh <slug> \"<Title>\"}"
 [[ "$SLUG" =~ ^[a-z0-9][a-z0-9-]*$ ]] || { echo "slug must be lowercase-kebab: $SLUG" >&2; exit 1; }
+[[ "$SLUG" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}- ]] || SLUG="$(date +%F)-$SLUG"
 
 SKILL="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(git -C "$SKILL" rev-parse --show-toplevel)"
 DEST="$ROOT/reports/$SLUG"
 [[ -e "$DEST" ]] && { echo "$DEST already exists; edit it instead (new round = new candidates in it)." >&2; exit 1; }
-[[ -e "$ROOT/reports/archive/$SLUG" ]] && { echo "reports/archive/$SLUG exists; restore it (heji-archive-reports) or pick another slug." >&2; exit 1; }
 
 REPO="$(git -C "$ROOT" remote get-url origin 2>/dev/null | sed -E 's#^(git@[^:]+:|https?://[^/]+/)##; s#\.git$##' || true)"
 
