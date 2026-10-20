@@ -94,7 +94,7 @@
     const r = st.rating[c.id] || 0;
     const prefDark = c.prefers === "dark";
     const views = c.views && c.views.length
-      ? c.views.map((v) => `<figure>${frame(c, v.frame && v.frame !== KIND ? Math.min(DETAIL, dims(v.frame)[0]) : DETAIL, v.dark ?? dark(c), v.render, v.frame || KIND)}<figcaption>${esc(v.name)}</figcaption></figure>`)
+      ? c.views.map((v) => `<figure>${frame(c, v.frame && v.frame !== KIND ? Math.min(Math.max(DETAIL, 560), dims(v.frame)[0]) : DETAIL, v.dark ?? dark(c), v.render, v.frame || KIND)}<figcaption>${esc(v.name)}</figcaption></figure>`)
       : R.modes === false ? [`<figure>${frame(c, DETAIL, false)}</figure>`]
       : [`<figure>${frame(c, DETAIL, prefDark)}<figcaption>${prefDark ? "Dark (designed for)" : "Light"}</figcaption></figure>`,
          `<figure>${frame(c, DETAIL, !prefDark)}<figcaption>${prefDark ? "Light" : "Dark"}</figcaption></figure>`];
