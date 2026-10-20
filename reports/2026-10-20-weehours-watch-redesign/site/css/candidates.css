@@ -1,0 +1,1376 @@
+/* ============================================================
+   Wee Hours WatchOS Candidate Styles
+   Focus: Single-Hand Sensor, Accelerometer & Double Pinch Logging
+   Canvas: 360×440 Apple Watch 45mm/Ultra Frame
+   ============================================================ */
+
+/* ── Apple Watch Chassis Frame Simulation */
+.frame.watch {
+  width: 360px;
+  height: 440px;
+  border-radius: 46px;
+  background: #000000;
+  box-shadow: 
+    0 0 0 10px #1c1d21,
+    0 0 0 12px #2f3036,
+    0 0 0 14px #0d0e10,
+    0 25px 50px -10px rgba(0, 0, 0, 0.85);
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* Digital Crown & Side Button Accents */
+.frame.watch::before {
+  content: "";
+  position: absolute;
+  right: -15px;
+  top: 75px;
+  width: 6px;
+  height: 56px;
+  background: linear-gradient(to right, #3f3f46, #71717a, #3f3f46);
+  border-radius: 0 4px 4px 0;
+  opacity: 0.85;
+}
+.frame.watch::after {
+  content: "";
+  position: absolute;
+  right: -13px;
+  top: 165px;
+  width: 4px;
+  height: 48px;
+  background: #3f3f46;
+  border-radius: 0 3px 3px 0;
+  opacity: 0.75;
+}
+
+/* Screen base */
+.frame.watch .scr {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #000000;
+  color: #FFFFFF;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "SF Compact", "Inter", system-ui, sans-serif;
+  padding: 14px 16px 18px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Watch Status Header */
+.watch-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 24px;
+  margin-bottom: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.wh-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.wh-time {
+  color: #FFFFFF;
+}
+.wh-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.wh-sensor-pill {
+  font-size: 9px;
+  font-weight: 800;
+  background: rgba(10, 132, 255, 0.25);
+  border: 1px solid #0A84FF;
+  color: #0A84FF;
+  padding: 2px 6px;
+  border-radius: 6px;
+  letter-spacing: 0.05em;
+}
+.wh-child-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: rgba(255, 149, 0, 0.2);
+  color: #FF9F0A;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Pulse Keyframes */
+@keyframes sensor-glow {
+  0% { transform: scale(0.95); opacity: 0.7; }
+  50% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.7; }
+}
+
+/* ────────────────────────────────────────────────────────────
+   00 · CURRENT (Baseline)
+   ──────────────────────────────────────────────────────────── */
+.scr.current .today-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.scr.current .today-headline {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #FFFFFF;
+}
+.scr.current .today-confirm {
+  font-size: 11px;
+  color: #30D158;
+  font-weight: 600;
+}
+.scr.current .today-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 40px;
+  border-radius: 20px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #FFFFFF;
+  background: #1C1C1E;
+}
+.scr.current .today-btn.orange {
+  background: #FF9500;
+  color: #000;
+}
+.scr.current .today-twohand-warning {
+  margin-top: 10px;
+  font-size: 11px;
+  color: #FF453A;
+  text-align: center;
+  background: rgba(255, 69, 58, 0.15);
+  border: 1px solid #FF453A;
+  padding: 6px;
+  border-radius: 10px;
+}
+
+/* ────────────────────────────────────────────────────────────
+   01 · THE DOUBLE-PINCH COMMIT
+   ──────────────────────────────────────────────────────────── */
+.scr.doublepinchcommit .dp-commit-wrap {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 12px;
+}
+.scr.doublepinchcommit .dpc-card {
+  background: linear-gradient(135deg, #102436, #0A141E);
+  border: 2px solid #0A84FF;
+  border-radius: 22px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  box-shadow: 0 10px 30px rgba(10, 132, 255, 0.35);
+}
+.scr.doublepinchcommit .dpc-anim-ring {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(10, 132, 255, 0.2);
+  color: #0A84FF;
+  border: 2px dashed #0A84FF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: sensor-glow 1.5s infinite ease-in-out;
+}
+.scr.doublepinchcommit .dpc-cue-txt {
+  font-size: 11px;
+  font-weight: 900;
+  color: #0A84FF;
+  letter-spacing: 0.08em;
+}
+.scr.doublepinchcommit .dpc-action-title {
+  font-size: 24px;
+  font-weight: 900;
+  color: #FFF;
+  line-height: 1.1;
+}
+.scr.doublepinchcommit .dpc-sub {
+  font-size: 11px;
+  color: #A1A1A6;
+}
+.scr.doublepinchcommit .dpc-footer {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.scr.doublepinchcommit .dpc-pill {
+  font-size: 10px;
+  font-weight: 800;
+  background: #30D158;
+  color: #000;
+  padding: 2px 7px;
+  border-radius: 8px;
+}
+.scr.doublepinchcommit .dpc-sec {
+  font-size: 11px;
+  color: #8E8E93;
+}
+
+/* ────────────────────────────────────────────────────────────
+   02 · PINCH-TO-CYCLE, DOUBLE-PINCH TO LOG
+   ──────────────────────────────────────────────────────────── */
+.scr.pinchcycle .pinch-cycle-wrap {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 10px;
+}
+.scr.pinchcycle .pc-card {
+  border-radius: 20px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.scr.pinchcycle .pc-card.feed {
+  background: linear-gradient(135deg, #381A12, #1C0D09);
+  border: 2px solid #FF6B4A;
+}
+.scr.pinchcycle .pcc-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.scr.pinchcycle .pcc-step {
+  font-size: 9px;
+  font-weight: 800;
+  color: #FF6B4A;
+}
+.scr.pinchcycle .pcc-badge {
+  font-size: 9px;
+  font-weight: 800;
+  background: #FF6B4A;
+  color: #000;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.scr.pinchcycle .pcc-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #FF6B4A;
+  gap: 4px;
+}
+.scr.pinchcycle .pcc-main b {
+  font-size: 20px;
+  font-weight: 900;
+  color: #FFF;
+}
+.scr.pinchcycle .pcc-main small {
+  font-size: 12px;
+  color: #A1A1A6;
+}
+.scr.pinchcycle .pc-gesture-guide {
+  background: #18181A;
+  border-radius: 16px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+.scr.pinchcycle .pgg-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #8E8E93;
+}
+.scr.pinchcycle .pgg-row.active {
+  color: #FFF;
+}
+.scr.pinchcycle .pgg-row.active b {
+  color: #30D158;
+}
+
+/* ────────────────────────────────────────────────────────────
+   03 · DOUBLE-PINCH NURSING FLIP-FLOP
+   ──────────────────────────────────────────────────────────── */
+.scr.nursingflip .nursingflip-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 8px;
+}
+.scr.nursingflip .nf-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+.scr.nursingflip .nf-gesture-tag {
+  color: #FF6B6B;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.scr.nursingflip .nf-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  flex: 1;
+}
+.scr.nursingflip .nf-side {
+  border-radius: 18px;
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.scr.nursingflip .nf-side.left.active {
+  background: #2D1414;
+  border: 2px solid #FF6B6B;
+  color: #FFF;
+  box-shadow: 0 0 20px rgba(255, 107, 107, 0.3);
+}
+.scr.nursingflip .nf-side.right {
+  background: #141416;
+  border: 1px dashed #4ECDC4;
+  color: #4ECDC4;
+}
+.scr.nursingflip .nfs-lbl {
+  font-size: 10px;
+  font-weight: 900;
+}
+.scr.nursingflip .nfs-timer {
+  font-size: 26px;
+  font-weight: 900;
+  margin: 6px 0;
+}
+.scr.nursingflip .nfs-status {
+  font-size: 9px;
+  font-weight: 800;
+}
+.scr.nursingflip .nf-clench-bar {
+  background: #18181A;
+  padding: 8px;
+  border-radius: 14px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #FFD166;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* ────────────────────────────────────────────────────────────
+   04 · CLENCH & DOUBLE-CLENCH MUSCLE TRIGGERS
+   ──────────────────────────────────────────────────────────── */
+.scr.clenchtriggers .clench-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 8px;
+}
+.scr.clenchtriggers .clench-matrix {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+.scr.clenchtriggers .cm-row {
+  background: #18181A;
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid #28282A;
+}
+.scr.clenchtriggers .cm-row.active {
+  border-color: #30D158;
+  background: #0E2414;
+}
+.scr.clenchtriggers .cm-gesture {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #FFF;
+}
+.scr.clenchtriggers .cm-action {
+  font-size: 13px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.scr.clenchtriggers .cm-action.wet { color: #0A84FF; }
+.scr.clenchtriggers .cm-action.dirty { color: #FF9F0A; }
+.scr.clenchtriggers .cm-action.feed { color: #30D158; }
+.scr.clenchtriggers .cm-cue {
+  font-size: 10px;
+  color: #8E8E93;
+  text-align: center;
+}
+
+/* ────────────────────────────────────────────────────────────
+   05 · WRIST TILT VOLUME STEPPER
+   ──────────────────────────────────────────────────────────── */
+.scr.tiltslider .tiltslider-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 10px;
+}
+.scr.tiltslider .ts-gauge-stage {
+  flex: 1;
+  background: #141A20;
+  border: 1.5px solid #00B4D8;
+  border-radius: 22px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+}
+.scr.tiltslider .ts-tilt-arrow {
+  font-size: 10px;
+  font-weight: 800;
+  color: #00B4D8;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.scr.tiltslider .ts-vol-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.scr.tiltslider .tvd-val {
+  font-size: 54px;
+  font-weight: 900;
+  color: #00B4D8;
+  line-height: 1;
+}
+.scr.tiltslider .tvd-unit {
+  font-size: 13px;
+  color: #FFF;
+  font-weight: 700;
+}
+.scr.tiltslider .ts-confirm-bar {
+  background: #30D158;
+  color: #000;
+  padding: 10px;
+  border-radius: 18px;
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* ────────────────────────────────────────────────────────────
+   06 · LEFT/RIGHT WRIST TILT (BREAST SELECTOR)
+   ──────────────────────────────────────────────────────────── */
+.scr.tiltsides .tiltsides-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 10px;
+}
+.scr.tiltsides .ts-roll-visual {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #18181A;
+  border-radius: 20px;
+  padding: 14px;
+}
+.scr.tiltsides .tr-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.scr.tiltsides .tr-side.left.selected {
+  color: #FF6B6B;
+}
+.scr.tiltsides .trs-name {
+  font-size: 20px;
+  font-weight: 900;
+}
+.scr.tiltsides .trs-cue {
+  font-size: 10px;
+  color: #888;
+}
+.scr.tiltsides .tr-divider {
+  width: 50px;
+  height: 12px;
+  background: #28282A;
+  border-radius: 6px;
+  position: relative;
+}
+.scr.tiltsides .tr-bubble {
+  width: 20px;
+  height: 12px;
+  border-radius: 6px;
+  background: #FF6B6B;
+  position: absolute;
+  top: 0;
+  left: 2px;
+  transition: all 0.2s;
+}
+.scr.tiltsides .ts-roll-footer .trf-card {
+  background: #2D1414;
+  border: 1px solid #FF6B6B;
+  border-radius: 16px;
+  padding: 10px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.scr.tiltsides .trf-card b {
+  font-size: 13px;
+  color: #FF6B6B;
+}
+.scr.tiltsides .trf-card small {
+  font-size: 11px;
+  color: #FFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+/* ────────────────────────────────────────────────────────────
+   07 · RADIAL GYRO BUBBLE COMPASS
+   ──────────────────────────────────────────────────────────── */
+.scr.tiltbubble .tiltbubble-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 8px;
+}
+.scr.tiltbubble .tb-compass-stage {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.scr.tiltbubble .tbc-circle {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  border: 2px solid #333;
+  position: relative;
+  background: #101014;
+}
+.scr.tiltbubble .tbc-crosshair {
+  position: absolute;
+  width: 100%;
+  height: 1px;
+  top: 50%;
+  background: #222;
+}
+.scr.tiltbubble .tbc-bubble {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #30D158;
+  box-shadow: 0 0 15px #30D158;
+  top: 15px;
+  left: 54px;
+  transition: all 0.3s;
+}
+.scr.tiltbubble .tbc-label {
+  position: absolute;
+  font-size: 10px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.scr.tiltbubble .tbc-label.north { top: 6px; color: #30D158; }
+.scr.tiltbubble .tbc-label.east { right: 8px; color: #0A84FF; }
+.scr.tiltbubble .tbc-label.south { bottom: 6px; color: #BF5AF2; }
+.scr.tiltbubble .tbc-label.west { left: 8px; color: #FF9F0A; }
+.scr.tiltbubble .tb-footer {
+  font-size: 11px;
+  color: #30D158;
+  text-align: center;
+  font-weight: 700;
+}
+
+/* ────────────────────────────────────────────────────────────
+   08 · GRAVITY SNAP & DROP
+   ──────────────────────────────────────────────────────────── */
+.scr.gravitydrop .gravity-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 12px;
+}
+.scr.gravitydrop .gs-hero {
+  flex: 1;
+  background: #0E1E24;
+  border: 2px solid #30B0C7;
+  border-radius: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 10px;
+}
+.scr.gravitydrop .gs-snap-ico {
+  color: #30B0C7;
+  animation: sensor-glow 1.2s infinite alternate;
+}
+.scr.gravitydrop .gs-title {
+  font-size: 20px;
+  font-weight: 900;
+  color: #FFF;
+}
+.scr.gravitydrop .gs-sub {
+  font-size: 12px;
+  color: #30B0C7;
+  font-weight: 700;
+}
+.scr.gravitydrop .gs-indicator {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.scr.gravitydrop .gsi-bar {
+  width: 100%;
+  height: 6px;
+  background: #222;
+  border-radius: 3px;
+  position: relative;
+  overflow: hidden;
+}
+.scr.gravitydrop .gsi-bar.active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 75%;
+  height: 100%;
+  background: #30B0C7;
+}
+.scr.gravitydrop .gsi-txt {
+  font-size: 10px;
+  color: #888;
+  text-align: center;
+}
+
+/* ────────────────────────────────────────────────────────────
+   09 · WRIST FLICK PHYSICAL UNDO
+   ──────────────────────────────────────────────────────────── */
+.scr.flickundo .flickundo-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 10px;
+}
+.scr.flickundo .fu-banner {
+  background: #14281A;
+  border: 1px solid #30D158;
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #30D158;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.scr.flickundo .fu-center {
+  flex: 1;
+  background: #2D1A08;
+  border: 1.5px solid #FF9F0A;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+}
+.scr.flickundo .fu-anim-flick {
+  color: #FF9F0A;
+  animation: sensor-glow 1s infinite alternate;
+}
+.scr.flickundo .fu-title {
+  font-size: 17px;
+  font-weight: 900;
+  color: #FFF;
+}
+.scr.flickundo .fu-countdown {
+  font-size: 12px;
+  color: #FF9F0A;
+}
+.scr.flickundo .fu-bar {
+  font-size: 10px;
+  color: #888;
+  text-align: center;
+}
+
+/* ────────────────────────────────────────────────────────────
+   10 · SHAKE-TO-TOGGLE SLEEP STATE
+   ──────────────────────────────────────────────────────────── */
+.scr.shaketoggle .shake-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 10px;
+}
+.scr.shaketoggle .shake-stage {
+  flex: 1;
+  background: #18182E;
+  border: 2px solid #5E5CE6;
+  border-radius: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 10px;
+}
+.scr.shaketoggle .ss-shake-ico {
+  color: #5E5CE6;
+}
+.scr.shaketoggle .sst-sub {
+  font-size: 10px;
+  font-weight: 800;
+  color: #A1A1A6;
+  display: block;
+}
+.scr.shaketoggle .sst-main {
+  font-size: 20px;
+  font-weight: 900;
+  color: #FFF;
+}
+.scr.shaketoggle .ss-card {
+  background: #141416;
+  border-radius: 14px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.scr.shaketoggle .ssc-pill {
+  font-size: 9px;
+  font-weight: 800;
+  color: #5E5CE6;
+}
+.scr.shaketoggle .ssc-desc {
+  font-size: 11px;
+  color: #8E8E93;
+}
+
+/* ────────────────────────────────────────────────────────────
+   11 · CADENCE ROCKING NAP ASSISTANT
+   ──────────────────────────────────────────────────────────── */
+.scr.rockingdetector .rocking-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 10px;
+}
+.scr.rockingdetector .rs-cadence-box {
+  background: #1E1026;
+  border: 1.5px solid #AF52DE;
+  border-radius: 18px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.scr.rockingdetector .rcb-header {
+  font-size: 9px;
+  font-weight: 800;
+  color: #AF52DE;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.scr.rockingdetector .rcb-pulse {
+  color: #AF52DE;
+  animation: sensor-glow 1s infinite;
+}
+.scr.rockingdetector .rcb-chart {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+  height: 36px;
+}
+.scr.rockingdetector .rcb-bar {
+  width: 8px;
+  background: #AF52DE;
+  border-radius: 4px;
+}
+.scr.rockingdetector .rcb-bar.h1 { height: 12px; }
+.scr.rockingdetector .rcb-bar.h2 { height: 24px; }
+.scr.rockingdetector .rcb-bar.h3 { height: 32px; }
+.scr.rockingdetector .rcb-bar.h4 { height: 36px; }
+
+.scr.rockingdetector .rcb-question {
+  font-size: 14px;
+  font-weight: 800;
+  color: #FFF;
+}
+.scr.rockingdetector .rs-confirm-prompt {
+  background: #30D158;
+  color: #000;
+  padding: 12px;
+  border-radius: 18px;
+  font-size: 13px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: auto;
+}
+
+/* ────────────────────────────────────────────────────────────
+   12 · RAISE-TO-MOUTH AUDIO TRIGGER
+   ──────────────────────────────────────────────────────────── */
+.scr.raisetomouth .raisemouth-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 10px;
+}
+.scr.raisetomouth .rm-hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 12px;
+}
+.scr.raisetomouth .rm-orb-listening {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #FF9500, #FF5E00);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #000;
+  box-shadow: 0 0 25px rgba(255, 149, 0, 0.6);
+  animation: sensor-glow 1.5s infinite alternate;
+}
+.scr.raisetomouth .rmt-status {
+  font-size: 10px;
+  font-weight: 800;
+  color: #FF9500;
+  display: block;
+}
+.scr.raisetomouth .rmt-whisper {
+  font-size: 18px;
+  font-weight: 900;
+  color: #FFF;
+}
+.scr.raisetomouth .rm-footer {
+  font-size: 11px;
+  color: #8E8E93;
+  text-align: center;
+}
+
+/* ────────────────────────────────────────────────────────────
+   13 · HOLD CLENCH DURATION TIMER
+   ──────────────────────────────────────────────────────────── */
+.scr.fingerclenchhold .clenchhold-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 10px;
+}
+.scr.fingerclenchhold .ch-stage {
+  flex: 1;
+  background: #240C0E;
+  border: 2px solid #FF6B6B;
+  border-radius: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.scr.fingerclenchhold .ch-clench-ico {
+  color: #FF6B6B;
+  animation: sensor-glow 1s infinite alternate;
+}
+.scr.fingerclenchhold .ch-timer {
+  font-size: 44px;
+  font-weight: 900;
+  color: #FFF;
+  line-height: 1;
+}
+.scr.fingerclenchhold .ch-sub {
+  font-size: 11px;
+  font-weight: 800;
+  color: #30D158;
+}
+.scr.fingerclenchhold .ch-footer {
+  font-size: 10px;
+  color: #8E8E93;
+  text-align: center;
+}
+
+/* ────────────────────────────────────────────────────────────
+   14 · SAME-HAND BEZEL ROLL
+   ──────────────────────────────────────────────────────────── */
+.scr.thumbalongbezel .bezelroll-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 10px;
+}
+.scr.thumbalongbezel .br-crown-guide {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: center;
+}
+.scr.thumbalongbezel .brg-item {
+  background: #141416;
+  border-radius: 14px;
+  padding: 8px 12px;
+  color: #666;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.scr.thumbalongbezel .brg-item.active {
+  background: #2D200E;
+  border: 2px solid #FFD166;
+  color: #FFF;
+  padding: 12px;
+}
+.scr.thumbalongbezel .brg-item.active b {
+  font-size: 18px;
+  color: #FFD166;
+}
+.scr.thumbalongbezel .br-confirm {
+  background: #00B4D8;
+  color: #000;
+  padding: 10px;
+  border-radius: 18px;
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* ────────────────────────────────────────────────────────────
+   15 · BLIND AUDIO & HAPTIC STEPPER
+   ──────────────────────────────────────────────────────────── */
+.scr.audiblehapticstep .blindhaptic-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 8px;
+}
+.scr.audiblehapticstep .bhs-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  font-weight: 800;
+  color: #888;
+}
+.scr.audiblehapticstep .bhs-tag {
+  color: #FFF;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.scr.audiblehapticstep .bhs-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+}
+.scr.audiblehapticstep .bhs-pulse-ring {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  border: 2px solid #FFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.scr.audiblehapticstep .bhs-beeps {
+  font-size: 20px;
+  letter-spacing: 4px;
+}
+.scr.audiblehapticstep .bhs-text {
+  font-size: 18px;
+  font-weight: 900;
+}
+.scr.audiblehapticstep .bhs-sub {
+  font-size: 11px;
+  color: #888;
+}
+.scr.audiblehapticstep .bhs-footer {
+  font-size: 10px;
+  color: #666;
+  text-align: center;
+}
+
+/* ────────────────────────────────────────────────────────────
+   16 · 3-STAGE ARM ELEVATION ELEVATOR
+   ──────────────────────────────────────────────────────────── */
+.scr.elevationswitches .elevation-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 8px;
+}
+.scr.elevationswitches .el-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+.scr.elevationswitches .el-level {
+  flex: 1;
+  border-radius: 14px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #141416;
+  color: #666;
+}
+.scr.elevationswitches .el-level.active {
+  background: #122818;
+  border: 2px solid #30D158;
+  color: #FFF;
+}
+.scr.elevationswitches .ell-tag {
+  font-size: 9px;
+  font-weight: 800;
+}
+.scr.elevationswitches .el-footer {
+  font-size: 12px;
+  font-weight: 800;
+  color: #30D158;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* ────────────────────────────────────────────────────────────
+   17 · DOUBLE-PINCH TWIN SWITCHER
+   ──────────────────────────────────────────────────────────── */
+.scr.twinflickswitch .twinflick-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 8px;
+}
+.scr.twinflickswitch .tf-header {
+  display: flex;
+  background: #18181A;
+  border-radius: 12px;
+  padding: 2px;
+}
+.scr.twinflickswitch .tf-baby {
+  flex: 1;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px;
+  border-radius: 10px;
+  color: #666;
+}
+.scr.twinflickswitch .tf-baby.mia.active {
+  background: #FF6B6B;
+  color: #000;
+}
+.scr.twinflickswitch .tf-card {
+  background: #2D1414;
+  border: 1.5px solid #FF6B6B;
+  border-radius: 18px;
+  padding: 14px;
+  text-align: center;
+}
+.scr.twinflickswitch .tfc-name {
+  font-size: 16px;
+  font-weight: 900;
+  color: #FFF;
+}
+.scr.twinflickswitch .tfc-sub {
+  font-size: 11px;
+  color: #A1A1A6;
+}
+.scr.twinflickswitch .tf-controls {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.scr.twinflickswitch .tfc-row {
+  background: #18181A;
+  padding: 8px 10px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #888;
+}
+.scr.twinflickswitch .tfc-row.active {
+  color: #30D158;
+  font-weight: 800;
+}
+
+/* ────────────────────────────────────────────────────────────
+   18 · CLENCH-HOLD TANDEM SYNC
+   ──────────────────────────────────────────────────────────── */
+.scr.clenchsyncboth .clenchsync-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 10px;
+}
+.scr.clenchsyncboth .cs-hero {
+  flex: 1;
+  background: #2D240E;
+  border: 2px solid #FFD166;
+  border-radius: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+}
+.scr.clenchsyncboth .cs-anim-clench {
+  color: #FFD166;
+  animation: sensor-glow 1s infinite alternate;
+}
+.scr.clenchsyncboth .cs-title {
+  font-size: 18px;
+  font-weight: 900;
+  color: #FFD166;
+}
+.scr.clenchsyncboth .cs-sub {
+  font-size: 11px;
+  color: #FFF;
+}
+.scr.clenchsyncboth .cs-bar {
+  font-size: 10px;
+  color: #888;
+  text-align: center;
+}
+
+/* ────────────────────────────────────────────────────────────
+   19 · CHEST PROXIMITY SLEEP SENSOR
+   ──────────────────────────────────────────────────────────── */
+.scr.chestproximity .chestprox-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 10px;
+}
+.scr.chestproximity .cp-pulse-box {
+  flex: 1;
+  background: #260E18;
+  border: 2px solid #FF375F;
+  border-radius: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+}
+.scr.chestproximity .cpp-ico {
+  color: #FF375F;
+  animation: sensor-glow 1.2s infinite;
+}
+.scr.chestproximity .cpp-status {
+  font-size: 14px;
+  font-weight: 900;
+  color: #FFF;
+}
+.scr.chestproximity .cpp-cadence {
+  font-size: 11px;
+  color: #A1A1A6;
+}
+.scr.chestproximity .cp-footer {
+  font-size: 10px;
+  color: #888;
+  text-align: center;
+}
+
+/* ────────────────────────────────────────────────────────────
+   20 · SHIFT WRIST-BUMP TRANSFER
+   ──────────────────────────────────────────────────────────── */
+.scr.bumptransfer .bump-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 10px;
+}
+.scr.bumptransfer .bs-hero {
+  flex: 1;
+  background: #1C1028;
+  border: 2px solid #AF52DE;
+  border-radius: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+}
+.scr.bumptransfer .bs-bump-ico {
+  color: #AF52DE;
+  animation: sensor-glow 1s infinite alternate;
+}
+.scr.bumptransfer .bs-title {
+  font-size: 18px;
+  font-weight: 900;
+  color: #FFF;
+}
+.scr.bumptransfer .bs-sub {
+  font-size: 12px;
+  color: #30B0C7;
+  font-weight: 700;
+}
+.scr.bumptransfer .bs-footer {
+  font-size: 10px;
+  color: #888;
+  text-align: center;
+}
+
+/* ────────────────────────────────────────────────────────────
+   ROUND 4 · TILT-LOCK MODE (21–25): compass, lock card, iPhone screens
+   Shared by .scr.tiltlock, .tiltlocksub, .tiltlocknopinch, .tiltlocksectors, .tiltlockcatchup
+   ──────────────────────────────────────────────────────────── */
+.r4 { display: flex; flex-direction: column; height: 100%; }
+.r4 .cmp { position: relative; margin: 6px auto 0; flex: none; }
+.cmp-ring { position: absolute; inset: 0; }
+.cmp-b { position: absolute; left: 50%; top: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff 0 12%, var(--c) 45%); box-shadow: 0 0 18px var(--c); }
+.cmp-l { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 1px; font-size: 11px; font-weight: 800;
+  color: var(--c); opacity: .5; letter-spacing: .02em; }
+.cmp-l.on { opacity: 1; }
+.cmp-l.on span { padding: 0 6px; border-radius: 6px; background: var(--c); color: #000; }
+.cmp-l.n { top: 14px; left: 50%; transform: translateX(-50%); }
+.cmp-l.s { bottom: 14px; left: 50%; transform: translateX(-50%); }
+.cmp-l.e { right: 12px; top: 50%; transform: translateY(-50%); }
+.cmp-l.w { left: 12px; top: 50%; transform: translateY(-50%); }
+.r4-foot { margin-top: auto; text-align: center; font-size: 13px; font-weight: 700; color: #8E8E93; }
+
+.lock { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; border-radius: 26px;
+  background: color-mix(in srgb, var(--c) 14%, #000); box-shadow: inset 0 0 0 2px var(--c); padding: 14px; text-align: center; }
+.lock-ico { width: 62px; height: 62px; border-radius: 50%; display: grid; place-items: center; background: var(--c); color: #000; }
+.lock-t { font-size: 24px; font-weight: 800; }
+.lock-s { font-size: 13px; color: #AEAEB2; }
+.lock-pinch { display: flex; align-items: center; gap: 6px; margin-top: 4px; padding: 7px 14px; border-radius: 99px; background: var(--c); color: #000; font-size: 14px; font-weight: 800; }
+.lock-bar { width: 70%; height: 4px; border-radius: 2px; background: #2C2C2E; overflow: hidden; margin-top: 4px; }
+.lock-bar i { display: block; height: 100%; background: var(--c); }
+.lock-x { font-size: 10.5px; color: #8E8E93; }
+
+.done { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; }
+.done-ok { width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; background: #30D158; color: #000; margin-bottom: 6px; }
+.done-t { font-size: 24px; font-weight: 800; }
+.done-s { font-size: 13px; color: #AEAEB2; }
+.done-later { margin-top: 8px; font-size: 12px; color: #FFD60A; padding: 5px 10px; border-radius: 10px; background: rgba(255, 214, 10, .12); }
+.done-undo { margin-top: 6px; display: flex; gap: 5px; align-items: center; font-size: 11px; color: #8E8E93; }
+
+.np { flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; }
+.np-t { display: flex; gap: 6px; align-items: center; font-size: 19px; font-weight: 800; }
+.np .cmp { margin-top: 4px; }
+.np-ring { position: absolute; top: 108px; left: 50%; width: 46px; height: 46px; margin-left: -23px; border-radius: 50%;
+  border: 3px solid #3A3A3C; }
+.np-ring.on { border: none; background: conic-gradient(#fff var(--p), #3A3A3C 0); -webkit-mask: radial-gradient(circle, transparent 19px, #000 20px); mask: radial-gradient(circle, transparent 19px, #000 20px); }
+.np .r4-foot { color: #fff; }
+
+.scr.tiltlockcatchup .cu { display: flex; flex-direction: column; gap: 7px; }
+.cu-q { padding: 8px 10px; border-radius: 14px; background: rgba(255, 214, 10, .1); box-shadow: inset 0 0 0 1px rgba(255, 214, 10, .5); }
+.cu-h { display: flex; gap: 5px; align-items: center; font-size: 12px; font-weight: 700; color: #FFD60A; }
+.cu-ch { display: flex; gap: 5px; margin-top: 6px; }
+.cu-ch span { flex: 1; text-align: center; padding: 6px 0; border-radius: 99px; background: #2C2C2E; font-size: 12px; font-weight: 700; }
+.scr.tiltlockcatchup .today-headline { font-size: 14px; font-weight: 600; margin-top: 2px; }
+.scr.tiltlockcatchup .today-btn { display: flex; align-items: center; justify-content: center; gap: 8px; height: 38px; border-radius: 19px; border: 0;
+  font: 600 14px/1 inherit; color: #fff; background: #1C1C1E; }
+
+/* iPhone screens shown as extra views (Settings, Home's Needs details card): light and .dk dark */
+.ph { --bg: #F2F2F7; --card: #fff; --ink: #000; --mut: #6C6C70; --sep: #E5E5EA; --acc: #FF9500;
+  min-height: 100%; background: var(--bg); color: var(--ink); font: 15px/1.35 -apple-system, "SF Pro Text", Inter, system-ui, sans-serif; padding: 0 16px 30px; }
+.ph.dk { --bg: #000; --card: #1C1C1E; --ink: #fff; --mut: #98989F; --sep: #38383A; }
+.ph-status { display: flex; justify-content: space-between; padding: 16px 14px 8px; font-size: 15px; }
+.ph-status span { font-size: 11px; letter-spacing: 1px; }
+.ph-nav { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 6px 0 14px; }
+.ph-nav span { color: var(--acc); }
+.ph-grp { font-size: 12.5px; color: var(--mut); padding: 14px 14px 6px; letter-spacing: .02em; }
+.ph-card { background: var(--card); border-radius: 12px; overflow: hidden; }
+.ph-row { display: flex; justify-content: space-between; gap: 10px; padding: 11px 14px; border-top: .5px solid var(--sep); }
+.ph-row:first-child { border-top: 0; }
+.ph-row em { font-style: normal; color: var(--mut); }
+.ph-row em.ck { color: var(--acc); font-weight: 700; }
+.ph-seg { display: flex; margin: 0 14px 12px; padding: 2px; border-radius: 9px; background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.ph-seg span { flex: 1; text-align: center; padding: 6px 0; font-size: 13.5px; font-weight: 600; border-radius: 7px; }
+.ph-seg .on { background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+.ph.dk .ph-seg .on { background: #636366; }
+.ph-foot { margin: 6px 14px 0; font-size: 12.5px; color: var(--mut); }
+.ph-mini { display: grid; grid-template-columns: 1fr auto 1fr; grid-template-rows: auto auto auto; place-items: center; gap: 8px; padding: 16px; }
+.ph-mini.big { margin-top: 4px; padding: 26px 16px; gap: 14px; }
+.ph-dir { display: flex; gap: 5px; align-items: center; padding: 6px 11px; border-radius: 99px; font-size: 13.5px; font-weight: 700; color: var(--c);
+  background: color-mix(in srgb, var(--c) 14%, transparent); }
+.ph-dir.n { grid-column: 2; grid-row: 1; } .ph-dir.w { grid-column: 1; grid-row: 2; }
+.ph-dir.e { grid-column: 3; grid-row: 2; } .ph-dir.s { grid-column: 2; grid-row: 3; }
+.ph-dot { grid-column: 2; grid-row: 2; width: 26px; height: 26px; border-radius: 50%; border: 2px dashed var(--mut); }
+.ph-title { font-size: 32px; font-weight: 800; padding: 8px 2px 0; }
+.ph-line { color: var(--mut); padding: 0 2px 14px; }
+.ph-need { background: var(--card); border-radius: 14px; padding: 12px 14px 4px; box-shadow: inset 0 0 0 1.5px var(--acc); }
+.ph-need-h { display: flex; gap: 6px; align-items: center; color: var(--acc); }
+.ph-need-h b { color: var(--ink); }
+.ph-need-h span { margin-left: auto; font-size: 12.5px; color: var(--mut); }
+.ph-need-r { padding: 10px 0; border-top: .5px solid var(--sep); margin-top: 8px; }
+.ph-need-r small { display: block; color: var(--mut); font-size: 13px; }
+.ph-chips { display: flex; gap: 6px; margin-top: 7px; }
+.ph-chips span { flex: 1; text-align: center; padding: 7px 0; border-radius: 99px; font-size: 13.5px; font-weight: 600;
+  background: color-mix(in srgb, var(--acc) 14%, transparent); color: var(--acc); }
