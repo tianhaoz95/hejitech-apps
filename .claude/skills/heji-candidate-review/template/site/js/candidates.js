@@ -7,7 +7,13 @@
 
   window.REVIEW = {
     key: "__SLUG__-v1",                 // localStorage key; keep it across rounds so ratings survive
-    dir: "reports/__SLUG__",
+    dir: "reports/__SLUG__",             // repo-relative; heji-archive-reports rewrites it when archiving
+    repo: "__REPO__",
+    port: __PORT__,
+    // The hand-off ("Copy summary") is read by an agent that never saw this conversation: fill these in.
+    project: "projects/<name>",          // the project the work lands in
+    context: ["projects/<name>/CLAUDE.md"],  // files to read first: the screens/services the candidates change
+    brief: "What the user asked for, in their words, plus the constraints you settled in the brief.",
     title: "__TITLE__",
     subtitle: "3 candidates + today's screen",
     heading: "Pick a direction",
@@ -40,6 +46,26 @@
         palette: [["Night", "#17120F"], ["Ember", "#E98A5F"]],
         facts: { Effort: "M", Needs: "A colour per item" },
         render: () => phone(`<h1>Trips</h1>${items.map((t) => `<div class="tile" data-item><b>${t.title}</b><small>${t.sub}</small></div>`).join("")}`),
+        // Anything beyond looks (data, sync, services, ML/eval, performance) gets a spec and design blocks
+        // (js/design.js): they show under the mocks and go into the hand-off as text.
+        spec: {
+          today: ["Trip colour is derived from the title hash at render time (TripCard)"],
+          proposed: ["Store `accent` on the trip; pick it from the cover photo once, on import"],
+          files: ["lib/models/trip.dart", "lib/services/import_service.dart", "lib/widgets/trip_card.dart"],
+          risks: ["Old trips have no accent: fall back to the title hash"],
+          verify: ["Import a trip with a photo → card uses its colour in light and dark"],
+        },
+        design: [
+          { kind: "flow", title: "Where the colour comes from", note: "Illustrative example of a Today/Proposed diagram.",
+            today: { nodes: [{ id: "t", label: "Trip", sub: "title", col: 0, row: 0, type: "store" }, { id: "c", label: "TripCard", sub: "hash(title)", col: 1, row: 0, type: "ui" }],
+              edges: [{ from: "t", to: "c", label: "title" }] },
+            proposed: { nodes: [{ id: "i", label: "Import", sub: "cover photo", col: 0, row: 0 }, { id: "p", label: "Palette", sub: "dominant colour", col: 1, row: 0, state: "new" },
+              { id: "t", label: "Trip", sub: "+ accent", col: 2, row: 0, type: "store", state: "changed" }, { id: "c", label: "TripCard", sub: "trip.accent", col: 3, row: 0, type: "ui", state: "changed" }],
+              edges: [{ from: "i", to: "p", label: "image", state: "new" }, { from: "p", to: "t", label: "accent", state: "new" }, { from: "t", to: "c" }] } },
+          { kind: "chart", title: "Readable contrast (example numbers)", type: "bar", unit: "%", max: 100, x: ["Light", "Dark"],
+            series: [{ name: "Cards passing 4.5:1 today", values: [72, 64], basis: "measured", source: "contrast script on 40 sample trips" },
+              { name: "Goal", values: [100, 100], basis: "target" }] },
+        ],
       },
       {
         id: "dense", n: 3, name: "Dense table", round: 1,

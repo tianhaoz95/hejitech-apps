@@ -1,18 +1,21 @@
 :root {
   --bg: #F7F2EA; --panel: #FFFDF9; --ink: #2B221C; --mut: #7D6E62; --line: #E8DDCF; --acc: #C8603A; --acc-ink: #fff;
   --fav: #E0533D; --win: #D69A1F; --shadow: 0 1px 2px rgba(60,40,20,.08), 0 12px 32px -18px rgba(60,40,20,.35);
+  --s0: #C8603A; --s1: #3F7CAC; --s2: #6A9A4F; --s3: #9A6BB0; --new: #3F8A4E; --chg: #C98A1C; --del: #B5473A;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #171310; --panel: #221C17; --ink: #F3E9DE; --mut: #A8998B; --line: #382E26; --acc: #E98A5F; --acc-ink: #24120A;
     --fav: #F07A64; --win: #F0BE52; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 32px -18px rgba(0,0,0,.7);
+    --s0: #E98A5F; --s1: #6FA8D6; --s2: #8FC277; --s3: #C39AD8; --new: #7CC48A; --chg: #F0BE52; --del: #F07A64;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #171310; --panel: #221C17; --ink: #F3E9DE; --mut: #A8998B; --line: #382E26; --acc: #E98A5F; --acc-ink: #24120A;
   --fav: #F07A64; --win: #F0BE52; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 32px -18px rgba(0,0,0,.7);
+  --s0: #E98A5F; --s1: #6FA8D6; --s2: #8FC277; --s3: #C39AD8; --new: #7CC48A; --chg: #F0BE52; --del: #F07A64;
   color-scheme: dark;
 }
 
@@ -168,3 +171,61 @@ textarea:focus { outline: 2px solid color-mix(in srgb, var(--acc) 50%, transpare
 .overall h3 { margin: 0; font-size: 16px; }
 .overall p { margin: 0; font-size: 13px; color: var(--mut); }
 .pw > .fx > .phone, .pw > .fx > .frame { position: static; }
+
+/* ── design section (js/design.js): spec cards, flow diagrams, charts, tables, code, steps */
+.design { align-self: stretch; display: flex; flex-direction: column; gap: 18px; padding: 22px; border-radius: 22px; background: var(--panel); box-shadow: var(--shadow); min-width: 0; }
+.design > h3 { margin: 0; font-size: 20px; letter-spacing: -.01em; }
+.design h4 { margin: 0 0 4px; font-size: 15px; }
+.design h5 { margin: 0 0 6px; font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--mut); }
+.design .dn { margin: 0 0 10px; color: var(--mut); font-size: 13.5px; max-width: 80ch; }
+.design .dbb { overflow-x: auto; }
+.spec { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.spec > div { padding: 12px 14px; border-radius: 14px; background: var(--bg); font-size: 13.5px; }
+.spec ul { margin: 0; padding-left: 18px; } .spec li { margin: 3px 0; }
+.spec .proposed { box-shadow: inset 3px 0 0 var(--new); } .spec .risks { box-shadow: inset 3px 0 0 var(--chg); }
+.spec code, .design td code { font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; }
+.db + .db { padding-top: 16px; border-top: 1px solid var(--line); }
+.dtog { margin-bottom: 10px; }
+.dg { max-width: 100%; height: auto; font: 12px Inter, system-ui, sans-serif; }
+.dg .n rect { fill: var(--bg); stroke: var(--line); stroke-width: 1.5; }
+.dg .n .cap { fill: none; stroke: var(--line); stroke-width: 1.5; }
+.dg .n.new rect { fill: color-mix(in srgb, var(--new) 14%, var(--panel)); stroke: var(--new); }
+.dg .n.changed rect { fill: color-mix(in srgb, var(--chg) 14%, var(--panel)); stroke: var(--chg); }
+.dg .n.removed rect { stroke: var(--del); stroke-dasharray: 5 4; opacity: .7; }
+.dg .n.removed .nl { text-decoration: line-through; }
+.dg .n.external rect { stroke-dasharray: 3 3; }
+.dg .n.ui rect { stroke-width: 2.5; }
+.dg .nl { fill: var(--ink); font-weight: 700; font-size: 13px; }
+.dg .ns { fill: var(--mut); font-size: 11px; }
+.dg .tag { font-size: 9.5px; font-weight: 800; letter-spacing: .08em; fill: var(--mut); }
+.dg .n.new .tag { fill: var(--new); } .dg .n.changed .tag { fill: var(--chg); } .dg .n.removed .tag { fill: var(--del); }
+.dg .e { fill: none; stroke: var(--mut); stroke-width: 1.6; }
+.dg .e.new { stroke: var(--new); stroke-width: 2.2; } .dg .e.changed { stroke: var(--chg); stroke-width: 2.2; }
+.dg .e.removed { stroke: var(--del); stroke-dasharray: 5 4; }
+.dg .mk { fill: var(--mut); } .dg .mk.new { fill: var(--new); } .dg .mk.changed { fill: var(--chg); } .dg .mk.removed { fill: var(--del); }
+.dg .el { fill: var(--mut); font-size: 11px; paint-order: stroke; stroke: var(--panel); stroke-width: 4px; }
+.dkey { display: flex; gap: 14px; margin-top: 6px; font-size: 12px; color: var(--mut); }
+.dkey .k::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 5px; border-radius: 3px; vertical-align: -1px; border: 1.5px solid; }
+.dkey .new::before { border-color: var(--new); background: color-mix(in srgb, var(--new) 20%, transparent); }
+.dkey .changed::before { border-color: var(--chg); background: color-mix(in srgb, var(--chg) 20%, transparent); }
+.dkey .removed::before { border-color: var(--del); border-style: dashed; }
+.ch { max-width: 100%; height: auto; font: 11px Inter, system-ui, sans-serif; }
+.ch .gl { stroke: var(--line); } .ch .ax { fill: var(--mut); } .ch .vl { fill: var(--ink); font-weight: 700; font-size: 10.5px; }
+.ch .s0 { --c: var(--s0); } .ch .s1 { --c: var(--s1); } .ch .s2 { --c: var(--s2); } .ch .s3 { --c: var(--s3); }
+.ch .br.measured { fill: var(--c); }
+.ch .br.target, .ch .br.estimate { stroke: var(--c); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.ch .hb { fill: color-mix(in srgb, var(--c) 18%, transparent); } .ch .hl { stroke: var(--c); stroke-width: 2; }
+.ch .ln { fill: none; stroke: var(--c); stroke-width: 2.2; } .ch .ln.target, .ch .ln.estimate { stroke-dasharray: 6 4; }
+.ch .dt { fill: var(--c); }
+.lg { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 6px; font-size: 12.5px; }
+.lg i { display: inline-block; width: 12px; height: 12px; margin-right: 6px; border-radius: 3px; vertical-align: -1px; }
+.lg .s0 { --c: var(--s0); } .lg .s1 { --c: var(--s1); } .lg .s2 { --c: var(--s2); } .lg .s3 { --c: var(--s3); }
+.lg i.measured { background: var(--c); } .lg i.target, .lg i.estimate { border: 1.5px dashed var(--c); background: color-mix(in srgb, var(--c) 18%, transparent); }
+.lg em { color: var(--mut); font-style: normal; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+.design table.dt { width: 100%; border-collapse: collapse; font-size: 13px; }
+.design table.dt th, .design table.dt td { text-align: left; vertical-align: top; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+.design table.dt th { font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--mut); }
+.design pre { margin: 0; padding: 12px 14px; border-radius: 12px; background: var(--bg); overflow-x: auto; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.design .ba { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.design ol.st { margin: 0; padding-left: 22px; } .design ol.st li { margin: 4px 0; }
+.design ol.st b { display: inline-block; min-width: 110px; margin-right: 8px; color: var(--acc); }

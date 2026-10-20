@@ -1,6 +1,6 @@
 // Review engine: gallery → detail → compare, with hearts, star ratings, per-candidate notes, a winner
 // (one per group when candidates are grouped), overall notes and a "Copy summary" that the user pastes
-// back to Claude. Everything is configured by window.REVIEW (js/candidates.js); nothing here should
+// to whichever agent implements it. Everything is configured by window.REVIEW (js/candidates.js); nothing here should
 // need editing for a new review.
 (() => {
   const R = window.REVIEW;
@@ -101,7 +101,7 @@
     const facts = Object.entries(c.facts || {});
     return `
     <div class="detail">
-      <div class="views"><div class="row">${views.join("")}</div></div>
+      <div class="views"><div class="row">${views.join("")}</div>${window.DESIGN ? DESIGN.section(c) : ""}</div>
       <aside class="info">
         <div class="nav"><a href="#/d/${prev.id}">← ${esc(prev.name)}</a><a href="#/">All</a><a href="#/d/${nxt.id}">${esc(nxt.name)} →</a></div>
         <div><h2><small>${c.baseline ? "BASELINE" : (grouped ? esc(groups.find((g) => g.id === gid(c))?.name || "") + " · " : "") + "CANDIDATE " + no(c)}</small>${esc(c.name)}</h2><p class="tag">${esc(c.tagline || "")}</p></div>
@@ -145,28 +145,70 @@
       <button class="btn pri" id="copy">Copy summary</button>`;
   };
 
-  // The summary is the hand-off back to Claude: ids in backticks so it can map feedback to code.
+  // "Copy summary" writes a hand-off for whichever agent picks this up next, possibly in a new session
+  // that never saw this review: where everything is, the brief, each candidate the user reacted to in
+  // full (concept, moves, needs, design as text), the user's feedback and what to do next.
   const summary = () => {
-    const line = (c) => {
-      const bits = [isWin(c) ? "🏆 winner" : "", st.rating[c.id] ? `${st.rating[c.id]}★` : "", st.fav[c.id] ? "♥" : ""].filter(Boolean).join(" · ");
-      const notes = (st.notes[c.id] || "").trim();
-      return `- **${no(c)} ${c.name}** (\`${c.id}\`)${bits ? ` — ${bits}` : ""}${notes ? `\n  - ${notes.replace(/\n+/g, "\n  - ")}` : ""}`;
-    };
+    const dir = R.dir || "reports/<slug>";
+    const filled = (v) => v && !/<name>|^What the user asked for/.test(String(v));   // skip the template's placeholders
+    const decided = groups.filter((g) => st.win[g.id] && byId[st.win[g.id]]);
+    const allDecided = decided.length === groups.length;
     const touched = (list) => list.filter((c) => st.fav[c.id] || st.rating[c.id] || (st.notes[c.id] || "").trim() || isWin(c))
       .sort((a, b) => (isWin(b) - isWin(a)) || ((st.rating[b.id] || 0) - (st.rating[a.id] || 0)));
-    const out = [`# ${R.title} — review${R.round > 1 ? ` (round ${R.round})` : ""}`, "", `Review site: \`${R.dir || "reports/<slug>"}\``, ""];
+    const full = (c) => {
+      const bits = [isWin(c) ? "🏆 winner" : "", st.rating[c.id] ? `${st.rating[c.id]}★` : "", st.fav[c.id] ? "♥ shortlisted" : ""].filter(Boolean).join(" · ");
+      const notes = (st.notes[c.id] || "").trim();
+      const facts = Object.entries(c.facts || {});
+      const o = [`### ${no(c)} ${c.name} (\`${c.id}\`)${bits ? ` — ${bits}` : ""}`, ""];
+      if (notes) o.push("**User's notes (these win over the text below):**", "", ...notes.split(/\n+/).map((l) => `> ${l}`), "");
+      if (c.tagline) o.push(`*${c.tagline}*`, "");
+      if (c.concept) o.push(c.concept, "");
+      if (c.moves && c.moves.length) o.push("Key moves:", ...c.moves.map((m) => `- ${m}`), "");
+      if (facts.length) o.push(...facts.map(([k, v]) => `- **${k}:** ${v}`), "");
+      if (c.views && c.views.length) o.push(`Mock views: ${c.views.map((v) => v.name).join(", ")}.`, "");
+      if (window.DESIGN && (c.spec || (c.design && c.design.length))) o.push(DESIGN.markdown(c, "####"));
+      return o.join("\n");
+    };
+
+    const out = [
+      `# ${R.title} — design review hand-off${R.round > 1 ? ` (round ${R.round})` : ""}`, "",
+      "This is the result of a design review the user did in a candidate-review site. You may be a different agent in a new session: everything you need is below or in the files it names. Don't assume earlier conversation context.", "",
+      "## Where things are", "",
+      `- **Repository:** ${R.repo ? `\`${R.repo}\` ` : ""}(paths below are relative to its root)`,
+      `- **Review site:** \`${dir}/\` (if it's gone, look in \`reports/archive/\`). Run \`${dir}/script/serve.sh\`${R.port ? ` → http://localhost:${R.port}/` : ""} to see every mock live.`,
+      `- **Candidates in code:** \`${dir}/site/js/candidates.js\` (each candidate by the \`id\` below: markup, design blocks), styles in \`${dir}/site/css/candidates.css\` under \`.scr.<id>\`, shared sample data in \`${dir}/site/js/kit.js\`. The mocks are a visual spec, not production code.`,
+    ];
+    if (filled(R.project)) out.push(`- **Project:** \`${R.project}/\`. Read the root \`CLAUDE.md\` and \`${R.project}/CLAUDE.md\` before changing anything.`);
+    if (R.context && R.context.filter(filled).length) out.push(`- **Read for context:** ${R.context.filter(filled).map((f) => `\`${f}\``).join(", ")}`);
+    out.push("");
+    if (filled(R.brief)) out.push("## The brief", "", R.brief.trim(), "");
+
+    out.push("## Decision", "");
+    if (grouped) out.push(...groups.map((g) => { const w = st.win[g.id] && byId[st.win[g.id]]; return `- **${g.name}:** ${w ? `${no(w)} ${w.name} (\`${w.id}\`)` : "not picked yet"}`; }), "");
+    else { const w = decided.length ? byId[st.win[groups[0].id]] : null; out.push(w ? `**Winner:** ${no(w)} ${w.name} (\`${w.id}\`)` : "**Winner:** not picked yet", ""); }
+    if ((st.overall || "").trim()) out.push("**The user's overall direction:**", "", ...st.overall.trim().split(/\n+/).map((l) => `> ${l}`), "");
+
+    out.push("## What to do next", "");
+    if (allDecided) out.push(
+      `${grouped ? "Every group has a winner" : "A winner is picked"}. Unless the overall direction above asks for another round, implement ${decided.length > 1 ? "the winners" : "the winner"} in the real project:`, "",
+      "1. Read the project docs above, then the code the winner changes (the design section lists the files).",
+      "2. Open the review site and the winner's mock; build it with the app's real components, data and states. The user's notes override the candidate's text.",
+      "3. Treat the design section as the technical spec: build what *Proposed* describes, everything under *Needs*, and settle the open questions under *Risks* with the user if they change scope.",
+      "4. Verify as *How to verify* says and as the project's `CLAUDE.md` requires (tests, What's New, device checks).", "");
+    else out.push(
+      `${decided.length ? `${decided.length} of ${groups.length} groups are decided.` : "No winner yet."} Run round ${(R.round || 1) + 1} of the review (skill \`heji-candidate-review\`, §5): edit \`${dir}\` in place with the same \`key\`, bump \`round\`, turn the notes into new candidates (\`round: ${(R.round || 1) + 1}\`), keep the rated ones, then hand the site back to the user. Implement only what is already decided, and only if the user asks.`, "");
+
     for (const g of groups) {
-      const list = cands.filter((c) => gid(c) === g.id);
-      const w = st.win[g.id] && byId[st.win[g.id]];
-      if (grouped) out.push(`## ${g.name}`, "");
-      out.push(w ? `**Winner:** ${no(w)} ${w.name} (\`${w.id}\`)` : "**Winner:** (not picked yet)", "");
-      const t = touched(list);
-      if (t.length) out.push(...t.map(line), "");
+      const list = touched(cands.filter((c) => gid(c) === g.id));
+      if (!list.length) continue;
+      out.push(grouped ? `## ${g.name} — candidates the user reacted to` : "## Candidates the user reacted to", "");
+      for (const c of list) out.push(full(c));
     }
     const skipped = cands.filter((c) => !touched([c]).length);
-    if (skipped.length) out.push(`Not reacted to: ${skipped.map((c) => `\`${c.id}\``).join(", ")}`, "");
-    if ((st.overall || "").trim()) out.push("## Overall direction", "", st.overall.trim(), "");
-    return out.join("\n").trim() + "\n";
+    if (skipped.length) out.push("## Not reacted to", "", ...skipped.map((c) => `- ${no(c)} ${c.name} (\`${c.id}\`)${c.tagline ? `: ${c.tagline}` : ""}`), "");
+    const base = D.filter((c) => c.baseline);
+    if (base.length) out.push(`Baseline (today's design, for comparison): ${base.map((c) => `\`${c.id}\``).join(", ")}.`, "");
+    return out.join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
   };
 
   // ── router
@@ -201,7 +243,7 @@
     else if (el.dataset.mode) { st.mode = el.dataset.mode; }
     else if (el.id === "copy") {
       const text = summary();
-      try { await navigator.clipboard.writeText(text); toast("Summary copied — paste it back to Claude"); }
+      try { await navigator.clipboard.writeText(text); toast("Hand-off copied: paste it to any agent"); }
       catch { prompt("Copy this summary:", text); }
       return;
     } else if (el.id === "reset") {
