@@ -22,6 +22,13 @@ Three phases, each ending with a hand-off the user pastes back (possibly into a 
 Tell which phase a paste belongs to by its "What to do next" section (each site's `nextSteps`
 names its phase).
 
+**Phases don't share a session.** Confirming ideas and building them can happen in different
+agents, sessions and checkouts (Claude Code, Antigravity, Codex…): the proposal hand-off is the
+whole brief, and the proposal review is committed and pushed at the end of phase A so any checkout
+has it after a pull. Write proposals for a reader who never saw the session that made them.
+Phase C is the one exception: the build branches exist only in the checkout that built them, so
+the build hand-off must come back to an agent there.
+
 **Arguments** (from the invocation, e.g. `/heji-build-next 2 per project, only weehours and
 voxbrief`): proposals per project (default **3**; per-project counts allowed, e.g. "5 for Wee
 Hours"), which projects (default all of `projects/*`), and anything to focus on ("bugs only",
@@ -33,10 +40,10 @@ Hard rules for the whole skill:
 - **A build branch never leaves this machine.** Never `git push` a `heji-build/*` branch, never
   open a PR from one, never set an upstream. `worktree.sh` installs a pre-push hook that refuses
   them; don't remove or bypass it. Only main is pushed, in §8.
-- **Main stays untouched until §8.** All code goes into the per-project worktrees. The only things
-  written in the main checkout are the review sites in `reports/` and the ledgers
-  (`projects/<name>/build-next.md`), left uncommitted until §8. Build branches never touch a
-  ledger.
+- **No code on main until §8.** All code goes into the per-project worktrees. The only things
+  committed to main before then are records: the proposal review (end of phase A). The build
+  review and the ledgers (`projects/<name>/build-next.md`) stay uncommitted until §8. Build
+  branches never touch a ledger.
 - **Respect each project.** Read root `CLAUDE.md` and `projects/<name>/CLAUDE.md` before
   touching a project; follow its commands, conventions, What's New rules and isolation rules
   (`supabase/GRADUATION.md`). One project's branch touches only `projects/<name>/` (plus its own
@@ -154,7 +161,13 @@ Build the site with the `heji-candidate-review` skill (read its SKILL.md; §2 sc
      files / risks / verify-plan).
    - **Facts**: `Project`, `Kind` (Bug fix, Quality, Performance, Feature, Security), `Effort`
      (S/M/L), `Evidence` (one line), `Release` (patch for fixes/quality, minor for features),
-     `Captures` (what the build review would show: device/simulator, before/after, GIF, numbers).
+     `Captures` (what the build review would show: device/simulator, before/after, GIF, numbers),
+     `Sources` (outside URLs, or "–"), `Checked on` (`main @ <short sha>` the gap was verified on).
+   - **Self-contained**: the hand-off copies only the fields above (name, tagline, concept, moves,
+     facts, spec, design blocks as text) for the picked proposals. An agent in another session
+     must be able to start building from them alone: `spec.proposed` concrete enough to begin
+     (the API, type or library version), `spec.files` real paths, `spec.verify` the project's own
+     commands. Nothing that only this session knows ("as discussed", a scratch file).
    - **Render**: a real capture of today's gap when there is one (a screenshot of the current
      app, a measured chart), otherwise
      the text card the example's `idea(...)` helper draws.
@@ -162,12 +175,19 @@ Build the site with the `heji-candidate-review` skill (read its SKILL.md; §2 sc
    the earlier ideas the ledger kept out ("Wee Hours: 2 earlier ideas left out, see
    projects/weehours/build-next.md"), so the owner can revive one by saying so. A proposal that
    was `not picked` before says so in its facts (`Proposed before: 2026-10-21, not picked`).
-5. Run the candidate-review checks (§4 there).
+5. Run the candidate-review checks (§4 there), including Copy summary: read the hand-off as a
+   stranger would and check a picked proposal's section is enough to build it.
+6. Scan the site for anything that mustn't be public (personal data, secrets, details of an
+   unfixed security problem; put those in the proposal only as "details in the build session")
+   and commit and push it on its own: `git add reports/<date>-build-next-proposals && git commit
+   -m "Reports: heji-build-next proposals <date>"` then `git push origin main`. That's what lets
+   phase B run anywhere.
 
 Hand over: the serve command and URL, one line per proposal (project · name · kind · evidence),
 and how to respond: per project crown 🏆 the proposal to build, ♥ any others to build as well
 (each becomes its own branch), crown "Skip" to build nothing there, notes for anything to change
-in the plan, then **Copy summary** and paste it back. Then stop: nothing is built until the paste.
+in the plan, then **Copy summary** and paste it into any agent session in any checkout of the
+repo (this one or a new one). Then stop: nothing is built until the paste.
 
 ## Phase B: build
 
@@ -175,12 +195,21 @@ The pasted proposal hand-off lists, per project, the 🏆 winner and any ♥ sho
 build all of those, nothing else. The user's notes override the proposal's text. Projects with
 "Skip" (or no pick) get nothing.
 
-First, record the decisions in each proposed project's ledger (in the main checkout, uncommitted
-until §8): every proposal not built gets a line, `skipped` (the project's "Skip" was crowned, or
+Assume no memory of phase A: work from the paste. `git switch main && git pull --ff-only` (that
+brings the committed proposal review), run §0's checks, read the root `CLAUDE.md` and each picked
+project's `CLAUDE.md`. Then re-check every pick against today's main: open the `spec.today`
+locations and confirm the gap is still there (the code may have moved since the proposal's
+`Checked on` commit; `git log <that sha>..main -- <spec.files>` shows what changed). If it's
+gone or the plan no longer fits, adapt a small difference and say so in the build review, or drop
+the pick and list it in the build review's intro.
+
+Record the decisions in each proposed project's ledger (in the main checkout, uncommitted
+until §8; take each proposal's name and Evidence from the hand-off, or from the committed proposal
+review's `site/js/candidates.js` for the unpicked ones): every proposal not built gets a line, `skipped` (the project's "Skip" was crowned, or
 a note declines it) or `not picked` (`not picked twice` when the ledger already has it as `not
 picked`), with the owner's note verbatim. Picked proposals are recorded in §8, once their fate is
-known. If nothing at all was picked, commit the ledgers and the proposal review now (one commit,
-pushed) and stop: there's no phase C.
+known. If nothing at all was picked, commit the ledgers now (one commit, pushed) and stop:
+there's no phase C.
 
 ### 3. Build each pick on a local branch
 
@@ -304,7 +333,7 @@ the paste must come back to an agent in this checkout. Then stop.
 
 The pasted hand-off lists the branches to merge. Merge exactly those; nothing else.
 
-1. **Check:** on main, clean tree (the uncommitted review sites and ledgers are expected), `git pull
+1. **Check:** on main, clean tree apart from the uncommitted build review and ledgers, `git pull
    --ff-only`; every listed branch exists locally (`worktree.sh list`) at the listed commit. If a
    branch is missing (different machine), stop and say so.
 2. **Apply notes, then merge.** If the user left notes on a picked build, make those changes on
@@ -321,7 +350,7 @@ The pasted hand-off lists the branches to merge. Merge exactly those; nothing el
    nothing. Remove the build caches you put in the worktree area (literal paths).
 4. **Update the ledgers**: each built proposal gets a line, `merged in <version it will ship as>`
    or `kept main after build` (with the owner's note), next to the phase-B lines already there.
-5. **Commit the review sites and ledgers** as the record (the proposal review and the build review): drop
+5. **Commit the build review and the ledgers** as the record (the proposal review is already in): drop
    captures of builds that weren't merged (the ideas stay as text; set their `views` to `[]` and
    `render` to a "not merged" card), reduce unmerged security findings to one line with no
    details, scan the rest for anything personal, secret or unreleased-but-secret, then commit

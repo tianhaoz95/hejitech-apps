@@ -19,8 +19,8 @@
 
   window.REVIEW = {
     key: "__SLUG__-v1", dir: "reports/__SLUG__", repo: "__REPO__", port: __PORT__,   // new.sh fills these
-    project: "projects (one group per project below)",
-    context: ["CLAUDE.md", ".claude/skills/heji-build-next/SKILL.md"],
+    project: "",   // several projects: each proposal names its own in its Project fact
+    context: ["CLAUDE.md", ".claude/skills/heji-build-next/SKILL.md (phase B, §3–§7)", "projects/<name>/CLAUDE.md of each project picked below"],
     brief: "heji-build-next proposals on <date>: for every project the agent read the current code and searched what's new outside (platform APIs, library and model releases, what users ask for), and proposes up to <n> things to build (features, quality/performance work, bug fixes). Per project, crown 🏆 the one to build and ♥ any others to build too; crown \"Skip\" to build nothing there.",
     title: "__TITLE__",
     subtitle: "<n> proposals across <m> projects",
@@ -40,11 +40,11 @@
       const picked = winners.filter((c) => c.facts && c.facts.Kind);
       const skipped = groups.filter((g) => !picked.some((c) => c.group === g.id)).map((g) => g.name);
       return [
-        "This is a heji-build-next **proposal** review (phase A done). Follow `.claude/skills/heji-build-next/SKILL.md` phase B (§3–§7): build the picks on local-only branches, verify, capture, then present the build review. The user's notes on a proposal override its text.", "",
+        "This is a heji-build-next **proposal** review (phase A done). You may be a different agent in a new session or another checkout: this hand-off is the whole brief. Each picked proposal below carries its plan (today's gap with file:line, the proposed change, files, risks, how to verify, what to capture, sources); the review site is committed at the path above (pull main) if you want the full text of the unpicked ones. Follow `.claude/skills/heji-build-next/SKILL.md` phase B (§3–§7): record the decisions in the ledgers, re-check each pick against today's main (the code may have moved since its `Checked on` commit), build the picks on local-only branches, verify, capture, then present the build review. The user's notes on a proposal override its text.", "",
         "**Build, per project:** every 🏆 winner below, plus every proposal marked ♥ shortlisted in that project's section (each on its own branch).",
         ...picked.map((c) => `- ${c.facts.Project}: ${c.name} (\`${c.id}\`), ${c.facts.Kind}, release ${c.facts.Release || "patch"}`), "",
         skipped.length ? `**Build nothing for:** ${skipped.join(", ")} (unless a proposal there is ♥ shortlisted).` : "",
-        "Never push a heji-build branch; main stays untouched until the build hand-off comes back.",
+        "Never push a heji-build branch, and put no code on main until the build hand-off comes back (the build branches stay in the checkout that built them, so that hand-off must return there).",
       ];
     },
     candidates: [
@@ -59,16 +59,19 @@
           Evidence: "One line: TimelineView.swift:120 rebuilds every row on each tick; or https://… (iOS 27 adds …)",
           Release: "patch (0.8.6 → 0.8.7)",
           Captures: "What the build review would show: simulator before/after, light and dark",
+          Sources: "https://… (release notes, API docs, where users ask for it); – when the idea comes from the code alone",
+          "Checked on": "main @ abc1234",   // the commit the gap was verified on; phase B re-checks it
           // "Proposed before": "2026-10-21, not picked",   // only when projects/<name>/build-next.md has it
         },
         render: idea("Bug fix", "The problem in a few words", "The plan in one sentence"),
         // or: render: shot("weehours/report.png"), with the capture in site/media/weehours/
+        // Write it for an agent that never saw this session: the hand-off carries only these fields.
         spec: {
-          today: ["How it works now, with file/type names"],
-          proposed: ["What the build would do"],
+          today: ["How it works now, with file:line on main (the gap itself)"],
+          proposed: ["What the build does, concretely enough to start: types, APIs, the library version to adopt"],
           files: ["projects/weehours/… (the files it would touch)"],
           risks: ["What could regress, owner steps, what's uncertain"],
-          verify: ["How it would be checked: tests, device, measurements"],
+          verify: ["How it will be checked: the project's tests, device or simulator runs, measurements"],
         },
       },
     ],
