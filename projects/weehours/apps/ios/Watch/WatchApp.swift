@@ -22,6 +22,7 @@ struct WeeHoursWatchApp: App {
 struct WatchRoot: View {
     @EnvironmentObject var link: PhoneLink
     @State private var tilt: Bool?
+    @ObservedObject private var request = RecordRequest.shared
 
     var body: some View {
         NavigationStack {
@@ -31,10 +32,19 @@ struct WatchRoot: View {
                 WatchHome { tilt = true }
             }
         }
-        // a complication: open already recording (tap Stop to send it to the phone)
+        // a complication or a shortcut: open already recording (tap Stop to send it to the phone)
         .onOpenURL { url in
-            if url.host == "record", !link.recording { tilt = false; link.toggleRecording() }
+            if url.host == "record" { record() }
         }
+        .onChange(of: request.pending, initial: true) { _, pending in
+            if pending { request.pending = false; record() }
+        }
+    }
+
+    private func record() {
+        guard !link.recording else { return }
+        tilt = false
+        link.toggleRecording()
     }
 }
 
