@@ -18,7 +18,7 @@ struct VoiceLogIntent: AppIntent {
 /// Opens the watch app in tilt mode (TiltMode.swift), whichever mode the iPhone set it to open in.
 struct TiltModeIntent: AppIntent {
     static let title: LocalizedStringResource = "Log by tilting"
-    static let description = IntentDescription("Opens Wee Hours on Apple Watch in tilt mode: tilt your wrist toward feed, diaper, sleep or a care action.")
+    static let description = IntentDescription("Opens Wee Hours on your watch in tilt mode: tilt your wrist toward feed, diaper, sleep or a care action.")
     static let openAppWhenRun = true
     @MainActor
     func perform() async throws -> some IntentResult {

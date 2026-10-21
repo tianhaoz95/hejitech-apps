@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.8.4"
+    static let currentVersion = "0.8.5"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,21 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "0.8.5",
+            date: "October 2026",
+            tagline: "Watch Shortcuts, Sync Fix and More",
+            features: [],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "shippingbox.fill",
+                    tint: Theme.accent,
+                    title: "Everything From 0.8.2 to 0.8.4",
+                    description: "Those updates didn't make it to TestFlight; this one brings all of them: the voice and tilt shortcuts on Apple Watch, the sync fix, your own words in Spanish and Chinese entries, the press-and-hold dock and the night screen from the moon on Now.",
+                    kind: .improvement
+                ),
+            ]
+        ),
         ReleaseHistoryItem(
             version: "0.8.4",
             date: "October 2026",

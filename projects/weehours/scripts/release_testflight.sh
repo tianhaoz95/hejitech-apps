@@ -162,11 +162,24 @@ xcodebuild -exportArchive \
   -authenticationKeyID "$ASC_KEY_ID" \
   -authenticationKeyIssuerID "$ASC_ISSUER_ID"
 
-echo "✅ Build $BUILD_NUMBER uploaded to App Store Connect."
+echo "-> Build $BUILD_NUMBER uploaded; waiting for App Store Connect to process it..."
+# An accepted upload can still be rejected while processing (0.8.2 and 0.8.3 were, ITMS-90626),
+# and then nothing reaches TestFlight. Wait for the verdict: a rejection fails the release with
+# Apple's reason and isn't announced to FeedbackKit as shipped.
+BUNDLE_ID="com.hejitech.$(sed -nE 's/^[[:space:]]*PRODUCT_SLUG:[[:space:]]*"?([a-z0-9.-]+)"?.*/\1/p' "$IOS_DIR/project.yml" | head -1)"
+status=0
+swift "$REPO_ROOT/scripts/asc_build_status.swift" "$ASC_KEY_PATH" "$ASC_KEY_ID" "$ASC_ISSUER_ID" "$BUNDLE_ID" "$BUILD_NUMBER" 1500 || status=$?
+if [[ $status == 1 ]]; then
+  exit 1
+elif [[ $status != 0 ]]; then
+  echo "warning: build $BUILD_NUMBER is still processing; check App Store Connect, then announce it by hand:" >&2
+  echo "  npx feedbackkit-cli release --build $BUILD_NUMBER" >&2
+  exit 0
+fi
+echo "✅ Build $BUILD_NUMBER is processed and on its way to TestFlight."
 
 echo "-> Announcing build $BUILD_NUMBER to FeedbackKit..."
 APP_VERSION="$(sed -nE 's/^[[:space:]]*MARKETING_VERSION:[[:space:]]*"?([0-9.]+)"?.*/\1/p' "$IOS_DIR/project.yml" | head -1)"
 if ! (cd "$REPO_ROOT" && npx -y feedbackkit-cli release --build "$BUILD_NUMBER" --app-version "$APP_VERSION"); then
   echo "warning: feedbackkit release failed; run it by hand: npx feedbackkit-cli release --build $BUILD_NUMBER" >&2
 fi
-echo "   It will appear in TestFlight once Apple finishes processing (usually a few minutes)."
