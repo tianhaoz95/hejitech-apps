@@ -24,12 +24,43 @@ export interface LogCaptureOptions {
 
 const MAX_MESSAGE_LENGTH = 1000;
 
+export function isLuhnValid(digits: string): boolean {
+  const clean = digits.replace(/\D/g, "");
+  if (clean.length < 13 || clean.length > 19) return false;
+  let sum = 0;
+  let shouldDouble = false;
+  for (let i = clean.length - 1; i >= 0; i--) {
+    let digit = parseInt(clean.charAt(i), 10);
+    if (shouldDouble) {
+      digit *= 2;
+      if (digit > 9) digit -= 9;
+    }
+    sum += digit;
+    shouldDouble = !shouldDouble;
+  }
+  return sum % 10 === 0;
+}
+
+export function redactCreditCards(text: string): string {
+  return text.replace(/\b(?:\d[ -]*?){13,19}\b/g, (match) => {
+    if (isLuhnValid(match)) {
+      return "[redacted-card]";
+    }
+    return match;
+  });
+}
+
 export function redactMessage(message: string): string {
-  return message
+  let redacted = message
     .replace(/\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/gi, "$1 [redacted]")
     .replace(/\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g, "[redacted-jwt]")
     .replace(/https?:\/\/[^\s"'<>)]+/g, (url) => redactUrl(url))
-    .replace(/("?(?:password|passwd|secret|token|api[_-]?key|access[_-]?token|refresh[_-]?token)"?\s*[:=]\s*)("[^"]*"|'[^']*'|[^\s,}&]+)/gi, "$1[redacted]");
+    .replace(/("?(?:password|passwd|secret|token|api[_-]?key|access[_-]?token|refresh[_-]?token)"?\s*[:=]\s*)("[^"]*"|'[^']*'|[^\s,}&]+)/gi, "$1[redacted]")
+    .replace(/\b\d{3}-\d{2}-\d{4}\b/g, "[redacted-ssn]")
+    .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, "[redacted-email]")
+    .replace(/(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g, "[redacted-phone]");
+
+  return redactCreditCards(redacted);
 }
 
 export function stringifyArg(arg: unknown): string {

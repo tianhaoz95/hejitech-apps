@@ -60,7 +60,7 @@ export function parseUserAgent(ua: string): ParsedUserAgent {
 }
 
 /** Query parameter names whose values are replaced before a page URL leaves the browser. */
-const SENSITIVE_PARAM = /token|secret|password|passwd|pwd|auth|session|key|code|signature|sig|jwt|otp|email/i;
+const SENSITIVE_PARAM = /token|secret|password|passwd|pwd|auth|session|key|code|signature|sig|jwt|otp|email|phone|mobile|tel|card|ssn/i;
 
 export function redactUrl(href: string): string {
   try {
