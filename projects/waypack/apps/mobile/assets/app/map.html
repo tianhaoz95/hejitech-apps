@@ -5,10 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Map</title>
 <style>
+  /* The app lays its back button and title (44 pt) over the top-left corner: the day picker goes under them. */
   html, body { margin: 0; height: 100%; background: #f6f7f9; font: 15px -apple-system, system-ui, sans-serif; }
   @media (prefers-color-scheme: dark) { html, body { background: #0b1120; color: #e8edf6; } }
   #map { position: fixed; inset: 0; }
-  #day { position: fixed; z-index: 3; left: 10px; top: 10px; max-width: calc(100% - 70px); min-height: 40px; border-radius: 10px; border: 0;
+  #day { position: fixed; z-index: 3; left: 10px; top: 64px; max-width: calc(100% - 70px); min-height: 40px; border-radius: 10px; border: 0;
          padding: 6px 10px; font: inherit; box-shadow: 0 1px 4px rgba(0,0,0,.25); background: #fff; color: #0f172a; }
 </style>
 <script src="/__waypack/sdk/v1/waypack.js"></script>
@@ -22,7 +23,10 @@
   var embed = location.hash === "#embed";
   Waypack.manifest().then(function (m) {
     var sel = document.getElementById("day");
-    if (embed) sel.hidden = true;
+    if (embed) {
+      sel.hidden = true;
+      document.head.insertAdjacentHTML("beforeend", "<style>.maplibregl-ctrl-scale{display:none}</style>"); // the app's expand button sits there
+    }
     m.days.forEach(function (d, i) {
       var o = document.createElement("option");
       o.value = d.date;
