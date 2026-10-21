@@ -113,6 +113,27 @@ final class AcceptanceTests: XCTestCase {
         XCTAssertTrue(log.all.contains { $0.id == e.id })
     }
 
+    func testAnotherLanguageKeepsTheSpokenWordsAndTheEnglish() async throws {
+        let s = try service()
+        let r = try await s.processVoice(transcript: "Diaper, wet.", spoken: "Pañal mojado.", surface: .phone)
+        XCTAssertEqual(r.interpretation.transcript, "Diaper, wet.")   // the model reads the English
+        XCTAssertEqual(r.capture.transcript, "Pañal mojado. (Diaper, wet.)")
+        let e = try await commit(s, r)
+        XCTAssertEqual(e.type, "diaper")
+        XCTAssertEqual(e.provenance.rawTranscript, "Pañal mojado. (Diaper, wet.)")
+
+        // a sentence kept as a note keeps both too
+        let note = try await s.processVoice(transcript: "She has a cute smile", spoken: "她笑得很可爱", surface: .phone)
+        let kept = try await s.dismissCapture(note.capture.id)
+        XCTAssertEqual(kept?.string("transcript"), "她笑得很可爱 (She has a cute smile)")
+    }
+
+    func testDisplayTranscriptIsTheEnglishAloneWhenNothingElseWasSaid() {
+        XCTAssertEqual(VoiceTranscript.display(english: " wet diaper ", spoken: nil), "wet diaper")
+        XCTAssertEqual(VoiceTranscript.display(english: "OK", spoken: "ok"), "OK")
+        XCTAssertEqual(VoiceTranscript.display(english: "", spoken: "尿布湿了"), "尿布湿了")
+    }
+
     func testEveryVoiceEventHasCompleteProvenance() async throws {
         let s = try service()
         let r = try await s.processVoice(transcript: "wet diaper", surface: .watch)

@@ -307,14 +307,22 @@ actor WhisperTranscriber: Transcriber {
 
     /// For the voice pipeline: English text, whatever the phone's voice language.
     func transcribe(fileURL: URL) async throws -> String {
+        try await transcribeSpoken(fileURL: fileURL).english
+    }
+
+    /// English for the decision layer, plus the words as spoken in another language, which the
+    /// entry keeps next to the English (`VoiceTranscript.display`).
+    func transcribeSpoken(fileURL: URL) async throws -> (english: String, spoken: String?) {
         let language = VoiceLanguage.current
         let p = try await loaded(for: language)
-        if language.translates, await VoiceTranslator.isReady(language) {
-            let said = Self.join(try await p.transcribe(audioPath: fileURL.path, decodeOptions: verbatimOptions(p, language)))
-            if said.isEmpty { return "" }
-            if let english = await VoiceTranslator.english(said, from: language) { return english }
+        guard language.translates else {
+            return (Self.join(try await p.transcribe(audioPath: fileURL.path, decodeOptions: pipelineOptions(p, language))), nil)
         }
-        return Self.join(try await p.transcribe(audioPath: fileURL.path, decodeOptions: pipelineOptions(p, language)))
+        let said = Self.join(try await p.transcribe(audioPath: fileURL.path, decodeOptions: verbatimOptions(p, language)))
+        if said.isEmpty { return ("", nil) }
+        if let english = await VoiceTranslator.english(said, from: language) { return (english, said) }
+        // no Translation here: Whisper translates the audio itself (a second pass)
+        return (Self.join(try await p.transcribe(audioPath: fileURL.path, decodeOptions: pipelineOptions(p, language))), said)
     }
 
     /// Dictated notes: the words as spoken, in the phone's voice language (never translated).

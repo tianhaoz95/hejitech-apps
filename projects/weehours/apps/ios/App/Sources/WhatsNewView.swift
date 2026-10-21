@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.8.2"
+    static let currentVersion = "0.8.3"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,21 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "0.8.3",
+            date: "October 2026",
+            tagline: "Your Own Words in the Log",
+            features: [],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "character.bubble",
+                    tint: Color(red: 0.45, green: 0.72, blue: 0.95),
+                    title: "Spanish and Chinese Entries Keep What You Said",
+                    description: "An entry spoken in Español or 中文 now keeps your own words next to the English translation, like “Pañal mojado. (Diaper, wet.)”, in the timeline, notes and exports.",
+                    kind: .fix
+                ),
+            ]
+        ),
         ReleaseHistoryItem(
             version: "0.8.2",
             date: "October 2026",

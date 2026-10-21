@@ -762,9 +762,9 @@ final class AppModel: ObservableObject {
         Task {
             defer { thinking = false; liveTranscript = "" }
             do {
-                let text = try await transcriber.transcribe(fileURL: url)
+                let text = try await transcriber.transcribeSpoken(fileURL: url)
                 try? FileManager.default.removeItem(at: url)   // audio never leaves the phone
-                await handle(transcript: text, capturedAt: capturedAt, surface: .phone)
+                await handle(transcript: text.english, spoken: text.spoken, capturedAt: capturedAt, surface: .phone)
             } catch { self.error = "Could not transcribe: \(error.localizedDescription)" }
         }
     }
@@ -782,13 +782,13 @@ final class AppModel: ObservableObject {
     func voiceLevel() -> Float { recorder.level() }
 
     /// The voice pipeline from a transcript (phone and watch speech, or the `demoText` launch argument).
-    func handle(transcript: String, capturedAt: Date = Date(), surface: Surface = .phone, attachTo: UUID? = nil, babies: [UUID]? = nil) async {
+    func handle(transcript: String, spoken: String? = nil, capturedAt: Date = Date(), surface: Surface = .phone, attachTo: UUID? = nil, babies: [UUID]? = nil) async {
         guard let service, !transcript.isEmpty else { return }
         do {
             thinking = true
             defer { thinking = false }
             let quick = UserDefaults.standard.bool(forKey: QuickCapture.key)
-            let r = try await service.processVoice(transcript: transcript, surface: surface, capturedAt: capturedAt, attachTo: attachTo,
+            let r = try await service.processVoice(transcript: transcript, spoken: spoken, surface: surface, capturedAt: capturedAt, attachTo: attachTo,
                                                    babies: babies ?? target, quickCapture: quick)
             if r.capture.status == .dismissed, let note = r.events.first {
                 toast = Toast(text: "Not a log entry: saved as a note", undo: nil, reopen: .init(capture: r.capture.id, events: [note.id], action: "Log it"))
@@ -821,8 +821,8 @@ final class AppModel: ObservableObject {
         perform { try await $0.dismissCapture(capture.id) }
     }
 
-    func transcribe(_ url: URL) async throws -> String {
-        try await transcriber.transcribe(fileURL: url)
+    func transcribe(_ url: URL) async throws -> (english: String, spoken: String?) {
+        try await transcriber.transcribeSpoken(fileURL: url)
     }
 
     // MARK: agents (MCP)
@@ -1058,7 +1058,7 @@ final class WatchBridge: NSObject, WCSessionDelegate, @unchecked Sendable {
             do {
                 let text = try await model.transcribe(dest)
                 try? FileManager.default.removeItem(at: dest)
-                await model.handle(transcript: text, capturedAt: capturedAt, surface: .watch, babies: baby.map { [$0] })
+                await model.handle(transcript: text.english, spoken: text.spoken, capturedAt: capturedAt, surface: .watch, babies: baby.map { [$0] })
             } catch { model.error = "Watch audio: \(error.localizedDescription)" }
         }
     }

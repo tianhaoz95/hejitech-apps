@@ -2,11 +2,30 @@ import Foundation
 
 public protocol Transcriber: Sendable {
     func transcribe(fileURL: URL) async throws -> String
+    /// The English the decision layer reads and, when the phone listens in another language, the
+    /// words as spoken (nil in English).
+    func transcribeSpoken(fileURL: URL) async throws -> (english: String, spoken: String?)
     func warmUp() async
 }
 
 public extension Transcriber {
     func warmUp() async {}
+    func transcribeSpoken(fileURL: URL) async throws -> (english: String, spoken: String?) {
+        (try await transcribe(fileURL: fileURL), nil)
+    }
+}
+
+/// The transcript an entry keeps. Spoken in another language, it's both: what was said and the
+/// English the decision layer read, "Pañal mojado. (Diaper, wet.)", so the log shows the parent's
+/// own words and still reads in English (timeline, CSV, MCP).
+public enum VoiceTranscript {
+    public static func display(english: String, spoken: String?) -> String {
+        let english = english.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let spoken = spoken?.trimmingCharacters(in: .whitespacesAndNewlines), !spoken.isEmpty,
+              spoken.lowercased() != english.lowercased() else { return english }
+        guard !english.isEmpty else { return spoken }
+        return "\(spoken) (\(english))"
+    }
 }
 
 /// The one write path every surface goes through on the phone (app UI, widgets, App Intents,
@@ -236,7 +255,9 @@ public actor LogService {
     /// children the sentence names, else `babies` (the device's current children), else the first.
     /// `quickCapture` (a per-phone setting) logs the top guess instead of asking: the best candidate,
     /// or a note when "none of these" won; `reopenCapture` asks after all.
-    public func processVoice(transcript: String, surface: Surface, capturedAt: Date = Date(), attachTo: UUID? = nil,
+    /// `transcript` is English, what the decision layer reads; `spoken` is the sentence as said when
+    /// that was another language, kept next to the English in the capture and its entries.
+    public func processVoice(transcript: String, spoken: String? = nil, surface: Surface, capturedAt: Date = Date(), attachTo: UUID? = nil,
                              captureId: UUID = UUID(), loggedBy: UUID? = nil, babies: [UUID]? = nil,
                              quickCapture: Bool = false) async throws -> VoiceResult {
         let current = (babies ?? []).filter { id in household.active.contains { $0.id == id } }
@@ -246,7 +267,7 @@ public actor LogService {
         var interp = try await interpreter.interpret(transcript, context: ctx)
         interp.babyIds = targets
         var capture = Capture(id: captureId, householdId: household.id, surface: surface, capturedAt: capturedAt,
-                              loggedBy: loggedBy ?? me, transcript: transcript, attachTo: attachTo, babyId: current.first, status: .needsReview,
+                              loggedBy: loggedBy ?? me, transcript: VoiceTranscript.display(english: transcript, spoken: spoken), attachTo: attachTo, babyId: current.first, status: .needsReview,
                               interpretation: interp, processedBy: me, processedAt: Date())
         var events: [LogEvent] = []
         let noneWon = interp.noneConfidence != nil
@@ -305,7 +326,7 @@ public actor LogService {
     /// Writes the chosen candidate for each child the entry is for. The first child's event id is
     /// derived from the capture id (so two phones converge), the others' from the capture and child.
     private func commit(_ c: Candidate, capture: Capture, interpretation: Interpretation, tier: ConfidenceTier? = nil) throws -> [LogEvent] {
-        let provenance = Provenance(surface: capture.surface, input: .voice, rawTranscript: interpretation.transcript,
+        let provenance = Provenance(surface: capture.surface, input: .voice, rawTranscript: capture.transcript ?? interpretation.transcript,
                                     confidence: interpretation.confidence, confidenceTier: tier ?? interpretation.tier,
                                     modelVersion: interpretation.modelVersion, captureId: capture.id)
         if let target = capture.attachTo, let old = try store.events().first(where: { $0.id == target }) {
@@ -377,15 +398,16 @@ public actor LogService {
                 continue
             }
             var transcript = c.transcript
+            var spoken: String?
             if transcript == nil, let path = c.audioPath, let transcriber {
                 let audio = try await backend.downloadAudio(path: path)
                 let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(c.id).wav")
                 try audio.write(to: url)
-                transcript = try await transcriber.transcribe(fileURL: url)
+                (transcript, spoken) = try await transcriber.transcribeSpoken(fileURL: url)
                 try? FileManager.default.removeItem(at: url)
             }
             guard let transcript else { continue }
-            let r = try await processVoice(transcript: transcript, surface: c.surface, capturedAt: c.capturedAt,
+            let r = try await processVoice(transcript: transcript, spoken: spoken, surface: c.surface, capturedAt: c.capturedAt,
                                            attachTo: c.attachTo, captureId: c.id, loggedBy: c.loggedBy, babies: c.babyId.map { [$0] })
             var done = r.capture
             done.audioPath = nil
