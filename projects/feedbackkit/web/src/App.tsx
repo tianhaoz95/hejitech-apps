@@ -4,13 +4,13 @@ import { trackPageView } from "@/lib/analytics";
 import { RouteLoading } from "@/components/RouteLoading";
 import { AuthProvider, RequireAuth, RedirectIfAuthed } from "@/lib/auth";
 import { LandingPage } from "@/pages/LandingPage";
-import { OrganizationProvider } from "@/lib/organization";
-import { NotificationsProvider } from "@/lib/notifications";
 
 // Every route but the landing page loads on demand, so a first visit downloads the landing page's
 // code instead of the whole dashboard, docs and SDK. Layouts keep their own <Suspense> around the
 // <Outlet>, so moving between pages inside one doesn't blank its header and navigation.
-const DashboardLayout = lazy(() => import("@/components/DashboardLayout").then((m) => ({ default: m.DashboardLayout })));
+// The dashboard's providers come with its layout, so supabase-js (which they import) stays out of
+// the landing page's entry script; the auth provider and analytics load it on demand (supabaseLoader.ts).
+const DashboardShell = lazy(() => import("@/components/DashboardShell").then((m) => ({ default: m.DashboardShell })));
 const DocsLayout = lazy(() => import("@/components/docs/DocsLayout").then((m) => ({ default: m.DocsLayout })));
 const LoginPage = lazy(() => import("@/pages/LoginPage").then((m) => ({ default: m.LoginPage })));
 const PrivacyPage = lazy(() => import("@/pages/PrivacyPage").then((m) => ({ default: m.PrivacyPage })));
@@ -88,11 +88,7 @@ export default function App() {
         <Route
           element={
             <RequireAuth>
-              <OrganizationProvider>
-                <NotificationsProvider>
-                  <DashboardLayout />
-                </NotificationsProvider>
-              </OrganizationProvider>
+              <DashboardShell />
             </RequireAuth>
           }
         >
