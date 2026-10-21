@@ -87,6 +87,9 @@ wear-tiles = { group = "androidx.wear.tiles", name = "tiles", version.ref = "wea
 wear-protolayout = { group = "androidx.wear.protolayout", name = "protolayout", version.ref = "wearProtolayout" }
 wear-protolayout-material = { group = "androidx.wear.protolayout", name = "protolayout-material", version.ref = "wearProtolayout" }
 
+# JVM unit tests (test/): pure logic in :core, no device needed.
+junit = { group = "junit", name = "junit", version = "4.13.2" }
+
 # Instrumented tests (androidTest) — run against a real device/emulator so
 # the debug-only USE_FIREBASE_EMULATOR path (see AuthManager.kt) applies,
 # same as a manual dev run. No separate mocking layer.

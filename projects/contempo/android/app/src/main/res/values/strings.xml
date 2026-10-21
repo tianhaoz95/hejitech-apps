@@ -187,7 +187,10 @@
 
     <string name="dashboard_eyebrow">Your paper trail</string>
     <string name="dashboard_title">Your progress</string>
-    <string name="dashboard_hours_progress">%1$d / %2$d hrs toward the %3$s test</string>
+    <string name="dashboard_hours_progress">%1$d / %2$d hrs toward the %3$s test in %4$d</string>
+    <string name="dashboard_pace_met">Test met for %1$d</string>
+    <string name="dashboard_pace_on_pace">On pace to reach %1$d hrs by %2$s</string>
+    <string name="dashboard_pace_behind">%1$s hrs a week reaches %2$d by Dec 31</string>
     <string name="dashboard_no_entries">No entries yet. Capture your first one to get started.</string>
     <string name="dashboard_pending_callout">%1$d entries need completing</string>
     <string name="dashboard_pending_badge">Pending</string>

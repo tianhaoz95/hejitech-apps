@@ -30,6 +30,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import com.hejitech.core.model.Entry
 import com.hejitech.core.model.EntryCategory
 import com.hejitech.core.model.CaptureSource
+import com.hejitech.core.model.TestYearProgress
 import com.hejitech.core.model.Timestamp
 import java.util.Date
 
@@ -218,7 +219,8 @@ class WearCaptureViewModel : ViewModel() {
     private fun observeProgress() {
         entryRepository.observeEntries()
             .map { entries ->
-                entries.filter { it.statusEnum == EntryStatus.CONFIRMED }.sumOf { it.durationMinutes } / 60.0
+                // The phone Dashboard's figure: the owner's confirmed hours this tax year.
+                TestYearProgress.compute(entries).ownerHours
             }
             // A stale/invalid session (e.g. a corrupted local auth cache, or
             // the emulator-token-not-yet-propagated race right after a fresh
