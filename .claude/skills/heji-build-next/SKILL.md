@@ -34,7 +34,9 @@ Hard rules for the whole skill:
   open a PR from one, never set an upstream. `worktree.sh` installs a pre-push hook that refuses
   them; don't remove or bypass it. Only main is pushed, in §8.
 - **Main stays untouched until §8.** All code goes into the per-project worktrees. The only things
-  written in the main checkout are the review sites in `reports/`, left uncommitted until §8.
+  written in the main checkout are the review sites in `reports/` and the ledgers
+  (`projects/<name>/build-next.md`), left uncommitted until §8. Build branches never touch a
+  ledger.
 - **Respect each project.** Read root `CLAUDE.md` and `projects/<name>/CLAUDE.md` before
   touching a project; follow its commands, conventions, What's New rules and isolation rules
   (`supabase/GRADUATION.md`). One project's branch touches only `projects/<name>/` (plus its own
@@ -42,6 +44,39 @@ Hard rules for the whole skill:
 - **The repo is public, and so are the review sites once committed.** No personal data (the
   user's own FeedbackKit screenshots can show family names), no secrets, and no working details of
   a security problem that isn't merged and fixed.
+
+## The ledger: what was already proposed and decided
+
+Each project keeps `projects/<name>/build-next.md`, a tracked file the skill reads before
+proposing and appends to after each decision, so a declined idea doesn't come back every round.
+It lives in the project (not in agent memory, which is local to one machine; not at the root, so
+it moves with the project when it graduates). Create it on first use:
+
+```markdown
+# Build-next ledger
+
+Ideas heji-build-next proposed for this project and what the owner decided. The skill reads this
+before proposing (see .claude/skills/heji-build-next/SKILL.md, "The ledger"). Newest first.
+
+| Date | Idea | Outcome | Evidence | Why / owner's note | Revisit if |
+|---|---|---|---|---|---|
+| 2026-10-28 | Dictionary terms catch sound-alikes | kept main after build | report 13b6844a; eval 11/69 | – | a new report about missed terms |
+```
+
+- **Idea**: the proposal's name. **Evidence**: what identifies the problem (report id, symptom,
+  file), so a reworded version of the same idea is still recognised.
+- **Outcome**, and what it means for the next scan:
+  - `merged in <version>`: done; don't propose it again (a follow-up gets its own name).
+  - `kept main after build`: built, then the owner kept main. Rejected.
+  - `skipped`: the owner crowned "Skip" for the project, or declined it in a note. Rejected.
+  - `not picked`: proposed while the owner chose something else. It may come back, marked as a
+    repeat; the second time it goes unpicked it becomes `not picked twice`, which counts as
+    rejected.
+- A rejected idea comes back only when its **Revisit if** condition is met or there's new
+  evidence (a new report, a new measurement), and then the proposal says so.
+- **Why / owner's note**: the owner's note, verbatim, when there is one.
+- Public repo: an unmerged security idea is recorded as "security hardening (details withheld)",
+  with no evidence column.
 
 ## Phase A: propose
 
@@ -58,8 +93,10 @@ them (`worktree.sh cleanup`) before starting. Note the date: branches and the re
 
 ### 1. Find candidates (per project)
 
-Go through the chosen projects in order (`ls projects`). For each, spend real effort finding
-options, then rank them and keep the top N. Evidence, roughly by weight:
+Go through the chosen projects in order (`ls projects`). For each, first read its ledger
+(`projects/<name>/build-next.md`, if there is one) and leave out what it marks merged or rejected
+unless the revisit condition is met or there's new evidence. Then spend real effort finding
+options, rank them and keep the top N. Evidence, roughly by weight:
 
 1. **Broken things users hit**: open GitHub issues for the project (`gh issue list --search
    "<name> in:title,body"`, labels), FeedbackKit reports the project receives (read-only; e.g.
@@ -108,7 +145,10 @@ Build the site with the `heji-candidate-review` skill (read its SKILL.md; §2 sc
    - **Render**: a real capture of today's problem when there is one (the user's report
      screenshot only if it shows nothing personal, a crawl result, a measured chart), otherwise
      the text card the example's `idea(...)` helper draws.
-4. `intro`: how to respond (below), plus projects with nothing worth proposing and why.
+4. `intro`: how to respond (below), projects with nothing worth proposing and why, and per project
+   the earlier ideas the ledger kept out ("Wee Hours: 2 earlier ideas left out, see
+   projects/weehours/build-next.md"), so the owner can revive one by saying so. A proposal that
+   was `not picked` before says so in its facts (`Proposed before: 2026-10-21, not picked`).
 5. Run the candidate-review checks (§4 there).
 
 Hand over: the serve command and URL, one line per proposal (project · name · kind · evidence),
@@ -121,6 +161,13 @@ in the plan, then **Copy summary** and paste it back. Then stop: nothing is buil
 The pasted proposal hand-off lists, per project, the 🏆 winner and any ♥ shortlisted proposals:
 build all of those, nothing else. The user's notes override the proposal's text. Projects with
 "Skip" (or no pick) get nothing.
+
+First, record the decisions in each proposed project's ledger (in the main checkout, uncommitted
+until §8): every proposal not built gets a line, `skipped` (the project's "Skip" was crowned, or
+a note declines it) or `not picked` (`not picked twice` when the ledger already has it as `not
+picked`), with the owner's note verbatim. Picked proposals are recorded in §8, once their fate is
+known. If nothing at all was picked, commit the ledgers and the proposal review now (one commit,
+pushed) and stop: there's no phase C.
 
 ### 3. Build each pick on a local branch
 
@@ -244,7 +291,7 @@ the paste must come back to an agent in this checkout. Then stop.
 
 The pasted hand-off lists the branches to merge. Merge exactly those; nothing else.
 
-1. **Check:** on main, clean tree (the uncommitted review sites are expected), `git pull
+1. **Check:** on main, clean tree (the uncommitted review sites and ledgers are expected), `git pull
    --ff-only`; every listed branch exists locally (`worktree.sh list`) at the listed commit. If a
    branch is missing (different machine), stop and say so.
 2. **Apply notes, then merge.** If the user left notes on a picked build, make those changes on
@@ -259,17 +306,19 @@ The pasted hand-off lists the branches to merge. Merge exactly those; nothing el
 3. **Clean up every build branch**, merged or not: `.claude/skills/heji-build-next/worktree.sh
    cleanup` (removes all `heji-build/*` worktrees and branches), then `worktree.sh list` prints
    nothing. Remove the build caches you put in the worktree area (literal paths).
-4. **Commit the review sites** as the record (the proposal review and the build review): drop
+4. **Update the ledgers**: each built proposal gets a line, `merged in <version it will ship as>`
+   or `kept main after build` (with the owner's note), next to the phase-B lines already there.
+5. **Commit the review sites and ledgers** as the record (the proposal review and the build review): drop
    captures of builds that weren't merged (the ideas stay as text; set their `views` to `[]` and
    `render` to a "not merged" card), reduce unmerged security findings to one line with no
    details, scan the rest for anything personal, secret or unreleased-but-secret, then commit
-   `reports/<date>-build-next*/` in its own commit. Fix the What's New version on main now if the
+   `reports/<date>-build-next*/` and the `projects/*/build-next.md` ledgers in their own commit. Fix the What's New version on main now if the
    release version differs from what the branch guessed.
-5. **Push main** (`git push origin main`), then wait for each merged project's CI on the new head
+6. **Push main** (`git push origin main`), then wait for each merged project's CI on the new head
    (`gh run list --workflow <CI_WORKFLOW from release.env> --commit <sha>`, `gh run watch`). Red
    CI: fix on main with the `heji-fix-ci` approach (a fix that the merge itself caused is in scope
    of the user's approval; anything bigger, ask).
-6. **Release each merged project**, one at a time, with the level the hand-off names:
+7. **Release each merged project**, one at a time, with the level the hand-off names:
    ```sh
    scripts/cut_release.sh <project> <level> --dry-run
    scripts/cut_release.sh <project> <level> --notes "<what shipped, user-facing>"
@@ -279,5 +328,5 @@ The pasted hand-off lists the branches to merge. Merge exactly those; nothing el
    relying on `--watch`, which can follow another release's skipped run. After an iOS upload,
    check App Store Connect accepted the build (root `CLAUDE.md`, "Common pitfalls"). Web changes
    for Contempo and FeedbackKit: check the live site and deploy by hand if Workers Builds didn't.
-7. **Report back**: what merged (commit SHAs), the releases (tags, workflow results, TestFlight
+8. **Report back**: what merged (commit SHAs), the releases (tags, workflow results, TestFlight
    verdicts), what was dropped, and that every build branch is gone.

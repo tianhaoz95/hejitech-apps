@@ -59,6 +59,7 @@
           Evidence: "One line: report 4ec04025, reproduced in the simulator",
           Release: "patch (0.8.6 → 0.8.7)",
           Captures: "What the build review would show: simulator before/after, light and dark",
+          // "Proposed before": "2026-10-21, not picked",   // only when projects/<name>/build-next.md has it
         },
         render: idea("Bug fix", "The problem in a few words", "The plan in one sentence"),
         // or: render: shot("weehours/report.png"), with the capture in site/media/weehours/
