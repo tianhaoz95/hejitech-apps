@@ -213,30 +213,99 @@ struct DashboardScreen: View {
             .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20))
             .listRowSeparator(.hidden)
 
+            // ── Filters & Search ──────────────────────────────────────────
+            VStack(spacing: 8) {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(palette.inkFaint)
+                    TextField("Search task, property, category...", text: $viewModel.searchText)
+                        .font(ContempoFont.bodyMedium())
+                    if !viewModel.searchText.isEmpty {
+                        Button { viewModel.searchText = "" } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(palette.inkFaint)
+                        }
+                    }
+                }
+                .padding(8)
+                .background(palette.paperRaised)
+                .clipShape(RoundedRectangle(cornerRadius: ContempoRadius.small))
+                .overlay(RoundedRectangle(cornerRadius: ContempoRadius.small).stroke(palette.hairline, lineWidth: 1))
+
+                HStack {
+                    Menu {
+                        ForEach(viewModel.propertyOptions, id: \.self) { prop in
+                            Button { viewModel.selectedProperty = prop } label: {
+                                if viewModel.selectedProperty == prop {
+                                    Label(prop, systemImage: "checkmark")
+                                } else {
+                                    Text(prop)
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text("Property: \(viewModel.selectedProperty)")
+                                .font(ContempoFont.labelSmall())
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 10))
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(viewModel.selectedProperty == "All" ? palette.paperRaised : palette.pineTint)
+                        .foregroundStyle(viewModel.selectedProperty == "All" ? palette.ink : palette.pine)
+                        .clipShape(Capsule())
+                    }
+
+                    Spacer()
+
+                    if viewModel.isFilterActive {
+                        Button {
+                            viewModel.selectedProperty = "All"
+                            viewModel.selectedCategory = "All"
+                            viewModel.searchText = ""
+                        } label: {
+                            Text("Reset")
+                                .font(ContempoFont.labelSmall())
+                                .foregroundStyle(palette.brassDeep)
+                        }
+                    }
+                }
+            }
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 4, trailing: 20))
+            .listRowSeparator(.hidden)
+
             // ── Entries header ────────────────────────────────────────────
             HStack {
                 Text("Recent Entries")
                     .font(ContempoFont.titleMedium())
                     .foregroundStyle(palette.ink)
                 Spacer()
-                Text("\(viewModel.entries.count)")
-                    .font(ContempoFont.labelSmall())
-                    .foregroundStyle(palette.inkFaint)
+                if viewModel.isFilterActive {
+                    Text("\(String(format: "%.1f", viewModel.filteredHours)) hrs (\(viewModel.filteredEntries.count))")
+                        .font(ContempoFont.labelSmall())
+                        .foregroundStyle(palette.pine)
+                } else {
+                    Text("\(viewModel.entries.count)")
+                        .font(ContempoFont.labelSmall())
+                        .foregroundStyle(palette.inkFaint)
+                }
             }
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets(top: 4, leading: 20, bottom: 4, trailing: 20))
             .listRowSeparator(.hidden)
 
             // ── Entry rows (or empty state) ───────────────────────────────
-            if viewModel.entries.isEmpty {
+            if viewModel.filteredEntries.isEmpty {
                 VStack(spacing: 8) {
                     Image(systemName: "note.text")
                         .font(.system(size: 32))
                         .foregroundStyle(palette.inkFaint)
-                    Text("No work entries logged yet")
+                    Text(viewModel.isFilterActive ? "No matching entries" : "No work entries logged yet")
                         .font(ContempoFont.bodyLarge())
                         .foregroundStyle(palette.inkSoft)
-                    Text("Use Voice or Type in Capture to add your first contemporaneous record.")
+                    Text(viewModel.isFilterActive ? "Try clearing or adjusting your search filters." : "Use Voice or Type in Capture to add your first contemporaneous record.")
                         .font(ContempoFont.labelSmall())
                         .foregroundStyle(palette.inkFaint)
                         .multilineTextAlignment(.center)
@@ -253,7 +322,7 @@ struct DashboardScreen: View {
                 .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                 .listRowSeparator(.hidden)
             } else {
-                ForEach(viewModel.entries) { entry in
+                ForEach(viewModel.filteredEntries) { entry in
                     ZStack {
                         EntryCard(entry: entry)
                         NavigationLink(value: AppRoute.entryDetail(entry.id ?? "")) {
