@@ -117,7 +117,6 @@ public final class DualCameraManager: NSObject, ObservableObject {
         startVideoPlayback()
         setupSimulatorStreamer()
         checkAndRequestCameraPermission()
-        }
     }
 
     public func updateDemoFrames() {
