@@ -497,7 +497,11 @@ enum SessionActivities {
     /// One Live Activity per child with an open feed or sleep; `named` shows the child's name.
     static func sync(_ children: [(Baby, StatusSnapshot)], named: Bool) {
         #if canImport(ActivityKit)
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        let enabled = UserDefaults.standard.object(forKey: "liveActivitiesEnabled") as? Bool ?? true
+        guard enabled, ActivityAuthorizationInfo().areActivitiesEnabled else {
+            endAll()
+            return
+        }
         var current = Activity<SessionActivityAttributes>.activities
         for (baby, status) in children {
             let kind: String? = status.sleepingSince != nil ? "sleep" : status.openFeedKind
@@ -520,6 +524,15 @@ enum SessionActivities {
             }
         }
         for a in current { Task { await a.end(nil, dismissalPolicy: .immediate) } }   // hidden or archived children
+        #endif
+    }
+
+    /// End all ongoing session live activities immediately.
+    static func endAll() {
+        #if canImport(ActivityKit)
+        for a in Activity<SessionActivityAttributes>.activities {
+            Task { await a.end(nil, dismissalPolicy: .immediate) }
+        }
         #endif
     }
 }

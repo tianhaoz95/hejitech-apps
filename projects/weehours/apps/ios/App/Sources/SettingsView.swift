@@ -24,6 +24,7 @@ struct SettingsView: View {
     @AppStorage(NightMode.toKey) private var nightTo = NightMode.defaultTo
     @AppStorage(NightMode.tintKey) private var nightTint = NightTint.amber
     @AppStorage(ThumbDock.key) private var thumbDock = ThumbDock.off
+    @AppStorage("liveActivitiesEnabled") private var liveActivitiesEnabled = true
 
     var body: some View {
         NavigationStack {
@@ -117,6 +118,17 @@ struct SettingsView: View {
                     }
                 } header: { Text("Reminders") } footer: {
                     Text("Use your pediatrician's guidance. Reminders go to whoever is on duty, as a tap on the wrist first and a sound only when overdue.")
+                }
+                Section {
+                    Toggle("Lock Screen Live Activity", isOn: $liveActivitiesEnabled)
+                        .accessibilityIdentifier("toggleLiveActivities")
+                        .onChange(of: liveActivitiesEnabled) { _, on in
+                            if !on {
+                                SessionActivities.endAll()
+                            }
+                        }
+                } header: { Text("Lock Screen & Dynamic Island") } footer: {
+                    Text("Shows ongoing timer on your Lock Screen and Dynamic Island during feeding and sleep sessions. Toggle off individually per caregiver preference.")
                 }
                 Section {
                     Button("Save changes") { save() }
