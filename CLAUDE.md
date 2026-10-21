@@ -83,3 +83,15 @@ complications embedded, same team-wide signing secrets). See `projects/toddlerca
 For TinyTouch it bumps `MARKETING_VERSION` in `projects/tinytouch/ToddlerPlay.xcodeproj/project.pbxproj`
 (written by its own `tools/generate_project.py`, no XcodeGen) and publishes `tinytouch-v<version>`,
 which runs `tinytouch-testflight.yml`. See `projects/tinytouch/CLAUDE.md`.
+
+## Common pitfalls
+
+- **A green TestFlight upload isn't a build in TestFlight.** App Store Connect can accept an upload
+  and reject the build minutes later while processing it; CI stays green and the build just never
+  appears. Wee Hours lost 0.8.2–0.8.4 this way. Check the verdict with the App Store Connect API
+  (`GET /v1/apps/{id}/buildUploads`: state `COMPLETE` or `FAILED` with Apple's errors), as
+  `projects/weehours/scripts/asc_build_status.swift` does after every Wee Hours upload; the other
+  projects' release scripts don't wait for it yet.
+- **No "Apple" in App Intent strings.** Intent titles, descriptions, parameter names and App
+  Shortcut phrases may not contain "Apple" (ITMS-90626, "Invalid Siri Support … cannot contain
+  'apple'"), which rejects the whole build as above. Write "your watch", not "Apple Watch".
