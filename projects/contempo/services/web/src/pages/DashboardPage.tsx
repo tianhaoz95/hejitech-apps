@@ -9,6 +9,7 @@ import {
   MATERIAL_PARTICIPATION_TEST,
   isFlagged,
 } from "../lib/entryModel";
+import { dashboardMetrics } from "../lib/metrics";
 
 const SERIES_COLORS = [
   "var(--series-1)",
@@ -30,14 +31,8 @@ export function DashboardPage() {
   const { entries, loading } = useEntries();
 
   const confirmed = useMemo(() => entries.filter((e) => e.status === "confirmed"), [entries]);
-  const pendingCount = useMemo(
-    () => entries.filter((e) => e.status === "pending_review").length,
-    [entries],
-  );
-  const confirmedHours = useMemo(
-    () => confirmed.reduce((sum, e) => sum + e.durationMinutes, 0) / 60,
-    [confirmed],
-  );
+  // The test counts only the owner's hours (other roles' are compared, not added), like the apps.
+  const { confirmedHours, roleBreakdown, pendingCount } = useMemo(() => dashboardMetrics(entries), [entries]);
 
   const hoursByProperty = useMemo(() => {
     const byProperty = new Map<string, number>();
@@ -84,6 +79,7 @@ export function DashboardPage() {
           thresholdHours={MATERIAL_PARTICIPATION_TEST.thresholdHours}
           testName={MATERIAL_PARTICIPATION_TEST.name}
           pendingCount={pendingCount}
+          roleBreakdown={roleBreakdown}
         />
         <TrendSparkline title="Flagged entries, by week" points={flaggedTrend} />
       </div>

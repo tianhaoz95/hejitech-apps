@@ -56,6 +56,16 @@ export interface Entry {
   daysLate: number;
   riskReasons: string[];
   photoUrls: string[];
+  /** Whose hours these are: empty for the owner's own, else a role from Settings (cleaner, co-host, …). */
+  roleId: string;
+  roleName: string;
+  /** An open start/stop timer or mileage trip: still running, not "needs review". */
+  inProgress: boolean;
+}
+
+/** Same rule as the apps' `Entry.isOwnerHours`: only entries with no role tagged are the owner's. */
+export function isOwnerHours(entry: Entry): boolean {
+  return entry.roleId === "";
 }
 
 export interface Property {

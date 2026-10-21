@@ -54,6 +54,7 @@ export function EntriesPage() {
             <th>Date</th>
             <th>Property</th>
             <th>Task</th>
+            <th>Logged for</th>
             <th>Category</th>
             <th>Status</th>
             <th>Flags</th>
@@ -66,6 +67,7 @@ export function EntriesPage() {
               <td>{e.activityDate.toDate().toLocaleDateString()}</td>
               <td>{e.propertyName}</td>
               <td>{e.task}</td>
+              <td>{e.roleId === "" ? "Me" : e.roleName || "Other"}</td>
               <td>{ENTRY_CATEGORY_LABELS[e.category]}</td>
               <td>{e.status === "confirmed" ? "Confirmed" : "Pending review"}</td>
               <td style={{ color: isFlagged(e) ? "var(--danger)" : "var(--ink-faint)" }}>

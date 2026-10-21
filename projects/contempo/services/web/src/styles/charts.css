@@ -148,3 +148,51 @@
   width: 100%;
   height: 60px;
 }
+
+/* "Hours by role" under the test progress: the owner (pine) against everyone else (brass). */
+.role-breakdown {
+  margin-top: 0.8rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--hairline);
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+.role-breakdown summary {
+  cursor: pointer;
+}
+.role-warning {
+  color: var(--brass);
+}
+.role-note {
+  margin: 0.5rem 0 0.7rem;
+  color: var(--ink-faint);
+}
+.role-breakdown ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+.role-row {
+  display: flex;
+  justify-content: space-between;
+  font-variant-numeric: tabular-nums;
+}
+.role-track {
+  display: block;
+  height: 6px;
+  margin-top: 4px;
+  background: var(--hairline);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.role-fill {
+  display: block;
+  height: 100%;
+  background: var(--brass);
+  border-radius: 3px;
+}
+.role-fill.me {
+  background: var(--pine);
+}
