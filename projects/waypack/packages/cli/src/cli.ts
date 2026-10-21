@@ -21,7 +21,7 @@ Usage:
   waypack init <dir> [--title "My Trip"]        Start a bundle from the base template
   waypack skill install [--dir ~/.claude/skills] Install the Waypack Agent Skill (SKILL.md + references + template)
 
-Docs: https://waypack.app/docs  ·  Schema: packages/bundle-schema/manifest.v1.schema.json`;
+Docs: https://tianhaoz95.github.io/hejitech-apps/waypack/  ·  Schema: packages/bundle-schema/manifest.v1.schema.json`;
 
 function validatePath(p: string): ValidationResult & { files?: { path: string; data: Uint8Array }[] } {
   if (isDir(p)) {

@@ -1,6 +1,6 @@
 # Uploading a bundle
 
-All tools are on the Waypack MCP server (`https://waypack.app/mcp`). Sign-in happens via OAuth the first time a tool is used.
+All tools are on the Waypack MCP server (`https://waypack.hejitech.workers.dev/mcp`). Sign-in happens via OAuth the first time a tool is used.
 
 ## Live preview (recommended while building)
 A preview is a **draft** with its own link that anyone can open on any device; open pages reload themselves when you push. It isn't in the app, doesn't count toward trip limits and doesn't cut offline maps (the page uses the online map).
@@ -39,4 +39,4 @@ If `finalize_upload` returns validation errors, fix, re-zip, and repeat from ste
 - The app shows "Update available". Map tiles are re-cut only if `map` changed.
 
 ## Limits (free tier)
-Free accounts get 1 active trip and no offline map extract (the map needs a connection). Plans are managed at https://waypack.app/account. If a tool returns a limit message, show it to the user verbatim; don’t retry.
+Free accounts get 1 active trip and no offline map extract (the map needs a connection). Plans are managed at https://waypack.hejitech.workers.dev/account. If a tool returns a limit message, show it to the user verbatim; don’t retry.

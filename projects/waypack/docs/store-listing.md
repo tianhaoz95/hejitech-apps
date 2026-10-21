@@ -6,7 +6,7 @@
 **Bundle / package id:** `com.hejitech.waypack`
 **Category:** Travel (secondary: Navigation)
 **Age rating:** 4+ / Everyone
-**Price:** Free. No in-app purchases (Waypack Pro is sold on waypack.app; the app is a companion viewer).
+**Price:** Free. No in-app purchases (Waypack Pro is sold on waypack.hejitech.workers.dev; the app is a companion viewer).
 
 ## Description
 Your AI agent plans the trip. Waypack keeps it working when the signal drops.
@@ -36,7 +36,7 @@ First release: download trips from your AI agent, offline maps with GPS, native 
 ## Review notes (App Store)
 - Waypack displays trip guides the user created with their own AI agent (via our MCP server). Bundles are documents (HTML/CSS/JS + JSON) rendered in a sandboxed WebView from a local loopback server; they cannot change native functionality, access the network (CSP `connect-src 'self'`), or reach other trips.
 - Native features: offline download manager with integrity checks, native Today view, GPS map, trip reminders, share sheet.
-- **Guideline 3.1.3(f):** Waypack is a free stand-alone companion to a paid web service (cloud storage of trip plans + offline map generation, sold at waypack.app). The app contains no purchasing and no calls to action for purchasing outside the app; it only displays the account's current plan.
+- **Guideline 3.1.3(f):** Waypack is a free stand-alone companion to a paid web service (cloud storage of trip plans + offline map generation, sold at waypack.hejitech.workers.dev). The app contains no purchasing and no calls to action for purchasing outside the app; it only displays the account's current plan.
 - Sign-in: Sign in with Apple or Google (no passwords). Reviewers can use their own Apple ID. **To do before submission:** create a dedicated demo Google account, publish the sample Sequoia trip to it, and put its credentials in the App Review notes.
 - Location is used only to show the user's position on the offline map (When In Use).
 

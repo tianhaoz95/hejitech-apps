@@ -109,8 +109,8 @@ export const tools: ToolDef<ToolCtx>[] = [
         schema: `${versions}\n\n${schema}`,
       };
       const raw = section === "all" ? [parts.guide, parts.template, parts.schema].join("\n\n") : parts[section] ?? parts.guide;
-      // The skill files say https://waypack.app; serve this deployment's address instead.
-      const text = raw.replaceAll("https://waypack.app", ctx.env.PUBLIC_URL);
+      // The skill files name the production Worker; serve this deployment's address instead.
+      const text = raw.replaceAll("https://waypack.hejitech.workers.dev", ctx.env.PUBLIC_URL);
       return { text, structured: { schema_version: SCHEMA_VERSION, sdk_version: SDK_MAJOR } };
     },
   },
