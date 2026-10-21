@@ -36,4 +36,24 @@ final class TranscriptSegmentTokenTests: XCTestCase {
     func testUnterminatedTokenIsKeptAsText() {
         XCTAssertEqual(segment("a <| b").parts, [.text("a <| b")])
     }
+
+    func testParsesBracketedAudioEventTags() {
+        XCTAssertEqual(segment("[BLANK_AUDIO]").parts, [.token(.audioEvent("blank audio"))])
+        XCTAssertEqual(segment("<|0.00|> So, kind of [ Laughter ] what now?<|4.00|>").parts, [
+            .token(.timestamp(0)),
+            .text("So, kind of"),
+            .token(.audioEvent("laughter")),
+            .text("what now?"),
+            .token(.timestamp(4))
+        ])
+    }
+
+    func testDisplayTextDropsAudioEventTags() {
+        XCTAssertEqual(segment("[Music] okay let's start [BLANK_AUDIO]").displayText, "okay let's start")
+    }
+
+    func testUnclosedOrNestedBracketsStayText() {
+        XCTAssertEqual(segment("see note [1 for details").parts, [.text("see note [1 for details")])
+        XCTAssertEqual(segment("a [b [c] d").parts, [.text("a [b"), .token(.audioEvent("c")), .text("d")])
+    }
 }

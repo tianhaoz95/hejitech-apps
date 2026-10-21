@@ -1549,6 +1549,7 @@ private struct TranscriptTokenBadge: View {
         case .task(let name): return name.capitalized
         case .noTimestamps: return "No Timestamps"
         case .other(let name): return name
+        case .audioEvent(let name): return Self.audioEventTitle(name)
         }
     }
 
@@ -1561,6 +1562,7 @@ private struct TranscriptTokenBadge: View {
         case .task: return "waveform"
         case .noTimestamps: return "clock.badge.xmark"
         case .other: return "chevron.left.forwardslash.chevron.right"
+        case .audioEvent(let name): return Self.audioEventIcon(name)
         }
     }
 
@@ -1572,6 +1574,7 @@ private struct TranscriptTokenBadge: View {
         case .language: return .purple
         case .task: return .indigo
         case .noTimestamps, .other: return .gray
+        case .audioEvent: return .orange
         }
     }
 
@@ -1580,8 +1583,27 @@ private struct TranscriptTokenBadge: View {
         case .timestamp(let seconds): return String(format: "Timestamp %.2f seconds", seconds)
         case .startOfTranscript: return "Start of transcript"
         case .endOfText: return "End of text"
+        case .audioEvent: return "Sound: \(title)"
         default: return title
         }
+    }
+
+    /// Whisper's audio-event tags, as a person would say them: "blank audio" -> "Silence".
+    static func audioEventTitle(_ name: String) -> String {
+        switch name {
+        case "blank audio", "silence", "no speech": return "Silence"
+        case "inaudible", "inaudible remark", "inaudible speech": return "Inaudible"
+        default: return name.prefix(1).uppercased() + name.dropFirst()
+        }
+    }
+
+    static func audioEventIcon(_ name: String) -> String {
+        if ["blank", "silence", "no speech"].contains(where: name.contains) { return "speaker.slash" }
+        if name.contains("music") || name.contains("singing") { return "music.note" }
+        if name.contains("laugh") || name.contains("chuckl") { return "face.smiling" }
+        if name.contains("applause") || name.contains("clap") { return "hands.clap" }
+        if name.contains("inaudible") || name.contains("unclear") { return "ear.trianglebadge.exclamationmark" }
+        return "waveform"
     }
 }
 

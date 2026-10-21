@@ -125,7 +125,8 @@ public struct TranscriptTimingSegment: Codable, Hashable, Sendable, Identifiable
     }
 
     /// One piece of a segment's text: either spoken words, or a Whisper control token
-    /// (`<|startoftranscript|>`, `<|en|>`, `<|7.54|>`, ...) that WhisperKit leaves inline.
+    /// (`<|startoftranscript|>`, `<|en|>`, `<|7.54|>`, ...) or audio-event tag (`[BLANK_AUDIO]`,
+    /// `[ Laughter ]`, `[Music]`) that WhisperKit leaves inline.
     public enum TextPart: Hashable, Sendable {
         case text(String)
         case token(SpecialToken)
@@ -139,6 +140,16 @@ public struct TranscriptTimingSegment: Codable, Hashable, Sendable, Identifiable
         case task(String)
         case noTimestamps
         case other(String)
+        /// A bracketed non-speech tag, normalized: "BLANK_AUDIO" -> "blank audio", "[ Laughter ]" -> "laughter".
+        case audioEvent(String)
+
+        init(audioEvent raw: String) {
+            let words = raw.replacingOccurrences(of: "_", with: " ")
+                .split(whereSeparator: \.isWhitespace)
+                .joined(separator: " ")
+                .lowercased()
+            self = .audioEvent(words)
+        }
 
         init(rawName: String) {
             let name = rawName.trimmingCharacters(in: .whitespaces)
@@ -158,24 +169,43 @@ public struct TranscriptTimingSegment: Codable, Hashable, Sendable, Identifiable
         }
     }
 
-    /// `text` split into spoken words and Whisper control tokens, in order. Whitespace-only
-    /// runs between tokens are dropped.
+    /// `text` split into spoken words, Whisper control tokens and bracketed audio-event tags, in
+    /// order. Whitespace-only runs between tokens are dropped. A tag is `[...]` without nested
+    /// brackets (the same rule `LLMCopywriterService.stripASRSpecialTokens` removes for Stage 2).
     public var parts: [TextPart] {
         var result: [TextPart] = []
         var remaining = Substring(text)
-        while let open = remaining.range(of: "<|") {
-            guard let close = remaining[open.upperBound...].range(of: "|>") else { break }
-            let before = remaining[..<open.lowerBound].trimmingCharacters(in: .whitespacesAndNewlines)
+        while let (range, isTag) = Self.nextToken(in: remaining) {
+            let before = remaining[..<range.lowerBound].trimmingCharacters(in: .whitespacesAndNewlines)
             if !before.isEmpty { result.append(.text(before)) }
-            result.append(.token(SpecialToken(rawName: String(remaining[open.upperBound..<close.lowerBound]))))
-            remaining = remaining[close.upperBound...]
+            let inner = isTag
+                ? remaining[remaining.index(after: range.lowerBound)..<remaining.index(before: range.upperBound)]
+                : remaining[remaining.index(range.lowerBound, offsetBy: 2)..<remaining.index(range.upperBound, offsetBy: -2)]
+            result.append(.token(isTag ? SpecialToken(audioEvent: String(inner)) : SpecialToken(rawName: String(inner))))
+            remaining = remaining[range.upperBound...]
         }
         let tail = remaining.trimmingCharacters(in: .whitespacesAndNewlines)
         if !tail.isEmpty { result.append(.text(tail)) }
         return result
     }
 
-    /// The spoken words only, with every Whisper control token removed.
+    /// The next complete `<|...|>` control token or `[...]` audio-event tag (no nested brackets;
+    /// an unclosed opener is just text), and whether it's a tag.
+    private static func nextToken(in s: Substring) -> (range: Range<Substring.Index>, isTag: Bool)? {
+        var control: Range<Substring.Index>?
+        if let open = s.range(of: "<|"), let close = s[open.upperBound...].range(of: "|>") {
+            control = open.lowerBound..<close.upperBound
+        }
+        let tag = s.range(of: #"\[[^\[\]]+\]"#, options: .regularExpression)
+        switch (control, tag) {
+        case let (c?, t?): return c.lowerBound <= t.lowerBound ? (c, false) : (t, true)
+        case let (c?, nil): return (c, false)
+        case let (nil, t?): return (t, true)
+        default: return nil
+        }
+    }
+
+    /// The spoken words only, with every Whisper control token and audio-event tag removed.
     public var displayText: String {
         parts.compactMap { part -> String? in
             if case .text(let words) = part { return words }
