@@ -52,24 +52,33 @@ app.use(compression());
 const jsonParser = express.json();
 app.use((req, res, next) => (req.path === '/proxy' || req.path.startsWith('/proxy/') ? next() : jsonParser(req, res, next)));
 
-// Serve local monaco-editor, marked, and xterm-addon-webgl assets from node_modules for offline-readiness and reduced load latency
-app.use('/vendor/monaco-editor', express.static(path.join(__dirname, 'node_modules', 'monaco-editor')));
-app.use('/vendor/marked', express.static(path.join(__dirname, 'node_modules', 'marked', 'lib')));
-app.use('/vendor/xterm-addon-webgl', express.static(path.join(__dirname, 'node_modules', 'xterm-addon-webgl', 'lib')));
-// xterm + addons are version-pinned in package.json and only change on a
-// self-update (which restarts the server), so they can be cached for a day
-// instead of revalidated on every load.
+// Third-party code served from node_modules (offline-ready, no CDN). Every package here is
+// version-pinned in package.json and only changes on a self-update (which restarts the server),
+// so none of it needs revalidating on every page load.
 const vendorCache = { maxAge: '1d' };
+// Monaco is ~20 files fetched per editor open, so it goes further: its URL carries its version
+// (window.MEOWTRIX_MONACO_BASE, from /meowtrix-version.js) and is cached as immutable. An update
+// that changes Monaco changes the URL, so a browser never mixes files from two versions.
+const monacoDir = path.join(__dirname, 'node_modules', 'monaco-editor');
+const monacoVersion = (() => {
+  try { return JSON.parse(fs.readFileSync(path.join(monacoDir, 'package.json'), 'utf8')).version; } catch { return 'local'; }
+})();
+const MONACO_URL = `/vendor/monaco-editor@${monacoVersion}`;
+app.use(MONACO_URL, express.static(monacoDir, { maxAge: '365d', immutable: true }));
+// The unversioned path keeps pages loaded before this change (and the static demo) working.
+app.use('/vendor/monaco-editor', express.static(monacoDir));
+app.use('/vendor/marked', express.static(path.join(__dirname, 'node_modules', 'marked', 'lib'), vendorCache));
+app.use('/vendor/xterm-addon-webgl', express.static(path.join(__dirname, 'node_modules', 'xterm-addon-webgl', 'lib'), vendorCache));
 app.use('/vendor/xterm', express.static(path.join(__dirname, 'node_modules', 'xterm'), vendorCache));
 app.use('/vendor/xterm-addon-fit', express.static(path.join(__dirname, 'node_modules', 'xterm-addon-fit', 'lib'), vendorCache));
 app.use('/vendor/xterm-addon-search', express.static(path.join(__dirname, 'node_modules', '@xterm', 'addon-search', 'lib'), vendorCache));
 app.use('/vendor/xterm-addon-web-links', express.static(path.join(__dirname, 'node_modules', '@xterm', 'addon-web-links', 'lib'), vendorCache));
-app.use('/vendor/feedbackkit-web', express.static(path.join(__dirname, 'node_modules', 'feedbackkit-web', 'dist')));
+app.use('/vendor/feedbackkit-web', express.static(path.join(__dirname, 'node_modules', 'feedbackkit-web', 'dist'), vendorCache));
 
 // Exposes the app version synchronously to the page so feedback.js can tag reports before any other script runs
 app.get('/meowtrix-version.js', (req, res) => {
   res.setHeader('Cache-Control', 'no-cache');
-  res.type('application/javascript').send(`window.MEOWTRIX_VERSION = ${JSON.stringify(appVersion())};`);
+  res.type('application/javascript').send(`window.MEOWTRIX_VERSION = ${JSON.stringify(appVersion())};\nwindow.MEOWTRIX_MONACO_BASE = ${JSON.stringify(`${MONACO_URL}/min`)};`);
 });
 
 // Explicit route for favicon.ico with no-cache header so browsers immediately pick up icon updates
