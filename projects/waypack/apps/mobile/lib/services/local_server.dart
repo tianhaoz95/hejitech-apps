@@ -73,6 +73,14 @@ class LocalServer {
   String? onlineMap;
   bool useOnlineMap = true;
 
+  /// The Worker's public basemap (`/api/public/basemap.pmtiles`, range requests into the same
+  /// planet): the online map for pages that have no trip download to name one, i.e. templates.
+  String? publicBasemap;
+
+  /// Trips that exist only as a manifest (a gallery template's map), by trip id: no bundle, no
+  /// extracts, online map only. Served at `/t/<id>/manifest.json` next to the native map page.
+  final Map<String, String> virtualManifests = {};
+
   final HttpClient _upstream = HttpClient()
     ..connectionTimeout = const Duration(seconds: 8)
     ..autoUncompress = false;
@@ -253,6 +261,15 @@ class LocalServer {
       res.write(html);
       return res.close();
     }
+    final virtual = virtualManifests[tripId];
+    if (virtual != null) {
+      if (rest.length != 1 || rest[0] != 'manifest.json') return _status(req.response, 404);
+      final res = req.response;
+      res.headers.set('Content-Type', 'application/json; charset=utf-8');
+      res.headers.set('Cache-Control', 'no-store');
+      res.write(virtual);
+      return res.close();
+    }
     final v = versions[tripId];
     if (v == null) return _status(req.response, 404);
     final path = rest.isEmpty || rest.last.isEmpty
@@ -276,7 +293,7 @@ class LocalServer {
           'extracts': [
             for (final f in files) {'url': '/__waypack/tiles/$tripId/$f'},
           ],
-          'online': useOnlineMap && onlineMap != null
+          'online': useOnlineMap && _onlineUrl != null
               ? '/__waypack/tiles/$tripId/online.pmtiles'
               : null,
         }),
@@ -289,11 +306,14 @@ class LocalServer {
     return _serveFile(req, store.tilesDir(tripId), rest);
   }
 
+  /// A downloaded trip's planet URL when there is one, else the Worker's public basemap.
+  String? get _onlineUrl => onlineMap ?? publicBasemap;
+
   /// Forwards one range read to the online basemap. Range is required: the
   /// planet is ~130 GB, so a plain GET is never passed through.
   Future<void> _proxyOnline(HttpRequest req) async {
     final res = req.response;
-    final url = onlineMap;
+    final url = _onlineUrl;
     final range = req.headers.value(HttpHeaders.rangeHeader);
     if (!useOnlineMap || url == null) return _status(res, 404);
     if (range == null) return _status(res, 416);

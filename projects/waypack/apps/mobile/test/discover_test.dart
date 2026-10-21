@@ -52,6 +52,30 @@ void main() {
     expect(t.prompt(when: 'Feb 13–15'), allOf(contains(t.url), contains('get_template'), contains('- When: Feb 13–15'), contains("- Who's going: ask me")));
   });
 
+  test('a template becomes a map manifest: its stops, a route per day, the days', () {
+    final t = TripTemplate(jsonDecode(_fixture("sequoia")) as Map<String, dynamic>);
+    final m = t.mapManifest()!;
+    final stops = t.plan.expand((d) => d.stops).where((s) => s.lat != null).toList();
+    final places = (m['places'] as List).cast<Map<String, dynamic>>();
+    expect(places.length, stops.length);
+    expect(places.first['name'], stops.first.name);
+    expect((m['days'] as List).length, t.plan.length);
+    final routes = (m['routes'] as List).cast<Map<String, dynamic>>();
+    expect(routes, isNotEmpty);
+    for (final r in routes) {
+      expect((r['geometry'] as Map)['type'], 'LineString');
+      expect(((r['geometry'] as Map)['coordinates'] as List).length, greaterThanOrEqualTo(2));
+    }
+    final bbox = ((m['map'] as Map)['bbox'] as List).cast<double>();
+    for (final p in places) {
+      expect(p['lon'] as double, inInclusiveRange(bbox[0], bbox[2]));
+      expect(p['lat'] as double, inInclusiveRange(bbox[1], bbox[3]));
+    }
+    // Nothing to put on a map without coordinates.
+    final bare = TripTemplate({...t.raw, 'plan': [{'title': 'Day', 'stops': [{'name': 'Somewhere'}]}]});
+    expect(bare.mapManifest(), isNull);
+  });
+
   for (final dark in [false, true]) {
     final mode = dark ? 'dark' : 'light';
     final requests = <Uri>[];

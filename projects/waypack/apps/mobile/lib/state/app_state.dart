@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../config.dart';
 import '../models/manifest.dart';
 import '../models/trip.dart';
 import '../services/api.dart';
@@ -168,6 +169,7 @@ class AppState extends ChangeNotifier {
     _bookmarked.clear();
     _bookmarked.addAll(prefs.getStringList('bookmarked_trips') ?? const []);
     server.useOnlineMap = prefs.getBool('use_online_map') ?? true;
+    server.publicBasemap = '${Config.apiUrl}/api/public/basemap.pmtiles';
     _shakeToReport = prefs.getBool('shake_to_report') ?? true;
     if (feedbackAvailable) {
       if (_shakeToReport) {

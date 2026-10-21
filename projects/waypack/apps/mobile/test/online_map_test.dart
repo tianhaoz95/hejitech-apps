@@ -106,4 +106,23 @@ void main() {
     expect(res.statusCode, 502);
     await res.drain<void>();
   });
+
+  test('a template is a virtual trip: its manifest, and the public basemap as its online map', () async {
+    server.onlineMap = null;
+    server.publicBasemap = 'http://127.0.0.1:${upstream.port}/api/public/basemap.pmtiles';
+    server.virtualManifests['template-sequoia'] = '{"title":"Sequoia"}';
+    final m = await get('/t/template-sequoia/manifest.json');
+    expect(m.statusCode, 200);
+    expect(await utf8.decodeStream(m), '{"title":"Sequoia"}');
+    final other = await get('/t/template-sequoia/index.html');
+    expect(other.statusCode, 404);
+    await other.drain<void>();
+    final idx = jsonDecode(await utf8.decodeStream(await get('/__waypack/tiles/template-sequoia/index.json')));
+    expect(idx['extracts'], isEmpty);
+    expect(idx['online'], '/__waypack/tiles/template-sequoia/online.pmtiles');
+    final res = await get('/__waypack/tiles/template-sequoia/online.pmtiles', range: 'bytes=0-9');
+    expect(res.statusCode, 206);
+    await res.drain<void>();
+    expect(seen, ['bytes=0-9']);
+  });
 }

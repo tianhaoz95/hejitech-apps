@@ -18,15 +18,18 @@
 <div id="map"></div>
 <script>
   // Native "Map" view: the trip's places and routes on the offline basemap, independent of the bundle UI.
+  // #embed: the small preview on a gallery template's page (no day picker, no location button).
+  var embed = location.hash === "#embed";
   Waypack.manifest().then(function (m) {
     var sel = document.getElementById("day");
+    if (embed) sel.hidden = true;
     m.days.forEach(function (d, i) {
       var o = document.createElement("option");
       o.value = d.date;
       o.textContent = "Day " + (i + 1) + (d.title ? " · " + d.title : "");
       sel.appendChild(o);
     });
-    return Waypack.map("#map", { fit: "bbox" }).then(function (map) {
+    return Waypack.map("#map", embed ? { fit: "bbox", showUserLocation: false } : { fit: "bbox" }).then(function (map) {
       sel.addEventListener("change", function () { map.setDay(sel.value || null); });
     });
   }).catch(function (e) {

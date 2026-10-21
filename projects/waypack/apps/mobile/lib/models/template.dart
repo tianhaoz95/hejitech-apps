@@ -84,6 +84,59 @@ class TripTemplate {
   String get plannedLabel =>
       remixCount == 0 ? 'New' : '$remixCount planned from it';
 
+  /// A minimal trip manifest for the native map page (assets/app/map.html), so a template that
+  /// isn't downloaded can be shown on the online basemap: its stops as places, each day's stops
+  /// joined as one straight-line route (as on the website), and the days for the day picker.
+  /// Null when fewer than two stops have coordinates.
+  Map<String, dynamic>? mapManifest() {
+    final mode = switch (gettingAround) {
+      'walking' => 'walking',
+      'bike' => 'cycling',
+      'transit' => 'transit',
+      _ => 'driving',
+    };
+    final places = <Map<String, dynamic>>[];
+    final routes = <Map<String, dynamic>>[];
+    final days = <Map<String, dynamic>>[];
+    for (final (di, d) in plan.indexed) {
+      final stops = [for (final s in d.stops) if (s.lat != null && s.lon != null) s];
+      final items = <Map<String, dynamic>>[];
+      for (final (si, s) in stops.indexed) {
+        final id = 'd${di + 1}s${si + 1}';
+        places.add({'id': id, 'name': s.name, 'lat': s.lat, 'lon': s.lon, 'category': 'other'});
+        items.add({'place_id': id});
+      }
+      if (stops.length >= 2) {
+        final id = 'd${di + 1}';
+        routes.add({
+          'id': id,
+          'name': d.title,
+          'mode': mode,
+          'from': 'd${di + 1}s1',
+          'to': 'd${di + 1}s${stops.length}',
+          'geometry': {
+            'type': 'LineString',
+            'coordinates': [for (final s in stops) [s.lon, s.lat]],
+          },
+        });
+        items.add({'route_id': id});
+      }
+      days.add({'date': 'day-${di + 1}', 'title': d.title, 'items': items});
+    }
+    if (places.length < 2) return null;
+    final lats = places.map((p) => p['lat'] as double), lons = places.map((p) => p['lon'] as double);
+    double lo(Iterable<double> v) => v.reduce((a, b) => a < b ? a : b);
+    double hi(Iterable<double> v) => v.reduce((a, b) => a > b ? a : b);
+    return {
+      'title': title,
+      'timezone': 'UTC',
+      'map': {'bbox': [lo(lons), lo(lats), hi(lons), hi(lats)]},
+      'places': places,
+      'routes': routes,
+      'days': days,
+    };
+  }
+
   /// What "Plan this trip" hands the user's agent (same wording as site/gallery.js).
   String prompt({String when = '', String who = '', String changes = ''}) => [
     'Using Waypack, plan a trip based on the template "$title": $url',
