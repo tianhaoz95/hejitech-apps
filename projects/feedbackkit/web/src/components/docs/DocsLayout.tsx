@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import { RouteLoading } from "@/components/RouteLoading";
 import { Logomark } from "@/components/Logomark";
 import { SiteFooter } from "@/components/SiteFooter";
 import { slugify } from "@/lib/slugify";
@@ -396,7 +397,9 @@ export function DocsLayout() {
           </nav>
 
           <main className="min-w-0 flex-1 pb-16">
-            <Outlet />
+            <Suspense fallback={<RouteLoading />}>
+              <Outlet />
+            </Suspense>
           </main>
         </div>
       </div>
