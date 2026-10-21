@@ -164,6 +164,19 @@ struct TimelineView: View {
                         RhythmCompare(log: model.log, child: child, household: model.household) { editing = $0 }
                     }
                 }
+                if days.isEmpty {
+                    // a row under the filters and the rhythm card, not an overlay on top of them
+                    Section {
+                        ContentUnavailableView {
+                            Label(search.isEmpty && categoryFilter == "all" ? "Nothing logged yet" : "No matching entries", systemImage: "list.bullet.rectangle")
+                        } description: {
+                            Text(showUndone
+                                 ? "There are no entries matching this view."
+                                 : "Feeds, diapers, sleep and measurements show up here as soon as they're logged: tap the mic and say it, or tap a button on Now.")
+                        }
+                        .listRowBackground(Color.clear)
+                    }
+                }
                 if density == .grid {
                     ForEach(days, id: \.0) { day, _ in
                         Section(day.formatted(date: .complete, time: .omitted)) {
@@ -216,17 +229,6 @@ struct TimelineView: View {
                 .presentationDetents([.medium, .large])
             }
             .searchable(text: $search, prompt: "Search medicines, notes, foods…")
-            .overlay {
-                if days.isEmpty {
-                    ContentUnavailableView {
-                        Label(search.isEmpty && categoryFilter == "all" ? "Nothing logged yet" : "No matching entries", systemImage: "list.bullet.rectangle")
-                    } description: {
-                        Text(showUndone
-                             ? "There are no entries matching this view."
-                             : "Feeds, diapers, sleep and measurements show up here as soon as they're logged: tap the mic and say it, or tap a button on Now.")
-                    }
-                }
-            }
             .navigationTitle("Timeline")
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {

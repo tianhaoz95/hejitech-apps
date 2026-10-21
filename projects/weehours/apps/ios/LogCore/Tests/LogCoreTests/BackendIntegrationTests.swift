@@ -23,6 +23,12 @@ final class BackendIntegrationTests: XCTestCase {
         let r2 = try await s.sync()
         XCTAssertEqual(r2.pushed, 1)
 
+        // an entry and its undo in one outbox: rows of different shapes (PGRST102 before)
+        let tapped = try await s.log(type: "diaper", fields: ["kind": .string("dirty")], provenance: Provenance(surface: .phone, input: .tap))
+        try await s.undo(tapped.id)
+        let r3 = try await s.sync()
+        XCTAssertEqual(r3.pushed, 2)
+
         // a second phone sees it
         let other = SupabaseClient(config: .local)
         _ = try await other.signIn(email: "parent1@example.com", password: "newborn-dev")

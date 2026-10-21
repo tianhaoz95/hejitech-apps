@@ -214,9 +214,23 @@ public final class SupabaseClient: @unchecked Sendable {
     }
 
     public func pushEvents(_ events: [LogEvent]) async throws {
-        guard !events.isEmpty else { return }
-        let body = try LogCoding.encoder.encode(events)
-        _ = try await request("POST", "/rest/v1/events?on_conflict=id", json: body, prefer: "resolution=ignore-duplicates,return=minimal")
+        for body in try Self.sameShapeBatches(events) {
+            _ = try await request("POST", "/rest/v1/events?on_conflict=id", json: body, prefer: "resolution=ignore-duplicates,return=minimal")
+        }
+    }
+
+    /// PostgREST rejects a bulk insert whose rows don't all have the same keys (PGRST102, "All
+    /// object keys must match"), and the encoder leaves nil optionals out (an undo has
+    /// `supersedes`, a tap entry doesn't), so a mixed outbox went nowhere. Rows go up in runs of
+    /// one shape, in order, so an entry still lands before the edit or undo that points at it.
+    static func sameShapeBatches<T: Encodable>(_ items: [T]) throws -> [Data] {
+        var runs: [(keys: [String], rows: [Any])] = []
+        for item in items {
+            let row = try JSONSerialization.jsonObject(with: LogCoding.encoder.encode(item))
+            let keys = (row as? [String: Any]).map { $0.keys.sorted() } ?? []
+            if runs.last?.keys == keys { runs[runs.count - 1].rows.append(row) } else { runs.append((keys, [row])) }
+        }
+        return try runs.map { try JSONSerialization.data(withJSONObject: $0.rows) }
     }
 
     /// Events after `seq`, ordered. Returns the events and the highest sequence seen.
@@ -230,9 +244,9 @@ public final class SupabaseClient: @unchecked Sendable {
     // MARK: captures
 
     public func pushCaptures(_ captures: [Capture]) async throws {
-        guard !captures.isEmpty else { return }
-        _ = try await request("POST", "/rest/v1/captures?on_conflict=id", json: try LogCoding.encoder.encode(captures),
-                              prefer: "resolution=merge-duplicates,return=minimal")
+        for body in try Self.sameShapeBatches(captures) {
+            _ = try await request("POST", "/rest/v1/captures?on_conflict=id", json: body, prefer: "resolution=merge-duplicates,return=minimal")
+        }
     }
 
     public func openCaptures(household: UUID) async throws -> [Capture] {

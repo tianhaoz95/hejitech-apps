@@ -17,6 +17,7 @@ struct SettingsView: View {
     @AppStorage(VoiceButtonPlacement.key) private var voicePlacement = VoiceButtonPlacement.right
     @AppStorage(QuickCapture.key) private var quickCapture = false
     @AppStorage(VoiceLanguage.key) private var voiceLanguage = VoiceLanguage.english
+    @State private var translationRequest: TranslationSession.Configuration?
     @AppStorage(AutoStopVoice.key) private var autoStopVoice = false
     @AppStorage(NightMode.key) private var nightMode = NightMode.off
     @AppStorage(NightMode.fromKey) private var nightFrom = NightMode.defaultFrom
@@ -169,7 +170,7 @@ struct SettingsView: View {
                     }
                     .accessibilityIdentifier("thumbDock")
                 } header: { Text("Night & one-handed") } footer: {
-                    Text("The night screen is true black with big amber or red buttons, so it won't light up the nursery. Swipe down on it for the full app. The one-handed dock puts feed, diaper and sleep on an arc around the mic, within reach of your thumb. Both are for this iPhone only.")
+                    Text("The night screen is true black with big amber or red buttons, so it won't light up the nursery. Swipe down on it for the full app. With the one-handed dock, press and hold the mic on Now: feed, diaper and sleep fan out around it within reach of your thumb, and you slide onto one and let go to log it. A tap still listens. Both are for this iPhone only.")
                 }
                 Section {
                     NavigationLink { WatchSettingsView() } label: { Label("Apple Watch", systemImage: "applewatch") }
@@ -186,11 +187,11 @@ struct SettingsView: View {
                         ForEach(VoiceLanguage.allCases) { Text($0.title).tag($0) }
                     }
                     .accessibilityIdentifier("voiceLanguage")
-                    .onChange(of: voiceLanguage) { Task { await model.prepareVoiceLanguage() } }
-                    if voiceLanguage.translates {
-                        SpeechModelRow()
-                        if #available(iOS 26.0, *) { TranslationPackRow(language: voiceLanguage).id(voiceLanguage) }
+                    .onChange(of: voiceLanguage) {
+                        Task { await model.prepareVoiceLanguage() }
+                        requestTranslation(for: voiceLanguage)
                     }
+                    if voiceLanguage.translates { SpeechModelRow() }
                     Toggle("Quick capture", isOn: $quickCapture).accessibilityIdentifier("quickCapture")
                     Toggle("Auto-log when you stop speaking", isOn: $autoStopVoice).accessibilityIdentifier("autoStopVoice")
                     Picker("Decision model", selection: Binding(get: { model.decisionBackend }, set: { model.decisionBackend = $0 })) {
@@ -262,11 +263,25 @@ struct SettingsView: View {
             // the draft keeps unsaved edits across the child editor and tab switches; a save (or
             // a change from another phone) brings it back in line
             .sheet(isPresented: $showingWhatsNew) { WhatsNewView() }
+            // picking Español or 中文 asks iOS for its translation (the system's own download sheet)
+            .translationTask(translationRequest) { session in try? await session.prepareTranslation() }
             .onAppear { if !loaded { draft = model.household; loaded = true } }
             .onChange(of: model.household) { _, h in draft = h }
             .confirmationDialog("Delete every entry, capture and token for this household? This cannot be undone.", isPresented: $confirmDelete, titleVisibility: .visible) {
                 Button("Delete everything", role: .destructive) { Task { await model.deleteAllData() } }
             }
+        }
+    }
+
+    /// Apple's on-device Translation turns the voice language into English (iOS 26, see
+    /// VoiceTranslator). When the language isn't on the iPhone yet, picking it asks for it once;
+    /// without it Whisper translates by itself, so nothing is shown in Settings either way.
+    private func requestTranslation(for language: VoiceLanguage) {
+        guard #available(iOS 26.0, *), language.translates else { return }
+        Task {
+            let status = await LanguageAvailability().status(from: language.translationLanguage, to: VoiceTranslator.english)
+            guard status == .supported else { return }
+            translationRequest = TranslationSession.Configuration(source: language.translationLanguage, target: VoiceTranslator.english)
         }
     }
 
@@ -620,42 +635,6 @@ struct SpeechModelRow: View {
                 .accessibilityIdentifier("downloadSpeechModel")
             if let e = speech.error { Text(e).font(.caption).foregroundStyle(.red) }
         }
-    }
-}
-
-/// Apple's Translation language for the voice language, which turns what was said into English
-/// on this iPhone. Downloading it is the system's own sheet (`prepareTranslation`).
-@available(iOS 26.0, *)
-struct TranslationPackRow: View {
-    let language: VoiceLanguage
-    @State private var status: LanguageAvailability.Status?
-    @State private var request: TranslationSession.Configuration?
-
-    var body: some View {
-        Group {
-            switch status {
-            case .installed?:
-                Label("\(language.title) translation on this iPhone", systemImage: "checkmark.seal.fill").foregroundStyle(.green)
-            case .supported?:
-                Button("Download \(language.title) translation") {
-                    request = TranslationSession.Configuration(source: language.translationLanguage, target: VoiceTranslator.english)
-                }
-                .accessibilityIdentifier("downloadTranslation")
-            case .unsupported?:
-                Text("Translation isn't available for \(language.title) here; Whisper translates instead.").font(.caption).foregroundStyle(.secondary)
-            default:
-                ProgressView()
-            }
-        }
-        .task { await refresh() }
-        .translationTask(request) { session in
-            try? await session.prepareTranslation()
-            await refresh()
-        }
-    }
-
-    private func refresh() async {
-        status = await LanguageAvailability().status(from: language.translationLanguage, to: VoiceTranslator.english)
     }
 }
 

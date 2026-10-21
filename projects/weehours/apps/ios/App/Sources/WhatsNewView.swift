@@ -48,7 +48,7 @@ struct WhatsNewView: View {
         ReleaseHistoryItem(
             version: "0.8.3",
             date: "October 2026",
-            tagline: "Your Own Words in the Log",
+            tagline: "Sync Fix, Your Own Words in the Log",
             features: [],
             improvementsAndFixes: [
                 WhatsNewItem(
@@ -56,6 +56,27 @@ struct WhatsNewView: View {
                     tint: Color(red: 0.45, green: 0.72, blue: 0.95),
                     title: "Spanish and Chinese Entries Keep What You Said",
                     description: "An entry spoken in Español or 中文 now keeps your own words next to the English translation, like “Pañal mojado. (Diaper, wet.)”, in the timeline, notes and exports.",
+                    kind: .fix
+                ),
+                WhatsNewItem(
+                    icon: "icloud.and.arrow.up",
+                    tint: Theme.accent,
+                    title: "Sync No Longer Gets Stuck",
+                    description: "When an undo or an edit waited to upload together with other entries, cloud sync failed with “All object keys must match” and nothing uploaded. They upload now, and so does everything that was waiting.",
+                    kind: .fix
+                ),
+                WhatsNewItem(
+                    icon: "hand.point.up.left.fill",
+                    tint: Theme.accent,
+                    title: "One-Handed Dock Behind the Mic",
+                    description: "Feed, diaper and sleep no longer sit over Now all the time: press and hold the mic, slide onto one and let go. A tap still listens.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "list.bullet.rectangle",
+                    tint: Theme.accent,
+                    title: "Layout Fixes",
+                    description: "“Nothing logged yet” on Timeline no longer covers the filters, pull to refresh on Now no longer leaves a blank space above the name, and Settings no longer shows a separate translation download.",
                     kind: .fix
                 ),
             ]

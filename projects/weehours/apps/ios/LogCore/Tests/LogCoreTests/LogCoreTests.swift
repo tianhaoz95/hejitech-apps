@@ -421,6 +421,23 @@ final class ServiceTests: XCTestCase {
         XCTAssertEqual(sw?.string("side"), "right")
     }
 
+    func testUploadBatchesRowsOfOneShapeInOrder() throws {
+        // an undo has `supersedes`, a tap entry doesn't: one bulk insert of both failed with PGRST102
+        let e = LogEvent(householdId: H, babyId: B, type: "diaper", fields: ["kind": .string("wet")], occurredAt: Date(), loggedBy: A,
+                         provenance: Provenance(surface: .phone, input: .tap))
+        let f = LogEvent(householdId: H, babyId: B, type: "sleep.start", fields: [:], occurredAt: Date(), loggedBy: A,
+                         provenance: Provenance(surface: .phone, input: .tap))
+        var undo = LogEvent(householdId: H, babyId: B, type: "undo", fields: [:], occurredAt: Date(), loggedBy: A,
+                            provenance: Provenance(surface: .phone, input: .tap))
+        undo.supersedes = e.id
+        let batches = try SupabaseClient.sameShapeBatches([e, f, undo, e])
+        let rows = try batches.map { try XCTUnwrap(JSONSerialization.jsonObject(with: $0) as? [[String: Any]]) }
+        XCTAssertEqual(rows.map(\.count), [2, 1, 1])   // runs, in order: entries, the undo, then an entry again
+        for batch in rows { XCTAssertEqual(Set(batch.map { $0.keys.sorted() }).count, 1) }
+        XCTAssertEqual(rows[1][0]["supersedes"] as? String, e.id.uuidString)
+        XCTAssertTrue(try SupabaseClient.sameShapeBatches([LogEvent]()).isEmpty)
+    }
+
     func testStoreOutboxAndAppendOnly() throws {
         let store = try SQLiteLogStore.inMemory()
         let e = LogEvent(householdId: H, babyId: B, type: "diaper", fields: ["kind": .string("wet")], occurredAt: Date(), loggedBy: A,

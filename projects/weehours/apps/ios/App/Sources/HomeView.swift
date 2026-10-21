@@ -40,13 +40,14 @@ struct MainView: View {
             ReviewSheet(capture: capture).presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $showingWhatsNew) { WhatsNewView() }
+        .overlay { if showingHUD { NightHUD(tint: nightTint) { withAnimation(.snappy) { model.nightDismissed = true } }.transition(.opacity) } }
         .overlay(alignment: placement.alignment) {
-            if dock != .off, model.screen == "home", !model.recording, !showingHUD {
-                ThumbDockView(side: dock).padding(.horizontal, 20).padding(.bottom, 64)
+            if !model.recording, !showingHUD {
+                // the one-handed dock: the same mic, with feed, diaper and sleep behind a press and hold
+                Group { if dock != .off, model.screen == "home" { ThumbDockView(side: dock) } else { VoiceButton() } }
+                    .padding(.horizontal, 20).padding(.bottom, 64)
             }
         }
-        .overlay { if showingHUD { NightHUD(tint: nightTint) { withAnimation(.snappy) { model.nightDismissed = true } }.transition(.opacity) } }
-        .overlay(alignment: placement.alignment) { if !model.recording, !showingHUD { VoiceButton().padding(.horizontal, 20).padding(.bottom, 64) } }
         .overlay(alignment: .bottom) { ToastView().padding(placement.toastClearance).padding(.bottom, 64) }
         .overlay { if model.recording { ListeningView().transition(.opacity) } }
         .animation(.easeInOut(duration: 0.25), value: model.recording)
@@ -70,10 +71,14 @@ struct MainView: View {
 
 struct HomeView: View {
     @EnvironmentObject var model: AppModel
-    @AppStorage(ThumbDock.key) private var dock = ThumbDock.off
     @AppStorage(NightMode.key) private var nightMode = NightMode.off
     @State private var showingSync = false
     @State private var now = Date()
+    /// The sync badge, the one toolbar item that comes and goes. A pull to refresh syncs, and the
+    /// badge appearing or leaving while the refresh control settles left the large title stuck
+    /// low with a blank band above it, so it changes only once the refresh is over.
+    @State private var badge = false
+    @State private var refreshing = false
     private let tick = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
     var body: some View {
@@ -98,11 +103,10 @@ struct HomeView: View {
                 }
                 .padding()
             }
-            .contentMargins(.bottom, dock == .off ? 0 : ThumbDock.clearance, for: .scrollContent)
             .navigationTitle(title)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    SyncBadge(now: now) { showingSync = true }
+                    SyncBadge(visible: badge) { showingSync = true }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 10) {
@@ -115,7 +119,16 @@ struct HomeView: View {
                 }
             }
             .sheet(isPresented: $showingSync) { SyncSheet().presentationDetents([.medium, .large]) }
-            .refreshable { await model.syncNow() }
+            .refreshable {
+                refreshing = true
+                await model.syncNow()
+                Task {   // the list springs back once this returns; change the badge after that
+                    try? await Task.sleep(for: .milliseconds(600))
+                    refreshing = false
+                }
+            }
+            .onChange(of: SyncBadge.wanted(model, now: now), initial: true) { _, wanted in if !refreshing { badge = wanted } }
+            .onChange(of: refreshing) { _, r in if !r { badge = SyncBadge.wanted(model, now: now) } }
             .onReceive(tick) { now = $0 }
         }
     }

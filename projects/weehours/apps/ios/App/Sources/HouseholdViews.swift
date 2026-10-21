@@ -7,13 +7,19 @@ import SwiftUI
 /// error, or something waiting over a minute), so a brief dropout doesn't alarm anyone.
 struct SyncBadge: View {
     @EnvironmentObject var model: AppModel
-    let now: Date
+    /// Decided by the screen (`SyncBadge.wanted`), which holds it still during a pull to refresh.
+    let visible: Bool
     let open: () -> Void
+
+    /// Entries waiting on this iPhone, with a failed sync or for over a minute.
+    @MainActor static func wanted(_ model: AppModel, now: Date) -> Bool {
+        let stale = model.pending.first.map { now.timeIntervalSince($0.loggedAt) > 60 } ?? false
+        return !model.localOnly && !model.pending.isEmpty && (model.syncError != nil || stale)
+    }
 
     var body: some View {
         let waiting = model.pending.count
-        let stale = model.pending.first.map { now.timeIntervalSince($0.loggedAt) > 60 } ?? false
-        if !model.localOnly, waiting > 0, model.syncError != nil || stale {
+        if visible, waiting > 0 {
             Button(action: open) {
                 Label("\(waiting) on this iPhone", systemImage: "icloud.slash")
                     .font(.caption.weight(.semibold))

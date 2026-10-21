@@ -231,80 +231,150 @@ enum ThumbDock: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String { [.off: "Off", .right: "Right hand", .left: "Left hand"][self]! }
     var placement: VoiceButtonPlacement { self == .left ? .left : .right }
-    /// How much of the bottom of Now the dock covers.
-    static let clearance: CGFloat = 190
 }
 
-/// Four buttons on an arc around the mic, where the thumb rests while the other arm holds the baby.
+/// The mic with four actions behind it, where the thumb rests while the other arm holds the baby.
+/// A tap speaks as always. Press and hold and the actions fan out on an arc around the mic; slide
+/// onto one and let go to log it. One with choices (diaper kind, how much of the bottle, how long
+/// ago) asks with a short list after you let go. Hidden the rest of the time, so they don't cover Now.
 struct ThumbDockView: View {
     @EnvironmentObject var model: AppModel
     let side: ThumbDock
+    @State private var open = false
+    @State private var hover: Int?
+    @State private var pressed: Date?
+    @State private var choices: Choices?
     @State private var taps = 0
     private let radius: CGFloat = 128
+    private static let holdToOpen: Duration = .milliseconds(300)
+
+    struct Choices: Identifiable {
+        let id = UUID()
+        let title: String
+        let options: [(label: String, run: () -> Void)]
+    }
+
+    /// An action on the arc: logged right away, or a list to pick from.
+    struct Action {
+        let icon: String
+        let label: String
+        var color: Color = Theme.accent
+        var run: (() -> Void)?
+        var choices: Choices?
+    }
 
     var body: some View {
-        let q = QuickState(model)
+        let actions = self.actions(QuickState(model))
         ZStack {
-            item(0) { feed(q) }
-            item(1) {
-                if !q.nursing.isEmpty {
-                    circle("arrow.left.arrow.right", "Switch") { model.switchSide(q.nursing) }
-                } else {
-                    Menu {
-                        ForEach([5, 10, 15, 30], id: \.self) { m in
-                            Button("Fed \(m) min ago") {
-                                taps += 1
-                                let at = Date().addingTimeInterval(-Double(m * 60))
-                                model.log(model.household.defaultFeed == "breast" ? "feed.breast.start" : "feed.bottle.start", at: at, for: q.idle)
-                            }
-                        }
-                    } label: { face("clock.arrow.circlepath", "Earlier") }
+            if open {
+                ForEach(actions.indices, id: \.self) { i in
+                    face(actions[i].icon, actions[i].label, color: actions[i].color)
+                        .scaleEffect(hover == i ? 1.18 : 1)
+                        .offset(offset(i))
+                        .transition(.scale(scale: 0.3, anchor: .center).combined(with: .opacity))
+                        .accessibilityHidden(true)
                 }
             }
-            item(2) {
-                Menu {
-                    ForEach(["wet", "dirty", "both", "dry"], id: \.self) { k in
-                        Button(k.capitalized) { taps += 1; model.log("diaper", ["kind": .string(k)]) }
-                    }
-                } label: { face("humidity.fill", "Diaper", color: Theme.diaper) }
-            }
-            item(3) {
-                if !q.asleep.isEmpty {
-                    circle("sun.max.fill", "Woke", color: Theme.sleep) { model.log("sleep.end", for: q.asleep) }
-                } else {
-                    circle("moon.zzz.fill", "Asleep", color: Theme.sleep) { model.log("sleep.start", for: q.awake.isEmpty ? model.target : q.awake) }
-                }
-            }
+            VoiceButton().allowsHitTesting(false)
+            Circle().fill(.clear).frame(width: VoiceButton.size, height: VoiceButton.size)
+                .contentShape(Circle())
+                .gesture(press(actions))
         }
         .frame(width: VoiceButton.size, height: VoiceButton.size)
+        .animation(.snappy(duration: 0.2), value: open)
+        .animation(.snappy(duration: 0.12), value: hover)
         .sensoryFeedback(.impact(weight: .medium), trigger: taps)
-        .accessibilityIdentifier("thumbDock")
+        .sensoryFeedback(.selection, trigger: hover) { _, new in new != nil }
+        .sensoryFeedback(.impact(weight: .light), trigger: open) { _, new in new }
+        .confirmationDialog(choices?.title ?? "", isPresented: Binding(get: { choices != nil }, set: { if !$0 { choices = nil } }),
+                            titleVisibility: .visible, presenting: choices) { c in
+            ForEach(c.options.indices, id: \.self) { i in Button(c.options[i].label) { taps += 1; c.options[i].run() } }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Speak a log entry")
+        .accessibilityHint("Actions has feed, diaper and sleep.")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { model.startVoice() }
+        .accessibilityActions {
+            ForEach(actions.indices, id: \.self) { i in
+                Button(actions[i].label) { perform(actions[i]) }
+            }
+        }
+        .accessibilityIdentifier("voiceButton")
+    }
+
+    /// One drag from the first touch: let go before the hold opens the arc and it's a tap (speak);
+    /// after, it logs the action under the thumb, or nothing when let go elsewhere.
+    private func press(_ actions: [Action]) -> some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { v in
+                guard !model.thinking else { return }
+                if pressed == nil {
+                    let started = Date()
+                    pressed = started
+                    Task {
+                        try? await Task.sleep(for: Self.holdToOpen)
+                        if pressed == started { open = true }
+                    }
+                }
+                if open { hover = target(v.translation, count: actions.count) }
+            }
+            .onEnded { v in
+                defer { pressed = nil; open = false; hover = nil }
+                guard !model.thinking else { return }
+                if !open {
+                    if hypot(v.translation.width, v.translation.height) < 20 { model.startVoice() }
+                } else if let i = target(v.translation, count: actions.count) {
+                    perform(actions[i])
+                }
+            }
+    }
+
+    private func perform(_ a: Action) {
+        if let run = a.run { taps += 1; run() } else { choices = a.choices }
+    }
+
+    /// The action whose button is nearest the thumb, within reach of it.
+    private func target(_ t: CGSize, count: Int) -> Int? {
+        let near = (0..<count).map { i -> (Int, CGFloat) in
+            let o = offset(i)
+            return (i, hypot(t.width - o.width, t.height - o.height))
+        }.min { $0.1 < $1.1 }
+        return near.flatMap { $0.1 < 48 ? $0.0 : nil }
     }
 
     /// Button `i` of four, from straight up (0) to straight across (3), around the mic.
-    private func item<Content: View>(_ i: Int, @ViewBuilder _ content: () -> Content) -> some View {
+    private func offset(_ i: Int) -> CGSize {
         let angle = Double.pi / 2 + Double(i) * Double.pi / 6
-        let dx = CGFloat(cos(angle)) * radius * (side == .left ? -1 : 1)
-        return content().offset(x: dx, y: -CGFloat(sin(angle)) * radius)
+        return CGSize(width: CGFloat(cos(angle)) * radius * (side == .left ? -1 : 1), height: -CGFloat(sin(angle)) * radius)
     }
 
-    @ViewBuilder private func feed(_ q: QuickState) -> some View {
+    private func actions(_ q: QuickState) -> [Action] {
+        let model = self.model
+        let breast = model.household.defaultFeed == "breast"
+        let feed: Action
         if !q.bottles.isEmpty {
-            Menu {
-                ForEach([(1.0, "All of it"), (0.75, "Three quarters"), (0.5, "Half"), (0.25, "A quarter")], id: \.0) { f, label in
-                    Button(label) { taps += 1; model.log("feed.bottle.finish", ["consumed_fraction": .number(f)], for: q.bottles) }
-                }
-            } label: { face("waterbottle.fill", "Finish", color: Theme.feed) }
+            feed = Action(icon: "waterbottle.fill", label: "Finish", color: Theme.feed, choices: Choices(title: "How much did they drink?", options:
+                [(1.0, "All of it"), (0.75, "Three quarters"), (0.5, "Half"), (0.25, "A quarter")].map { f, label in
+                    (label, { model.log("feed.bottle.finish", ["consumed_fraction": .number(f)], for: q.bottles) })
+                }))
         } else if !q.nursing.isEmpty {
-            circle("heart.fill", "Finish", color: Theme.feed) { model.log("feed.breast.finish", for: q.nursing) }
+            feed = Action(icon: "heart.fill", label: "Finish", color: Theme.feed) { model.log("feed.breast.finish", for: q.nursing) }
         } else {
-            circle(model.household.defaultFeed == "breast" ? "heart.fill" : "waterbottle.fill", "Feed", color: Theme.feed) { model.startDefaultFeed(q.idle) }
+            feed = Action(icon: breast ? "heart.fill" : "waterbottle.fill", label: "Feed", color: Theme.feed) { model.startDefaultFeed(q.idle) }
         }
-    }
-
-    private func circle(_ icon: String, _ label: String, color: Color = Theme.accent, action: @escaping () -> Void) -> some View {
-        Button { taps += 1; action() } label: { face(icon, label, color: color) }
-            .buttonStyle(.plain)
+        let earlier = !q.nursing.isEmpty
+            ? Action(icon: "arrow.left.arrow.right", label: "Switch") { model.switchSide(q.nursing) }
+            : Action(icon: "clock.arrow.circlepath", label: "Earlier", choices: Choices(title: "Fed how long ago?", options:
+                [5, 10, 15, 30].map { m in
+                    ("Fed \(m) min ago", { model.log(breast ? "feed.breast.start" : "feed.bottle.start", at: Date().addingTimeInterval(-Double(m * 60)), for: q.idle) })
+                }))
+        let diaper = Action(icon: "humidity.fill", label: "Diaper", color: Theme.diaper, choices: Choices(title: "Diaper", options:
+            ["wet", "dirty", "both", "dry"].map { k in (k.capitalized, { model.log("diaper", ["kind": .string(k)]) }) }))
+        let sleep = !q.asleep.isEmpty
+            ? Action(icon: "sun.max.fill", label: "Woke", color: Theme.sleep) { model.log("sleep.end", for: q.asleep) }
+            : Action(icon: "moon.zzz.fill", label: "Asleep", color: Theme.sleep) { model.log("sleep.start", for: q.awake.isEmpty ? model.target : q.awake) }
+        return [feed, earlier, diaper, sleep]
     }
 
     private func face(_ icon: String, _ label: String, color: Color = Theme.accent) -> some View {
