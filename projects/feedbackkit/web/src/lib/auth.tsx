@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
 import { Navigate, useLocation } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
+import { loadSupabase } from "@/lib/supabaseLoader";
 import { peekPendingCliAuth, clearPendingCliAuth } from "@/lib/cliAuth";
 import { takePendingInvite } from "@/lib/pendingInvite";
 
@@ -17,19 +17,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
+    // supabase-js loads after the first paint (supabaseLoader.ts); until then `loading` stays true.
+    let cancelled = false;
+    let unsubscribe: (() => void) | undefined;
+    void loadSupabase().then((supabase) => {
+      if (cancelled) return;
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setUser(session?.user ?? null);
+        setLoading(false);
+      });
+
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((_event, session) => {
+        setUser(session?.user ?? null);
+        setLoading(false);
+      });
+      unsubscribe = () => subscription.unsubscribe();
     });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
   }, []);
 
   return <AuthContext.Provider value={{ user, loading }}>{children}</AuthContext.Provider>;

@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { loadSupabase } from "@/lib/supabaseLoader";
 
 /**
  * First-party product analytics (supabase/migrations/0020_analytics.sql):
@@ -34,6 +34,7 @@ function sessionId(): string {
 }
 
 async function record(name: string, properties: Record<string, unknown>, organizationId?: string | null) {
+  const supabase = await loadSupabase();
   const { data } = await supabase.auth.getSession();
   const userId = data.session?.user.id ?? null;
   // Signed-out visitors can only record page views (the table's anon policy).
