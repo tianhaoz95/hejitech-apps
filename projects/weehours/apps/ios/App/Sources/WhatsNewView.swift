@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.8.5"
+    static let currentVersion = "0.8.6"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,21 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "0.8.6",
+            date: "October 2026",
+            tagline: "Discard a Recording",
+            features: [],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "trash",
+                    tint: Theme.accent,
+                    title: "Throw Away a Voice Entry",
+                    description: "A recording waiting under \"tap to choose\" can now be discarded: tap the ✕ next to it, or Discard this recording when checking it. Nothing is logged, not even a note, and Undo brings it back.",
+                    kind: .fix
+                ),
+            ]
+        ),
         ReleaseHistoryItem(
             version: "0.8.5",
             date: "October 2026",

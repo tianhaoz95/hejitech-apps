@@ -412,6 +412,22 @@ final class ServiceTests: XCTestCase {
         XCTAssertEqual(note?.string("transcript"), "we're out of wipes")
     }
 
+    func testDiscardLogsNothingAndCanBeReopened() async throws {
+        let s = try service()
+        let r = try await s.processVoice(transcript: "we're out of wipes", surface: .phone)
+        XCTAssertNil(r.committed)
+        try await s.discardCapture(r.capture.id)
+        let capture = try await s.store.captures().first { $0.id == r.capture.id }
+        XCTAssertEqual(capture?.status, .dismissed)
+        let log = try await s.derived()
+        let notes = log.all.filter { $0.type == "note" }
+        XCTAssertEqual(notes.count, 1)
+        XCTAssertEqual(log.status[notes[0].id], .undone, "a discarded recording leaves no note")
+        try await s.reopenCapture(r.capture.id, undoing: [])
+        let again = try await s.store.captures().first { $0.id == r.capture.id }
+        XCTAssertEqual(again?.status, .needsReview)
+    }
+
     func testToggleFeedUsesHouseholdDefaultAndNextSide() async throws {
         let s = try service(defaultFeed: "breast")
         let e = try await s.toggleFeed(surface: .ring, input: .gesture)

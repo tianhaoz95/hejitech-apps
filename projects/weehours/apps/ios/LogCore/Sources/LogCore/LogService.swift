@@ -323,6 +323,16 @@ public actor LogService {
         return e
     }
 
+    /// "Discard": the recording wasn't meant for the log at all (said by mistake, a test, a
+    /// pocket recording). Kept as a note and the note undone, both ordinary append-only events,
+    /// so the capture leaves Needs-review on every phone and nothing shows in the timeline;
+    /// `reopenCapture(_:undoing: [])` brings it back to choose from.
+    @discardableResult
+    public func discardCapture(_ id: UUID) throws -> LogEvent? {
+        guard let note = try dismissCapture(id) else { return nil }
+        return try undo(note.id)
+    }
+
     /// Writes the chosen candidate for each child the entry is for. The first child's event id is
     /// derived from the capture id (so two phones converge), the others' from the capture and child.
     private func commit(_ c: Candidate, capture: Capture, interpretation: Interpretation, tier: ConfidenceTier? = nil) throws -> [LogEvent] {
