@@ -3,16 +3,12 @@ import ContempoData
 import CoreLocation
 import Foundation
 import Observation
+import UserNotifications
 
 /// iOS equivalent of Android's `MileageTrackingService` — continuously
 /// accumulates GPS driving distance for a tracked trip by summing
-/// `CLLocation.distance(from:)` between consecutive fixes (a straight line
-/// from start to end would cut every corner a real route takes and
-/// understate the true number, bad for a tax record). Owns the trip Entry's
-/// full lifecycle end to end via `MileageTripCoordinator`, same as Android's
-/// service does. Foreground-only — no "Always" location authorization
-/// requested, matching this MVP's out-of-scope background-signal stance
-/// (see CLAUDE.md's MVP-scope notes on geofencing/bank signals).
+/// `CLLocation.distance(from:)` between consecutive fixes. Includes
+/// stationary arrival detection and local alerts to prevent runaway GPS trips.
 @Observable
 @MainActor
 final class MileageTracker: NSObject, CLLocationManagerDelegate {
@@ -20,6 +16,8 @@ final class MileageTracker: NSObject, CLLocationManagerDelegate {
     /// noise without a dedicated smoothing pass.
     private static let minDisplacementMeters: CLLocationDistance = 15
     private static let metersPerMile = 1609.344
+    /// After 5 minutes of stationary speed (< 1 m/s), prompt the host to finalize the trip.
+    private static let stationaryAlertThresholdSeconds: TimeInterval = 300
 
     private let manager = CLLocationManager()
     private let mileageTripCoordinator = ServiceLocator.mileageTripCoordinator
@@ -27,11 +25,14 @@ final class MileageTracker: NSObject, CLLocationManagerDelegate {
     private(set) var isTracking = false
     private(set) var accumulatedMiles: Double = 0
     private(set) var isPaused = false
+    private(set) var isStationaryArrivalDetected = false
 
     private var lastLocation: CLLocation?
     private var accumulatedMeters = 0.0
     private var pausedAt: Date?
     private var pausedDurationSeconds: Double = 0
+    private var stationaryStartedAt: Date?
+    private var hasAlertedForArrival = false
 
     override init() {
         super.init()
@@ -52,6 +53,9 @@ final class MileageTracker: NSObject, CLLocationManagerDelegate {
         isPaused = false
         pausedAt = nil
         pausedDurationSeconds = 0
+        stationaryStartedAt = nil
+        hasAlertedForArrival = false
+        isStationaryArrivalDetected = false
         isTracking = true
         manager.delegate = self
         manager.startUpdatingLocation()
@@ -74,6 +78,9 @@ final class MileageTracker: NSObject, CLLocationManagerDelegate {
         guard isTracking else { return }
         manager.stopUpdatingLocation()
         isTracking = false
+        isStationaryArrivalDetected = false
+        stationaryStartedAt = nil
+        hasAlertedForArrival = false
         let finalMiles = accumulatedMiles
         let endLocation = lastLocation
         _ = try? await mileageTripCoordinator.handleEndTrip(
@@ -136,6 +143,39 @@ final class MileageTracker: NSObject, CLLocationManagerDelegate {
             self.accumulatedMiles = miles
             try? await self.mileageTripCoordinator.updateTripDistance(miles: miles)
             await LiveActivityController.updateTrip(miles: miles)
+
+            // Stationary arrival detection: speed < 1.0 m/s (~2.2 mph)
+            if location.speed >= 0 && location.speed < 1.0 {
+                if let started = self.stationaryStartedAt {
+                    let duration = Date().timeIntervalSince(started)
+                    if duration >= Self.stationaryAlertThresholdSeconds && !self.hasAlertedForArrival {
+                        self.isStationaryArrivalDetected = true
+                        self.hasAlertedForArrival = true
+                        self.sendArrivalAlert(miles: miles)
+                    }
+                } else {
+                    self.stationaryStartedAt = Date()
+                }
+            } else if location.speed > 2.0 {
+                // Moving again — reset stationary timer
+                self.stationaryStartedAt = nil
+                self.isStationaryArrivalDetected = false
+                self.hasAlertedForArrival = false
+            }
         }
+    }
+
+    private func sendArrivalAlert(miles: Double) {
+        let content = UNMutableNotificationContent()
+        content.title = "Arrived at Destination?"
+        content.body = "You've been stopped for 5 minutes. Tap to finalize and save your \(String(format: "%.1f", miles))-mile trip."
+        content.sound = .default
+
+        let request = UNNotificationRequest(
+            identifier: "contempo-mileage-arrival",
+            content: content,
+            trigger: nil // deliver immediately
+        )
+        UNUserNotificationCenter.current().add(request)
     }
 }
