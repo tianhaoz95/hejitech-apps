@@ -8,6 +8,7 @@ test("createMcpServer without projectId registers all tools with default descrip
   const tools = server._registeredTools;
   assert.ok(tools["list_projects"]);
   assert.ok(tools["list_feedback"]);
+  assert.ok(tools["search_feedback"]);
   assert.ok(tools["get_feedback"]);
   assert.ok(tools["get_prompt"]);
   assert.ok(tools["get_docs"]);
@@ -17,6 +18,10 @@ test("createMcpServer without projectId registers all tools with default descrip
     tools["list_feedback"].description,
     "List feedback reports captured by the iOS app, optionally filtered by project, status and/or fix stage.",
   );
+  assert.equal(
+    tools["search_feedback"].description,
+    "Search feedback reports by keyword in report text, with optional project, status and time filters.",
+  );
 });
 
 test("createMcpServer with projectId scopes descriptions to that project", () => {
@@ -25,6 +30,7 @@ test("createMcpServer with projectId scopes descriptions to that project", () =>
   const tools = server._registeredTools;
   assert.match(tools["list_projects"].description, /proj_abc123/);
   assert.match(tools["list_feedback"].description, /proj_abc123/);
+  assert.match(tools["search_feedback"].description, /proj_abc123/);
   assert.match(tools["get_feedback"].description, /proj_abc123/);
   assert.match(tools["update_feedback_status"].description, /proj_abc123/);
 });
@@ -33,6 +39,17 @@ test("list_feedback rejects query for another project when scoped", async () => 
   const server = createMcpServer({ projectId: "proj_abc123" });
   const tool = server._registeredTools["list_feedback"];
   const res = await tool.handler({ project_id: "other_project", limit: 20 });
+  assert.equal(res.isError, true);
+  assert.match(
+    res.content[0].text,
+    /Cannot query project "other_project": this MCP server is scoped to project "proj_abc123"/,
+  );
+});
+
+test("search_feedback rejects query for another project when scoped", async () => {
+  const server = createMcpServer({ projectId: "proj_abc123" });
+  const tool = server._registeredTools["search_feedback"];
+  const res = await tool.handler({ query: "crash", project_id: "other_project", limit: 20 });
   assert.equal(res.isError, true);
   assert.match(
     res.content[0].text,

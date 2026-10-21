@@ -119,6 +119,54 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
   );
 
   server.registerTool(
+    "search_feedback",
+    {
+      description: projectId
+        ? `Search feedback reports in project ${projectId} by keyword in report text, with optional status and time filters.`
+        : "Search feedback reports by keyword in report text, with optional project, status and time filters.",
+      inputSchema: {
+        query: z.string().describe("Keyword or substring to search for in feedback reports."),
+        project_id: z
+          .string()
+          .describe(
+            projectId
+              ? `Project id to filter by (server is scoped to "${projectId}").`
+              : "Only feedback for this project id.",
+          )
+          .optional(),
+        status: STATUS_ENUM.optional(),
+        since: z.string().describe("ISO timestamp to only include feedback created after this date/time.").optional(),
+        limit: z.number().int().min(1).max(100).default(20),
+      },
+    },
+    async ({ query, project_id, status, since, limit }) => {
+      if (projectId && project_id && project_id !== projectId) {
+        return errorResult(
+          `Cannot query project "${project_id}": this MCP server is scoped to project "${projectId}".`,
+        );
+      }
+      const effectiveProjectId = projectId || project_id;
+      const client = await getAuthenticatedClient();
+      let dbQuery = client
+        .from("feedback_items")
+        .select("id, project_id, text, status, fix_stage, fixed_in_build, reopen_count, fix_pr_url, environment, created_at")
+        .order("created_at", { ascending: false })
+        .limit(limit);
+
+      if (effectiveProjectId) dbQuery = dbQuery.eq("project_id", effectiveProjectId);
+      if (status) dbQuery = dbQuery.eq("status", status);
+      if (since) dbQuery = dbQuery.gte("created_at", since);
+      if (query && query.trim()) {
+        dbQuery = dbQuery.ilike("text", `%${query.trim()}%`);
+      }
+
+      const { data, error } = await dbQuery;
+      if (error) return errorResult(error.message);
+      return jsonResult(data ?? []);
+    },
+  );
+
+  server.registerTool(
     "get_feedback",
     {
       description:
