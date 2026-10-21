@@ -454,6 +454,24 @@ html.mobile-ui .toolbar-clock {
 }
 #update-banner-dismiss:hover { color: var(--text); }
 
+/* Disconnection & auto-reconnect banner */
+#reconnect-banner {
+  position: fixed; left: 50%; top: 12px; transform: translateX(-50%);
+  z-index: 10000; max-width: min(520px, 94vw);
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 14px; border-radius: 10px;
+  background: #271c08; color: #fde68a;
+  border: 1px solid #f59e0b; box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+  font-size: 13px; font-weight: 500;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+#reconnect-banner-btn {
+  padding: 4px 10px; border-radius: 6px; cursor: pointer;
+  background: #f59e0b; color: #000; border: none;
+  font-size: 12px; font-weight: 600; white-space: nowrap;
+}
+#reconnect-banner-btn:hover { background: #fbbf24; }
+
 /* Update spinner and error styling */
 .update-banner-spinner {
   width: 14px;
