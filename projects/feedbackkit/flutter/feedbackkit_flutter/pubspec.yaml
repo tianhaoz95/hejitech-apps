@@ -1,6 +1,6 @@
 name: feedbackkit_flutter
 description: "In-app feedback for Flutter apps: capture a screenshot, annotate it, describe the problem, and get a structured FeedbackKit report. Runs the native FeedbackKit iOS and Android SDKs under the hood."
-version: 1.0.64
+version: 1.0.65
 homepage: https://github.com/tianhaoz95/feedback-kit
 repository: https://github.com/tianhaoz95/feedback-kit/tree/main/flutter
 
