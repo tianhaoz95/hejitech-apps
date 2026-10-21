@@ -164,8 +164,25 @@ struct SettingsScreen: View {
             Section("Export") {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Export").font(ContempoFont.titleMedium())
-                    Text("Ready for your CPA").font(ContempoFont.labelSmall()).foregroundStyle(palette.inkFaint)
+                    Text("Ready for your CPA · Beta feature").font(ContempoFont.labelSmall()).foregroundStyle(palette.inkFaint)
                 }
+                if let pdfUrl = viewModel.pdfUrl {
+                    ShareLink(item: pdfUrl, preview: SharePreview("Contempo-Audit-Binder.pdf")) {
+                        Label("Share PDF Audit Binder", systemImage: "doc.text.fill")
+                    }
+                } else {
+                    Button {
+                        viewModel.generatePdf()
+                    } label: {
+                        if viewModel.isExporting {
+                            ProgressView()
+                        } else {
+                            Label("Export PDF Audit Binder (Beta)", systemImage: "doc.text")
+                        }
+                    }
+                    .disabled(viewModel.isExporting)
+                }
+
                 if let csv = viewModel.csv {
                     ShareLink(item: csv, preview: SharePreview("Contempo export.csv")) {
                         Label("Share CSV", systemImage: "square.and.arrow.up")
@@ -182,6 +199,9 @@ struct SettingsScreen: View {
                     }
                     .disabled(viewModel.isExporting)
                 }
+                Text("Note: Audit Binder is a beta feature for record-keeping and does not constitute legal or financial advice.")
+                    .font(ContempoFont.labelSmall())
+                    .foregroundStyle(palette.inkFaint)
             }
 
             Section("Help") {
