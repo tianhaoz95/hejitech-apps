@@ -99,7 +99,8 @@ if [[ "$icon_ok" != "true" ]]; then
   exit 1
 fi
 
-if [[ ! -s "$IOS_DIR/App/Models/Laya-Q8_0.gguf" || ! -d "$IOS_DIR/App/Models/whisper/openai_whisper-base.en" ]]; then
+if [[ ! -s "$IOS_DIR/App/Models/Laya-Q8_0.gguf" || ! -d "$IOS_DIR/App/Models/whisper/openai_whisper-base.en" \
+      || ! -d "$IOS_DIR/App/Models/whisper/openai_whisper-small_216MB" ]]; then
   echo "error: on-device models are missing from apps/ios/App/Models. Run scripts/fetch-models.sh first," >&2
   echo "  or set ALLOW_NO_MODELS=1 to ship a build that downloads them on first use." >&2
   [[ "${ALLOW_NO_MODELS:-}" == "1" ]] || exit 1

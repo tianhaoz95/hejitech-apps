@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.8.0"
+    static let currentVersion = "0.8.1"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,21 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "0.8.1",
+            date: "October 2026",
+            tagline: "Spanish and Chinese, Ready Offline",
+            features: [],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "globe",
+                    tint: Color(red: 0.45, green: 0.72, blue: 0.95),
+                    title: "No Download for Spanish and Chinese",
+                    description: "The speech model for Español and 中文 now comes with the app, so switching the language in Settings → Voice works right away, even offline.",
+                    kind: .improvement
+                ),
+            ]
+        ),
         ReleaseHistoryItem(
             version: "0.8.0",
             date: "October 2026",

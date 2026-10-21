@@ -609,7 +609,9 @@ struct SpeechModelRow: View {
     init() { speech = SpeechModelHolder.shared }
 
     var body: some View {
-        if speech.isDownloaded {
+        if speech.isBundled {
+            Label("Speech model included with the app", systemImage: "checkmark.seal.fill").foregroundStyle(.green)
+        } else if speech.isDownloaded {
             Label("Speech model on this iPhone (216 MB)", systemImage: "checkmark.seal.fill").foregroundStyle(.green)
         } else if let p = speech.progress {
             HStack { ProgressView(value: p).frame(width: 60); Text("Downloading speech model… \(Int(p * 100))%") }

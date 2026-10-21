@@ -57,7 +57,8 @@ The PRD ("Newborn Log — PRD") plus the changes agreed while planning, and the 
 | Topic | Decision | Why |
 |---|---|---|
 | Approach | Spanish and Chinese are translated into English before the decision layer; Laya, the parsers, the keyword fallback and the eval stay English-only | Owner's pick over a multilingual model. English is untouched, so its quality can't regress |
-| Switch | Settings → Voice → Language, per phone, English by default. English keeps the bundled `base.en`; any other language downloads one multilingual Whisper (`openai_whisper-small_216MB`, 216 MB) | Each caregiver can speak their own language; English-only phones carry nothing extra |
+| Switch | Settings → Voice → Language, per phone, English by default. English keeps the bundled `base.en`; any other language uses one multilingual Whisper (`openai_whisper-small_216MB`) | Each caregiver can speak their own language |
+| Bundling | The multilingual model ships in the app next to `base.en` (0.8.1; ~210 MB more, ~785 MB installed), downloaded only by builds without it | Owner's call (2026-10-20): works offline right after install; well under the 4 GB limit |
 | Translation | Whisper writes down what was said in that language, and Apple's on-device Translation (iOS 26, `TranslationSession(installedSource:)`) turns it into English; before iOS 26 or without the language downloaded, Whisper's own translate task | On a TTS spot check Whisper's translation lost key words ("pañal mojado" → "wet cloth", "尿布湿了" → "The urine is gone"); Apple's kept them ("Diaper, wet", "The diaper is wet") |
 | Notes | Dictated shift notes stay in the spoken language | Notes are read by people, not the model |
 

@@ -164,8 +164,9 @@ enum VoiceLanguage: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-/// The multilingual Whisper for languages other than English: downloaded once (216 MB, Wi-Fi)
-/// into Application Support, never bundled, so English-only phones don't carry it.
+/// The multilingual Whisper for languages other than English: bundled with the app
+/// (scripts/fetch-models.sh), so it works offline right after install. Builds without it
+/// download it once into Application Support.
 @MainActor
 final class SpeechModelManager: ObservableObject {
     nonisolated static let variant = "openai_whisper-small_216MB"
@@ -178,7 +179,16 @@ final class SpeechModelManager: ObservableObject {
     }
     /// Where WhisperKit's hub download puts the variant (and the tokenizer under models/openai/).
     nonisolated static var folder: URL { base.appendingPathComponent("models/argmaxinc/whisperkit-coreml/\(variant)") }
-    nonisolated static var isReady: Bool { FileManager.default.fileExists(atPath: folder.appendingPathComponent(".complete").path) }
+    nonisolated static var isReady: Bool { bundled != nil || FileManager.default.fileExists(atPath: folder.appendingPathComponent(".complete").path) }
+
+    /// The copy shipped in the app bundle: model folder and tokenizer folder.
+    nonisolated static var bundled: (model: URL, tokenizer: URL)? {
+        guard let root = Bundle.main.url(forResource: "Models", withExtension: nil)?.appendingPathComponent("whisper") else { return nil }
+        let model = root.appendingPathComponent(variant)
+        guard FileManager.default.fileExists(atPath: model.appendingPathComponent("AudioEncoder.mlmodelc").path) else { return nil }
+        return (model, root.appendingPathComponent("tokenizer-multi"))
+    }
+    var isBundled: Bool { Self.bundled != nil }
 
     func download() async {
         guard progress == nil, !Self.isReady else { isDownloaded = Self.isReady; return }
@@ -257,10 +267,14 @@ actor WhisperTranscriber: Transcriber {
         if let loading, loading.key == key { return try await loading.task.value }
         let config: WhisperKitConfig
         if language.translates {
-            guard SpeechModelManager.isReady else { throw SpeechModelMissing(language: language) }
-            // the tokenizer comes from the hub on the first load and is kept under `base`
-            config = WhisperKitConfig(modelFolder: SpeechModelManager.folder.path, tokenizerFolder: SpeechModelManager.base,
-                                      verbose: false, download: false)
+            if let bundled = SpeechModelManager.bundled {
+                config = WhisperKitConfig(modelFolder: bundled.model.path, tokenizerFolder: bundled.tokenizer, verbose: false, download: false)
+            } else {
+                guard SpeechModelManager.isReady else { throw SpeechModelMissing(language: language) }
+                // the tokenizer comes from the hub on the first load and is kept under `base`
+                config = WhisperKitConfig(modelFolder: SpeechModelManager.folder.path, tokenizerFolder: SpeechModelManager.base,
+                                          verbose: false, download: false)
+            }
         } else if let bundled = Self.bundledFolders {
             config = WhisperKitConfig(modelFolder: bundled.model.path, tokenizerFolder: bundled.tokenizer, verbose: false, download: false)
         } else {
