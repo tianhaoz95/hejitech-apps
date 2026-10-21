@@ -46,7 +46,14 @@ final class IOSSettingsSyncManager: NSObject, ObservableObject, WCSessionDelegat
     @Published var watchIsTimerActive: Bool = false
     @Published var watchLastHeard: Date? = nil
     
-    private var isBroadcasting = false
+    /// When a parent last changed the settings above, here or on the watch (seconds since 1970).
+    /// Sent with every payload instead of the send time, so the watch can tell a new change from a
+    /// replay, and compared with the watch's own stamp to adopt changes made there (see the watch
+    /// app's SettingsSync.swift).
+    private var settingsChangedAt: Double = 0
+    /// Set while settings are loaded or adopted from the watch: those aren't a parent's change here
+    /// and mustn't be broadcast back.
+    private var isApplyingStoredSettings = false
     
     private override init() {
         super.init()
@@ -56,6 +63,10 @@ final class IOSSettingsSyncManager: NSObject, ObservableObject, WCSessionDelegat
     
     private func loadLocalSettings() {
         let defaults = UserDefaults.standard
+        // Property observers fire here (this runs after super.init()); loading isn't a change.
+        isApplyingStoredSettings = true
+        defer { isApplyingStoredSettings = false }
+        settingsChangedAt = defaults.double(forKey: "settingsChangedAt")
         if defaults.object(forKey: "selectedMode") != nil {
             selectedMode = defaults.string(forKey: "selectedMode") ?? "bubbles"
             timerMinutes = defaults.integer(forKey: "timerMinutes")
@@ -77,6 +88,7 @@ final class IOSSettingsSyncManager: NSObject, ObservableObject, WCSessionDelegat
         defaults.set(hapticsEnabled, forKey: "hapticsEnabled")
         defaults.set(lowStimulation, forKey: "lowStimulation")
         defaults.set(lockHoldDuration, forKey: "lockHoldDuration")
+        defaults.set(settingsChangedAt, forKey: "settingsChangedAt")
     }
     
     func activateSession() {
@@ -164,11 +176,30 @@ final class IOSSettingsSyncManager: NSObject, ObservableObject, WCSessionDelegat
             self.watchIsTimerActive = timerActive
         }
         self.watchLastHeard = Date()
+        adoptWatchSettingsIfNewer(dict)
+    }
+
+    /// A parent changed settings on the watch after the last change here: take them over, so this
+    /// dashboard shows them and the next change here doesn't push the old ones back.
+    private func adoptWatchSettingsIfNewer(_ dict: [String: Any]) {
+        guard let watchChangedAt = dict["settingsChangedAt"] as? Double, watchChangedAt > settingsChangedAt else { return }
+        isApplyingStoredSettings = true
+        defer { isApplyingStoredSettings = false }
+        if let mode = dict["currentMode"] as? String { selectedMode = mode }
+        if let sound = dict["soundEnabled"] as? Bool { soundEnabled = sound }
+        if let voice = dict["voiceEnabled"] as? Bool { voiceEnabled = voice }
+        if let haptics = dict["hapticsEnabled"] as? Bool { hapticsEnabled = haptics }
+        if let lowStim = dict["lowStimulation"] as? Bool { lowStimulation = lowStim }
+        if let hold = dict["lockHoldDuration"] as? Double, hold > 0 { lockHoldDuration = hold }
+        settingsChangedAt = watchChangedAt
+        saveLocalSettings()
     }
     
     // MARK: - Actions
     
     private func saveAndBroadcast() {
+        guard !isApplyingStoredSettings else { return }
+        settingsChangedAt = Date().timeIntervalSince1970
         saveLocalSettings()
         sendSettingsToWatch()
     }
@@ -192,6 +223,7 @@ final class IOSSettingsSyncManager: NSObject, ObservableObject, WCSessionDelegat
             "hapticsEnabled": hapticsEnabled,
             "lowStimulation": lowStimulation,
             "lockHoldDuration": lockHoldDuration,
+            "settingsChangedAt": settingsChangedAt,
             "timestamp": Date().timeIntervalSince1970
         ]
         
@@ -255,7 +287,13 @@ final class IOSSettingsSyncManager: NSObject, ObservableObject, WCSessionDelegat
     }
     
     func triggerLullabyNow() {
+        // One payload, mode and action together: two with the same change time would make the
+        // watch drop the second as a replay.
+        isApplyingStoredSettings = true
         selectedMode = "lullaby"
+        isApplyingStoredSettings = false
+        settingsChangedAt = Date().timeIntervalSince1970
+        saveLocalSettings()
         sendSettingsToWatch(extraPayload: [
             "action": "triggerLullaby"
         ])

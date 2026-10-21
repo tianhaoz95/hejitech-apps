@@ -110,8 +110,13 @@ final class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDeleg
     func applySettings(_ dict: [String: Any]) {
         self.lastSyncReceivedAt = Date()
         
-        // Persist to UserDefaults so watch remembers even across app restarts
+        // Only settings changed after the ones the watch has: the application context is re-read at
+        // every launch and user info is queued, so most payloads here are replays (SettingsSync).
         let defaults = UserDefaults.standard
+        let changedAt = dict[SettingsSync.settingsChangedAtKey] as? Double
+        guard SettingsSync.isNewer(changedAt, than: defaults.double(forKey: SettingsSync.watchDefaultsKey)) else { return }
+        
+        // Persist to UserDefaults so watch remembers even across app restarts
         if let modeRaw = dict["currentMode"] as? String {
             defaults.set(modeRaw, forKey: "tinyTouch_mode")
         }
@@ -139,8 +144,14 @@ final class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDeleg
             self.pendingSettings = dict
             return
         }
+        if let changedAt {
+            defaults.set(changedAt, forKey: SettingsSync.watchDefaultsKey)
+        }
         
         DispatchQueue.main.async {
+            appState.isApplyingPhoneSettings = true
+            defer { appState.isApplyingPhoneSettings = false }
+
             // 1. Remote action triggers (e.g. Bedtime Lullaby)
             if let action = dict["action"] as? String, action == "triggerLullaby" {
                 withAnimation(.easeInOut(duration: 1.0)) {
@@ -209,6 +220,8 @@ final class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDeleg
             "hapticsEnabled": appState.hapticsEnabled,
             "lowStimulation": appState.lowStimulation,
             "lockHoldDuration": appState.lockHoldDuration,
+            // When a parent last changed these settings, so the iPhone adopts newer ones (SettingsSync).
+            SettingsSync.settingsChangedAtKey: UserDefaults.standard.double(forKey: SettingsSync.watchDefaultsKey),
             "timestamp": Date().timeIntervalSince1970
         ]
         
