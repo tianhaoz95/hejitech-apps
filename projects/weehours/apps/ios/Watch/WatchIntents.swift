@@ -10,23 +10,38 @@ struct VoiceLogIntent: AppIntent {
     static let openAppWhenRun = true
     @MainActor
     func perform() async throws -> some IntentResult {
-        RecordRequest.shared.pending = true
+        WatchRequest.shared.pending = .record
         return .result()
     }
 }
 
-/// Siri on the watch, the Shortcuts app and the Action Button on Apple Watch Ultra.
+/// Opens the watch app in tilt mode (TiltMode.swift), whichever mode the iPhone set it to open in.
+struct TiltModeIntent: AppIntent {
+    static let title: LocalizedStringResource = "Log by tilting"
+    static let description = IntentDescription("Opens Wee Hours on Apple Watch in tilt mode: tilt your wrist toward feed, diaper, sleep or a care action.")
+    static let openAppWhenRun = true
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        WatchRequest.shared.pending = .tilt
+        return .result()
+    }
+}
+
+/// Siri on the watch, the Shortcuts app and the Action Button on Apple Watch Ultra: speak, or tilt.
 struct WeeHoursWatchShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(intent: VoiceLogIntent(), phrases: ["Log by voice in \(.applicationName)"],
                     shortTitle: "Speak", systemImageName: "mic.fill")
+        AppShortcut(intent: TiltModeIntent(), phrases: ["Log by tilting in \(.applicationName)", "Start tilt mode in \(.applicationName)"],
+                    shortTitle: "Tilt", systemImageName: "gyroscope")
     }
 }
 
-/// A shortcut asked to record. A flag rather than a notification: on a cold launch the intent
-/// runs before WatchRoot is on screen to hear one.
+/// What a shortcut asked the app to open into. Published state rather than a notification: on a
+/// cold launch the intent runs before WatchRoot is on screen to hear one.
 @MainActor
-final class RecordRequest: ObservableObject {
-    static let shared = RecordRequest()
-    @Published var pending = false
+final class WatchRequest: ObservableObject {
+    enum Kind { case record, tilt }
+    static let shared = WatchRequest()
+    @Published var pending: Kind?
 }

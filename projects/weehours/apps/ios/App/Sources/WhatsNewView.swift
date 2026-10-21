@@ -48,8 +48,15 @@ struct WhatsNewView: View {
         ReleaseHistoryItem(
             version: "0.8.2",
             date: "October 2026",
-            tagline: "Voice Shortcut on Apple Watch",
-            features: [],
+            tagline: "Watch Shortcuts",
+            features: [
+                WhatsNewItem(
+                    icon: "gyroscope",
+                    tint: Color(red: 0.98, green: 0.70, blue: 0.45),
+                    title: "Tilt Mode Shortcut on Apple Watch",
+                    description: "“Log by tilting” opens Wee Hours on your watch straight into tilt mode. Run it from Shortcuts, ask Siri, or put it on the Action Button of Apple Watch Ultra."
+                ),
+            ],
             improvementsAndFixes: [
                 WhatsNewItem(
                     icon: "applewatch",
