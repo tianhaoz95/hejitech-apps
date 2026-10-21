@@ -113,6 +113,12 @@ public struct ToddlerCameraView: View {
             }
             .ignoresSafeArea()
         }
+        #if DEBUG
+        // Screenshots and checks: `-parentGate` opens the grown-ups gate on launch.
+        .onAppear {
+            if CommandLine.arguments.contains("-parentGate") { showParentGate = true }
+        }
+        #endif
         .sheet(isPresented: $showParentHub) {
             ParentHubView()
         }

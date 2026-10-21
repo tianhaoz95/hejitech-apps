@@ -611,6 +611,101 @@ final class KidsCamTests: XCTestCase {
             try? data.write(to: URL(fileURLWithPath: path))
         }
     }
+
+    // MARK: - Parental gate
+
+    /// Deterministic generator for the gate tests (SplitMix64).
+    private struct SeededGenerator: RandomNumberGenerator {
+        var state: UInt64
+        mutating func next() -> UInt64 {
+            state &+= 0x9E3779B97F4A7C15
+            var z = state
+            z = (z ^ (z >> 30)) &* 0xBF58476D1CE4E5B9
+            z = (z ^ (z >> 27)) &* 0x94D049BB133111EB
+            return z ^ (z >> 31)
+        }
+    }
+
+    func testParentGateChallengeAnswers() {
+        let c = ParentGateChallenge(a: 7, b: 8)
+        XCTAssertEqual(c.answer, 56)
+        XCTAssertEqual(c.answerLength, 2)
+        XCTAssertTrue(c.isCorrect("56"))
+        XCTAssertFalse(c.isCorrect("65"))
+        XCTAssertFalse(c.isCorrect(""))
+        XCTAssertEqual(c.spokenQuestion, "What is 7 times 8?")
+    }
+
+    func testParentGateChallengesStayInRange() {
+        var g = SeededGenerator(state: 42)
+        for _ in 0..<500 {
+            let c = ParentGateChallenge.random(using: &g)
+            XCTAssertTrue(ParentGateChallenge.factors.contains(c.a))
+            XCTAssertTrue(ParentGateChallenge.factors.contains(c.b))
+            XCTAssertTrue((16...81).contains(c.answer))
+        }
+    }
+
+    func testParentGateLocksAfterThreeWrongAnswersThenReopens() {
+        var attempts = ParentGateAttempts()
+        let t0 = Date(timeIntervalSince1970: 1_000_000)
+        attempts.recordFailure(now: t0)
+        attempts.recordFailure(now: t0)
+        XCTAssertFalse(attempts.isLocked(now: t0))
+        attempts.recordFailure(now: t0)
+        XCTAssertTrue(attempts.isLocked(now: t0.addingTimeInterval(29)))
+        XCTAssertEqual(attempts.secondsLeft(now: t0.addingTimeInterval(10)), 20)
+        XCTAssertFalse(attempts.isLocked(now: t0.addingTimeInterval(30)))
+        // The next lockout is twice as long.
+        let t1 = t0.addingTimeInterval(31)
+        for _ in 0..<3 { attempts.recordFailure(now: t1) }
+        XCTAssertEqual(attempts.secondsLeft(now: t1), 60)
+        attempts.recordSuccess()
+        XCTAssertFalse(attempts.isLocked(now: t0))
+    }
+
+    func testRestoredParentGateLockoutIsCapped() {
+        let now = Date(timeIntervalSince1970: 1_000_000)
+        let far = ParentGateAttempts.restoring(lockedUntil: now.addingTimeInterval(86_400 * 365), now: now)
+        XCTAssertEqual(far.secondsLeft(now: now), Int(ParentGateAttempts.maxCooldown))
+        let soon = ParentGateAttempts.restoring(lockedUntil: now.addingTimeInterval(12), now: now)
+        XCTAssertEqual(soon.secondsLeft(now: now), 12)
+    }
+
+    /// A toddler mashing keys for a minute: with the old gate (three answer buttons, no lockout)
+    /// every session got in; with typed answers and the growing pause very few do.
+    func testRandomTappingRarelyPassesTheGate() {
+        var g = SeededGenerator(state: 7)
+        let sessions = 2_000, tapsPerSecond = 2.0, seconds = 60.0
+        var oldPassed = 0, newPassed = 0
+        for _ in 0..<sessions {
+            // Old gate: each tap picks one of three answers, one of which is right.
+            for _ in 0..<Int(tapsPerSecond * seconds) where Int.random(in: 0..<3, using: &g) == 0 {
+                oldPassed += 1
+                break
+            }
+            // New gate: digits typed at random, checked at the answer's length, a pause after 3 misses.
+            var attempts = ParentGateAttempts()
+            var challenge = ParentGateChallenge.random(using: &g)
+            var entry = ""
+            var t = Date(timeIntervalSince1970: 0)
+            let end = t.addingTimeInterval(seconds)
+            while t < end {
+                t = t.addingTimeInterval(1 / tapsPerSecond)
+                if attempts.isLocked(now: t) { continue }
+                entry.append(String(Int.random(in: 0...9, using: &g)))
+                guard entry.count >= challenge.answerLength else { continue }
+                if challenge.isCorrect(entry) { newPassed += 1; break }
+                attempts.recordFailure(now: t)
+                entry = ""
+                challenge = ParentGateChallenge.random(using: &g)
+            }
+        }
+        print("Random tapping for \(Int(seconds)) s: old gate passed \(oldPassed)/\(sessions), new gate \(newPassed)/\(sessions)")
+        XCTAssertGreaterThan(oldPassed, sessions * 99 / 100)
+        // About 1 in 90 per guess and ~6 guesses in the first minute: roughly 5%, against 100%.
+        XCTAssertLessThan(newPassed, sessions / 10)
+    }
 }
 
 // MARK: - Edge-to-Edge Sheet Container for iPhone Screenshots
