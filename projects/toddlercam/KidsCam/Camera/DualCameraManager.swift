@@ -3,6 +3,7 @@ import AVFoundation
 import UIKit
 import Photos
 import Combine
+import CoreImage
 
 public enum CameraCaptureMode: String, CaseIterable, Identifiable {
     case photo = "Photo"
@@ -95,6 +96,13 @@ public final class DualCameraManager: NSObject, ObservableObject {
     private var backPhotoOutput: AVCapturePhotoOutput?
     private var frontPhotoOutput: AVCapturePhotoOutput?
     private var frontVideoOutput: AVCaptureVideoDataOutput?
+    private var backVideoOutput: AVCaptureVideoDataOutput?
+    /// The newest frame from each camera, for video recording (`getCurrentFrames`). Written on
+    /// `sessionQueue`, read on the recorder's queue.
+    private let liveFrameLock = NSLock()
+    private var latestBackBuffer: CVPixelBuffer?
+    private var latestFrontBuffer: CVPixelBuffer?
+    private let liveFrameContext = CIContext()
     private var pendingBackPhoto: UIImage?
     private var pendingFrontPhoto: UIImage?
     private let sessionQueue = DispatchQueue(label: "com.hejitech.kidscam.sessionQueue")
@@ -109,6 +117,7 @@ public final class DualCameraManager: NSObject, ObservableObject {
         startVideoPlayback()
         setupSimulatorStreamer()
         checkAndRequestCameraPermission()
+        }
     }
 
     public func updateDemoFrames() {
@@ -232,6 +241,21 @@ public final class DualCameraManager: NSObject, ObservableObject {
                             self.backPhotoOutput = photoOut
                         }
                     }
+
+                    // Frames for video recording (the front camera's output below also feeds face tracking).
+                    let videoOut = AVCaptureVideoDataOutput()
+                    videoOut.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_32BGRA)]
+                    videoOut.alwaysDiscardsLateVideoFrames = true
+                    videoOut.setSampleBufferDelegate(self, queue: self.sessionQueue)
+                    if session.canAddOutput(videoOut) {
+                        session.addOutputWithNoConnections(videoOut)
+                        let vConn = AVCaptureConnection(inputPorts: [backPort], output: videoOut)
+                        if session.canAddConnection(vConn) {
+                            session.addConnection(vConn)
+                            vConn.videoOrientation = .portrait
+                            self.backVideoOutput = videoOut
+                        }
+                    }
                 }
             }
 
@@ -313,6 +337,16 @@ public final class DualCameraManager: NSObject, ObservableObject {
             if session.canAddOutput(photoOut) {
                 session.addOutput(photoOut)
                 self.backPhotoOutput = photoOut
+            }
+
+            let videoOut = AVCaptureVideoDataOutput()
+            videoOut.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_32BGRA)]
+            videoOut.alwaysDiscardsLateVideoFrames = true
+            videoOut.setSampleBufferDelegate(self, queue: self.sessionQueue)
+            if session.canAddOutput(videoOut) {
+                session.addOutput(videoOut)
+                videoOut.connection(with: .video)?.videoOrientation = .portrait
+                self.backVideoOutput = videoOut
             }
 
             session.commitConfiguration()
@@ -403,6 +437,9 @@ public final class DualCameraManager: NSObject, ObservableObject {
     }
 
     public func getCurrentFrames() -> (back: UIImage, front: UIImage) {
+        if !isDemoMode, hasPhysicalCameras, let live = liveFrames() {
+            return live
+        }
         if isDemoMode {
             let babyImg = demoBabyFrame ?? DualPhotoRenderer.renderBabyMockImage()
             let natureImg = demoNatureFrame ?? DualPhotoRenderer.renderNatureParkMockImage()
@@ -412,6 +449,28 @@ public final class DualCameraManager: NSObject, ObservableObject {
             let frontImg = simulatedFrontFrame ?? captureCurrentVideoFrame(from: "front_video") ?? DualPhotoRenderer.renderSimulatedFrontCamera()
             return (back: backImg, front: frontImg)
         }
+    }
+
+    /// The cameras' newest frames. A device that can't run both cameras at once has one, used for
+    /// both. Nil until the first frame arrives.
+    private func liveFrames() -> (back: UIImage, front: UIImage)? {
+        liveFrameLock.lock()
+        let back = latestBackBuffer
+        let front = latestFrontBuffer
+        liveFrameLock.unlock()
+        guard let backImage = back.flatMap(image(from:)) ?? front.flatMap(image(from:)) else { return nil }
+        return (back: backImage, front: front.flatMap(image(from:)) ?? backImage)
+    }
+
+    /// A camera frame as an image no larger than the 1200×1600 composite it's drawn into.
+    private func image(from pixelBuffer: CVPixelBuffer) -> UIImage? {
+        var frame = CIImage(cvPixelBuffer: pixelBuffer)
+        let scale = min(1, 1600 / max(frame.extent.width, frame.extent.height))
+        if scale < 1 {
+            frame = frame.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        }
+        guard let cg = liveFrameContext.createCGImage(frame, from: frame.extent) else { return nil }
+        return UIImage(cgImage: cg)
     }
 
     // MARK: - Mode Switching
@@ -500,6 +559,12 @@ public final class DualCameraManager: NSObject, ObservableObject {
             pendingFrontPhoto = nil
             backOut.capturePhoto(with: backSettings, delegate: self)
             frontOut.capturePhoto(with: frontSettings, delegate: self)
+        } else if hasPhysicalCameras, let singleOut = backPhotoOutput {
+            // One camera at a time (no multi-cam support): its photo fills both places in the
+            // keepsake, rather than a frame of the demo footage.
+            pendingBackPhoto = nil
+            pendingFrontPhoto = nil
+            singleOut.capturePhoto(with: AVCapturePhotoSettings(), delegate: self)
         } else {
             captureFromVideoFootage()
         }
@@ -614,6 +679,9 @@ extension DualCameraManager: AVCapturePhotoCaptureDelegate {
 
         if output == self.backPhotoOutput {
             self.pendingBackPhoto = image
+            if !self.isMultiCamSupported {
+                self.pendingFrontPhoto = image
+            }
         } else if output == self.frontPhotoOutput {
             self.pendingFrontPhoto = image
         }
@@ -624,6 +692,16 @@ extension DualCameraManager: AVCapturePhotoCaptureDelegate {
 
 extension DualCameraManager: AVCaptureVideoDataOutputSampleBufferDelegate {
     public func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        FaceTrackingManager.shared.processSampleBuffer(sampleBuffer, orientation: .up)
+        let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer)
+        if output == frontVideoOutput {
+            FaceTrackingManager.shared.processSampleBuffer(sampleBuffer, orientation: .up)
+            liveFrameLock.lock()
+            latestFrontBuffer = pixelBuffer
+            liveFrameLock.unlock()
+        } else if output == backVideoOutput {
+            liveFrameLock.lock()
+            latestBackBuffer = pixelBuffer
+            liveFrameLock.unlock()
+        }
     }
 }

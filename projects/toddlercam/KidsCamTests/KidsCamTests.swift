@@ -571,6 +571,34 @@ final class KidsCamTests: XCTestCase {
         }
     }
 
+    /// Video frames come out upright: a CGContext's origin is bottom-left, so drawing UIKit
+    /// images into the pixel buffer without flipping recorded every video upside down.
+    func testPixelBufferIsUpright() {
+        let size = CGSize(width: 60, height: 80)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let topRedBottomBlue = UIGraphicsImageRenderer(size: size, format: format).image { ctx in
+            UIColor.red.setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: 60, height: 40))
+            UIColor.blue.setFill()
+            ctx.fill(CGRect(x: 0, y: 40, width: 60, height: 40))
+        }
+        guard let buffer = DualPhotoRenderer.pixelBuffer(from: topRedBottomBlue, size: size) else {
+            return XCTFail("no pixel buffer")
+        }
+        CVPixelBufferLockBaseAddress(buffer, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(buffer, .readOnly) }
+        let base = CVPixelBufferGetBaseAddress(buffer)!.assumingMemoryBound(to: UInt8.self)
+        let rowBytes = CVPixelBufferGetBytesPerRow(buffer)
+        // 32ARGB: byte 1 is red, byte 3 is blue. Row 0 is the top of the video frame.
+        let top = (r: base[30 * 4 + 1], b: base[30 * 4 + 3])
+        let bottom = (r: base[79 * rowBytes + 30 * 4 + 1], b: base[79 * rowBytes + 30 * 4 + 3])
+        XCTAssertGreaterThan(top.r, 200, "the top of the frame is the image's top (red)")
+        XCTAssertLessThan(top.b, 50)
+        XCTAssertGreaterThan(bottom.b, 200, "the bottom of the frame is the image's bottom (blue)")
+        XCTAssertLessThan(bottom.r, 50)
+    }
+
     func testVideoRecorderLifecycle() {
         let manager = DualCameraManager.shared
         manager.setCaptureMode(.video)
