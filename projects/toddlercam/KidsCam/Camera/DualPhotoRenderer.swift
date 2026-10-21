@@ -171,6 +171,10 @@ public final class DualPhotoRenderer {
             return nil
         }
 
+        // A bare CGContext's origin is bottom-left; UIKit drawing expects top-left. Without the flip
+        // every recorded video came out upside down.
+        context.translateBy(x: 0, y: size.height)
+        context.scaleBy(x: 1, y: -1)
         UIGraphicsPushContext(context)
         drawImageAspectFill(image, in: CGRect(origin: .zero, size: size), context: context)
         UIGraphicsPopContext()
