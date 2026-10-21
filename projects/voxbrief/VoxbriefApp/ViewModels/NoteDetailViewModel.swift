@@ -160,6 +160,13 @@ public final class NoteDetailViewModel: ObservableObject {
         repository.removeTag(id: note.id, tag: tag)
     }
 
+    public func toggleChecklistAt(lineIndex: Int) {
+        let updated = MarkdownLiteText.toggledChecklist(in: note.cleanedNote, at: lineIndex)
+        guard updated != note.cleanedNote else { return }
+        note.cleanedNote = updated
+        repository.updateCleanedNote(id: note.id, cleanedNote: updated)
+    }
+
     public func exportActionItemsToReminders() async throws -> Int {
         try await RemindersExportService.shared.exportActionItems(note.actionItems, noteTitle: note.title)
     }

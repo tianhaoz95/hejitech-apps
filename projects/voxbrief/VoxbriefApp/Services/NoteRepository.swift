@@ -111,6 +111,12 @@ public final class NoteRepository: ObservableObject {
         persistNotes()
     }
 
+    public func updateCleanedNote(id: UUID, cleanedNote: String) {
+        guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
+        notes[index].cleanedNote = cleanedNote
+        persistNotes()
+    }
+
     public func addTag(id: UUID, tag: String) {
         guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
         let cleanTag = tag.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -5,17 +5,36 @@ import SwiftUI
 /// Not a general Markdown parser — just the subset `LLMCopywriterService` emits.
 public struct MarkdownLiteText: View {
     let markdown: String
+    var onToggleChecklist: ((Int) -> Void)?
 
-    public init(_ markdown: String) {
+    public init(_ markdown: String, onToggleChecklist: ((Int) -> Void)? = nil) {
         self.markdown = markdown
+        self.onToggleChecklist = onToggleChecklist
     }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
-                renderedLine(for: line)
+            ForEach(Array(lines.enumerated()), id: \.offset) { index, line in
+                renderedLine(for: line, at: index)
             }
         }
+    }
+
+    public static func toggledChecklist(in markdown: String, at lineIndex: Int) -> String {
+        var lines = markdown.components(separatedBy: "\n")
+        guard lineIndex >= 0 && lineIndex < lines.count else { return markdown }
+        let raw = lines[lineIndex]
+        let trimmed = raw.trimmingCharacters(in: .whitespaces)
+        let leadingSpaces = String(raw.prefix(while: { $0.isWhitespace }))
+
+        if trimmed.hasPrefix("- [ ] ") {
+            let remainder = trimmed.dropFirst(6)
+            lines[lineIndex] = "\(leadingSpaces)- [x] \(remainder)"
+        } else if trimmed.hasPrefix("- [x] ") || trimmed.hasPrefix("- [X] ") {
+            let remainder = trimmed.dropFirst(6)
+            lines[lineIndex] = "\(leadingSpaces)- [ ] \(remainder)"
+        }
+        return lines.joined(separator: "\n")
     }
 
     private var lines: [String] {
@@ -23,7 +42,7 @@ public struct MarkdownLiteText: View {
     }
 
     @ViewBuilder
-    private func renderedLine(for rawLine: String) -> some View {
+    private func renderedLine(for rawLine: String, at index: Int) -> some View {
         let line = rawLine.trimmingCharacters(in: .whitespaces)
 
         if line.isEmpty {
@@ -42,15 +61,29 @@ public struct MarkdownLiteText: View {
                 .foregroundColor(.secondary)
         } else if line.hasPrefix("- [ ] ") {
             HStack(alignment: .top, spacing: 8) {
-                Image(systemName: "square")
-                    .foregroundColor(.green)
+                Button {
+                    onToggleChecklist?(index)
+                } label: {
+                    Image(systemName: "square")
+                        .foregroundColor(.green)
+                }
+                .buttonStyle(.plain)
+                .disabled(onToggleChecklist == nil)
+
                 Text(inline(String(line.dropFirst(6))))
                     .fixedSize(horizontal: false, vertical: true)
             }
         } else if line.hasPrefix("- [x] ") || line.hasPrefix("- [X] ") {
             HStack(alignment: .top, spacing: 8) {
-                Image(systemName: "checkmark.square.fill")
-                    .foregroundColor(.green)
+                Button {
+                    onToggleChecklist?(index)
+                } label: {
+                    Image(systemName: "checkmark.square.fill")
+                        .foregroundColor(.green)
+                }
+                .buttonStyle(.plain)
+                .disabled(onToggleChecklist == nil)
+
                 Text(inline(String(line.dropFirst(6))))
                     .strikethrough()
                     .foregroundColor(.secondary)
