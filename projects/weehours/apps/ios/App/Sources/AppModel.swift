@@ -55,6 +55,20 @@ final class AppModel: ObservableObject {
     @Published var showingShiftDigest = false
     /// The night screen put away until the app next goes to the background.
     @Published var nightDismissed = false
+    /// The night screen opened from the moon on Now, also outside its scheduled hours.
+    @Published var nightOpened = false
+
+    /// The moon on Now: the night screen now, whatever the time.
+    func openNightScreen() {
+        nightDismissed = false
+        nightOpened = true
+    }
+
+    /// Swipe down on the night screen: the full app until the app next goes to the background.
+    func closeNightScreen() {
+        nightDismissed = true
+        nightOpened = false
+    }
     @Published var snoozedUntil: [PlannedReminder.Kind: Date] = [:]
     @Published var lastSync: Date?
     @Published var syncError: String?

@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.8.3"
+    static let currentVersion = "0.8.4"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,21 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "0.8.4",
+            date: "October 2026",
+            tagline: "Night Screen Any Time",
+            features: [],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "moon.fill",
+                    tint: Theme.accent,
+                    title: "Open the Night Screen Any Time",
+                    description: "With the night screen turned on in Settings, the moon at the top of Now opens it whenever you want, including outside its scheduled hours. Swipe down on it for the full app.",
+                    kind: .improvement
+                ),
+            ]
+        ),
         ReleaseHistoryItem(
             version: "0.8.3",
             date: "October 2026",

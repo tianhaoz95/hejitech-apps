@@ -170,7 +170,7 @@ struct SettingsView: View {
                     }
                     .accessibilityIdentifier("thumbDock")
                 } header: { Text("Night & one-handed") } footer: {
-                    Text("The night screen is true black with big amber or red buttons, so it won't light up the nursery. Swipe down on it for the full app. With the one-handed dock, press and hold the mic on Now: feed, diaper and sleep fan out around it within reach of your thumb, and you slide onto one and let go to log it. A tap still listens. Both are for this iPhone only.")
+                    Text("The night screen is true black with big amber or red buttons, so it won't light up the nursery. It comes up by itself (always, or between the hours you set), and the moon at the top of Now opens it any time. Swipe down on it for the full app. With the one-handed dock, press and hold the mic on Now: feed, diaper and sleep fan out around it within reach of your thumb, and you slide onto one and let go to log it. A tap still listens. Both are for this iPhone only.")
                 }
                 Section {
                     NavigationLink { WatchSettingsView() } label: { Label("Apple Watch", systemImage: "applewatch") }

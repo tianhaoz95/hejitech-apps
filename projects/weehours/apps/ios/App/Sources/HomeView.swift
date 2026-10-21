@@ -18,7 +18,7 @@ struct MainView: View {
     /// The thumb dock puts the mic in its corner.
     private var placement: VoiceButtonPlacement { dock == .off ? savedPlacement : dock.placement }
     private var nightOn: Bool { NightMode.isActive(nightMode, from: nightFrom, to: nightTo, now: clock) }
-    private var showingHUD: Bool { nightOn && !model.nightDismissed }
+    private var showingHUD: Bool { nightMode != .off && (model.nightOpened || (nightOn && !model.nightDismissed)) }
 
     var body: some View {
         TabView(selection: $model.screen) {
@@ -40,7 +40,7 @@ struct MainView: View {
             ReviewSheet(capture: capture).presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $showingWhatsNew) { WhatsNewView() }
-        .overlay { if showingHUD { NightHUD(tint: nightTint) { withAnimation(.snappy) { model.nightDismissed = true } }.transition(.opacity) } }
+        .overlay { if showingHUD { NightHUD(tint: nightTint) { withAnimation(.snappy) { model.closeNightScreen() } }.transition(.opacity) } }
         .overlay(alignment: placement.alignment) {
             if !model.recording, !showingHUD {
                 // the one-handed dock: the same mic, with feed, diaper and sleep behind a press and hold
@@ -51,11 +51,11 @@ struct MainView: View {
         .overlay(alignment: .bottom) { ToastView().padding(placement.toastClearance).padding(.bottom, 64) }
         .overlay { if model.recording { ListeningView().transition(.opacity) } }
         .animation(.easeInOut(duration: 0.25), value: model.recording)
-        .preferredColorScheme(nightOn ? .dark : nil)
+        .preferredColorScheme(nightOn || showingHUD ? .dark : nil)
         .onReceive(minute) { clock = $0 }
         .onChange(of: scenePhase) { _, phase in
             clock = Date()
-            if phase == .background { model.nightDismissed = false }   // night screen again next time
+            if phase == .background { model.nightDismissed = false; model.nightOpened = false }   // night screen again next time
         }
         .onChange(of: nightOn) { _, on in if !on { model.nightDismissed = false } }
         .onChange(of: model.screen, initial: true) { _, screen in FeedbackKit.currentScreen = screen }
@@ -110,9 +110,11 @@ struct HomeView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 10) {
-                        if nightMode != .off, model.nightDismissed {
-                            Button { withAnimation(.snappy) { model.nightDismissed = false } } label: { Image(systemName: "moon.fill") }
+                        // whenever the night screen is on in Settings, here to open it, at any hour
+                        if nightMode != .off {
+                            Button { withAnimation(.snappy) { model.openNightScreen() } } label: { Image(systemName: "moon.fill") }
                                 .accessibilityLabel("Night screen")
+                                .accessibilityIdentifier("openNightScreen")
                         }
                         if let birth { Text(Self.age(birth)).font(.subheadline).foregroundStyle(.secondary) }
                     }
