@@ -21,7 +21,7 @@
     key: "__SLUG__-v1", dir: "reports/__SLUG__", repo: "__REPO__", port: __PORT__,   // new.sh fills these
     project: "projects (one group per project below)",
     context: ["CLAUDE.md", ".claude/skills/heji-build-next/SKILL.md"],
-    brief: "heji-build-next proposals on <date>: for every project the agent scanned reports, CI, production and the code, and proposes up to <n> things to build (features, quality/performance work, bug fixes). Per project, crown 🏆 the one to build and ♥ any others to build too; crown \"Skip\" to build nothing there.",
+    brief: "heji-build-next proposals on <date>: for every project the agent read the current code and searched what's new outside (platform APIs, library and model releases, what users ask for), and proposes up to <n> things to build (features, quality/performance work, bug fixes). Per project, crown 🏆 the one to build and ♥ any others to build too; crown \"Skip\" to build nothing there.",
     title: "__TITLE__",
     subtitle: "<n> proposals across <m> projects",
     heading: "Pick what to build",
@@ -52,11 +52,11 @@
       {
         id: "weehours-example", n: 1, group: "weehours", name: "Example proposal",
         tagline: "What it is, in one line",
-        concept: "The evidence (a FeedbackKit report id, a measured number, a reproduction, file:line), who benefits and how much, whether it was reproduced.",
+        concept: "The source: the gap in today's code (file:line on main), a measured number or reproduction, or what's new outside (a platform API, a library release, a better model, what users of such apps ask for; with the URL). Who benefits and how much.",
         moves: ["What would change for the user, 2–4 bullets"],
         facts: {
           Project: "projects/weehours", Kind: "Bug fix | Quality | Performance | Feature | Security", Effort: "S | M | L",
-          Evidence: "One line: report 4ec04025, reproduced in the simulator",
+          Evidence: "One line: TimelineView.swift:120 rebuilds every row on each tick; or https://… (iOS 27 adds …)",
           Release: "patch (0.8.6 → 0.8.7)",
           Captures: "What the build review would show: simulator before/after, light and dark",
           // "Proposed before": "2026-10-21, not picked",   // only when projects/<name>/build-next.md has it

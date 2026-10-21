@@ -1,6 +1,6 @@
 ---
 name: heji-build-next
-description: Go through every project in this HEJI monorepo, find the most valuable things to build for each (features, quality/performance improvements, bug fixes) and propose several per project in a heji-candidate-review site; after the user picks, build the picks autonomously on local-only feature branches (never pushed), capture them running (real screenshots, screen recordings turned into GIFs) and present the finished builds in a second review site where the user picks what to merge. When that hand-off comes back, merge the picked branches into main, delete every build branch, push and release the projects that changed. The user can set how many proposals per project (default 3) and which projects. Use when asked to "build the next thing for every project", "find and build what's most valuable", "do a build round", "propose what to build next", "autonomous improvements across the repo", or invoked as /heji-build-next; also when a pasted hand-off says it is a heji-build-next proposal or build review.
+description: Go through every project in this HEJI monorepo, find the most valuable things to build for each (features, quality/performance improvements, bug fixes), grounded only in the current code and in what's new outside (web search: new platform APIs, library and model releases, what users ask for), never in internal reports or past reviews, and propose several per project in a heji-candidate-review site; after the user picks, build the picks autonomously on local-only feature branches (never pushed), capture them running (real screenshots, screen recordings turned into GIFs) and present the finished builds in a second review site where the user picks what to merge. When that hand-off comes back, merge the picked branches into main, delete every build branch, push and release the projects that changed. The user can set how many proposals per project (default 3) and which projects. Use when asked to "build the next thing for every project", "find and build what's most valuable", "do a build round", "propose what to build next", "autonomous improvements across the repo", or invoked as /heji-build-next; also when a pasted hand-off says it is a heji-build-next proposal or build review.
 ---
 
 # Build the next thing, for every project
@@ -60,11 +60,11 @@ before proposing (see .claude/skills/heji-build-next/SKILL.md, "The ledger"). Ne
 
 | Date | Idea | Outcome | Evidence | Why / owner's note | Revisit if |
 |---|---|---|---|---|---|
-| 2026-10-28 | Dictionary terms catch sound-alikes | kept main after build | report 13b6844a; eval 11/69 | – | a new report about missed terms |
+| 2026-10-28 | On-device summaries with the new Foundation Models API | kept main after build | NoteSummarizer.swift:42 uses the bundled model; https://developer.apple.com/… | – | the bundled model is dropped |
 ```
 
-- **Idea**: the proposal's name. **Evidence**: what identifies the problem (report id, symptom,
-  file), so a reworded version of the same idea is still recognised.
+- **Idea**: the proposal's name. **Evidence**: what identifies it (the gap at `file:line`, the
+  outside source's URL), so a reworded version of the same idea is still recognised.
 - **Outcome**, and what it means for the next scan:
   - `merged in <version>`: done; don't propose it again (a follow-up gets its own name).
   - `kept main after build`: built, then the owner kept main. Rejected.
@@ -73,7 +73,8 @@ before proposing (see .claude/skills/heji-build-next/SKILL.md, "The ledger"). Ne
     repeat; the second time it goes unpicked it becomes `not picked twice`, which counts as
     rejected.
 - A rejected idea comes back only when its **Revisit if** condition is met or there's new
-  evidence (a new report, a new measurement), and then the proposal says so.
+  evidence (a new library release, a new platform API, a new measurement), and then the proposal
+  says so.
 - **Why / owner's note**: the owner's note, verbatim, when there is one.
 - Public repo: an unmerged security idea is recorded as "security hardening (details withheld)",
   with no evidence column.
@@ -93,35 +94,46 @@ them (`worktree.sh cleanup`) before starting. Note the date: branches and the re
 
 ### 1. Find candidates (per project)
 
-Go through the chosen projects in order (`ls projects`). For each, first read its ledger
-(`projects/<name>/build-next.md`, if there is one) and leave out what it marks merged or rejected
-unless the revisit condition is met or there's new evidence. Then spend real effort finding
-options, rank them and keep the top N. Evidence, roughly by weight:
+New ideas come from **two sources only: the current implementation and the outside world.**
+Internal records are never a source: FeedbackKit reports, GitHub issues, review sites in
+`reports/` (active or archived) and `projects/<name>/reports/`, roadmap/ideas/decision docs, the
+agent memory notes, past build rounds. Whatever is in them is already known to the owner (and
+often already fixed while still looking open), so proposing it adds nothing new. Use them only
+afterwards, to drop duplicates (below). Bug reports and failing CI have their own channels
+(FeedbackKit's fix loop, `heji-fix-ci`).
 
-1. **Broken things users hit**: open GitHub issues for the project (`gh issue list --search
-   "<name> in:title,body"`, labels), FeedbackKit reports the project receives (read-only; e.g.
-   `supabase db query --linked --project-ref <FeedbackKit ref from projects/feedbackkit/backend.env>`
-   on `feedback_items` with status new/in_progress, screenshots via `supabase storage cp
-   --experimental`), crash/error logs, failing or flaky tests (`gh run list --workflow
-   <name>-ci.yml`), App Store Connect rejections, the production site itself (crawl it for 404s
-   and console errors, and check it's actually ours).
-2. **Decisions already made but not built**: picks and "next steps" in the project's review sites
-   (`reports/`, `reports/archive/`, `projects/<name>/reports/`), roadmap/ideas docs
-   (`docs/`, `ideas/`, `spec/`), the open steps in the agent memory notes for that project.
-3. **Quality and performance with a measurable before/after**: slow launch, heavy screens,
-   memory, bundle size, evals with low scores, missing tests around fragile code, accessibility
-   gaps (Dynamic Type, VoiceOver labels, contrast).
-4. **Code audits of the paths that matter most**: what only runs on a real device (the simulator
-   hides it), sync between devices, anything security-sensitive.
-5. **Features** that fit the product's direction (its `CLAUDE.md`, README, site copy) and close a
-   gap users would notice.
+Go through the chosen projects in order (`ls projects`). For each:
 
-Reproduce a suspected bug before proposing it when that's cheap (a test, a script, the attached
-device); say in the proposal whether it was reproduced. Leave out, and list in the intro with the
-reason: work that needs the owner (Apple portal, secrets, store listings, paid services), shared
-Supabase schema changes (too risky to land unreviewed; if truly essential, say so loudly),
-anything already in flight (uncommitted work, an open memory note like "candidate build awaiting
-picks"), and anything too big to finish and verify in one pass. Prefer smaller things done
+1. **Read what exists today.** The project's `CLAUDE.md`, then the code: its screens, services,
+   data model, dependencies (`Package.swift`/`project.yml`, `package.json`, `pubspec.yaml`,
+   Gradle catalogs and their versions), the models it bundles, what's on its live site. Know what
+   the app does before thinking about what it should do next.
+2. **Look outward (web search, release notes, docs).** What changed since this was built that the
+   app could use or users now expect:
+   - new platform capabilities (this year's iOS/watchOS/macOS/Android APIs, Apple Intelligence /
+     Foundation Models, App Intents, Live Activities, widgets, Web platform features);
+   - new releases of the libraries and models the project already depends on (changelogs of its
+     pinned versions vs the latest: new features, performance, fixes it would gain);
+   - better or smaller models for what it does on device (ASR, LLMs, vision), with published
+     numbers;
+   - what users of this kind of app ask for publicly (App Store reviews of comparable apps,
+     forums, Reddit, competitors' release notes) that this project could supply.
+   Cite the URL for every outside fact.
+3. **Audit the current implementation** for what a user would notice: measured performance
+   (launch, bundle size, memory), accessibility (VoiceOver, Dynamic Type, contrast), correctness
+   in paths only a real device or real data exercises, security. Ground it in `file:line` on
+   main, and reproduce it before proposing when that's cheap (a test, a script, the device).
+4. **Drop what's already known or built.** Before keeping an idea, check it isn't already in
+   the code (search for it), in the project's What's New / changelog, in `git log`, in the
+   ledger, or in the internal records above. If it is, it's not new: drop it, don't propose it
+   with a "status" twist. Every kept idea must point at today's code showing the gap
+   (`spec.today` with `file:line`) and, if it comes from outside, at its source URL.
+5. Rank what's left by value to users over effort and keep the top N.
+
+Leave out, and list in the intro with the reason: work that needs the owner (Apple portal,
+secrets, store listings, paid services), shared Supabase schema changes (too risky to land
+unreviewed; if truly essential, say so loudly), anything already in flight (uncommitted work in
+the project), and anything too big to finish and verify in one pass. Prefer smaller things done
 completely over big things half done.
 
 ### 2. The proposal review (heji-candidate-review)
@@ -135,15 +147,16 @@ Build the site with the `heji-candidate-review` skill (read its SKILL.md; §2 sc
    **group per project**, a `skip(...)` entry plus the N proposals in each. Add the CSS from
    §6 step 2 below to `site/css/candidates.css`.
 3. Every proposal answers, in its fields:
-   - **Why and the value** (`concept`): the evidence (report id, measured number, reproduction,
-     file and line), who benefits, and whether it was reproduced.
+   - **Why and the value** (`concept`): the source (the gap at `file:line` on main, a measured
+     number, a reproduction, or the outside source's URL), who benefits, and whether it was
+     reproduced.
    - **What would change** (`moves`), and **how it would be built** (`spec`: today / proposed /
      files / risks / verify-plan).
    - **Facts**: `Project`, `Kind` (Bug fix, Quality, Performance, Feature, Security), `Effort`
      (S/M/L), `Evidence` (one line), `Release` (patch for fixes/quality, minor for features),
      `Captures` (what the build review would show: device/simulator, before/after, GIF, numbers).
-   - **Render**: a real capture of today's problem when there is one (the user's report
-     screenshot only if it shows nothing personal, a crawl result, a measured chart), otherwise
+   - **Render**: a real capture of today's gap when there is one (a screenshot of the current
+     app, a measured chart), otherwise
      the text card the example's `idea(...)` helper draws.
 4. `intro`: how to respond (below), projects with nothing worth proposing and why, and per project
    the earlier ideas the ledger kept out ("Wee Hours: 2 earlier ideas left out, see
