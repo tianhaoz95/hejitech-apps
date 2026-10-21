@@ -48,6 +48,19 @@ final class NoteExportServiceTests: XCTestCase {
         try? FileManager.default.removeItem(at: url)
     }
 
+    func testExportNotesAsZipCreatesValidArchive() {
+        let note1 = VoiceNote(id: UUID(), title: "Note 1", cleanedNote: "Body 1")
+        let note2 = VoiceNote(id: UUID(), title: "Note 2", cleanedNote: "Body 2")
+
+        let zipURL = NoteExportService.shared.exportNotesAsZip(notes: [note1, note2])
+        XCTAssertNotNil(zipURL)
+        if let url = zipURL {
+            XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
+            XCTAssertEqual(url.pathExtension, "zip")
+            try? FileManager.default.removeItem(at: url)
+        }
+    }
+
     func testFormattedPlainTextDocument() {
         let note = VoiceNote(
             id: UUID(),

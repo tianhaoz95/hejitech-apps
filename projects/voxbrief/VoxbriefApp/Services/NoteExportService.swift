@@ -44,6 +44,40 @@ public final class NoteExportService: @unchecked Sendable {
         }
     }
 
+    /// Exports an array of notes into a structured .zip archive containing Markdown files with YAML frontmatter.
+    public func exportNotesAsZip(notes: [VoiceNote]) -> URL? {
+        guard !notes.isEmpty else { return nil }
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("VoxbriefExport-\(UUID().uuidString)", isDirectory: true)
+        let zipDestination = FileManager.default.temporaryDirectory.appendingPathComponent("Voxbrief-Notes-\(ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")).zip")
+
+        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        for (index, note) in notes.enumerated() {
+            let markdown = formattedMarkdownDocument(for: note)
+            let baseName = sanitizedBaseName(for: note)
+            let filename = "\(String(format: "%03d", index + 1))-\(baseName).md"
+            let fileURL = tempDir.appendingPathComponent(filename)
+            try? markdown.write(to: fileURL, atomically: true, encoding: .utf8)
+        }
+
+        var coordError: NSError?
+        var resultURL: URL?
+        let coordinator = NSFileCoordinator()
+        coordinator.coordinate(readingItemAt: tempDir, options: .forUploading, error: &coordError) { zipURL in
+            try? FileManager.default.removeItem(at: zipDestination)
+            do {
+                try FileManager.default.copyItem(at: zipURL, to: zipDestination)
+                resultURL = zipDestination
+            } catch {
+                print("[NoteExportService] Failed to copy zip archive: \(error)")
+            }
+        }
+        return resultURL
+    }
+
     /// Formats note into plain text without markdown syntax.
     public func formattedPlainTextDocument(for note: VoiceNote) -> String {
         var lines: [String] = []

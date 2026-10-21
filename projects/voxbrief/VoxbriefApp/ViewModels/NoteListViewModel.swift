@@ -163,6 +163,11 @@ public final class NoteListViewModel: ObservableObject {
         }
         return notes.filter { !$0.isPinned }
     }
+
+    /// Prepares a zip archive of the currently visible notes for bulk backup / export
+    public func exportNotesAsZip() -> URL? {
+        NoteExportService.shared.exportNotesAsZip(notes: notes)
+    }
     
     public var allTags: [String] {
         var tagsSet = Set<String>()
