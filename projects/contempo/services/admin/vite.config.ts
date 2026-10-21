@@ -5,4 +5,6 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   base: "/admin/",
   plugins: [react()],
+  // One React: see services/web/vite.config.ts.
+  resolve: { dedupe: ["react", "react-dom"] },
 });
