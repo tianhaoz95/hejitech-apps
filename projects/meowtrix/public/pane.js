@@ -2431,6 +2431,42 @@ function renameTabInline(tab) {
   });
 }
 
+function getTerminalBufferText(term) {
+  if (!term || !term.buffer || !term.buffer.active) return '';
+  const buffer = term.buffer.active;
+  const lines = [];
+  for (let i = 0; i < buffer.length; i++) {
+    const line = buffer.getLine(i);
+    if (line) {
+      lines.push(line.translateToString(true));
+    }
+  }
+  return lines.join('\n');
+}
+
+function exportTabScrollback(tab) {
+  let content = '';
+  if (tab.term) {
+    content = getTerminalBufferText(tab.term);
+  } else if (tab.viewEl) {
+    content = tab.viewEl.innerText || tab.viewEl.textContent || '';
+  }
+  if (!content) {
+    content = '(Empty scrollback buffer)';
+  }
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const title = (tab.customTitle || tab.title || 'terminal').replace(/[^a-zA-Z0-9_-]/g, '_');
+  a.href = url;
+  a.download = `${title}-${timestamp}.log`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 function showTabContextMenu(e, tab) {
   e.preventDefault();
   e.stopPropagation();
@@ -2473,6 +2509,11 @@ function showTabContextMenu(e, tab) {
           if (typeof saveSessionState === 'function') saveSessionState();
         }
       }
+    },
+    {
+      label: 'Export Scrollback...',
+      icon: '📥',
+      onClick: () => exportTabScrollback(tab)
     },
     {
       type: 'divider'
