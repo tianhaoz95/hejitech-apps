@@ -120,44 +120,42 @@ struct TimelineView: View {
     var body: some View {
         NavigationStack {
             List {
-                if several {
-                    Picker("Child", selection: $child) {
-                        Text("All").tag(UUID?.none)
-                        ForEach(model.shown) { Text($0.name).tag(UUID?.some($0.id)) }
-                    }
-                    .pickerStyle(.segmented)
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets())
-                }
+                // Child, category and detail controls share one row: as three sections, each got a
+                // section gap and a full row height, so they floated apart (report 4ec04025).
                 Section {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 6) {
-                            ForEach(Self.categories, id: \.key) { cat in
-                                let on = categoryFilter == cat.key
-                                Button {
-                                    withAnimation(.snappy) { categoryFilter = cat.key }
-                                } label: {
-                                    Text(cat.label)
-                                        .font(.caption.weight(.semibold))
-                                        .padding(.horizontal, 12).padding(.vertical, 6)
-                                        .foregroundStyle(on ? .white : .primary)
-                                        .background(on ? Theme.accent : Color(.tertiarySystemFill), in: Capsule())
+                    VStack(alignment: .leading, spacing: 12) {
+                        if several {
+                            Picker("Child", selection: $child) {
+                                Text("All").tag(UUID?.none)
+                                ForEach(model.shown) { Text($0.name).tag(UUID?.some($0.id)) }
+                            }
+                            .pickerStyle(.segmented)
+                        }
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 6) {
+                                ForEach(Self.categories, id: \.key) { cat in
+                                    let on = categoryFilter == cat.key
+                                    Button {
+                                        withAnimation(.snappy) { categoryFilter = cat.key }
+                                    } label: {
+                                        Text(cat.label)
+                                            .font(.caption.weight(.semibold))
+                                            .padding(.horizontal, 12).padding(.vertical, 6)
+                                            .foregroundStyle(on ? .white : .primary)
+                                            .background(on ? Theme.accent : Color(.tertiarySystemFill), in: Capsule())
+                                    }
+                                    .buttonStyle(.plain)
                                 }
-                                .buttonStyle(.plain)
                             }
                         }
+                        Picker("Detail", selection: $density) {
+                            ForEach(TimelineDensity.allCases) { Label($0.title, systemImage: $0.icon).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                        .accessibilityIdentifier("timelineDensity")
                     }
                     .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets())
-                }
-                Section {
-                    Picker("Detail", selection: $density) {
-                        ForEach(TimelineDensity.allCases) { Label($0.title, systemImage: $0.icon).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    .accessibilityIdentifier("timelineDensity")
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets())
+                    .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                 }
                 if search.isEmpty {
                     Section {

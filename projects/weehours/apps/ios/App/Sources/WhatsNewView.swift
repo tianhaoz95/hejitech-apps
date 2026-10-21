@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.8.6"
+    static let currentVersion = "0.8.7"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,21 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "0.8.7",
+            date: "October 2026",
+            tagline: "A Tidier Timeline",
+            features: [],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "line.3.horizontal.decrease",
+                    tint: Theme.accent,
+                    title: "Timeline Filters Sit Together",
+                    description: "The child, category and Day grid / Cards / Audit controls at the top of Timeline no longer float apart with big empty gaps between them, so your entries start higher on the screen.",
+                    kind: .fix
+                ),
+            ]
+        ),
         ReleaseHistoryItem(
             version: "0.8.6",
             date: "October 2026",
