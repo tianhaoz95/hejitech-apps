@@ -503,6 +503,7 @@ function activateTab(pane, id) {
     t.viewEl.classList.toggle('active', t.id === id);
   });
   pane.activeTab = pane.tabs.find(t => t.id === id);
+  pane.activeTab?.tabEl?.classList.remove('tab-bell-pulse');
   if (pane.activeTab?.type === 'terminal' && pane.activeTab.fitAddon) {
     const tab = pane.activeTab;
     const fit = () => {
@@ -638,6 +639,50 @@ async function uploadAndPasteFilePath(tab, file) {
   } catch (err) {
     console.error('Failed to upload file:', err);
     if (typeof showToast === 'function') showToast(`Failed to upload ${file.name}`);
+  }
+}
+
+let lastBellTime = 0;
+
+function playBellChime() {
+  try {
+    const s = typeof getSettings === 'function' ? getSettings() : {};
+    if (s.termBellSound === false) return;
+
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    if (!window._bellAudioCtx) {
+      window._bellAudioCtx = new AudioContext();
+    }
+    const ctx = window._bellAudioCtx;
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.12, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.3);
+  } catch (_) {}
+}
+
+function handleTerminalBell(tab) {
+  const now = Date.now();
+  if (now - lastBellTime < 800) return;
+  lastBellTime = now;
+
+  playBellChime();
+
+  if (tab.tabEl) {
+    tab.tabEl.classList.remove('tab-bell-pulse');
+    void tab.tabEl.offsetWidth;
+    tab.tabEl.classList.add('tab-bell-pulse');
   }
 }
 
@@ -859,6 +904,10 @@ function initTerminalTab(tab, existingPtyId) {
   tab.term = term;
   tab.fitAddon = fitAddon;
   tab.searchAddon = searchAddon;
+
+  term.onBell(() => {
+    handleTerminalBell(tab);
+  });
 
   const ptyId = existingPtyId || uid();
   tab.ptyId = ptyId;
