@@ -10,6 +10,7 @@ struct ParentDashboardView: View {
     @State private var syncAlertMessage = ""
     @AppStorage(ParentFeedback.key) private var shakeToReport = false
     @ObservedObject private var feedback = ParentFeedback.shared
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     let gameModes = [
         ("bubbles", "Bubble Pop", "circle.hexagongrid.circle.fill", Color.pink),
@@ -86,7 +87,12 @@ struct ParentDashboardView: View {
     // MARK: - 1. Watch Live Status Card
     private var watchLiveRemoteCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 12) {
+            // Icon, name and Sync side by side; stacked at accessibility text sizes so the name
+            // isn't squeezed into a column a few letters wide.
+            let headerLayout = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+                : AnyLayout(HStackLayout(spacing: 12))
+            headerLayout {
                 ZStack {
                     RoundedRectangle(cornerRadius: 14)
                         .fill(
@@ -102,6 +108,7 @@ struct ParentDashboardView: View {
                         .font(.title3)
                         .foregroundColor(.white)
                 }
+                .accessibilityHidden(true)
                 
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Apple Watch Remote")
@@ -117,8 +124,9 @@ struct ParentDashboardView: View {
                             .foregroundColor(syncManager.isReachable ? .green : .secondary)
                     }
                 }
+                .accessibilityElement(children: .combine)
                 
-                Spacer()
+                if !dynamicTypeSize.isAccessibilitySize { Spacer() }
                 
                 Button(action: triggerManualSync) {
                     HStack(spacing: 4) {
@@ -127,10 +135,10 @@ struct ParentDashboardView: View {
                                 .scaleEffect(0.7)
                         } else {
                             Image(systemName: "arrow.triangle.2.circlepath")
-                                .font(.system(size: 11, weight: .bold))
+                                .font(.caption2.weight(.bold))
                         }
                         Text(syncManager.isSyncing ? "Syncing..." : "Sync Now")
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.caption.weight(.semibold))
                     }
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
@@ -139,45 +147,21 @@ struct ParentDashboardView: View {
                     .cornerRadius(12)
                 }
                 .disabled(syncManager.isSyncing)
+                .accessibilityHint("Sends these settings to the watch")
             }
             
             Divider()
             
-            // Live Session Metrics
-            HStack(spacing: 20) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("CURRENT GAME")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(.secondary)
-                    
-                    Text(friendlyModeName(syncManager.watchCurrentMode))
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundColor(.primary)
-                }
-                
-                Spacer()
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("SENSORY TOUCHES")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(.secondary)
-                    
-                    Text("\(syncManager.watchTouchCount)")
-                        .font(.subheadline.weight(.bold))
-                        .foregroundColor(.purple)
-                }
-                
-                Spacer()
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("TIMER REMAINING")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(.secondary)
-                    
-                    Text(syncManager.formattedWatchRemainingTime)
-                        .font(.subheadline.weight(.bold))
-                        .foregroundColor(.blue)
-                }
+            // Live Session Metrics (stacked at accessibility text sizes, where three columns don't fit)
+            let metricsLayout = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+                : AnyLayout(HStackLayout(spacing: 20))
+            metricsLayout {
+                MetricView(title: "Current game", value: friendlyModeName(syncManager.watchCurrentMode), color: .primary)
+                if !dynamicTypeSize.isAccessibilitySize { Spacer() }
+                MetricView(title: "Sensory touches", value: "\(syncManager.watchTouchCount)", color: .purple)
+                if !dynamicTypeSize.isAccessibilitySize { Spacer() }
+                MetricView(title: "Timer remaining", value: syncManager.formattedWatchRemainingTime, color: .blue)
             }
         }
         .padding(18)
@@ -212,6 +196,7 @@ struct ParentDashboardView: View {
                                     
                                     Image(systemName: mode.2)
                                         .font(.title3)
+                                        .accessibilityHidden(true)
                                         .foregroundColor(isSelected ? .white : mode.3)
                                 }
                                 
@@ -228,6 +213,9 @@ struct ParentDashboardView: View {
                             )
                             .cornerRadius(16)
                         }
+                        .accessibilityLabel(mode.1)
+                        .accessibilityHint("Shows this game on the watch")
+                        .accessibilityAddTraits(isSelected ? .isSelected : [])
                     }
                 }
                 .padding(.vertical, 4)
@@ -256,6 +244,9 @@ struct ParentDashboardView: View {
                             .foregroundColor(isSelected ? .white : .primary)
                             .cornerRadius(12)
                     }
+                    .accessibilityLabel(mins == 0 ? "Unlimited" : "\(mins) minutes")
+                    .accessibilityHint("Sets how long the watch session runs")
+                    .accessibilityAddTraits(isSelected ? .isSelected : [])
                 }
             }
             
@@ -267,6 +258,7 @@ struct ParentDashboardView: View {
                 HStack(spacing: 10) {
                     Image(systemName: "moon.stars.fill")
                         .foregroundColor(.yellow)
+                        .accessibilityHidden(true)
                     Text("Start Calming Lullaby Now")
                         .font(.subheadline.weight(.semibold))
                     Spacer()
@@ -324,28 +316,34 @@ struct ParentDashboardView: View {
                 )
                 Divider().padding(.leading, 44)
                 
-                // Shield hold duration picker
-                HStack(spacing: 14) {
-                    Image(systemName: "lock.shield.fill")
-                        .foregroundColor(.red)
-                        .frame(width: 24)
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Parent Shield Hold Time")
-                            .font(.subheadline.weight(.medium))
-                        Text("Duration required to unlock watch settings")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                // Shield hold duration picker (under its title at accessibility text sizes)
+                let holdLayout = dynamicTypeSize.isAccessibilitySize
+                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
+                    : AnyLayout(HStackLayout(spacing: 14))
+                holdLayout {
+                    HStack(spacing: 14) {
+                        Image(systemName: "lock.shield.fill")
+                            .foregroundColor(.red)
+                            .frame(width: 24)
+                            .accessibilityHidden(true)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Parent Shield Hold Time")
+                                .font(.subheadline.weight(.medium))
+                            Text("Duration required to unlock watch settings")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
                     
-                    Spacer()
+                    if !dynamicTypeSize.isAccessibilitySize { Spacer() }
                     
-                    Picker("Hold Time", selection: $syncManager.lockHoldDuration) {
-                        Text("3 sec").tag(3.0)
-                        Text("5 sec").tag(5.0)
+                    Picker("Parent Shield Hold Time", selection: $syncManager.lockHoldDuration) {
+                        Text("3 sec").tag(3.0).accessibilityLabel("3 seconds")
+                        Text("5 sec").tag(5.0).accessibilityLabel("5 seconds")
                     }
                     .pickerStyle(.segmented)
-                    .frame(width: 130)
+                    .frame(width: dynamicTypeSize.isAccessibilitySize ? nil : 130)
                 }
                 .padding(.vertical, 12)
                 .padding(.horizontal, 16)
@@ -366,6 +364,7 @@ struct ParentDashboardView: View {
                             .frame(width: 44, height: 44)
                         Image(systemName: "shield.checkered")
                             .font(.subheadline.weight(.bold))
+                            .accessibilityHidden(true)
                             .foregroundColor(.red)
                     }
                     
@@ -396,6 +395,7 @@ struct ParentDashboardView: View {
                             .frame(width: 44, height: 44)
                         Image(systemName: "sparkles.rectangle.stack.fill")
                             .font(.subheadline.weight(.bold))
+                            .accessibilityHidden(true)
                             .foregroundColor(.blue)
                     }
                     
@@ -452,6 +452,7 @@ struct ParentDashboardView: View {
                 Image(systemName: "lock.circle.fill")
                     .font(.title2)
                     .foregroundColor(.green)
+                    .accessibilityHidden(true)
                 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("100% Kid-Safe & Private")
@@ -485,6 +486,29 @@ struct ParentDashboardView: View {
     }
 }
 
+/// A heading and value from the watch, read by VoiceOver as one item ("Current game, Bubble Pop").
+struct MetricView: View {
+    let title: String
+    let value: String
+    let color: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title.uppercased())
+                .font(.caption2.weight(.bold))
+                .foregroundColor(.secondary)
+            Text(value)
+                .font(.subheadline.weight(.bold))
+                .foregroundColor(color)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityValue(value)
+    }
+}
+
+/// A settings switch whose title is its label, so VoiceOver reads "Sound Effects, switch, on"
+/// (with the subtitle as a hint) instead of an unnamed switch.
 struct ToggleRow: View {
     let icon: String
     let color: Color
@@ -493,24 +517,24 @@ struct ToggleRow: View {
     @Binding var isOn: Bool
     
     var body: some View {
-        HStack(spacing: 14) {
-            Image(systemName: icon)
-                .foregroundColor(color)
-                .frame(width: 24)
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.subheadline.weight(.medium))
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+        Toggle(isOn: $isOn) {
+            HStack(spacing: 14) {
+                Image(systemName: icon)
+                    .foregroundColor(color)
+                    .frame(width: 24)
+                    .accessibilityHidden(true)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.subheadline.weight(.medium))
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
             }
-            
-            Spacer()
-            
-            Toggle("", isOn: $isOn)
-                .labelsHidden()
         }
+        .accessibilityLabel(title)
+        .accessibilityHint(subtitle)
         .padding(.vertical, 10)
         .padding(.horizontal, 16)
     }
