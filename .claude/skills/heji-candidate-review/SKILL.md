@@ -188,11 +188,11 @@ picking it up in a new session, read the files it names before acting. Then:
 
 ## Variant: finished builds (heji-build-next)
 
-When the candidates are already built (local branches, not mocks), the `heji-build-next` skill
-uses this engine with real captures instead of HTML mocks: one group per project, a "keep main"
-entry beside each build, `<img>` renders of screenshots/GIFs in `site/media/`, and `nextSteps`
-turning the hand-off into merge-and-release instructions. Its `candidates.example.js` is the
-starting point.
+The `heji-build-next` skill uses this engine twice, one group per project each time. First for
+proposals (`proposals.example.js`: a "skip" entry plus N proposals per project; 🏆 + ♥ = build
+these), then for the finished builds on local branches (`candidates.example.js`: a "keep main"
+entry beside each build, `<img>` renders of real screenshots/GIFs in `site/media/`). Each site's
+`nextSteps` turns its hand-off into the next phase's instructions.
 
 ## Variant: design walkthrough (no candidates)
 

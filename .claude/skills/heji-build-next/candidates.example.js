@@ -1,4 +1,4 @@
-// heji-build-next: copy over reports/<slug>/site/js/candidates.js and replace the example builds.
+// heji-build-next, phase B: copy over reports/<date>-build-next/site/js/candidates.js and replace the example builds.
 // One group per project; each group has a "keep main" baseline and the build(s) on its local branch.
 // The user crowns one per group: a build = merge it, "Keep main" (or no pick) = don't.
 // Media are real captures of the built branch in site/media/<project>/ (PNG screenshots, GIFs).
@@ -29,13 +29,13 @@
       { id: "weehours", name: "Wee Hours", note: "projects/weehours" },
       // … one per project that got a build (projects with nothing worth building are listed in intro)
     ],
-    // The hand-off's "What to do next": the merge, cleanup and release (SKILL.md §6).
+    // The hand-off's "What to do next": the merge, cleanup and release (SKILL.md §8).
     nextSteps: ({ winners, groups }) => {
       const merge = winners.filter((c) => c.facts && c.facts.Branch);
       const skip = groups.filter((g) => !merge.some((c) => c.group === g.id)).map((g) => g.name);
       return [
-        "This is a heji-build-next review: every candidate below is already built on a local-only branch in this checkout. Follow `.claude/skills/heji-build-next/SKILL.md` §6 (merge, clean up, push, release). The user's notes on a build are changes to make on its branch before merging it (§6 step 2).", "",
-        merge.length ? "**Merge into main (in this order):**" : "**Nothing picked to merge.** Still clean up the build branches (§6 step 3).",
+        "This is a heji-build-next **build** review (phase B done): every candidate below is already built on a local-only branch in this checkout. Follow `.claude/skills/heji-build-next/SKILL.md` phase C (§8: merge, clean up, push, release). Also merge any build marked ♥ shortlisted in the sections below (a second build in the same project). The user's notes on a build are changes to make on its branch before merging it (§8 step 2).", "",
+        merge.length ? "**Merge into main (in this order):**" : "**Nothing picked to merge.** Still clean up the build branches (§8 step 3).",
         ...merge.map((c) => `- ${c.facts.Project}: \`${c.facts.Branch}\` (head \`${c.facts.Commit}\`), ${c.name}; release: ${c.facts.Release || "patch"}`), "",
         skip.length ? `**Not merged (branch deleted, nothing released):** ${skip.join(", ")}.` : "",
         "Then: delete every `heji-build/*` branch and worktree (`.claude/skills/heji-build-next/worktree.sh cleanup`), push main, wait for each merged project's CI to go green, and cut one release per merged project with `scripts/cut_release.sh <project> <level> --notes \"…\" --watch` (dry run first). Never push a heji-build branch.",

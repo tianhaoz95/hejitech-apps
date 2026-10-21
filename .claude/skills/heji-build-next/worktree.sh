@@ -5,7 +5,7 @@
 #   .claude/skills/heji-build-next/worktree.sh list                   # every build branch: worktree, commits ahead of main, files changed
 #   .claude/skills/heji-build-next/worktree.sh cleanup                # remove every build worktree and delete every build branch
 #
-# Worktrees live next to the repo (../<repo>-heji-build/<project>), so the main checkout stays on
+# Worktrees live next to the repo (../<repo>-heji-build/<project>-<slug>), so the main checkout stays on
 # main with a clean tree. A pre-push hook (installed once, shared by all worktrees) refuses to push
 # any heji-build/* ref, and each branch's pushRemote points nowhere, so a stray `git push` fails.
 set -euo pipefail
@@ -40,7 +40,7 @@ case "${1:-}" in
     [ -d "projects/$PROJECT" ] || die "no projects/$PROJECT"
     [[ "$SLUG" =~ ^[a-z0-9][a-z0-9-]*$ ]] || die "slug must be lowercase-kebab: $SLUG"
     BRANCH="$PREFIX$(date +%F)-$PROJECT-$SLUG"
-    DIR="$BASE/$PROJECT"
+    DIR="$BASE/$PROJECT-$SLUG"   # one per pick, so a project can have several builds
     [ -e "$DIR" ] && die "$DIR already exists (worktree.sh list; finish or clean up the earlier build first)"
     install_hook
     git fetch -q origin main
