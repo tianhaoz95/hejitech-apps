@@ -59,6 +59,13 @@ public struct StatusSnapshot: Codable, Hashable, Sendable {
         computedAt = now
     }
 
+    /// Predicts the next expected feeding time given household interval preferences, or nil if reminders are off.
+    public func nextFeedDue(feedEveryMinutes: Int?, adaptiveSuggestion: Int? = nil) -> Date? {
+        guard let interval = adaptiveSuggestion ?? feedEveryMinutes, interval > 0 else { return nil }
+        guard let last = lastFeedAt else { return nil }
+        return last.addingTimeInterval(Double(interval) * 60)
+    }
+
     /// e.g. `Fed 2h40m ago · left next · diaper 1h10m ago`
     public func line(now: Date) -> String {
         var parts: [String] = []

@@ -93,11 +93,25 @@ struct SettingsView: View {
                     }
                 }
                 Section {
-                    IntervalPicker(title: "Feed every", minutes: $draft.reminders.feedEveryMinutes)
-                    Toggle("Adapt feed interval to last 3 days", isOn: $draft.reminders.adaptive)
+                    Toggle("Next feed reminders", isOn: Binding(
+                        get: { draft.reminders.feedEveryMinutes != nil },
+                        set: { enabled in
+                            if enabled {
+                                draft.reminders.feedEveryMinutes = draft.reminders.feedEveryMinutes ?? 180
+                            } else {
+                                draft.reminders.feedEveryMinutes = nil
+                            }
+                        }
+                    )).accessibilityIdentifier("toggleFeedReminders")
+
+                    if draft.reminders.feedEveryMinutes != nil {
+                        IntervalPicker(title: "Feed every", minutes: $draft.reminders.feedEveryMinutes)
+                        Toggle("Adapt feed interval to last 3 days", isOn: $draft.reminders.adaptive)
+                    }
+
                     IntervalPicker(title: "Diaper check every", minutes: $draft.reminders.diaperEveryMinutes)
                     Stepper("Sound after \(draft.reminders.overdueMarginMinutes) min overdue", value: $draft.reminders.overdueMarginMinutes, in: 5...90, step: 5)
-                    if let suggestion = ReminderPlanner.suggestedFeedInterval(log: model.log, now: Date()) {
+                    if draft.reminders.feedEveryMinutes != nil, let suggestion = ReminderPlanner.suggestedFeedInterval(log: model.log, now: Date()) {
                         Button("Use your last 3 days: every \(StatusSnapshot.duration(Double(suggestion) * 60))") {
                             draft.reminders.feedEveryMinutes = suggestion
                         }
