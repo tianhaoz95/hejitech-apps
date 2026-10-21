@@ -204,4 +204,78 @@ void main() {
       }
     });
   }
+
+  testWidgets('trips search and filter chips filter trips dynamically', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await _loadFonts();
+    final temp = Directory.systemTemp.createTempSync('trips_search_test');
+    addTearDown(() => temp.deleteSync(recursive: true));
+    final state = _seed(TripStore(temp));
+
+    t.view.physicalSize = const Size(1170, 2532);
+    t.view.devicePixelRatio = 3;
+    addTearDown(t.view.reset);
+
+    final key = GlobalKey();
+    await t.pumpWidget(
+      ChangeNotifierProvider.value(
+        value: state,
+        child: RepaintBoundary(
+          key: key,
+          child: const MaterialApp(
+            debugShowCheckedModeBanner: false,
+            home: TripsScreen(),
+          ),
+        ),
+      ),
+    );
+    await t.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('Kyoto fall break'), findsOneWidget);
+    expect(find.text('Tahoe ski weekend'), findsOneWidget);
+
+    // Toggle search
+    await t.tap(find.byKey(const Key('open-search')));
+    await t.pumpAndSettle();
+    expect(find.byKey(const Key('trips-search-field')), findsOneWidget);
+
+    // Search query matches Kyoto only
+    await t.enterText(find.byKey(const Key('trips-search-field')), 'kyoto');
+    await t.pumpAndSettle();
+    expect(find.text('Kyoto fall break'), findsOneWidget);
+    expect(find.text('Tahoe ski weekend'), findsNothing);
+
+    await t.runAsync(() async {
+      final boundary =
+          key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+      final img = await boundary.toImage(pixelRatio: 2);
+      final png = await img.toByteData(format: ui.ImageByteFormat.png);
+      const outPath =
+          '/Volumes/DATA/GitHub/hejitech-apps/reports/2026-10-21-build-next/site/media/waypack/trips-search.png';
+      File(outPath).writeAsBytesSync(png!.buffer.asUint8List());
+    });
+
+    // Clear search query
+    await t.enterText(find.byKey(const Key('trips-search-field')), '');
+    await t.pumpAndSettle();
+    expect(find.text('Kyoto fall break'), findsOneWidget);
+    expect(find.text('Tahoe ski weekend'), findsOneWidget);
+
+    // Filter by offline only (Tahoe is downloading/not offline, Kyoto is offline)
+    await t.tap(find.byKey(const Key('filter-offline')));
+    await t.pumpAndSettle();
+    expect(find.text('Kyoto fall break'), findsOneWidget);
+    expect(find.text('Tahoe ski weekend'), findsNothing);
+
+    // Filter by upcoming
+    await t.tap(find.byKey(const Key('filter-upcoming')));
+    await t.pumpAndSettle();
+    expect(find.text('Kyoto fall break'), findsOneWidget);
+
+    // Filter by past
+    await t.tap(find.byKey(const Key('filter-past')));
+    await t.pumpAndSettle();
+    expect(find.text('Kyoto fall break'), findsNothing);
+    expect(find.text('Maui spring break'), findsOneWidget);
+  });
 }
