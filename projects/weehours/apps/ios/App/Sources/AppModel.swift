@@ -835,6 +835,20 @@ final class AppModel: ObservableObject {
         perform { try await $0.dismissCapture(capture.id) }
     }
 
+    /// Throws the voice entry away (nothing logged, not even a note); the toast's Undo asks again.
+    func discard(_ capture: Capture) {
+        reviewing = nil
+        guard let service else { return }
+        Task {
+            do {
+                try await service.discardCapture(capture.id)
+                toast = Toast(text: "Recording discarded", undo: nil, reopen: .init(capture: capture.id, events: [], action: "Undo"))
+                await refresh()
+                Task { await syncNow() }
+            } catch { self.error = error.localizedDescription }
+        }
+    }
+
     func transcribe(_ url: URL) async throws -> (english: String, spoken: String?) {
         try await transcriber.transcribeSpoken(fileURL: url)
     }

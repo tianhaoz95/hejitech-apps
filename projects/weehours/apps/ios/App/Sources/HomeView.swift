@@ -507,18 +507,34 @@ struct ReviewBanner: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             ForEach(model.reviews.prefix(3)) { c in
-                Button { model.reviewing = c } label: {
-                    HStack {
-                        Image(systemName: "questionmark.bubble.fill").foregroundStyle(Theme.accent)
-                        VStack(alignment: .leading) {
-                            Text("“\(c.transcript ?? "")”").lineLimit(1)
-                            Text("\(c.surface.rawValue) · \(c.capturedAt.formatted(date: .omitted, time: .shortened)) · tap to choose")
-                                .font(.caption).foregroundStyle(.secondary)
+                HStack {
+                    Button { model.reviewing = c } label: {
+                        HStack {
+                            Image(systemName: "questionmark.bubble.fill").foregroundStyle(Theme.accent)
+                            VStack(alignment: .leading) {
+                                Text("“\(c.transcript ?? "")”").lineLimit(1)
+                                Text("\(c.surface.rawValue) · \(c.capturedAt.formatted(date: .omitted, time: .shortened)) · tap to choose")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
                         }
-                        Spacer()
+                        .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
+                    .contextMenu {
+                        Button("Keep as a note", systemImage: "note.text") { model.dismiss(c) }
+                        Button("Discard", systemImage: "trash", role: .destructive) { model.discard(c) }
+                    }
+                    Button { model.discard(c) } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title3)
+                            .foregroundStyle(.secondary)
+                            .frame(minWidth: 44, minHeight: 44)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Discard “\(c.transcript ?? "")”")
+                    .accessibilityIdentifier("discardReview")
                 }
-                .buttonStyle(.plain)
             }
             ForEach(model.log.duplicates, id: \.duplicate) { flag in
                 DuplicateRow(flag: flag)
@@ -1022,6 +1038,8 @@ struct ToastView: View {
             HStack {
                 if toast.reopen?.action == "Log it" {
                     Image(systemName: "note.text").foregroundStyle(.secondary)
+                } else if toast.reopen?.action == "Undo" {
+                    Image(systemName: "trash").foregroundStyle(.secondary)
                 } else {
                     Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
                 }
@@ -1073,7 +1091,11 @@ struct ReviewSheet: View {
                     }
                 }
                 Section {
-                    Button("None of these · keep as a note", role: .destructive) { model.dismiss(capture) }
+                    Button("None of these · keep as a note") { model.dismiss(capture) }
+                    Button("Discard this recording", role: .destructive) { model.discard(capture) }
+                        .accessibilityIdentifier("discardRecording")
+                } footer: {
+                    Text("Discard logs nothing, not even a note.")
                 }
             }
             .navigationTitle("Check this entry")
