@@ -7,14 +7,20 @@ import 'package:provider/provider.dart';
 import '../config.dart';
 import '../services/feedback.dart';
 import '../services/handoff.dart';
+import '../services/trip_store.dart';
 import '../services/updater.dart';
 import '../state/app_state.dart';
 import '../util/format.dart';
 import '../widgets/scrapbook.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key, this.scrollToConnect = false});
+  const SettingsScreen({
+    super.key,
+    this.scrollToConnect = false,
+    this.initialStorageUsage,
+  });
   final bool scrollToConnect;
+  final StorageUsage? initialStorageUsage;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -23,6 +29,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final _connectKey = GlobalKey();
   int? _storage;
+  StorageUsage? _storageUsage;
   UpdaterInfo? _updates;
   List<Map<String, dynamic>>? _tokens;
   String? _mapsApp;
@@ -30,10 +37,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    final s = context.read<AppState>();
-    s.store.usedBytes().then(
-      (b) => mounted ? setState(() => _storage = b) : null,
-    );
+    if (widget.initialStorageUsage != null) {
+      _storageUsage = widget.initialStorageUsage;
+      _storage = widget.initialStorageUsage!.totalBytes;
+    } else {
+      _refreshStorage();
+    }
     _loadUpdates();
     _loadTokens();
     Handoff.rememberedMapsApp().then(
@@ -49,6 +58,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
           );
         }
       });
+    }
+  }
+
+  void _refreshStorage() {
+    final s = context.read<AppState>();
+    s.store.calculateStorageUsage().then(
+      (u) => mounted
+          ? setState(() {
+              _storageUsage = u;
+              _storage = u.totalBytes;
+            })
+          : null,
+    );
+  }
+
+  Future<void> _promptClearMapCache() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Clear map cache?'),
+        content: const Text(
+          'This removes downloaded offline map tiles (.pmtiles) to free up storage space. Your trip itineraries, places, and notes will remain intact.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            key: const Key('confirm-clear-cache'),
+            style: FilledButton.styleFrom(
+              backgroundColor: Paper.of(context).accent,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Clear cache'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final s = context.read<AppState>();
+      final freed = await s.store.clearMapTilesCache();
+      _refreshStorage();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Cleared map cache (freed ${formatBytes(freed)})'),
+          ),
+        );
+      }
     }
   }
 
@@ -211,6 +271,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: Icons.sd_storage_outlined,
                 chip: ChipColor.blue,
                 title: 'Storage used',
+                subtitle: _storageUsage != null
+                    ? '${formatBytes(_storageUsage!.mapTilesBytes)} maps · ${formatBytes(_storageUsage!.tripBundlesBytes)} trips'
+                    : null,
                 trailing: Text(
                   _storage == null ? '…' : formatBytes(_storage!),
                   style: TextStyle(
@@ -220,11 +283,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
               ),
+              if (_storageUsage != null && _storageUsage!.mapTilesBytes > 0)
+                PaperRow(
+                  key: const Key('clear-map-cache-row'),
+                  icon: Icons.cleaning_services_outlined,
+                  chip: ChipColor.yellow,
+                  title: 'Clear map cache',
+                  subtitle:
+                      'Frees ${formatBytes(_storageUsage!.mapTilesBytes)} across ${_storageUsage!.tilesCount} tile extracts. Itineraries remain intact.',
+                  trailing: const Icon(Icons.chevron_right, size: 20),
+                  onTap: _promptClearMapCache,
+                ),
               PaperRow(
                 icon: Icons.public,
                 chip: ChipColor.mint,
                 title: 'Use online map',
-                subtitle: 'When connected, show the full map, including outside your downloaded areas. Turn off to use only downloaded maps, e.g. to save data abroad.',
+                subtitle:
+                    'When connected, show the full map, including outside your downloaded areas. Turn off to use only downloaded maps, e.g. to save data abroad.',
                 trailing: Switch.adaptive(
                   value: s.useOnlineMap,
                   onChanged: s.setUseOnlineMap,
