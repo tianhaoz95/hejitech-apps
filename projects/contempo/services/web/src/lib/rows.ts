@@ -21,6 +21,9 @@ export function entryFromRow(r: any): Entry {
     daysLate: r.days_late,
     riskReasons: r.risk_reasons ?? [],
     photoUrls: r.photo_urls ?? [],
+    roleId: r.role_id ?? "",
+    roleName: r.role_name ?? "",
+    inProgress: r.in_progress ?? false,
   };
 }
 
