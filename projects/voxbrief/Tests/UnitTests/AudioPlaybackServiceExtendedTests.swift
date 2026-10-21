@@ -44,4 +44,16 @@ final class AudioPlaybackServiceExtendedTests: XCTestCase {
         service.skipBackward(seconds: 15)
         XCTAssertEqual(service.currentTime, 0)
     }
+
+    func testTrimSilenceToggle() {
+        let service = AudioPlaybackService()
+        service.setTrimSilence(false)
+        XCTAssertFalse(service.trimSilence)
+
+        service.toggleTrimSilence()
+        XCTAssertTrue(service.trimSilence)
+
+        service.toggleTrimSilence()
+        XCTAssertFalse(service.trimSilence)
+    }
 }

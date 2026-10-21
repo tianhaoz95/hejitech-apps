@@ -12,6 +12,7 @@ public struct SettingsView: View {
     @AppStorage(NoteProcessingPipeline.lightCleanupEnabledKey) private var lightCleanupEnabled: Bool = true
     @AppStorage(LiveTranscriber.enabledKey) private var liveTranscriptEnabled: Bool = true
     @AppStorage(FeedbackSettings.shakeEnabledKey) private var feedbackShakeEnabled: Bool = true
+    @AppStorage("playback_trim_silence") private var trimSilence: Bool = false
     @StateObject private var llmService = OnDeviceLLMService.shared
     @StateObject private var dictionaryStore = PersonalDictionaryStore.shared
     @StateObject private var templateStore = TemplateStore.shared
@@ -63,6 +64,13 @@ public struct SettingsView: View {
                         Text("Japanese (ja)").tag("ja")
                         Text("Korean (ko)").tag("ko")
                     }
+                }
+
+                Section(
+                    header: Text("Audio Playback"),
+                    footer: Text("Automatically skip long pauses and silence (>1.2s) during playback. Can be toggled off at any time.")
+                ) {
+                    Toggle("Trim Silence in Playback", isOn: $trimSilence)
                 }
 
                 Section(
