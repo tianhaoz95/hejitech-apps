@@ -12,6 +12,7 @@ import '../services/api.dart';
 import '../state/app_state.dart';
 import '../widgets/postcard.dart';
 import '../widgets/scrapbook.dart';
+import '../widgets/template_route_map.dart';
 
 /// Trip gallery (DECISIONS #66): Discover is a magazine (trip of the week, collections, most
 /// planned); search shows the same results as postcards or on a map; a template page is the
@@ -1184,55 +1185,9 @@ class _TemplateScreenState extends State<TemplateScreen> {
                       padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
                       child: _PostcardBack(t: t),
                     ),
-                    if (RouteMapPainter.canDraw(t)) ...[
+                    if (TemplateRouteMap.canDraw(t)) ...[
                       SectionTitle('The route', note: '${t.places} places'),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 18),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: AspectRatio(
-                            aspectRatio: 1.8,
-                            child: CustomPaint(
-                              painter: RouteMapPainter(
-                                t,
-                                dark:
-                                    Theme.of(context).brightness ==
-                                    Brightness.dark,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-                        child: Wrap(
-                          spacing: 14,
-                          children: [
-                            for (var i = 0; i < t.plan.length; i++)
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    width: 18,
-                                    height: 4,
-                                    decoration: BoxDecoration(
-                                      color: dayColor(i),
-                                      borderRadius: BorderRadius.circular(2),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 5),
-                                  Text(
-                                    'Day ${i + 1}',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                          ],
-                        ),
-                      ),
+                      TemplateRouteMap(t: t),
                     ],
                     const SectionTitle('Day by day'),
                     PaperCard(
