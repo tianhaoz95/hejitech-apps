@@ -37,6 +37,25 @@ public enum FeedbackSubmitter {
         configuration: FeedbackKitConfiguration,
         completion: @escaping @Sendable (Result<Void, FeedbackSubmissionError>) -> Void
     ) {
+        submitDirect(report, configuration: configuration) { result in
+            switch result {
+            case .success:
+                completion(.success(()))
+            case .failure(let error):
+                if case .network = error, configuration.spoolOfflineReports {
+                    OfflineReportQueue.shared.enqueue(report: report, configuration: configuration)
+                }
+                completion(.failure(error))
+            }
+        }
+    }
+
+    /// Internal direct submission that bypasses offline spooling to avoid duplicate enqueues during flush.
+    public static func submitDirect(
+        _ report: FeedbackReport,
+        configuration: FeedbackKitConfiguration,
+        completion: @escaping @Sendable (Result<Void, FeedbackSubmissionError>) -> Void
+    ) {
         var request = URLRequest(url: configuration.endpointURL)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")

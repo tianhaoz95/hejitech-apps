@@ -5,7 +5,7 @@ import Foundation
 /// None of this is required to use FeedbackKit's capture/annotate/return flow —
 /// only set it up if you want the SDK to also deliver reports to the companion
 /// web dashboard for you, keyed by the project you created there.
-public struct FeedbackKitConfiguration: Sendable {
+public struct FeedbackKitConfiguration: Sendable, Codable {
     /// The ingestion endpoint of your FeedbackKit dashboard deployment,
     /// e.g. `https://<your-project>.supabase.co/functions/v1/ingest-feedback`.
     public var endpointURL: URL
@@ -23,18 +23,31 @@ public struct FeedbackKitConfiguration: Sendable {
     /// `endpointURL` — see `resolvedReporterUpdatesURL` — which is right for
     /// the hosted dashboard and any standard self-hosted deployment.
     public var reporterUpdatesURL: URL?
+    /// Whether to spool submissions locally to disk when offline and automatically retry upon reconnection.
+    public var spoolOfflineReports: Bool
 
     public init(
         endpointURL: URL,
         projectKey: String,
         products: [FeedbackProduct] = [],
         defaultProductKey: String? = nil,
-        reporterUpdatesURL: URL? = nil
+        reporterUpdatesURL: URL? = nil,
+        spoolOfflineReports: Bool = true
     ) {
         self.endpointURL = endpointURL
         self.projectKey = projectKey
         self.products = products
         self.defaultProductKey = defaultProductKey
         self.reporterUpdatesURL = reporterUpdatesURL
+        self.spoolOfflineReports = spoolOfflineReports
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case endpointURL = "endpoint_url"
+        case projectKey = "project_key"
+        case products
+        case defaultProductKey = "default_product_key"
+        case reporterUpdatesURL = "reporter_updates_url"
+        case spoolOfflineReports = "spool_offline_reports"
     }
 }
