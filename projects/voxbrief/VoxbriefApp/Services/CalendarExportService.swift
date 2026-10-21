@@ -27,7 +27,32 @@ public final class CalendarExportService: @unchecked Sendable {
     private let eventStore = EKEventStore()
     #endif
 
-    public func exportEvent(for note: VoiceNote, startDate: Date = Date().addingTimeInterval(3600), duration: TimeInterval = 1800) async throws {
+    public static func detectDate(in text: String) -> Date? {
+        guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.date.rawValue) else {
+            return nil
+        }
+        let matches = detector.matches(in: text, options: [], range: NSRange(location: 0, length: (text as NSString).length))
+        for match in matches {
+            if let date = match.date {
+                return date
+            }
+        }
+        return nil
+    }
+
+    public static func resolvedStartDate(for note: VoiceNote, fallbackDate: Date = Date().addingTimeInterval(3600)) -> Date {
+        if let titleDate = detectDate(in: note.title) {
+            return titleDate
+        }
+        let searchString = "\(note.summary) \(note.cleanedNote)"
+        if let bodyDate = detectDate(in: searchString) {
+            return bodyDate
+        }
+        return fallbackDate
+    }
+
+    public func exportEvent(for note: VoiceNote, startDate: Date? = nil, duration: TimeInterval = 1800) async throws {
+        let eventStartDate = startDate ?? Self.resolvedStartDate(for: note)
         #if canImport(EventKit)
         let granted: Bool
         if #available(iOS 17.0, macOS 14.0, *) {
@@ -60,8 +85,8 @@ public final class CalendarExportService: @unchecked Sendable {
         event.title = note.title
         let noteBody = note.summary.isEmpty ? note.cleanedNote : "\(note.summary)\n\n\(note.cleanedNote)"
         event.notes = "Exported from Voxbrief:\n\(noteBody)"
-        event.startDate = startDate
-        event.endDate = startDate.addingTimeInterval(duration)
+        event.startDate = eventStartDate
+        event.endDate = eventStartDate.addingTimeInterval(duration)
         event.calendar = defaultCalendar
 
         do {

@@ -164,7 +164,7 @@ public final class NoteDetailViewModel: ObservableObject {
         try await RemindersExportService.shared.exportActionItems(note.actionItems, noteTitle: note.title)
     }
 
-    public func exportToCalendar(startDate: Date = Date().addingTimeInterval(3600)) async throws {
+    public func exportToCalendar(startDate: Date? = nil) async throws {
         try await CalendarExportService.shared.exportEvent(for: note, startDate: startDate)
     }
 
