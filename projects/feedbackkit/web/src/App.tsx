@@ -1,38 +1,43 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
 import { trackPageView } from "@/lib/analytics";
+import { RouteLoading } from "@/components/RouteLoading";
 import { AuthProvider, RequireAuth, RedirectIfAuthed } from "@/lib/auth";
-import { DashboardLayout } from "@/components/DashboardLayout";
 import { LandingPage } from "@/pages/LandingPage";
-import { LoginPage } from "@/pages/LoginPage";
-import { PrivacyPage } from "@/pages/PrivacyPage";
-import { TermsPage } from "@/pages/TermsPage";
-import { ProjectsPage } from "@/pages/ProjectsPage";
-import { ProjectPage } from "@/pages/ProjectPage";
-import { FeedbackDetailPage } from "@/pages/FeedbackDetailPage";
-import { CliAuthPage } from "@/pages/CliAuthPage";
-import { CliSessionsPage } from "@/pages/CliSessionsPage";
-import { BillingPage } from "@/pages/BillingPage";
-import { DocsLayout } from "@/components/docs/DocsLayout";
 import { OrganizationProvider } from "@/lib/organization";
 import { NotificationsProvider } from "@/lib/notifications";
-import { TeamPage } from "@/pages/TeamPage";
-import { InvitePage } from "@/pages/InvitePage";
-import { NotificationsPage } from "@/pages/NotificationsPage";
-import { GitHubCallbackPage } from "@/pages/GitHubCallbackPage";
-import { AccountPage } from "@/pages/AccountPage";
-import { DocsOverviewPage } from "@/pages/docs/DocsOverviewPage";
-import { DocsHowItWorksPage } from "@/pages/docs/DocsHowItWorksPage";
-import { DocsIosSdkPage } from "@/pages/docs/DocsIosSdkPage";
-import { DocsWebSdkPage } from "@/pages/docs/DocsWebSdkPage";
-import { DocsMobileSdksPage } from "@/pages/docs/DocsMobileSdksPage";
-import { DocsDesktopPage } from "@/pages/docs/DocsDesktopPage";
-import { DocsDashboardPage } from "@/pages/docs/DocsDashboardPage";
-import { DocsCliPage } from "@/pages/docs/DocsCliPage";
-import { DocsMcpPage } from "@/pages/docs/DocsMcpPage";
-import { DocsSkillsPage } from "@/pages/docs/DocsSkillsPage";
-import { DocsAgentsPage } from "@/pages/docs/DocsAgentsPage";
-import { DocsDeliveryPage } from "@/pages/docs/DocsDeliveryPage";
+
+// Every route but the landing page loads on demand, so a first visit downloads the landing page's
+// code instead of the whole dashboard, docs and SDK. Layouts keep their own <Suspense> around the
+// <Outlet>, so moving between pages inside one doesn't blank its header and navigation.
+const DashboardLayout = lazy(() => import("@/components/DashboardLayout").then((m) => ({ default: m.DashboardLayout })));
+const DocsLayout = lazy(() => import("@/components/docs/DocsLayout").then((m) => ({ default: m.DocsLayout })));
+const LoginPage = lazy(() => import("@/pages/LoginPage").then((m) => ({ default: m.LoginPage })));
+const PrivacyPage = lazy(() => import("@/pages/PrivacyPage").then((m) => ({ default: m.PrivacyPage })));
+const TermsPage = lazy(() => import("@/pages/TermsPage").then((m) => ({ default: m.TermsPage })));
+const ProjectsPage = lazy(() => import("@/pages/ProjectsPage").then((m) => ({ default: m.ProjectsPage })));
+const ProjectPage = lazy(() => import("@/pages/ProjectPage").then((m) => ({ default: m.ProjectPage })));
+const FeedbackDetailPage = lazy(() => import("@/pages/FeedbackDetailPage").then((m) => ({ default: m.FeedbackDetailPage })));
+const CliAuthPage = lazy(() => import("@/pages/CliAuthPage").then((m) => ({ default: m.CliAuthPage })));
+const CliSessionsPage = lazy(() => import("@/pages/CliSessionsPage").then((m) => ({ default: m.CliSessionsPage })));
+const BillingPage = lazy(() => import("@/pages/BillingPage").then((m) => ({ default: m.BillingPage })));
+const TeamPage = lazy(() => import("@/pages/TeamPage").then((m) => ({ default: m.TeamPage })));
+const InvitePage = lazy(() => import("@/pages/InvitePage").then((m) => ({ default: m.InvitePage })));
+const NotificationsPage = lazy(() => import("@/pages/NotificationsPage").then((m) => ({ default: m.NotificationsPage })));
+const GitHubCallbackPage = lazy(() => import("@/pages/GitHubCallbackPage").then((m) => ({ default: m.GitHubCallbackPage })));
+const AccountPage = lazy(() => import("@/pages/AccountPage").then((m) => ({ default: m.AccountPage })));
+const DocsOverviewPage = lazy(() => import("@/pages/docs/DocsOverviewPage").then((m) => ({ default: m.DocsOverviewPage })));
+const DocsHowItWorksPage = lazy(() => import("@/pages/docs/DocsHowItWorksPage").then((m) => ({ default: m.DocsHowItWorksPage })));
+const DocsIosSdkPage = lazy(() => import("@/pages/docs/DocsIosSdkPage").then((m) => ({ default: m.DocsIosSdkPage })));
+const DocsWebSdkPage = lazy(() => import("@/pages/docs/DocsWebSdkPage").then((m) => ({ default: m.DocsWebSdkPage })));
+const DocsMobileSdksPage = lazy(() => import("@/pages/docs/DocsMobileSdksPage").then((m) => ({ default: m.DocsMobileSdksPage })));
+const DocsDesktopPage = lazy(() => import("@/pages/docs/DocsDesktopPage").then((m) => ({ default: m.DocsDesktopPage })));
+const DocsDashboardPage = lazy(() => import("@/pages/docs/DocsDashboardPage").then((m) => ({ default: m.DocsDashboardPage })));
+const DocsCliPage = lazy(() => import("@/pages/docs/DocsCliPage").then((m) => ({ default: m.DocsCliPage })));
+const DocsMcpPage = lazy(() => import("@/pages/docs/DocsMcpPage").then((m) => ({ default: m.DocsMcpPage })));
+const DocsSkillsPage = lazy(() => import("@/pages/docs/DocsSkillsPage").then((m) => ({ default: m.DocsSkillsPage })));
+const DocsAgentsPage = lazy(() => import("@/pages/docs/DocsAgentsPage").then((m) => ({ default: m.DocsAgentsPage })));
+const DocsDeliveryPage = lazy(() => import("@/pages/docs/DocsDeliveryPage").then((m) => ({ default: m.DocsDeliveryPage })));
 
 /** One page_view per route change (lib/analytics.ts). */
 function PageViewTracker() {
@@ -47,6 +52,7 @@ export default function App() {
   return (
     <AuthProvider>
       <PageViewTracker />
+      <Suspense fallback={<RouteLoading />}>
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
@@ -101,6 +107,7 @@ export default function App() {
           <Route path="/account" element={<AccountPage />} />
         </Route>
       </Routes>
+      </Suspense>
     </AuthProvider>
   );
 }

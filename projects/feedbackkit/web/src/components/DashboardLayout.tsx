@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { RouteLoading } from "@/components/RouteLoading";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import { FeedbackKit, screenNameForPath, setUpFeedbackKit } from "@/lib/feedbackkit";
@@ -145,7 +146,13 @@ export function DashboardLayout() {
         </div>
       </header>
       <main className="relative z-10 mx-auto max-w-[1800px] px-4 py-6 sm:px-6 sm:py-8">
-        {organizations && organizations.length === 0 ? <NoOrganization /> : <Outlet />}
+        {organizations && organizations.length === 0 ? (
+          <NoOrganization />
+        ) : (
+          <Suspense fallback={<RouteLoading />}>
+            <Outlet />
+          </Suspense>
+        )}
       </main>
     </div>
   );
