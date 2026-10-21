@@ -14,18 +14,35 @@ final class AppState: ObservableObject {
         }
     }
     
-    // Parent Preferences
+    // Parent Preferences (changed on the watch's parent dashboard, or synced from the iPhone)
     @Published var soundEnabled: Bool = true {
-        didSet { SoundManager.shared.isSoundEnabled = soundEnabled }
+        didSet {
+            SoundManager.shared.isSoundEnabled = soundEnabled
+            rememberParentChange()
+        }
     }
     @Published var voiceEnabled: Bool = true {
-        didSet { SoundManager.shared.isVoiceEnabled = voiceEnabled }
+        didSet {
+            SoundManager.shared.isVoiceEnabled = voiceEnabled
+            rememberParentChange()
+        }
     }
     @Published var hapticsEnabled: Bool = true {
-        didSet { HapticsManager.shared.isEnabled = hapticsEnabled }
+        didSet {
+            HapticsManager.shared.isEnabled = hapticsEnabled
+            rememberParentChange()
+        }
     }
-    @Published var lowStimulation: Bool = false
-    @Published var lockHoldDuration: Double = 3.0 // 3.0 or 5.0 seconds
+    @Published var lowStimulation: Bool = false {
+        didSet { rememberParentChange() }
+    }
+    @Published var lockHoldDuration: Double = 3.0 { // 3.0 or 5.0 seconds
+        didSet { rememberParentChange() }
+    }
+
+    /// True while WatchConnectivityManager applies settings from the iPhone: those carry the
+    /// iPhone's own change time (see SettingsSync) and aren't a change made on the watch.
+    var isApplyingPhoneSettings = false
     
     // Session Timer
     @Published var selectedTimerMinutes: Int = 0 // 0 = unlimited
@@ -104,6 +121,29 @@ final class AppState: ObservableObject {
             }
     }
     
+    /// A parent picked a game on the watch's dashboard. The timer's switch to the lullaby isn't
+    /// one, so it isn't remembered for the next launch.
+    func chooseMode(_ mode: GameMode) {
+        currentMode = mode
+        rememberParentChange()
+    }
+
+    /// Saves the parent's settings so the watch keeps them across launches, and stamps them so a
+    /// stale iPhone payload replayed later can't undo them (SettingsSync). The stamp goes to the
+    /// iPhone with the next status update, so the companion app adopts the change too.
+    private func rememberParentChange() {
+        guard !isApplyingPhoneSettings else { return }
+        let defaults = UserDefaults.standard
+        defaults.set(currentMode.rawValue, forKey: "tinyTouch_mode")
+        defaults.set(soundEnabled, forKey: "tinyTouch_sound")
+        defaults.set(voiceEnabled, forKey: "tinyTouch_voice")
+        defaults.set(hapticsEnabled, forKey: "tinyTouch_haptics")
+        defaults.set(lowStimulation, forKey: "tinyTouch_lowStim")
+        defaults.set(lockHoldDuration, forKey: "tinyTouch_holdDuration")
+        defaults.set(Date().timeIntervalSince1970, forKey: SettingsSync.watchDefaultsKey)
+        WatchConnectivityManager.shared.sendStatusUpdate()
+    }
+
     func registerTouch() {
         sessionTouchesCount += 1
         if sessionTouchesCount % 3 == 0 {

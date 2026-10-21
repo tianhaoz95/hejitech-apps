@@ -120,6 +120,37 @@ final class AppStateLogic {
     }
 }
 
+/// Mirror of ToddlerPlay/Sources/Models/SettingsSync.swift (checked against it below).
+enum SettingsSync {
+    static func isNewer(_ changedAt: Double?, than lastChange: Double) -> Bool {
+        guard let changedAt else { return true }
+        return changedAt > lastChange
+    }
+}
+
+/// The watch's side of the sync, as WatchConnectivityManager.applySettings and
+/// AppState.rememberParentChange do it: payloads apply only when newer than the last change.
+struct WatchSettingsModel {
+    var lastChange: Double = 0
+    var lowStimulation = false
+    var mode = "bubbles"
+    var lullabyTriggers = 0
+
+    mutating func receive(_ payload: [String: Any]) {
+        let changedAt = payload["settingsChangedAt"] as? Double
+        guard SettingsSync.isNewer(changedAt, than: lastChange) else { return }
+        if let changedAt { lastChange = changedAt }
+        if let low = payload["lowStimulation"] as? Bool { lowStimulation = low }
+        if let m = payload["currentMode"] as? String { mode = m }
+        if payload["action"] as? String == "triggerLullaby" { lullabyTriggers += 1 }
+    }
+
+    mutating func parentChangesLowStimulation(_ on: Bool, at time: Double) {
+        lowStimulation = on
+        lastChange = time
+    }
+}
+
 // MARK: - Test Execution
 
 testGroup("GameMode Specifications") {
@@ -300,6 +331,42 @@ testGroup("CI/CD Automation & Release Script") {
     assertTrue(!pbx.contains("INFOPLIST_KEY_CFBundleShortVersionString = 1"), "Info.plist version comes from MARKETING_VERSION")
 }
 
+
+testGroup("Settings Sync (watch ⇄ iPhone)") {
+    // The iPhone changed calm mode at t=100; the watch receives it live, then again from the
+    // application context at its next launch.
+    var watch = WatchSettingsModel()
+    let phonePayload: [String: Any] = ["settingsChangedAt": 100.0, "lowStimulation": true, "currentMode": "animals"]
+    watch.receive(phonePayload)
+    assertTrue(watch.lowStimulation, "A newer iPhone change applies on the watch")
+
+    // A parent turns calm mode off on the watch at t=200; relaunching replays the old context.
+    watch.parentChangesLowStimulation(false, at: 200)
+    watch.receive(phonePayload)
+    assertTrue(!watch.lowStimulation, "A replayed iPhone context doesn't undo a later change made on the watch")
+
+    // "Bedtime lullaby now" fires once, not again at every launch.
+    let lullaby: [String: Any] = ["settingsChangedAt": 300.0, "currentMode": "lullaby", "action": "triggerLullaby"]
+    watch.receive(lullaby)
+    watch.receive(lullaby)
+    watch.receive(lullaby)
+    assertEqual(watch.lullabyTriggers, 1, "A one-shot action applies once, however often it's replayed")
+
+    // A later iPhone change still wins.
+    watch.receive(["settingsChangedAt": 400.0, "lowStimulation": true])
+    assertTrue(watch.lowStimulation, "A later iPhone change still applies")
+
+    // An older iPhone app sends no stamp: its payloads apply as before.
+    watch.receive(["lowStimulation": false])
+    assertTrue(!watch.lowStimulation, "Payloads without a stamp (older iPhone app) still apply")
+
+    let source = (try? String(contentsOfFile: "ToddlerPlay/Sources/Models/SettingsSync.swift", encoding: .utf8)) ?? ""
+    assertTrue(source.contains("guard let changedAt else { return true }") && source.contains("return changedAt > lastChange"),
+               "The mirrored SettingsSync matches the app's source")
+    let phone = (try? String(contentsOfFile: "TinyTouchiOS/Sources/Services/IOSSettingsSyncManager.swift", encoding: .utf8)) ?? ""
+    assertTrue(phone.contains("\"settingsChangedAt\": settingsChangedAt"), "The iPhone sends its change time, not the send time")
+    assertTrue(phone.contains("guard !isApplyingStoredSettings else { return }"), "Loading or adopting settings on the iPhone doesn't broadcast them")
+}
 
 print("\n==========================================")
 print("TEST RESULTS: \(passedTests)/\(totalTests) passed")

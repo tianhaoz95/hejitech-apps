@@ -13,7 +13,7 @@ struct ParentDashboardView: View {
                 Section {
                     ForEach(GameMode.allCases) { mode in
                         Button(action: {
-                            appState.currentMode = mode
+                            appState.chooseMode(mode)
                             HapticsManager.shared.playTap()
                         }) {
                             HStack(spacing: 10) {
