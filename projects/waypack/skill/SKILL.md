@@ -153,7 +153,7 @@ If the update contradicts the plan (e.g. a hotel far outside the map area), say 
 `share_trip { trip_id }` makes a public, read-only page with a "Plan this trip" button that lets others have their own agent adapt it. Booking/confirmation numbers are masked automatically, but **names, private phone numbers and personal notes are not**. If the plan has any, pass `files` with a cleaned copy (same bundle with those removed). Give the user the `remix_url` to share. `unshare_trip` turns the link off.
 
 ## Turning a finished trip into a template (offer it after a trip they enjoyed)
-Only for trips whose dates have passed: a template is a plan someone actually traveled, with their notes on what worked. Templates are listed in the public gallery (Discover on waypack.app and in the app).
+Only for trips whose dates have passed: a template is a plan someone actually traveled, with their notes on what worked. Templates are listed in the public gallery (Discover on the Waypack website and in the app).
 
 **If the trip hasn't happened yet** (check its dates with `list_trips`; `draft_template` refuses future trips), don't build anything. Say so plainly: "Templates are made after the trip, from what you'd keep and cut. Ask me again after <end date>." If they want others to see the plan now, offer `share_trip` (a public link to the plan as it is). Never create local template files or placeholder copies instead.
 1. **Debrief** in a few short questions: what would you keep (the must-dos)? What would you cut, and why? What surprised you (closures, rules, conditions)? Would you go again? Credit you by a first name, or stay anonymous?
