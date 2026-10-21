@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.7.0"
+    static let currentVersion = "0.8.0"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,21 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "0.8.0",
+            date: "October 2026",
+            tagline: "Speak in Spanish or Chinese",
+            features: [
+                WhatsNewItem(
+                    icon: "globe",
+                    tint: Color(red: 0.45, green: 0.72, blue: 0.95),
+                    title: "Speak in Spanish or Chinese",
+                    description: "Log by voice in Español or 中文. Your iPhone translates what you say into English before logging it, so entries work the same as in English.",
+                    detailedDescription: "Choose the language in Settings → Voice. The first time, Wee Hours downloads a 216 MB speech model, and on iOS 26 offers Apple’s on-device translation for the language; English needs nothing extra and works exactly as before. Each iPhone has its own setting, so every caregiver can speak their own language. Notes you dictate stay in the language you spoke.",
+                    highlights: ["Settings → Voice → Language", "Translated on this iPhone", "Dictated notes keep your words"]
+                ),
+            ]
+        ),
         ReleaseHistoryItem(
             version: "0.7.0",
             date: "October 2026",

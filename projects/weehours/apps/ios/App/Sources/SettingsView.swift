@@ -2,6 +2,7 @@ import CoreImage.CIFilterBuiltins
 import LogCore
 import StoreKit
 import SwiftUI
+import Translation
 
 struct SettingsView: View {
     @EnvironmentObject var model: AppModel
@@ -15,6 +16,7 @@ struct SettingsView: View {
     @AppStorage(Feedback.key) private var shakeToReport = true
     @AppStorage(VoiceButtonPlacement.key) private var voicePlacement = VoiceButtonPlacement.right
     @AppStorage(QuickCapture.key) private var quickCapture = false
+    @AppStorage(VoiceLanguage.key) private var voiceLanguage = VoiceLanguage.english
     @AppStorage(AutoStopVoice.key) private var autoStopVoice = false
     @AppStorage(NightMode.key) private var nightMode = NightMode.off
     @AppStorage(NightMode.fromKey) private var nightFrom = NightMode.defaultFrom
@@ -180,6 +182,15 @@ struct SettingsView: View {
                         }
                         .accessibilityIdentifier("voicePlacement")
                     }
+                    Picker("Language", selection: $voiceLanguage) {
+                        ForEach(VoiceLanguage.allCases) { Text($0.title).tag($0) }
+                    }
+                    .accessibilityIdentifier("voiceLanguage")
+                    .onChange(of: voiceLanguage) { Task { await model.prepareVoiceLanguage() } }
+                    if voiceLanguage.translates {
+                        SpeechModelRow()
+                        if #available(iOS 26.0, *) { TranslationPackRow(language: voiceLanguage).id(voiceLanguage) }
+                    }
                     Toggle("Quick capture", isOn: $quickCapture).accessibilityIdentifier("quickCapture")
                     Toggle("Auto-log when you stop speaking", isOn: $autoStopVoice).accessibilityIdentifier("autoStopVoice")
                     Picker("Decision model", selection: Binding(get: { model.decisionBackend }, set: { model.decisionBackend = $0 })) {
@@ -190,7 +201,7 @@ struct SettingsView: View {
                         TextField("llama-server URL", text: $model.devServer).textInputAutocapitalization(.never)
                     }
                 } header: { Text("Voice") } footer: {
-                    Text("Quick capture logs the most likely entry instead of asking when Wee Hours isn't sure. Auto-log stops listening automatically after a brief pause in speech.")
+                    Text("Speak in English, Spanish or Chinese: for Spanish and Chinese, this iPhone translates what you say into English before logging it, and dictated notes stay in the language you spoke. Quick capture logs the most likely entry instead of asking when Wee Hours isn't sure. Auto-log stops listening automatically after a brief pause in speech.")
                 }
                 Section {
                     if !model.localOnly {
@@ -587,6 +598,62 @@ struct ModelDownloadRow: View {
             }
             if let e = models.error { Text(e).font(.caption).foregroundStyle(.red) }
         }
+    }
+}
+
+/// The multilingual speech model for Spanish and Chinese (Settings → Voice → Language).
+struct SpeechModelRow: View {
+    @EnvironmentObject var model: AppModel
+    @ObservedObject var speech: SpeechModelManager
+
+    init() { speech = SpeechModelHolder.shared }
+
+    var body: some View {
+        if speech.isDownloaded {
+            Label("Speech model on this iPhone (216 MB)", systemImage: "checkmark.seal.fill").foregroundStyle(.green)
+        } else if let p = speech.progress {
+            HStack { ProgressView(value: p).frame(width: 60); Text("Downloading speech model… \(Int(p * 100))%") }
+        } else {
+            Button("Download speech model (216 MB, Wi-Fi)") { Task { await model.prepareVoiceLanguage() } }
+                .accessibilityIdentifier("downloadSpeechModel")
+            if let e = speech.error { Text(e).font(.caption).foregroundStyle(.red) }
+        }
+    }
+}
+
+/// Apple's Translation language for the voice language, which turns what was said into English
+/// on this iPhone. Downloading it is the system's own sheet (`prepareTranslation`).
+@available(iOS 26.0, *)
+struct TranslationPackRow: View {
+    let language: VoiceLanguage
+    @State private var status: LanguageAvailability.Status?
+    @State private var request: TranslationSession.Configuration?
+
+    var body: some View {
+        Group {
+            switch status {
+            case .installed?:
+                Label("\(language.title) translation on this iPhone", systemImage: "checkmark.seal.fill").foregroundStyle(.green)
+            case .supported?:
+                Button("Download \(language.title) translation") {
+                    request = TranslationSession.Configuration(source: language.translationLanguage, target: VoiceTranslator.english)
+                }
+                .accessibilityIdentifier("downloadTranslation")
+            case .unsupported?:
+                Text("Translation isn't available for \(language.title) here; Whisper translates instead.").font(.caption).foregroundStyle(.secondary)
+            default:
+                ProgressView()
+            }
+        }
+        .task { await refresh() }
+        .translationTask(request) { session in
+            try? await session.prepareTranslation()
+            await refresh()
+        }
+    }
+
+    private func refresh() async {
+        status = await LanguageAvailability().status(from: language.translationLanguage, to: VoiceTranslator.english)
     }
 }
 

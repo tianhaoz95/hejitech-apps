@@ -4,6 +4,7 @@ import LayaRuntime
 import LogCore
 import Security
 import StoreKit
+import Translation
 import UserNotifications
 import WhisperKit
 #if canImport(ActivityKit)
@@ -138,14 +139,108 @@ final class Recorder: NSObject, @unchecked Sendable {
 
 // MARK: - On-device transcription (WhisperKit, as in voxbrief)
 
+/// Settings → Voice → Language (per phone, English by default). English runs exactly as before on
+/// the bundled base.en. Any other language uses one downloaded multilingual Whisper that writes
+/// down what was said, then Apple's on-device Translation turns it into English, so Laya, the
+/// parsers and the keyword fallback (all English) run unchanged. Without Translation (before
+/// iOS 26, or the language not downloaded) Whisper translates by itself, which loses more words
+/// ("pañal mojado" → "wet cloth"). Dictated notes aren't translated: they keep the spoken language.
+enum VoiceLanguage: String, CaseIterable, Identifiable, Sendable {
+    case english = "en", spanish = "es", chinese = "zh"
+    static let key = "voiceLanguage"
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .english: "English"
+        case .spanish: "Español"
+        case .chinese: "中文"
+        }
+    }
+    var translates: Bool { self != .english }
+    /// The Translation framework's name for the language (Whisper writes simplified Chinese when prompted).
+    var translationLanguage: Locale.Language { Locale.Language(identifier: self == .chinese ? "zh-Hans" : rawValue) }
+    static var current: VoiceLanguage {
+        UserDefaults.standard.string(forKey: key).flatMap(VoiceLanguage.init(rawValue:)) ?? .english
+    }
+}
+
+/// The multilingual Whisper for languages other than English: downloaded once (216 MB, Wi-Fi)
+/// into Application Support, never bundled, so English-only phones don't carry it.
+@MainActor
+final class SpeechModelManager: ObservableObject {
+    nonisolated static let variant = "openai_whisper-small_216MB"
+    @Published var progress: Double?
+    @Published var error: String?
+    @Published private(set) var isDownloaded = SpeechModelManager.isReady
+
+    nonisolated static var base: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("whisper")
+    }
+    /// Where WhisperKit's hub download puts the variant (and the tokenizer under models/openai/).
+    nonisolated static var folder: URL { base.appendingPathComponent("models/argmaxinc/whisperkit-coreml/\(variant)") }
+    nonisolated static var isReady: Bool { FileManager.default.fileExists(atPath: folder.appendingPathComponent(".complete").path) }
+
+    func download() async {
+        guard progress == nil, !Self.isReady else { isDownloaded = Self.isReady; return }
+        progress = 0
+        error = nil
+        do {
+            var base = Self.base
+            try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+            var values = URLResourceValues()
+            values.isExcludedFromBackup = true
+            try? base.setResourceValues(values)
+            let folder = try await WhisperKit.download(variant: Self.variant, downloadBase: Self.base) { [weak self] p in
+                let f = p.fractionCompleted
+                Task { @MainActor in if self?.progress != nil { self?.progress = f } }
+            }
+            try Data().write(to: folder.appendingPathComponent(".complete"))
+            isDownloaded = true
+        } catch {
+            self.error = error.localizedDescription
+        }
+        progress = nil
+    }
+}
+
+@MainActor
+enum SpeechModelHolder {
+    static var shared = SpeechModelManager()
+}
+
+struct SpeechModelMissing: LocalizedError {
+    let language: VoiceLanguage
+    var errorDescription: String? { "The \(language.title) speech model isn't on this iPhone yet. Download it in Settings → Voice." }
+}
+
+/// Apple's on-device Translation into English (iOS 26: a session without a view). Nil when it
+/// can't run, so the caller falls back to Whisper's own translation.
+enum VoiceTranslator {
+    static let english = Locale.Language(identifier: "en")
+
+    /// Translation can run here: iOS 26 and the language downloaded (Settings → Voice offers it).
+    static func isReady(_ language: VoiceLanguage) async -> Bool {
+        guard #available(iOS 26.0, *) else { return false }
+        return await LanguageAvailability().status(from: language.translationLanguage, to: english) == .installed
+    }
+
+    static func english(_ text: String, from language: VoiceLanguage) async -> String? {
+        guard #available(iOS 26.0, *), await isReady(language) else { return nil }
+        let session = TranslationSession(installedSource: language.translationLanguage, target: english)
+        guard let out = try? await session.translate(text).targetText, !out.isEmpty else { return nil }
+        return out
+    }
+}
+
 actor WhisperTranscriber: Transcriber {
-    private var pipe: WhisperKit?
-    private var loading: Task<WhisperKit, Error>?
+    /// The loaded pipeline and which model it is: "en" (bundled base.en) or "multi".
+    private var pipe: (key: String, kit: WhisperKit)?
+    private var loading: (key: String, task: Task<WhisperKit, Error>)?
     let model: String
 
     init(model: String = "base.en") { self.model = model }
 
-    func warmUp() async { _ = try? await loaded() }
+    func warmUp() async { _ = try? await loaded(for: VoiceLanguage.current) }
 
     /// The Core ML model and tokenizer shipped in the app bundle (scripts/fetch-models.sh).
     static var bundledFolders: (model: URL, tokenizer: URL)? {
@@ -156,42 +251,79 @@ actor WhisperTranscriber: Transcriber {
         return (model, tokenizer)
     }
 
-    private func loaded() async throws -> WhisperKit {
-        if let pipe { return pipe }
-        if let loading { return try await loading.value }
-        let model = self.model
+    private func loaded(for language: VoiceLanguage) async throws -> WhisperKit {
+        let key = language.translates ? "multi" : "en"
+        if let pipe, pipe.key == key { return pipe.kit }
+        if let loading, loading.key == key { return try await loading.task.value }
         let config: WhisperKitConfig
-        if let bundled = Self.bundledFolders {
+        if language.translates {
+            guard SpeechModelManager.isReady else { throw SpeechModelMissing(language: language) }
+            // the tokenizer comes from the hub on the first load and is kept under `base`
+            config = WhisperKitConfig(modelFolder: SpeechModelManager.folder.path, tokenizerFolder: SpeechModelManager.base,
+                                      verbose: false, download: false)
+        } else if let bundled = Self.bundledFolders {
             config = WhisperKitConfig(modelFolder: bundled.model.path, tokenizerFolder: bundled.tokenizer, verbose: false, download: false)
         } else {
             config = WhisperKitConfig(model: model, verbose: false)   // first use downloads from Hugging Face
         }
         let task = Task { try await WhisperKit(config) }
-        loading = task
-        defer { loading = nil }
+        loading = (key, task)
+        defer { if loading?.key == key { loading = nil } }
         let p = try await task.value
-        pipe = p
+        pipe = (key, p)   // only one model in memory: switching language drops the other
         return p
     }
 
     private static let vocabPrompt = "bottle, breastfeeding, nursing, diaper, wet, dirty, poop, asleep, woke up, quarter, half, three quarters, left, right, switched sides"
 
+    /// The voice pipeline's Whisper options. English: the closed vocabulary, so "poopy" and "three
+    /// quarters" come out right. Other languages, when Translation can't help: Whisper's own
+    /// translation, with the same English prompt since its output is English.
+    private func pipelineOptions(_ p: WhisperKit, _ language: VoiceLanguage) -> DecodingOptions {
+        DecodingOptions(task: language.translates ? .translate : .transcribe, language: language.rawValue,
+                        promptTokens: p.tokenizer?.encode(text: " " + Self.vocabPrompt))
+    }
+
+    /// Other languages: what was said, in that language, prompted with its own baby vocabulary.
+    private func verbatimOptions(_ p: WhisperKit, _ language: VoiceLanguage) -> DecodingOptions {
+        // Whisper mixes simplified and traditional characters unless the context is simplified
+        let prompt = language == .chinese ? "以下是普通话的句子。奶瓶，尿布，母乳，睡着了，醒了。" : "biberón, pañal, mojado, sucio, mamar, se durmió, se despertó"
+        return DecodingOptions(task: .transcribe, language: language.rawValue, promptTokens: p.tokenizer?.encode(text: prompt))
+    }
+
+    /// For the voice pipeline: English text, whatever the phone's voice language.
     func transcribe(fileURL: URL) async throws -> String {
-        let p = try await loaded()
-        // Prompt with the closed vocabulary so "poopy" and "three quarters" come out right.
-        let options = DecodingOptions(language: "en", promptTokens: p.tokenizer?.encode(text: " " + Self.vocabPrompt))
-        let results = try await p.transcribe(audioPath: fileURL.path, decodeOptions: options)
-        return results.map(\.text).joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+        let language = VoiceLanguage.current
+        let p = try await loaded(for: language)
+        if language.translates, await VoiceTranslator.isReady(language) {
+            let said = Self.join(try await p.transcribe(audioPath: fileURL.path, decodeOptions: verbatimOptions(p, language)))
+            if said.isEmpty { return "" }
+            if let english = await VoiceTranslator.english(said, from: language) { return english }
+        }
+        return Self.join(try await p.transcribe(audioPath: fileURL.path, decodeOptions: pipelineOptions(p, language)))
+    }
+
+    /// Dictated notes: the words as spoken, in the phone's voice language (never translated).
+    func transcribeVerbatim(fileURL: URL) async throws -> String {
+        let language = VoiceLanguage.current
+        guard language.translates else { return try await transcribe(fileURL: fileURL) }
+        let p = try await loaded(for: language)
+        return Self.cleanLiveText(Self.join(try await p.transcribe(audioPath: fileURL.path, decodeOptions: verbatimOptions(p, language))))
     }
 
     /// Live preview transcription directly from in-memory 16 kHz mono samples while recording.
+    /// Other languages show what's being said, untranslated (translating every 750 ms would flicker).
     func transcribe(samples: [Float]) async throws -> String {
         guard samples.count >= 8_000 else { return "" }
-        let p = try await loaded()
-        let options = DecodingOptions(language: "en", promptTokens: p.tokenizer?.encode(text: " " + Self.vocabPrompt))
+        let language = VoiceLanguage.current
+        let p = try await loaded(for: language)
+        let options = language.translates ? verbatimOptions(p, language) : pipelineOptions(p, language)
         let results = try await p.transcribe(audioArray: samples, decodeOptions: options)
-        let raw = results.map(\.text).joined(separator: " ")
-        return Self.cleanLiveText(raw)
+        return Self.cleanLiveText(results.map(\.text).joined(separator: " "))
+    }
+
+    private static func join(_ results: [TranscriptionResult]) -> String {
+        results.map(\.text).joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private static func cleanLiveText(_ raw: String) -> String {

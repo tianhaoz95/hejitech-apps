@@ -72,6 +72,7 @@ final class AppModel: ObservableObject {
     @AppStorage("devServer") var devServer = "http://127.0.0.1:8089"
 
     let models = ModelManagerHolder.shared
+    let speechModels = SpeechModelHolder.shared
     let billing = Billing()
     private let recorder = Recorder()
     private let transcriber = WhisperTranscriber()
@@ -707,13 +708,26 @@ final class AppModel: ObservableObject {
     func finishDictation() async -> String? {
         guard let url = recorder.stop() else { return nil }
         defer { try? FileManager.default.removeItem(at: url) }
-        return try? await transcriber.transcribe(fileURL: url)
+        return try? await transcriber.transcribeVerbatim(fileURL: url)
+    }
+
+    /// Settings → Voice → Language: fetch the multilingual model the first time a language other
+    /// than English is picked, then load it (which also fetches its tokenizer while online).
+    func prepareVoiceLanguage() async {
+        guard VoiceLanguage.current.translates else { await transcriber.warmUp(); return }
+        await speechModels.download()
+        await transcriber.warmUp()
     }
 
     // MARK: voice
 
     func startVoice() {
         guard !recording else { return }
+        let language = VoiceLanguage.current
+        if language.translates && !SpeechModelManager.isReady {
+            error = SpeechModelMissing(language: language).errorDescription
+            return
+        }
         do {
             liveTranscript = ""
             try recorder.start()
