@@ -45,6 +45,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.play.services)
     api(libs.kotlinx.serialization.json)
 
+    testImplementation(libs.junit)
+
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.kotlinx.coroutines.play.services)

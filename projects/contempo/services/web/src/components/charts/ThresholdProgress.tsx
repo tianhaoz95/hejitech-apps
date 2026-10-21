@@ -1,10 +1,12 @@
-import type { RoleHours } from "../../lib/metrics";
+import type { RoleHours, TestYearProgress } from "../../lib/metrics";
 
 interface ThresholdProgressProps {
   confirmedHours: number;
   thresholdHours: number;
   testName: string;
   pendingCount: number;
+  /** The tax year the hours count and the pace toward the threshold. */
+  testProgress: TestYearProgress;
   /** "Me" first, then other roles (see dashboardMetrics); empty hides the comparison. */
   roleBreakdown?: RoleHours[];
 }
@@ -17,6 +19,7 @@ export function ThresholdProgress({
   thresholdHours,
   testName,
   pendingCount,
+  testProgress,
   roleBreakdown = [],
 }: ThresholdProgressProps) {
   const fraction = Math.min(1, Math.max(0, confirmedHours / thresholdHours));
@@ -27,7 +30,9 @@ export function ThresholdProgress({
 
   return (
     <div className="viz-root chart-card">
-      <h3>{testName} test progress</h3>
+      <h3>
+        {testName} test progress · {testProgress.year}
+      </h3>
       <p style={{ margin: "0 0 0.6rem", fontFamily: "var(--font-serif)", fontSize: "2rem" }}>
         {confirmedHours.toFixed(1)}
         <span style={{ fontSize: "1.1rem", color: "var(--ink-faint)" }}> / {thresholdHours}h</span>
@@ -35,7 +40,8 @@ export function ThresholdProgress({
       <div className="progress-track" role="progressbar" aria-label="Your confirmed hours" aria-valuenow={Math.round(fraction * 100)} aria-valuemin={0} aria-valuemax={100}>
         <div className="progress-fill" style={{ width: `${fraction * 100}%` }} />
       </div>
-      <p style={{ marginTop: "0.6rem", fontSize: "0.85rem", color: "var(--ink-soft)" }}>
+      <PaceLine progress={testProgress} thresholdHours={thresholdHours} />
+      <p style={{ marginTop: "0.35rem", fontSize: "0.85rem", color: "var(--ink-soft)" }}>
         {pendingCount > 0
           ? `${pendingCount} entr${pendingCount === 1 ? "y" : "ies"} pending review`
           : "No entries pending review"}
@@ -68,5 +74,24 @@ export function ThresholdProgress({
         </details>
       )}
     </div>
+  );
+}
+
+/** Met, the projected finish date, or the weekly hours that still reach the threshold by Dec 31. */
+function PaceLine({ progress, thresholdHours }: { progress: TestYearProgress; thresholdHours: number }) {
+  const { pace } = progress;
+  const text =
+    pace.kind === "met"
+      ? `Test met for ${progress.year}`
+      : pace.kind === "onPace"
+        ? `On pace to reach ${thresholdHours} hrs by ${pace.finish.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+        : `${pace.weeklyHoursNeeded.toFixed(1)} hrs a week reaches ${thresholdHours} by Dec 31`;
+  return (
+    <p
+      data-testid="dashboard-pace"
+      style={{ marginTop: "0.6rem", fontSize: "0.9rem", fontWeight: 600, color: pace.kind === "behind" ? "var(--ink)" : "var(--pine)" }}
+    >
+      {text}
+    </p>
   );
 }

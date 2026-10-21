@@ -12,8 +12,8 @@ import com.hejitech.contempo.agent.UserStats
 import com.hejitech.contempo.agent.aiAvailability
 import com.hejitech.contempo.data.ServiceLocator
 import com.hejitech.core.model.Entry
-import com.hejitech.core.model.EntryStatus
 import com.hejitech.core.model.MaterialParticipationTest
+import com.hejitech.core.model.TestYearProgress
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -216,11 +216,9 @@ class ChatViewModel : ViewModel() {
         viewModelScope.launch {
             val stats = runCatching {
                 val entries = entryRepository.observeEntries().first()
-                val confirmedMinutes = entries
-                    .filter { it.statusEnum == EntryStatus.CONFIRMED }
-                    .sumOf { it.durationMinutes }
+                // The same figure as the Dashboard: the owner's confirmed hours this tax year.
                 UserStats(
-                    confirmedHours = confirmedMinutes / 60.0,
+                    confirmedHours = TestYearProgress.compute(entries).ownerHours,
                     thresholdHours = MaterialParticipationTest.THRESHOLD_HOURS,
                     testName = MaterialParticipationTest.NAME,
                 )

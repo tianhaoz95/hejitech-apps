@@ -62,6 +62,8 @@ import com.hejitech.contempo.ui.theme.ContempoCard
 import com.hejitech.contempo.ui.theme.Eyebrow
 import com.hejitech.core.model.Entry
 import com.hejitech.core.model.EntryStatus
+import com.hejitech.core.model.TestYearProgress
+import java.time.format.DateTimeFormatter
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -159,9 +161,12 @@ fun DashboardScreen(
                 uiState.confirmedHours.toInt(),
                 uiState.thresholdHours,
                 uiState.testName,
+                uiState.testProgress.year,
             ),
             style = MaterialTheme.typography.bodyLarge,
         )
+        Spacer(Modifier.height(4.dp))
+        PaceLine(uiState.testProgress, uiState.thresholdHours)
 
         if (uiState.pendingCount > 0) {
             Spacer(Modifier.height(8.dp))
@@ -569,3 +574,19 @@ private fun TripBadge() {
             .padding(horizontal = 8.dp, vertical = 2.dp),
     )
 }
+
+/** One line under the progress: met, the projected finish date, or the weekly hours that still reach the threshold by Dec 31 (see [TestYearProgress.Pace]). */
+@Composable
+private fun PaceLine(progress: TestYearProgress, thresholdHours: Int) {
+    val (text, color) = when (val pace = progress.pace) {
+        TestYearProgress.Pace.Met ->
+            stringResource(R.string.dashboard_pace_met, progress.year) to MaterialTheme.colorScheme.primary
+        is TestYearProgress.Pace.OnPace ->
+            stringResource(R.string.dashboard_pace_on_pace, thresholdHours, pace.finish.format(paceDateFormatter)) to MaterialTheme.colorScheme.primary
+        is TestYearProgress.Pace.Behind ->
+            stringResource(R.string.dashboard_pace_behind, "%.1f".format(pace.weeklyHoursNeeded), thresholdHours) to MaterialTheme.colorScheme.tertiary
+    }
+    Text(text, style = MaterialTheme.typography.labelLarge, color = color, modifier = Modifier.testTag("dashboard_pace"))
+}
+
+private val paceDateFormatter = DateTimeFormatter.ofPattern("MMM d")

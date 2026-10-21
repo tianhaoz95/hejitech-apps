@@ -7,6 +7,7 @@ import com.hejitech.contempo.data.recoverFromAuthRaceOrSignOut
 import com.hejitech.core.model.Entry
 import com.hejitech.core.model.EntryStatus
 import com.hejitech.core.model.MaterialParticipationTest
+import com.hejitech.core.model.TestYearProgress
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -31,7 +32,9 @@ data class DashboardUiState(
      * everyone else's, so other roles' hours must never inflate this.
      */
     val confirmedHours: Double = 0.0,
-    /** Other roles' confirmed hours, for audit-context comparison. */
+    /** The tax year [confirmedHours] counts (only that year's activity) and the pace toward the threshold. */
+    val testProgress: TestYearProgress = TestYearProgress.compute(emptyList()),
+    /** Other roles' confirmed hours in the same tax year, for audit-context comparison. */
     val otherRoleHours: List<RoleHoursSummary> = emptyList(),
     /**
      * Unified owner + other-roles breakdown for the Dashboard's
@@ -80,9 +83,12 @@ class DashboardViewModel : ViewModel() {
 
     private val entriesState: StateFlow<DashboardUiState> = entryRepository.observeEntries()
         .map { entries ->
-            val confirmed = entries.filter { it.statusEnum == EntryStatus.CONFIRMED }
-            val ownerConfirmed = confirmed.filter { it.isOwnerHours }
-            val totalMinutes = ownerConfirmed.sumOf { it.durationMinutes }
+            // The tests are annual: only this tax year's activity counts, for the owner and the
+            // other roles they're compared against alike.
+            val testProgress = TestYearProgress.compute(entries)
+            val confirmed = entries.filter {
+                it.statusEnum == EntryStatus.CONFIRMED && TestYearProgress.isInYear(it, testProgress.year)
+            }
 
             val othersConfirmed = confirmed.filterNot { it.isOwnerHours }
             val otherRoleHours = othersConfirmed
@@ -93,7 +99,7 @@ class DashboardViewModel : ViewModel() {
                 }
                 .sortedByDescending { it.hours }
 
-            val ownerHours = totalMinutes / 60.0
+            val ownerHours = testProgress.ownerHours
             val roleBreakdown = if (otherRoleHours.isEmpty()) {
                 emptyList()
             } else {
@@ -102,6 +108,7 @@ class DashboardViewModel : ViewModel() {
 
             DashboardUiState(
                 confirmedHours = ownerHours,
+                testProgress = testProgress,
                 otherRoleHours = otherRoleHours,
                 roleBreakdown = roleBreakdown,
                 entries = entries,

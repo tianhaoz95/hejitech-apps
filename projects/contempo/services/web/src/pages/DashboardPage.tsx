@@ -31,8 +31,9 @@ export function DashboardPage() {
   const { entries, loading } = useEntries();
 
   const confirmed = useMemo(() => entries.filter((e) => e.status === "confirmed"), [entries]);
+  // The charts below cover every year; the test card counts only this tax year (see testYearProgress).
   // The test counts only the owner's hours (other roles' are compared, not added), like the apps.
-  const { confirmedHours, roleBreakdown, pendingCount } = useMemo(() => dashboardMetrics(entries), [entries]);
+  const { confirmedHours, testProgress, roleBreakdown, pendingCount } = useMemo(() => dashboardMetrics(entries), [entries]);
 
   const hoursByProperty = useMemo(() => {
     const byProperty = new Map<string, number>();
@@ -79,6 +80,7 @@ export function DashboardPage() {
           thresholdHours={MATERIAL_PARTICIPATION_TEST.thresholdHours}
           testName={MATERIAL_PARTICIPATION_TEST.name}
           pendingCount={pendingCount}
+          testProgress={testProgress}
           roleBreakdown={roleBreakdown}
         />
         <TrendSparkline title="Flagged entries, by week" points={flaggedTrend} />

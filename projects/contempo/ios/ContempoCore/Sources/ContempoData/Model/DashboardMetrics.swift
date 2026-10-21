@@ -23,11 +23,15 @@ public struct RoleHoursSummary: Identifiable, Equatable, Sendable {
 /// `ServiceLocator`'s live Firestore repository as a side effect of `init()`.
 public struct DashboardMetrics: Equatable, Sendable {
     /// Only entries with no role tagged (i.e. the owner's own hours) — see
-    /// `Entry.isOwnerHours`. Deliberately NOT every confirmed hour; the
-    /// 100-hour/500-hour tests require the owner's participation to exceed
-    /// everyone else's, so other roles' hours must never inflate this.
+    /// `Entry.isOwnerHours` — whose activity falls in the current tax year
+    /// (`testProgress.year`). Deliberately NOT every confirmed hour; the
+    /// 100-hour/500-hour tests are annual and require the owner's participation
+    /// to exceed everyone else's, so other roles' hours (and earlier years')
+    /// must never inflate this.
     public let confirmedHours: Double
-    /// Other roles' confirmed hours, for audit-context comparison.
+    /// The year `confirmedHours` belongs to and the pace toward the threshold.
+    public let testProgress: TestYearProgress
+    /// Other roles' confirmed hours in the same tax year, for audit-context comparison.
     public let otherRoleHours: [RoleHoursSummary]
     /// Unified owner + other-roles breakdown for the Dashboard's
     /// expand-to-compare UI — `confirmedHours` as a "Me" row (id "") first,
@@ -45,6 +49,7 @@ public struct DashboardMetrics: Equatable, Sendable {
 
     public init(
         confirmedHours: Double,
+        testProgress: TestYearProgress,
         otherRoleHours: [RoleHoursSummary],
         roleBreakdown: [RoleHoursSummary],
         pendingCount: Int,
@@ -53,6 +58,7 @@ public struct DashboardMetrics: Equatable, Sendable {
         totalMiles: Double
     ) {
         self.confirmedHours = confirmedHours
+        self.testProgress = testProgress
         self.otherRoleHours = otherRoleHours
         self.roleBreakdown = roleBreakdown
         self.pendingCount = pendingCount
@@ -61,10 +67,12 @@ public struct DashboardMetrics: Equatable, Sendable {
         self.totalMiles = totalMiles
     }
 
-    public static func compute(from entries: [Entry]) -> DashboardMetrics {
-        let confirmed = entries.filter { $0.statusEnum == .confirmed }
-        let ownerConfirmed = confirmed.filter(\.isOwnerHours)
-        let confirmedHours = ownerConfirmed.reduce(0) { $0 + Double($1.durationMinutes) } / 60.0
+    public static func compute(from entries: [Entry], now: Date = Date(), calendar: Calendar = .current) -> DashboardMetrics {
+        let testProgress = TestYearProgress.compute(from: entries, now: now, calendar: calendar)
+        let confirmed = entries.filter {
+            $0.statusEnum == .confirmed && TestYearProgress.isInYear($0, year: testProgress.year, calendar: calendar)
+        }
+        let confirmedHours = testProgress.ownerHours
 
         let othersConfirmed = confirmed.filter { !$0.isOwnerHours }
         var hoursByRole: [String: (name: String, minutes: Int)] = [:]
@@ -83,6 +91,7 @@ public struct DashboardMetrics: Equatable, Sendable {
 
         return DashboardMetrics(
             confirmedHours: confirmedHours,
+            testProgress: testProgress,
             otherRoleHours: otherRoleHours,
             roleBreakdown: roleBreakdown,
             pendingCount: entries.filter { $0.statusEnum == .pendingReview && !$0.inProgress }.count,

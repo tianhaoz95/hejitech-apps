@@ -37,8 +37,8 @@ import com.hejitech.core.audio.WavAudio
 import com.hejitech.core.model.CaptureLanguage
 import com.hejitech.core.model.CaptureSource
 import com.hejitech.core.model.Entry
-import com.hejitech.core.model.EntryStatus
 import com.hejitech.core.model.MaterialParticipationTest
+import com.hejitech.core.model.TestYearProgress
 import com.google.android.gms.location.LocationServices
 import com.hejitech.core.model.Timestamp
 import java.time.Instant
@@ -206,19 +206,12 @@ class CaptureViewModel : ViewModel() {
      * Confirmed hours + fraction toward [MaterialParticipationTest.THRESHOLD_HOURS],
      * for the animated title on CaptureScreen (see TitleWordmark — both the
      * fill sweep and the "X / 100 hrs" caption read off this). Same
-     * confirmed-hours math as DashboardViewModel's `confirmedHours` —
-     * owner-only (see [Entry.isOwnerHours]) confirmed minutes summed —
-     * duplicated rather than shared from there since DashboardViewModel is
-     * screen-scoped, not an app-wide singleton (matches the wear
-     * complication and iOS widgets, which independently recompute the same
-     * figure for the same reason — see their kdocs).
+     * [TestYearProgress] as DashboardViewModel's `confirmedHours` — the
+     * owner's confirmed hours this tax year.
      */
     val hoursProgress: StateFlow<CaptureHoursProgress> = entryRepository.observeEntries()
         .map { entries ->
-            val confirmedMinutes = entries
-                .filter { it.statusEnum == EntryStatus.CONFIRMED && it.isOwnerHours }
-                .sumOf { it.durationMinutes }
-            CaptureHoursProgress(confirmedHours = confirmedMinutes / 60.0)
+            CaptureHoursProgress(confirmedHours = TestYearProgress.compute(entries).ownerHours)
         }
         .recoverFromAuthRaceOrSignOut { CaptureHoursProgress() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CaptureHoursProgress())

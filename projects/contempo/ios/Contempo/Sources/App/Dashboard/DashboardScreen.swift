@@ -15,6 +15,24 @@ struct DashboardScreen: View {
         return min(1, viewModel.confirmedHours / Double(viewModel.thresholdHours))
     }
 
+    /// One line under the progress bar: met, the projected finish date, or the weekly
+    /// hours that still reach the threshold by Dec 31 (see `TestYearProgress.Pace`).
+    private var paceLine: some View {
+        let threshold = viewModel.thresholdHours
+        let (symbol, text, color): (String, String, Color) = switch viewModel.testProgress.pace {
+        case .met:
+            ("checkmark.seal.fill", "Test met for \(String(viewModel.testProgress.year))", palette.pine)
+        case .onPace(let finish):
+            ("calendar", "On pace to reach \(threshold) hrs by \(finish.formatted(.dateTime.month(.abbreviated).day()))", palette.pine)
+        case .behind(let weekly):
+            ("speedometer", "\(weekly.formatted(.number.precision(.fractionLength(1)))) hrs a week reaches \(threshold) by Dec 31", palette.brassDeep)
+        }
+        return Label(text, systemImage: symbol)
+            .font(ContempoFont.bodyMedium())
+            .foregroundStyle(color)
+            .accessibilityIdentifier("dashboard_pace")
+    }
+
     var body: some View {
         List {
             // ── Sync banner ──────────────────────────────────────────────
@@ -60,7 +78,7 @@ struct DashboardScreen: View {
 
             // ── Progress card ─────────────────────────────────────────────
             VStack(alignment: .leading, spacing: 12) {
-                Eyebrow("\(viewModel.testName) Test Progress")
+                Eyebrow("\(viewModel.testName) Test Progress · \(String(viewModel.testProgress.year))")
 
                 HStack(alignment: .firstTextBaseline) {
                     Text("\(viewModel.confirmedHours.formatted(.number.precision(.fractionLength(1))))")
@@ -83,6 +101,8 @@ struct DashboardScreen: View {
                     }
                 }
                 .frame(height: 10)
+
+                paceLine
 
                 HStack(spacing: 16) {
                     if viewModel.totalMiles > 0 {

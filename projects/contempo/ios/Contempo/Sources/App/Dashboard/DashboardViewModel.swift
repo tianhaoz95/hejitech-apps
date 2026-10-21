@@ -13,6 +13,8 @@ final class DashboardViewModel {
     /// the 100-hour/500-hour tests require the owner's participation to
     /// exceed everyone else's, so other roles' hours must never inflate this.
     var confirmedHours: Double = 0
+    /// The tax year `confirmedHours` counts and the pace toward the threshold.
+    var testProgress = TestYearProgress.compute(from: [])
     /// Other roles' confirmed hours, for audit-context comparison — see `RoleHoursSummary`.
     var otherRoleHours: [RoleHoursSummary] = []
     /// Unified owner + other-roles breakdown for the Dashboard's
@@ -63,6 +65,7 @@ final class DashboardViewModel {
         self.entries = entries
         let metrics = DashboardMetrics.compute(from: entries)
         confirmedHours = metrics.confirmedHours
+        testProgress = metrics.testProgress
         otherRoleHours = metrics.otherRoleHours
         roleBreakdown = metrics.roleBreakdown
         pendingCount = metrics.pendingCount

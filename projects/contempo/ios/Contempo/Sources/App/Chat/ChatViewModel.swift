@@ -189,7 +189,8 @@ final class ChatViewModel {
 
     private func currentStats() async -> UserStats {
         let entries = (try? await entryRepository.observeEntries().first { _ in true }) ?? []
-        let confirmedHours = entries.filter { $0.statusEnum == .confirmed }.reduce(0.0) { $0 + Double($1.durationMinutes) } / 60.0
+        // The same figure as the Dashboard: the owner's confirmed hours this tax year.
+        let confirmedHours = TestYearProgress.compute(from: entries).ownerHours
         return UserStats(confirmedHours: confirmedHours, thresholdHours: MaterialParticipationTest.thresholdHours, testName: MaterialParticipationTest.name)
     }
 
