@@ -18,6 +18,7 @@ struct PreferencesView: View {
     @StateObject private var dictionaryStore = PersonalDictionaryStore.shared
     @StateObject private var updateChecker = UpdateChecker.shared
     @StateObject private var shortcutStore = FeedbackShortcutStore.shared
+    @StateObject private var captureShortcutStore = CaptureShortcutStore.shared
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openURL) private var openURL
 
@@ -30,10 +31,45 @@ struct PreferencesView: View {
     var body: some View {
         Form {
             Section("Capture") {
-                LabeledContent("Hotkey") {
-                    Text("Press both ⌘ keys")
-                        .foregroundStyle(.secondary)
+                LabeledContent("Global Hotkey") {
+                    HStack(spacing: 8) {
+                        Text(captureShortcutStore.currentShortcut.displayString)
+                            .font(.system(.body, design: .monospaced).weight(.semibold))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.appTertiaryFill)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+
+                        Button(captureShortcutStore.isRecording ? "Press Keys…" : "Record Shortcut") {
+                            captureShortcutStore.toggleRecording()
+                        }
+                        .buttonStyle(.bordered)
+
+                        if captureShortcutStore.isRecording {
+                            Button("Cancel") {
+                                captureShortcutStore.cancelRecording()
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                    }
                 }
+
+                Picker("Presets", selection: $captureShortcutStore.selectedPresetIndex) {
+                    ForEach(0..<CaptureShortcut.presets.count, id: \.self) { index in
+                        Text(CaptureShortcut.presets[index].name).tag(index)
+                    }
+                    if captureShortcutStore.isCustomShortcut {
+                        Text("Custom (\(captureShortcutStore.currentShortcut.displayString))").tag(-1)
+                    }
+                }
+
+                if captureShortcutStore.currentShortcut != CaptureShortcut.defaultShortcut {
+                    Button("Reset to Default") {
+                        captureShortcutStore.resetToDefault()
+                    }
+                    .font(.caption)
+                }
+
                 Toggle("Launch at Login", isOn: launchAtLoginBinding)
             }
 

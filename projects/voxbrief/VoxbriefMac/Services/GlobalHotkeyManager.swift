@@ -110,11 +110,18 @@ public final class GlobalHotkeyManager {
             if !FeedbackShortcutStore.shared.isRecording &&
                 FeedbackShortcutStore.shared.currentShortcut.matches(cgEvent: event) {
                 onFeedbackShortcutPressed?()
+                return
+            }
+            if !CaptureShortcutStore.shared.isRecording &&
+                CaptureShortcutStore.shared.currentShortcut.matches(cgEvent: event) {
+                onBothCommandKeysPressed?()
+                return
             }
             return
         }
 
         guard type == .flagsChanged else { return }
+        guard CaptureShortcutStore.shared.currentShortcut.useBothCommandKeys else { return }
 
         let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
         guard keyCode == Self.leftCommandKeyCode || keyCode == Self.rightCommandKeyCode else { return }
