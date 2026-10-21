@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.27.0"
+    public static let currentVersion = "1.27.1"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,32 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.27.1",
+            date: "October 2026",
+            tagline: "Sounds, Not Brackets",
+            features: [
+                WhatsNewItem(
+                    icon: "speaker.slash",
+                    tint: .orange,
+                    title: "Pauses and Sounds as Badges",
+                    description: "In a note's timings, the recognizer's sound tags show as small badges, like Silence, Music or Laughter, instead of raw text such as [BLANK_AUDIO].",
+                    highlights: [
+                        "Silence, music, laughter, applause and inaudible speech each get their own icon",
+                        "VoiceOver reads them as sounds, not as words you said"
+                    ]
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "text.magnifyingglass",
+                    tint: .accentColor,
+                    title: "Cleaner Live Transcript and Search",
+                    description: "Tags like [BLANK_AUDIO] no longer appear in the live transcript while you record, or in search results.",
+                    kind: .fix
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.27.0",
             date: "October 2026",
