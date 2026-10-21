@@ -192,7 +192,9 @@
     if ((st.overall || "").trim()) out.push("**The user's overall direction:**", "", ...st.overall.trim().split(/\n+/).map((l) => `> ${l}`), "");
 
     out.push("## What to do next", "");
-    if (allDecided) out.push(
+    // A review can replace these steps (e.g. heji-build-next: merge the picked branches, not implement mocks).
+    if (R.nextSteps) out.push(...R.nextSteps({ groups, decided, allDecided, winners: decided.map((g) => byId[st.win[g.id]]), dir }), "");
+    else if (allDecided) out.push(
       `${grouped ? "Every group has a winner" : "A winner is picked"}. Unless the overall direction above asks for another round, implement ${decided.length > 1 ? "the winners" : "the winner"} in the real project:`, "",
       "1. Read the project docs above, then the code the winner changes (the design section lists the files).",
       "2. Open the review site and the winner's mock; build it with the app's real components, data and states. The user's notes override the candidate's text.",

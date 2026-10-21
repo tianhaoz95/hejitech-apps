@@ -77,6 +77,7 @@ window.REVIEW = {
   modes: true,              // false hides the Light/Dark toggle (logos, docs)
   groups: [{ id, name, note }],           // optional: one winner per group (per screen, per surface)
   metrics: (c, scr) => [{ text, good }],  // optional: measured on the real render (e.g. "4/7 items on first screen")
+  nextSteps: ({ winners, groups, decided, allDecided, dir }) => [lines],  // optional: replaces the hand-off's "What to do next"
   candidates: [{
     id, n, name, tagline, concept, moves: [], palette: [[name, hex]],
     facts: { Type: "...", Effort: "S|M|L", Needs: "what the app lacks for this" },
@@ -184,6 +185,14 @@ picking it up in a new session, read the files it names before acting. Then:
   and move to implementing it in the real project, using the winning candidate's HTML/CSS as the
   spec and its design section as the technical spec. The review site is committed with the work as
   the record (`heji-archive-reports` moves it to `reports/archive/` once it's done).
+
+## Variant: finished builds (heji-build-next)
+
+When the candidates are already built (local branches, not mocks), the `heji-build-next` skill
+uses this engine with real captures instead of HTML mocks: one group per project, a "keep main"
+entry beside each build, `<img>` renders of screenshots/GIFs in `site/media/`, and `nextSteps`
+turning the hand-off into merge-and-release instructions. Its `candidates.example.js` is the
+starting point.
 
 ## Variant: design walkthrough (no candidates)
 
