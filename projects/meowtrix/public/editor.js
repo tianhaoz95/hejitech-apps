@@ -6,7 +6,9 @@
 // Created via the tab-type picker (which prompts for a folder), the command
 // palette, or `mtx code <dir>` in a terminal (OSC 5380 → triggerOpenEditor).
 
-const MONACO_BASE = '/vendor/monaco-editor/min';
+// Versioned and cached as immutable by the server (see /meowtrix-version.js); the plain path is
+// for the static demo, which has no server.
+const MONACO_BASE = window.MEOWTRIX_MONACO_BASE || '/vendor/monaco-editor/min';
 
 // Lazily load + configure Monaco exactly once. Resolves to the global `monaco`.
 let _monacoPromise = null;
