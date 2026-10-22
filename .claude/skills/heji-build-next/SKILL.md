@@ -252,6 +252,9 @@ that need the real HOME (xcodebuild signing, flutter caches, npm) run under `cle
 `--home`. Simulators: a dedicated one for the round (`xcrun simctl create heji-evidence …`), not one
 the owner has booted. Local backends: the project's own local stack seeded with invented data,
 never production.
+Keep a round's scratch (logs, recordings, temp HOMEs: `TMPDIR`) under the worktree area on the data
+volume too, check free space (`df -h /`) before long builds, and delete the round's simulator at
+the end: a 2026-10-21 round filled the system disk.
 
 Every command you ran and the tail of its output go in the build's **evidence log** (§5), copied,
 not summarised. Never claim a test that doesn't exist: name the test files the branch adds or the
