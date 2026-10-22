@@ -17,14 +17,45 @@ import 'trip_screen.dart';
 /// "Scrapbook" home: trips are polaroids taped onto kraft paper, with handwritten captions.
 /// Upcoming trips are a 2-up grid, past trips a smaller 3-up grid. Status lives in a stamp
 /// in the photo corner; everything else (share, bookmark, delete) is on long-press.
-class TripsScreen extends StatelessWidget {
+class TripsScreen extends StatefulWidget {
   const TripsScreen({super.key});
+
+  @override
+  State<TripsScreen> createState() => _TripsScreenState();
+}
+
+class _TripsScreenState extends State<TripsScreen> {
+  final _searchController = TextEditingController();
+  String _query = '';
+  String _filter = 'all'; // 'all', 'upcoming', 'past', 'offline'
+  bool _searchOpen = false;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  bool _matches(TripEntry entry) {
+    if (_filter == 'upcoming' && entry.isPast) return false;
+    if (_filter == 'past' && !entry.isPast) return false;
+    if (_filter == 'offline' && !entry.isOffline) return false;
+    if (_query.isEmpty) return true;
+    final q = _query.toLowerCase();
+    return [
+      entry.title,
+      entry.startDate,
+      entry.endDate,
+    ].any((field) => field != null && field.toLowerCase().contains(q));
+  }
 
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
     final p = Paper.of(context);
-    final upcoming = s.upcoming, past = s.past;
+    final upcoming = s.upcoming.where(_matches).toList();
+    final past = s.past.where(_matches).toList();
+    final isFiltering = _query.isNotEmpty || _filter != 'all';
     final w = MediaQuery.sizeOf(context).width;
     // Centered, max ~1000px wide on iPad/desktop.
     final side = w > 1040 ? (w - 1000) / 2 : 18.0;
@@ -44,7 +75,36 @@ class TripsScreen extends StatelessWidget {
               child: ListView(
                 padding: EdgeInsets.fromLTRB(side, 8, side, 44),
                 children: [
-                  _TopBar(upcoming: upcoming.length, past: past.length),
+                  _TopBar(
+                    upcoming: s.upcoming.length,
+                    past: s.past.length,
+                    searchOpen: _searchOpen,
+                    onToggleSearch: () {
+                      setState(() {
+                        _searchOpen = !_searchOpen;
+                        if (!_searchOpen) {
+                          _searchController.clear();
+                          _query = '';
+                          _filter = 'all';
+                        }
+                      });
+                    },
+                  ),
+                  if (_searchOpen || isFiltering)
+                    _SearchAndFilterBar(
+                      controller: _searchController,
+                      query: _query,
+                      filter: _filter,
+                      onQueryChanged: (v) => setState(() => _query = v.trim()),
+                      onFilterChanged: (f) => setState(() => _filter = f),
+                      onClear: () {
+                        setState(() {
+                          _searchController.clear();
+                          _query = '';
+                          _filter = 'all';
+                        });
+                      },
+                    ),
                   if (s.listError != null) _Note(text: s.listError!),
                   if (upcoming.isEmpty && past.isEmpty && s.loading)
                     Padding(
@@ -53,7 +113,50 @@ class TripsScreen extends StatelessWidget {
                         child: CircularProgressIndicator(color: p.accent),
                       ),
                     ),
-                  if (upcoming.isEmpty && past.isEmpty && !s.loading)
+                  if (upcoming.isEmpty &&
+                      past.isEmpty &&
+                      !s.loading &&
+                      isFiltering)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 48,
+                        horizontal: 24,
+                      ),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.search_off_outlined,
+                              size: 48,
+                              color: p.muted,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              _query.isNotEmpty
+                                  ? 'No trips matching "$_query"'
+                                  : 'No trips in selected category',
+                              style: hand(22, p.ink),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  _searchController.clear();
+                                  _query = '';
+                                  _filter = 'all';
+                                });
+                              },
+                              child: const Text('Reset filters'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  if (upcoming.isEmpty &&
+                      past.isEmpty &&
+                      !s.loading &&
+                      !isFiltering)
                     const _EmptyState(),
                   if (upcoming.isNotEmpty)
                     _PolaroidGrid(entries: upcoming, minWidth: 160),
@@ -80,9 +183,169 @@ class TripsScreen extends StatelessWidget {
   }
 }
 
+class _SearchAndFilterBar extends StatelessWidget {
+  const _SearchAndFilterBar({
+    required this.controller,
+    required this.query,
+    required this.filter,
+    required this.onQueryChanged,
+    required this.onFilterChanged,
+    required this.onClear,
+  });
+
+  final TextEditingController controller;
+  final String query;
+  final String filter;
+  final ValueChanged<String> onQueryChanged;
+  final ValueChanged<String> onFilterChanged;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = Paper.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 0, 0, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Material(
+            color: p.card,
+            shape: StadiumBorder(
+              side: BorderSide(
+                color: p.accent.withValues(alpha: .45),
+                width: 1.5,
+              ),
+            ),
+            child: TextField(
+              key: const Key('trips-search-field'),
+              controller: controller,
+              onChanged: onQueryChanged,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: 'Search destinations or dates…',
+                hintStyle: TextStyle(color: p.muted, fontSize: 14),
+                prefixIcon: Icon(Icons.search, size: 20, color: p.muted),
+                suffixIcon: (query.isNotEmpty || filter != 'all')
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 18),
+                        color: p.muted,
+                        onPressed: onClear,
+                        tooltip: 'Clear filter',
+                      )
+                    : null,
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _FilterChip(
+                  key: const Key('filter-all'),
+                  label: 'All',
+                  selected: filter == 'all',
+                  onTap: () => onFilterChanged('all'),
+                ),
+                const SizedBox(width: 8),
+                _FilterChip(
+                  key: const Key('filter-upcoming'),
+                  label: 'Upcoming',
+                  selected: filter == 'upcoming',
+                  onTap: () => onFilterChanged('upcoming'),
+                ),
+                const SizedBox(width: 8),
+                _FilterChip(
+                  key: const Key('filter-past'),
+                  label: 'Past',
+                  selected: filter == 'past',
+                  onTap: () => onFilterChanged('past'),
+                ),
+                const SizedBox(width: 8),
+                _FilterChip(
+                  key: const Key('filter-offline'),
+                  label: 'Offline',
+                  icon: Icons.offline_pin_outlined,
+                  selected: filter == 'offline',
+                  onTap: () => onFilterChanged('offline'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.icon,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = Paper.of(context);
+    final bg = selected ? p.accent : p.card;
+    final fg = selected ? Colors.white : p.ink;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: selected ? p.accent : p.line, width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 14, color: fg),
+              const SizedBox(width: 5),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                color: fg,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.upcoming, required this.past});
+  const _TopBar({
+    required this.upcoming,
+    required this.past,
+    required this.searchOpen,
+    required this.onToggleSearch,
+  });
   final int upcoming, past;
+  final bool searchOpen;
+  final VoidCallback onToggleSearch;
 
   @override
   Widget build(BuildContext context) {
@@ -91,70 +354,77 @@ class _TopBar extends StatelessWidget {
       if (upcoming > 0) '$upcoming coming up',
       if (past > 0) '$past remembered',
     ].join(' · ');
+    // The trip count sits under the title row, full width: beside four buttons it wrapped.
     return Padding(
       padding: const EdgeInsets.fromLTRB(2, 4, 0, 14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Semantics(
+          Row(
+            children: [
+              Expanded(
+                child: Semantics(
                   header: true,
                   child: Text('Our trips', style: hand(44, p.ink)),
                 ),
-                if (sub.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      sub,
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w500,
-                        color: p.muted,
-                      ),
-                    ),
+              ),
+              RoundButton(
+                key: const Key('open-search'),
+                tooltip: searchOpen ? 'Close search' : 'Search trips',
+                icon: searchOpen ? Icons.search_off : Icons.search,
+                onPressed: onToggleSearch,
+              ),
+              const SizedBox(width: 8),
+              RoundButton(
+                key: const Key('open-discover'),
+                tooltip: 'Discover trips',
+                icon: Icons.explore_outlined,
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    settings: const RouteSettings(name: 'Discover'),
+                    builder: (_) => const DiscoverScreen(),
                   ),
-              ],
-            ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              RoundButton(
+                tooltip: 'Receive from a nearby phone',
+                icon: Icons.qr_code_scanner,
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    settings: const RouteSettings(name: 'ReceiveNearby'),
+                    builder: (_) => const ReceiveNearbyScreen(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              RoundButton(
+                tooltip: 'Settings',
+                icon: Icons.settings_outlined,
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    settings: const RouteSettings(name: 'Settings'),
+                    builder: (_) => const SettingsScreen(),
+                  ),
+                ),
+              ),
+            ],
           ),
-          RoundButton(
-            key: const Key('open-discover'),
-            tooltip: 'Discover trips',
-            icon: Icons.explore_outlined,
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                settings: const RouteSettings(name: 'Discover'),
-                builder: (_) => const DiscoverScreen(),
+          if (sub.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                sub,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w500,
+                  color: p.muted,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          RoundButton(
-            tooltip: 'Receive from a nearby phone',
-            icon: Icons.qr_code_scanner,
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                settings: const RouteSettings(name: 'ReceiveNearby'),
-                builder: (_) => const ReceiveNearbyScreen(),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          RoundButton(
-            tooltip: 'Settings',
-            icon: Icons.settings_outlined,
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                settings: const RouteSettings(name: 'Settings'),
-                builder: (_) => const SettingsScreen(),
-              ),
-            ),
-          ),
         ],
       ),
     );
