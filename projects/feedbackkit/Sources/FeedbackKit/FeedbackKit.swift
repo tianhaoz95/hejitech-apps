@@ -123,6 +123,9 @@ public enum FeedbackKit {
             if config.products.isEmpty {
                 fetchProducts(configuration: config, completion: nil)
             }
+            if config.spoolOfflineReports {
+                OfflineReportQueue.shared.startMonitoring()
+            }
         } else {
             self.products = []
             self.defaultProductKey = nil
