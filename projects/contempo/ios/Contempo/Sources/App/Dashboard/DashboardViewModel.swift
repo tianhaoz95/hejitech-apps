@@ -36,6 +36,57 @@ final class DashboardViewModel {
     var isDeleting = false
     var deleteError: String?
 
+    // Filter & Search state
+    var selectedProperty: String = "All"
+    var selectedCategory: String = "All"
+    var searchText: String = ""
+
+    var propertyOptions: [String] {
+        let set = Set(entries.map { $0.propertyName.isEmpty ? "(No property)" : $0.propertyName })
+        return ["All"] + set.sorted()
+    }
+
+    /// Stored category values ("guest_communication"), "All" first; show them with `categoryLabel`.
+    var categoryOptions: [String] {
+        let set = Set(entries.map(\.category).filter { !$0.isEmpty })
+        return ["All"] + set.sorted { EntryCategory.displayName(for: $0) < EntryCategory.displayName(for: $1) }
+    }
+
+    func categoryLabel(_ value: String) -> String {
+        value == "All" ? "All" : EntryCategory.displayName(for: value)
+    }
+
+    var filteredEntries: [Entry] {
+        entries.filter { entry in
+            if selectedProperty != "All" {
+                let name = entry.propertyName.isEmpty ? "(No property)" : entry.propertyName
+                if name != selectedProperty { return false }
+            }
+            if selectedCategory != "All" {
+                if entry.category.lowercased() != selectedCategory.lowercased() { return false }
+            }
+            if !searchText.isEmpty {
+                let query = searchText.lowercased()
+                let matchesTask = entry.task.lowercased().contains(query)
+                let matchesProperty = entry.propertyName.lowercased().contains(query)
+                let matchesCategory = entry.category.lowercased().contains(query)
+                if !matchesTask && !matchesProperty && !matchesCategory { return false }
+            }
+            return true
+        }
+    }
+
+    /// The owner's confirmed hours among the filtered entries: the same rule as `confirmedHours`,
+    /// so other roles' hours never count toward the test here either.
+    var filteredHours: Double {
+        filteredEntries.filter { $0.isOwnerHours && $0.statusEnum == .confirmed && !$0.inProgress && !$0.isTrip }
+            .reduce(0.0) { $0 + Double($1.durationMinutes) } / 60.0
+    }
+
+    var isFilterActive: Bool {
+        selectedProperty != "All" || selectedCategory != "All" || !searchText.isEmpty
+    }
+
     // Pull-to-refresh & pending audio sync state
     var isSyncing = false
     var syncStatusMessage = ""
