@@ -59,7 +59,8 @@ for (const c of R.candidates) {
   if (f.Diff && nums(f.Diff) !== nums(stat)) fail(id, `Diff "${f.Diff}" ≠ git diff --shortstat "${stat}"`);
 
   // Test files named in Tests must exist on the branch.
-  const tree = new Set((git("ls-tree", "-r", "--name-only", f.Branch) || "").split("\n").map((p) => path.basename(p).replace(/\.[^.]+$/, "")));
+  // Every file and folder name on the branch (a test can be named by its file or its target folder).
+  const tree = new Set((git("ls-tree", "-r", "--name-only", f.Branch) || "").split("\n").flatMap((p) => p.split("/")).map((s) => s.replace(/\.[^.]+$/, "")));
   const named = [...String(f.Tests || "").matchAll(/\b([A-Z]\w*Tests?|[\w-]+[._](?:test|spec))\b/g)].map((m) => m[1].replace(/\.(test|spec)$/, ".$1"));
   for (const t of named) if (!tree.has(t) && !tree.has(t.replace(/\.(test|spec)$/, "")) && ![...tree].some((n) => n.startsWith(t))) fail(id, `Tests names "${t}", which isn't a file on ${f.Branch}`);
   if (!/\d+\s+(\w+\s+)?(tests?|passed|passing)\b/i.test(String(f.Tests || ""))) warn(id, `Tests should quote the command and the count from its output: "${f.Tests}"`);
@@ -77,7 +78,8 @@ for (const c of R.candidates) {
 
   const media = mediaOf(c).filter((m) => !m.endsWith(".log"));
   const notCaptured = /^not captured/i.test(String(f.Captured || ""));
-  if (!media.length && !notCaptured) fail(id, `no captures: show some, or say "Not captured: <why>" in Captured`);
+  const textEvidence = (c.design || []).some((d) => d.kind === "code" || d.kind === "chart");
+  if (!media.length && !notCaptured && !textEvidence) fail(id, `no captures: show some, a code/chart block of real output, or say "Not captured: <why>" in Captured`);
   if (media.length && notCaptured) fail(id, `Captured says "Not captured" but the build shows media`);
   for (const m of media) {
     const p = path.join(site, "media", m);
