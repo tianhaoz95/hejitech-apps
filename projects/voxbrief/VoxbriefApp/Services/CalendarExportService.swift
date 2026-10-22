@@ -27,7 +27,30 @@ public final class CalendarExportService: @unchecked Sendable {
     private let eventStore = EKEventStore()
     #endif
 
-    public func exportEvent(for note: VoiceNote, startDate: Date = Date().addingTimeInterval(3600), duration: TimeInterval = 1800) async throws {
+    /// The first date in `text` that isn't over: a note about a plan often also mentions when
+    /// something happened before ("we shipped on Aug 14; aim for December"), and an event belongs
+    /// on the plan. Dates earlier today still count (a morning note about a 9 am meeting).
+    public static func detectDate(in text: String, now: Date = Date()) -> Date? {
+        guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.date.rawValue) else {
+            return nil
+        }
+        let startOfToday = Calendar.current.startOfDay(for: now)
+        let matches = detector.matches(in: text, options: [], range: NSRange(location: 0, length: (text as NSString).length))
+        return matches.lazy.compactMap(\.date).first { $0 >= startOfToday }
+    }
+
+    public static func resolvedStartDate(for note: VoiceNote, fallbackDate: Date = Date().addingTimeInterval(3600), now: Date = Date()) -> Date {
+        if let titleDate = detectDate(in: note.title, now: now) {
+            return titleDate
+        }
+        if let bodyDate = detectDate(in: "\(note.summary) \(note.cleanedNote)", now: now) {
+            return bodyDate
+        }
+        return fallbackDate
+    }
+
+    public func exportEvent(for note: VoiceNote, startDate: Date? = nil, duration: TimeInterval = 1800) async throws {
+        let eventStartDate = startDate ?? Self.resolvedStartDate(for: note)
         #if canImport(EventKit)
         let granted: Bool
         if #available(iOS 17.0, macOS 14.0, *) {
@@ -60,8 +83,8 @@ public final class CalendarExportService: @unchecked Sendable {
         event.title = note.title
         let noteBody = note.summary.isEmpty ? note.cleanedNote : "\(note.summary)\n\n\(note.cleanedNote)"
         event.notes = "Exported from Voxbrief:\n\(noteBody)"
-        event.startDate = startDate
-        event.endDate = startDate.addingTimeInterval(duration)
+        event.startDate = eventStartDate
+        event.endDate = eventStartDate.addingTimeInterval(duration)
         event.calendar = defaultCalendar
 
         do {

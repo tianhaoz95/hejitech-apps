@@ -14,6 +14,7 @@
 		04A7C1C55D6A3448A20CEDEC /* FormattingExtensionsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BFF1B48591E606188875EF7 /* FormattingExtensionsTests.swift */; };
 		062F0A4ACE8294D820ABAA0D /* TemplatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B890732A2E9F6A9C8361C2B2 /* TemplatesView.swift */; };
 		0648566D2589D472F0413762 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CBCCE4CBCC64C9FC561BE96C /* Assets.xcassets */; };
+		071AA0A018BD158374C1C1DC /* CalendarExportServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3581A5F2CA5DF38A3ED559B /* CalendarExportServiceTests.swift */; };
 		07E7D0A5CFA489DB1EBFA7D1 /* GlobalHotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8DA59D4AB6880238B419BA0 /* GlobalHotkeyManager.swift */; };
 		0AD043C3BB7E0B09A1667977 /* NoteListViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A722022C9E282A8840CA734E /* NoteListViewModelTests.swift */; };
 		0B587A31DFB9C2203516E112 /* NoteRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = D04388B08F3A85CF017C8018 /* NoteRepository.swift */; };
@@ -445,6 +446,7 @@
 		DDF370D074CADB2C25254782 /* MarkdownLiteText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownLiteText.swift; sourceTree = "<group>"; };
 		DE514F4FCBBBF278BDF6591E /* NoteSearchIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteSearchIndex.swift; sourceTree = "<group>"; };
 		DFEB07D6090DC24A5902E9AE /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityManager.swift; sourceTree = "<group>"; };
+		E3581A5F2CA5DF38A3ED559B /* CalendarExportServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarExportServiceTests.swift; sourceTree = "<group>"; };
 		E7C3731F89B9CAC7ECDD9D86 /* Qwen3-0.6B-4bit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "Qwen3-0.6B-4bit"; path = "VoxbriefApp/Resources/Models/Qwen3-0.6B-4bit"; sourceTree = SOURCE_ROOT; };
 		E8F69D56A035DF1728B39998 /* TemplateDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateDetailView.swift; sourceTree = "<group>"; };
 		E94D52B1598816198564D875 /* FeedbackShortcut.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackShortcut.swift; sourceTree = "<group>"; };
@@ -885,6 +887,7 @@
 				A7E7A1ECFE8A61810E0AA7FB /* ASRServiceHelpersTests.swift */,
 				8E16EF8E03690A86F8E50308 /* AudioPlaybackServiceExtendedTests.swift */,
 				8C20D11D5E1327FBD57ADC9F /* AudioStorageManagementTests.swift */,
+				E3581A5F2CA5DF38A3ED559B /* CalendarExportServiceTests.swift */,
 				372B2FCF84714C6CEF641AB1 /* DailyBriefTests.swift */,
 				4E1023302B3222C429215588 /* DataBackupServiceTests.swift */,
 				B4D8DB31CA5D5DAFA4A7FB0A /* DictionaryCorrectorTests.swift */,
@@ -1278,6 +1281,7 @@
 				AF051E0DA4FAE480AFD3E810 /* AskServiceTests.swift in Sources */,
 				DE4532B8F73D8A8BCCC7DA10 /* AudioPlaybackServiceExtendedTests.swift in Sources */,
 				288FA067DC651A77B996F459 /* AudioStorageManagementTests.swift in Sources */,
+				071AA0A018BD158374C1C1DC /* CalendarExportServiceTests.swift in Sources */,
 				3E92239163BF05231D433FD7 /* DailyBriefTests.swift in Sources */,
 				1C30267519A8147F86A77564 /* DataBackupServiceTests.swift in Sources */,
 				11DA807354F3130FCE674588 /* DictionaryCorrectorTests.swift in Sources */,
