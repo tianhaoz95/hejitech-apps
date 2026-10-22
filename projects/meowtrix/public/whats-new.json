@@ -2,6 +2,27 @@
   "_doc": "Release notes for the in-app \"What's new\" sheet (public/whats-new.js). Newest first, keyed by package.json version. `highlights` are the features (the main stage); each may carry a `visual` (timeline | glyph) and a `try` action (settings:<section id> | tab:<type> | split | palette | copy:<text>). `fixes` is a list of one-line strings (bug fixes and small improvements, inline `code` allowed) shown on a secondary page behind a footer button. A fixes-only release omits `highlights` (and may omit `title`/`summary`); upgrading to only fixes-only releases shows a toast instead of opening the sheet.",
   "releases": [
     {
+      "version": "1.35.0",
+      "date": "2026-10-22",
+      "title": "Terminals that speak up",
+      "summary": "Background tabs tell you when they ring, a terminal's whole history can be saved to a file, and a dropped connection shows what's happening.",
+      "highlights": [
+        {
+          "title": "Bell in a background tab",
+          "body": "When a command rings the terminal bell in a tab you aren't looking at (an agent or a long build finishing), its tab pulses and a short chime plays. Turn the chime off in Settings → Chime on terminal bell.",
+          "visual": { "type": "glyph", "glyph": "🔔" }
+        },
+        {
+          "title": "Export scrollback",
+          "body": "Right-click a terminal tab and choose Export Scrollback… to download everything in it as a .log file.",
+          "visual": { "type": "glyph", "glyph": "📥" }
+        }
+      ],
+      "fixes": [
+        "When the connection to the server drops, a banner now says so, counts down to the next attempt and offers Reconnect Now, instead of the terminals silently freezing."
+      ]
+    },
+    {
       "version": "1.34.4",
       "date": "2026-10-20",
       "fixes": [
