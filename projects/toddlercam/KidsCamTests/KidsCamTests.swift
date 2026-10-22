@@ -119,10 +119,7 @@ final class KidsCamTests: XCTestCase {
             controller.view.drawHierarchy(in: controller.view.bounds, afterScreenUpdates: true)
         }
         XCTAssertGreaterThan(image.size.width, 0)
-        if let data = image.pngData() {
-            let path = "/Users/tianhaoz/.gemini/antigravity-cli/brain/04e94b9a-263a-4ac8-8a99-d26f65ce8b13/guided_access_sheet_snapshot.png"
-            try? data.write(to: URL(fileURLWithPath: path))
-        }
+        XCTAssertNotNil(image.pngData())
     }
 
     func testFaceEmojiTypeCatalog() {
@@ -191,10 +188,7 @@ final class KidsCamTests: XCTestCase {
             primaryPosition: .front,
             filter: .crown
         )
-        if let data = composite.pngData() {
-            let path = "/Users/tianhaoz/.gemini/antigravity-cli/brain/56601843-8006-40e2-8cbd-8c87eb5fae50/tracked_face_mask_photo.png"
-            try? data.write(to: URL(fileURLWithPath: path))
-        }
+        XCTAssertNotNil(composite.pngData())
     }
 
     func testFlyingEmojiOrbitsOutsideFaceAndNeverCoversFace() {
@@ -250,10 +244,7 @@ final class KidsCamTests: XCTestCase {
             controller.view.drawHierarchy(in: controller.view.bounds, afterScreenUpdates: true)
         }
         XCTAssertGreaterThan(image.size.width, 0)
-        if let data = image.pngData() {
-            let path = "/Users/tianhaoz/.gemini/antigravity-cli/brain/56601843-8006-40e2-8cbd-8c87eb5fae50/watch_complications_studio_snapshot.png"
-            try? data.write(to: URL(fileURLWithPath: path))
-        }
+        XCTAssertNotNil(image.pngData())
     }
 
     @MainActor
@@ -267,10 +258,7 @@ final class KidsCamTests: XCTestCase {
             controller.view.drawHierarchy(in: controller.view.bounds, afterScreenUpdates: true)
         }
         XCTAssertGreaterThan(image.size.width, 0)
-        if let data = image.pngData() {
-            let path = "/Users/tianhaoz/.gemini/antigravity-cli/brain/56601843-8006-40e2-8cbd-8c87eb5fae50/toddler_camera_view_snapshot.png"
-            try? data.write(to: URL(fileURLWithPath: path))
-        }
+        XCTAssertNotNil(image.pngData())
     }
 
     // MARK: - Demo Mode (Screenshot Automation) Tests
