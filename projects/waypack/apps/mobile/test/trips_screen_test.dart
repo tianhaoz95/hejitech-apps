@@ -205,7 +205,9 @@ void main() {
     });
   }
 
-  testWidgets('trips search and filter chips filter trips dynamically', (t) async {
+  testWidgets('trips search and filter chips filter trips dynamically', (
+    t,
+  ) async {
     SharedPreferences.setMockInitialValues({});
     await _loadFonts();
     final temp = Directory.systemTemp.createTempSync('trips_search_test');
@@ -245,16 +247,6 @@ void main() {
     expect(find.text('Kyoto fall break'), findsOneWidget);
     expect(find.text('Tahoe ski weekend'), findsNothing);
 
-    await t.runAsync(() async {
-      final boundary =
-          key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
-      final img = await boundary.toImage(pixelRatio: 2);
-      final png = await img.toByteData(format: ui.ImageByteFormat.png);
-      const outPath =
-          '/Volumes/DATA/GitHub/hejitech-apps/reports/2026-10-21-build-next/site/media/waypack/trips-search.png';
-      File(outPath).writeAsBytesSync(png!.buffer.asUint8List());
-    });
-
     // Clear search query
     await t.enterText(find.byKey(const Key('trips-search-field')), '');
     await t.pumpAndSettle();
@@ -262,6 +254,7 @@ void main() {
     expect(find.text('Tahoe ski weekend'), findsOneWidget);
 
     // Filter by offline only (Tahoe is downloading/not offline, Kyoto is offline)
+    await t.ensureVisible(find.byKey(const Key('filter-offline')));
     await t.tap(find.byKey(const Key('filter-offline')));
     await t.pumpAndSettle();
     expect(find.text('Kyoto fall break'), findsOneWidget);
