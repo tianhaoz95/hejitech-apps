@@ -119,32 +119,38 @@ public final class OfflineReportQueue: @unchecked Sendable {
         }
     }
 
-    public func flush() {
+    /// Sends queued reports oldest first. Stops at the first network failure (still offline) and
+    /// keeps the rest for the next reconnect; drops reports the server rejects (4xx other than 429).
+    /// `completion` runs on the queue when the pass is over (tests wait on it).
+    public func flush(completion: (@Sendable () -> Void)? = nil) {
         queue.async { [weak self] in
-            guard let self else { return }
+            guard let self else { completion?(); return }
             let items = self.loadAllItems().sorted(by: { $0.queuedAt < $1.queuedAt })
             for item in items {
                 let semaphore = DispatchSemaphore(value: 0)
+                let offline = OfflineFlag()
                 FeedbackSubmitter.submitDirect(item.report, configuration: item.configuration) { [weak self] result in
                     switch result {
                     case .success:
                         self?.deleteItem(id: item.id)
-                    case .failure(let error):
-                        switch error {
-                        case .network:
-                            // Connectivity still down; stop iterating this cycle
-                            break
-                        case .server(let statusCode) where statusCode >= 400 && statusCode < 500 && statusCode != 429:
-                            // Client rejected (bad key, invalid body), discard
-                            self?.deleteItem(id: item.id)
-                        default:
-                            break
-                        }
+                    case .failure(.network):
+                        offline.value = true
+                    case .failure(.server(let statusCode)) where statusCode >= 400 && statusCode < 500 && statusCode != 429:
+                        self?.deleteItem(id: item.id)
+                    case .failure:
+                        break
                     }
                     semaphore.signal()
                 }
                 _ = semaphore.wait(timeout: .now() + 15)
+                if offline.value { break }
             }
+            completion?()
         }
     }
+}
+
+/// Set from the submit callback, read after the semaphore: the wait orders the two.
+private final class OfflineFlag: @unchecked Sendable {
+    var value = false
 }
