@@ -260,6 +260,16 @@ class AppState extends ChangeNotifier {
           startDate: e.startDate,
           downloaded: e.isOffline && !e.updateAvailable,
         );
+        if (e.isOffline) {
+          final m = await manifestFor(e.id);
+          if (m != null) {
+            await Reminders.scheduleDailyBriefings(
+              tripId: e.id,
+              tripTitle: m.title,
+              days: m.days,
+            );
+          }
+        }
       }
       me = await api.me().catchError((_) => <String, dynamic>{});
       _syncFeedbackUser();
@@ -304,6 +314,14 @@ class AppState extends ChangeNotifier {
         startDate: local.startDate,
         downloaded: true,
       );
+      final manifest = await manifestFor(id);
+      if (manifest != null) {
+        await Reminders.scheduleDailyBriefings(
+          tripId: id,
+          tripTitle: manifest.title,
+          days: manifest.days,
+        );
+      }
     } catch (e) {
       errors[id] = e.toString();
     } finally {
@@ -346,6 +364,7 @@ class AppState extends ChangeNotifier {
         startDate: e.startDate,
         downloaded: false,
       );
+      await Reminders.cancelDailyBriefings(id);
     }
     notifyListeners();
   }
