@@ -25,6 +25,15 @@ struct SettingsView: View {
     @AppStorage(NightMode.tintKey) private var nightTint = NightTint.amber
     @AppStorage(ThumbDock.key) private var thumbDock = ThumbDock.off
 
+    /// When the next feed is due with the interval as set here (the adapted one if that's on),
+    /// counted from the last logged feed; nil before any feed is logged.
+    private var nextFeedDue: Date? {
+        let now = Date()
+        let adapted = draft.reminders.adaptive ? ReminderPlanner.suggestedFeedInterval(log: model.log, now: now) : nil
+        return StatusSnapshot(log: model.log, now: now)
+            .nextFeedDue(feedEveryMinutes: draft.reminders.feedEveryMinutes, adaptiveSuggestion: adapted)
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -107,6 +116,10 @@ struct SettingsView: View {
                     if draft.reminders.feedEveryMinutes != nil {
                         IntervalPicker(title: "Feed every", minutes: $draft.reminders.feedEveryMinutes)
                         Toggle("Adapt feed interval to last 3 days", isOn: $draft.reminders.adaptive)
+                        if let due = nextFeedDue {
+                            LabeledContent("Next feed due", value: due.formatted(date: .omitted, time: .shortened))
+                                .accessibilityIdentifier("nextFeedDue")
+                        }
                     }
 
                     IntervalPicker(title: "Diaper check every", minutes: $draft.reminders.diaperEveryMinutes)
