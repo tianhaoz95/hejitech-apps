@@ -48,6 +48,19 @@ final class NoteExportServiceTests: XCTestCase {
         try? FileManager.default.removeItem(at: url)
     }
 
+    func testExportNotesAsZipCreatesValidArchive() {
+        let note1 = VoiceNote(id: UUID(), title: "Note 1", cleanedNote: "Body 1")
+        let note2 = VoiceNote(id: UUID(), title: "Note 2", cleanedNote: "Body 2")
+
+        let zipURL = NoteExportService.shared.exportNotesAsZip(notes: [note1, note2])
+        XCTAssertNotNil(zipURL)
+        if let url = zipURL {
+            XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
+            XCTAssertEqual(url.pathExtension, "zip")
+            try? FileManager.default.removeItem(at: url)
+        }
+    }
+
     func testFormattedPlainTextDocument() {
         let note = VoiceNote(
             id: UUID(),
@@ -130,5 +143,43 @@ final class NoteExportServiceTests: XCTestCase {
 
         let transcript = NoteExportService.shared.extractTranscript(for: note)
         XCTAssertEqual(transcript, "This is the raw dictation verbatim.")
+    }
+
+    func testZipHoldsUnlockedNotesInOneNamedFolder() throws {
+        let notes = [
+            VoiceNote(duration: 5, title: "Kitchen ideas", cleanedNote: "- [ ] Measure"),
+            VoiceNote(duration: 5, title: "Private", cleanedNote: "secret", isLocked: true),
+            VoiceNote(duration: 5, title: "Kitchen ideas", cleanedNote: "Second note, same title"),
+        ]
+        let url = try XCTUnwrap(NoteExportService.shared.exportNotesAsZip(notes: notes))
+        defer { try? FileManager.default.removeItem(at: url) }
+        let entries = try zipEntryNames(url)
+        XCTAssertEqual(entries.count, 2, "the locked note stays out")
+        XCTAssertTrue(entries.allSatisfy { $0.hasPrefix("Voxbrief Notes ") }, "\(entries)")
+        XCTAssertEqual(Set(entries.map { ($0 as NSString).lastPathComponent }), ["001-Kitchen_ideas.md", "002-Kitchen_ideas.md"])
+    }
+
+    func testNoZipWhenEveryNoteIsLocked() {
+        XCTAssertNil(NoteExportService.shared.exportNotesAsZip(notes: [VoiceNote(title: "Private", isLocked: true)]))
+    }
+
+    /// File names from a zip's central directory (no unzip API on iOS).
+    private func zipEntryNames(_ url: URL) throws -> [String] {
+        let data = try Data(contentsOf: url)
+        var names: [String] = []
+        var i = 0
+        while i + 46 <= data.count {
+            if data[i] == 0x50, data[i + 1] == 0x4B, data[i + 2] == 0x01, data[i + 3] == 0x02 {
+                let nameLength = Int(data[i + 28]) | Int(data[i + 29]) << 8
+                let extraLength = Int(data[i + 30]) | Int(data[i + 31]) << 8
+                let commentLength = Int(data[i + 32]) | Int(data[i + 33]) << 8
+                let name = String(decoding: data[(i + 46)..<(i + 46 + nameLength)], as: UTF8.self)
+                if !name.hasSuffix("/") { names.append(name) }
+                i += 46 + nameLength + extraLength + commentLength
+            } else {
+                i += 1
+            }
+        }
+        return names
     }
 }

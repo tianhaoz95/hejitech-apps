@@ -163,6 +163,11 @@ public final class NoteListViewModel: ObservableObject {
         }
         return notes.filter { !$0.isPinned }
     }
+
+    /// Every unlocked note, zipped when shared (not when the menu draws).
+    public var notesArchive: NotesArchive { NotesArchive(notes: notes) }
+
+    public var hasExportableNotes: Bool { notes.contains { !$0.isLocked } }
     
     public var allTags: [String] {
         var tagsSet = Set<String>()

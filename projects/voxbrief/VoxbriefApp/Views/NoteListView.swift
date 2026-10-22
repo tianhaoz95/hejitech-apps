@@ -445,6 +445,11 @@ public struct NoteListView: View {
                     } label: {
                         Label("Import Audio…", systemImage: "square.and.arrow.down")
                     }
+
+                    ShareLink(item: viewModel.notesArchive, preview: SharePreview("Voxbrief notes (.zip)")) {
+                        Label("Export All Notes (.zip)", systemImage: "archivebox")
+                    }
+                    .disabled(!viewModel.hasExportableNotes)
                 }
 
                 Section("Sort By") {
