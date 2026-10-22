@@ -2,6 +2,14 @@
   "_doc": "Release notes for the in-app \"What's new\" sheet (public/whats-new.js). Newest first, keyed by package.json version. `highlights` are the features (the main stage); each may carry a `visual` (timeline | glyph) and a `try` action (settings:<section id> | tab:<type> | split | palette | copy:<text>). `fixes` is a list of one-line strings (bug fixes and small improvements, inline `code` allowed) shown on a secondary page behind a footer button. A fixes-only release omits `highlights` (and may omit `title`/`summary`); upgrading to only fixes-only releases shows a toast instead of opening the sheet.",
   "releases": [
     {
+      "version": "1.35.1",
+      "date": "2026-10-22",
+      "fixes": [
+        "In the desktop app, new terminal tabs opened bash (\"The default interactive shell is now zsh\") instead of your login shell, so `~/.zshrc` and its aliases weren't loaded. They open your login shell again; a shell you set in Settings still wins.",
+        "Switching workspaces could stop working after the saved layout lost some of its workspaces; all four are there again."
+      ]
+    },
+    {
       "version": "1.35.0",
       "date": "2026-10-22",
       "title": "Terminals that speak up",

@@ -150,7 +150,8 @@ const DEFAULT_SETTINGS = {
   termRenderer: 'webgl', // 'webgl' (GPU accelerated, sharpest), 'canvas' (2D), or 'dom'
   termScrollback: 10000,
   termBellSound: true, // a short chime when a terminal rings the bell (\a)
-  shell: process.env.SHELL || '/bin/bash',
+  shell: '', // blank → the user's login shell (see loginShell())
+  shellDefaultFixed: true, // files from before 1.35.1 lack it (see loadSettingsFromDisk)
   browserHomepage: '', // blank → new browser tabs show the local start page
   browserEngine: 'auto', // browser tabs in the desktop app: 'auto' (native webview) or 'proxy'
   hostBrowserPath: '', // host browser tabs: Chromium-based executable (blank → auto-detect)
@@ -224,9 +225,18 @@ const DEFAULT_SETTINGS = {
 // stat poll picks up hand edits to settings.json without a restart.
 let settingsCache = null;
 
+// The account's login shell. A desktop app launched from Finder/launchd has no
+// $SHELL, so fall back to the passwd entry (what Terminal.app uses) before a
+// platform default.
+function loginShell() {
+  if (process.env.SHELL) return process.env.SHELL;
+  try { const { shell } = os.userInfo(); if (shell) return shell; } catch {}
+  return os.platform() === 'win32' ? 'cmd.exe' : os.platform() === 'darwin' ? '/bin/zsh' : '/bin/bash';
+}
+
 function loadSettingsFromDisk() {
-  let s;
-  try { s = { ...DEFAULT_SETTINGS, ...JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')) }; }
+  let s, saved;
+  try { saved = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')); s = { ...DEFAULT_SETTINGS, ...saved }; }
   // No settings file yet means a fresh install: there's nothing "new" to show,
   // so count the running version as seen. (An upgrade keeps its file, and one
   // from before the What's new sheet lacks the key → '' → the sheet shows.)
@@ -236,6 +246,10 @@ function loadSettingsFromDisk() {
   if (/^https?:\/\/(www\.)?google\.com\/?$/i.test(s.browserHomepage || '')) {
     s.browserHomepage = DEFAULT_SETTINGS.browserHomepage;
   }
+  // Up to 1.35.0 the desktop apps (no $SHELL) defaulted the shell to /bin/bash
+  // and saving Settings wrote it to the file, so zsh users lost ~/.zshrc. Clear
+  // that saved fallback once; a shell picked after this sticks.
+  if (!saved.shellDefaultFixed && s.shell === '/bin/bash' && loginShell() !== '/bin/bash') s.shell = '';
   return s;
 }
 
@@ -1913,7 +1927,7 @@ wss.on('connection', (ws) => {
           } catch {}
           break;
         }
-        const shell = readSettings().shell || process.env.SHELL || (os.platform() === 'win32' ? 'cmd.exe' : 'bash');
+        const shell = readSettings().shell || loginShell();
         const shellArgs = os.platform() === 'win32' ? [] : ['-l'];
         const ptyEnv = { ...process.env };
         delete ptyEnv.npm_config_prefix;

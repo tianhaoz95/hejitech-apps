@@ -35,6 +35,20 @@ let currentWorkspaces = [
 ];
 let activeWorkspaceIndex = 0;
 
+// The saved session as exactly four workspaces and an index in range. Older
+// files are a bare layout (→ Workspace 1); a short or hand-edited list (e.g.
+// one written by a test with a single workspace) is padded, since everything
+// here indexes workspaces 0–3 and a missing one broke switching.
+function normalizeSavedSession(saved) {
+  const list = Array.isArray(saved?.workspaces) ? saved.workspaces : [{ layout: saved }];
+  const workspaces = [0, 1, 2, 3].map(i => ({
+    name: list[i]?.name || `Workspace ${i + 1}`,
+    layout: list[i]?.layout || null
+  }));
+  const idx = Array.isArray(saved?.workspaces) ? saved.activeWorkspaceIndex : 0;
+  return { workspaces, activeWorkspaceIndex: Number.isInteger(idx) && idx >= 0 && idx < 4 ? idx : 0 };
+}
+
 function ensureWorkspaceViews() {
   const workspace = document.getElementById('workspace');
   if (!workspace) return;
@@ -358,22 +372,7 @@ async function bootstrapSession() {
     if (typeof nativeBrowserProbe !== 'undefined') await nativeBrowserProbe;
     const saved = await fetch('/api/session').then(r => r.json());
     if (saved) {
-      if (saved.workspaces && Array.isArray(saved.workspaces)) {
-        currentWorkspaces = saved.workspaces.map(ws => ({
-          name: ws.name,
-          layout: ws.layout
-        }));
-        activeWorkspaceIndex = typeof saved.activeWorkspaceIndex === 'number' ? saved.activeWorkspaceIndex : 0;
-      } else {
-        // Upgrade old session format
-        currentWorkspaces = [
-          { name: "Workspace 1", layout: saved },
-          { name: "Workspace 2", layout: null },
-          { name: "Workspace 3", layout: null },
-          { name: "Workspace 4", layout: null }
-        ];
-        activeWorkspaceIndex = 0;
-      }
+      ({ workspaces: currentWorkspaces, activeWorkspaceIndex } = normalizeSavedSession(saved));
 
       // Update workspace active/inactive class states
       for (let i = 0; i < 4; i++) {
@@ -451,18 +450,7 @@ async function resyncWorkspace() {
     const saved = await fetch('/api/session').then(r => r.json());
     if (!saved) return;
 
-    let normalizedSaved = saved;
-    if (!saved.workspaces || !Array.isArray(saved.workspaces)) {
-      normalizedSaved = {
-        workspaces: [
-          { name: "Workspace 1", layout: saved },
-          { name: "Workspace 2", layout: null },
-          { name: "Workspace 3", layout: null },
-          { name: "Workspace 4", layout: null }
-        ],
-        activeWorkspaceIndex: 0
-      };
-    }
+    const normalizedSaved = normalizeSavedSession(saved);
 
     // Check if saved state matches local state exactly to avoid unnecessary rebuild
     let unchanged = true;
@@ -470,7 +458,7 @@ async function resyncWorkspace() {
     if (unchanged) {
       for (let i = 0; i < 4; i++) {
         const localLayout = captureWorkspaceState(i);
-        const savedLayout = normalizedSaved.workspaces[i]?.layout || null;
+        const savedLayout = normalizedSaved.workspaces[i].layout;
         if (JSON.stringify(localLayout) !== JSON.stringify(savedLayout)) {
           unchanged = false;
           break;
@@ -483,11 +471,7 @@ async function resyncWorkspace() {
     }
 
     deactivateAllWorkspaces();
-    currentWorkspaces = normalizedSaved.workspaces.map(ws => ({
-      name: ws.name,
-      layout: ws.layout
-    }));
-    activeWorkspaceIndex = typeof normalizedSaved.activeWorkspaceIndex === 'number' ? normalizedSaved.activeWorkspaceIndex : 0;
+    ({ workspaces: currentWorkspaces, activeWorkspaceIndex } = normalizedSaved);
 
     // Update workspace active/inactive class states
     for (let i = 0; i < 4; i++) {
