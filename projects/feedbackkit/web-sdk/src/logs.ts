@@ -57,10 +57,15 @@ export function redactMessage(message: string): string {
     .replace(/https?:\/\/[^\s"'<>)]+/g, (url) => redactUrl(url))
     .replace(/("?(?:password|passwd|secret|token|api[_-]?key|access[_-]?token|refresh[_-]?token)"?\s*[:=]\s*)("[^"]*"|'[^']*'|[^\s,}&]+)/gi, "$1[redacted]")
     .replace(/\b\d{3}-\d{2}-\d{4}\b/g, "[redacted-ssn]")
-    .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, "[redacted-email]")
-    .replace(/(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g, "[redacted-phone]");
-
-  return redactCreditCards(redacted);
+    .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, "[redacted-email]");
+  // Cards before phones: a card number contains phone-shaped runs.
+  redacted = redactCreditCards(redacted);
+  // A phone number is a whole number on its own: not part of a longer run of digits (order ids,
+  // timestamps), and written like one (a +country code, an (area) code or separators).
+  return redacted.replace(
+    /(?<![\d.])(?:\+\d{1,3}[-.\s]?)?(?:\(\d{3}\)\s?|\d{3}[-.\s])\d{3}[-.\s]\d{4}(?![\d.])/g,
+    "[redacted-phone]",
+  );
 }
 
 export function stringifyArg(arg: unknown): string {

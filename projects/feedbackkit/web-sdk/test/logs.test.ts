@@ -35,4 +35,19 @@ describe("logs PII redaction", () => {
     const raw = 'Auth: Bearer secret_token_xyz, password: "superSecretPassword123"';
     expect(redactMessage(raw)).toBe('Auth: Bearer [redacted], password: [redacted]');
   });
+
+  it("redacts an unformatted card number whole, as a card", () => {
+    expect(redactMessage("rendered 3 hotels in 120ms, 4111111111111111 cached")).toBe(
+      "rendered 3 hotels in 120ms, [redacted-card] cached",
+    );
+  });
+
+  it("leaves ordinary long numbers and dotted versions alone", () => {
+    expect(redactMessage("order 1234567890123 shipped")).toBe("order 1234567890123 shipped");
+    expect(redactMessage("build 2026.10.21 took 1234 ms")).toBe("build 2026.10.21 took 1234 ms");
+  });
+
+  it("still redacts formatted phone numbers", () => {
+    expect(redactMessage("call 555-010-4477 or (555) 010-4477")).toBe("call [redacted-phone] or [redacted-phone]");
+  });
 });

@@ -60,13 +60,17 @@ export function parseUserAgent(ua: string): ParsedUserAgent {
 }
 
 /** Query parameter names whose values are replaced before a page URL leaves the browser. */
-const SENSITIVE_PARAM = /token|secret|password|passwd|pwd|auth|session|key|code|signature|sig|jwt|otp|email|phone|mobile|tel|card|ssn/i;
+const SENSITIVE_PARAM = /token|secret|password|passwd|pwd|auth|session|key|code|signature|sig|jwt|otp|email/i;
+/** Personal-data names, only at the start of a word (phone=, user_phone=, cardNumber=; not hotel=). */
+const PERSONAL_PARAM = /(?:^|[^a-z])(?:phone|mobile|tel|card|ssn)|[a-z](?:Phone|Mobile|Tel|Card|Ssn)/;
+
+const isSensitiveParam = (name: string) => SENSITIVE_PARAM.test(name) || PERSONAL_PARAM.test(name);
 
 export function redactUrl(href: string): string {
   try {
     const url = new URL(href);
     for (const name of [...url.searchParams.keys()]) {
-      if (SENSITIVE_PARAM.test(name)) url.searchParams.set(name, "[redacted]");
+      if (isSensitiveParam(name)) url.searchParams.set(name, "[redacted]");
     }
     // OAuth implicit-flow fragments (#access_token=...) are the classic leak.
     if (url.hash && SENSITIVE_PARAM.test(url.hash)) url.hash = "#[redacted]";
