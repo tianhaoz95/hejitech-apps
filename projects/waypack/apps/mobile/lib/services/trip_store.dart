@@ -7,6 +7,24 @@ import 'package:path_provider/path_provider.dart';
 
 import '../models/trip.dart';
 
+class StorageUsage {
+  final int tripBundlesBytes;
+  final int mapTilesBytes;
+  final int sdkBytes;
+  final int totalBytes;
+  final int tripCount;
+  final int tilesCount;
+
+  const StorageUsage({
+    required this.tripBundlesBytes,
+    required this.mapTilesBytes,
+    required this.sdkBytes,
+    required this.totalBytes,
+    required this.tripCount,
+    required this.tilesCount,
+  });
+}
+
 /// On-device layout (design §8.2):
 ///   `<support>`/trips/{trip_id}/v{n}/...        unzipped bundle
 ///   `<support>`/trips/{trip_id}/local.json      what's downloaded
@@ -76,6 +94,68 @@ class TripStore {
       }
     }
     return n;
+  }
+
+  /// Breakdown of storage usage across trips, tile caches, and SDK assets.
+  Future<StorageUsage> calculateStorageUsage() async {
+    var tripBundles = 0;
+    var tripCount = 0;
+    final tripsDir = Directory('${root.path}/trips');
+    if (await tripsDir.exists()) {
+      await for (final d in tripsDir.list()) {
+        if (d is Directory) {
+          tripCount++;
+          await for (final e in d.list(recursive: true)) {
+            if (e is File) tripBundles += await e.length();
+          }
+        }
+      }
+    }
+
+    var mapTiles = 0;
+    var tilesCount = 0;
+    final tilesDir = Directory('${root.path}/tiles');
+    if (await tilesDir.exists()) {
+      await for (final e in tilesDir.list(recursive: true)) {
+        if (e is File && e.path.endsWith('.pmtiles')) {
+          tilesCount++;
+          mapTiles += await e.length();
+        }
+      }
+    }
+
+    var sdk = 0;
+    if (await sdkRoot.exists()) {
+      await for (final e in sdkRoot.list(recursive: true)) {
+        if (e is File) sdk += await e.length();
+      }
+    }
+
+    return StorageUsage(
+      tripBundlesBytes: tripBundles,
+      mapTilesBytes: mapTiles,
+      sdkBytes: sdk,
+      totalBytes: tripBundles + mapTiles + sdk,
+      tripCount: tripCount,
+      tilesCount: tilesCount,
+    );
+  }
+
+  /// Clears map tile cache files (.pmtiles) across all trips without wiping trip manifests or notes.
+  Future<int> clearMapTilesCache() async {
+    var freed = 0;
+    final tilesDir = Directory('${root.path}/tiles');
+    if (await tilesDir.exists()) {
+      await for (final e in tilesDir.list(recursive: true)) {
+        if (e is File && e.path.endsWith('.pmtiles')) {
+          freed += await e.length();
+          try {
+            await e.delete();
+          } catch (_) {}
+        }
+      }
+    }
+    return freed;
   }
 
   /// Unpacks the bundled SDK once per SDK version; returns its directory.
