@@ -446,12 +446,10 @@ public struct NoteListView: View {
                         Label("Import Audio…", systemImage: "square.and.arrow.down")
                     }
 
-                    if let zipURL = viewModel.exportNotesAsZip() {
-                        ShareLink(item: zipURL) {
-                            Label("Export All Notes (.zip)", systemImage: "archivebox")
-                        }
-                        .disabled(viewModel.notes.isEmpty)
+                    ShareLink(item: viewModel.notesArchive, preview: SharePreview("Voxbrief notes (.zip)")) {
+                        Label("Export All Notes (.zip)", systemImage: "archivebox")
                     }
+                    .disabled(!viewModel.hasExportableNotes)
                 }
 
                 Section("Sort By") {

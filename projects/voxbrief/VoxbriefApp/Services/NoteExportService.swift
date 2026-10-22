@@ -1,4 +1,6 @@
+import CoreTransferable
 import Foundation
+import UniformTypeIdentifiers
 
 /// Prepares notes for export to Obsidian, Bear, Apple Notes, plain text, or rich HTML.
 public final class NoteExportService: @unchecked Sendable {
@@ -45,14 +47,19 @@ public final class NoteExportService: @unchecked Sendable {
     }
 
     /// Exports an array of notes into a structured .zip archive containing Markdown files with YAML frontmatter.
+    /// Locked notes stay out: they're behind Face ID in the app, and an archive would hand them out.
     public func exportNotesAsZip(notes: [VoiceNote]) -> URL? {
+        let notes = notes.filter { !$0.isLocked }
         guard !notes.isEmpty else { return nil }
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("VoxbriefExport-\(UUID().uuidString)", isDirectory: true)
-        let zipDestination = FileManager.default.temporaryDirectory.appendingPathComponent("Voxbrief-Notes-\(ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")).zip")
+        let stamp = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")
+        // The zip holds one folder, named like the archive (a unique parent keeps runs apart).
+        let workDir = FileManager.default.temporaryDirectory.appendingPathComponent("VoxbriefExport-\(UUID().uuidString)", isDirectory: true)
+        let tempDir = workDir.appendingPathComponent("Voxbrief Notes \(stamp)", isDirectory: true)
+        let zipDestination = FileManager.default.temporaryDirectory.appendingPathComponent("Voxbrief-Notes-\(stamp).zip")
 
         try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer {
-            try? FileManager.default.removeItem(at: tempDir)
+            try? FileManager.default.removeItem(at: workDir)
         }
 
         for (index, note) in notes.enumerated() {
@@ -382,3 +389,18 @@ public final class NoteExportService: @unchecked Sendable {
         return sanitized.isEmpty ? "VoiceNote_\(note.id.uuidString.prefix(8))" : sanitized
     }
 }
+
+/// All unlocked notes as one .zip, built only when the share sheet asks for it.
+public struct NotesArchive: Transferable {
+    public let notes: [VoiceNote]
+
+    public static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(exportedContentType: .zip) { archive in
+            guard let url = NoteExportService.shared.exportNotesAsZip(notes: archive.notes) else {
+                throw CocoaError(.fileWriteUnknown)
+            }
+            return SentTransferredFile(url)
+        }
+    }
+}
+
