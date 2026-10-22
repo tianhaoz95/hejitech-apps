@@ -58,7 +58,77 @@ function handleWsMessage(msg) {
   }
 }
 
+let reconnectBackoff = 1000;
+let reconnectTimer = null;
+let reconnectCountdownInterval = null;
+let reconnectBannerEl = null;
+
+function showReconnectBanner(secondsRemaining) {
+  if (!reconnectBannerEl) {
+    reconnectBannerEl = document.createElement('div');
+    reconnectBannerEl.id = 'reconnect-banner';
+    const textSpan = document.createElement('span');
+    textSpan.id = 'reconnect-banner-text';
+    const btn = document.createElement('button');
+    btn.id = 'reconnect-banner-btn';
+    btn.textContent = 'Reconnect Now';
+    btn.addEventListener('click', () => {
+      triggerImmediateReconnect();
+    });
+    reconnectBannerEl.appendChild(textSpan);
+    reconnectBannerEl.appendChild(btn);
+    document.body.appendChild(reconnectBannerEl);
+  }
+  const textSpan = reconnectBannerEl.querySelector('#reconnect-banner-text');
+  if (textSpan) {
+    textSpan.textContent = `⚠️ Connection lost. Reconnecting in ${secondsRemaining}s...`;
+  }
+  reconnectBannerEl.style.display = 'flex';
+}
+
+function hideReconnectBanner() {
+  if (reconnectBannerEl) {
+    reconnectBannerEl.style.display = 'none';
+  }
+  if (reconnectCountdownInterval) {
+    clearInterval(reconnectCountdownInterval);
+    reconnectCountdownInterval = null;
+  }
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+}
+
+function triggerImmediateReconnect() {
+  hideReconnectBanner();
+  connectWs();
+}
+
+function scheduleReconnect() {
+  hideReconnectBanner();
+  let remainingMs = reconnectBackoff;
+  showReconnectBanner(Math.ceil(remainingMs / 1000));
+
+  reconnectCountdownInterval = setInterval(() => {
+    remainingMs -= 1000;
+    if (remainingMs > 0) {
+      showReconnectBanner(Math.ceil(remainingMs / 1000));
+    } else {
+      clearInterval(reconnectCountdownInterval);
+      reconnectCountdownInterval = null;
+    }
+  }, 1000);
+
+  reconnectTimer = setTimeout(() => {
+    reconnectBackoff = Math.min(reconnectBackoff * 2, 16000);
+    connectWs();
+  }, reconnectBackoff);
+}
+
 function _onConnected() {
+  hideReconnectBanner();
+  reconnectBackoff = 1000;
   wsReady = true;
   // Flush queued creates (e.g. after reconnect)
   while (pendingPtys.length) {
@@ -93,8 +163,7 @@ function connectWs() {
 
   ws.addEventListener('close', () => {
     wsReady = false;
-    // Reconnect after 1s
-    setTimeout(connectWs, 1000);
+    scheduleReconnect();
   });
 }
 
