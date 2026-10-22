@@ -77,3 +77,15 @@ describe("LogBuffer", () => {
     expect(stringifyArg(undefined)).toBe("undefined");
   });
 });
+
+describe("redactUrl personal-data parameters", () => {
+  it("redacts phone, card and ssn parameters but not words that merely contain them", () => {
+    const out = new URL(redactUrl("https://shop.example/a?phone=5550104477&cardNumber=4111&user_ssn=1&hotel=Ritz&step=2"));
+    expect(out.searchParams.get("phone")).toBe("[redacted]");
+    expect(out.searchParams.get("cardNumber")).toBe("[redacted]");
+    expect(out.searchParams.get("user_ssn")).toBe("[redacted]");
+    expect(out.searchParams.get("hotel")).toBe("Ritz");
+    expect(out.searchParams.get("step")).toBe("2");
+  });
+});
+
