@@ -27,25 +27,23 @@ public final class CalendarExportService: @unchecked Sendable {
     private let eventStore = EKEventStore()
     #endif
 
-    public static func detectDate(in text: String) -> Date? {
+    /// The first date in `text` that isn't over: a note about a plan often also mentions when
+    /// something happened before ("we shipped on Aug 14; aim for December"), and an event belongs
+    /// on the plan. Dates earlier today still count (a morning note about a 9 am meeting).
+    public static func detectDate(in text: String, now: Date = Date()) -> Date? {
         guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.date.rawValue) else {
             return nil
         }
+        let startOfToday = Calendar.current.startOfDay(for: now)
         let matches = detector.matches(in: text, options: [], range: NSRange(location: 0, length: (text as NSString).length))
-        for match in matches {
-            if let date = match.date {
-                return date
-            }
-        }
-        return nil
+        return matches.lazy.compactMap(\.date).first { $0 >= startOfToday }
     }
 
-    public static func resolvedStartDate(for note: VoiceNote, fallbackDate: Date = Date().addingTimeInterval(3600)) -> Date {
-        if let titleDate = detectDate(in: note.title) {
+    public static func resolvedStartDate(for note: VoiceNote, fallbackDate: Date = Date().addingTimeInterval(3600), now: Date = Date()) -> Date {
+        if let titleDate = detectDate(in: note.title, now: now) {
             return titleDate
         }
-        let searchString = "\(note.summary) \(note.cleanedNote)"
-        if let bodyDate = detectDate(in: searchString) {
+        if let bodyDate = detectDate(in: "\(note.summary) \(note.cleanedNote)", now: now) {
             return bodyDate
         }
         return fallbackDate
