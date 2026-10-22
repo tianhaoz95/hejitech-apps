@@ -58,7 +58,7 @@
           Project: "projects/weehours", Kind: "Bug fix | Quality | Performance | Feature | Security", Effort: "S | M | L",
           Evidence: "One line: TimelineView.swift:120 rebuilds every row on each tick; or https://… (iOS 27 adds …)",
           Release: "patch (0.8.6 → 0.8.7)",
-          Captures: "What the build review would show: simulator before/after, light and dark",
+          Captures: "The evidence SKILL.md §5 calls for: simulator before/after, light and dark; or numbers (harness, runs); or a test failing on main, passing here",
           Sources: "https://… (release notes, API docs, where users ask for it); – when the idea comes from the code alone",
           "Checked on": "main @ abc1234",   // the commit the gap was verified on; phase B re-checks it
           // "Proposed before": "2026-10-21, not picked",   // only when projects/<name>/build-next.md has it

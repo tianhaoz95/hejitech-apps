@@ -1,6 +1,6 @@
 ---
 name: heji-build-next
-description: Go through every project in this HEJI monorepo, find the most valuable things to build for each (features, quality/performance improvements, bug fixes), grounded only in the current code and in what's new outside (web search: new platform APIs, library and model releases, what users ask for), never in internal reports or past reviews, and propose several per project in a heji-candidate-review site; after the user picks, build the picks autonomously on local-only feature branches (never pushed), capture them running (real screenshots, screen recordings turned into GIFs) and present the finished builds in a second review site where the user picks what to merge. When that hand-off comes back, merge the picked branches into main, delete every build branch, push and release the projects that changed. The user can set how many proposals per project (default 3) and which projects. Use when asked to "build the next thing for every project", "find and build what's most valuable", "do a build round", "propose what to build next", "autonomous improvements across the repo", or invoked as /heji-build-next; also when a pasted hand-off says it is a heji-build-next proposal or build review.
+description: Go through every project in this HEJI monorepo, find the most valuable things to build for each (features, quality/performance improvements, bug fixes), grounded only in the current code and in what's new outside (web search: new platform APIs, library and model releases, what users ask for), never in internal reports or past reviews, and propose several per project in a heji-candidate-review site; after the user picks, build the picks autonomously on local-only feature branches (never pushed), show real evidence of each (screenshots and GIFs of the built app, measured numbers for performance work, failing-then-passing tests, real API calls; never mockups) and present the finished builds in a second review site where the user picks what to merge. When that hand-off comes back, merge the picked branches into main, delete every build branch, push and release the projects that changed. The user can set how many proposals per project (default 3) and which projects. Use when asked to "build the next thing for every project", "find and build what's most valuable", "do a build round", "propose what to build next", "autonomous improvements across the repo", or invoked as /heji-build-next; also when a pasted hand-off says it is a heji-build-next proposal or build review.
 ---
 
 # Build the next thing, for every project
@@ -161,7 +161,7 @@ Build the site with the `heji-candidate-review` skill (read its SKILL.md; §2 sc
      files / risks / verify-plan).
    - **Facts**: `Project`, `Kind` (Bug fix, Quality, Performance, Feature, Security), `Effort`
      (S/M/L), `Evidence` (one line), `Release` (patch for fixes/quality, minor for features),
-     `Captures` (what the build review would show: device/simulator, before/after, GIF, numbers),
+     `Captures` (the evidence §5 calls for with this kind of change: before/after on a simulator, a GIF, numbers from which harness, a failing-then-passing test, a real API call),
      `Sources` (outside URLs, or "–"), `Checked on` (`main @ <short sha>` the gap was verified on).
    - **Self-contained**: the hand-off copies only the fields above (name, tagline, concept, moves,
      facts, spec, design blocks as text) for the picked proposals. An agent in another session
@@ -235,22 +235,62 @@ volume, not the system disk.
 
 ### 4. Verify
 
-Run the project's own checks in the worktree: its tests, lints, type checks, the build for every
-platform it ships (iOS + watch, Mac, Worker, web). Then run the change for real, preferring the
-attached device (root `CLAUDE.md`, "Testing on devices"). A build that doesn't pass stays out
-of the review: fix it, or drop it and note why. Record what you ran and the results; they go in
-the review.
+Run the project's own checks in the worktree: its tests, lints, type checks, **and the build of
+the app itself for every platform it ships** (iOS + watch, Mac, Worker, web). A Swift package's
+`swift test` passing doesn't mean the app compiles: an iOS app is built with `xcodebuild`, every
+time. Then run the change for real, preferring the attached device (root `CLAUDE.md`, "Testing on
+devices"). A build that doesn't pass stays out of the review: fix it, or drop it and note why.
 
-### 5. Capture it (real, not mocks)
+Every command you ran and the tail of its output go in the build's **evidence log** (§5), copied,
+not summarised. Never claim a test that doesn't exist: name the test files the branch adds or the
+suite that already covers the code, with the count its output printed.
 
-Every build gets real captures of the branch's app running: **before** (main) and **after** (the
-branch) screenshots of what changed, plus a **GIF** of the flow when the value is in motion
-(navigation, animation, a fix to an interaction). Performance work gets measured numbers
-(before/after, how measured) instead of or beside pictures; a non-visual fix gets a capture of
-the repro now behaving (test output, a log, the UI state).
+### 5. Evidence (real, never mocks)
 
-Save into `reports/<date>-build-next/site/media/<project>/` (create the build review first, §6
-step 1). Use the project's own screenshot tooling when it has some (grep its
+The review shows what the branch **does**, produced by the branch: its app, its server, its tests,
+its measurements. What that is depends on the kind of change:
+
+| Change | Evidence | Shown in the review as |
+|---|---|---|
+| Visible UI (a feature, a UI fix) | Screenshots of the built app in the same state on main (**before**) and the branch (**after**), same harness, same simulator/window size; dark mode too if it touches colours | `views` (`.pair` or one per frame) |
+| Something that moves (navigation, animation, an interaction fix) | A recording of the flow on the branch, and of the broken flow on main for a fix | GIF `views` |
+| System surfaces (notifications, Live Activities, widgets, App Intents/Shortcuts, Spotlight, hotkeys, menu bar) | The real system surface on a simulator or this Mac, triggered by a debug launch argument, `xcrun simctl push`, the Shortcuts app or a UI test | `views`; if it can't be driven here (Siri by voice, device-only hardware, hours of background time): the test that drives the code, and `Captured: "Not captured: <why>"` |
+| Performance (speed, memory, size, battery) | **Numbers**, not pictures: the same harness on main and the branch, same device, at least 5 runs, median (and p95 when it varies). XCTest `measure`/`XCTMetric`, `xctrace` with signposts, `hyperfine` for CLIs, a Node timing script, Lighthouse for sites, `flutter drive --profile`, `du`/size reports. **Don't add a metrics screen to the app to have something to photograph**: the review draws the chart | `design: [{ kind: "chart", basis: "measured", source: "media/<project>/<slug>.log" }]`; plus a recording when the difference is visible (jank, launch) |
+| Logic or a bug fix with no UI | A regression test that **fails on main and passes on the branch**: copy the new test onto a temporary detached worktree of main, run it there, then on the branch | `design: [{ kind: "code", before: <main's failing output>, after: <branch's passing output> }]` |
+| SDK, API, CLI, MCP tool, Worker endpoint | A real call against the branch's build: run the server or CLI and keep the request and response (MCP: JSON-RPC `tools/list` + `tools/call` over stdio; Worker: `wrangler dev` + `curl`; SDK: the project's example or test host app) | `code` block; a screenshot only of real UI the call shows up in (e.g. the dashboard) |
+| Security | A test showing the attack now fails; nothing that explains the hole before it's merged | `code` block, details withheld |
+| Build, CI, tooling | The command's output on main and on the branch | `code` block |
+
+Text evidence goes in as text (`code` blocks), never as a picture of text.
+
+**Never invented.** No image the agent composed: no HTML, SVG or canvas rendered by a browser
+(`page.setContent`, a local page "styled like the app"), no drawing, no edited or annotated
+screenshot, no device frame painted around a fake screen. Playwright screenshots only the
+project's own site or web app, served from the branch by the project's own command. A widget-test
+or snapshot-test render isn't the app: use it only when the app can't run here, and say so in
+`Captured`. When real evidence isn't possible, the card says **"Not captured: <why>"** (the `none`
+render in the example) and the build is still reviewed on its code, tests and log. An honest gap
+is fine; a plausible picture is not.
+
+**The evidence log** `site/media/<project>/<slug>.log` (slug = the branch name after
+`<date>-<project>-`), one per build, plain text:
+
+```
+branch heji-build/2026-10-21-weehours-next-feed-reminder @ 6dbb274
+$ xcodebuild -scheme WeeHours -destination 'platform=iOS Simulator,id=<udid>' -derivedDataPath … build
+** BUILD SUCCEEDED **
+$ swift test --package-path apps/ios/LogCore
+Executed 91 tests, with 0 failures (0 unexpected) in 0.71 seconds
+$ xcrun simctl io <udid> screenshot after.png        # iPhone 17, iOS 27.0, launched with -ShowNextFeed
+-> after.png
+```
+
+Every command that built, tested, measured or captured anything, with the last lines of its
+output; every media file named on the line that made it. The review links it (the `log` view in
+the example). Relative paths only, no user names or hostnames (the repo is public).
+
+Save captures into `reports/<date>-build-next/site/media/<project>/` (create the build review
+first, §6 step 1). Use the project's own screenshot tooling when it has some (grep its
 `CLAUDE.md`/`scripts/`/`tools/` for "screenshot"). Otherwise:
 
 | Surface | Screenshot | Recording |
@@ -298,6 +338,7 @@ After every pick is built, build the second site:
    .shot { display: block; width: 100%; height: 100%; background: #111; }
    .keep { display: grid; place-content: center; gap: 6px; height: 100%; text-align: center; font: 600 28px Inter, sans-serif; color: #666; }
    .keep small { font-size: 16px; font-weight: 500; }
+   .log { display: block; width: 100%; height: 100%; border: 0; background: #fff; }
    .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; height: 100%; padding: 14px; box-sizing: border-box; background: #15171b; }
    .pair figure { margin: 0; display: grid; grid-template-rows: 1fr auto; gap: 8px; min-height: 0; }
    .pair img { width: 100%; height: 100%; object-fit: contain; min-height: 0; }
@@ -312,13 +353,25 @@ After every pick is built, build the second site:
    - **How it's implemented** (`spec`: today / proposed / files / risks / verify, plus `design`
      blocks when it's structural or measured; numbers are `basis: "measured"` with a `source`).
    - **Facts**: `Project`, `Kind`, `Effort`, `Branch`, `Commit` (short SHA of the branch head),
-     `Base`, `Diff` (`git diff --shortstat main...<branch>`), `Tests`, `Release` (patch for
-     fixes/quality, minor for features, with the version it would become), `Captured` (where
-     and how, e.g. simulator vs device).
-4. The `intro` lists picks that couldn't be built and why, in one line each, and anything found
-   along the way that needs the owner.
-5. Run the candidate-review checks (§4 there): serve, screenshot gallery/detail/compare, every
-   capture loads (no 404s in the server log), Copy summary names every branch.
+     `Base`, `Diff` (`git diff --shortstat main...<branch>`, pasted), `Tests` (the command and
+     the count its output printed, e.g. `swift test: 91 tests, 0 failures (3 new in
+     NextFeedTests)`), `Release` (patch for fixes/quality, minor for features, with the version
+     it would become), `Captured` (where and how: simulator model and OS, device, Mac window,
+     measured how; or `Not captured: <why>`).
+   - Claims in the text match the evidence: don't write "real captures", "all tests pass" or
+     "verified" into the subtitle, intro or a card unless the log shows it.
+4. The `intro` lists picks that couldn't be built and why, in one line each, builds shown without
+   captures and why, and anything found along the way that needs the owner.
+5. Check the evidence, then the site:
+   ```sh
+   node .claude/skills/heji-build-next/check_evidence.mjs reports/<date>-build-next   # must end "ok"
+   ```
+   It fails a build whose branch, commit or diff don't match, whose `Tests` names a test that
+   isn't on the branch, that has no evidence log or a log that doesn't name the branch head, or
+   whose capture is exactly a review frame's size (rendered for the review, not taken from the
+   app), isn't in the log, or is a page or drawing. Passing it isn't proof: look at every capture
+   yourself. Then the candidate-review checks (§4 there): serve, screenshot gallery/detail/compare,
+   every capture loads (no 404s in the server log), Copy summary names every branch.
 
 ### 7. Hand over
 
@@ -351,7 +404,7 @@ The pasted hand-off lists the branches to merge. Merge exactly those; nothing el
 4. **Update the ledgers**: each built proposal gets a line, `merged in <version it will ship as>`
    or `kept main after build` (with the owner's note), next to the phase-B lines already there.
 5. **Commit the build review and the ledgers** as the record (the proposal review is already in): drop
-   captures of builds that weren't merged (the ideas stay as text; set their `views` to `[]` and
+   captures and evidence logs of builds that weren't merged (the ideas stay as text; set their `views` to `[]` and
    `render` to a "not merged" card), reduce unmerged security findings to one line with no
    details, scan the rest for anything personal, secret or unreleased-but-secret, then commit
    `reports/<date>-build-next*/` and the `projects/*/build-next.md` ledgers in their own commit. Fix the What's New version on main now if the

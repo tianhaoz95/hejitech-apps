@@ -191,7 +191,9 @@ picking it up in a new session, read the files it names before acting. Then:
 The `heji-build-next` skill uses this engine twice, one group per project each time. First for
 proposals (`proposals.example.js`: a "skip" entry plus N proposals per project; 🏆 + ♥ = build
 these), then for the finished builds on local branches (`candidates.example.js`: a "keep main"
-entry beside each build, `<img>` renders of real screenshots/GIFs in `site/media/`). Each site's
+entry beside each build, `<img>` renders of real screenshots/GIFs in `site/media/`, measured charts and test output as
+`design` blocks, never mocks: there the evidence must come from the built branch, and
+`check_evidence.mjs` checks it). Each site's
 `nextSteps` turns its hand-off into the next phase's instructions.
 
 ## Variant: design walkthrough (no candidates)
