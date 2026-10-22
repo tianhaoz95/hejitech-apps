@@ -882,7 +882,9 @@ public struct NoteDetailView: View {
                     copyButton(text: viewModel.note.cleanedNote, field: .fullRewrite)
                 }
 
-                MarkdownLiteText(viewModel.note.cleanedNote)
+                MarkdownLiteText(viewModel.note.cleanedNote) { lineIndex in
+                    viewModel.toggleChecklistAt(lineIndex: lineIndex)
+                }
                     .foregroundStyle(.primary)
             }
             .padding(16)

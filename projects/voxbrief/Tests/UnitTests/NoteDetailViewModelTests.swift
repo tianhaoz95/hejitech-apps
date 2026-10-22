@@ -226,4 +226,26 @@ final class NoteDetailViewModelTests: XCTestCase {
         XCTAssertNotNil(viewModel.htmlShareFileURL)
         XCTAssertNotNil(viewModel.markdownShareFileURL)
     }
+
+    func testTickingAnActionItemLineKeepsCompletedActionItemsInStep() {
+        let tempStorageURL = FileManager.default.temporaryDirectory.appendingPathComponent("test_notes_\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: tempStorageURL) }
+        let repository = NoteRepository(customStorageURL: tempStorageURL)
+        let note = VoiceNote(title: "Party", cleanedNote: "### Action Items\n- [ ] Book the venue\n- [ ] Buy balloons",
+                             actionItems: ["Book the venue"], status: .ready)
+        repository.save(note)
+        let viewModel = NoteDetailViewModel(note: note, repository: repository)
+
+        viewModel.toggleChecklistAt(lineIndex: 1)   // an action item
+        XCTAssertEqual(viewModel.note.completedActionItems, ["Book the venue"])
+        XCTAssertTrue(viewModel.note.cleanedNote.contains("- [x] Book the venue"))
+
+        viewModel.toggleChecklistAt(lineIndex: 2)   // a checklist line that isn't one
+        XCTAssertTrue(viewModel.note.cleanedNote.contains("- [x] Buy balloons"))
+        XCTAssertEqual(viewModel.note.completedActionItems, ["Book the venue"])
+
+        viewModel.toggleChecklistAt(lineIndex: 1)   // and back
+        XCTAssertEqual(viewModel.note.completedActionItems, [])
+        XCTAssertEqual(repository.note(withId: note.id)?.cleanedNote, viewModel.note.cleanedNote)
+    }
 }

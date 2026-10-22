@@ -160,6 +160,24 @@ public final class NoteDetailViewModel: ObservableObject {
         repository.removeTag(id: note.id, tag: tag)
     }
 
+    /// Ticks the checklist line at `lineIndex` of the cleaned note. A line that is one of the
+    /// note's action items goes through `toggleActionItem`, so `completedActionItems` (what the
+    /// brief, widgets and exports read) stays in step; any other checklist line just flips.
+    public func toggleChecklistAt(lineIndex: Int) {
+        let lines = note.cleanedNote.components(separatedBy: "\n")
+        guard lines.indices.contains(lineIndex) else { return }
+        let trimmed = lines[lineIndex].trimmingCharacters(in: .whitespaces)
+        let item = trimmed.count > 6 ? String(trimmed.dropFirst(6)) : ""
+        if note.actionItems.contains(item), MarkdownLiteText.toggledChecklist(in: lines[lineIndex], at: 0) != lines[lineIndex] {
+            toggleActionItem(item)
+            return
+        }
+        let updated = MarkdownLiteText.toggledChecklist(in: note.cleanedNote, at: lineIndex)
+        guard updated != note.cleanedNote else { return }
+        note.cleanedNote = updated
+        repository.updateCleanedNote(id: note.id, cleanedNote: updated)
+    }
+
     public func exportActionItemsToReminders() async throws -> Int {
         try await RemindersExportService.shared.exportActionItems(note.actionItems, noteTitle: note.title)
     }
