@@ -241,6 +241,18 @@ the app itself for every platform it ships** (iOS + watch, Mac, Worker, web). A 
 time. Then run the change for real, preferring the attached device (root `CLAUDE.md`, "Testing on
 devices"). A build that doesn't pass stays out of the review: fix it, or drop it and note why.
 
+**Never against the owner's live state.** You may be running inside one of these apps (a Meowtrix
+terminal sets `MEOWTRIX_DATA_DIR` to the owner's `~/.meowtrix`), and a test server that inherits
+that writes the owner's real settings and sessions (a 2026-10-21 run reset them that way). Start
+every server, app and E2E suite a build runs through
+`.claude/skills/heji-build-next/clean_env.sh --home <command>` (drops every `<PROJECT>_*` variable;
+fresh empty HOME), and check the app's code for other places it keeps state (`grep -n
+"process.env\.\|homedir()\|applicationSupportDirectory"`) so each run gets its own. Build tools
+that need the real HOME (xcodebuild signing, flutter caches, npm) run under `clean_env.sh` without
+`--home`. Simulators: a dedicated one for the round (`xcrun simctl create heji-evidence …`), not one
+the owner has booted. Local backends: the project's own local stack seeded with invented data,
+never production.
+
 Every command you ran and the tail of its output go in the build's **evidence log** (§5), copied,
 not summarised. Never claim a test that doesn't exist: name the test files the branch adds or the
 suite that already covers the code, with the count its output printed.
