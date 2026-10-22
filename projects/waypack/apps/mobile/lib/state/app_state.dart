@@ -313,6 +313,25 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Deletes every offline map extract and records that: each downloaded trip keeps its
+  /// itinerary but its map list is emptied (on disk and in the local server), so its Map tile
+  /// says it needs a connection and Re-download brings the map back. Returns the bytes freed.
+  Future<int> clearMapCache() async {
+    final freed = await store.clearMapTilesCache();
+    for (final e in _trips.values) {
+      final local = e.local;
+      if (local == null || local.tiles.isEmpty) continue;
+      final cleared = LocalTrip.fromJson(
+        local.toJson()..['tiles'] = <dynamic>[],
+      );
+      await store.saveMeta(cleared);
+      e.local = cleared;
+      _register(cleared);
+    }
+    notifyListeners();
+    return freed;
+  }
+
   Future<void> deleteLocal(String id) async {
     await store.deleteLocal(id);
     server.versions.remove(id);

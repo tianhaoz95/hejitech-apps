@@ -99,8 +99,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (confirmed == true && mounted) {
-      final s = context.read<AppState>();
-      final freed = await s.store.clearMapTilesCache();
+      final freed = await context.read<AppState>().clearMapCache();
       _refreshStorage();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -298,8 +297,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: Icons.public,
                 chip: ChipColor.mint,
                 title: 'Use online map',
-                subtitle:
-                    'When connected, show the full map, including outside your downloaded areas. Turn off to use only downloaded maps, e.g. to save data abroad.',
+                subtitle: 'When connected, show the full map, including outside your downloaded areas. Turn off to use only downloaded maps, e.g. to save data abroad.',
                 trailing: Switch.adaptive(
                   value: s.useOnlineMap,
                   onChanged: s.setUseOnlineMap,
