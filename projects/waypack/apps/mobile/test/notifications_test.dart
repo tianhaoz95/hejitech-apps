@@ -36,7 +36,10 @@ void main() {
       dayIndex: 0,
     );
     expect(multiResult.title, 'Kyoto Fall Break · Historic Higashiyama');
-    expect(multiResult.body, '3 stops planned today, starting at Kiyomizu-dera.');
+    expect(
+      multiResult.body,
+      '3 stops planned today, starting at Kiyomizu-dera.',
+    );
 
     final daySingle = Day({
       'date': '2026-10-26',
@@ -96,7 +99,10 @@ void main() {
     expect(Reminders.debugScheduled.length, 2);
     expect(Reminders.debugScheduled[0].tripId, 'kyoto-2026');
     expect(Reminders.debugScheduled[0].scheduledDate.hour, 8);
-    expect(Reminders.debugScheduled[0].title, 'Kyoto Spring · Arashiyama Bamboo Grove');
+    expect(
+      Reminders.debugScheduled[0].title,
+      'Kyoto Spring · Arashiyama Bamboo Grove',
+    );
     expect(Reminders.debugScheduled[0].body, contains('2 stops planned today'));
 
     // Canceling clears scheduled items
@@ -104,7 +110,9 @@ void main() {
     expect(Reminders.debugScheduled.isEmpty, isTrue);
   });
 
-  testWidgets('renders morning briefing lockscreen notification banner', (t) async {
+  testWidgets('renders morning briefing lockscreen notification banner', (
+    t,
+  ) async {
     final key = GlobalKey();
     t.view.physicalSize = const Size(1170, 600);
     t.view.devicePixelRatio = 3;
@@ -147,7 +155,11 @@ void main() {
                             color: const Color(0xFFC2562D),
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: const Icon(Icons.luggage, size: 14, color: Colors.white),
+                          child: const Icon(
+                            Icons.luggage,
+                            size: 14,
+                            color: Colors.white,
+                          ),
                         ),
                         const SizedBox(width: 8),
                         const Text(
@@ -203,5 +215,27 @@ void main() {
           '/Volumes/DATA/GitHub/hejitech-apps/reports/2026-10-21-build-next/site/media/waypack/morning-briefing-notifs.png';
       File(outPath).writeAsBytesSync(png!.buffer.asUint8List());
     });
+  });
+
+  test('a long trip schedules only its next few mornings', () async {
+    final start = DateTime.now().add(const Duration(days: 1));
+    final days = [
+      for (var i = 0; i < 30; i++)
+        Day({
+          'date': start
+              .add(Duration(days: i))
+              .toIso8601String()
+              .substring(0, 10),
+          'title': 'Day',
+          'items': [],
+        }),
+    ];
+    await Reminders.scheduleDailyBriefings(
+      tripId: 'long',
+      tripTitle: 'Long trip',
+      days: days,
+    );
+    expect(Reminders.debugScheduled, hasLength(Reminders.maxBriefingsPerTrip));
+    expect(Reminders.debugScheduled.first.scheduledDate.day, start.day);
   });
 }

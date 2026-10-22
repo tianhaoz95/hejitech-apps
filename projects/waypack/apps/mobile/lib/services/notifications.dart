@@ -101,6 +101,11 @@ class Reminders {
   }
 
   /// Schedules daily 8:00 AM morning briefings for an active or upcoming trip itinerary.
+  /// iOS keeps at most 64 pending local notifications and silently drops the rest (the
+  /// 72-hour download reminder included), so a trip schedules only its next few mornings;
+  /// the rest are scheduled as the app reschedules on later launches.
+  static const maxBriefingsPerTrip = 10;
+
   static Future<void> scheduleDailyBriefings({
     required String tripId,
     required String tripTitle,
@@ -110,18 +115,13 @@ class Reminders {
     if (!_ready && !debugTesting) return;
 
     final now = tz.TZDateTime.now(tz.local);
-    for (var i = 0; i < days.length; i++) {
+    var scheduled = 0;
+    for (var i = 0; i < days.length && scheduled < maxBriefingsPerTrip; i++) {
       final day = days[i];
       final dt = DateTime.tryParse(day.date);
       if (dt == null) continue;
 
-      final when = tz.TZDateTime(
-        tz.local,
-        dt.year,
-        dt.month,
-        dt.day,
-        8,
-      );
+      final when = tz.TZDateTime(tz.local, dt.year, dt.month, dt.day, 8);
 
       // Skip past mornings
       if (!when.isAfter(now)) continue;
@@ -132,6 +132,7 @@ class Reminders {
         dayIndex: i,
       );
       final id = _dayId(tripId, i);
+      scheduled++;
 
       debugScheduled.add(
         ScheduledBriefing(
@@ -167,7 +168,10 @@ class Reminders {
   }
 
   /// Cancels all scheduled daily morning briefings for a trip.
-  static Future<void> cancelDailyBriefings(String tripId, {int maxDays = 60}) async {
+  static Future<void> cancelDailyBriefings(
+    String tripId, {
+    int maxDays = 60,
+  }) async {
     debugScheduled.removeWhere((s) => s.tripId == tripId);
     if (!_ready) return;
     for (var i = 0; i < maxDays; i++) {
