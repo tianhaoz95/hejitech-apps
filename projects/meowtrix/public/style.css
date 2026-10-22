@@ -460,8 +460,9 @@ html.mobile-ui .toolbar-clock {
   z-index: 10000; max-width: min(520px, 94vw);
   display: flex; align-items: center; gap: 12px;
   padding: 8px 14px; border-radius: 10px;
-  background: #271c08; color: #fde68a;
-  border: 1px solid #f59e0b; box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+  background: var(--glass-strong); color: var(--text);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  border: 1px solid #f59e0b; box-shadow: var(--shadow-lg);
   font-size: 13px; font-weight: 500;
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
