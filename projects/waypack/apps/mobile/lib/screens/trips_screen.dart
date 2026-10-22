@@ -42,10 +42,11 @@ class _TripsScreenState extends State<TripsScreen> {
     if (_filter == 'offline' && !entry.isOffline) return false;
     if (_query.isEmpty) return true;
     final q = _query.toLowerCase();
-    if (entry.title.toLowerCase().contains(q)) return true;
-    if (entry.startDate != null && entry.startDate!.toLowerCase().contains(q)) return true;
-    if (entry.endDate != null && entry.endDate!.toLowerCase().contains(q)) return true;
-    return false;
+    return [
+      entry.title,
+      entry.startDate,
+      entry.endDate,
+    ].any((field) => field != null && field.toLowerCase().contains(q));
   }
 
   @override
@@ -112,13 +113,23 @@ class _TripsScreenState extends State<TripsScreen> {
                         child: CircularProgressIndicator(color: p.accent),
                       ),
                     ),
-                  if (upcoming.isEmpty && past.isEmpty && !s.loading && isFiltering)
+                  if (upcoming.isEmpty &&
+                      past.isEmpty &&
+                      !s.loading &&
+                      isFiltering)
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 48,
+                        horizontal: 24,
+                      ),
                       child: Center(
                         child: Column(
                           children: [
-                            Icon(Icons.search_off_outlined, size: 48, color: p.muted),
+                            Icon(
+                              Icons.search_off_outlined,
+                              size: 48,
+                              color: p.muted,
+                            ),
                             const SizedBox(height: 12),
                             Text(
                               _query.isNotEmpty
@@ -142,7 +153,10 @@ class _TripsScreenState extends State<TripsScreen> {
                         ),
                       ),
                     ),
-                  if (upcoming.isEmpty && past.isEmpty && !s.loading && !isFiltering)
+                  if (upcoming.isEmpty &&
+                      past.isEmpty &&
+                      !s.loading &&
+                      !isFiltering)
                     const _EmptyState(),
                   if (upcoming.isNotEmpty)
                     _PolaroidGrid(entries: upcoming, minWidth: 160),
@@ -222,7 +236,10 @@ class _SearchAndFilterBar extends StatelessWidget {
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
               ),
             ),
           ),
@@ -254,7 +271,7 @@ class _SearchAndFilterBar extends StatelessWidget {
                 const SizedBox(width: 8),
                 _FilterChip(
                   key: const Key('filter-offline'),
-                  label: 'Downloaded / Offline',
+                  label: 'Offline',
                   icon: Icons.offline_pin_outlined,
                   selected: filter == 'offline',
                   onTap: () => onFilterChanged('offline'),
@@ -295,10 +312,7 @@ class _FilterChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: selected ? p.accent : p.line,
-            width: 1,
-          ),
+          border: Border.all(color: selected ? p.accent : p.line, width: 1),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -340,77 +354,77 @@ class _TopBar extends StatelessWidget {
       if (upcoming > 0) '$upcoming coming up',
       if (past > 0) '$past remembered',
     ].join(' · ');
+    // The trip count sits under the title row, full width: beside four buttons it wrapped.
     return Padding(
       padding: const EdgeInsets.fromLTRB(2, 4, 0, 14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Semantics(
+          Row(
+            children: [
+              Expanded(
+                child: Semantics(
                   header: true,
                   child: Text('Our trips', style: hand(44, p.ink)),
                 ),
-                if (sub.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      sub,
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w500,
-                        color: p.muted,
-                      ),
-                    ),
+              ),
+              RoundButton(
+                key: const Key('open-search'),
+                tooltip: searchOpen ? 'Close search' : 'Search trips',
+                icon: searchOpen ? Icons.search_off : Icons.search,
+                onPressed: onToggleSearch,
+              ),
+              const SizedBox(width: 8),
+              RoundButton(
+                key: const Key('open-discover'),
+                tooltip: 'Discover trips',
+                icon: Icons.explore_outlined,
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    settings: const RouteSettings(name: 'Discover'),
+                    builder: (_) => const DiscoverScreen(),
                   ),
-              ],
-            ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              RoundButton(
+                tooltip: 'Receive from a nearby phone',
+                icon: Icons.qr_code_scanner,
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    settings: const RouteSettings(name: 'ReceiveNearby'),
+                    builder: (_) => const ReceiveNearbyScreen(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              RoundButton(
+                tooltip: 'Settings',
+                icon: Icons.settings_outlined,
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    settings: const RouteSettings(name: 'Settings'),
+                    builder: (_) => const SettingsScreen(),
+                  ),
+                ),
+              ),
+            ],
           ),
-          RoundButton(
-            key: const Key('open-search'),
-            tooltip: searchOpen ? 'Close search' : 'Search trips',
-            icon: searchOpen ? Icons.search_off : Icons.search,
-            onPressed: onToggleSearch,
-          ),
-          const SizedBox(width: 8),
-          RoundButton(
-            key: const Key('open-discover'),
-            tooltip: 'Discover trips',
-            icon: Icons.explore_outlined,
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                settings: const RouteSettings(name: 'Discover'),
-                builder: (_) => const DiscoverScreen(),
+          if (sub.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                sub,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w500,
+                  color: p.muted,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          RoundButton(
-            tooltip: 'Receive from a nearby phone',
-            icon: Icons.qr_code_scanner,
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                settings: const RouteSettings(name: 'ReceiveNearby'),
-                builder: (_) => const ReceiveNearbyScreen(),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          RoundButton(
-            tooltip: 'Settings',
-            icon: Icons.settings_outlined,
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                settings: const RouteSettings(name: 'Settings'),
-                builder: (_) => const SettingsScreen(),
-              ),
-            ),
-          ),
         ],
       ),
     );
