@@ -398,6 +398,34 @@ struct AddChildSheet: View {
     }
 }
 
+/// Born on a date, or not born yet with a due date (and how far along). Used when setting up a
+/// household and in a child's settings.
+struct BirthFields: View {
+    @Binding var baby: Baby
+
+    var body: some View {
+        Toggle("Not born yet", isOn: Binding(get: { baby.isExpected }, set: { expecting in
+            if expecting {
+                baby.birthDate = nil
+                baby.dueDate = baby.dueDate ?? Calendar.current.date(byAdding: .day, value: 140, to: Date())
+            } else {
+                baby.dueDate = nil
+                baby.birthDate = baby.birthDate ?? Date()
+            }
+        }))
+        .accessibilityIdentifier("childExpected")
+        if baby.isExpected {
+            DatePicker("Due", selection: Binding(get: { baby.dueDate ?? Date() }, set: { baby.dueDate = $0 }),
+                       in: Date().addingTimeInterval(-30 * 86_400)..., displayedComponents: .date)
+            if let g = baby.gestation() {
+                LabeledContent("Pregnancy", value: "\(g.weeks) weeks \(g.days) days")
+            }
+        } else {
+            DatePicker("Born", selection: Binding(get: { baby.birthDate ?? Date() }, set: { baby.birthDate = $0 }), in: ...Date(), displayedComponents: .date)
+        }
+    }
+}
+
 /// One child's settings. Name, birthday, colour and feeding apply household-wide, saved on the way
 /// back to Settings; "Show on this iPhone" changes only this phone, right away.
 struct ChildEditor: View {
@@ -410,7 +438,22 @@ struct ChildEditor: View {
         Form {
             Section {
                 TextField("Name", text: $baby.name).accessibilityIdentifier("childName")
-                DatePicker("Born", selection: Binding(get: { baby.birthDate ?? Date() }, set: { baby.birthDate = $0 }), in: ...Date(), displayedComponents: .date)
+                BirthFields(baby: $baby)
+            } footer: {
+                if baby.isExpected {
+                    Text("Before birth, Now tracks this baby's movements: tap when you feel one, or count kicks. When the baby arrives, set the birth date below and the log carries on.")
+                }
+            }
+            if baby.isExpected && !isNew {
+                Section {
+                    Button("Baby has arrived") {
+                        baby.dueDate = nil
+                        baby.birthDate = Date()
+                    }
+                    .accessibilityIdentifier("babyArrived")
+                } footer: {
+                    Text("Sets today as the birth date (change it above). Movements before birth stay in the log.")
+                }
             }
             Section("Colour") {
                 HStack(spacing: 14) {
@@ -426,6 +469,7 @@ struct ChildEditor: View {
                 }
                 .padding(.vertical, 4)
             }
+            if !baby.isExpected {
             Section {
                 Toggle("Own bottle size", isOn: Binding(get: { baby.bottleMl != nil }, set: { baby.bottleMl = $0 ? household.bottleMl : nil }))
                 if let ml = baby.bottleMl {
@@ -438,6 +482,7 @@ struct ChildEditor: View {
                 }
             } header: { Text("Feeding") } footer: {
                 Text("Without its own, this child uses the household's bottle size (\(Int(household.bottleMl)) ml).")
+            }
             }
             Section {
                 Toggle("Show on this iPhone", isOn: Binding(get: { !model.hidden.contains(baby.id) }, set: { show in

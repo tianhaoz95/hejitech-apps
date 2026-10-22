@@ -16,7 +16,9 @@ final class CareTypesTests: XCTestCase {
         let r = EventRegistry.shared
         let new = r.categories.filter { $0.group != nil }
         XCTAssertEqual(Set(new.map(\.id)), ["bath", "lotion", "toothbrush", "potty", "teething", "medication", "symptom",
-                                            "temperature", "doctor", "vaccination", "tummy_time", "play", "walk"])
+                                            "temperature", "doctor", "vaccination", "tummy_time", "play", "walk", "movement"])
+        // movements before birth are tap-only: the voice model was never trained on them
+        XCTAssertFalse(r.category("movement")!.inModel)
         XCTAssertTrue(new.allSatisfy { !$0.defaultEnabled })
         let all = Set(r.categories.map(\.id))
         let qs = VoiceInterpreter(model: KeywordDecisionModel()).questions(
@@ -34,11 +36,13 @@ final class CareTypesTests: XCTestCase {
         XCTAssertEqual(core.first { $0.id == "feeding_entry" }!.options.map(\.key), ["bottle", "breast"])
     }
 
-    func testGroupsCoverEveryCategoryOnce() {
+    /// Every category the voice model is asked about sits in exactly one group; tap-only ones
+    /// (`"model": false`) are in none, so the model's questions don't change.
+    func testGroupsCoverEveryModelCategoryOnce() {
         let r = EventRegistry.shared
         let grouped = r.modelGroups.flatMap(\.categories)
         XCTAssertEqual(grouped.count, Set(grouped).count)
-        XCTAssertEqual(Set(grouped), Set(r.categories.map(\.id)))
+        XCTAssertEqual(Set(grouped), Set(r.categories.filter(\.inModel).map(\.id)))
     }
 
     func testCombinesGroupEntryAndPhase() async throws {

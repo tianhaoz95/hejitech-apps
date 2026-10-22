@@ -78,6 +78,8 @@ final class PhoneLink: NSObject, ObservableObject, WCSessionDelegate {
     @Published var line = "Open the iPhone app"
     @Published var openFeed = ""
     @Published var sleeping = false
+    /// Only children not born yet: movements, no feeds, sleep or diapers.
+    @Published var expecting = false
     /// The household's children shown on the iPhone; the watch logs for `child` (or `"all"`).
     @Published var children: [Child] = []
     @Published var pinned: [Pinned] = []
@@ -174,6 +176,7 @@ final class PhoneLink: NSObject, ObservableObject, WCSessionDelegate {
         if let l = ctx["line"] as? String { line = l }
         openFeed = ctx["openFeed"] as? String ?? ""
         sleeping = ctx["sleeping"] as? Bool ?? false
+        expecting = ctx["expecting"] as? Bool ?? false
         children = (ctx["children"] as? [[String: Any]] ?? []).compactMap { c in
             guard let id = c["id"] as? String, let name = c["name"] as? String else { return nil }
             return Child(id: id, name: name, line: c["line"] as? String ?? "", openFeed: c["openFeed"] as? String ?? "", sleeping: c["sleeping"] as? Bool ?? false)
@@ -230,6 +233,7 @@ struct WatchHome: View {
                         .frame(maxWidth: .infinity)
                 }
                 .tint(link.recording ? .red : .orange)
+                if !link.expecting {
                 Button {
                     if link.openFeed == "bottle" {
                         finishingBottle = true
@@ -246,6 +250,7 @@ struct WatchHome: View {
                 Button { diaper = true } label: { Label("Diaper", systemImage: "humidity.fill").frame(maxWidth: .infinity) }
                 Button { link.send(["action": "toggleSleep"]) } label: {
                     Label(link.sleeping ? "Woke up" : "Asleep", systemImage: link.sleeping ? "sun.max.fill" : "moon.zzz.fill").frame(maxWidth: .infinity)
+                }
                 }
                 ForEach(link.pinned) { item in
                     Button {

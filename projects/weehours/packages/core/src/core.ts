@@ -216,8 +216,13 @@ export interface Status {
   open_feed_since?: number;
   next_side?: string;
   sleeping_since?: number;
+  last_wake_at?: number;
   last_diaper_at?: number;
   last_diaper_kind?: string;
+  /** Before birth: the last felt movement and the last kick count. */
+  last_movement_at?: number;
+  last_kick_count?: number;
+  last_kick_minutes?: number;
   to_review: number;
   pending_captures: number;
   on_duty?: string | null;
@@ -238,6 +243,9 @@ export function status(d: Derived, opts: { pendingCaptures?: number; pendingPick
   const lastSide = d.sessions.filter((s) => s.kind === "breast").flatMap((s) => s.sides).at(-1);
   const sleep = [...d.sessions].reverse().find((s) => isOpen(s) && s.kind === "sleep");
   const diaper = [...counted].reverse().find((e) => e.type === "diaper");
+  const movement = [...counted].reverse().find((e) => e.type === "movement" || e.type === "kick_count");
+  const kicks = [...counted].reverse().find((e) => e.type === "kick_count");
+  const wakes = d.sessions.filter((s) => s.kind === "sleep" && s.end !== undefined).map((s) => s.end as number);
   return {
     last_feed_at: lastFeedAt,
     last_feed_kind: lastFeedKind,
@@ -247,6 +255,10 @@ export function status(d: Derived, opts: { pendingCaptures?: number; pendingPick
     sleeping_since: sleep?.start,
     last_diaper_at: diaper ? t(diaper.occurred_at) : undefined,
     last_diaper_kind: diaper?.fields.kind as string | undefined,
+    last_movement_at: movement ? t(movement.occurred_at) : undefined,
+    last_kick_count: typeof kicks?.fields.count === "number" ? Math.trunc(kicks.fields.count) : undefined,
+    last_kick_minutes: typeof kicks?.fields.minutes === "number" ? Math.trunc(kicks.fields.minutes) : undefined,
+    last_wake_at: wakes.length ? Math.max(...wakes) : undefined,
     to_review: d.duplicates.length + (opts.pendingPicks ?? 0),
     pending_captures: opts.pendingCaptures ?? 0,
     on_duty: d.duty?.caregiver,
@@ -270,7 +282,12 @@ export function statusLine(s: Status, now: number): string {
   if (s.sleeping_since !== undefined) parts.push(`Sleeping ${duration(now - s.sleeping_since)}`);
   else if (s.open_feed_since !== undefined) parts.push(`Feeding ${duration(now - s.open_feed_since)}`);
   else if (s.last_feed_at !== undefined) parts.push(`Fed ${ago(now - s.last_feed_at)}`);
-  else parts.push("No feeds yet");
+  else if (s.last_movement_at !== undefined && s.last_diaper_at === undefined && s.last_wake_at === undefined) {
+    // before birth: movements instead of feeds, until the first newborn entry
+    parts.push(`Moved ${ago(now - s.last_movement_at)}`);
+    if (s.last_kick_count !== undefined)
+      parts.push(s.last_kick_minutes !== undefined ? `last count ${s.last_kick_count} in ${s.last_kick_minutes}m` : `last count ${s.last_kick_count}`);
+  } else parts.push("No feeds yet");
   if (s.next_side) parts.push(`${s.next_side} next`);
   if (s.last_diaper_at !== undefined) parts.push(`diaper ${ago(now - s.last_diaper_at)}`);
   if (s.pending_captures > 0) parts.push(`${s.pending_captures} pending`);

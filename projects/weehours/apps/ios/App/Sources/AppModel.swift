@@ -169,6 +169,12 @@ final class AppModel: ObservableObject {
             if let c = UserDefaults.standard.string(forKey: "categories") {   // `-categories all` or "bath,potty"
                 h.categories = c == "all" ? EventRegistry.shared.categories.map(\.id) : c.split(separator: ",").map(String.init)
             }
+            let along = UserDefaults.standard.integer(forKey: "expecting")   // `-expecting 28`: the first child is 28 weeks along
+            if along > 0, !h.babies.isEmpty {
+                h.babies[0].birthDate = nil
+                h.babies[0].dueDate = Calendar.current.date(byAdding: .day, value: (40 - along) * 7, to: Date())
+                h.trackMovementsIfExpecting()
+            }
             await createHousehold(h, displayName: "Alex")
             return
         }
@@ -429,6 +435,8 @@ final class AppModel: ObservableObject {
 
     /// Saved on the phone first; the server copy is retried on the next sync when offline.
     func save(_ h: Household) async {
+        var h = h
+        h.trackMovementsIfExpecting()
         household = h
         SharedStore.household = h
         await service?.setHousehold(h)
@@ -586,9 +594,18 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// Logs one entry for each child in `babies` (default: the Log-for target).
+    /// The children among `ids` an entry of `type` is for: movements only for children not born
+    /// yet, everything else only for born ones (a "Both" target can mix the two).
+    func babies(_ ids: [UUID], for type: String) -> [UUID] {
+        guard let category = EventRegistry.shared.type(type)?.category else { return ids }
+        return ids.filter { household.baby($0)?.canLog(category: category) ?? true }
+    }
+
+    /// Logs one entry for each child in `babies` (default: the Log-for target) the type is for.
     func log(_ type: String, _ fields: [String: FieldValue] = [:], at: Date = Date(), for babies: [UUID]? = nil) {
-        performEach(babies) { s, baby, group in
+        let ids = self.babies(babies ?? target, for: type)
+        guard !ids.isEmpty else { return }
+        performEach(ids) { s, baby, group in
             try s.log(type: type, fields: fields.merging(group) { $1 }, occurredAt: at, provenance: Provenance(surface: .phone, input: .tap), baby: baby)
         }
     }
@@ -620,7 +637,7 @@ final class AppModel: ObservableObject {
 
     /// A timed activity (tummy time, play, a walk) starts for each child in the Log-for target.
     func startTimed(_ type: String) {
-        performEach { s, baby, group in try s.startTimed(type, baby: baby, fields: group) }
+        performEach(babies(target, for: type)) { s, baby, group in try s.startTimed(type, baby: baby, fields: group) }
     }
 
     /// Stops running timed activities (one per child): each entry gets the minutes it ran.
@@ -988,6 +1005,10 @@ final class WatchBridge: NSObject, WCSessionDelegate, @unchecked Sendable {
         var compass: [[String: String]] = []
         if let model {
             let enabled = model.household.enabled
+            // expecting: "Baby moved" first, one tap from the watch
+            if enabled.contains(Baby.movementCategory), model.shown.contains(where: \.isExpected), let t = EventRegistry.shared.type("movement") {
+                pinned.append(["id": t.id, "label": t.label, "icon": t.icon ?? "circle.fill", "runningId": ""])
+            }
             for t in EventRegistry.shared.types where enabled.contains(t.category) && (t.isTimed || ["bath", "tummy_time", "teething"].contains(t.id)) {
                 let running = model.log.effective.last { $0.type == t.id && $0.fields["ongoing"] == .bool(true) }
                 pinned.append([
@@ -1004,6 +1025,8 @@ final class WatchBridge: NSObject, WCSessionDelegate, @unchecked Sendable {
             "line": first.1.line(now: now), "openFeed": first.1.openFeedKind ?? "", "sleeping": first.1.sleepingSince != nil,
             "children": list, "target": target.count > 1 ? "all" : (target.first?.uuidString ?? ""),
             "pinned": pinned, "at": now.timeIntervalSince1970,
+            // only children not born yet: the watch shows movements, not feeds, sleep and diapers
+            "expecting": !(model?.shown.isEmpty ?? true) && (model?.shown.allSatisfy(\.isExpected) ?? false),
             "compass": compass, "startMode": UserDefaults.standard.string(forKey: WatchStartMode.key) ?? WatchStartMode.buttons.rawValue,
         ])
     }
@@ -1021,6 +1044,8 @@ final class WatchBridge: NSObject, WCSessionDelegate, @unchecked Sendable {
                 let babies: [UUID] = isAll
                     ? model.shown.map(\.id)
                     : [(rawBaby.flatMap(UUID.init(uuidString:)).flatMap { id in model.shown.first { $0.id == id }?.id } ?? model.shown.first?.id).unsafelyUnwrapped]
+                // feeds, sleep and diapers are for born children; movements for ones not born yet
+                let born = babies.filter { model.household.baby($0)?.isExpected != true }
                 var events: [LogEvent] = []
                 let extra: [String: FieldValue] = (message["fraction"] as? Double).map { ["consumed_fraction": .number($0)] } ?? [:]
                 // tilt mode logs without asking: what it skips (a diaper's kind, a bottle's amount)
@@ -1029,22 +1054,22 @@ final class WatchBridge: NSObject, WCSessionDelegate, @unchecked Sendable {
                 let blind: [String: FieldValue] = input == .gesture ? [LogEvent.needsDetails: .bool(true)] : [:]
                 switch message["action"] as? String {
                 case "toggleFeed":
-                    events = try await service.forEach(babies) { s, b, g in
+                    events = try await service.forEach(born) { s, b, g in
                         let finishingBottle = try s.derived(baby: b).openFeedSession()?.kind == .bottle
                         let ask = finishingBottle && extra["consumed_fraction"] == nil ? blind : [:]
                         return try s.toggleFeed(baby: b, surface: .watch, input: input, fields: extra.merging(g) { $1 }.merging(ask) { $1 })
                     }
                 case "toggleSleep":
-                    events = try await service.forEach(babies) { s, b, g in
+                    events = try await service.forEach(born) { s, b, g in
                         try s.toggleSleep(baby: b, surface: .watch, input: input, fields: g)
                     }
                 case "switchSide":
-                    events = try await service.forEach(babies) { s, b, g in
+                    events = try await service.forEach(born) { s, b, g in
                         try s.switchSide(baby: b, surface: .watch, input: input, fields: g)
                     }
                 case "diaper":
                     let kind: [String: FieldValue] = (message["kind"] as? String).map { ["kind": .string($0)] } ?? (blind.isEmpty ? ["kind": .string("wet")] : blind)
-                    events = try await service.forEach(babies) { s, b, g in
+                    events = try await service.forEach(born) { s, b, g in
                         try s.log(type: "diaper", fields: kind.merging(g) { $1 }, provenance: Provenance(surface: .watch, input: input), baby: b)
                     }
                 case "care":
@@ -1052,7 +1077,9 @@ final class WatchBridge: NSObject, WCSessionDelegate, @unchecked Sendable {
                         events = [try await service.stopTimed(runId, surface: .watch)]
                     } else if let type = message["type"] as? String {
                         let isTimed = EventRegistry.shared.type(type)?.isTimed ?? false
-                        events = try await service.forEach(babies) { s, b, g in
+                        // a movement from the watch is the expected child's, whoever it's set to
+                        let forType = model.babies(babies, for: type).nilIfEmpty ?? model.babies(model.shown.map(\.id), for: type)
+                        events = try await service.forEach(forType) { s, b, g in
                             isTimed ? try s.startTimed(type, baby: b, fields: g, surface: .watch, input: input)
                                     : try s.log(type: type, fields: g, provenance: Provenance(surface: .watch, input: input), baby: b)
                         }

@@ -116,7 +116,11 @@ struct HomeView: View {
                                 .accessibilityLabel("Night screen")
                                 .accessibilityIdentifier("openNightScreen")
                         }
-                        if let birth { Text(Self.age(birth)).font(.subheadline).foregroundStyle(.secondary) }
+                        if let birth {
+                            Text(Self.age(birth)).font(.subheadline).foregroundStyle(.secondary)
+                        } else if let weeks {
+                            Text(weeks).font(.subheadline).foregroundStyle(.secondary)
+                        }
                     }
                 }
             }
@@ -148,6 +152,13 @@ struct HomeView: View {
         return days.count == 1 && babies.allSatisfy { $0.birthDate != nil } ? days.first : nil
     }
 
+    /// How far along, when the title is one child not born yet ("28w 3d").
+    private var weeks: String? {
+        let babies = model.shown.count > 1 && model.collapsed ? model.targetBabies : model.shown
+        guard babies.count == 1, let g = babies[0].gestation() else { return nil }
+        return "\(g.weeks)w \(g.days)d"
+    }
+
     static func age(_ birth: Date) -> String {
         let days = Calendar.current.dateComponents([.day], from: birth, to: Date()).day ?? 0
         return days == 1 ? "1 day" : days < 14 ? "\(days) days" : days < 120 ? "\(days / 7) weeks" : "\(days / 30) months"
@@ -160,7 +171,7 @@ struct StatusCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(model.status?.line(now: now) ?? "…")
+            Text(model.status?.line(now: now, expecting: model.shown.first?.isExpected ?? false) ?? "…")
                 .font(.title3.weight(.semibold))
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("statusLine")
@@ -407,8 +418,8 @@ struct ChildrenPanel: View {
     private var folded: some View {
         let targets = model.targetBabies
         let line = targets.count == 1
-            ? model.statuses[targets[0].id]?.line(now: now) ?? ""
-            : targets.map { "\($0.name): \(model.statuses[$0.id]?.line(now: now).components(separatedBy: " · ").first ?? "")" }.joined(separator: " · ")
+            ? model.statuses[targets[0].id]?.line(now: now, expecting: targets[0].isExpected) ?? ""
+            : targets.map { "\($0.name): \(model.statuses[$0.id]?.line(now: now, expecting: $0.isExpected).components(separatedBy: " · ").first ?? "")" }.joined(separator: " · ")
         return HStack(spacing: 12) {
             HStack(spacing: -4) {
                 ForEach(targets) { b in Circle().fill(Theme.color(for: b, in: model.household)).frame(width: 14, height: 14).overlay(Circle().stroke(Color(.systemBackground), lineWidth: 2)) }
@@ -435,7 +446,7 @@ struct ChildCard: View {
 
     var body: some View {
         let color = Theme.color(for: baby, in: model.household)
-        let parts = (status?.line(now: now) ?? "…").components(separatedBy: " · ")
+        let parts = (status?.line(now: now, expecting: baby.isExpected) ?? "…").components(separatedBy: " · ")
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
                 Circle().fill(color).frame(width: 9, height: 9)
@@ -581,7 +592,9 @@ struct QuickActions: View {
     /// (finish for those feeding, start for the others), one entry per child.
     var body: some View {
         let h = model.household
-        let targets = model.target
+        // children not born yet get only the pregnancy tiles; the newborn buttons are for the rest
+        let expecting = model.target.filter { h.baby($0)?.isExpected == true }
+        let targets = model.target.filter { !expecting.contains($0) }
         let logs = targets.map { ($0, model.logs[$0] ?? DerivedLog(events: [])) }
         let feeding = logs.compactMap { id, log in log.openFeedSession().map { (id, $0) } }
         let idle = logs.filter { $0.1.openFeedSession() == nil }.map(\.0)
@@ -591,6 +604,10 @@ struct QuickActions: View {
         let awake = targets.filter { !asleep.contains($0) }
         let many = targets.count > 1
         LazyVGrid(columns: columns, spacing: 12) {
+            if !expecting.isEmpty {
+                PregnancyTiles(babies: expecting)
+            }
+            if !targets.isEmpty {
             if !bottles.isEmpty {
                 let ids = bottles.map(\.0)
                 Menu {
@@ -715,7 +732,8 @@ struct QuickActions: View {
                     .accessibilityIdentifier("growthTile-\(type)")
                 }
             }
-            ForEach(Care.types(enabled: h.enabled), id: \.id) { CareTile(type: $0) }
+            ForEach(Care.types(enabled: h.enabled).filter { $0.category != Baby.movementCategory }, id: \.id) { CareTile(type: $0) }
+            }
         }
         .sheet(isPresented: Binding { measuring != nil } set: { if !$0 { measuring = nil } }) {
             if let measuring { GrowthSheet(type: measuring, babies: model.targetBabies).presentationDetents([.medium, .large]) }

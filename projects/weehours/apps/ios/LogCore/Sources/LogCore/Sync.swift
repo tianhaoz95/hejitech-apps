@@ -289,6 +289,7 @@ public final class SupabaseClient: @unchecked Sendable {
             if let c = b.color { row["color"] = c }
             if let ml = b.bottleMl { row["bottle_ml"] = ml }
             if let f = b.defaultFeed { row["default_feed"] = f }
+            if let due = b.dueDate { row["due_date"] = Self.day(due) }
             return row
         }
         _ = try await rpc("save_babies", ["p_babies": rows])

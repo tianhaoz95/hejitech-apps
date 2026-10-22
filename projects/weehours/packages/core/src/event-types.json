@@ -20,7 +20,8 @@
     { "id": "vaccination", "group": "health", "voice": "a vaccination or immunization shot", "label": "Vaccinations", "defaultEnabled": false },
     { "id": "tummy_time", "group": "activity", "voice": "tummy time on the play mat", "label": "Tummy time", "defaultEnabled": false },
     { "id": "play", "group": "activity", "voice": "playing with the baby", "label": "Play time", "defaultEnabled": false },
-    { "id": "walk", "group": "activity", "voice": "going for a walk outside, the stroller or carrier", "label": "Walk outside", "defaultEnabled": false }
+    { "id": "walk", "group": "activity", "voice": "going for a walk outside, the stroller or carrier", "label": "Walk outside", "defaultEnabled": false },
+    { "id": "movement", "group": "pregnancy", "model": false, "voice": "the baby moving or kicking in the belly during pregnancy", "label": "Baby's movements", "defaultEnabled": false }
   ],
   "types": [
     {
@@ -272,6 +273,27 @@
       "remindAfterMinutes": 120,
       "fields": [
         {"key": "minutes", "kind": "number", "unit": "minutes", "presets": [10, 20, 30, 45, 60]}
+      ]
+    },
+    {
+      "id": "movement",
+      "category": "movement",
+      "label": "Baby moved",
+      "icon": "hand.point.up.left.fill",
+      "voice": "felt the baby move or kick in the belly",
+      "questions": [],
+      "fields": []
+    },
+    {
+      "id": "kick_count",
+      "category": "movement",
+      "label": "Kick count",
+      "icon": "timer",
+      "voice": "counted the baby's movements, how long ten movements took",
+      "questions": [],
+      "fields": [
+        {"key": "count", "kind": "number", "required": true, "label": "Movements"},
+        {"key": "minutes", "kind": "number", "unit": "minutes", "label": "Time"}
       ]
     }
   ],

@@ -54,6 +54,10 @@ public struct Baby: Codable, Hashable, Sendable, Identifiable {
     public var id: UUID
     public var name: String
     public var birthDate: Date?
+    /// Set while the child isn't born yet (no birth date): the pregnancy's due date. Such a child
+    /// logs only their movements (`movement`, `kick_count`); "Baby has arrived" sets the birth
+    /// date and clears this. Stored in the child's settings, like the other per-child extras.
+    public var dueDate: Date?
     /// Key into the app's child palette (`Theme.childColor`); nil picks one by position.
     public var color: String?
     /// Overrides the household bottle size for this child.
@@ -65,10 +69,11 @@ public struct Baby: Codable, Hashable, Sendable, Identifiable {
     public var archived: Bool
 
     public init(id: UUID = UUID(), name: String, birthDate: Date? = nil, color: String? = nil, bottleMl: Double? = nil,
-                defaultFeed: String? = nil, position: Int = 0, archived: Bool = false) {
+                defaultFeed: String? = nil, position: Int = 0, archived: Bool = false, dueDate: Date? = nil) {
         self.id = id
         self.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         self.birthDate = birthDate
+        self.dueDate = dueDate
         self.color = color
         self.bottleMl = bottleMl
         self.defaultFeed = defaultFeed
@@ -79,6 +84,7 @@ public struct Baby: Codable, Hashable, Sendable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case id, name, color, position, archived
         case birthDate = "birth_date"
+        case dueDate = "due_date"
         case bottleMl = "bottle_ml"
         case defaultFeed = "default_feed"
     }
@@ -88,12 +94,34 @@ public struct Baby: Codable, Hashable, Sendable, Identifiable {
         id = try c.decode(UUID.self, forKey: .id)
         name = try c.decode(String.self, forKey: .name).trimmingCharacters(in: .whitespacesAndNewlines)
         birthDate = try c.decodeIfPresent(Date.self, forKey: .birthDate)
+        dueDate = try c.decodeIfPresent(Date.self, forKey: .dueDate)
         color = try c.decodeIfPresent(String.self, forKey: .color)
         bottleMl = try c.decodeIfPresent(Double.self, forKey: .bottleMl)
         defaultFeed = try c.decodeIfPresent(String.self, forKey: .defaultFeed)
         position = try c.decodeIfPresent(Int.self, forKey: .position) ?? 0
         archived = try c.decodeIfPresent(Bool.self, forKey: .archived) ?? false
     }
+}
+
+extension Baby {
+    /// Not born yet: a due date and no birth date.
+    public var isExpected: Bool { birthDate == nil && dueDate != nil }
+
+    /// How far along the pregnancy is on `now`, counted back from the due date (40 weeks), e.g.
+    /// "28w 3d". Nil once born or without a due date.
+    public func gestation(now: Date = Date(), calendar: Calendar = .current) -> (weeks: Int, days: Int)? {
+        guard isExpected, let due = dueDate else { return nil }
+        let toGo = calendar.dateComponents([.day], from: calendar.startOfDay(for: now), to: calendar.startOfDay(for: due)).day ?? 0
+        let along = max(0, 280 - toGo)
+        return (along / 7, along % 7)
+    }
+
+    /// Movement entries belong to children not born yet, every other entry to born ones.
+    public func canLog(category: String) -> Bool {
+        (category == Baby.movementCategory) == isExpected
+    }
+
+    public static let movementCategory = "movement"
 }
 
 /// Household configuration (the Supabase `households.settings` column plus profile fields).
@@ -210,6 +238,15 @@ public struct Household: Codable, Hashable, Sendable {
     }
 
     public var enabled: Set<String> { Set(categories) }
+
+    /// Children not born yet (and not archived).
+    public var expecting: [Baby] { active.filter(\.isExpected) }
+
+    /// A household expecting a child tracks their movements: adding a due date turns the
+    /// category on (Settings → Tracking can still turn it off).
+    public mutating func trackMovementsIfExpecting() {
+        if !expecting.isEmpty, !categories.contains(Baby.movementCategory) { categories.append(Baby.movementCategory) }
+    }
 
     public func caregiverName(_ id: UUID?) -> String {
         guard let id else { return "nobody" }

@@ -62,6 +62,15 @@ The PRD ("Newborn Log — PRD") plus the changes agreed while planning, and the 
 | Translation | Whisper writes down what was said in that language, and Apple's on-device Translation (iOS 26, `TranslationSession(installedSource:)`) turns it into English; before iOS 26 or without the language downloaded, Whisper's own translate task | On a TTS spot check Whisper's translation lost key words ("pañal mojado" → "wet cloth", "尿布湿了" → "The urine is gone"); Apple's kept them ("Diaper, wet", "The diaper is wet") |
 | Notes | Dictated shift notes stay in the spoken language | Notes are read by people, not the model |
 
+## Before birth (2026-10-22)
+
+| Topic | Decision | Why |
+|---|---|---|
+| Scope | A child can be added before birth with a due date; Now shows the gestational age and the movement tracker instead of the newborn buttons until "Baby has arrived" sets the birth date | Owner request: a tracker for a mother to follow her baby's movements in the belly |
+| Tracking | Kick-count sessions (tap each movement, saved at ten with the minutes it took, or stopped early) plus single "Baby moved" taps; each tap in a count is also a movement entry | Owner's pick ("Kick-count sessions + single taps") |
+| Data | Category `movement` (types `movement`, `kick_count`), `"model": false`; the due date is kept in the child's `babies.settings` (`due_date`), so no schema change | Voice prompts stay as the shipped model was trained; per-child extras already live in settings |
+| Advice | No interpretation of counts; a fixed safety note says to contact the midwife or maternity unit straight away if movements slow or change | The app records facts, agents interpret (Agents); current guidance warns against waiting or relying on a fixed number |
+
 ## Not done yet
 
 See the report (`report/v0/site`, "What's verified") for what was verified in simulators and what still needs devices or the hosted project.

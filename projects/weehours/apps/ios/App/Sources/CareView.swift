@@ -10,13 +10,14 @@ enum Care {
     }
 
     /// Settings → Tracking sections, in order: nil is the core (feeds, diapers, sleep, growth).
-    static let groups: [(id: String?, title: String)] = [(nil, "Tracking"), ("care", "Care"), ("health", "Health"), ("activity", "Activities")]
+    static let groups: [(id: String?, title: String)] = [(nil, "Tracking"), ("care", "Care"), ("health", "Health"), ("activity", "Activities"), ("pregnancy", "Before birth")]
 
     static func color(group: String?) -> Color {
         switch group {
         case "care": return Color(red: 0.40, green: 0.78, blue: 0.80)
         case "health": return Color(red: 0.94, green: 0.52, blue: 0.52)
         case "activity": return Color(red: 0.55, green: 0.80, blue: 0.45)
+        case "pregnancy": return Theme.bump
         default: return Theme.other
         }
     }

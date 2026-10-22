@@ -164,6 +164,31 @@
         { "id": "e3", "type": "diaper", "minutes_ago": 10, "by": "b", "baby": "l", "fields": { "kind": "dirty" } }
       ],
       "expect": { "line": "No feeds yet · diaper 10m ago", "to_review": 0, "status": { "e2": "duplicate_unresolved", "e3": "active" } }
+    },
+    {
+      "name": "before birth: the last movement",
+      "events": [
+        { "id": "e1", "type": "movement", "minutes_ago": 95, "by": "a" },
+        { "id": "e2", "type": "movement", "minutes_ago": 25, "by": "a" }
+      ],
+      "expect": { "line": "Moved 25m ago", "to_review": 0 }
+    },
+    {
+      "name": "before birth: the last kick count",
+      "events": [
+        { "id": "e1", "type": "kick_count", "minutes_ago": 300, "by": "a", "fields": { "count": 10, "minutes": 52 } },
+        { "id": "e2", "type": "movement", "minutes_ago": 150, "by": "a" },
+        { "id": "e3", "type": "kick_count", "minutes_ago": 120, "by": "a", "fields": { "count": 10, "minutes": 34 } }
+      ],
+      "expect": { "line": "Moved 2h ago · last count 10 in 34m" }
+    },
+    {
+      "name": "after birth the newborn entries take over",
+      "events": [
+        { "id": "e1", "type": "kick_count", "minutes_ago": 3000, "by": "a", "fields": { "count": 10, "minutes": 40 } },
+        { "id": "e2", "type": "diaper", "minutes_ago": 30, "by": "a", "fields": { "kind": "wet" } }
+      ],
+      "expect": { "line": "No feeds yet · diaper 30m ago" }
     }
   ]
 }

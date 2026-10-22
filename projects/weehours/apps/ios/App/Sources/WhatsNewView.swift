@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.8.9"
+    static let currentVersion = "0.9.0"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,21 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "0.9.0",
+            date: "October 2026",
+            tagline: "Before Baby Arrives",
+            features: [
+                WhatsNewItem(
+                    icon: "hand.point.up.left.fill",
+                    tint: Theme.bump,
+                    title: "Track Movements Before Birth",
+                    description: "Add a child who isn't born yet with their due date (Settings → Children, Not born yet). Now shows how far along you are, a Baby moved button and Count kicks, which times how long ten movements take and keeps your recent counts. Baby moved is on your watch too. When baby arrives, tap Baby has arrived and the newborn log takes over.",
+                    kind: .feature
+                ),
+            ],
+            improvementsAndFixes: []
+        ),
         ReleaseHistoryItem(
             version: "0.8.9",
             date: "October 2026",

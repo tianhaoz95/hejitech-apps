@@ -101,6 +101,8 @@ enum Theme {
     static let sleep = Color(red: 0.62, green: 0.58, blue: 0.95)
     static let other = Color(red: 0.55, green: 0.85, blue: 0.65)
     static let growth = Color(red: 0.96, green: 0.80, blue: 0.42)
+    /// Before birth: movements and kick counts.
+    static let bump = Color(red: 0.93, green: 0.55, blue: 0.72)
     static let card = Color(.secondarySystemBackground)
 
     /// Each child's colour, picked in Settings → Children (`Baby.color`), else by position.
@@ -241,7 +243,7 @@ struct HouseholdSetupView: View {
                 ForEach($children) { $child in
                     Section {
                         TextField("Baby's name", text: $child.name)
-                        DatePicker("Born", selection: Binding(get: { child.birthDate ?? Date() }, set: { child.birthDate = $0 }), in: ...Date(), displayedComponents: .date)
+                        BirthFields(baby: $child)
                         if children.count > 1 {
                             Button("Remove", role: .destructive) { children.removeAll { $0.id == child.id } }
                         }
@@ -275,8 +277,9 @@ struct HouseholdSetupView: View {
                             if b.name.isEmpty { b.name = children.count > 1 ? "Baby \(i + 1)" : "Baby" }
                             return b
                         }
-                        let h = Household(name: "\(name)'s family", babies: babies,
+                        var h = Household(name: "\(name)'s family", babies: babies,
                                           bottleMl: bottleMl, categories: categories.sorted(), defaultFeed: defaultFeed)
+                        h.trackMovementsIfExpecting()
                         Task { await model.createHousehold(h, displayName: name.isEmpty ? "Parent" : name) }
                     }
                     .disabled(name.isEmpty)

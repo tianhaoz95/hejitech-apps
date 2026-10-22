@@ -11,6 +11,10 @@ public struct StatusSnapshot: Codable, Hashable, Sendable {
     public var lastWakeAt: Date?
     public var lastDiaperAt: Date?
     public var lastDiaperKind: String?
+    /// Before birth: the last felt movement and the last kick count (movements, minutes).
+    public var lastMovementAt: Date?
+    public var lastKickCount: Int?
+    public var lastKickMinutes: Int?
     public var toReview: Int
     public var pendingCaptures: Int
     public var onDuty: UUID?
@@ -20,6 +24,7 @@ public struct StatusSnapshot: Codable, Hashable, Sendable {
         case lastFeedAt = "last_feed_at", lastFeedKind = "last_feed_kind", openFeedKind = "open_feed_kind"
         case openFeedSince = "open_feed_since", nextSide = "next_side", sleepingSince = "sleeping_since"
         case lastWakeAt = "last_wake_at", lastDiaperAt = "last_diaper_at", lastDiaperKind = "last_diaper_kind"
+        case lastMovementAt = "last_movement_at", lastKickCount = "last_kick_count", lastKickMinutes = "last_kick_minutes"
         case toReview = "to_review", pendingCaptures = "pending_captures", onDuty = "on_duty", computedAt = "computed_at"
     }
 
@@ -53,6 +58,13 @@ public struct StatusSnapshot: Codable, Hashable, Sendable {
         lastDiaperAt = diaper?.occurredAt
         lastDiaperKind = diaper?.string("kind")
 
+        let movement = counted.last { $0.type == "movement" || $0.type == "kick_count" }
+        lastMovementAt = movement?.occurredAt
+        if let kicks = counted.last(where: { $0.type == "kick_count" }) {
+            lastKickCount = kicks.number("count").map { Int($0) }
+            lastKickMinutes = kicks.number("minutes").map { Int($0) }
+        }
+
         toReview = log.duplicates.count + pendingPicks
         self.pendingCaptures = pendingCaptures
         onDuty = log.duty?.caregiver
@@ -75,6 +87,12 @@ public struct StatusSnapshot: Codable, Hashable, Sendable {
             parts.append("Feeding \(Self.duration(now.timeIntervalSince(since)))")
         } else if let fed = lastFeedAt {
             parts.append("Fed \(Self.ago(now.timeIntervalSince(fed)))")
+        } else if let moved = lastMovementAt, lastDiaperAt == nil, lastWakeAt == nil {
+            // before birth: movements instead of feeds, until the first newborn entry
+            parts.append("Moved \(Self.ago(now.timeIntervalSince(moved)))")
+            if let count = lastKickCount {
+                parts.append(lastKickMinutes.map { "last count \(count) in \($0)m" } ?? "last count \(count)")
+            }
         } else {
             parts.append("No feeds yet")
         }
@@ -83,6 +101,12 @@ public struct StatusSnapshot: Codable, Hashable, Sendable {
         if pendingCaptures > 0 { parts.append("\(pendingCaptures) pending") }
         if toReview > 0 { parts.append("\(toReview) to review") }
         return parts.joined(separator: " · ")
+    }
+
+    /// `line(now:)` for a child: before birth, an empty log says so in pregnancy terms.
+    public func line(now: Date, expecting: Bool) -> String {
+        let l = line(now: now)
+        return expecting && l.hasPrefix("No feeds yet") ? "No movements yet" + l.dropFirst("No feeds yet".count) : l
     }
 
     public static func ago(_ seconds: TimeInterval) -> String {
