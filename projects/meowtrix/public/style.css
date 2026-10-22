@@ -493,6 +493,15 @@ html.mobile-ui .toolbar-clock {
   color: #f87171;
 }
 
+/* Terminal bell tab header pulse animation */
+@keyframes tab-bell-glow {
+  0%, 100% { box-shadow: none; border-color: inherit; }
+  50% { box-shadow: 0 0 10px #f59e0b; border-color: #f59e0b; color: #fbbf24; }
+}
+.tab.tab-bell-pulse {
+  animation: tab-bell-glow 0.8s ease-in-out 3;
+}
+
 /* ── Command palette ───────────────────────────────────────────────────────*/
 #palette-overlay {
   position: fixed; inset: 0; z-index: 2000;
