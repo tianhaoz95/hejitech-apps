@@ -768,6 +768,19 @@ public struct NoteDetailView: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel(playback.isLooping ? "Disable loop" : "Enable loop")
 
+                    Button {
+                        playback.toggleTrimSilence()
+                    } label: {
+                        Image(systemName: playback.trimSilence ? "waveform.badge.minus" : "waveform")
+                            .font(.caption2.bold())
+                            .foregroundStyle(playback.trimSilence ? Color.accentColor : .secondary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(playback.trimSilence ? Color.accentColor.opacity(0.15) : Color.appTertiaryFill, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(playback.trimSilence ? "Disable silence trimming" : "Enable silence trimming")
+
                     Text(viewModel.note.duration.formattedDuration)
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)

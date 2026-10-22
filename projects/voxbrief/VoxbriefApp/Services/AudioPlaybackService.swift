@@ -12,9 +12,15 @@ public final class AudioPlaybackService: NSObject, ObservableObject {
     @Published public private(set) var currentlyPlayingFileName: String?
     @Published public var playbackRate: Float = 1.0
     @Published public var isLooping: Bool = false
+    @Published public var trimSilence: Bool = UserDefaults.standard.bool(forKey: "playback_trim_silence") {
+        didSet {
+            UserDefaults.standard.set(trimSilence, forKey: "playback_trim_silence")
+        }
+    }
     
     private var audioPlayer: AVAudioPlayer?
     private var timer: Timer?
+    private var silenceDuration: TimeInterval = 0
     private let audioFileManager: AudioFileManager
     
     public init(audioFileManager: AudioFileManager = .shared) {
@@ -70,6 +76,7 @@ public final class AudioPlaybackService: NSObject, ObservableObject {
             let player = try AVAudioPlayer(contentsOf: fileURL)
             player.delegate = self
             player.enableRate = true
+            player.isMeteringEnabled = true
             player.rate = playbackRate
             player.prepareToPlay()
             player.play()
@@ -152,11 +159,35 @@ public final class AudioPlaybackService: NSObject, ObservableObject {
         }
     }
     
+    public func setTrimSilence(_ enabled: Bool) {
+        trimSilence = enabled
+    }
+
+    public func toggleTrimSilence() {
+        trimSilence.toggle()
+    }
+
     private func startProgressTimer() {
         timer?.invalidate()
+        silenceDuration = 0
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             guard let self = self, let player = self.audioPlayer else { return }
             self.currentTime = player.currentTime
+
+            if self.trimSilence && player.isPlaying {
+                player.updateMeters()
+                let avgPower = player.averagePower(forChannel: 0)
+                if avgPower < -42.0 {
+                    self.silenceDuration += 0.1
+                    if self.silenceDuration >= 1.2 {
+                        let targetTime = min(player.duration, player.currentTime + 0.5)
+                        self.seek(toTime: targetTime)
+                        self.silenceDuration = 0
+                    }
+                } else {
+                    self.silenceDuration = 0
+                }
+            }
         }
     }
 }
