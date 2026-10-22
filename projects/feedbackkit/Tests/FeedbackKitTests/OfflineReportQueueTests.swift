@@ -135,14 +135,18 @@ final class StubURLProtocol: URLProtocol, @unchecked Sendable {
     nonisolated(unsafe) private(set) static var requestCount = 0
     private static let lock = NSLock()
 
+    /// Points FeedbackSubmitter at a session that only talks to this stub (no global registration,
+    /// which isn't reliable on a busy CI simulator).
     static func install(_ answer: @escaping (URLRequest) -> Answer) {
         lock.withLock { self.answer = answer; requestCount = 0 }
-        URLProtocol.registerClass(StubURLProtocol.self)
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [StubURLProtocol.self]
+        FeedbackSubmitter.session = URLSession(configuration: config)
     }
 
-    static func uninstall() { URLProtocol.unregisterClass(StubURLProtocol.self) }
+    static func uninstall() { FeedbackSubmitter.session = .shared }
 
-    override class func canInit(with request: URLRequest) -> Bool { request.url?.host == "stub.example" }
+    override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {

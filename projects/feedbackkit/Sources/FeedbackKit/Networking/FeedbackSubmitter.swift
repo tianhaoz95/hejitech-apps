@@ -32,6 +32,9 @@ public enum FeedbackSubmissionError: Error, Sendable, LocalizedError {
 /// optional — this is just one way to consume a `FeedbackReport`; nothing
 /// about capture/annotation depends on it.
 public enum FeedbackSubmitter {
+    /// The session reports are sent with; tests swap in one with a stub protocol.
+    nonisolated(unsafe) static var session: URLSession = .shared
+
     public static func submit(
         _ report: FeedbackReport,
         configuration: FeedbackKitConfiguration,
@@ -72,7 +75,7 @@ public enum FeedbackSubmitter {
         }
         request.httpBody = body
 
-        URLSession.shared.dataTask(with: request) { _, response, error in
+        session.dataTask(with: request) { _, response, error in
             if let error {
                 completion(.failure(.network(error)))
                 return
