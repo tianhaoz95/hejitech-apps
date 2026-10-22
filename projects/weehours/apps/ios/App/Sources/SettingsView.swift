@@ -26,6 +26,15 @@ struct SettingsView: View {
     @AppStorage(ThumbDock.key) private var thumbDock = ThumbDock.off
     @AppStorage("liveActivitiesEnabled") private var liveActivitiesEnabled = true
 
+    /// When the next feed is due with the interval as set here (the adapted one if that's on),
+    /// counted from the last logged feed; nil before any feed is logged.
+    private var nextFeedDue: Date? {
+        let now = Date()
+        let adapted = draft.reminders.adaptive ? ReminderPlanner.suggestedFeedInterval(log: model.log, now: now) : nil
+        return StatusSnapshot(log: model.log, now: now)
+            .nextFeedDue(feedEveryMinutes: draft.reminders.feedEveryMinutes, adaptiveSuggestion: adapted)
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -94,11 +103,29 @@ struct SettingsView: View {
                     }
                 }
                 Section {
-                    IntervalPicker(title: "Feed every", minutes: $draft.reminders.feedEveryMinutes)
-                    Toggle("Adapt feed interval to last 3 days", isOn: $draft.reminders.adaptive)
+                    Toggle("Next feed reminders", isOn: Binding(
+                        get: { draft.reminders.feedEveryMinutes != nil },
+                        set: { enabled in
+                            if enabled {
+                                draft.reminders.feedEveryMinutes = draft.reminders.feedEveryMinutes ?? 180
+                            } else {
+                                draft.reminders.feedEveryMinutes = nil
+                            }
+                        }
+                    )).accessibilityIdentifier("toggleFeedReminders")
+
+                    if draft.reminders.feedEveryMinutes != nil {
+                        IntervalPicker(title: "Feed every", minutes: $draft.reminders.feedEveryMinutes)
+                        Toggle("Adapt feed interval to last 3 days", isOn: $draft.reminders.adaptive)
+                        if let due = nextFeedDue {
+                            LabeledContent("Next feed due", value: due.formatted(date: .omitted, time: .shortened))
+                                .accessibilityIdentifier("nextFeedDue")
+                        }
+                    }
+
                     IntervalPicker(title: "Diaper check every", minutes: $draft.reminders.diaperEveryMinutes)
                     Stepper("Sound after \(draft.reminders.overdueMarginMinutes) min overdue", value: $draft.reminders.overdueMarginMinutes, in: 5...90, step: 5)
-                    if let suggestion = ReminderPlanner.suggestedFeedInterval(log: model.log, now: Date()) {
+                    if draft.reminders.feedEveryMinutes != nil, let suggestion = ReminderPlanner.suggestedFeedInterval(log: model.log, now: Date()) {
                         Button("Use your last 3 days: every \(StatusSnapshot.duration(Double(suggestion) * 60))") {
                             draft.reminders.feedEveryMinutes = suggestion
                         }

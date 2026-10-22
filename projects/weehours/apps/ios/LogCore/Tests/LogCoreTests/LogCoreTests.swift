@@ -164,6 +164,33 @@ final class AcceptanceTests: XCTestCase {
         XCTAssertTrue(plan.filter { $0.kind == .feed }.isEmpty)     // open session: no feed-due reminder
         XCTAssertEqual(plan.map(\.kind), [.stillFeeding])            // but a "still feeding?" nudge at 45 min
     }
+
+    func testFeedReminderCanBeToggledOffAndPredictsNextFeedTime() async throws {
+        let s = try service()
+        var h = await s.household
+        let fed = Date().addingTimeInterval(-3600)
+        try await s.log(type: "feed.bottle.single", fields: ["consumed_fraction": .number(1)], occurredAt: fed, provenance: Provenance(surface: .phone, input: .tap))
+
+        let status = StatusSnapshot(log: try await s.derived(), now: Date())
+        XCTAssertEqual(status.lastFeedAt!.timeIntervalSince1970, fed.timeIntervalSince1970, accuracy: 0.1)
+
+        // When reminders are on (e.g. 150 minutes)
+        h.reminders.feedEveryMinutes = 150
+        let nextFeed = status.nextFeedDue(feedEveryMinutes: h.reminders.feedEveryMinutes)
+        XCTAssertNotNil(nextFeed)
+        XCTAssertEqual(nextFeed!.timeIntervalSince(fed), 150 * 60, accuracy: 1)
+
+        let activePlan = ReminderPlanner.plan(log: try await s.derived(), household: h, me: A, now: Date())
+        XCTAssertTrue(activePlan.contains { $0.kind == .feed })
+
+        // When reminders are toggled off (nil)
+        h.reminders.feedEveryMinutes = nil
+        let disabledFeed = status.nextFeedDue(feedEveryMinutes: h.reminders.feedEveryMinutes)
+        XCTAssertNil(disabledFeed)
+
+        let disabledPlan = ReminderPlanner.plan(log: try await s.derived(), household: h, me: A, now: Date())
+        XCTAssertFalse(disabledPlan.contains { $0.kind == .feed }, "Toggling feed reminders off must omit .feed reminder plans")
+    }
 }
 
 // MARK: - Decision layer
