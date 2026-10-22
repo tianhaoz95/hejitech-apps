@@ -6,9 +6,10 @@ import Foundation
 /// headers/order, same section layout, same mileage-deduction constant —
 /// so a CPA gets an identical file regardless of which platform produced it.
 enum ExportGenerator {
-    /// IRS standard mileage rate — illustrative, needs an annual update; see
-    /// Android's `ExportViewModel` for the same caveat.
-    private static let mileageRatePerMile = 0.67
+    /// IRS standard mileage rate dynamically determined by year (2024: 0.67, 2025: 0.70, 2026: 0.705).
+    private static var mileageRatePerMile: Double {
+        PdfExportGenerator.mileageRate(for: Date())
+    }
 
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()

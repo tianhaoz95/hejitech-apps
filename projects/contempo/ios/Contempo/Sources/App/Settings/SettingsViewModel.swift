@@ -39,6 +39,7 @@ final class SettingsViewModel {
     var deleteAccountError: String?
 
     var csv: String?
+    var pdfUrl: URL?
     var isExporting = false
 
     var roles: [ParticipantRole] = []
@@ -142,6 +143,15 @@ final class SettingsViewModel {
         Task {
             let entries = (try? await ServiceLocator.entryRepository.observeEntries().first { _ in true }) ?? []
             csv = ExportGenerator.generateCsv(entries: entries)
+            isExporting = false
+        }
+    }
+
+    func generatePdf() {
+        isExporting = true
+        Task {
+            let entries = (try? await ServiceLocator.entryRepository.observeEntries().first { _ in true }) ?? []
+            pdfUrl = PdfExportGenerator.generatePdf(entries: entries)
             isExporting = false
         }
     }
