@@ -33,6 +33,7 @@ When launched via `feedbackkit mcp`, the server registers standard MCP tools:
 |---|---|---|
 | `list_projects` | None | Lists projects the authenticated user belongs to |
 | `list_feedback` | `projectId`, `limit`, `status` | Lists recent feedback items for a project |
+| `search_feedback` | `query`, `project_id`, `status`, `since`, `limit` | Finds feedback whose text contains `query` (case-insensitive), newest first |
 | `get_feedback` | `feedbackId` | Returns structured feedback details, diagnostics, and signed screenshot URLs |
 | `get_prompt` | `feedbackId` | Returns the rendered AI coding prompt for a specific issue |
 | `get_docs` | `topic` | Reads local documentation topics (can run offline without login) |

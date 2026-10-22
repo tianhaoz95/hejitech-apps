@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createMcpServer } from "../dist/mcp/server.js";
+import { containsPattern, createMcpServer } from "../dist/mcp/server.js";
 
 test("createMcpServer without projectId registers all tools with default descriptions", () => {
   const server = createMcpServer();
@@ -55,4 +55,10 @@ test("search_feedback rejects query for another project when scoped", async () =
     res.content[0].text,
     /Cannot query project "other_project": this MCP server is scoped to project "proj_abc123"/,
   );
+});
+
+test("search_feedback matches %, _ and \\ literally", () => {
+  assert.equal(containsPattern("crash"), "%crash%");
+  assert.equal(containsPattern("100% done_now"), "%100\\% done\\_now%");
+  assert.equal(containsPattern("C:\\temp"), "%C:\\\\temp%");
 });

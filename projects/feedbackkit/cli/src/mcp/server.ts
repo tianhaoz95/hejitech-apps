@@ -49,6 +49,11 @@ export interface McpServerOptions {
  * are scoped strictly to that project so an agent only pulls data for the
  * project it is working on.
  */
+/** An ILIKE pattern matching `text` anywhere, with its own %, _ and \\ taken literally. */
+export function containsPattern(text: string): string {
+  return `%${text.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+}
+
 export function createMcpServer(options: McpServerOptions = {}): McpServer {
   const { projectId } = options;
   const server = new McpServer({ name: "feedbackkit", version: "0.1.0" });
@@ -157,7 +162,7 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
       if (status) dbQuery = dbQuery.eq("status", status);
       if (since) dbQuery = dbQuery.gte("created_at", since);
       if (query && query.trim()) {
-        dbQuery = dbQuery.ilike("text", `%${query.trim()}%`);
+        dbQuery = dbQuery.ilike("text", containsPattern(query.trim()));
       }
 
       const { data, error } = await dbQuery;
