@@ -679,7 +679,10 @@ function handleTerminalBell(tab) {
 
   playBellChime();
 
-  if (tab.tabEl) {
+  // The pulse is for tabs you aren't looking at: a bell in the visible, focused tab needs no flag.
+  const pane = tab.tabEl && paneOfTab(tab.tabEl);
+  const inView = pane?.activeTab === tab && document.visibilityState === 'visible' && document.hasFocus();
+  if (tab.tabEl && !inView) {
     tab.tabEl.classList.remove('tab-bell-pulse');
     void tab.tabEl.offsetWidth;
     tab.tabEl.classList.add('tab-bell-pulse');

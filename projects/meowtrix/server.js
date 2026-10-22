@@ -149,6 +149,7 @@ const DEFAULT_SETTINGS = {
   termFontFamily: 'Cascadia Code, JetBrains Mono, "SF Mono", Menlo, Monaco, monospace',
   termRenderer: 'webgl', // 'webgl' (GPU accelerated, sharpest), 'canvas' (2D), or 'dom'
   termScrollback: 10000,
+  termBellSound: true, // a short chime when a terminal rings the bell (\a)
   shell: process.env.SHELL || '/bin/bash',
   browserHomepage: '', // blank → new browser tabs show the local start page
   browserEngine: 'auto', // browser tabs in the desktop app: 'auto' (native webview) or 'proxy'

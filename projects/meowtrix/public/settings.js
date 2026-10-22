@@ -482,6 +482,7 @@ function populateControls(s) {
   if (rendererSel) rendererSel.value = s.termRenderer || 'webgl';
   updateWebGLIndicator();
   document.getElementById('s-scrollback').value = String(s.termScrollback);
+  document.getElementById('s-bell-sound').checked = s.termBellSound !== false;
   document.getElementById('s-shell').value = s.shell;
   document.getElementById('s-homepage').value = s.browserHomepage;
   const engineSel = document.getElementById('s-browser-engine');
@@ -921,6 +922,10 @@ function wireControls() {
       if (typeof refreshAllMobileAutocompletes === 'function') refreshAllMobileAutocompletes();
     });
   }
+
+  document.getElementById('s-bell-sound').addEventListener('change', async (e) => {
+    await saveSetting('termBellSound', e.target.checked);
+  });
 
   document.getElementById('s-show-time').addEventListener('change', async (e) => {
     await saveSetting('showTimeInMenu', e.target.checked);
