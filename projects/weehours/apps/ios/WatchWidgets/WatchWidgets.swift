@@ -1,9 +1,22 @@
 import SwiftUI
 import WidgetKit
 
-/// Watch face complications: one tap opens the watch app already recording (`weehours://record`,
-/// handled in WatchApp.swift). They show no log data, so the extension needs no App Group.
+/// Watch face complications and Smart Stack widgets: one tap (or Double Tap on the selected Smart
+/// Stack widget) opens the watch app already recording (`weehours://record`) or in tilt mode
+/// (`weehours://tilt`), both handled in WatchApp.swift. They show no log data, so the extension
+/// needs no App Group. On watchOS 26 a Control does the same from Control Center, the Smart Stack
+/// or the Action Button.
 @main
+struct WeeHoursWatchWidgets: WidgetBundle {
+    var body: some Widget {
+        WeeHoursComplications()
+        TiltComplication()
+        if #available(watchOS 26.0, *) {
+            TiltControl()
+        }
+    }
+}
+
 struct WeeHoursComplications: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "speak", provider: Provider()) { _ in
@@ -12,6 +25,30 @@ struct WeeHoursComplications: Widget {
         .configurationDisplayName("Speak a log entry")
         .description("Opens Wee Hours listening, ready for what happened.")
         .supportedFamilies([.accessoryCircular, .accessoryCorner, .accessoryRectangular, .accessoryInline])
+    }
+}
+
+struct TiltComplication: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "tilt", provider: Provider()) { _ in
+            TiltComplicationView().widgetURL(URL(string: "weehours://tilt"))
+        }
+        .configurationDisplayName("Log by tilting")
+        .description("Opens Wee Hours in tilt mode: tilt your wrist toward what happened.")
+        .supportedFamilies([.accessoryCircular, .accessoryCorner, .accessoryRectangular, .accessoryInline])
+    }
+}
+
+@available(watchOS 26.0, *)
+struct TiltControl: ControlWidget {
+    var body: some ControlWidgetConfiguration {
+        StaticControlConfiguration(kind: "tilt-control") {
+            ControlWidgetButton(action: TiltModeIntent()) {
+                Label("Log by tilting", systemImage: "gyroscope")
+            }
+        }
+        .displayName("Log by tilting")
+        .description("Opens Wee Hours in tilt mode.")
     }
 }
 
@@ -55,3 +92,35 @@ struct ComplicationView: View {
         }
     }
 }
+
+struct TiltComplicationView: View {
+    @Environment(\.widgetFamily) private var family
+
+    var body: some View {
+        switch family {
+        case .accessoryCorner:
+            Image(systemName: "gyroscope").font(.title2)
+                .widgetLabel("Tilt")
+                .containerBackground(.clear, for: .widget)
+        case .accessoryRectangular:
+            HStack(spacing: 8) {
+                Image(systemName: "gyroscope").font(.title)
+                VStack(alignment: .leading) {
+                    Text("Wee Hours").font(.headline)
+                    Text("Tilt to log").font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            .containerBackground(.clear, for: .widget)
+        case .accessoryInline:
+            Label("Tilt to log", systemImage: "gyroscope")
+                .containerBackground(.clear, for: .widget)
+        default:
+            ZStack {
+                AccessoryWidgetBackground()
+                Image(systemName: "gyroscope").font(.title2)
+            }
+            .containerBackground(.clear, for: .widget)
+        }
+    }
+}
+

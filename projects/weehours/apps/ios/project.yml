@@ -123,6 +123,7 @@ targets:
     platform: watchOS
     sources:
       - path: Watch
+      - path: WatchShared
     dependencies:
       - package: LogCore
       - target: WatchWidgets
@@ -153,6 +154,7 @@ targets:
     platform: watchOS
     sources:
       - path: WatchWidgets
+      - path: WatchShared
     settings:
       base:
         PRODUCT_NAME: WatchWidgets

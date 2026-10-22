@@ -32,9 +32,13 @@ struct WatchRoot: View {
                 WatchHome { tilt = true }
             }
         }
-        // a complication or a shortcut: open already recording (tap Stop to send it to the phone)
+        // a complication: open already recording (tap Stop to send it to the phone), or in tilt mode
         .onOpenURL { url in
-            if url.host == "record" { record() }
+            switch url.host {
+            case "record": record()
+            case "tilt": if !link.recording { tilt = true }
+            default: break
+            }
         }
         // a shortcut: open recording, or in tilt mode
         .onChange(of: request.pending, initial: true) { _, pending in
@@ -260,8 +264,10 @@ struct WatchHome: View {
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
+                // Double Tap (pinch twice) from here switches to tilt mode too: one-armed all the way.
                 Button(action: switchToTilt) { Image(systemName: "gyroscope") }
                     .accessibilityLabel("Tilt mode")
+                    .handGestureShortcut(.primaryAction)
             }
         }
         .confirmationDialog("Diaper", isPresented: $diaper) {

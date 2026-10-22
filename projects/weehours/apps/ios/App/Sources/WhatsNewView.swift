@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.8.8"
+    static let currentVersion = "0.8.9"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,21 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "0.8.9",
+            date: "October 2026",
+            tagline: "Tilt From Anywhere",
+            features: [
+                WhatsNewItem(
+                    icon: "gyroscope",
+                    tint: Theme.accent,
+                    title: "Start Tilt Mode in One Move",
+                    description: "On your watch, add the Log by tilting complication or Smart Stack widget, or the Log by tilting control to Control Center or the Action Button (watchOS 26). In the watch app, Double Tap switches to tilt mode.",
+                    kind: .feature
+                ),
+            ],
+            improvementsAndFixes: []
+        ),
         ReleaseHistoryItem(
             version: "0.8.8",
             date: "October 2026",
