@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.8.7"
+    static let currentVersion = "0.8.8"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,28 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "0.8.8",
+            date: "October 2026",
+            tagline: "Your Phone, Your Choice",
+            features: [],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "lock.rectangle.on.rectangle",
+                    tint: Theme.accent,
+                    title: "Lock Screen Timer On or Off",
+                    description: "Settings → Lock Screen & Dynamic Island turns the running feed or sleep timer off on this phone only. Each caregiver decides for their own phone.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "clock.badge",
+                    tint: Theme.accent,
+                    title: "Next Feed Time in Settings",
+                    description: "With feed reminders on, Settings shows when the next feed is due, from the last feed and the interval you set (or the one adapted to the last 3 days).",
+                    kind: .improvement
+                ),
+            ]
+        ),
         ReleaseHistoryItem(
             version: "0.8.7",
             date: "October 2026",

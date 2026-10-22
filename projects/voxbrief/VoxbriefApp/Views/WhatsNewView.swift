@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.27.1"
+    public static let currentVersion = "1.28.0"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,46 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.28.0",
+            date: "October 2026",
+            tagline: "Tick, Skip, Export",
+            features: [
+                WhatsNewItem(
+                    icon: "checkmark.square",
+                    tint: .green,
+                    title: "Tick Off Action Items in a Note",
+                    description: "Checklist items in a note are now tappable. Ticking an action item there also ticks it in your Daily Brief and widgets."
+                ),
+                WhatsNewItem(
+                    icon: "waveform.badge.minus",
+                    tint: .orange,
+                    title: "Skip Silences",
+                    description: "Turn on Trim Silence in Playback (in the player or in Settings) and long pauses are skipped while you listen back."
+                ),
+                WhatsNewItem(
+                    icon: "archivebox",
+                    tint: .blue,
+                    title: "Export All Notes as a Zip",
+                    description: "From the notes menu, export every note as Markdown files with their date, duration and tags, ready for Obsidian or Notion. Protected notes stay out."
+                ),
+                WhatsNewItem(
+                    icon: "keyboard",
+                    tint: .purple,
+                    title: "Your Own Capture Shortcut on Mac",
+                    description: "Choose the keys that start a capture in Voxbrief for Mac, or keep both Command keys, in Settings."
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "calendar.badge.plus",
+                    tint: .red,
+                    title: "Calendar Events at the Right Time",
+                    description: "Adding a note to Calendar uses the date and time you mentioned, like \"next Friday at 2pm\", instead of an hour from now.",
+                    kind: .improvement
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.27.1",
             date: "October 2026",
