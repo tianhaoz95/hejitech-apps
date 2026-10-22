@@ -46,9 +46,14 @@ final class DashboardViewModel {
         return ["All"] + set.sorted()
     }
 
+    /// Stored category values ("guest_communication"), "All" first; show them with `categoryLabel`.
     var categoryOptions: [String] {
-        let set = Set(entries.map { $0.category.capitalized })
-        return ["All"] + set.sorted()
+        let set = Set(entries.map(\.category).filter { !$0.isEmpty })
+        return ["All"] + set.sorted { EntryCategory.displayName(for: $0) < EntryCategory.displayName(for: $1) }
+    }
+
+    func categoryLabel(_ value: String) -> String {
+        value == "All" ? "All" : EntryCategory.displayName(for: value)
     }
 
     var filteredEntries: [Entry] {
@@ -71,8 +76,10 @@ final class DashboardViewModel {
         }
     }
 
+    /// The owner's confirmed hours among the filtered entries: the same rule as `confirmedHours`,
+    /// so other roles' hours never count toward the test here either.
     var filteredHours: Double {
-        filteredEntries.filter { $0.statusEnum == .confirmed && !$0.inProgress && !$0.isTrip }
+        filteredEntries.filter { $0.isOwnerHours && $0.statusEnum == .confirmed && !$0.inProgress && !$0.isTrip }
             .reduce(0.0) { $0 + Double($1.durationMinutes) } / 60.0
     }
 

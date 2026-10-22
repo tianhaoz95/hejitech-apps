@@ -233,28 +233,9 @@ struct DashboardScreen: View {
                 .overlay(RoundedRectangle(cornerRadius: ContempoRadius.small).stroke(palette.hairline, lineWidth: 1))
 
                 HStack {
-                    Menu {
-                        ForEach(viewModel.propertyOptions, id: \.self) { prop in
-                            Button { viewModel.selectedProperty = prop } label: {
-                                if viewModel.selectedProperty == prop {
-                                    Label(prop, systemImage: "checkmark")
-                                } else {
-                                    Text(prop)
-                                }
-                            }
-                        }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text("Property: \(viewModel.selectedProperty)")
-                                .font(ContempoFont.labelSmall())
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 10))
-                        }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(viewModel.selectedProperty == "All" ? palette.paperRaised : palette.pineTint)
-                        .foregroundStyle(viewModel.selectedProperty == "All" ? palette.ink : palette.pine)
-                        .clipShape(Capsule())
+                    filterMenu("Property", options: viewModel.propertyOptions, selection: $viewModel.selectedProperty) { $0 }
+                    filterMenu("Category", options: viewModel.categoryOptions, selection: $viewModel.selectedCategory) {
+                        viewModel.categoryLabel($0)
                     }
 
                     Spacer()
@@ -283,7 +264,7 @@ struct DashboardScreen: View {
                     .foregroundStyle(palette.ink)
                 Spacer()
                 if viewModel.isFilterActive {
-                    Text("\(String(format: "%.1f", viewModel.filteredHours)) hrs (\(viewModel.filteredEntries.count))")
+                    Text("\(String(format: "%.1f", viewModel.filteredHours)) hrs yours (\(viewModel.filteredEntries.count))")
                         .font(ContempoFont.labelSmall())
                         .foregroundStyle(palette.pine)
                 } else {
@@ -358,6 +339,36 @@ struct DashboardScreen: View {
             Button("OK") { viewModel.dismissDeleteError() }
         } message: {
             Text(viewModel.deleteError ?? "")
+        }
+    }
+
+    /// A capsule menu for one filter; highlighted when it isn't "All".
+    private func filterMenu(_ title: String, options: [String], selection: Binding<String>,
+                            label: @escaping (String) -> String) -> some View {
+        Menu {
+            ForEach(options, id: \.self) { option in
+                Button { selection.wrappedValue = option } label: {
+                    if selection.wrappedValue == option {
+                        Label(label(option), systemImage: "checkmark")
+                    } else {
+                        Text(label(option))
+                    }
+                }
+            }
+        } label: {
+            let active = selection.wrappedValue != "All"
+            HStack(spacing: 4) {
+                Text("\(title): \(label(selection.wrappedValue))")
+                    .font(ContempoFont.labelSmall())
+                    .lineLimit(1)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 10))
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(active ? palette.pineTint : palette.paperRaised)
+            .foregroundStyle(active ? palette.pine : palette.ink)
+            .clipShape(Capsule())
         }
     }
 }
