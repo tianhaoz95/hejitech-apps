@@ -468,6 +468,167 @@ export interface FieldSpec {
   presets?: number[];
 }
 
+export interface DailySummary {
+  date: string;
+  child?: string;
+  feeds: {
+    total_bottle_ml: number;
+    bottle_sessions_count: number;
+    nursing_sessions_count: number;
+    nursing_duration_minutes: number;
+    solids_count: number;
+    total_feed_count: number;
+  };
+  diapers: {
+    wet_count: number;
+    dirty_count: number;
+    both_count: number;
+    total_count: number;
+  };
+  sleep: {
+    total_sleep_minutes: number;
+    session_count: number;
+    longest_stretch_minutes: number;
+    current_wake_window_minutes?: number;
+  };
+  medications: Array<{
+    medicine: string;
+    dose?: string;
+    occurred_at: string;
+  }>;
+  temperature?: {
+    celsius: number;
+    occurred_at: string;
+  };
+}
+
+/** Precomputed daily aggregates for pediatric review or AI assistant summaries. */
+export function dailySummary(
+  d: Derived,
+  dateStr?: string,
+  bottleMlFor: (baby?: string) => number = () => 120,
+  now: number = Date.now(),
+): DailySummary {
+  const targetDate = dateStr ? dateStr.slice(0, 10) : new Date(now).toISOString().slice(0, 10);
+  const startOfDay = new Date(`${targetDate}T00:00:00.000Z`).getTime();
+  const endOfDay = new Date(`${targetDate}T23:59:59.999Z`).getTime();
+  const isTargetDay = (timeMs: number) => timeMs >= startOfDay && timeMs <= endOfDay;
+
+  const active = d.effective.filter((e) => d.status.get(e.id) === "active");
+  const dayEvents = active.filter((e) => isTargetDay(t(e.occurred_at)));
+
+  // Feeds
+  let totalBottleMl = 0;
+  let bottleCount = 0;
+  let nursingCount = 0;
+  let nursingDurationMs = 0;
+
+  for (const s of d.sessions) {
+    const a = anchor(s);
+    if (!isTargetDay(a)) continue;
+    if (s.kind === "bottle") {
+      bottleCount++;
+      const ml = typeof s.consumedMl === "number" ? s.consumedMl
+        : typeof s.consumedFraction === "number" ? Math.round(s.consumedFraction * bottleMlFor(s.baby_id))
+        : bottleMlFor(s.baby_id);
+      totalBottleMl += ml;
+    } else if (s.kind === "breast") {
+      nursingCount++;
+      if (s.start !== undefined && s.end !== undefined) {
+        nursingDurationMs += Math.max(0, s.end - s.start);
+      }
+    }
+  }
+
+  const solidsCount = dayEvents.filter((e) => e.type === "feed.solids").length;
+
+  // Diapers
+  const diapers = dayEvents.filter((e) => e.type === "diaper");
+  let wetCount = 0;
+  let dirtyCount = 0;
+  let bothCount = 0;
+  for (const dp of diapers) {
+    const k = dp.fields.kind;
+    if (k === "wet") wetCount++;
+    else if (k === "dirty") dirtyCount++;
+    else if (k === "both") {
+      bothCount++;
+      wetCount++;
+      dirtyCount++;
+    }
+  }
+
+  // Sleep
+  const sleepSessions = d.sessions.filter((s) => s.kind === "sleep" && isTargetDay(anchor(s)));
+  let totalSleepMs = 0;
+  let longestStretchMs = 0;
+  for (const sl of sleepSessions) {
+    if (sl.start !== undefined && sl.end !== undefined) {
+      const dur = Math.max(0, sl.end - sl.start);
+      totalSleepMs += dur;
+      if (dur > longestStretchMs) longestStretchMs = dur;
+    }
+  }
+
+  // Wake window
+  let currentWakeMinutes: number | undefined;
+  const isCurrentlySleeping = d.sessions.some((s) => isOpen(s) && s.kind === "sleep");
+  if (!isCurrentlySleeping) {
+    const lastWake = d.sessions
+      .filter((s) => s.kind === "sleep" && s.end !== undefined)
+      .map((s) => s.end as number);
+    if (lastWake.length > 0) {
+      const latestWake = Math.max(...lastWake);
+      currentWakeMinutes = Math.max(0, Math.round((now - latestWake) / 60000));
+    }
+  }
+
+  // Medications
+  const medications = dayEvents
+    .filter((e) => e.type === "medication")
+    .map((e) => ({
+      medicine: String(e.fields.medicine ?? "Medication"),
+      dose: e.fields.dose ? String(e.fields.dose) : undefined,
+      occurred_at: e.occurred_at,
+    }));
+
+  // Temperature
+  const temperatures = dayEvents.filter((e) => e.type === "temperature");
+  const lastTemp = temperatures.at(-1);
+  const tempC = lastTemp && typeof lastTemp.fields.degrees_celsius === "number"
+    ? lastTemp.fields.degrees_celsius
+    : lastTemp && typeof lastTemp.fields.degrees_fahrenheit === "number"
+    ? Math.round(((lastTemp.fields.degrees_fahrenheit - 32) * 5 / 9) * 10) / 10
+    : undefined;
+
+  return {
+    date: targetDate,
+    child: d.baby,
+    feeds: {
+      total_bottle_ml: Math.round(totalBottleMl),
+      bottle_sessions_count: bottleCount,
+      nursing_sessions_count: nursingCount,
+      nursing_duration_minutes: Math.round(nursingDurationMs / 60000),
+      solids_count: solidsCount,
+      total_feed_count: bottleCount + nursingCount + solidsCount,
+    },
+    diapers: {
+      wet_count: wetCount,
+      dirty_count: dirtyCount,
+      both_count: bothCount,
+      total_count: diapers.length,
+    },
+    sleep: {
+      total_sleep_minutes: Math.round(totalSleepMs / 60000),
+      session_count: sleepSessions.length,
+      longest_stretch_minutes: Math.round(longestStretchMs / 60000),
+      current_wake_window_minutes: currentWakeMinutes,
+    },
+    medications,
+    temperature: tempC !== undefined && lastTemp ? { celsius: tempC, occurred_at: lastTemp.occurred_at } : undefined,
+  };
+}
+
 export function fieldSpecs(type: string): FieldSpec[] {
   return ((typeSpec(type) as { fields?: FieldSpec[] } | undefined)?.fields ?? []) as FieldSpec[];
 }

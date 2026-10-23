@@ -11,7 +11,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 /** A service-role client on the `weehours` schema. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Db = SupabaseClient<any, any, any>;
-import { derive, eventTypes, fieldSpecs, milkStash, registry, shiftSummary, status, statusLine, typeSpec, validate, type LogEvent } from "@weehours/core";
+import { dailySummary, derive, eventTypes, fieldSpecs, milkStash, registry, shiftSummary, status, statusLine, typeSpec, validate, type LogEvent } from "@weehours/core";
 
 const PROTOCOL_VERSION = "2025-06-18";
 export const SERVER_VERSION = "0.2.0";
@@ -46,6 +46,20 @@ export const TOOLS = [
       "Each child's one-line status (time since last feed, next breast side, last diaper, sleep state) with the raw status fields, plus the on-duty caregiver and unresolved duplicate flags. Pass child for one child only.",
     inputSchema: { type: "object", properties: { child: { type: "string", description: "A child's name or id. Default: every child." } } },
     annotations: { title: "Get the current status", readOnlyHint: true, openWorldHint: false },
+  },
+  {
+    name: "get_daily_summary",
+    title: "Get daily aggregates and pediatric summary",
+    description:
+      "Precomputed daily totals for pediatric visits or daily check-ins: total bottle ml, nursing sessions and duration, wet/dirty diapers, total sleep duration, longest sleep stretch, current wake window, active medications, and latest temperature. Defaults to today; pass date (YYYY-MM-DD) for past days.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        date: { type: "string", description: "Target date in YYYY-MM-DD format. Default: today." },
+        child: { type: "string", description: "A child's name or id. Default: first or only child." },
+      },
+    },
+    annotations: { title: "Get daily aggregates and pediatric summary", readOnlyHint: true, openWorldHint: false },
   },
   {
     name: "list_children",
@@ -285,6 +299,17 @@ export async function callTool(name: string, args: Record<string, unknown>, call
       const chosen = pick(args.child, false);
       // one child (or one asked for): the flat shape older agents read; several: one entry each
       return chosen.length === 1 ? { ...one(chosen[0]), ...shared } : { children: chosen.map(one), ...shared };
+    }
+    case "get_daily_summary": {
+      const chosen = pick(args.child, false);
+      const targetChild = chosen[0] ?? children[0];
+      const events = await loadAll(admin, caller.householdId);
+      const d = derive(events, targetChild?.id);
+      const summary = dailySummary(d, typeof args.date === "string" ? args.date : undefined, bottleMlFor);
+      return {
+        ...summary,
+        child: targetChild ? { id: targetChild.id, name: targetChild.name } : summary.child,
+      };
     }
     case "list_children":
       return {
