@@ -9,8 +9,10 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,21 +23,29 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -288,13 +298,133 @@ fun DashboardScreen(
             }
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
+
+        // Search & Filter Section
+        if (uiState.entries.isNotEmpty()) {
+            OutlinedTextField(
+                value = uiState.searchQuery,
+                onValueChange = viewModel::updateSearchQuery,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Search task, property, category...") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                trailingIcon = {
+                    if (uiState.searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { viewModel.updateSearchQuery("") }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear search")
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            var propertyMenuExpanded by remember { mutableStateOf(false) }
+            var categoryMenuExpanded by remember { mutableStateOf(false) }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                // Property Filter Dropdown
+                Box {
+                    FilterChip(
+                        selected = uiState.selectedProperty != "All",
+                        onClick = { propertyMenuExpanded = true },
+                        label = { Text("Property: ${uiState.selectedProperty}") },
+                        trailingIcon = { Icon(Icons.Default.ExpandMore, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                    )
+                    DropdownMenu(
+                        expanded = propertyMenuExpanded,
+                        onDismissRequest = { propertyMenuExpanded = false },
+                    ) {
+                        uiState.propertyOptions.forEach { prop ->
+                            DropdownMenuItem(
+                                text = { Text(prop) },
+                                onClick = {
+                                    viewModel.selectProperty(prop)
+                                    propertyMenuExpanded = false
+                                },
+                            )
+                        }
+                    }
+                }
+
+                // Category Filter Dropdown
+                Box {
+                    FilterChip(
+                        selected = uiState.selectedCategory != "All",
+                        onClick = { categoryMenuExpanded = true },
+                        label = { Text("Category: ${viewModel.categoryLabel(uiState.selectedCategory)}") },
+                        trailingIcon = { Icon(Icons.Default.ExpandMore, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                    )
+                    DropdownMenu(
+                        expanded = categoryMenuExpanded,
+                        onDismissRequest = { categoryMenuExpanded = false },
+                    ) {
+                        uiState.categoryOptions.forEach { cat ->
+                            DropdownMenuItem(
+                                text = { Text(viewModel.categoryLabel(cat)) },
+                                onClick = {
+                                    viewModel.selectCategory(cat)
+                                    categoryMenuExpanded = false
+                                },
+                            )
+                        }
+                    }
+                }
+
+                // Subtotal chip when filtered
+                if (uiState.isFilterActive) {
+                    AssistChip(
+                        onClick = {},
+                        label = {
+                            Text(
+                                "%.1fh subtotal".format(Locale.US, uiState.filteredHours),
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        },
+                    )
+
+                    AssistChip(
+                        onClick = viewModel::resetFilters,
+                        label = { Text("Reset") },
+                        trailingIcon = { Icon(Icons.Default.Clear, contentDescription = "Reset filters", modifier = Modifier.size(14.dp)) },
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+        }
+
+        Spacer(Modifier.height(8.dp))
 
         if (uiState.entries.isEmpty()) {
             Text(stringResource(R.string.dashboard_no_entries), style = MaterialTheme.typography.bodyLarge)
+        } else if (uiState.filteredEntries.isEmpty()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 32.dp),
+                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    "No entries match the current filters.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(12.dp))
+                TextButton(onClick = viewModel::resetFilters) {
+                    Text("Clear filters")
+                }
+            }
         } else {
             LazyColumn {
-                items(uiState.entries, key = { it.id }) { entry ->
+                items(uiState.filteredEntries, key = { it.id }) { entry ->
                     EntryRow(
                         entry = entry,
                         isSelectionMode = isSelectionMode,
