@@ -59,4 +59,12 @@ describe("tools", () => {
       expect(a.readOnlyHint === true || typeof a.destructiveHint === "boolean", t.name).toBe(true);
     }
   });
+
+  it("exposes get_daily_summary with date and child arguments", () => {
+    const summaryTool = TOOLS.find((t) => t.name === "get_daily_summary");
+    expect(summaryTool).toBeDefined();
+    expect(summaryTool?.annotations?.readOnlyHint).toBe(true);
+    expect(summaryTool?.inputSchema?.properties?.date).toBeDefined();
+    expect(summaryTool?.inputSchema?.properties?.child).toBeDefined();
+  });
 });

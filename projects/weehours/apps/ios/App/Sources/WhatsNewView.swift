@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.9.0"
+    static let currentVersion = "0.10.0"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,21 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "0.10.0",
+            date: "October 2026",
+            tagline: "AI Daily Summary & Pediatric Stats",
+            features: [
+                WhatsNewItem(
+                    icon: "sparkles",
+                    tint: Theme.accent,
+                    title: "MCP Daily Pediatric Summary",
+                    description: "AI assistants connected to Wee Hours via Model Context Protocol (MCP) can now query authoritative daily summaries (get_daily_summary) with pre-computed milk volumes, nursing duration, diaper counts, sleep totals, and wake windows in a single tool call.",
+                    kind: .feature
+                ),
+            ],
+            improvementsAndFixes: []
+        ),
         ReleaseHistoryItem(
             version: "0.9.0",
             date: "October 2026",

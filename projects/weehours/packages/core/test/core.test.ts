@@ -2,7 +2,7 @@
 // the Swift LogCore tests read.
 import { describe, expect, it } from "vitest";
 import fixtures from "../../../spec/fixtures/status.json";
-import { derive, status, statusLine, validate, type LogEvent } from "../src/core.ts";
+import { dailySummary, derive, status, statusLine, validate, type LogEvent } from "../src/core.ts";
 
 const now = Date.parse(fixtures.now);
 
@@ -68,5 +68,68 @@ describe("validation", () => {
     expect(validate("tummy_time", {})).toBeNull();
     expect(validate("tummy_time", { minutes: 0 })).toMatch(/minutes/);
     expect(validate("potty", { result: "tried" }, ["diaper"])).toMatch(/turned off/);
+  });
+});
+
+describe("dailySummary", () => {
+  it("computes accurate daily feed volume, diapers, sleep duration and wake windows", () => {
+    const today = "2026-10-22";
+    const bId = "baby-1";
+    const events: LogEvent[] = [
+      {
+        id: "e1", household_id: "h", baby_id: bId, type: "feed.bottle.single",
+        fields: { consumed_ml: 120, contents: "formula" },
+        occurred_at: `${today}T08:00:00.000Z`, logged_at: `${today}T08:00:00.000Z`,
+        logged_by: "p1", provenance: { surface: "phone", input: "tap" }, supersedes: null,
+      },
+      {
+        id: "e2", household_id: "h", baby_id: bId, type: "diaper",
+        fields: { kind: "wet" },
+        occurred_at: `${today}T09:00:00.000Z`, logged_at: `${today}T09:00:00.000Z`,
+        logged_by: "p1", provenance: { surface: "phone", input: "tap" }, supersedes: null,
+      },
+      {
+        id: "e3", household_id: "h", baby_id: bId, type: "diaper",
+        fields: { kind: "both", stool_color: "yellow" },
+        occurred_at: `${today}T11:00:00.000Z`, logged_at: `${today}T11:00:00.000Z`,
+        logged_by: "p1", provenance: { surface: "phone", input: "tap" }, supersedes: null,
+      },
+      {
+        id: "e4", household_id: "h", baby_id: bId, type: "sleep.start",
+        fields: {},
+        occurred_at: `${today}T12:00:00.000Z`, logged_at: `${today}T12:00:00.000Z`,
+        logged_by: "p1", provenance: { surface: "phone", input: "tap" }, supersedes: null,
+      },
+      {
+        id: "e5", household_id: "h", baby_id: bId, type: "sleep.end",
+        fields: {},
+        occurred_at: `${today}T13:30:00.000Z`, logged_at: `${today}T13:30:00.000Z`,
+        logged_by: "p1", provenance: { surface: "phone", input: "tap" }, supersedes: null,
+      },
+      {
+        id: "e6", household_id: "h", baby_id: bId, type: "medication",
+        fields: { medicine: "Acetaminophen", dose: "1.25 ml" },
+        occurred_at: `${today}T14:00:00.000Z`, logged_at: `${today}T14:00:00.000Z`,
+        logged_by: "p1", provenance: { surface: "phone", input: "tap" }, supersedes: null,
+      },
+    ];
+
+    const d = derive(events, bId);
+    const testNow = new Date(`${today}T15:00:00.000Z`).getTime();
+    const summary = dailySummary(d, today, () => 120, testNow);
+
+    expect(summary.date).toBe(today);
+    expect(summary.feeds.total_bottle_ml).toBe(120);
+    expect(summary.feeds.total_feed_count).toBe(1);
+    expect(summary.diapers.wet_count).toBe(2);
+    expect(summary.diapers.dirty_count).toBe(1);
+    expect(summary.diapers.both_count).toBe(1);
+    expect(summary.diapers.total_count).toBe(2);
+    expect(summary.sleep.total_sleep_minutes).toBe(90);
+    expect(summary.sleep.longest_stretch_minutes).toBe(90);
+    expect(summary.sleep.session_count).toBe(1);
+    expect(summary.sleep.current_wake_window_minutes).toBe(90); // 13:30 to 15:00 is 90 mins
+    expect(summary.medications.length).toBe(1);
+    expect(summary.medications[0].medicine).toBe("Acetaminophen");
   });
 });
