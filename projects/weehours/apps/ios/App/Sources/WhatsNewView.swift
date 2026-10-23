@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.11.0"
+    static let currentVersion = "0.11.1"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,21 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "0.11.1",
+            date: "October 2026",
+            tagline: "Today vs Yesterday, Up Front",
+            features: [],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "chart.bar.xaxis",
+                    tint: Theme.sleep,
+                    title: "Today vs Yesterday on Now",
+                    description: "Now opens with today's and yesterday's feeds, diapers and sleep side by side. Turn it off in Settings → Timeline if you'd rather not see it.",
+                    kind: .improvement
+                ),
+            ]
+        ),
         ReleaseHistoryItem(
             version: "0.11.0",
             date: "October 2026",

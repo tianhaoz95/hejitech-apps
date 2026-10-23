@@ -26,7 +26,7 @@ struct SettingsView: View {
     @AppStorage(ThumbDock.key) private var thumbDock = ThumbDock.off
     @AppStorage("liveActivitiesEnabled") private var liveActivitiesEnabled = true
     @AppStorage(GroupSessions.key) private var groupSessions = true
-    @AppStorage(NowRhythm.key) private var nowRhythm = false
+    @AppStorage(NowRhythm.key) private var nowRhythm = true
 
     /// When the next feed is due with the interval as set here (the adapted one if that's on),
     /// counted from the last logged feed; nil before any feed is logged.

@@ -1,7 +1,7 @@
 import LogCore
 import SwiftUI
 
-/// Settings → Timeline: also show "Today vs yesterday" at the top of Now (off by default).
+/// Settings → Timeline: "Today vs yesterday" at the top of Now (on by default).
 enum NowRhythm {
     static let key = "nowRhythmCompare"
 }

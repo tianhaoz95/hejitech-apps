@@ -73,7 +73,7 @@ struct MainView: View {
 struct HomeView: View {
     @EnvironmentObject var model: AppModel
     @AppStorage(NightMode.key) private var nightMode = NightMode.off
-    @AppStorage(NowRhythm.key) private var showRhythm = false
+    @AppStorage(NowRhythm.key) private var showRhythm = true
     @State private var editing: LogEvent?
     @State private var showingSync = false
     @State private var now = Date()
