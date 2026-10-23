@@ -10,6 +10,7 @@ dist/
 .env.*
 !.env.example
 !projects/weehours/services/web/.env.production
+!projects/g2digest/services/web/.env.production
 !projects/contempo/services/*/.env.production
 !projects/contempo/services/*/.env.development
 test-results/
