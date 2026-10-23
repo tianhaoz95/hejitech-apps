@@ -70,10 +70,10 @@ public struct QuickRecordSheet: View {
     // MARK: - Recording View
 
     private var recordingView: some View {
-        VStack(spacing: 28) {
-            Text(recordingService.isRecording ? "Listening…" : "Ready to Record")
+        VStack(spacing: 24) {
+            Text(recordingService.isRecording ? (recordingService.isPaused ? "Recording Paused" : "Listening…") : "Ready to Record")
                 .font(.headline)
-                .foregroundStyle(recordingService.isRecording ? Color.accentColor : .secondary)
+                .foregroundStyle(recordingService.isRecording ? (recordingService.isPaused ? .orange : Color.accentColor) : .secondary)
 
             if appendingToNoteId != nil {
                 Label("Adding to existing note", systemImage: "arrow.triangle.merge")
@@ -83,16 +83,35 @@ public struct QuickRecordSheet: View {
 
             Text(recordingService.recordingDuration.formattedDuration)
                 .font(.system(size: 52, weight: .medium, design: .monospaced))
-                .foregroundStyle(.primary)
+                .foregroundStyle(recordingService.isPaused ? .secondary : .primary)
                 .monospacedDigit()
                 .contentTransition(.numericText())
 
-            CaptureWaveformView(isRecording: recordingService.isRecording, audioLevel: recordingService.audioLevel)
+            CaptureWaveformView(isRecording: recordingService.isRecording, audioLevel: recordingService.isPaused ? 0 : recordingService.audioLevel)
                 .onTapGesture {
                     toggleRecording()
                 }
 
-            Text(recordingService.isRecording ? "Tap to stop and run cleanup" : "Tap the microphone to speak your idea")
+            if recordingService.isRecording {
+                Button {
+                    if recordingService.isPaused {
+                        coordinator.resumeRecording()
+                    } else {
+                        coordinator.pauseRecording()
+                    }
+                } label: {
+                    Label(recordingService.isPaused ? "Resume Recording" : "Pause Recording", systemImage: recordingService.isPaused ? "play.circle.fill" : "pause.circle.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(recordingService.isPaused ? .green : .secondary)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.appTertiaryFill, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(recordingService.isPaused ? "Resume recording" : "Pause recording")
+            }
+
+            Text(recordingService.isRecording ? "Tap the waveform to finish and save" : "Tap the microphone to speak your idea")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
 

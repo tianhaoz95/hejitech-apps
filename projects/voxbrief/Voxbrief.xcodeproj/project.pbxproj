@@ -120,6 +120,7 @@
 		84F9325B22C21FFC803309B0 /* CaptureWaveformView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214322359CF4DEE6753E172E /* CaptureWaveformView.swift */; };
 		87478723C6F1041048676D05 /* ExtensionDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FD5F519993C6DB394849326 /* ExtensionDelegate.swift */; };
 		880825FABEFE75FA9C0A66F6 /* NoteStoreBenchmarkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F25310C14F1AD2D04EE8A5BF /* NoteStoreBenchmarkTests.swift */; };
+		894AC42FCFC592DDD6CC5F4E /* AudioRecordingServicePauseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08AD128A0393EA1A8AF64CFF /* AudioRecordingServicePauseTests.swift */; };
 		8A33B8791FF0B81B31C2EB69 /* NoteRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F47B06B91C0E08B3E8267051 /* NoteRowView.swift */; };
 		8C3723A863D6F1B1E3BDDC93 /* FormattingExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0F20D0BCE0BE7D3E7E931A7 /* FormattingExtensions.swift */; };
 		8E62084FAAC0B96BF129C31A /* NoteExportServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF5CDE95EFC5F0A340223DED /* NoteExportServiceTests.swift */; };
@@ -319,6 +320,7 @@
 /* Begin PBXFileReference section */
 		015D2CED079AC4D35BFD7889 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		03F942BDF0E561E09CD54BC4 /* PersonalDictionaryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalDictionaryStore.swift; sourceTree = "<group>"; };
+		08AD128A0393EA1A8AF64CFF /* AudioRecordingServicePauseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecordingServicePauseTests.swift; sourceTree = "<group>"; };
 		0BFF1B48591E606188875EF7 /* FormattingExtensionsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormattingExtensionsTests.swift; sourceTree = "<group>"; };
 		1408F482A93D5BC763F22E74 /* NoteDetailViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteDetailViewModelTests.swift; sourceTree = "<group>"; };
 		14F96EF59E1D7F971D62EEE7 /* AccessibilityPermissionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityPermissionManager.swift; sourceTree = "<group>"; };
@@ -894,6 +896,7 @@
 				F5CDF159F713F6245D1F4C78 /* AskServiceTests.swift */,
 				A7E7A1ECFE8A61810E0AA7FB /* ASRServiceHelpersTests.swift */,
 				8E16EF8E03690A86F8E50308 /* AudioPlaybackServiceExtendedTests.swift */,
+				08AD128A0393EA1A8AF64CFF /* AudioRecordingServicePauseTests.swift */,
 				8C20D11D5E1327FBD57ADC9F /* AudioStorageManagementTests.swift */,
 				E3581A5F2CA5DF38A3ED559B /* CalendarExportServiceTests.swift */,
 				372B2FCF84714C6CEF641AB1 /* DailyBriefTests.swift */,
@@ -1289,6 +1292,7 @@
 				247B77735A22A2E94332CF96 /* ActionButtonControlsTests.swift in Sources */,
 				AF051E0DA4FAE480AFD3E810 /* AskServiceTests.swift in Sources */,
 				DE4532B8F73D8A8BCCC7DA10 /* AudioPlaybackServiceExtendedTests.swift in Sources */,
+				894AC42FCFC592DDD6CC5F4E /* AudioRecordingServicePauseTests.swift in Sources */,
 				288FA067DC651A77B996F459 /* AudioStorageManagementTests.swift in Sources */,
 				071AA0A018BD158374C1C1DC /* CalendarExportServiceTests.swift in Sources */,
 				3E92239163BF05231D433FD7 /* DailyBriefTests.swift in Sources */,
@@ -1749,7 +1753,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MARKETING_VERSION = 1.27.1;
+				MARKETING_VERSION = 1.28.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1849,7 +1853,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MARKETING_VERSION = 1.27.1;
+				MARKETING_VERSION = 1.28.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
