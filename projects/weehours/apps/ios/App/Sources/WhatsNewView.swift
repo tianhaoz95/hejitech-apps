@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.9.0"
+    static let currentVersion = "0.10.0"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,21 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "0.10.0",
+            date: "October 2026",
+            tagline: "Control Center Quick-Log",
+            features: [
+                WhatsNewItem(
+                    icon: "slider.horizontal.3",
+                    tint: Theme.accent,
+                    title: "Control Center Diaper & Sleep Controls",
+                    description: "Add dedicated one-tap controls to your Lock Screen and Control Center for quick logging with one hand: Log Wet Diaper, Log Dirty Diaper, and Baby Sleep / Wake (iOS 18).",
+                    kind: .feature
+                ),
+            ],
+            improvementsAndFixes: []
+        ),
         ReleaseHistoryItem(
             version: "0.9.0",
             date: "October 2026",

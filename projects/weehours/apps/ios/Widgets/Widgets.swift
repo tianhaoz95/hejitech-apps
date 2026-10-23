@@ -11,6 +11,9 @@ struct WeeHoursWidgets: WidgetBundle {
         EveryoneWidget()
         SpeakWidget()
         SpeakControl()
+        WetDiaperControl()
+        DirtyDiaperControl()
+        ToggleSleepControl()
         SessionLiveActivity()
     }
 }
