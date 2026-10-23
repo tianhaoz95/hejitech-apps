@@ -741,6 +741,34 @@ final class RoadmapFeaturesTests: XCTestCase {
         XCTAssertEqual(stash.oldestFridgeAt, t1)
     }
 
+    func testMilkStashCDCExpiration() {
+        let now = fixedNow()
+        let h = Household(id: H, babyId: B, bottleMl: 120)
+        // tExpired: 5 days ago (CDC fridge limit is 4 days -> expired)
+        let tExpired = now.addingTimeInterval(-5 * 24 * 3600)
+        // tSoon: 3 days + 12 hours ago (within 24h of 4d expiry -> expiring soon)
+        let tSoon = now.addingTimeInterval(-84 * 3600)
+        // tFresh: 1 day ago (safe)
+        let tFresh = now.addingTimeInterval(-24 * 3600)
+
+        let events = [
+            LogEvent(householdId: H, babyId: B, type: "pump", fields: ["amount_ml": .number(80), "storage": .string("fridge")], occurredAt: tExpired, loggedBy: A, provenance: Provenance(surface: .phone, input: .tap)),
+            LogEvent(householdId: H, babyId: B, type: "pump", fields: ["amount_ml": .number(120), "storage": .string("fridge")], occurredAt: tSoon, loggedBy: A, provenance: Provenance(surface: .phone, input: .tap)),
+            LogEvent(householdId: H, babyId: B, type: "pump", fields: ["amount_ml": .number(150), "storage": .string("fridge")], occurredAt: tFresh, loggedBy: A, provenance: Provenance(surface: .phone, input: .tap)),
+        ]
+
+        let stash = DerivedLog(events: events).milkStash(household: h, now: now)
+        XCTAssertEqual(stash.fridgeLots, 3)
+        XCTAssertEqual(stash.fridgeMl, 350)
+        XCTAssertEqual(stash.expiredCount, 1)
+        XCTAssertEqual(stash.expiringSoonCount, 1)
+        XCTAssertEqual(stash.batches.count, 3)
+        XCTAssertTrue(stash.batches[0].isExpired)
+        XCTAssertTrue(stash.batches[1].isExpiringSoon)
+        XCTAssertFalse(stash.batches[2].isExpiringSoon)
+        XCTAssertFalse(stash.batches[2].isExpired)
+    }
+
     func testSolidsAndDoctorVisitPack() {
         let now = fixedNow()
         let h = Household(id: H, babyId: B, bottleMl: 120)

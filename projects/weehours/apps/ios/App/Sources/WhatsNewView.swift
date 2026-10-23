@@ -48,13 +48,20 @@ struct WhatsNewView: View {
         ReleaseHistoryItem(
             version: "0.10.0",
             date: "October 2026",
-            tagline: "Quick Controls & AI Pediatric Summary",
+            tagline: "Quick Controls, Safe Storage & AI Daily Summary",
             features: [
                 WhatsNewItem(
                     icon: "slider.horizontal.3",
                     tint: Theme.accent,
                     title: "Control Center Diaper & Sleep Controls",
                     description: "Add dedicated one-tap controls to your Lock Screen and Control Center for quick logging with one hand: Log Wet Diaper, Log Dirty Diaper, and Baby Sleep / Wake (iOS 18).",
+                    kind: .feature
+                ),
+                WhatsNewItem(
+                    icon: "clock.badge.exclamationmark",
+                    tint: Theme.other,
+                    title: "Milk Stash Expiration Tracking",
+                    description: "Track pumped milk against CDC safe storage guidelines (fridge 4 days, freezer 6 months). The milk stash card now highlights batches expiring soon and displays First-In, First-Out (FIFO) order so you always know which batch to use first.",
                     kind: .feature
                 ),
                 WhatsNewItem(
