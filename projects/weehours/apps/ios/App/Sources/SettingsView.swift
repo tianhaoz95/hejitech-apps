@@ -25,6 +25,7 @@ struct SettingsView: View {
     @AppStorage(NightMode.tintKey) private var nightTint = NightTint.amber
     @AppStorage(ThumbDock.key) private var thumbDock = ThumbDock.off
     @AppStorage("liveActivitiesEnabled") private var liveActivitiesEnabled = true
+    @AppStorage(GroupSessions.key) private var groupSessions = true
 
     /// When the next feed is due with the interval as set here (the adapted one if that's on),
     /// counted from the last logged feed; nil before any feed is logged.
@@ -156,6 +157,12 @@ struct SettingsView: View {
                         }
                 } header: { Text("Lock Screen & Dynamic Island") } footer: {
                     Text("Shows ongoing timer on your Lock Screen and Dynamic Island during feeding and sleep sessions. Toggle off individually per caregiver preference.")
+                }
+                Section {
+                    Toggle("Group feeds and sleeps", isOn: $groupSessions)
+                        .accessibilityIdentifier("groupSessions")
+                } header: { Text("Timeline") } footer: {
+                    Text("Shows a finished feed or sleep as one entry with its length, instead of separate start and finish entries. Search and the Audit view always show every entry.")
                 }
                 Section {
                     Button("Save changes") { save() }

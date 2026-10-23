@@ -20,11 +20,16 @@ enum TimelineItem: Identifiable {
     }
 }
 
+/// Settings → Timeline: show a finished feed or sleep (start + finish, side switches) as one entry.
+enum GroupSessions {
+    static let key = "timelineGroupSessions"
+}
+
 struct TimelineView: View {
     @EnvironmentObject var model: AppModel
     @State private var editing: LogEvent?
     @State private var showUndone = false
-    @State private var groupSessions = true
+    @AppStorage(GroupSessions.key) private var groupSessions = true
     @State private var search = ""
     @State private var categoryFilter = "all"
     /// Show one child's entries (nil: everyone's).
@@ -230,9 +235,6 @@ struct TimelineView: View {
             .navigationTitle("Timeline")
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    Toggle(isOn: $groupSessions) { Image(systemName: "rectangle.compress.vertical") }
-                        .toggleStyle(.button)
-                        .accessibilityLabel("Group paired sessions")
                     Toggle(isOn: $showUndone) { Image(systemName: "arrow.uturn.backward.circle") }
                         .toggleStyle(.button)
                         .accessibilityLabel("Show undone entries")
