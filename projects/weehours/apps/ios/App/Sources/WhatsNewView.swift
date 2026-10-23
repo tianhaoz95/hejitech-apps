@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.10.0"
+    static let currentVersion = "0.10.1"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,21 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "0.10.1",
+            date: "October 2026",
+            tagline: "A Tidier Timeline",
+            features: [],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "rectangle.compress.vertical",
+                    tint: Theme.accent,
+                    title: "Grouping Moved to Settings",
+                    description: "The Timeline button that groups a feed's or sleep's start and finish into one entry is now Settings → Timeline → Group feeds and sleeps. It's still on unless you turn it off.",
+                    kind: .improvement
+                ),
+            ]
+        ),
         ReleaseHistoryItem(
             version: "0.10.0",
             date: "October 2026",
