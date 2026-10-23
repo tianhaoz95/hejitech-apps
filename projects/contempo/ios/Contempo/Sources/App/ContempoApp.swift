@@ -1,8 +1,11 @@
 import ContempoCore
 import SwiftUI
+import WidgetKit
 
 @main
 struct ContempoApp: App {
+    @Environment(\.scenePhase) private var scenePhase
+
     init() {
         FeedbackReporting.configure()
     }
@@ -14,6 +17,11 @@ struct ContempoApp: App {
                     // Google sign-in through Supabase returns to com.hejitech.contempoapp://login-callback.
                     ContempoBackend.client.handle(url)
                 }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .background {
+                WidgetCenter.shared.reloadTimelines(ofKind: "HoursLockScreenWidget")
+            }
         }
     }
 }

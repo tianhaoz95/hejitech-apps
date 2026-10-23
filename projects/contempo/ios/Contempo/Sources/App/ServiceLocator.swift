@@ -32,5 +32,7 @@ enum ServiceLocator {
     static let shakeToReportSettingsStore = ShakeToReportSettingsStore()
     static let onboardingStore = OnboardingStore()
     static let agentClient = AgentClient(onDeviceLlm: onDeviceLlm, entryRepository: entryRepository)
+    static let appGroupId = "group.com.hejitech.contempoapp"
+    static let hoursProgressStore = HoursProgressStore(appGroupId: appGroupId)
 
 }
