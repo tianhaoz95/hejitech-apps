@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -18,6 +19,7 @@ import java.util.Locale
 data class ExportUiState(
     val isGenerating: Boolean = false,
     val csv: String? = null,
+    val pdfFile: File? = null,
     val errorMessage: String? = null,
 )
 
@@ -65,6 +67,20 @@ class ExportViewModel : ViewModel() {
                 _uiState.value = _uiState.value.copy(isGenerating = false, csv = buildCsv(entries))
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isGenerating = false, errorMessage = e.message ?: "Couldn't generate export.")
+            }
+        }
+    }
+
+    fun generatePdf(context: android.content.Context) {
+        _uiState.value = _uiState.value.copy(isGenerating = true, errorMessage = null)
+        viewModelScope.launch {
+            try {
+                val entries = entryRepository.observeEntries().first()
+                val file = File(context.cacheDir, "Contempo-Audit-Binder.pdf")
+                PdfExportGenerator.generatePdf(entries, file)
+                _uiState.value = _uiState.value.copy(isGenerating = false, pdfFile = file)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isGenerating = false, errorMessage = e.message ?: "Couldn't generate PDF export.")
             }
         }
     }
@@ -174,12 +190,16 @@ class ExportViewModel : ViewModel() {
     private fun appendMileageLogSection(builder: StringBuilder, mileageEntries: List<Entry>) = with(builder) {
         appendLine("MILEAGE LOG (separate deduction under IRC Section 274(d) — IRS standard mileage rate, verify current-year rate before filing)")
         appendLine("date,property,business_purpose,miles,capture_method,deduction_usd")
+        var totalDeduction = 0.0
         mileageEntries.forEach { entry ->
             val purpose = if (entry.propertyName.isNotBlank()) {
                 "Property management — ${entry.propertyName}"
             } else {
                 "(no property specified — add detail before filing)"
             }
+            val rate = PdfExportGenerator.mileageRate(entry.activityDate.toDate())
+            val deduction = entry.miles * rate
+            totalDeduction += deduction
             appendLine(
                 listOf(
                     dateFormatter.format(entry.activityDate.toDate()),
@@ -187,12 +207,12 @@ class ExportViewModel : ViewModel() {
                     csvEscape(purpose),
                     entry.miles.toString(),
                     entry.mileageCaptureMethod.ifBlank { "manual" },
-                    "%.2f".format(entry.miles * IRS_STANDARD_MILEAGE_RATE),
+                    "%.2f".format(deduction),
                 ).joinToString(",")
             )
         }
         val totalMiles = mileageEntries.sumOf { it.miles }
-        appendLine("Total,,,${totalMiles},,${"%.2f".format(totalMiles * IRS_STANDARD_MILEAGE_RATE)}")
+        appendLine("Total,,,${totalMiles},,${"%.2f".format(totalDeduction)}")
     }
 
     /**
