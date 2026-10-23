@@ -1,0 +1,41 @@
+// The G2 Digest site: Vite-built pages (./dist) plus a Worker for /api, /feed, /mcp and its OAuth
+// endpoints (src/worker). Deploy from the repo root with `npm run deploy -w @g2digest/web` (Cloudflare
+// Workers Builds runs the same). Local: `npm run dev:worker` serves both on 127.0.0.1:8790.
+{
+  "$schema": "../../../../node_modules/wrangler/config-schema.json",
+  "name": "g2digest-dev",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    "html_handling": "auto-trailing-slash",
+    "run_worker_first": ["/mcp", "/mcp/*", "/authorize", "/token", "/register", "/.well-known/*", "/api/*", "/feed/*", "/edition/*", "/preview/*"]
+  },
+  "vars": {
+    "PUBLIC_URL": "http://127.0.0.1:8790",
+    "SUPABASE_URL": "http://127.0.0.1:55421",
+    // The demo anon key every local `supabase start` ships with.
+    "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0"
+  },
+  // Local secrets: .dev.vars (SUPABASE_SERVICE_ROLE_KEY; scripts/test-api.mjs writes the local demo key).
+  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "g2digest-oauth-local" }],
+  "dev": { "port": 8790, "ip": "127.0.0.1" },
+
+  "env": {
+    "production": {
+      "name": "g2digest",
+      "workers_dev": true,
+      "vars": {
+        "PUBLIC_URL": "https://g2digest.hejitech.workers.dev",
+        "SUPABASE_URL": "https://jitdzllkxfhlrxxvljhp.supabase.co",
+        "SUPABASE_ANON_KEY": "sb_publishable_lZSe_L4Wd0Sw01h25eixzQ_vLU7FPP8"
+      },
+      // Secret: SUPABASE_SERVICE_ROLE_KEY (wrangler secret put --env production).
+      "kv_namespaces": [{ "binding": "OAUTH_KV" }]
+    }
+  }
+}

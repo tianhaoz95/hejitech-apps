@@ -10,7 +10,7 @@ enabled = true
 port = 55421
 # Schemas to expose in your API. Tables, views and stored procedures in this schema will get API
 # endpoints. `public` and `graphql_public` schemas are included by default.
-schemas = ["public", "graphql_public", "weehours", "waypack", "contempo"]
+schemas = ["public", "graphql_public", "weehours", "waypack", "contempo", "g2digest"]
 # Extra schemas to add to the search_path of every request.
 extra_search_path = ["public", "extensions"]
 # The maximum number of rows returns from a view, table, or stored procedure. Limits payload size
@@ -162,6 +162,7 @@ site_url = "http://127.0.0.1:8787"
 additional_redirect_urls = [
   "http://127.0.0.1:8787/auth/callback", "com.hejitech.waypack://login-callback",  # Waypack
   "http://127.0.0.1:3000/**", "http://127.0.0.1:8788/**", "weehours://login-callback",  # Wee Hours site, app
+  "http://127.0.0.1:3001/**", "http://127.0.0.1:8790/**",  # G2 Digest web app (vite, worker)
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
