@@ -45,6 +45,9 @@ final class SettingsViewModel {
     var roles: [ParticipantRole] = []
     var roleError: String?
 
+    var properties: [Property] = []
+    var propertyError: String?
+
     /// This week's on-device/cloud LLM usage — see EntryRepository's
     /// observeDeviceTokenUsage/observeCloudTokenUsage doc comments.
     var deviceTokenUsage: TokenUsageWeek?
@@ -61,6 +64,21 @@ final class SettingsViewModel {
                 for try await roles in stream {
                     guard let self else { return }
                     self.roles = roles
+                }
+            } catch {
+                // Stream ended with a non-auth error — nothing else to do here.
+            }
+        }
+        Task { [weak self] in
+            let stream = AuthAwareStream.make(
+                fallback: { [] },
+                onAuthFailure: { try? await ServiceLocator.authManager.signOut() },
+                factory: { repository.observeProperties() }
+            )
+            do {
+                for try await properties in stream {
+                    guard let self else { return }
+                    self.properties = properties
                 }
             } catch {
                 // Stream ended with a non-auth error — nothing else to do here.
@@ -193,5 +211,44 @@ final class SettingsViewModel {
 
     func dismissRoleError() {
         roleError = nil
+    }
+
+    func addProperty(name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        Task {
+            do {
+                _ = try await entryRepository.createProperty(name: trimmed)
+            } catch {
+                propertyError = error.localizedDescription
+            }
+        }
+    }
+
+    func renameProperty(_ property: Property, name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, let propertyId = property.id else { return }
+        Task {
+            do {
+                try await entryRepository.renameProperty(propertyId: propertyId, name: trimmed)
+            } catch {
+                propertyError = error.localizedDescription
+            }
+        }
+    }
+
+    func deleteProperty(_ property: Property) {
+        guard let propertyId = property.id else { return }
+        Task {
+            do {
+                try await entryRepository.deleteProperty(propertyId: propertyId)
+            } catch {
+                propertyError = error.localizedDescription
+            }
+        }
+    }
+
+    func dismissPropertyError() {
+        propertyError = nil
     }
 }

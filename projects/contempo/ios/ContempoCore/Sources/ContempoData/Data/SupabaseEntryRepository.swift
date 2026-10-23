@@ -30,6 +30,10 @@ public final class SupabaseEntryRepository: EntryRepository, Sendable {
         try await db.from("properties").delete().eq("id", value: propertyId).execute()
     }
 
+    public func renameProperty(propertyId: String, name: String) async throws {
+        try await db.from("properties").update(NameOnly(name: name)).eq("id", value: propertyId).execute()
+    }
+
     public func observeRoles() -> AsyncThrowingStream<[ParticipantRole], Error> {
         ContempoBackend.liveRows("roles", orderBy: "created_at", ascending: true)
     }
