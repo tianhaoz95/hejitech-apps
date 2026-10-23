@@ -36,6 +36,7 @@
 		1CF161E6CA0FC639CF42CE63 /* Qwen3-0.6B-4bit in Resources */ = {isa = PBXBuildFile; fileRef = E7C3731F89B9CAC7ECDD9D86 /* Qwen3-0.6B-4bit */; };
 		1FF80FB30E19699991CE584B /* VoxbriefWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 68B3FA6D53152C4F4D6ADBB9 /* VoxbriefWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		20EF7A5682F5F8A870B2A9D0 /* AudioPlaybackService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17618C9F07139808472E6688 /* AudioPlaybackService.swift */; };
+		211A138E3CCA3719B6BA7B63 /* BiometricAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3946FFAAF88003A0BD93C3BD /* BiometricAuthService.swift */; };
 		2338B06275B314ABB2F489C3 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A2146B25CD674831F950B98 /* OnboardingView.swift */; };
 		247B77735A22A2E94332CF96 /* ActionButtonControlsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE3C08A8A1C82DE876A2A0AF /* ActionButtonControlsTests.swift */; };
 		24DFA28FE1B13B75DBF0E240 /* CaptureShortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5BA486B424E85E400E74193 /* CaptureShortcut.swift */; };
@@ -58,6 +59,7 @@
 		3D9D0AA84E166AEA9A87B10D /* VoxbriefWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 2657ABEEE26CAC4BC36968D1 /* VoxbriefWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		3E92239163BF05231D433FD7 /* DailyBriefTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 372B2FCF84714C6CEF641AB1 /* DailyBriefTests.swift */; };
 		41E4356939685BCA41DE71AA /* OverlayWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DCD76CBD9A8D9599353A83C /* OverlayWindowController.swift */; };
+		421419E934DAA624CA4A6493 /* BiometricAuthServiceMacTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E004A40CF847931BF177BD73 /* BiometricAuthServiceMacTests.swift */; };
 		4277699DD73B200D23E0FA2B /* ASRServiceHelpersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7E7A1ECFE8A61810E0AA7FB /* ASRServiceHelpersTests.swift */; };
 		42B91CC41B6C79D2A68C0DE1 /* NoteRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = D04388B08F3A85CF017C8018 /* NoteRepository.swift */; };
 		434B61EB575DCFD7CD63EBA6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 653DA86C0171A62565403BC9 /* Assets.xcassets */; };
@@ -73,6 +75,7 @@
 		4CFDE4244EBDE1DA1D7479C6 /* CalendarExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB742F1A46A47B6A091AB793 /* CalendarExportService.swift */; };
 		4DA5C4630866C2922DC5B479 /* BackgroundProcessingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7672C160D148FE5C0D2E7C7 /* BackgroundProcessingManager.swift */; };
 		4DBFA9233C26DDEB7049630D /* Qwen3-0.6B-4bit in Resources */ = {isa = PBXBuildFile; fileRef = E7C3731F89B9CAC7ECDD9D86 /* Qwen3-0.6B-4bit */; };
+		4E57463A1F98D845A5D95B33 /* BiometricAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3946FFAAF88003A0BD93C3BD /* BiometricAuthService.swift */; };
 		4F7C18686C7D1DC467E52161 /* AudioRecordingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E37077EC9E2F16A4D7C2E54 /* AudioRecordingService.swift */; };
 		51CC7CC68DBE2F229C298885 /* MLXLLM in Frameworks */ = {isa = PBXBuildFile; productRef = 5217B63305D7FA96D559DE40 /* MLXLLM */; };
 		51DD55546D795135739D6785 /* UpdateCheckerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B333509FBA0A166F5102396F /* UpdateCheckerTests.swift */; };
@@ -342,6 +345,7 @@
 		372B2FCF84714C6CEF641AB1 /* DailyBriefTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyBriefTests.swift; sourceTree = "<group>"; };
 		38326DAFB38C97F2FF11D41B /* KeyboardHandoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardHandoff.swift; sourceTree = "<group>"; };
 		39134F2904F8AED6204A0889 /* Share.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Share.entitlements; sourceTree = "<group>"; };
+		3946FFAAF88003A0BD93C3BD /* BiometricAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricAuthService.swift; sourceTree = "<group>"; };
 		3D8A438CA586EE651D88C668 /* CaptureShortcutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureShortcutTests.swift; sourceTree = "<group>"; };
 		406D633D5C4879AF1E20107B /* NoteListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteListView.swift; sourceTree = "<group>"; };
 		41B60172558E506D5CCB8962 /* NoteCompletionNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteCompletionNotifier.swift; sourceTree = "<group>"; };
@@ -451,6 +455,7 @@
 		DDF370D074CADB2C25254782 /* MarkdownLiteText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownLiteText.swift; sourceTree = "<group>"; };
 		DE514F4FCBBBF278BDF6591E /* NoteSearchIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteSearchIndex.swift; sourceTree = "<group>"; };
 		DFEB07D6090DC24A5902E9AE /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityManager.swift; sourceTree = "<group>"; };
+		E004A40CF847931BF177BD73 /* BiometricAuthServiceMacTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricAuthServiceMacTests.swift; sourceTree = "<group>"; };
 		E3581A5F2CA5DF38A3ED559B /* CalendarExportServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarExportServiceTests.swift; sourceTree = "<group>"; };
 		E5BA486B424E85E400E74193 /* CaptureShortcut.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureShortcut.swift; sourceTree = "<group>"; };
 		E7C3731F89B9CAC7ECDD9D86 /* Qwen3-0.6B-4bit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "Qwen3-0.6B-4bit"; path = "VoxbriefApp/Resources/Models/Qwen3-0.6B-4bit"; sourceTree = SOURCE_ROOT; };
@@ -519,6 +524,7 @@
 				17618C9F07139808472E6688 /* AudioPlaybackService.swift */,
 				6E37077EC9E2F16A4D7C2E54 /* AudioRecordingService.swift */,
 				A7672C160D148FE5C0D2E7C7 /* BackgroundProcessingManager.swift */,
+				3946FFAAF88003A0BD93C3BD /* BiometricAuthService.swift */,
 				AB742F1A46A47B6A091AB793 /* CalendarExportService.swift */,
 				16D525E2C065D446511110E0 /* DailyBrief.swift */,
 				EFF66F19623979C59C602106 /* DataBackupService.swift */,
@@ -801,6 +807,7 @@
 		ABD8760BDDAE4ED56B38968F /* MacUnitTests */ = {
 			isa = PBXGroup;
 			children = (
+				E004A40CF847931BF177BD73 /* BiometricAuthServiceMacTests.swift */,
 				3D8A438CA586EE651D88C668 /* CaptureShortcutTests.swift */,
 				45BC8B9500EFFF14E2F325BD /* FeedbackShortcutTests.swift */,
 				8CEECC0352AAD60D2E540189 /* LLMPromptExportTests.swift */,
@@ -1371,6 +1378,7 @@
 				0F3402B7A31F2FBC8F90A113 /* AudioPlaybackService.swift in Sources */,
 				4F7C18686C7D1DC467E52161 /* AudioRecordingService.swift in Sources */,
 				4DA5C4630866C2922DC5B479 /* BackgroundProcessingManager.swift in Sources */,
+				211A138E3CCA3719B6BA7B63 /* BiometricAuthService.swift in Sources */,
 				4CFDE4244EBDE1DA1D7479C6 /* CalendarExportService.swift in Sources */,
 				DCDE66379E089E740318E929 /* CaptureWaveformView.swift in Sources */,
 				C1EA532E936389527D9A6CEF /* ControlLaunchIntent.swift in Sources */,
@@ -1439,6 +1447,7 @@
 				17A21F6B7399E5413B80DF0E /* AudioConstants.swift in Sources */,
 				945E814C8C7BD00FFAE02B83 /* AudioFileManager.swift in Sources */,
 				20EF7A5682F5F8A870B2A9D0 /* AudioPlaybackService.swift in Sources */,
+				4E57463A1F98D845A5D95B33 /* BiometricAuthService.swift in Sources */,
 				D490C9DFFA124F618A0E7531 /* CalendarExportService.swift in Sources */,
 				CDFA9F1211A2F2E5993DD218 /* CaptureCoordinator.swift in Sources */,
 				24DFA28FE1B13B75DBF0E240 /* CaptureShortcut.swift in Sources */,
@@ -1499,6 +1508,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				421419E934DAA624CA4A6493 /* BiometricAuthServiceMacTests.swift in Sources */,
 				1A5B656CF87A005D90958E9B /* CaptureShortcutTests.swift in Sources */,
 				EB714002C57569EB559FA748 /* FeedbackShortcutTests.swift in Sources */,
 				C92DECFED0FCCFF3EFCE56E3 /* LLMPromptExportTests.swift in Sources */,
@@ -1749,7 +1759,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MARKETING_VERSION = 1.27.1;
+				MARKETING_VERSION = 1.28.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1849,7 +1859,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MARKETING_VERSION = 1.27.1;
+				MARKETING_VERSION = 1.28.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

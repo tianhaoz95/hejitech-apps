@@ -19,6 +19,8 @@ public struct NoteDetailView: View {
     @State private var appendMemoTitle = ""
     @State private var isScrubbing = false
     @State private var scrubbedTime: TimeInterval = 0
+    @State private var isUnlocked: Bool = false
+    @Environment(\.scenePhase) private var scenePhase
 
     private enum CopyField: Equatable {
         case fullRewrite, lightCleanup, rawTranscript
@@ -45,9 +47,10 @@ public struct NoteDetailView: View {
     }
 
     public var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                header
+        ZStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    header
 
                 if viewModel.note.status == .failed {
                     failureBanner
@@ -374,6 +377,18 @@ public struct NoteDetailView: View {
             .presentationDragIndicator(.visible)
             #endif
         }
+            .blur(radius: (viewModel.note.isLocked && !isUnlocked) ? 20 : 0)
+            .allowsHitTesting(!viewModel.note.isLocked || isUnlocked)
+
+            if viewModel.note.isLocked && !isUnlocked {
+                privacyShieldOverlay
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background {
+                isUnlocked = false
+            }
+        }
         .trackFeedbackScreen("NoteDetail")
         .onAppear {
             if viewModel.selectedTab == .lightCleanup {
@@ -385,6 +400,55 @@ public struct NoteDetailView: View {
                 viewModel.ensureLightCleanupGenerated()
             }
         }
+    }
+
+    private var privacyShieldOverlay: some View {
+        VStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(Color.secondary.opacity(0.12))
+                    .frame(width: 76, height: 76)
+                Image(systemName: "lock.shield.fill")
+                    .font(.system(size: 38))
+                    .foregroundColor(Color.accentColor)
+            }
+
+            Text("Protected Voice Note")
+                .font(.title3.bold())
+
+            Text("This note is protected with biometric authentication.")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+
+            Button {
+                Task {
+                    let success = await BiometricAuthService.shared.authenticate(reason: "Unlock protected note")
+                    if success {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            isUnlocked = true
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: BiometricAuthService.shared.biometricType == .faceID ? "faceid" : "touchid")
+                        .font(.headline)
+                    Text("Unlock Note")
+                        .fontWeight(.semibold)
+                }
+                .padding(.horizontal, 22)
+                .padding(.vertical, 10)
+                .background(Color.accentColor)
+                .foregroundColor(.white)
+                .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 6)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.appGroupedBackground.opacity(0.92))
     }
 
     // MARK: - Header
