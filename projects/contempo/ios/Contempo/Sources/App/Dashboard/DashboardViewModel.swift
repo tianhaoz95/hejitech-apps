@@ -22,8 +22,10 @@ final class DashboardViewModel {
     /// Unified owner + other-roles breakdown for the Dashboard's
     /// expand-to-compare UI — see `DashboardMetrics.roleBreakdown`.
     var roleBreakdown: [RoleHoursSummary] = []
-    let thresholdHours = MaterialParticipationTest.thresholdHours
-    let testName = MaterialParticipationTest.name
+    private let taxTestStore = ServiceLocator.taxTestStore
+    var selectedTaxTest: StatutoryTaxTest { taxTestStore.selectedTest }
+    var thresholdHours: Int { selectedTaxTest.thresholdHours }
+    var testName: String { selectedTaxTest.shortName }
     var entries: [Entry] = []
     var pendingCount = 0
     /// The one open start/stop timer, if any. Surfaced separately from the generic pending list/count.
