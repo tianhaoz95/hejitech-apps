@@ -37,6 +37,10 @@ struct TimelineView: View {
     /// How much each day shows: a 24-hour grid, the usual cards, or every detail (pinch to change).
     @AppStorage("timelineDensity") private var density = TimelineDensity.cards
     @State private var hourCell: HourCell?
+    /// The day on screen (search looks across every day instead).
+    /// `-timelineDaysAgo <n>` opens on an earlier day (screenshots, checks).
+    @State private var day = Calendar.current.date(byAdding: .day, value: -UserDefaults.standard.integer(forKey: "timelineDaysAgo"),
+                                                    to: Calendar.current.startOfDay(for: Date())) ?? Date()
 
     private var several: Bool { model.household.babies.count > 1 }
 
@@ -96,8 +100,10 @@ struct TimelineView: View {
             .sorted { $0.occurredAt > $1.occurredAt }
     }
 
+    private var searching: Bool { !search.trimmingCharacters(in: .whitespaces).isEmpty }
+
     private var days: [(Date, [TimelineItem])] {
-        let events = filteredEvents
+        let events = searching ? filteredEvents : filteredEvents.filter { Calendar.current.isDate($0.occurredAt, inSameDayAs: day) }
         if !groupSessions || !search.isEmpty || density == .audit {
             let groups = Dictionary(grouping: events.map { TimelineItem.single($0) }) { Calendar.current.startOfDay(for: $0.occurredAt) }
             return groups.keys.sorted(by: >).map { ($0, groups[$0]!) }
@@ -162,16 +168,31 @@ struct TimelineView: View {
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                 }
-                if search.isEmpty {
+                if !searching {
                     Section {
-                        RhythmCompare(log: model.log, child: child, household: model.household) { editing = $0 }
+                        DayBar(day: $day)
+                            .listRowBackground(Color.clear)
+                            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                    }
+                    Section {
+                        DayStrip(day: day, log: model.log, child: child, household: model.household) { editing = $0 }
+                            .listRowInsets(EdgeInsets())
+                        DaySummary(day: day, log: model.log, child: child, household: model.household,
+                                   babies: child.flatMap { id in model.shown.filter { $0.id == id } } ?? model.shown)
                     }
                 }
-                if days.isEmpty {
-                    // a row under the filters and the rhythm card, not an overlay on top of them
+                if days.isEmpty, !searching, categoryFilter == "all", !model.log.all.isEmpty {
+                    Section {
+                        Text("Nothing logged \(Calendar.current.isDateInToday(day) ? "yet today" : "this day").")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity).padding(.vertical, 8)
+                            .listRowBackground(Color.clear)
+                    }
+                } else if days.isEmpty {
+                    // a row under the filters and the day strip, not an overlay on top of them
                     Section {
                         ContentUnavailableView {
-                            Label(search.isEmpty && categoryFilter == "all" ? "Nothing logged yet" : "No matching entries", systemImage: "list.bullet.rectangle")
+                            Label(searching || categoryFilter != "all" ? "No matching entries" : "Nothing logged yet", systemImage: "list.bullet.rectangle")
                         } description: {
                             Text(showUndone
                                  ? "There are no entries matching this view."
@@ -182,13 +203,13 @@ struct TimelineView: View {
                 }
                 if density == .grid {
                     ForEach(days, id: \.0) { day, _ in
-                        Section(day.formatted(date: .complete, time: .omitted)) {
+                        Section(searching ? day.formatted(date: .complete, time: .omitted) : "") {
                             HourGrid(day: day, events: filteredEvents.filter { Calendar.current.isDate($0.occurredAt, inSameDayAs: day) }) { hourCell = $0 }
                         }
                     }
                 } else {
                 ForEach(days, id: \.0) { day, items in
-                    Section(day.formatted(date: .complete, time: .omitted)) {
+                    Section(searching ? day.formatted(date: .complete, time: .omitted) : "") {
                         ForEach(items) { item in
                             switch item {
                             case .single(let e):
@@ -218,6 +239,7 @@ struct TimelineView: View {
                 }
                 }
             }
+            .listSectionSpacing(.compact)
             .simultaneousGesture(MagnifyGesture().onEnded { v in
                 // pinch out for more detail, in for the whole day at a glance
                 withAnimation(.snappy) {
@@ -245,204 +267,8 @@ struct TimelineView: View {
     }
 }
 
-/// Today and yesterday as two 24-hour ribbons aligned by clock time: sleep as bars, feeds as
-/// ticks, diapers as dots, with how today compares to yesterday at the same time of day. Tap a
-/// mark to open its entry.
-struct RhythmCompare: View {
-    let log: DerivedLog
-    let child: UUID?
-    let household: Household
-    let onSelect: (LogEvent) -> Void
-    @State private var now = Date()
-    private let tick = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
-
-    struct Mark { let kind: Kind; let from: Double; let to: Double; let event: UUID? }
-    enum Kind { case sleep, feed, diaper, cluster }
-
-    private var cal: Calendar { Calendar.current }
-
-    var body: some View {
-        let today = cal.startOfDay(for: now)
-        let yesterday = cal.date(byAdding: .day, value: -1, to: today) ?? today
-        let cutoff = yesterday.addingTimeInterval(now.timeIntervalSince(today))
-        let t = totals(from: today, to: now), y = totals(from: yesterday, to: cutoff)
-        let cluster = clusterFeeding(today)
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Today vs yesterday").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                Spacer()
-                HStack(spacing: 8) {
-                    legend(Theme.sleep, "Sleep"); legend(Theme.feed, "Feed"); legend(Theme.diaper, "Diaper")
-                }
-            }
-            ribbon("Today", start: today, extra: cluster.map { [Mark(kind: .cluster, from: frac($0.0, in: today), to: frac($0.1, in: today), event: nil)] } ?? [], nowMark: frac(now, in: today))
-            ribbon("Yest", start: yesterday, extra: [], nowMark: frac(cutoff, in: yesterday))
-            HStack(spacing: 0) {
-                Spacer().frame(width: 42)
-                ForEach(Array(["12a", "6a", "12p", "6p", "12a"].enumerated()), id: \.offset) { i, h in
-                    Text(h).font(.system(size: 9)).foregroundStyle(.tertiary)
-                    if i < 4 { Spacer(minLength: 0) }
-                }
-            }
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    chip("moon.zzz.fill", Theme.sleep, "Sleep \(StatusSnapshot.duration(t.sleep))", delta(t.sleep - y.sleep, minutes: true))
-                    chip("waterbottle.fill", Theme.feed, "\(t.feeds) feed\(t.feeds == 1 ? "" : "s")", delta(Double(t.feeds - y.feeds)))
-                    if t.ml > 0 || y.ml > 0 { chip("drop.fill", Theme.feed, "\(Int(t.ml)) ml", delta(t.ml - y.ml, unit: " ml")) }
-                    chip("humidity.fill", Theme.diaper, "\(t.diapers) diaper\(t.diapers == 1 ? "" : "s")", delta(Double(t.diapers - y.diapers)))
-                    if let cluster {
-                        chip("bolt.heart.fill", .red, "Cluster feeding \(cluster.0.formatted(date: .omitted, time: .shortened))–\(cluster.1.formatted(date: .omitted, time: .shortened))", nil)
-                    }
-                }
-            }
-            Text("Compared with yesterday up to \(now.formatted(date: .omitted, time: .shortened))").font(.system(size: 10)).foregroundStyle(.tertiary)
-        }
-        .padding(.vertical, 4)
-        .onReceive(tick) { now = $0 }
-        .accessibilityIdentifier("rhythmCompare")
-    }
-
-    // MARK: data
-
-    private var sessions: [Session] { log.sessions.filter { child == nil || $0.babyId == child } }
-    private var events: [LogEvent] { log.counted.filter { child == nil || $0.babyId == child } }
-
-    /// Position in the day by clock time (so both ribbons line up even across a DST change).
-    private func frac(_ d: Date, in dayStart: Date) -> Double {
-        guard let next = cal.date(byAdding: .day, value: 1, to: dayStart) else { return 0 }
-        if d <= dayStart { return 0 }
-        if d >= next { return 1 }
-        let c = cal.dateComponents([.hour, .minute], from: d)
-        return Double((c.hour ?? 0) * 60 + (c.minute ?? 0)) / 1440
-    }
-
-    private func marks(_ dayStart: Date) -> [Mark] {
-        guard let next = cal.date(byAdding: .day, value: 1, to: dayStart) else { return [] }
-        var out: [Mark] = []
-        for s in sessions where s.kind == .sleep {
-            guard let start = s.start else { continue }
-            let end = s.end ?? (s.isOpen ? now : start)
-            guard end > dayStart, start < next else { continue }
-            out.append(Mark(kind: .sleep, from: frac(max(start, dayStart), in: dayStart), to: frac(min(end, next), in: dayStart), event: s.startEvent))
-        }
-        for s in sessions where s.kind != .sleep && s.anchor >= dayStart && s.anchor < next {
-            let f = frac(s.anchor, in: dayStart)
-            out.append(Mark(kind: .feed, from: f, to: f, event: s.startEvent ?? s.endEvent))
-        }
-        for e in events where (e.type == "diaper" || e.type == "feed.solids") && e.occurredAt >= dayStart && e.occurredAt < next {
-            let f = frac(e.occurredAt, in: dayStart)
-            out.append(Mark(kind: e.type == "diaper" ? .diaper : .feed, from: f, to: f, event: e.id))
-        }
-        return out
-    }
-
-    private func totals(from: Date, to: Date) -> (sleep: Double, feeds: Int, ml: Double, diapers: Int) {
-        var sleep = 0.0, feeds = 0, ml = 0.0
-        for s in sessions {
-            if s.kind == .sleep, let start = s.start {
-                let end = s.end ?? (s.isOpen ? now : start)
-                sleep += max(0, min(end, to).timeIntervalSince(max(start, from)))
-            } else if s.kind != .sleep, s.anchor >= from, s.anchor < to {
-                feeds += 1
-                if s.kind == .bottle {
-                    ml += s.consumedMl ?? (s.consumedFraction.map { $0 * household.bottleMl(for: s.babyId) } ?? 0)
-                }
-            }
-        }
-        let diapers = events.filter { $0.type == "diaper" && $0.occurredAt >= from && $0.occurredAt < to }.count
-        return (sleep, feeds, ml, diapers)
-    }
-
-    /// Four or more feeds starting within three hours today: the stretch they cover.
-    private func clusterFeeding(_ today: Date) -> (Date, Date)? {
-        let starts = sessions.filter { $0.kind != .sleep && $0.anchor >= today }.map(\.anchor).sorted()
-        guard starts.count >= 4 else { return nil }
-        var best: (Date, Date)?
-        for i in 0...(starts.count - 4) {
-            var j = i + 3
-            guard starts[j].timeIntervalSince(starts[i]) <= 3 * 3600 else { continue }
-            while j + 1 < starts.count, starts[j + 1].timeIntervalSince(starts[i]) <= 3 * 3600 { j += 1 }
-            if best == nil || starts[j] > best!.1 { best = (starts[i], starts[j]) }
-        }
-        return best
-    }
-
-    // MARK: views
-
-    private func ribbon(_ label: String, start: Date, extra: [Mark], nowMark: Double) -> some View {
-        let items = extra + marks(start)
-        return HStack(spacing: 8) {
-            Text(label).font(.caption2.weight(.semibold)).foregroundStyle(.secondary).frame(width: 34, alignment: .leading)
-            GeometryReader { geo in
-                let w = geo.size.width
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 5).fill(Color(.tertiarySystemFill))
-                    ForEach(Array(items.enumerated()), id: \.offset) { _, m in
-                        switch m.kind {
-                        case .cluster:
-                            RoundedRectangle(cornerRadius: 5).fill(Color.red.opacity(0.18))
-                                .frame(width: max(6, (m.to - m.from) * w)).offset(x: m.from * w)
-                        case .sleep:
-                            RoundedRectangle(cornerRadius: 3).fill(Theme.sleep.opacity(0.85))
-                                .frame(width: max(3, (m.to - m.from) * w), height: 14).offset(x: m.from * w)
-                        case .feed:
-                            Capsule().fill(Theme.feed).frame(width: 3, height: 22).offset(x: min(w - 3, m.from * w - 1.5))
-                        case .diaper:
-                            Circle().fill(Theme.diaper).frame(width: 6, height: 6).offset(x: min(w - 6, max(0, m.from * w - 3)), y: 8)
-                        }
-                    }
-                    if nowMark > 0, nowMark < 1 {
-                        Rectangle().fill(Color.primary.opacity(0.35)).frame(width: 1, height: 26).offset(x: nowMark * w)
-                    }
-                }
-                .contentShape(Rectangle())
-                .onTapGesture { p in
-                    let x = p.x / max(1, w)
-                    // nearest tick or dot within ~12pt, else a sleep bar under the finger
-                    let points = items.filter { $0.kind == .feed || $0.kind == .diaper }
-                    if let hit = points.min(by: { abs($0.from - x) < abs($1.from - x) }), abs(hit.from - x) * w < 12, let id = hit.event {
-                        select(id)
-                    } else if let bar = items.first(where: { $0.kind == .sleep && x >= $0.from && x <= $0.to }), let id = bar.event {
-                        select(id)
-                    }
-                }
-            }
-            .frame(height: 26)
-        }
-    }
-
-    private func select(_ id: UUID) {
-        if let e = log.all.first(where: { $0.id == id }) { onSelect(e) }
-    }
-
-    private func legend(_ color: Color, _ label: String) -> some View {
-        HStack(spacing: 3) {
-            Circle().fill(color).frame(width: 6, height: 6)
-            Text(label).font(.system(size: 10)).foregroundStyle(.secondary)
-        }
-    }
-
-    private func delta(_ d: Double, minutes: Bool = false, unit: String = "") -> String? {
-        if minutes {
-            guard abs(d) >= 60 else { return "same" }
-            return (d > 0 ? "+" : "−") + StatusSnapshot.duration(abs(d))
-        }
-        guard d != 0 else { return "same" }
-        return (d > 0 ? "+" : "−") + "\(Int(abs(d).rounded()))\(unit)"
-    }
-
-    private func chip(_ icon: String, _ color: Color, _ text: String, _ delta: String?) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: icon).font(.caption2).foregroundStyle(color)
-            Text(text).font(.caption.weight(.medium))
-            if let delta { Text(delta).font(.caption).foregroundStyle(.secondary) }
-        }
-        .padding(.horizontal, 8).padding(.vertical, 4)
-        .background(Color(.tertiarySystemFill), in: Capsule())
-    }
-}
-
-/// Paired session row (start + switch + finish) rendered as one scannable row.
+/// Paired session row (start + switches + finish) as one entry: the time span, then what it was.
+/// Tap opens the finish; press and hold to edit any single step.
 struct SessionRow: View {
     let session: Session
     let events: [LogEvent]
@@ -454,22 +280,19 @@ struct SessionRow: View {
         switch session.kind {
         case .bottle: return "feed.bottle.finish"
         case .breast: return "feed.breast.finish"
-        case .sleep: return "sleep.end"
+        case .sleep: return "sleep.start"
         }
     }
 
-    private var title: String {
-        let dur = session.duration.map { StatusSnapshot.duration($0) } ?? ""
+    private var what: String {
         switch session.kind {
         case .bottle:
-            let finish = events.last
-            let ml = finish.flatMap { household.milliliters($0) }.map { " · \(Int($0)) ml" } ?? ""
-            return "Bottle feed · \(dur)\(ml)"
+            let ml = events.last.flatMap { household.milliliters($0) }.map { " · \(Int($0)) ml" } ?? ""
+            return "Bottle\(ml)"
         case .breast:
-            let sides = session.sides.joined(separator: " → ")
-            return "Nursed (\(sides)) · \(dur)"
+            return "Nursed \(session.sides.map { $0.prefix(1).uppercased() }.joined(separator: " → "))"
         case .sleep:
-            return "Slept · \(dur)"
+            return "Sleep"
         }
     }
 
@@ -477,42 +300,57 @@ struct SessionRow: View {
         let first = events.first!
         let last = events.last!
         let child = several ? household.baby(first.babyId).map { ($0.name, Theme.color(for: $0, in: household)) } : nil
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: Theme.icon(for: iconType))
-                .foregroundStyle(Theme.color(for: iconType))
-                .frame(width: 28, height: 28)
-                .background(Theme.color(for: iconType).opacity(0.15), in: Circle())
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(title).font(.body.weight(.medium))
-                    if let child {
-                        Spacer(minLength: 4)
-                        Text(child.0).font(.caption.weight(.semibold)).foregroundStyle(child.1)
-                            .padding(.horizontal, 8).padding(.vertical, 2)
-                            .background(child.1.opacity(0.15), in: Capsule())
-                    }
-                }
-                HStack(spacing: 6) {
-                    ForEach(events) { e in
-                        Button { onSelect(e) } label: {
-                            Text("\(shortStep(e)) \(e.occurredAt.formatted(date: .omitted, time: .shortened))")
-                                .font(.caption2)
-                                .padding(.horizontal, 6).padding(.vertical, 2)
-                                .background(Color(.tertiarySystemFill), in: Capsule())
-                        }
-                        .buttonStyle(.plain)
-                    }
+        let from = first.occurredAt.formatted(date: .omitted, time: .shortened), to = last.occurredAt.formatted(date: .omitted, time: .shortened)
+        let span = from == to ? from : "\(from) – \(to)"
+        TimelineRowLayout(icon: Theme.icon(for: iconType), color: Theme.color(for: iconType), who: household.caregiverName(last.loggedBy), child: child) {
+            Text(span).font(.body.weight(.semibold)).monospacedDigit()
+            HStack(spacing: 10) {
+                Text(what)
+                if let d = session.duration {
+                    Label(StatusSnapshot.duration(d), systemImage: "timer").labelStyle(.titleAndIcon)
                 }
             }
+            .font(.subheadline).foregroundStyle(.secondary)
         }
         .contentShape(Rectangle())
         .onTapGesture { onSelect(last) }
+        .contextMenu {
+            ForEach(events) { e in
+                Button("Edit \(step(e).lowercased()) · \(e.occurredAt.formatted(date: .omitted, time: .shortened))") { onSelect(e) }
+            }
+        }
     }
 
-    private func shortStep(_ e: LogEvent) -> String {
+    private func step(_ e: LogEvent) -> String {
         if e.type.hasSuffix(".start") { return "Start" }
         if e.type.hasSuffix(".switch") { return "Switch" }
         return "End"
+    }
+}
+
+/// The shared shape of a timeline row: the kind's icon, the lines, then the child and who logged it.
+struct TimelineRowLayout<Lines: View>: View {
+    let icon: String
+    let color: Color
+    let who: String
+    var child: (name: String, color: Color)?
+    @ViewBuilder let lines: Lines
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: icon).font(.title3).foregroundStyle(color).frame(width: 30, height: 26)
+            VStack(alignment: .leading, spacing: 3) { lines }
+            Spacer(minLength: 4)
+            VStack(alignment: .trailing, spacing: 6) {
+                WhoBadge(name: who)
+                if let child {
+                    Text(child.name).font(.caption2.weight(.semibold)).foregroundStyle(child.color)
+                        .padding(.horizontal, 7).padding(.vertical, 2)
+                        .background(child.color.opacity(0.15), in: Capsule())
+                }
+            }
+        }
+        .padding(.vertical, 2)
     }
 }
 
@@ -527,44 +365,32 @@ struct EventRow: View {
     var audit: String? = nil
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: Theme.icon(for: event.type))
-                .foregroundStyle(Theme.color(for: event.type))
-                .frame(width: 28, height: 28)
-                .background(Theme.color(for: event.type).opacity(0.15), in: Circle())
-            VStack(alignment: .leading, spacing: 3) {
-                HStack {
-                    Text(event.type == "note" ? "Note" : VoiceInterpreter.label(type: event.type, fields: event.fields))
-                        .strikethrough(status == .undone)
-                    if let ml, event.type.hasPrefix("feed.bottle") { Text("\(Int(ml)) ml").foregroundStyle(.secondary) }
-                    if let child {
-                        Spacer(minLength: 4)
-                        Text(child.name).font(.caption.weight(.semibold)).foregroundStyle(child.color)
-                            .padding(.horizontal, 8).padding(.vertical, 2)
-                            .background(child.color.opacity(0.15), in: Capsule())
-                    }
-                }
-                if let t = event.provenance.rawTranscript {
-                    Text("“\(t)”").font(.caption).foregroundStyle(.secondary).lineLimit(2)
-                }
-                HStack(spacing: 6) {
-                    Text(event.occurredAt.formatted(date: .omitted, time: .shortened))
-                    Text("·")
-                    Text(who)
-                    Text("·")
+        TimelineRowLayout(icon: Theme.icon(for: event.type), color: Theme.color(for: event.type), who: who, child: child) {
+            Text(event.occurredAt.formatted(date: .omitted, time: .shortened))
+                .font(.body.weight(.semibold)).monospacedDigit()
+                .strikethrough(status == .undone)
+            HStack(spacing: 6) {
+                Text(event.type == "note" ? "Note" : VoiceInterpreter.label(type: event.type, fields: event.fields))
+                if let ml, event.type.hasPrefix("feed.bottle") { Label("\(Int(ml)) ml", systemImage: "drop").labelStyle(.titleAndIcon) }
+            }
+            .font(.subheadline).foregroundStyle(.secondary)
+            if let t = event.provenance.rawTranscript {
+                Text("“\(t)”").font(.caption).foregroundStyle(.tertiary).lineLimit(2)
+            }
+            if status == .duplicateUnresolved || status == .undone {
+                Text(status == .undone ? "undone" : "duplicate?").font(.caption2.weight(.semibold))
+                    .foregroundStyle(status == .undone ? .red : .orange)
+            }
+            if let audit {
+                HStack(spacing: 4) {
                     Image(systemName: Self.surfaceIcon(event.provenance.surface))
                     if let tier = event.provenance.confidenceTier { Text(tier.rawValue.replacingOccurrences(of: "_", with: " ")) }
-                    if status == .duplicateUnresolved { Text("duplicate?").foregroundStyle(.orange) }
-                    if status == .undone { Text("undone").foregroundStyle(.red) }
                 }
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                if let audit {
-                    Text(audit).font(.caption2.monospaced()).foregroundStyle(.tertiary).lineLimit(3)
-                    if !event.provenance.confidence.isEmpty {
-                        Text(event.provenance.confidence.sorted { $0.key < $1.key }.map { "\($0.key) \(Int($0.value * 100))%" }.joined(separator: " · "))
-                            .font(.caption2.monospaced()).foregroundStyle(.tertiary).lineLimit(2)
-                    }
+                .font(.caption2).foregroundStyle(.tertiary)
+                Text(audit).font(.caption2.monospaced()).foregroundStyle(.tertiary).lineLimit(3)
+                if !event.provenance.confidence.isEmpty {
+                    Text(event.provenance.confidence.sorted { $0.key < $1.key }.map { "\($0.key) \(Int($0.value * 100))%" }.joined(separator: " · "))
+                        .font(.caption2.monospaced()).foregroundStyle(.tertiary).lineLimit(2)
                 }
             }
         }

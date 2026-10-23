@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.10.1"
+    static let currentVersion = "0.10.2"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,29 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "0.10.2",
+            date: "October 2026",
+            tagline: "Your Day at a Glance",
+            features: [
+                WhatsNewItem(
+                    icon: "calendar.day.timeline.left",
+                    tint: Theme.accent,
+                    title: "A Day at a Time",
+                    description: "The Timeline now shows one day: step back and forth or pick a date, see the whole day as a strip of feeds, diapers and sleep with night hours shaded, and the day's counts at a glance. Tap the counts to compare with the day before. Search still looks across every day.",
+                    kind: .feature
+                ),
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "list.bullet",
+                    tint: Theme.accent,
+                    title: "Cleaner Entries",
+                    description: "Each entry leads with its time, shows who logged it, and a feed or sleep shows its start and end times. Press and hold one to edit its start or end on its own.",
+                    kind: .improvement
+                ),
+            ]
+        ),
         ReleaseHistoryItem(
             version: "0.10.1",
             date: "October 2026",
