@@ -43,6 +43,7 @@ struct TimelineView: View {
                                                     to: Calendar.current.startOfDay(for: Date())) ?? Date()
 
     private var several: Bool { model.household.babies.count > 1 }
+    private var filtering: Bool { child != nil || categoryFilter != "all" }
 
     static let categories: [(key: String, label: String)] = [
         ("all", "All"),
@@ -128,51 +129,38 @@ struct TimelineView: View {
         return groups.keys.sorted(by: >).map { ($0, groups[$0]!) }
     }
 
+    /// What the filter menu narrowed to, with one tap to clear it.
+    private var filterChip: some View {
+        let parts = [child.flatMap { id in model.household.baby(id)?.name },
+                     categoryFilter == "all" ? nil : Self.categories.first { $0.key == categoryFilter }?.label].compactMap { $0 }
+        return Button {
+            withAnimation(.snappy) { child = nil; categoryFilter = "all" }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "line.3.horizontal.decrease")
+                Text("Showing \(parts.joined(separator: " · "))")
+                Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+            }
+            .font(.subheadline.weight(.medium))
+            .padding(.horizontal, 12).padding(.vertical, 6)
+            .background(Theme.accent.opacity(0.15), in: Capsule())
+            .foregroundStyle(Theme.accent)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Clear filter: \(parts.joined(separator: ", "))")
+    }
+
     var body: some View {
         NavigationStack {
             List {
-                // Child, category and detail controls share one row: as three sections, each got a
-                // section gap and a full row height, so they floated apart (report 4ec04025).
-                Section {
-                    VStack(alignment: .leading, spacing: 12) {
-                        if several {
-                            Picker("Child", selection: $child) {
-                                Text("All").tag(UUID?.none)
-                                ForEach(model.shown) { Text($0.name).tag(UUID?.some($0.id)) }
-                            }
-                            .pickerStyle(.segmented)
-                        }
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 6) {
-                                ForEach(Self.categories, id: \.key) { cat in
-                                    let on = categoryFilter == cat.key
-                                    Button {
-                                        withAnimation(.snappy) { categoryFilter = cat.key }
-                                    } label: {
-                                        Text(cat.label)
-                                            .font(.caption.weight(.semibold))
-                                            .padding(.horizontal, 12).padding(.vertical, 6)
-                                            .foregroundStyle(on ? .white : .primary)
-                                            .background(on ? Theme.accent : Color(.tertiarySystemFill), in: Capsule())
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                        }
-                        Picker("Detail", selection: $density) {
-                            ForEach(TimelineDensity.allCases) { Label($0.title, systemImage: $0.icon).tag($0) }
-                        }
-                        .pickerStyle(.segmented)
-                        .accessibilityIdentifier("timelineDensity")
-                    }
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
-                }
                 if !searching {
                     Section {
-                        DayBar(day: $day)
-                            .listRowBackground(Color.clear)
-                            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                        VStack(alignment: .leading, spacing: 8) {
+                            DayBar(day: $day)
+                            if filtering { filterChip }
+                        }
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                     }
                     Section {
                         DayStrip(day: day, log: model.log, child: child, household: model.household) { editing = $0 }
@@ -256,10 +244,36 @@ struct TimelineView: View {
             .searchable(text: $search, prompt: "Search medicines, notes, foods…")
             .navigationTitle("Timeline")
             .toolbar {
+                // Child, category and view live up here: as rows above the day they crowded it.
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    Toggle(isOn: $showUndone) { Image(systemName: "arrow.uturn.backward.circle") }
-                        .toggleStyle(.button)
-                        .accessibilityLabel("Show undone entries")
+                    Menu {
+                        if several {
+                            Picker("Child", selection: $child) {
+                                Text("Every child").tag(UUID?.none)
+                                ForEach(model.shown) { Text($0.name).tag(UUID?.some($0.id)) }
+                            }
+                            .pickerStyle(.inline)
+                        }
+                        Picker("Show", selection: $categoryFilter) {
+                            ForEach(Self.categories, id: \.key) { Text($0.key == "all" ? "Everything" : $0.label).tag($0.key) }
+                        }
+                        .pickerStyle(.inline)
+                    } label: {
+                        Image(systemName: filtering ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                    }
+                    .accessibilityLabel(filtering ? "Filter, on" : "Filter")
+                    .accessibilityIdentifier("timelineFilter")
+                    Menu {
+                        Picker("View", selection: $density) {
+                            ForEach(TimelineDensity.allCases) { Label($0.title, systemImage: $0.icon).tag($0) }
+                        }
+                        .pickerStyle(.inline)
+                        Toggle(isOn: $showUndone) { Label("Show undone entries", systemImage: "arrow.uturn.backward.circle") }
+                    } label: {
+                        Image(systemName: density.icon)
+                    }
+                    .accessibilityLabel("View: \(density.title)")
+                    .accessibilityIdentifier("timelineDensity")
                 }
             }
             .sheet(item: $editing) { e in EditEventView(event: e) }
@@ -306,7 +320,7 @@ struct SessionRow: View {
             Text(span).font(.body.weight(.semibold)).monospacedDigit()
             HStack(spacing: 10) {
                 Text(what)
-                if let d = session.duration {
+                if let d = session.duration, d >= 60 {
                     Label(StatusSnapshot.duration(d), systemImage: "timer").labelStyle(.titleAndIcon)
                 }
             }

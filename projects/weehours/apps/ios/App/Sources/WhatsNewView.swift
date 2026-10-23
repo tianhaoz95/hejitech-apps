@@ -63,7 +63,7 @@ struct WhatsNewView: View {
                     icon: "list.bullet",
                     tint: Theme.accent,
                     title: "Cleaner Entries",
-                    description: "Each entry leads with its time, shows who logged it, and a feed or sleep shows its start and end times. Press and hold one to edit its start or end on its own.",
+                    description: "Each entry leads with its time, shows who logged it, and a feed or sleep shows its start and end times. Press and hold one to edit its start or end on its own. The child, category and view choices moved into the two buttons at the top.",
                     kind: .improvement
                 ),
             ]
