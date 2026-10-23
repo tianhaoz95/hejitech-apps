@@ -55,6 +55,14 @@ public final class RecordingCoordinator: ObservableObject {
         pipeline.warmUp()
     }
 
+    public func pauseRecording() {
+        recordingService.pauseRecording()
+    }
+
+    public func resumeRecording() {
+        recordingService.resumeRecording()
+    }
+
     /// Stops the active recording and either kicks off the two-stage pipeline as a new note, or --
     /// if `beginRecording(appendingTo:)` set a target -- appends it onto that existing note instead.
     /// Keeps the Live Activity alive (now showing "processing") and holds a background task

@@ -138,6 +138,13 @@ public struct WhatsNewView: View {
             ],
             improvementsAndFixes: [
                 WhatsNewItem(
+                    icon: "pause.circle",
+                    tint: .orange,
+                    title: "Pause & Resume Recording",
+                    description: "Pause long voice memos on iPhone whenever you are interrupted, and resume smoothly in the same recording.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
                     icon: "calendar.badge.plus",
                     tint: .red,
                     title: "Calendar Events at the Right Time",

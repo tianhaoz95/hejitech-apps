@@ -15,7 +15,7 @@ final class WhatsNewViewTests: XCTestCase {
     func testCurrentReleaseContent() {
         let current = WhatsNewView.releases.first
         XCTAssertEqual(current?.features.count, 4)
-        XCTAssertEqual(current?.improvementsAndFixes.count, 1)
+        XCTAssertEqual(current?.improvementsAndFixes.count, 2)
         XCTAssertEqual(current?.improvementsAndFixes.filter { $0.kind == .fix }.count, 0)
 
         let previous = WhatsNewView.releases.first { $0.version == "1.27.1" }
