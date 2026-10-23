@@ -68,6 +68,11 @@ targets:
           - App-Prefs
           - itms-watch
           - watch
+        CFBundleURLTypes:
+          - CFBundleURLName: com.hejitech.kidscam
+            CFBundleURLSchemes:
+              - toddlercam
+              - kidscam
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.kidscam
@@ -101,6 +106,12 @@ targets:
         CFBundleDisplayName: ToddlerCam
         WKCompanionAppBundleIdentifier: com.hejitech.kidscam
         WKApplication: true
+        WKRunsIndependentlyOfCompanionApp: true
+        CFBundleURLTypes:
+          - CFBundleURLName: com.hejitech.kidscam.watchkitapp
+            CFBundleURLSchemes:
+              - toddlercam
+              - kidscam
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.kidscam.watchkitapp

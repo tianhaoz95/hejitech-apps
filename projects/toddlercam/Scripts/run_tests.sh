@@ -17,11 +17,13 @@ xcodebuild build-for-testing \
   CODE_SIGNING_REQUIRED=NO
 
 echo "2. Running tests on available iOS Simulator..."
-# Find booted simulator or pick first iPhone
-DEVICE_ID=$(xcrun simctl list devices | grep -E "iPhone.*\(Booted\)" | head -n 1 | sed -E 's/.*\(([A-F0-9-]+)\).*/\1/')
+# Find booted simulator or pick first available iPhone/iPad
+DEVICE_ID=$(xcrun simctl list devices | grep -E "(iPhone|iPad).*\(Booted\)" | head -n 1 | sed -E 's/.*\(([A-F0-9-]+)\).*/\1/')
 if [ -z "$DEVICE_ID" ]; then
-    DEVICE_ID=$(xcrun simctl list devices | grep -E "iPhone 16 Pro \(" | head -n 1 | sed -E 's/.*\(([A-F0-9-]+)\).*/\1/')
-    xcrun simctl boot "$DEVICE_ID" 2>/dev/null || true
+    DEVICE_ID=$(xcrun simctl list devices available | grep -E "(iPhone|iPad)" | head -n 1 | sed -E 's/.*\(([A-F0-9-]+)\).*/\1/')
+    if [ -n "$DEVICE_ID" ]; then
+        xcrun simctl boot "$DEVICE_ID" 2>/dev/null || true
+    fi
 fi
 
 echo "Testing on device ID: $DEVICE_ID"

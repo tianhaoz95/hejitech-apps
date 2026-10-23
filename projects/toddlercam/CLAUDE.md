@@ -68,5 +68,6 @@ update the store listing.
 - `KidsCam/Vision`: face tracking emoji masks (`FaceEmojiType` is shared with the watch target).
 - `KidsCam/Connectivity` ↔ `KidsCamWatch/Remote`: the WCSession bridge (shutter, camera swap,
   masks, lock, soundboard, last-photo thumbnail).
+- `KidsCamWatch/Intents`: App Intents & `AppShortcutsProvider` for Siri, Shortcuts app, Action Button, and URL launcher schemes (`toddlercam://`, `kidscam://`).
 - `KidsCamWatchWidgets`: WidgetKit complications.
 - `KidsCam/GuidedAccess`, `KidsCam/WatchFace`, `KidsCam/Audio` (synthesized by `Scripts/generate_sounds.py`).

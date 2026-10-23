@@ -83,6 +83,7 @@ struct KidsCamComplication: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: KidsCamComplicationProvider()) { entry in
             KidsCamComplicationView(entry: entry)
+                .widgetURL(URL(string: "toddlercam://remote"))
         }
         .configurationDisplayName("ToddlerCam Remote")
         .description("Quick parent remote control for ToddlerCam.")

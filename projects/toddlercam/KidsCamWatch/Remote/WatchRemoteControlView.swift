@@ -90,6 +90,31 @@ public struct WatchRemoteControlView: View {
             }
             .navigationTitle("Remote")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                handlePendingRequest()
+            }
+            .onReceive(WatchRequest.shared.$pendingAction) { action in
+                if action != nil {
+                    handlePendingRequest()
+                }
+            }
+        }
+    }
+
+    private func handlePendingRequest() {
+        guard let action = WatchRequest.shared.pendingAction else { return }
+        WatchRequest.shared.pendingAction = nil
+        switch action {
+        case .remote:
+            break
+        case .shutter:
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                sessionManager.sendShutterCommand()
+            }
+        case .sound(let soundName):
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                sessionManager.playAnimalSound(soundName)
+            }
         }
     }
 

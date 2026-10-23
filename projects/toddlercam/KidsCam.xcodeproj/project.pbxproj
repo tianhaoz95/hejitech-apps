@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		06D59D01FABBF9440FB24D9E /* SillySoundboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 944CF982CDD371490B52BE30 /* SillySoundboardView.swift */; };
 		0F99A9D7BD9E88B76C8F4B34 /* FaceTrackingEmojiOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 127CDB38D2716FD4E6FA4536 /* FaceTrackingEmojiOverlayView.swift */; };
+		12E8F8F1F1ABB70A1342E631 /* ToddlerCamWatchIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD85DFBEB5564EC1CB4FEE9E /* ToddlerCamWatchIntents.swift */; };
 		1BE2C481F07BAFCC957D517C /* DualPhotoRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40BDCE52ED843B09CFE6B850 /* DualPhotoRenderer.swift */; };
 		23EB0A594B950757FFC263CE /* SoundEffectManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 885BF7738A033DC6F5155B59 /* SoundEffectManager.swift */; };
 		2766B1CBF946903BD2756298 /* KidsCamWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83961FBD0C064E672550C000 /* KidsCamWatchApp.swift */; };
@@ -44,6 +45,7 @@
 		CA913D24FD2FA189291DE2BD /* KidsCamTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A2E5D13D16645BBDE61388 /* KidsCamTests.swift */; };
 		D47BC09F71E1A12C4B0B945C /* KidsCamWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 3679C3BD47BA9737BA8D7D52 /* KidsCamWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		D5A60C303643640C701D4F28 /* WatchFaceEmojiSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A519B067B60A4040AFFF2F8 /* WatchFaceEmojiSettingsView.swift */; };
+		DADF8C56FFA3DAEA6D7257DC /* WatchRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF15EEFFD09EBC8DD427163C /* WatchRequest.swift */; };
 		E47577B3F7CE4ABF75DF1865 /* KidsCamApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 737216B573A6A29EDB38396B /* KidsCamApp.swift */; };
 		E67A573CC2B04E6E875AF1D2 /* PhotoGalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16D0AFFEA3BDA24AA39B416D /* PhotoGalleryView.swift */; };
 		ED436D5B4F93817AA69F56B8 /* WatchPhotoReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C33CA6E9AC81E7E5C52E6E /* WatchPhotoReviewView.swift */; };
@@ -141,8 +143,10 @@
 		B2C33CA6E9AC81E7E5C52E6E /* WatchPhotoReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchPhotoReviewView.swift; sourceTree = "<group>"; };
 		B4BBECF15101BB4B055D52C9 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		BC499EB109839F5E5C6C4534 /* ParentGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParentGateView.swift; sourceTree = "<group>"; };
+		BD85DFBEB5564EC1CB4FEE9E /* ToddlerCamWatchIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToddlerCamWatchIntents.swift; sourceTree = "<group>"; };
 		C5DBF52CF722DA7E57467F32 /* KidsCam.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = KidsCam.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C70CC044D2B4FAD8407A5DD9 /* pop.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = pop.wav; sourceTree = "<group>"; };
+		CF15EEFFD09EBC8DD427163C /* WatchRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchRequest.swift; sourceTree = "<group>"; };
 		D0B73E51D610A5E00A7D7C2F /* SimulatorCameraStreamer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulatorCameraStreamer.swift; sourceTree = "<group>"; };
 		D87FC8AE6A69E1B464D91C1B /* WatchConnectivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityManager.swift; sourceTree = "<group>"; };
 		DB656FA5882BC918CF3B836B /* DualCameraPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DualCameraPreviewView.swift; sourceTree = "<group>"; };
@@ -202,6 +206,7 @@
 			isa = PBXGroup;
 			children = (
 				6F3BFA739D26A518EDBBEADE /* App */,
+				570C20AB139451BA193FA275 /* Intents */,
 				01197CE6D316CBA79AAEE4CC /* Remote */,
 				D889CD8AB987480C263D9639 /* Resources */,
 			);
@@ -235,6 +240,15 @@
 				E9EA2C387B2F50EAC2B9EC2C /* KidsCamComplications.swift */,
 			);
 			path = KidsCamWatchWidgets;
+			sourceTree = "<group>";
+		};
+		570C20AB139451BA193FA275 /* Intents */ = {
+			isa = PBXGroup;
+			children = (
+				BD85DFBEB5564EC1CB4FEE9E /* ToddlerCamWatchIntents.swift */,
+				CF15EEFFD09EBC8DD427163C /* WatchRequest.swift */,
+			);
+			path = Intents;
 			sourceTree = "<group>";
 		};
 		63DF6101DF28BCBD4B50B9DA /* Audio */ = {
@@ -581,9 +595,11 @@
 				8AE2109A616A1FDF32BFF567 /* FaceEmojiType.swift in Sources */,
 				2766B1CBF946903BD2756298 /* KidsCamWatchApp.swift in Sources */,
 				06D59D01FABBF9440FB24D9E /* SillySoundboardView.swift in Sources */,
+				12E8F8F1F1ABB70A1342E631 /* ToddlerCamWatchIntents.swift in Sources */,
 				D5A60C303643640C701D4F28 /* WatchFaceEmojiSettingsView.swift in Sources */,
 				ED436D5B4F93817AA69F56B8 /* WatchPhotoReviewView.swift in Sources */,
 				F03ED3EB4B9BF1A68DA07A61 /* WatchRemoteControlView.swift in Sources */,
+				DADF8C56FFA3DAEA6D7257DC /* WatchRequest.swift in Sources */,
 				FDDDE49DE1601E3BA66712DD /* WatchSessionManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -668,7 +684,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.2.5;
+				MARKETING_VERSION = 1.2.8;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -772,7 +788,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.2.5;
+				MARKETING_VERSION = 1.2.8;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
