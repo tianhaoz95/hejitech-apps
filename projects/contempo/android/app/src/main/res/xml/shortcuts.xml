@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="voice_note"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_mic"
+        android:shortcutShortLabel="@string/shortcut_voice_note_short"
+        android:shortcutLongLabel="@string/shortcut_voice_note_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.hejitech.contempoapp"
+            android:targetClass="com.hejitech.contempo.MainActivity"
+            android:data="contempo://capture?mode=audio" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="mileage_trip"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_drive"
+        android:shortcutShortLabel="@string/shortcut_mileage_short"
+        android:shortcutLongLabel="@string/shortcut_mileage_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.hejitech.contempoapp"
+            android:targetClass="com.hejitech.contempo.MainActivity"
+            android:data="contempo://capture?mode=trip" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="log_hours"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_edit"
+        android:shortcutShortLabel="@string/shortcut_log_hours_short"
+        android:shortcutLongLabel="@string/shortcut_log_hours_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.hejitech.contempoapp"
+            android:targetClass="com.hejitech.contempo.MainActivity"
+            android:data="contempo://capture?mode=manual" />
+    </shortcut>
+</shortcuts>

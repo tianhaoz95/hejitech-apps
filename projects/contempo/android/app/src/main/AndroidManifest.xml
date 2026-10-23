@@ -42,6 +42,18 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="com.hejitech.contempoapp" android:host="login-callback" />
             </intent-filter>
+
+            <!-- App launcher shortcuts deep links -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="contempo" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
 
         <!-- Used by ExportScreen to share the generated CSV via ACTION_SEND. -->

@@ -2,6 +2,14 @@
 <resources>
     <string name="app_name">Contempo</string>
 
+    <!-- App Launcher Shortcuts -->
+    <string name="shortcut_voice_note_short">Voice Note</string>
+    <string name="shortcut_voice_note_long">Record quick voice note</string>
+    <string name="shortcut_mileage_short">Mileage Trip</string>
+    <string name="shortcut_mileage_long">Start GPS mileage tracking</string>
+    <string name="shortcut_log_hours_short">Log Hours</string>
+    <string name="shortcut_log_hours_long">Manually log hours entry</string>
+
     <string name="dictation_start_content_description">Start voice dictation</string>
     <string name="dictation_stop_content_description">Stop voice dictation</string>
     <string name="dictation_empty_transcript">Didn\'t catch any words — try again.</string>
