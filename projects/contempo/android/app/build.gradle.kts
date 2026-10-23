@@ -202,6 +202,8 @@ dependencies {
     // line) — OpenStreetMap tiles, no API key. See ui/entrydetail/EntryLocationMap.kt.
     implementation(libs.osmdroid.android)
 
+    testImplementation(libs.junit)
+
     // Instrumented tests — run on-device/emulator against the Firebase
     // emulator suite (see androidTest/.../CoreFlowTest.kt). Firebase/core
     // classes don't need re-declaring here: androidTest links against the
