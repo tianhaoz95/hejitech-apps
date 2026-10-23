@@ -1,0 +1,83 @@
+name: G2 Digest CI
+
+# Checks pushes and PRs that touch G2 Digest or what it shares with other projects (root
+# workspace files, supabase/, CI plumbing). Keep `paths` in sync with CI_PATHS in
+# projects/g2digest/release.env: cut_release.sh requires this workflow to be green on the newest
+# commit that touched them. Deploys are separate: Cloudflare Workers Builds deploys the Worker on
+# push to main; g2digest-plugin-release.yml attaches the .ehpk to a g2digest-v<version> release.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "projects/g2digest/**"
+      - "supabase/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/g2digest-ci.yml"
+  pull_request:
+    paths:
+      - "projects/g2digest/**"
+      - "supabase/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/g2digest-ci.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: g2digest-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  node:
+    name: Core, plugin, web + Worker, glasses (guide sync, topics, tests, typecheck, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: node projects/g2digest/scripts/sync-guide.mjs --check
+      - run: node projects/g2digest/scripts/check-no-topics.mjs
+      - run: npm run typecheck:g2digest
+      - run: npm run test:g2digest
+      - run: npm run build:g2digest
+        env:
+          WEB_ALLOW_LOCAL: "1"
+      - name: Pack the plugin
+        run: node projects/g2digest/apps/glasses/scripts/pack.mjs
+
+  backend:
+    name: Shared Supabase schema + Worker integration (pairing, MCP/OAuth, pipeline, feed)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          # pinned: "latest" asks the GitHub API, which rate-limits shared runners
+          version: 2.121.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # Applies every project's migrations and seeds: the whole shared history must replay.
+      - run: supabase start -x studio,imgproxy,vector,logflare,supavisor,mailpit,edge-runtime
+      - name: Worker against the local stack
+        working-directory: projects/g2digest/services/web
+        run: |
+          echo "SUPABASE_SERVICE_ROLE_KEY=$(supabase status -o json | jq -r .SERVICE_ROLE_KEY)" > .dev.vars
+          npm run dev:worker > /tmp/worker.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf -o /dev/null http://127.0.0.1:8790/ && break; sleep 1; done
+          curl -sf -o /dev/null http://127.0.0.1:8790/ || { cat /tmp/worker.log; exit 1; }
+      - run: node projects/g2digest/scripts/test-api.mjs
+      - if: failure()
+        run: cat /tmp/worker.log || true
+      - if: always()
+        run: supabase stop

@@ -59,10 +59,25 @@ export interface PluginOptions {
   root: HTMLElement;
 }
 
+/**
+ * The Even app bridge, or null in an ordinary browser. The SDK hands out a bridge object either way,
+ * so the host's WebView handler decides; then wait (up to the timeout) for the bridge to be ready.
+ */
+export async function detectBridge(): Promise<EvenAppBridge | null> {
+  const host = (globalThis as { flutter_inappwebview?: { callHandler?: unknown } }).flutter_inappwebview;
+  if (!host?.callHandler) {
+    // The handler can be injected a moment after load: give it a short grace period.
+    for (let waited = 0; waited < BRIDGE_TIMEOUT_MS && !(globalThis as { flutter_inappwebview?: unknown }).flutter_inappwebview; waited += 250)
+      await new Promise((r) => setTimeout(r, 250));
+    if (!(globalThis as { flutter_inappwebview?: unknown }).flutter_inappwebview) return null;
+  }
+  const timeout = new Promise<null>((r) => setTimeout(() => r(null), BRIDGE_TIMEOUT_MS));
+  return (await Promise.race([waitForEvenAppBridge().catch(() => null), timeout])) as EvenAppBridge | null;
+}
+
 export async function bootPlugin(opts: PluginOptions) {
   const api = opts.apiBase.replace(/\/$/, "");
-  const timeout = new Promise<null>((r) => setTimeout(() => r(null), BRIDGE_TIMEOUT_MS));
-  const bridge = (await Promise.race([waitForEvenAppBridge().catch(() => null), timeout])) as EvenAppBridge | null;
+  const bridge = await detectBridge();
 
   const kv: KV = {
     async get(k) {
@@ -196,13 +211,17 @@ export async function bootPlugin(opts: PluginOptions) {
     await push("G2 DIGEST\n\nOffline. Nothing fetched\nyet.");
   }
 
-  ui.onPair(async (code, label) => {
+  async function pairWith(code: string, label: string): Promise<string | null> {
     const res = await fetch(`${api}/api/pair`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code, label }) }).catch(() => null);
     const body = (await res?.json().catch(() => ({}))) as { device_token?: string; error?: string };
     if (!res?.ok || !body.device_token) return body.error ?? "Couldn't reach G2 Digest. Check the connection.";
     await kv.set(K.token, body.device_token);
-    await refresh();
     return null;
+  }
+  ui.onPair(async (code, label) => {
+    const problem = await pairWith(code, label);
+    if (!problem) await refresh();
+    return problem;
   });
   ui.onRefresh(() => void refresh());
   ui.onUnpair(async () => {
@@ -213,6 +232,13 @@ export async function bootPlugin(opts: PluginOptions) {
     await refresh();
   });
 
+  // `?pair=<code>` pairs on launch (simulator automation, or a QR made with `evenhub qr --url …/glasses/?pair=123456`).
+  // A code is single-use and expires in ten minutes, so it's safe in a URL.
+  const launchCode = new URLSearchParams(location.search).get("pair");
+  if (launchCode && !(await kv.get(K.token))) {
+    const problem = await pairWith(launchCode.replace(/\D/g, ""), bridge ? "Even G2" : "Browser");
+    if (problem) ui.state("pair", problem);
+  }
   await refresh();
   // Pick up a new edition while the plugin stays open.
   setInterval(() => void refresh(), 15 * 60_000);

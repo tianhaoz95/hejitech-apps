@@ -46,6 +46,7 @@ main { padding: 28px 0; }
 
 .panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); }
 .panel + .panel { margin-top: 16px; }
+.grid2 > .panel + .panel { margin-top: 0; }
 .signin { max-width: 420px; margin: 24px auto; }
 .grid2 { display: grid; grid-template-columns: minmax(0, 600px) minmax(0, 1fr); gap: 20px; align-items: start; }
 .grid2.rev { grid-template-columns: minmax(0, 1fr) minmax(0, 600px); }

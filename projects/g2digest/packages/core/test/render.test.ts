@@ -18,7 +18,9 @@ describe("render", () => {
     expect(proteina.footer).toBe("♪ DEEP DIVE 3 MIN");
     expect(frames[0].lines[0]).toBe("THU OCT 22");
     expect(frames[2].footer).toMatch(/^♪ \d+S · NO DEEP DIVE$/);
-    expect(frames[5].lines).toContain("NASDAQ ............ -1.2%");
+    const metric = fixtureBundle().cards[5].metrics![0];
+    expect(frames[5].lines[2]).toBe(metricLine(metric.label, metric.value));
+    expect(frames[5].lines[2]).toMatch(/^[A-Z]+ \.{3,} -1\.2%$/);
     for (const f of frames) for (const l of f.lines) expect(len(l)).toBeLessThanOrEqual(25);
   });
   it("matches the snapshot", () => {

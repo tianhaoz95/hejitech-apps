@@ -1,0 +1,9 @@
+@import "@g2digest/plugin/style.css";
+:root { color-scheme: dark; --bg: #0b0f0c; --fg: #d6f5dc; --muted: #7d9483; --card: #141b16; --line: #2c3a30; --bad: #ff7a7a; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.45 -apple-system, system-ui, sans-serif; padding: 16px; }
+button, input { font: inherit; border-radius: 8px; border: 1px solid var(--line); background: #1b241e; color: var(--fg); padding: 8px 12px; }
+button.primary { background: #3dff7a; color: #052310; border-color: transparent; font-weight: 700; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+h2 { font-size: 18px; margin: 0; }
+[hidden] { display: none !important; }

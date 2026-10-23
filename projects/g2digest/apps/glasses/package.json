@@ -8,7 +8,7 @@
     "dev": "vite --host 0.0.0.0 --port 5174",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
-    "package": "npm run build && evenhub pack app.json dist -o dist/g2digest.ehpk",
+    "package": "npm run build && node scripts/pack.mjs",
     "simulator": "evenhub-simulator http://127.0.0.1:5174"
   },
   "dependencies": {

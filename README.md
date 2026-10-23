@@ -14,6 +14,7 @@ one npm workspace and the CI plumbing.
 | Contempo | AI-native hour tracker for STR material-participation tests: Android + Wear OS (Kotlin), iOS + watchOS (Swift), web app + admin + API on its Worker. Moved off Firebase onto the shared Supabase project (schema `contempo`) | [`projects/contempo`](projects/contempo/README.md) |
 | ToddlerCam | Dual-camera app for toddlers (front + rear at once, face-tracking masks, toddler lock) with an Apple Watch remote for the parent (Swift). Kids Category, no backend (`BACKEND=none`) | [`projects/toddlercam`](projects/toddlercam/README.md) |
 | TinyTouch | Toddler lock + low-stimulation play on Apple Watch (touch shield, Digital Crown toys, 3-second parent hold) with an iPhone remote (Swift). Kids Category, no backend (`BACKEND=none`) | [`projects/tinytouch`](projects/tinytouch/README.md) |
+| G2 Digest | A brief compiled ahead of time into glanceable cards for Even G2 glasses + R1 ring and pre-made audio: web app + brief editor + G2 preview, Even Hub plugin, MCP for the build agent (one Worker, TypeScript) | [`projects/g2digest`](projects/g2digest/README.md) |
 
 ## Layout
 ```
@@ -34,7 +35,7 @@ tsconfig.base.json      shared TypeScript settings
 ```sh
 npm install                 # every project's workspaces
 supabase start              # shared local stack (ports 554xx)
-npm run build:waypack       # per-project scripts: build:<name>, test:<name>, typecheck:<name> (waypack, weehours)
+npm run build:waypack       # per-project scripts: build:<name>, test:<name>, typecheck:<name> (waypack, weehours, g2digest)
 ```
 
 ## Adding a project

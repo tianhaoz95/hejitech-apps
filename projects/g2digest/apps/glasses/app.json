@@ -1,0 +1,13 @@
+{
+  "package_id": "com.hejitech.g2digest.glasses",
+  "edition": "202601",
+  "name": "G2 Digest",
+  "version": "0.1.0",
+  "min_app_version": "2.2.10",
+  "min_sdk_version": "0.0.16",
+  "entrypoint": "index.html",
+  "permissions": [
+    { "name": "network", "desc": "Fetch your editions and their audio from G2 Digest", "whitelist": ["https://g2digest.hejitech.workers.dev", "https://jitdzllkxfhlrxxvljhp.supabase.co"] }
+  ],
+  "supported_languages": ["en"]
+}

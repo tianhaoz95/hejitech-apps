@@ -4,8 +4,8 @@
 // Unlock and the page reports whether audio kept going (how far playback advanced while the page
 // was hidden) and which ring events arrived while locked. Results persist in local storage, so a
 // WebView that was killed still shows the last run when reopened.
-import { CreateStartUpPageContainer, OsEventTypeList, TextContainerProperty, waitForEvenAppBridge, type EvenAppBridge, type EvenHubEvent } from "@evenrealities/even_hub_sdk";
-import { BRIDGE_TIMEOUT_MS } from "./plugin.ts";
+import { CreateStartUpPageContainer, OsEventTypeList, TextContainerProperty, type EvenHubEvent } from "@evenrealities/even_hub_sdk";
+import { detectBridge } from "./plugin.ts";
 
 interface Run {
   started: string;
@@ -21,8 +21,7 @@ interface Run {
 const KEY = "g2digest:spike";
 
 export async function bootSpike(root: HTMLElement, audioUrl: string) {
-  const timeout = new Promise<null>((r) => setTimeout(() => r(null), BRIDGE_TIMEOUT_MS));
-  const bridge = (await Promise.race([waitForEvenAppBridge().catch(() => null), timeout])) as EvenAppBridge | null;
+  const bridge = await detectBridge();
   const save = async (r: Run) => {
     const v = JSON.stringify(r);
     if (bridge) await bridge.setLocalStorage(KEY, v).catch(() => false);
