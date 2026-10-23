@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.28.0"
+    public static let currentVersion = "1.29.0"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,34 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.29.0",
+            date: "October 2026",
+            tagline: "Lock & Pause",
+            features: [
+                WhatsNewItem(
+                    icon: "lock.shield",
+                    tint: .blue,
+                    title: "Biometric Lock for Private Notes",
+                    description: "Protect sensitive voice notes behind Face ID, Touch ID, or device passcode with a blurred Privacy Shield overlay that re-locks when backgrounded."
+                ),
+                WhatsNewItem(
+                    icon: "pause.circle",
+                    tint: .orange,
+                    title: "Pause & Resume Recording",
+                    description: "Pause long voice memos on iPhone whenever you are interrupted, and resume recording seamlessly without restarting."
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "shield.checkered",
+                    tint: .blue,
+                    title: "Automatic Background Privacy Shield",
+                    description: "Protected notes re-lock automatically whenever Voxbrief moves to the background or app switcher.",
+                    kind: .improvement
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.28.0",
             date: "October 2026",
@@ -137,13 +165,6 @@ public struct WhatsNewView: View {
                 )
             ],
             improvementsAndFixes: [
-                WhatsNewItem(
-                    icon: "pause.circle",
-                    tint: .orange,
-                    title: "Pause & Resume Recording",
-                    description: "Pause long voice memos on iPhone whenever you are interrupted, and resume smoothly in the same recording.",
-                    kind: .improvement
-                ),
                 WhatsNewItem(
                     icon: "calendar.badge.plus",
                     tint: .red,
