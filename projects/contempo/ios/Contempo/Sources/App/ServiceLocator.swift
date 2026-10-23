@@ -30,6 +30,7 @@ enum ServiceLocator {
     static let quickCaptureStatsStore = QuickCaptureStatsStore()
     static let pendingCaptureStore = PendingCaptureStore()
     static let shakeToReportSettingsStore = ShakeToReportSettingsStore()
+    static let taxTestStore = TaxTestStore()
     static let onboardingStore = OnboardingStore()
     static let agentClient = AgentClient(onDeviceLlm: onDeviceLlm, entryRepository: entryRepository)
 

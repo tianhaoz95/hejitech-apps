@@ -35,6 +35,13 @@ final class SettingsViewModel {
     var defaultCaptureMode: CaptureMode { captureModeStore.defaultMode }
     var shakeToReportEnabled: Bool { shakeToReportSettingsStore.enabled }
 
+    private let taxTestStore = ServiceLocator.taxTestStore
+    var selectedTaxTest: StatutoryTaxTest { taxTestStore.selectedTest }
+
+    func setTaxTest(_ test: StatutoryTaxTest) {
+        taxTestStore.setTest(test)
+    }
+
     var isDeletingAccount = false
     var deleteAccountError: String?
 

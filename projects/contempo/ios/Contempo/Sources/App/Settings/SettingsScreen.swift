@@ -98,6 +98,41 @@ struct SettingsScreen: View {
             }
 
             Section {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Audit Defense Strategy").font(ContempoFont.titleMedium())
+                    Text("Select your primary material participation standard under IRC §469. Your Dashboard progress and widgets track against this threshold.")
+                        .font(ContempoFont.labelSmall())
+                        .foregroundStyle(palette.inkFaint)
+                }
+                Picker("Tax Strategy", selection: Binding(
+                    get: { viewModel.selectedTaxTest },
+                    set: { viewModel.setTaxTest($0) }
+                )) {
+                    ForEach(StatutoryTaxTest.allCases) { test in
+                        Text(test.title).tag(test)
+                    }
+                }
+                .pickerStyle(.navigationLink)
+
+                HStack {
+                    Text("Target Threshold")
+                    Spacer()
+                    Text("\(viewModel.selectedTaxTest.thresholdHours) hours")
+                        .foregroundStyle(palette.pine)
+                }
+
+                HStack {
+                    Text("IRS Citation")
+                    Spacer()
+                    Text(viewModel.selectedTaxTest.legalCitation)
+                        .font(ContempoFont.labelSmall())
+                        .foregroundStyle(palette.inkFaint)
+                }
+            } header: {
+                Text("Tax Defense Strategy")
+            }
+
+            Section {
                 Text("Tag entries under a role (Property Manager, Co-host, Cleaner, a contractor, ...) when someone other than you did the work. Only your own hours (no role) count toward the 100-hour/500-hour progress on the Dashboard — the IRS tests require your participation to exceed everyone else's.")
                     .font(ContempoFont.labelSmall())
                     .foregroundStyle(palette.inkFaint)
