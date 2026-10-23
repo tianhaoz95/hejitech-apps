@@ -1,6 +1,6 @@
 # HEJI projects monorepo
 
-Several products live in `projects/<name>/` (`waypack`, `weehours`, `feedbackkit`, `voxbrief`, `meowtrix`, `contempo`, `toddlercam`, `tinytouch`), sharing one
+Several products live in `projects/<name>/` (`waypack`, `weehours`, `feedbackkit`, `voxbrief`, `meowtrix`, `contempo`, `toddlercam`, `tinytouch`, `g2digest`), sharing one
 Supabase project (FeedbackKit keeps its own: `BACKEND=own`; Voxbrief, Meowtrix, ToddlerCam and TinyTouch have none: `BACKEND=none`) (`supabase/`, read `supabase/README.md` before any schema change), npm workspaces and CI
 plumbing. Layout and how to add a project: `README.md`. Keep each project self-contained; put
 something at the root only when it is genuinely shared. Each project has its own `CLAUDE.md`
@@ -83,6 +83,11 @@ complications embedded, same team-wide signing secrets). See `projects/toddlerca
 For TinyTouch it bumps `MARKETING_VERSION` in `projects/tinytouch/ToddlerPlay.xcodeproj/project.pbxproj`
 (written by its own `tools/generate_project.py`, no XcodeGen) and publishes `tinytouch-v<version>`,
 which runs `tinytouch-testflight.yml`. See `projects/tinytouch/CLAUDE.md`.
+
+For G2 Digest it bumps the Even Hub plugin's version in `projects/g2digest/apps/glasses/package.json`
+(stamped into `app.json` when packing) and publishes `g2digest-v<version>`, which runs
+`g2digest-plugin-release.yml` (attaches the `.ehpk`; upload it to the Even Hub portal by hand). Its
+Worker (web app, API, MCP) deploys on push. See `projects/g2digest/CLAUDE.md`.
 
 ## Common pitfalls
 
