@@ -12,6 +12,10 @@ struct SettingsScreen: View {
     @State private var newRoleName = ""
     @State private var renamingRole: ParticipantRole?
     @State private var renameRoleText = ""
+    @State private var showAddProperty = false
+    @State private var newPropertyName = ""
+    @State private var renamingProperty: Property?
+    @State private var renamePropertyText = ""
     @State private var showQuickCaptureExplanation = false
     @State private var showShakeToReportExplanation = false
 
@@ -129,6 +133,40 @@ struct SettingsScreen: View {
                 }
             } header: {
                 Text("Roles")
+            }
+
+            Section {
+                Text("Manage your rental properties roster. Tap to rename or swipe to delete.")
+                    .font(ContempoFont.labelSmall())
+                    .foregroundStyle(palette.inkFaint)
+
+                ForEach(viewModel.properties) { property in
+                    HStack {
+                        Text(property.name)
+                        Spacer()
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        renamingProperty = property
+                        renamePropertyText = property.name
+                    }
+                    .swipeActions {
+                        Button(role: .destructive) {
+                            viewModel.deleteProperty(property)
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
+                }
+
+                Button {
+                    newPropertyName = ""
+                    showAddProperty = true
+                } label: {
+                    Label("Add Property", systemImage: "plus.circle.fill")
+                }
+            } header: {
+                Text("Properties")
             }
 
             Section {
@@ -289,6 +327,24 @@ struct SettingsScreen: View {
                 renamingRole = nil
             }
             Button("Cancel", role: .cancel) { renamingRole = nil }
+        }
+        .alert("Add Property", isPresented: $showAddProperty) {
+            TextField("Property name", text: $newPropertyName)
+            Button("Add") { viewModel.addProperty(name: newPropertyName) }
+            Button("Cancel", role: .cancel) {}
+        }
+        .alert("Rename Property", isPresented: Binding(
+            get: { renamingProperty != nil },
+            set: { if !$0 { renamingProperty = nil } }
+        )) {
+            TextField("Property name", text: $renamePropertyText)
+            Button("Save") {
+                if let property = renamingProperty {
+                    viewModel.renameProperty(property, name: renamePropertyText)
+                }
+                renamingProperty = nil
+            }
+            Button("Cancel", role: .cancel) { renamingProperty = nil }
         }
         .alert("Something went wrong", isPresented: Binding(
             get: { viewModel.roleError != nil },

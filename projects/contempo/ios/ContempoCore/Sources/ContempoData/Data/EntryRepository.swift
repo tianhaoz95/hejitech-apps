@@ -12,6 +12,8 @@ public protocol EntryRepository: Sendable {
     /// owner-only delete on `properties/{propertyId}`.
     func deleteProperty(propertyId: String) async throws
 
+    func renameProperty(propertyId: String, name: String) async throws
+
     /// Live stream of the user's role roster (Property Manager, Co-host,
     /// Cleaner, ...) managed in Settings — see `ParticipantRole`.
     func observeRoles() -> AsyncThrowingStream<[ParticipantRole], Error>
