@@ -292,8 +292,9 @@ public struct DerivedLog: Sendable {
                             medications: meds, notes: notes)
     }
 
-    /// FIFO breast-milk stash in the fridge and freezer, derived from `pump` and `breast_milk` bottle entries.
-    public func milkStash(household: Household) -> MilkStash {
+    /// FIFO breast-milk stash in the fridge and freezer, derived from `pump` and `breast_milk` bottle entries,
+    /// tracked against CDC safe storage guidelines (room 4h, fridge 4d, freezer 6mo).
+    public func milkStash(household: Household, now: Date = Date()) -> MilkStash {
         struct Lot { var ml: Double; var at: Date }
         var fridge: [Lot] = []
         var freezer: [Lot] = []
@@ -335,8 +336,34 @@ public struct DerivedLog: Sendable {
         }
         let fridgeMl = fridge.map(\.ml).reduce(0, +).rounded()
         let freezerMl = freezer.map(\.ml).reduce(0, +).rounded()
+
+        var batchList: [MilkStash.Batch] = []
+        var expiringSoon = 0
+        var expired = 0
+
+        // CDC guidelines: fridge safe up to 4 days (4 * 86400s)
+        for lot in fridge {
+            let exp = lot.at.addingTimeInterval(4 * 24 * 3600)
+            let isExp = now > exp
+            let isSoon = !isExp && exp.timeIntervalSince(now) <= 24 * 3600
+            if isExp { expired += 1 }
+            else if isSoon { expiringSoon += 1 }
+            batchList.append(MilkStash.Batch(ml: lot.ml.rounded(), at: lot.at, location: "fridge", expiresAt: exp, isExpiringSoon: isSoon, isExpired: isExp))
+        }
+
+        // CDC guidelines: freezer safe up to 6 months (180 * 86400s)
+        for lot in freezer {
+            let exp = lot.at.addingTimeInterval(180 * 24 * 3600)
+            let isExp = now > exp
+            let isSoon = !isExp && exp.timeIntervalSince(now) <= 7 * 24 * 3600
+            if isExp { expired += 1 }
+            else if isSoon { expiringSoon += 1 }
+            batchList.append(MilkStash.Batch(ml: lot.ml.rounded(), at: lot.at, location: "freezer", expiresAt: exp, isExpiringSoon: isSoon, isExpired: isExp))
+        }
+
         return MilkStash(fridgeMl: fridgeMl, freezerMl: freezerMl, fridgeLots: fridge.count, freezerBags: freezer.count,
-                         oldestFridgeAt: fridge.first?.at, oldestFreezerAt: freezer.first?.at)
+                         oldestFridgeAt: fridge.first?.at, oldestFreezerAt: freezer.first?.at,
+                         batches: batchList, expiringSoonCount: expiringSoon, expiredCount: expired)
     }
 
     /// Summary of solid foods tried, Top-9 allergen exposure counts, and any logged reactions.
@@ -448,12 +475,48 @@ public struct ShiftSummary: Codable, Hashable, Sendable {
 }
 
 public struct MilkStash: Codable, Hashable, Sendable {
+    public struct Batch: Codable, Hashable, Sendable, Identifiable {
+        public var id: String { "\(location)-\(Int(at.timeIntervalSince1970))-\(Int(ml))" }
+        public var ml: Double
+        public var at: Date
+        public var location: String // "fridge" | "freezer"
+        public var expiresAt: Date
+        public var isExpiringSoon: Bool
+        public var isExpired: Bool
+
+        public init(ml: Double, at: Date, location: String, expiresAt: Date, isExpiringSoon: Bool, isExpired: Bool) {
+            self.ml = ml
+            self.at = at
+            self.location = location
+            self.expiresAt = expiresAt
+            self.isExpiringSoon = isExpiringSoon
+            self.isExpired = isExpired
+        }
+    }
+
     public var fridgeMl: Double
     public var freezerMl: Double
     public var fridgeLots: Int
     public var freezerBags: Int
     public var oldestFridgeAt: Date?
     public var oldestFreezerAt: Date?
+    public var batches: [Batch]
+    public var expiringSoonCount: Int
+    public var expiredCount: Int
+
+    public init(fridgeMl: Double, freezerMl: Double, fridgeLots: Int, freezerBags: Int,
+                oldestFridgeAt: Date?, oldestFreezerAt: Date?,
+                batches: [Batch] = [], expiringSoonCount: Int = 0, expiredCount: Int = 0) {
+        self.fridgeMl = fridgeMl
+        self.freezerMl = freezerMl
+        self.fridgeLots = fridgeLots
+        self.freezerBags = freezerBags
+        self.oldestFridgeAt = oldestFridgeAt
+        self.oldestFreezerAt = oldestFreezerAt
+        self.batches = batches
+        self.expiringSoonCount = expiringSoonCount
+        self.expiredCount = expiredCount
+    }
 }
 
 public struct SolidsSummary: Hashable, Sendable {

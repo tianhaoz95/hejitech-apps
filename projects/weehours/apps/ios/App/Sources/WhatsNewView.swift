@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.9.0"
+    static let currentVersion = "0.10.0"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,21 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "0.10.0",
+            date: "October 2026",
+            tagline: "Safe Milk Storage Expiry",
+            features: [
+                WhatsNewItem(
+                    icon: "clock.badge.exclamationmark",
+                    tint: Theme.other,
+                    title: "Milk Stash Expiration Tracking",
+                    description: "Track pumped milk against CDC safe storage guidelines (fridge 4 days, freezer 6 months). The milk stash card now highlights batches expiring soon and displays First-In, First-Out (FIFO) order so you always know which batch to use first.",
+                    kind: .feature
+                ),
+            ],
+            improvementsAndFixes: []
+        ),
         ReleaseHistoryItem(
             version: "0.9.0",
             date: "October 2026",

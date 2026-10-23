@@ -285,7 +285,7 @@ struct MilkStashCard: View {
     @State private var showingPumpSheet = false
 
     var body: some View {
-        let stash = model.log.milkStash(household: model.household)
+        let stash = model.log.milkStash(household: model.household, now: now)
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Label("Milk stash", systemImage: "drop.triangle.fill")
@@ -296,6 +296,19 @@ struct MilkStashCard: View {
                     Label("Log pump", systemImage: "plus.circle.fill").font(.caption.weight(.semibold))
                 }
                 .buttonStyle(.bordered).controlSize(.small)
+            }
+            if stash.expiringSoonCount > 0 || stash.expiredCount > 0 {
+                HStack(spacing: 6) {
+                    Image(systemName: stash.expiredCount > 0 ? "exclamationmark.octagon.fill" : "exclamationmark.triangle.fill")
+                        .font(.caption)
+                    Text(stash.expiredCount > 0
+                         ? "\(stash.expiredCount) batch expired (CDC 4d fridge limit)"
+                         : "\(stash.expiringSoonCount) batch expiring soon — use next (FIFO)")
+                        .font(.caption.weight(.semibold))
+                }
+                .foregroundStyle(stash.expiredCount > 0 ? Color.red : Color.orange)
+                .padding(.horizontal, 10).padding(.vertical, 6)
+                .background((stash.expiredCount > 0 ? Color.red : Color.orange).opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
             }
             HStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 2) {
@@ -318,6 +331,24 @@ struct MilkStashCard: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color(.systemBackground).opacity(0.6), in: RoundedRectangle(cornerRadius: 12))
             }
+            let fridgeBatches = stash.batches.filter { $0.location == "fridge" }
+            if !fridgeBatches.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("FIFO FRIDGE BATCHES").font(.system(size: 9, weight: .bold)).foregroundStyle(.secondary)
+                    ForEach(fridgeBatches.prefix(3)) { batch in
+                        HStack {
+                            Text("\(Int(batch.ml)) ml")
+                                .font(.caption.weight(.medium))
+                            Spacer()
+                            Text(expiryLabel(batch))
+                                .font(.caption2.weight(.medium))
+                                .foregroundStyle(batch.isExpired ? .red : batch.isExpiringSoon ? .orange : .secondary)
+                        }
+                    }
+                }
+                .padding(8)
+                .background(Color(.systemBackground).opacity(0.4), in: RoundedRectangle(cornerRadius: 8))
+            }
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -326,6 +357,18 @@ struct MilkStashCard: View {
             PumpSheet().presentationDetents([.medium])
         }
         .accessibilityIdentifier("milkStashCard")
+    }
+
+    private func expiryLabel(_ batch: MilkStash.Batch) -> String {
+        if batch.isExpired { return "Expired (CDC 4d)" }
+        let diff = batch.expiresAt.timeIntervalSince(now)
+        if diff <= 86400 {
+            let hours = max(1, Int(diff / 3600))
+            return "Expires in \(hours)h"
+        } else {
+            let days = Int(ceil(diff / 86400))
+            return "Expires in \(days)d"
+        }
     }
 }
 
