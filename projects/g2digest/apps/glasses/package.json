@@ -1,0 +1,23 @@
+{
+  "name": "@g2digest/glasses",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The packed Even Hub plugin (.ehpk) for G2 Digest: @g2digest/plugin pointed at the hosted web app",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5174",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "package": "npm run build && evenhub pack app.json dist -o dist/g2digest.ehpk",
+    "simulator": "evenhub-simulator http://127.0.0.1:5174"
+  },
+  "dependencies": {
+    "@g2digest/plugin": "0.1.0"
+  },
+  "devDependencies": {
+    "@evenrealities/evenhub-cli": "^0.1.14",
+    "@evenrealities/evenhub-simulator": "^0.9.5",
+    "typescript": "^5.6.3",
+    "vite": "^8.3.2"
+  }
+}

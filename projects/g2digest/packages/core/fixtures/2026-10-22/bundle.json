@@ -1,0 +1,154 @@
+{
+  "date": "2026-10-22",
+  "guide_version": "0.2",
+  "brief_version": 1,
+  "edition": {
+    "title": "Afternoon brief",
+    "intro": "Development fixture: a synthetic edition in the shape of a real one, built against the seeded example brief. None of it is news.",
+    "sections": [
+      {
+        "section_id": "providers",
+        "title": "Providers",
+        "body": "Neither tracked company had launches, outages, funding or leadership news in the last day.",
+        "sources": []
+      },
+      {
+        "section_id": "breakthroughs",
+        "title": "AI/ML",
+        "body": "RFD4-Proteina, a protein design model, reports that 41% of its lab-tested designs bound their target, up from low single digits for earlier tools. Separately, an open coding model keeps its parent's benchmark scores while answering about 3x faster through speculative decoding with a code-tuned draft model.",
+        "methodology": "RFD4-Proteina: a diffusion generator refines noise into a backbone shaped to the target; flow-matching training gives a smoother path in fewer steps; structure and sequence are designed jointly. Tested on targets with good structural data; in-vitro binding only. Open coder: a small draft model proposes several tokens, the large model verifies them in one pass and keeps the correct prefix, so output is unchanged; the draft is trained on the large model's own code, raising acceptance. Gains shrink for prose and for large batches.",
+        "sources": [
+          {
+            "title": "Fixture source: protein design preprint",
+            "url": "https://example.org/fixture/protein-design"
+          },
+          {
+            "title": "Fixture source: open coder model card",
+            "url": "https://example.org/fixture/open-coder"
+          }
+        ]
+      },
+      {
+        "section_id": "markets",
+        "title": "Markets",
+        "body": "Indexes closed lower: Nasdaq -1.2%, S&P 500 -0.8%, Dow -0.5%. A hotter-than-expected jobs report pushed bond yields up.",
+        "sources": [
+          {
+            "title": "Fixture source: market close",
+            "url": "https://example.org/fixture/markets"
+          }
+        ]
+      }
+    ]
+  },
+  "cards": [
+    {
+      "slug": "cover",
+      "kind": "cover",
+      "title": "Afternoon brief",
+      "body": "Quiet on providers, two research results."
+    },
+    {
+      "slug": "tldr",
+      "kind": "tldr",
+      "title": "Protein binders hit 41%",
+      "body": "Designed proteins stick on the first try far more often.",
+      "key_number": "41%",
+      "glance": {
+        "script": "If you only hear one thing today: a protein design model is getting working binders on the first try much more often than before. The deep dive on the research card explains why that matters for drug discovery.",
+        "audio_path": "2026-10-22/tldr-glance.mp3",
+        "duration_sec": 11.3
+      }
+    },
+    {
+      "slug": "providers-quiet",
+      "kind": "section",
+      "section_id": "providers",
+      "template": "status",
+      "title": "No provider news",
+      "body": "Nothing changed today.",
+      "quiet": true,
+      "glance": {
+        "script": "Nothing to report from the two providers you track. No launches, no outages, no funding news in the last day, so there is no deep dive here. Swipe on.",
+        "audio_path": "2026-10-22/providers-quiet-glance.mp3",
+        "duration_sec": 9.6
+      }
+    },
+    {
+      "slug": "proteina-binders",
+      "kind": "section",
+      "section_id": "breakthroughs",
+      "template": "discovery",
+      "title": "RFD4-Proteina binder hit rate: 41%",
+      "body": "Far fewer lab tries per working design.",
+      "key_number": "41%",
+      "method_keyword": "flow matching",
+      "source_url": "https://example.org/fixture/protein-design",
+      "glance": {
+        "script": "This matters if you follow drug discovery. Labs usually test hundreds of designs to find one that sticks to its target. The new model gets there with far fewer tries, and the deep dive walks through how it was measured. Hold to hear it.",
+        "audio_path": "2026-10-22/proteina-binders-glance.mp3",
+        "duration_sec": 13
+      },
+      "deep_dive": {
+        "script": "Here is the story behind today's research card. It is a development fixture, so treat the details as an example of the shape of a deep dive rather than as news.\n\nStart with what the model is. It is a protein design model: you describe a target, a protein on the surface of a virus or a cell, and it proposes new proteins that should grip that target. Those designed grippers are called binders. Binders are useful because a protein that sticks tightly to the right spot can block an infection, carry a drug to a tumor, or act as a sensor in a diagnostic test.\n\nThe hard part has never been proposing designs. Computers have been able to propose millions of candidate proteins for years. The hard part is that most of them fail in the lab. A design that looks perfect on screen folds the wrong way, or folds correctly but slides off its target. So labs order hundreds of designs, make each one, test each one, and keep the handful that work. That testing step costs weeks and real money for every round.\n\nWhat is new here is the hit rate. In the reported experiments, about forty-one percent of the designs that went into the lab actually bound their target. For comparison, earlier generations of design tools often landed in the low single digits, and a good result was considered something around ten percent. Going from a few percent to roughly four in ten changes the arithmetic of a project. Instead of ordering a few hundred designs to find a few winners, a lab can order a few dozen.\n\nHow does it get there? The model combines two ideas that have each been improving on their own. The first is a diffusion style generator. It starts from random noise in three dimensions and gradually refines it into a protein backbone shaped to fit the target, a bit like a sculptor removing material until a shape appears. The second is flow matching, a training method that teaches the model a smoother path from noise to structure, so it needs fewer refinement steps and makes fewer strange detours along the way. The team also trained it jointly on structure and sequence, so the shape and the chain of amino acids that should produce that shape are designed together instead of one after the other. That joint design is the part they credit most for designs that fold the way they were drawn.\n\nThere are honest limits. The targets tested were ones where good structural data already exists, and binding in a test tube is only the first gate. A binder still has to be stable in the body, avoid triggering the immune system, and be made at scale. None of that is shown yet.\n\nSo why does it matter? Because the expensive, slow part of protein design is the wet lab, and this result shrinks it. If the hit rate holds up on harder targets, small labs can attempt projects that used to need a large team and a large budget. That is the thing to watch next: independent groups reproducing the rate on targets the model has never seen. When that happens, the change will show up first in diagnostics and research tools, and later, much more slowly, in medicines.",
+        "audio_path": "2026-10-22/proteina-binders-deep-dive.mp3",
+        "duration_sec": 169.4
+      }
+    },
+    {
+      "slug": "open-coder-speed",
+      "kind": "section",
+      "section_id": "breakthroughs",
+      "template": "discovery",
+      "title": "Open coding model runs 3x faster",
+      "body": "Same scores, a fraction of the compute.",
+      "key_number": "3x",
+      "method_keyword": "speculative decoding",
+      "source_url": "https://example.org/fixture/open-coder",
+      "glance": {
+        "script": "An open coding model that keeps its benchmark scores while answering much faster. For anyone serving models, that is a cost story more than a quality story. The deep dive explains the decoding trick behind it.",
+        "audio_path": "2026-10-22/open-coder-speed-glance.mp3",
+        "duration_sec": 11.9
+      },
+      "deep_dive": {
+        "script": "This deep dive is about speed rather than smarts. Like everything in this fixture edition, it is a made-up example for development, written in the shape a real deep dive would take.\n\nStart with what was released. It is an open coding model, meaning anyone can download the weights and run it on their own hardware. On the usual coding benchmarks it scores about the same as the model it was derived from. The headline is that it answers roughly three times faster on the same hardware.\n\nWhy would the same model, giving the same answers, be faster? The answer is a technique called speculative decoding. A language model normally writes one token at a time. Each token requires a full pass through the big model, and the big model is slow. Speculative decoding adds a small, quick draft model that runs ahead and guesses the next several tokens. The big model then checks all of those guesses in a single pass. Checking is much cheaper than writing, because the big model can look at several positions at once. Whenever the draft guessed right, those tokens are accepted for free. When it guessed wrong, the big model keeps the correct prefix, fixes the first wrong token, and the draft starts guessing again from there.\n\nThe important property is that the output does not change. The big model has the final say on every single token, so the answers are exactly what it would have produced alone. The only thing that changes is how many slow passes it needs. If the draft is right most of the time, the number of passes drops sharply, and that is where the three times speedup comes from.\n\nWhat is novel in this release is how well the draft model is matched to code. Code is unusually predictable: closing brackets, repeated variable names, boilerplate imports. The team trained the draft specifically on the kind of code the big model writes, so its guesses are accepted far more often than a general purpose draft would manage. They report acceptance rates high enough that, on typical completions, most tokens come from the draft and are merely confirmed by the big model.\n\nThere are trade offs worth knowing. You need memory for two models instead of one, although the draft is small. The speedup depends on the task: free form prose is less predictable than code, so the gains shrink there. And the benefit is largest when you run one request at a time; when a server is already batching many users together, the hardware is busier and the relative gain is smaller.\n\nSo why does it matter? For people who pay for serving models, speed is cost. Answering three times faster on the same machine means either a third of the hardware for the same traffic, or the same hardware for three times the users. For people using coding assistants, it means suggestions that keep up with typing. And because the weights are open, other teams can apply the same draft training recipe to their own models, which is usually how a trick like this spreads: quietly, through serving stacks, until everyone just expects it.",
+        "audio_path": "2026-10-22/open-coder-speed-deep-dive.mp3",
+        "duration_sec": 167.2
+      }
+    },
+    {
+      "slug": "markets-close",
+      "kind": "section",
+      "section_id": "markets",
+      "template": "metric",
+      "title": "Stocks slip on rates",
+      "body": "Bond yields jumped.",
+      "metrics": [
+        {
+          "label": "Nasdaq",
+          "value": "-1.2%"
+        },
+        {
+          "label": "S&P 500",
+          "value": "-0.8%"
+        },
+        {
+          "label": "Dow",
+          "value": "-0.5%"
+        }
+      ],
+      "glance": {
+        "script": "A down day across the board, led by tech. The move came after a hotter than expected jobs report pushed bond yields up, which usually weighs on growth stocks first.",
+        "audio_path": "2026-10-22/markets-close-glance.mp3",
+        "duration_sec": 9.5
+      }
+    },
+    {
+      "slug": "end",
+      "kind": "end",
+      "title": "That's the brief",
+      "body": "See the full edition on the web."
+    }
+  ],
+  "cut": []
+}

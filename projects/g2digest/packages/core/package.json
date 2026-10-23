@@ -1,0 +1,20 @@
+{
+  "name": "@g2digest/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "G2 Digest contracts, card renderer, validator, brief checks and gesture state machine, shared by the Worker, web app and glasses plugin. Consumed as TypeScript source.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./fixtures/*": "./fixtures/*"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vitest": "^5.0.3",
+    "@types/node": "^22.20.5"
+  }
+}

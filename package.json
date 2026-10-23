@@ -17,6 +17,9 @@
     "build:weehours": "npm run build -w @weehours/web -w @weehours/glasses",
     "test:weehours": "npm test -w projects/weehours/packages -w projects/weehours/apps -w projects/weehours/services --if-present",
     "typecheck:weehours": "npm run typecheck -w projects/weehours/packages -w projects/weehours/apps -w projects/weehours/services --if-present",
+    "build:g2digest": "npm run build -w @g2digest/web -w @g2digest/glasses",
+    "test:g2digest": "npm test -w projects/g2digest/packages -w projects/g2digest/services --if-present",
+    "typecheck:g2digest": "npm run typecheck -w projects/g2digest/packages -w projects/g2digest/apps -w projects/g2digest/services --if-present",
     "pages:dev": "node scripts/pages_sync.mjs && vitepress dev pages",
     "pages:build": "node scripts/pages_sync.mjs && vitepress build pages"
   },

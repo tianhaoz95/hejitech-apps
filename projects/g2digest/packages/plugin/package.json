@@ -1,0 +1,24 @@
+{
+  "name": "@g2digest/plugin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The G2 Digest glasses plugin and the browser G2 preview: bridge detection, card push, R1 gestures, audio, pairing. One codebase for the hosted page and the packed .ehpk. Consumed as TypeScript source.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./style.css": "./src/style.css"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@evenrealities/even_hub_sdk": "^0.0.16",
+    "@g2digest/core": "0.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vite": "^8.3.2",
+    "vitest": "^5.0.3"
+  }
+}

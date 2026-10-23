@@ -1,0 +1,45 @@
+{
+  "title": "Afternoon brief",
+  "tldr": true,
+  "total_card_budget": 12,
+  "total_audio_budget_sec": 1200,
+  "language": "en",
+  "units": { "temperature": "C", "distance": "km" },
+  "glossary": [
+    { "term": "inference", "gloss": "running a trained model to get answers" }
+  ],
+  "no_gloss": ["LLM", "GPU", "API", "open weights"],
+  "delivery": { "time": "13:40", "timezone": "America/Los_Angeles", "days": ["mon", "tue", "wed", "thu", "fri"] },
+  "sections": [
+    {
+      "id": "providers",
+      "title": "Providers",
+      "template": "status",
+      "source": { "kind": "web_news", "entities": ["Baseten", "Fireworks AI"], "query": "Baseten OR \"Fireworks AI\" news" },
+      "instructions": "One card per company that had real news in the last day: launches, funding, outages, deals, leadership. Attribute reports that aren't confirmed by the company. An outage or security incident is an alert. If neither company had news, one quiet card that says so.",
+      "max_cards": 2,
+      "quiet_behavior": "show_status",
+      "audio": { "glance": true, "deep_dive": "on_alert" }
+    },
+    {
+      "id": "breakthroughs",
+      "title": "AI/ML",
+      "template": "discovery",
+      "source": { "kind": "web_news", "entities": [], "query": "AI ML research breakthrough new model release" },
+      "instructions": "New AI/ML results that change what is possible, ranked by how much they move the field, not by hype. Prefer released models, papers with numbers and open weights over announcements. Skip funding news and product marketing. Leave the section out on a day with nothing that clears the bar.",
+      "max_cards": 3,
+      "quiet_behavior": "omit",
+      "audio": { "glance": true, "deep_dive": "required" }
+    },
+    {
+      "id": "markets",
+      "title": "Markets",
+      "template": "metric",
+      "source": { "kind": "finance", "entities": ["Nasdaq Composite", "S&P 500", "Dow Jones Industrial Average"] },
+      "instructions": "Today's close (or latest) for the three indexes as percentage moves, and the one driver behind the move in plain words.",
+      "max_cards": 1,
+      "quiet_behavior": "show_last",
+      "audio": { "glance": true, "deep_dive": "never" }
+    }
+  ]
+}
