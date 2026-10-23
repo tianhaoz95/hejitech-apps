@@ -72,6 +72,8 @@ struct MainView: View {
 struct HomeView: View {
     @EnvironmentObject var model: AppModel
     @AppStorage(NightMode.key) private var nightMode = NightMode.off
+    @AppStorage(NowRhythm.key) private var showRhythm = false
+    @State private var editing: LogEvent?
     @State private var showingSync = false
     @State private var now = Date()
     /// The sync badge, the one toolbar item that comes and goes. A pull to refresh syncs, and the
@@ -86,6 +88,11 @@ struct HomeView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     // one shown child: today's single status card; several: the Log-for panel
+                    if showRhythm {
+                        RhythmCompare(log: model.log, child: model.shown.count == 1 ? model.shown.first?.id : nil, household: model.household) { editing = $0 }
+                            .padding()
+                            .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+                    }
                     if let note = model.shiftNote { ShiftNoteCard(note: note, now: now) }
                     if model.shown.count > 1 { ChildrenPanel(now: now) } else { StatusCard(now: now) }
                     PartnerPulse(now: now)
@@ -125,6 +132,7 @@ struct HomeView: View {
                 }
             }
             .sheet(isPresented: $showingSync) { SyncSheet().presentationDetents([.medium, .large]) }
+            .sheet(item: $editing) { e in EditEventView(event: e) }
             .refreshable {
                 refreshing = true
                 await model.syncNow()

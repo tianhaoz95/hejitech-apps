@@ -26,6 +26,7 @@ struct SettingsView: View {
     @AppStorage(ThumbDock.key) private var thumbDock = ThumbDock.off
     @AppStorage("liveActivitiesEnabled") private var liveActivitiesEnabled = true
     @AppStorage(GroupSessions.key) private var groupSessions = true
+    @AppStorage(NowRhythm.key) private var nowRhythm = false
 
     /// When the next feed is due with the interval as set here (the adapted one if that's on),
     /// counted from the last logged feed; nil before any feed is logged.
@@ -161,8 +162,10 @@ struct SettingsView: View {
                 Section {
                     Toggle("Group feeds and sleeps", isOn: $groupSessions)
                         .accessibilityIdentifier("groupSessions")
+                    Toggle("Today vs yesterday on Now", isOn: $nowRhythm)
+                        .accessibilityIdentifier("nowRhythm")
                 } header: { Text("Timeline") } footer: {
-                    Text("Shows a finished feed or sleep as one entry with its length, instead of separate start and finish entries. Search and the Audit view always show every entry.")
+                    Text("Grouping shows a finished feed or sleep as one entry with its length; search and the Audit view always show every entry. Today vs yesterday puts today's and yesterday's feeds, diapers and sleep side by side at the top of Now.")
                 }
                 Section {
                     Button("Save changes") { save() }

@@ -57,6 +57,13 @@ struct WhatsNewView: View {
                     description: "The Timeline now shows one day: step back and forth or pick a date, see the whole day as a strip of feeds, diapers and sleep with night hours shaded, and the day's counts at a glance. Tap the counts to compare with the day before. Search still looks across every day.",
                     kind: .feature
                 ),
+                WhatsNewItem(
+                    icon: "chart.bar.xaxis",
+                    tint: Theme.sleep,
+                    title: "Today vs Yesterday on Now",
+                    description: "Turn on Settings → Timeline → Today vs yesterday on Now to see today's and yesterday's feeds, diapers and sleep side by side at the top of Now, with how today compares so far.",
+                    kind: .feature
+                ),
             ],
             improvementsAndFixes: [
                 WhatsNewItem(
