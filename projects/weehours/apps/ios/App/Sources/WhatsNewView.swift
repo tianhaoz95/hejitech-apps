@@ -48,8 +48,15 @@ struct WhatsNewView: View {
         ReleaseHistoryItem(
             version: "0.10.0",
             date: "October 2026",
-            tagline: "AI Daily Summary & Pediatric Stats",
+            tagline: "Quick Controls & AI Pediatric Summary",
             features: [
+                WhatsNewItem(
+                    icon: "slider.horizontal.3",
+                    tint: Theme.accent,
+                    title: "Control Center Diaper & Sleep Controls",
+                    description: "Add dedicated one-tap controls to your Lock Screen and Control Center for quick logging with one hand: Log Wet Diaper, Log Dirty Diaper, and Baby Sleep / Wake (iOS 18).",
+                    kind: .feature
+                ),
                 WhatsNewItem(
                     icon: "sparkles",
                     tint: Theme.accent,
