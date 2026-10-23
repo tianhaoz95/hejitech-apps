@@ -183,7 +183,7 @@ public final class SupabaseClient: @unchecked Sendable {
     // MARK: REST
 
     public func request(_ method: String, _ path: String, json: Data? = nil, prefer: String? = nil,
-                        contentType: String = "application/json") async throws -> Data {
+                        contentType: String = "application/json", headers: [String: String] = [:]) async throws -> Data {
         try await refreshIfNeeded()
         guard let s = currentSession() else { throw BackendError.notSignedIn }
         var req = URLRequest(url: URL(string: "\(config.url.absoluteString)\(path)")!)
@@ -197,6 +197,8 @@ public final class SupabaseClient: @unchecked Sendable {
             req.setValue(BackendConfig.schema, forHTTPHeaderField: "Content-Profile")
         }
         if let prefer { req.setValue(prefer, forHTTPHeaderField: "Prefer") }
+        for (k, v) in headers { req.setValue(v, forHTTPHeaderField: k) }
+        if json != nil, contentType.hasPrefix("image/") { req.timeoutInterval = 60 }
         req.httpBody = json
         let (data, resp) = try await http.data(for: req)
         try Self.check(resp, data)
@@ -266,6 +268,21 @@ public final class SupabaseClient: @unchecked Sendable {
         _ = try await request("POST", "/storage/v1/object/\(BackendConfig.bucket)/\(path)", json: data, contentType: contentType)
     }
 
+    // MARK: photos
+
+    /// Uploads (or replaces, so a retry is harmless) a photo under the household's folder.
+    public func uploadPhoto(key: String, data: Data) async throws {
+        _ = try await request("POST", "/storage/v1/object/\(BackendConfig.bucket)/\(key)", json: data, contentType: "image/jpeg", headers: ["x-upsert": "true"])
+    }
+
+    public func downloadPhoto(key: String) async throws -> Data {
+        try await request("GET", "/storage/v1/object/\(BackendConfig.bucket)/\(key)")
+    }
+
+    public func deletePhoto(key: String) async throws {
+        _ = try await request("DELETE", "/storage/v1/object/\(BackendConfig.bucket)/\(key)")
+    }
+
     // MARK: household
 
     public func createHousehold(_ h: Household, displayName: String) async throws {
@@ -317,12 +334,19 @@ public final class SupabaseClient: @unchecked Sendable {
         // Storage only deletes through its API, so the audio goes first, then the rows (cascading).
         let idData = try await rpc("my_household_id")
         if let household = try JSONSerialization.jsonObject(with: idData, options: .fragmentsAllowed) as? String {
-            let listing = try await request("POST", "/storage/v1/object/list/\(BackendConfig.bucket)",
-                                            json: JSONSerialization.data(withJSONObject: ["prefix": household, "limit": 1000]))
-            let names = ((try JSONSerialization.jsonObject(with: listing)) as? [[String: Any]] ?? []).compactMap { $0["name"] as? String }
-            if !names.isEmpty {
-                _ = try await request("DELETE", "/storage/v1/object/\(BackendConfig.bucket)",
-                                      json: JSONSerialization.data(withJSONObject: ["prefixes": names.map { "\(household)/\($0)" }]))
+            // capture audio at the top of the folder, photos under photos/ (listings are one level, 1000 at a time)
+            for folder in [household, "\(household)/photos"] {
+                while true {
+                    let listing = try await request("POST", "/storage/v1/object/list/\(BackendConfig.bucket)",
+                                                    json: JSONSerialization.data(withJSONObject: ["prefix": folder, "limit": 1000]))
+                    // files have an id; sub-folders (photos/) don't
+                    let names = ((try JSONSerialization.jsonObject(with: listing)) as? [[String: Any]] ?? [])
+                        .filter { !($0["id"] is NSNull) && $0["id"] != nil }.compactMap { $0["name"] as? String }
+                    if names.isEmpty { break }
+                    _ = try await request("DELETE", "/storage/v1/object/\(BackendConfig.bucket)",
+                                          json: JSONSerialization.data(withJSONObject: ["prefixes": names.map { "\(folder)/\($0)" }]))
+                    if names.count < 1000 { break }
+                }
             }
         }
         _ = try await rpc("delete_household")

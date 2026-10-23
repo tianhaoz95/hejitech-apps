@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.10.2"
+    static let currentVersion = "0.11.0"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,28 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "0.11.0",
+            date: "October 2026",
+            tagline: "Photos on Every Entry",
+            features: [
+                WhatsNewItem(
+                    icon: "photo.on.rectangle.angled",
+                    tint: Theme.accent,
+                    title: "Photos on Entries",
+                    description: "Attach as many photos as you like to any entry: tummy time, a bottle, a rash to show the pediatrician. Open an entry and tap Take photo or Choose photos, or tap the camera in the toast right after logging. Both parents see them, and Timeline → View → Photos has them all, day by day.",
+                    kind: .feature
+                ),
+                WhatsNewItem(
+                    icon: "camera.fill",
+                    tint: Theme.feed,
+                    title: "Catch the Moment",
+                    description: "While a feed, nap, tummy time or play is going, Now shows a camera button that attaches the picture straight to it. Pictures you take in Wee Hours are saved to your Photos library too.",
+                    kind: .feature
+                ),
+            ],
+            improvementsAndFixes: []
+        ),
         ReleaseHistoryItem(
             version: "0.10.2",
             date: "October 2026",

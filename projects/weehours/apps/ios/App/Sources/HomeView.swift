@@ -40,6 +40,7 @@ struct MainView: View {
             ReviewSheet(capture: capture).presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $showingWhatsNew) { WhatsNewView() }
+        .sheet(item: $model.photoTarget) { AddPhotosSheet(entry: $0) }
         .overlay { if showingHUD { NightHUD(tint: nightTint) { withAnimation(.snappy) { model.closeNightScreen() } }.transition(.opacity) } }
         .overlay(alignment: placement.alignment) {
             if !model.recording, !showingHUD {
@@ -95,6 +96,7 @@ struct HomeView: View {
                     }
                     if let note = model.shiftNote { ShiftNoteCard(note: note, now: now) }
                     if model.shown.count > 1 { ChildrenPanel(now: now) } else { StatusCard(now: now) }
+                    OngoingPhotosCard(now: now)
                     PartnerPulse(now: now)
                     if model.showingShiftDigest, let shift = model.log.shiftSummary(household: model.household, now: now, includeCurrent: true) {
                         ShiftDigestCard(shift: shift, now: now)
@@ -1114,6 +1116,12 @@ struct ToastView: View {
                 }
                 Text(toast.text).lineLimit(2)
                 Spacer()
+                if let id = toast.undo, !toast.together, let e = model.log.all.first(where: { $0.id == id }),
+                   !SystemType.all.contains(e.type) || e.type == SystemType.note {
+                    Button { model.photoTarget = e } label: { Image(systemName: "camera.fill") }
+                        .accessibilityLabel("Add photos")
+                        .accessibilityIdentifier("toastAddPhotos")
+                }
                 if let id = toast.undo { Button(toast.together ? "Undo all" : "Undo") { model.undo(id, together: toast.together) }.bold() }
                 if let reopen = toast.reopen { Button(reopen.action) { model.reopen(reopen) }.bold() }
             }

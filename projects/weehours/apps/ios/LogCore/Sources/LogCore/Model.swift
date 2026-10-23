@@ -144,7 +144,9 @@ public enum SystemType {
     public static let undo = "undo"
     public static let resolve = "resolve"
     public static let duty = "duty"
-    public static let all: Set<String> = [note, undo, resolve, duty, "settings"]
+    /// A photo attached to an entry (`attached_to`, `path`); removing it is an undo.
+    public static let photo = "photo"
+    public static let all: Set<String> = [note, undo, resolve, duty, "settings", photo]
 }
 
 /// One voice entry from any device. Audio is processed on a household phone; the resulting event

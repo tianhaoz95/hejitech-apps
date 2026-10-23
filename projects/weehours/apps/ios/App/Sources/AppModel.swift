@@ -47,6 +47,8 @@ final class AppModel: ObservableObject {
     @Published var reviews: [Capture] = []
     @Published var entitlement: Entitlement?
     @Published var toast: Toast?
+    /// The entry the "add photos" sheet is for (opened from the toast after logging).
+    @Published var photoTarget: LogEvent?
     @Published var reviewing: Capture?
     @Published var error: String?
     @Published var recording = false
@@ -90,7 +92,7 @@ final class AppModel: ObservableObject {
     let billing = Billing()
     private let recorder = Recorder()
     private let transcriber = WhisperTranscriber()
-    private var backend: SupabaseClient
+    private(set) var backend: SupabaseClient
     private(set) var service: LogService?
     private var watch: WatchBridge?
     private var notifications: NotificationHandler?
@@ -246,6 +248,11 @@ final class AppModel: ObservableObject {
             if !UserDefaults.standard.bool(forKey: "skipPermissions") { await ReminderScheduler.requestPermission() }
             await billing.load()
             entitlement = localOnly ? localEntitlement : ((try? await backend.fetchEntitlement()) ?? localEntitlement)
+            // `-demoPhotos <n>`: n generated pictures on the newest entry (screenshots and checks)
+            let demoPhotos = UserDefaults.standard.integer(forKey: "demoPhotos")
+            if demoPhotos > 0, let newest = log.effective.last {
+                attachPhotos((0..<demoPhotos).compactMap { PhotoFiles.sample($0) }, to: newest)
+            }
         } catch {
             self.error = error.localizedDescription
         }
@@ -317,6 +324,10 @@ final class AppModel: ObservableObject {
     }
 
     func signOut() {
+        // this phone's photo copies belong to the household being left
+        try? FileManager.default.removeItem(at: PhotoFiles.directory)
+        PhotoFiles.pendingUploads = []
+        PhotoFiles.pendingDeletes = []
         backend.signOut()
         SharedStore.household = nil
         service = nil
@@ -498,6 +509,8 @@ final class AppModel: ObservableObject {
 
     func deleteAllData() async {
         if localOnly {
+            try? FileManager.default.removeItem(at: PhotoFiles.directory)
+            PhotoFiles.pendingUploads = []
             try? service?.store.deleteAll()
             SharedStore.household = nil
             service = nil
@@ -552,6 +565,7 @@ final class AppModel: ObservableObject {
             print("[sync] \(error)")
         }
         await refresh()
+        await syncPhotos()
     }
 
     // MARK: writing
@@ -689,7 +703,7 @@ final class AppModel: ObservableObject {
                          token: session.expiresAt > Date() ? session.accessToken : nil)
     }
 
-    private func announceChange() {
+    func announceChange() {
         presence.send("changed", ["caregiver": me?.uuidString ?? ""])
     }
 

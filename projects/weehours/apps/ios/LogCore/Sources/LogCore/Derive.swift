@@ -65,6 +65,10 @@ public struct DerivedLog: Sendable {
     public let duplicates: [DuplicateFlag]
     public let sessions: [Session]
     public let duty: DutyState?
+    /// Attached photos still in place, by the original entry they were added to (edits keep them).
+    let photosByRoot: [UUID: [EntryPhoto]]
+    /// Each event's original: the entry an edit chain started from.
+    let rootOf: [UUID: UUID]
 
     public init(events: [LogEvent], registry: EventRegistry = .shared, asOf: Date? = nil, baby: UUID? = nil) {
         let visible = asOf.map { cutoff in events.filter { $0.occurredAt <= cutoff } } ?? events
@@ -127,6 +131,13 @@ public struct DerivedLog: Sendable {
                 status[second.id] = .duplicateUnresolved
             }
         }
+        var byRoot: [UUID: [EntryPhoto]] = [:]
+        for e in ordered where e.type == SystemType.photo && status[e.id] == .active {
+            guard let p = EntryPhoto(e) else { continue }
+            byRoot[lineage[p.entry] ?? p.entry, default: []].append(p)
+        }
+        photosByRoot = byRoot.mapValues { $0.sorted { ($0.takenAt, $0.id.uuidString) < ($1.takenAt, $1.id.uuidString) } }
+        rootOf = lineage
         let own = data.filter(mine)
         let ownIds = Set(own.map(\.id))
         duplicates = flags.filter { ownIds.contains($0.duplicate) }

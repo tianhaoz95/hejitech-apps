@@ -312,7 +312,7 @@
     "breast": 60,
     "sleep": 180
   },
-  "systemTypes": ["note", "undo", "resolve", "duty", "settings"],
+  "systemTypes": ["note", "undo", "resolve", "duty", "settings", "photo"],
   "questions": {
     "event_type": {
       "instructions": "Which baby log entry does the parent's sentence describe?"

@@ -74,6 +74,8 @@ targets:
         UILaunchScreen: {}
         AppGroup: $(APP_GROUP)
         NSMicrophoneUsageDescription: Speak a log entry. Audio is transcribed on this iPhone and never uploaded.
+        NSCameraUsageDescription: Take photos of the moment and attach them to an entry. They're shared with your household.
+        NSPhotoLibraryAddUsageDescription: Save the photos you take in Wee Hours to your Photos library too.
         NSSupportsLiveActivities: true
         NSUserActivityTypes: []
         UIBackgroundModes: [fetch, processing, remote-notification, audio]

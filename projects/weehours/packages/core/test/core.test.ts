@@ -2,7 +2,7 @@
 // the Swift LogCore tests read.
 import { describe, expect, it } from "vitest";
 import fixtures from "../../../spec/fixtures/status.json";
-import { dailySummary, derive, status, statusLine, validate, type LogEvent } from "../src/core.ts";
+import { dailySummary, derive, photoCounts, status, statusLine, validate, type LogEvent } from "../src/core.ts";
 
 const now = Date.parse(fixtures.now);
 
@@ -131,5 +131,28 @@ describe("dailySummary", () => {
     expect(summary.sleep.current_wake_window_minutes).toBe(90); // 13:30 to 15:00 is 90 mins
     expect(summary.medications.length).toBe(1);
     expect(summary.medications[0].medicine).toBe("Acetaminophen");
+  });
+});
+
+describe("photos", () => {
+  const at = (m: number) => new Date(Date.parse("2026-10-20T12:00:00Z") + m * 60_000).toISOString();
+  const ev = (id: string, type: string, m: number, fields: Record<string, string | number> = {}, supersedes: string | null = null): LogEvent => ({
+    id, household_id: "h", baby_id: "b", type, fields, occurred_at: at(m), logged_at: at(m), logged_by: "a",
+    provenance: { surface: "phone", input: "tap" }, supersedes,
+  });
+
+  it("counts an entry's photos through its edits, not undone ones, and keeps them out of the log", () => {
+    const events = [
+      ev("d1", "diaper", 0, { kind: "wet" }),
+      ev("p1", "photo", 1, { attached_to: "d1", path: "photos/p1.jpg" }),
+      ev("d2", "diaper", 2, { kind: "dirty" }, "d1"),
+      ev("p2", "photo", 3, { attached_to: "d2", path: "photos/p2.jpg" }),
+      ev("p3", "photo", 4, { attached_to: "d2", path: "photos/p3.jpg" }),
+      ev("u1", "undo", 5, {}, "p3"),
+    ];
+    const d = derive(events);
+    expect(d.effective.map((e) => e.id)).toEqual(["d2"]);
+    expect(photoCounts(d)(d.effective[0])).toBe(2);
+    expect(validate("photo", {})).toBeNull();
   });
 });

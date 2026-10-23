@@ -71,6 +71,18 @@ The PRD ("Newborn Log — PRD") plus the changes agreed while planning, and the 
 | Data | Category `movement` (types `movement`, `kick_count`), `"model": false`; the due date is kept in the child's `babies.settings` (`due_date`), so no schema change | Voice prompts stay as the shipped model was trained; per-child extras already live in settings |
 | Advice | No interpretation of counts; a fixed safety note says to contact the midwife or maternity unit straight away if movements slow or change | The app records facts, agents interpret (Agents); current guidance warns against waiting or relying on a fixed number |
 
+## Photos on entries (2026-10-23)
+
+| Topic | Decision | Why |
+|---|---|---|
+| Scope | Any number of photos per entry (tummy time, a bottle, a rash for the pediatrician), browsed later in Timeline → View → Photos | Owner request: evidence at the pediatrician, otherwise memories |
+| Storage | Household cloud, resized: 2048 px JPEG (~0.1–0.5 MB) in the `weehours` bucket under `<household>/photos/<id>.jpg`; every household phone sees them; a copy is kept on the phone | Owner's pick ("Household cloud, resized") over full resolution (10× storage) and phone-only (partner wouldn't see them) |
+| Data | A `photo` system entry per picture (`attached_to`, `path`, size, `taken_at`), so photos sync, merge and undo through the existing log; they follow the entry through edits; removing one is an undo plus deleting the file. No schema change: the bucket's household-folder policies already cover them | Reuses the offline outbox and sync; nothing new for graduation |
+| Price | Adding needs the subscription (or trial); looking never does | Owner's pick ("Subscribers (and trial)") |
+| Agents | MCP's `list_events` says how many photos an entry has; agents can't open or add photos | Owner's pick: baby photos don't go to an assistant's provider |
+| Camera | Shots taken in the app are also saved, full size, to the iPhone's Photos library (add-only access) | Owner request: the camera roll should have the picture too |
+| While it happens | Now shows a card for each ongoing feed, nap or timed activity with camera and library buttons that attach to it; the toast after logging offers the same | Owner request: catch the moment during the activity |
+
 ## Not done yet
 
 See the report (`report/v0/site`, "What's verified") for what was verified in simulators and what still needs devices or the hosted project.

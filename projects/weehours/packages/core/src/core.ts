@@ -48,7 +48,7 @@ export interface Session {
   abandoned?: boolean;
 }
 
-export const SYSTEM_TYPES = new Set(["note", "undo", "resolve", "duty", "settings"]);
+export const SYSTEM_TYPES = new Set(["note", "undo", "resolve", "duty", "settings", "photo"]);
 export const registry = spec;
 export const eventTypes = spec.types;
 
@@ -631,4 +631,27 @@ export function dailySummary(
 
 export function fieldSpecs(type: string): FieldSpec[] {
   return ((typeSpec(type) as { fields?: FieldSpec[] } | undefined)?.fields ?? []) as FieldSpec[];
+}
+
+/**
+ * Photos per entry: `photo` system events (not undone) name the entry they were added to
+ * (`attached_to`); an edit of the entry keeps them, so they count against the edit chain's root.
+ * Returns a lookup for any entry. MCP reports only these counts, never the images.
+ */
+export function photoCounts(d: Derived): (e: LogEvent) => number {
+  const byId = new Map(d.all.map((e) => [e.id, e]));
+  const rootOf = (id: string) => {
+    let r = id, cur = byId.get(id), hops = 0;
+    while (cur?.supersedes && byId.has(cur.supersedes) && hops++ < 64) { r = cur.supersedes; cur = byId.get(r); }
+    return r;
+  };
+  const counts = new Map<string, number>();
+  for (const e of d.all) {
+    if (e.type !== "photo" || d.status.get(e.id) !== "active") continue;
+    const entry = e.fields.attached_to;
+    if (typeof entry !== "string") continue;
+    const r = rootOf(entry);
+    counts.set(r, (counts.get(r) ?? 0) + 1);
+  }
+  return (e) => counts.get(rootOf(e.id)) ?? 0;
 }

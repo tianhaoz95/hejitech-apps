@@ -11,7 +11,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 /** A service-role client on the `weehours` schema. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Db = SupabaseClient<any, any, any>;
-import { dailySummary, derive, eventTypes, fieldSpecs, milkStash, registry, shiftSummary, status, statusLine, typeSpec, validate, type LogEvent } from "@weehours/core";
+import { dailySummary, derive, photoCounts, eventTypes, fieldSpecs, milkStash, registry, shiftSummary, status, statusLine, typeSpec, validate, type LogEvent } from "@weehours/core";
 
 const PROTOCOL_VERSION = "2025-06-18";
 export const SERVER_VERSION = "0.2.0";
@@ -87,7 +87,7 @@ export const TOOLS = [
     name: "list_events",
     title: "List log entries",
     description:
-      "Raw log entries (active ones only, edits applied, undone and merged entries removed), oldest first. Bottle entries include ml computed from the fraction and the household bottle size. No totals or summaries: compute what you need from these rows.",
+      "Raw log entries (active ones only, edits applied, undone and merged entries removed), oldest first. Bottle entries include ml computed from the fraction and the household bottle size. Entries with photos attached say how many (photos); the images themselves stay in the app. No totals or summaries: compute what you need from these rows.",
     inputSchema: {
       type: "object",
       properties: {
@@ -249,6 +249,8 @@ export async function callTool(name: string, args: Record<string, unknown>, call
 
   const write = async (type: string, fields: Record<string, unknown>, occurredAt: string, baby: string, supersedes?: string) => {
     if (caller.scope !== "write") throw new Error("this token is read-only");
+    // photos are added in the app (the file and the entry together); agents only see how many
+    if (type === "photo") throw new Error("photos can only be added in the Wee Hours app");
     const err = validate(type, fields as never, settings.categories as string[] | undefined);
     if (err) throw new Error(err);
     const now = new Date().toISOString();
@@ -329,6 +331,7 @@ export async function callTool(name: string, args: Record<string, unknown>, call
       const until = Date.parse(String(args.until ?? new Date(Date.now() + 1).toISOString()));
       const types = (args.types as string[] | undefined) ?? [];
       const limit = Math.min(Number(args.limit ?? 500), 5000);
+      const photosOf = photoCounts(d);
       return d.effective
         .filter((e) => d.status.get(e.id) === "active" || d.status.get(e.id) === "duplicate_unresolved")
         .filter((e) => Date.parse(e.occurred_at) >= since && Date.parse(e.occurred_at) < until)
@@ -341,6 +344,7 @@ export async function callTool(name: string, args: Record<string, unknown>, call
             : typeof e.fields.amount_ml === "number" ? e.fields.amount_ml : undefined,
           logged_by: who(e.logged_by), via: `${e.provenance.surface}/${e.provenance.input}`,
           transcript: e.provenance.raw_transcript, duplicate_unresolved: d.status.get(e.id) === "duplicate_unresolved" || undefined,
+          photos: photosOf(e) || undefined,
         }));
     }
     case "log_event": {

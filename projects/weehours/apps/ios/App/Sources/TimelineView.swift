@@ -37,6 +37,8 @@ struct TimelineView: View {
     /// How much each day shows: a 24-hour grid, the usual cards, or every detail (pinch to change).
     @AppStorage("timelineDensity") private var density = TimelineDensity.cards
     @State private var hourCell: HourCell?
+    @State private var viewing: PhotoViewing?
+    @State private var showingGallery = false
     /// The day on screen (search looks across every day instead).
     /// `-timelineDaysAgo <n>` opens on an earlier day (screenshots, checks).
     @State private var day = Calendar.current.date(byAdding: .day, value: -UserDefaults.standard.integer(forKey: "timelineDaysAgo"),
@@ -204,7 +206,8 @@ struct TimelineView: View {
                                 EventRow(event: e, status: model.log.status[e.id] ?? .active, who: model.household.caregiverName(e.loggedBy),
                                          ml: model.household.milliliters(e),
                                          child: several ? model.household.baby(e.babyId).map { ($0.name, Theme.color(for: $0, in: model.household)) } : nil,
-                                         audit: density == .audit ? audit(e) : nil)
+                                         audit: density == .audit ? audit(e) : nil,
+                                         photos: model.log.photos(for: e)) { i in viewing = PhotoViewing(photos: model.log.photos(for: e), start: i) }
                                     .contentShape(Rectangle())
                                     .onTapGesture { editing = e }
                                     .swipeActions {
@@ -213,7 +216,9 @@ struct TimelineView: View {
                                         }
                                     }
                             case .session(let s, let members):
-                                SessionRow(session: s, events: members, household: model.household, several: several) { tapped in
+                                SessionRow(session: s, events: members, household: model.household, several: several,
+                                           photos: model.log.photos(for: members),
+                                           onPhoto: { i in viewing = PhotoViewing(photos: model.log.photos(for: members), start: i) }) { tapped in
                                     editing = tapped
                                 }
                                 .swipeActions {
@@ -269,6 +274,8 @@ struct TimelineView: View {
                         }
                         .pickerStyle(.inline)
                         Toggle(isOn: $showUndone) { Label("Show undone entries", systemImage: "arrow.uturn.backward.circle") }
+                        Divider()
+                        Button { showingGallery = true } label: { Label("Photos", systemImage: "photo.on.rectangle.angled") }
                     } label: {
                         Image(systemName: density.icon)
                     }
@@ -277,6 +284,8 @@ struct TimelineView: View {
                 }
             }
             .sheet(item: $editing) { e in EditEventView(event: e) }
+            .fullScreenCover(item: $viewing) { PhotoViewer($0) }
+            .navigationDestination(isPresented: $showingGallery) { PhotoGalleryView(child: child) }
         }
     }
 }
@@ -288,6 +297,8 @@ struct SessionRow: View {
     let events: [LogEvent]
     let household: Household
     let several: Bool
+    var photos: [EntryPhoto] = []
+    var onPhoto: (Int) -> Void = { _ in }
     let onSelect: (LogEvent) -> Void
 
     private var iconType: String {
@@ -325,6 +336,7 @@ struct SessionRow: View {
                 }
             }
             .font(.subheadline).foregroundStyle(.secondary)
+            if !photos.isEmpty { PhotoStrip(photos: photos, onOpen: onPhoto) }
         }
         .contentShape(Rectangle())
         .onTapGesture { onSelect(last) }
@@ -361,8 +373,10 @@ struct TimelineRowLayout<Lines: View>: View {
                     Text(child.name).font(.caption2.weight(.semibold)).foregroundStyle(child.color)
                         .padding(.horizontal, 7).padding(.vertical, 2)
                         .background(child.color.opacity(0.15), in: Capsule())
+                        .lineLimit(1)
                 }
             }
+            .fixedSize()
         }
         .padding(.vertical, 2)
     }
@@ -377,6 +391,8 @@ struct EventRow: View {
     var child: (name: String, color: Color)? = nil
     /// Audit mode: id, provenance and sync state.
     var audit: String? = nil
+    var photos: [EntryPhoto] = []
+    var onPhoto: (Int) -> Void = { _ in }
 
     var body: some View {
         TimelineRowLayout(icon: Theme.icon(for: event.type), color: Theme.color(for: event.type), who: who, child: child) {
@@ -391,6 +407,7 @@ struct EventRow: View {
             if let t = event.provenance.rawTranscript {
                 Text("“\(t)”").font(.caption).foregroundStyle(.tertiary).lineLimit(2)
             }
+            if !photos.isEmpty { PhotoStrip(photos: photos, onOpen: onPhoto) }
             if status == .duplicateUnresolved || status == .undone {
                 Text(status == .undone ? "undone" : "duplicate?").font(.caption2.weight(.semibold))
                     .foregroundStyle(status == .undone ? .red : .orange)
@@ -543,6 +560,9 @@ struct EditEventView: View {
                             Text(field == "grams" ? "kg" : "cm").foregroundStyle(.secondary)
                         }
                     }
+                }
+                if !SystemType.all.contains(event.type) || event.type == SystemType.note {
+                    EntryPhotosSection(entry: event)
                 }
                 if isUnpairedStart {
                     Section("Session repair") {

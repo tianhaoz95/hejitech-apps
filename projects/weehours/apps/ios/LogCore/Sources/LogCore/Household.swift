@@ -443,5 +443,5 @@ public struct Entitlement: Codable, Hashable, Sendable {
         return access(now: now) != .expired
     }
 
-    public enum Feature: String, Sendable { case tapLogging, voice, watch, glasses, mcp, reminders, export }
+    public enum Feature: String, Sendable { case tapLogging, voice, watch, glasses, mcp, reminders, export, photos }
 }
