@@ -101,6 +101,14 @@ struct MainContainerView: View {
         .onChange(of: appState.currentMode) { _, _ in
             presentCoPlayToast()
         }
+        .onReceive(TinyTouchLaunchRequest.shared.$requestedMode) { newMode in
+            guard let newMode = newMode else { return }
+            appState.chooseMode(newMode)
+            appState.isParentMenuOpen = false
+            appState.isParentGuideOpen = false
+            appState.startSession()
+            TinyTouchLaunchRequest.shared.requestedMode = nil
+        }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
                 SessionKeeper.shared.startSession()

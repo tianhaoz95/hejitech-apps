@@ -88,6 +88,8 @@ def generate_project(ios_sources, ios_resources, watch_sources, watch_resources,
     widget_dep_id = "002800280028002800280028"
     widget_embed_build_file_id = "002900290029002900290029"
     widget_info_plist_ref = "002F002F002F002F002F002F"
+    ios_info_plist_ref = "003300330033003300330033"
+    watch_info_plist_ref = "003400340034003400340034"
     
     proj_cfg_list_id = "001800180018001800180018"
     proj_debug_cfg_id = "001900190019001900190019"
@@ -230,6 +232,8 @@ def generate_project(ios_sources, ios_resources, watch_sources, watch_resources,
         ft = get_ft(fname)
         pbx.append(f"\t\t{f_ref} /* {fname} */ = {{isa = PBXFileReference; lastKnownFileType = {ft}; path = \"{fpath}\"; sourceTree = \"<group>\"; }};")
     pbx.append(f"\t\t{widget_info_plist_ref} /* Info.plist */ = {{isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = \"TinyTouchWidget/Info.plist\"; sourceTree = \"<group>\"; }};")
+    pbx.append(f"\t\t{ios_info_plist_ref} /* Info.plist */ = {{isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = \"TinyTouchiOS/Info.plist\"; sourceTree = \"<group>\"; }};")
+    pbx.append(f"\t\t{watch_info_plist_ref} /* Info.plist */ = {{isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = \"ToddlerPlay/Info.plist\"; sourceTree = \"<group>\"; }};")
     pbx.append("/* End PBXFileReference section */")
     pbx.append("")
     
@@ -277,6 +281,7 @@ def generate_project(ios_sources, ios_resources, watch_sources, watch_resources,
     pbx.append("\t\t\tchildren = (")
     pbx.append(f"\t\t\t\t{ios_sources_group_id} /* Sources */,")
     pbx.append(f"\t\t\t\t{ios_resources_group_id} /* Resources */,")
+    pbx.append(f"\t\t\t\t{ios_info_plist_ref} /* Info.plist */,")
     pbx.append("\t\t\t);")
     pbx.append("\t\t\tname = TinyTouchiOS;")
     pbx.append("\t\t\tsourceTree = \"<group>\";")
@@ -308,6 +313,7 @@ def generate_project(ios_sources, ios_resources, watch_sources, watch_resources,
     pbx.append("\t\t\tchildren = (")
     pbx.append(f"\t\t\t\t{watch_sources_group_id} /* Sources */,")
     pbx.append(f"\t\t\t\t{watch_resources_group_id} /* Resources */,")
+    pbx.append(f"\t\t\t\t{watch_info_plist_ref} /* Info.plist */,")
     pbx.append("\t\t\t);")
     pbx.append("\t\t\tname = ToddlerPlay;")
     pbx.append("\t\t\tsourceTree = \"<group>\";")
@@ -612,6 +618,7 @@ def generate_project(ios_sources, ios_resources, watch_sources, watch_resources,
     pbx.append(f"\t\t\t\tDEVELOPMENT_TEAM = {dev_team};")
     pbx.append("\t\t\t\tENABLE_PREVIEWS = YES;")
     pbx.append("\t\t\t\tGENERATE_INFOPLIST_FILE = YES;")
+    pbx.append("\t\t\t\tINFOPLIST_FILE = TinyTouchiOS/Info.plist;")
     pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleDisplayName = \"TinyTouch\";")
     pbx.append("\t\t\t\tINFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;")
     pbx.append("\t\t\t\tINFOPLIST_KEY_UILaunchScreen_Generation = YES;")
@@ -648,6 +655,7 @@ def generate_project(ios_sources, ios_resources, watch_sources, watch_resources,
     pbx.append(f"\t\t\t\tDEVELOPMENT_TEAM = {dev_team};")
     pbx.append("\t\t\t\tENABLE_PREVIEWS = YES;")
     pbx.append("\t\t\t\tGENERATE_INFOPLIST_FILE = YES;")
+    pbx.append("\t\t\t\tINFOPLIST_FILE = TinyTouchiOS/Info.plist;")
     pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleDisplayName = \"TinyTouch\";")
     pbx.append("\t\t\t\tINFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;")
     pbx.append("\t\t\t\tINFOPLIST_KEY_UILaunchScreen_Generation = YES;")
@@ -683,6 +691,7 @@ def generate_project(ios_sources, ios_resources, watch_sources, watch_resources,
     pbx.append(f"\t\t\t\tDEVELOPMENT_TEAM = {dev_team};")
     pbx.append("\t\t\t\tENABLE_PREVIEWS = YES;")
     pbx.append("\t\t\t\tGENERATE_INFOPLIST_FILE = YES;")
+    pbx.append("\t\t\t\tINFOPLIST_FILE = ToddlerPlay/Info.plist;")
     pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleDisplayName = \"TinyTouch\";")
     pbx.append("\t\t\t\tINFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;")
     pbx.append("\t\t\t\tINFOPLIST_KEY_UISupportedInterfaceOrientations = \"UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown\";")
@@ -721,6 +730,7 @@ def generate_project(ios_sources, ios_resources, watch_sources, watch_resources,
     pbx.append(f"\t\t\t\tDEVELOPMENT_TEAM = {dev_team};")
     pbx.append("\t\t\t\tENABLE_PREVIEWS = YES;")
     pbx.append("\t\t\t\tGENERATE_INFOPLIST_FILE = YES;")
+    pbx.append("\t\t\t\tINFOPLIST_FILE = ToddlerPlay/Info.plist;")
     pbx.append("\t\t\t\tINFOPLIST_KEY_CFBundleDisplayName = \"TinyTouch\";")
     pbx.append("\t\t\t\tINFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;")
     pbx.append("\t\t\t\tINFOPLIST_KEY_UISupportedInterfaceOrientations = \"UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown\";")

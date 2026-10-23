@@ -119,6 +119,12 @@ since 2026-10-19 (imported with its history from `tianhaoz95/TinyTouch`, now arc
 5. **Parental Shield**:
    - Continuous 3.0-second long-press with animated circular progress ring and haptic pulses (`ParentShieldButton.swift`).
 
+6. **Siri & Shortcuts Launchers (`AppIntents`)**:
+   - watchOS: `ToddlerPlay/Sources/Intents/TinyTouchIntents.swift` (`PlayTinyTouchIntent`, `PlayLullabyIntent`), `TinyTouchShortcuts.swift` (`AppShortcutsProvider`), and `TinyTouchLaunchRequest.swift`.
+   - iOS: `TinyTouchiOS/Sources/Intents/IOSTinyTouchIntents.swift`.
+   - Siri Voice Phrases: `"Play TinyTouch"`, `"Start TinyTouch"`, `"Play in TinyTouch"`, `"Play lullaby in TinyTouch"`.
+   - Hardware & Launcher triggers: Action Button on Apple Watch Ultra, Shortcuts app on watchOS, Smart Stack launcher widgets, and URL schemes (`tinytouch://play`, `tinytouch://lullaby`, `tinytouch://play?mode=bubbles`). Automatically initiates `SessionKeeper.shared.startSession()` to prevent display sleep.
+
 ---
 
 ## 3. Directory Structure
@@ -219,7 +225,7 @@ The project includes a self-contained Swift test suite covering models, state ma
 ```bash
 swift tools/run_tests.swift
 ```
-*Current status: 87/87 tests passing.*
+*Current status: 108/108 tests passing.*
 
 ### 2. Regenerate the Xcode Project
 When files are added or deleted, or when project build configurations change, run the generator:

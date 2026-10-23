@@ -104,6 +104,11 @@ final class AppState: ObservableObject {
             setPlayTimer(minutes: 5)
         }
         
+        // Apply pending launch mode if started via AppIntent / Shortcut / URL
+        if let launchMode = TinyTouchLaunchRequest.shared.consumePendingMode() {
+            currentMode = launchMode
+        }
+        
         startSession()
         WatchConnectivityManager.shared.attachAppState(self)
     }

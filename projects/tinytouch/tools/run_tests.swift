@@ -368,6 +368,46 @@ testGroup("Settings Sync (watch ⇄ iPhone)") {
     assertTrue(phone.contains("guard !isApplyingStoredSettings else { return }"), "Loading or adopting settings on the iPhone doesn't broadcast them")
 }
 
+testGroup("App Intents & Shortcuts (Siri & watchOS Launcher)") {
+    // 1. Files exist
+    let watchIntentsFile = "ToddlerPlay/Sources/Intents/TinyTouchIntents.swift"
+    let watchShortcutsFile = "ToddlerPlay/Sources/Intents/TinyTouchShortcuts.swift"
+    let iosIntentsFile = "TinyTouchiOS/Sources/Intents/IOSTinyTouchIntents.swift"
+    let launchRequestFile = "ToddlerPlay/Sources/Services/TinyTouchLaunchRequest.swift"
+    
+    assertTrue(FileManager.default.fileExists(atPath: watchIntentsFile), "watchOS intents source file exists")
+    assertTrue(FileManager.default.fileExists(atPath: watchShortcutsFile), "watchOS shortcuts provider source file exists")
+    assertTrue(FileManager.default.fileExists(atPath: iosIntentsFile), "iOS intents source file exists")
+    assertTrue(FileManager.default.fileExists(atPath: launchRequestFile), "Launch request coordinator source file exists")
+    
+    // 2. Strict Apple App Store compliance: No "Apple" in App Intent strings (ITMS-90626)
+    let watchIntentsContent = (try? String(contentsOfFile: watchIntentsFile, encoding: .utf8)) ?? ""
+    let watchShortcutsContent = (try? String(contentsOfFile: watchShortcutsFile, encoding: .utf8)) ?? ""
+    let iosIntentsContent = (try? String(contentsOfFile: iosIntentsFile, encoding: .utf8)) ?? ""
+    
+    let combinedIntents = watchIntentsContent + "\n" + watchShortcutsContent + "\n" + iosIntentsContent
+    
+    // Check user-facing strings in intents do not contain "Apple" (case-insensitive)
+    let forbiddenAppleRegex = try? NSRegularExpression(pattern: #""[^"]*apple[^"]*""#, options: [.caseInsensitive])
+    let forbiddenMatches = forbiddenAppleRegex?.matches(in: combinedIntents, range: NSRange(combinedIntents.startIndex..., in: combinedIntents)) ?? []
+    assertEqual(forbiddenMatches.count, 0, "No 'Apple' in App Intent strings or shortcut phrases (ITMS-90626 compliance)")
+    
+    // 3. App Shortcuts phrases require \(.applicationName)
+    assertTrue(watchShortcutsContent.contains(#"\(.applicationName)"#), "watchOS shortcut phrases include applicationName macro")
+    assertTrue(iosIntentsContent.contains(#"\(.applicationName)"#), "iOS shortcut phrases include applicationName macro")
+    
+    // 4. Intent attributes
+    assertTrue(watchIntentsContent.contains("static let openAppWhenRun: Bool = true"), "Intent opens the watchOS app when run")
+    assertTrue(watchIntentsContent.contains("struct PlayTinyTouchIntent: AppIntent"), "PlayTinyTouchIntent defined")
+    assertTrue(watchIntentsContent.contains("struct PlayLullabyIntent: AppIntent"), "PlayLullabyIntent defined")
+    assertTrue(watchIntentsContent.contains("enum GameModeAppEnum: String, AppEnum"), "GameModeAppEnum defined with all 5 sensory modes")
+    
+    // 5. URL scheme launcher handling in ToddlerPlayApp
+    let appContent = (try? String(contentsOfFile: "ToddlerPlay/Sources/ToddlerPlayApp.swift", encoding: .utf8)) ?? ""
+    assertTrue(appContent.contains("handleIncomingURL"), "ToddlerPlayApp handles URL scheme launchers")
+    assertTrue(appContent.contains("TinyTouchLaunchRequest.shared.requestLaunch"), "URL launcher forwards to launch coordinator")
+}
+
 print("\n==========================================")
 print("TEST RESULTS: \(passedTests)/\(totalTests) passed")
 if passedTests == totalTests {
