@@ -58,6 +58,7 @@ import com.hejitech.contempo.agent.OnDeviceModelUiStatus
 import com.hejitech.contempo.ui.capture.CaptureMode
 import com.hejitech.contempo.ui.export.ExportViewModel
 import com.hejitech.contempo.ui.export.shareCsv
+import com.hejitech.contempo.ui.export.sharePdf
 import com.hejitech.contempo.ui.legal.LegalDoc
 import com.hejitech.contempo.ui.theme.Eyebrow
 import com.hejitech.core.model.CaptureLanguage
@@ -341,6 +342,28 @@ fun SettingsScreen(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        Spacer(Modifier.height(12.dp))
+
+        Button(
+            onClick = { exportViewModel.generatePdf(context) },
+            enabled = !exportState.isGenerating,
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.small,
+        ) {
+            Text("Export PDF Audit Binder (Beta)")
+        }
+
+        exportState.pdfFile?.let { pdfFile ->
+            Spacer(Modifier.height(12.dp))
+            Button(
+                onClick = { sharePdf(context, pdfFile) },
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.small,
+            ) {
+                Text("Share PDF Audit Binder")
+            }
+        }
+
         Spacer(Modifier.height(12.dp))
 
         Button(

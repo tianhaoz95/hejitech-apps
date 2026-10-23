@@ -12,6 +12,11 @@ fun shareCsv(context: Context, csv: String) {
     shareFile(context, file, "text/csv")
 }
 
+/** Shares a generated PDF audit binder via ACTION_SEND. */
+fun sharePdf(context: Context, file: File) {
+    shareFile(context, file, "application/pdf")
+}
+
 /**
  * Generic counterpart to [shareCsv] — shares any already-on-disk file
  * (e.g. a downloaded entry attachment, see EntryDetailScreen.kt) via
