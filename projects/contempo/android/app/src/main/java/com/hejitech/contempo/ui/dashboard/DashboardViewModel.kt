@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.hejitech.contempo.data.ServiceLocator
 import com.hejitech.contempo.data.recoverFromAuthRaceOrSignOut
 import com.hejitech.core.model.Entry
+import com.hejitech.core.model.EntryCategory
 import com.hejitech.core.model.EntryStatus
 import com.hejitech.core.model.MaterialParticipationTest
 import com.hejitech.core.model.TestYearProgress
@@ -62,6 +63,15 @@ data class DashboardUiState(
     val syncStatusMessage: String = "",
     val syncProgressFraction: Float = 0f,
     val syncNotice: String? = null,
+    // Filter & Search state
+    val selectedProperty: String = "All",
+    val selectedCategory: String = "All",
+    val searchQuery: String = "",
+    val propertyOptions: List<String> = listOf("All"),
+    val categoryOptions: List<String> = listOf("All"),
+    val filteredEntries: List<Entry> = emptyList(),
+    val filteredHours: Double = 0.0,
+    val isFilterActive: Boolean = false,
 )
 
 /** Local, non-Firestore-derived selection state — kept separate from the entries flow below so a bulk-delete in flight (or a stale selection) doesn't get wiped by every incoming snapshot. */
@@ -76,6 +86,12 @@ private data class SyncState(
     val syncStatusMessage: String = "",
     val syncProgressFraction: Float = 0f,
     val syncNotice: String? = null,
+)
+
+private data class FilterState(
+    val selectedProperty: String = "All",
+    val selectedCategory: String = "All",
+    val searchQuery: String = "",
 )
 
 class DashboardViewModel : ViewModel() {
@@ -106,6 +122,15 @@ class DashboardViewModel : ViewModel() {
                 listOf(RoleHoursSummary(id = "", name = "Me", hours = ownerHours)) + otherRoleHours
             }
 
+            val propertyOptions = listOf("All") + entries.map {
+                if (it.propertyName.isEmpty()) "(No property)" else it.propertyName
+            }.distinct().sorted()
+
+            val categoryOptions = listOf("All") + entries.map { it.category }
+                .filter { it.isNotEmpty() }
+                .distinct()
+                .sortedBy { EntryCategory.displayName(it) }
+
             DashboardUiState(
                 confirmedHours = ownerHours,
                 testProgress = testProgress,
@@ -116,6 +141,9 @@ class DashboardViewModel : ViewModel() {
                 openTimerEntry = entries.find { it.inProgress && !it.isTrip },
                 openTripEntry = entries.find { it.inProgress && it.isTrip },
                 totalMiles = entries.sumOf { it.miles },
+                propertyOptions = propertyOptions,
+                categoryOptions = categoryOptions,
+                filteredEntries = entries,
             )
         }
         .recoverFromAuthRaceOrSignOut { DashboardUiState() }
@@ -123,9 +151,35 @@ class DashboardViewModel : ViewModel() {
 
     private val _selection = MutableStateFlow(SelectionState())
     private val _syncState = MutableStateFlow(SyncState())
+    private val _filterState = MutableStateFlow(FilterState())
 
-    val uiState: StateFlow<DashboardUiState> = combine(entriesState, _selection, _syncState) { entriesUiState, selection, sync ->
+    val uiState: StateFlow<DashboardUiState> = combine(entriesState, _selection, _syncState, _filterState) { entriesUiState, selection, sync, filter ->
         val validIds = entriesUiState.entries.mapTo(HashSet()) { it.id }
+
+        val filteredEntries = entriesUiState.entries.filter { entry ->
+            if (filter.selectedProperty != "All") {
+                val propName = if (entry.propertyName.isEmpty()) "(No property)" else entry.propertyName
+                if (propName != filter.selectedProperty) return@filter false
+            }
+            if (filter.selectedCategory != "All") {
+                if (!entry.category.equals(filter.selectedCategory, ignoreCase = true)) return@filter false
+            }
+            if (filter.searchQuery.isNotEmpty()) {
+                val query = filter.searchQuery.lowercase()
+                val matchesTask = entry.task.lowercase().contains(query)
+                val matchesProperty = entry.propertyName.lowercase().contains(query)
+                val matchesCategory = entry.category.lowercase().contains(query)
+                if (!matchesTask && !matchesProperty && !matchesCategory) return@filter false
+            }
+            true
+        }
+
+        val filteredHours = filteredEntries
+            .filter { it.isOwnerHours && it.statusEnum == EntryStatus.CONFIRMED && !it.inProgress && !it.isTrip }
+            .sumOf { it.durationMinutes } / 60.0
+
+        val isFilterActive = filter.selectedProperty != "All" || filter.selectedCategory != "All" || filter.searchQuery.isNotEmpty()
+
         entriesUiState.copy(
             selectedIds = selection.selectedIds.intersect(validIds),
             isDeleting = selection.isDeleting,
@@ -134,8 +188,37 @@ class DashboardViewModel : ViewModel() {
             syncStatusMessage = sync.syncStatusMessage,
             syncProgressFraction = sync.syncProgressFraction,
             syncNotice = sync.syncNotice,
+            selectedProperty = filter.selectedProperty,
+            selectedCategory = filter.selectedCategory,
+            searchQuery = filter.searchQuery,
+            filteredEntries = filteredEntries,
+            filteredHours = filteredHours,
+            isFilterActive = isFilterActive,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DashboardUiState())
+
+    fun selectProperty(property: String) {
+        _filterState.update { it.copy(selectedProperty = property) }
+    }
+
+    fun selectCategory(category: String) {
+        _filterState.update { it.copy(selectedCategory = category) }
+    }
+
+    fun updateSearchQuery(query: String) {
+        _filterState.update { it.copy(searchQuery = query) }
+    }
+
+    fun resetFilters() {
+        _filterState.value = FilterState()
+    }
+
+    fun categoryLabel(value: String): String {
+        if (value == "All") return "All"
+        return EntryCategory.displayName(value).split(" ").joinToString(" ") { word ->
+            word.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+        }
+    }
 
     fun toggleSelected(entryId: String) {
         _selection.update { state ->
