@@ -2,11 +2,13 @@ import ContempoCore
 import ContempoData
 import Foundation
 import Observation
+import WidgetKit
 
 @Observable
 @MainActor
 final class DashboardViewModel {
-    private let entryRepository = ServiceLocator.entryRepository
+    private let entryRepository: EntryRepository
+    private let hoursProgressStore: HoursProgressStore
 
     /// Only entries with no role tagged (i.e. the owner's own hours) — see
     /// `Entry.isOwnerHours`. This is deliberately NOT every confirmed hour;
@@ -93,8 +95,12 @@ final class DashboardViewModel {
     var syncProgressFraction: Double = 0
     var syncNotice: String?
 
-    init() {
-        let repository = entryRepository
+    init(
+        repository: EntryRepository = ServiceLocator.entryRepository,
+        hoursProgressStore: HoursProgressStore = ServiceLocator.hoursProgressStore
+    ) {
+        self.entryRepository = repository
+        self.hoursProgressStore = hoursProgressStore
         Task { [weak self] in
             let stream = AuthAwareStream.make(
                 fallback: { [] },
@@ -112,7 +118,7 @@ final class DashboardViewModel {
         }
     }
 
-    private func apply(entries: [Entry]) {
+    func apply(entries: [Entry]) {
         self.entries = entries
         let metrics = DashboardMetrics.compute(from: entries)
         confirmedHours = metrics.confirmedHours
@@ -125,6 +131,8 @@ final class DashboardViewModel {
         totalMiles = metrics.totalMiles
         let validIds = Set(entries.compactMap(\.id))
         selectedIds = selectedIds.intersection(validIds)
+        hoursProgressStore.write(confirmedHours: confirmedHours)
+        WidgetCenter.shared.reloadTimelines(ofKind: "HoursLockScreenWidget")
     }
 
     func toggleSelected(_ entryId: String) {

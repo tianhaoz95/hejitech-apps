@@ -2,6 +2,7 @@ import ContempoCore
 import ContempoData
 import Foundation
 import Observation
+import WidgetKit
 
 /// A stalled Firestore stream (e.g. a network hiccup) leaves the write never
 /// completing — without a bound here, `isSaving`/`isSavingForLater` would
@@ -514,6 +515,7 @@ final class ConfirmViewModel {
                 try await withSaveRetry { [self] in
                     try await save(status: .confirmed, confirmedAt: Timestamp(date: Date()))
                 }
+                WidgetCenter.shared.reloadTimelines(ofKind: "HoursLockScreenWidget")
                 isSaving = false
                 savedSuccessfully = true
                 onSaved()
