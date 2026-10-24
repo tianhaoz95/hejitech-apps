@@ -74,6 +74,8 @@ struct HomeView: View {
     @EnvironmentObject var model: AppModel
     @AppStorage(NightMode.key) private var nightMode = NightMode.off
     @AppStorage(NowRhythm.key) private var showRhythm = true
+    @AppStorage(NowLayout.key) private var layout = ""
+    @State private var arranging = false
     @State private var editing: LogEvent?
     @State private var showingSync = false
     @State private var now = Date()
@@ -86,51 +88,36 @@ struct HomeView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    // one shown child: today's single status card; several: the Log-for panel
-                    if showRhythm {
-                        RhythmCompare(log: model.log, child: model.shown.count == 1 ? model.shown.first?.id : nil, household: model.household) { editing = $0 }
-                            .padding()
-                            .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+            Group {
+                if arranging {
+                    ArrangeNowList(stored: $layout, shown: sections)
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 16) {
+                            ForEach(sections) { card($0) }
+                        }
+                        .padding()
                     }
-                    if let note = model.shiftNote { ShiftNoteCard(note: note, now: now) }
-                    if model.shown.count > 1 { ChildrenPanel(now: now) } else { StatusCard(now: now) }
-                    OngoingPhotosCard(now: now)
-                    PartnerPulse(now: now)
-                    if model.showingShiftDigest, let shift = model.log.shiftSummary(household: model.household, now: now, includeCurrent: true) {
-                        ShiftDigestCard(shift: shift, now: now)
-                    }
-                    if model.household.enabled.contains("pumping"), model.household.trackMilkStash {
-                        MilkStashCard(now: now)
-                    }
-                    if !model.reviews.isEmpty || !model.log.duplicates.isEmpty { ReviewBanner() }
-                    let shownIds = Set(model.shown.map(\.id))
-                    let blind = model.log.effective.filter { $0.needsDetails && shownIds.contains($0.babyId) }
-                    if !blind.isEmpty { NeedsDetailsCard(entries: blind.sorted { $0.occurredAt > $1.occurredAt }) }
-                    QuickActions()
                 }
-                .padding()
             }
-            .navigationTitle(title)
+            .navigationTitle(arranging ? "Arrange Now" : title)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    SyncBadge(visible: badge) { showingSync = true }
+                    if !arranging { SyncBadge(visible: badge) { showingSync = true } }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    HStack(spacing: 10) {
-                        // whenever the night screen is on in Settings, here to open it, at any hour
-                        if nightMode != .off {
-                            Button { withAnimation(.snappy) { model.openNightScreen() } } label: { Image(systemName: "moon.fill") }
-                                .accessibilityLabel("Night screen")
-                                .accessibilityIdentifier("openNightScreen")
-                        }
-                        if let birth {
-                            Text(Self.age(birth)).font(.subheadline).foregroundStyle(.secondary)
-                        } else if let weeks {
-                            Text(weeks).font(.subheadline).foregroundStyle(.secondary)
-                        }
+                    if arranging {
+                        Button("Done") { withAnimation(.snappy) { arranging = false } }
+                            .fontWeight(.semibold)
+                            .accessibilityIdentifier("arrangeDone")
+                    } else {
+                        Button { withAnimation(.snappy) { arranging = true } } label: { Image(systemName: "arrow.up.arrow.down") }
+                            .accessibilityLabel("Arrange Now")
+                            .accessibilityIdentifier("arrangeNow")
                     }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    if !arranging { trailing }
                 }
             }
             .sheet(isPresented: $showingSync) { SyncSheet().presentationDetents([.medium, .large]) }
@@ -146,6 +133,62 @@ struct HomeView: View {
             .onChange(of: SyncBadge.wanted(model, now: now), initial: true) { _, wanted in if !refreshing { badge = wanted } }
             .onChange(of: refreshing) { _, r in if !r { badge = SyncBadge.wanted(model, now: now) } }
             .onReceive(tick) { now = $0 }
+            .onAppear {   // automation: `-screen arrange` opens Now arranging (screenshots)
+                if model.screen == "arrange" { model.screen = "home"; arranging = true }
+            }
+        }
+    }
+
+    /// Now's cards in this phone's order, leaving out the ones this household can't have.
+    private var sections: [NowSection] {
+        NowLayout.order(layout).filter { NowLayout.available($0, household: model.household, localOnly: model.localOnly, rhythm: showRhythm) }
+    }
+
+    @ViewBuilder private func card(_ section: NowSection) -> some View {
+        switch section {
+        case .rhythm:
+            RhythmCompare(log: model.log, child: model.shown.count == 1 ? model.shown.first?.id : nil, household: model.household) { editing = $0 }
+                .padding()
+                .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+        case .shiftNote:
+            if let note = model.shiftNote { ShiftNoteCard(note: note, now: now) }
+        case .status:
+            // one shown child: today's single status card; several: the Log-for panel
+            if model.shown.count > 1 { ChildrenPanel(now: now) } else { StatusCard(now: now) }
+        case .photos:
+            OngoingPhotosCard(now: now)
+        case .partner:
+            PartnerPulse(now: now)
+        case .shiftDigest:
+            if model.showingShiftDigest, let shift = model.log.shiftSummary(household: model.household, now: now, includeCurrent: true) {
+                ShiftDigestCard(shift: shift, now: now)
+            }
+        case .milkStash:
+            MilkStashCard(now: now)
+        case .review:
+            if !model.reviews.isEmpty || !model.log.duplicates.isEmpty { ReviewBanner() }
+        case .needsDetails:
+            let shownIds = Set(model.shown.map(\.id))
+            let blind = model.log.effective.filter { $0.needsDetails && shownIds.contains($0.babyId) }
+            if !blind.isEmpty { NeedsDetailsCard(entries: blind.sorted { $0.occurredAt > $1.occurredAt }) }
+        case .actions:
+            QuickActions()
+        }
+    }
+
+    private var trailing: some View {
+        HStack(spacing: 10) {
+            // whenever the night screen is on in Settings, here to open it, at any hour
+            if nightMode != .off {
+                Button { withAnimation(.snappy) { model.openNightScreen() } } label: { Image(systemName: "moon.fill") }
+                    .accessibilityLabel("Night screen")
+                    .accessibilityIdentifier("openNightScreen")
+            }
+            if let birth {
+                Text(Self.age(birth)).font(.subheadline).foregroundStyle(.secondary)
+            } else if let weeks {
+                Text(weeks).font(.subheadline).foregroundStyle(.secondary)
+            }
         }
     }
 

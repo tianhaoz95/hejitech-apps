@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.11.1"
+    static let currentVersion = "0.12.0"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,21 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "0.12.0",
+            date: "October 2026",
+            tagline: "Now, Your Way",
+            features: [
+                WhatsNewItem(
+                    icon: "arrow.up.arrow.down",
+                    tint: Theme.sleep,
+                    title: "Arrange Now",
+                    description: "Tap the arrows at the top of Now and drag its cards into the order you want: the log buttons first, today vs yesterday last, whatever suits you.",
+                    detailedDescription: "Cards that come and go, like a shift note or photos of what's going on, appear in the place you gave them. Each phone keeps its own order, and Reset puts the default back.",
+                    highlights: ["Drag right on Now", "Kept on this phone", "Reset any time"]
+                ),
+            ]
+        ),
         ReleaseHistoryItem(
             version: "0.11.1",
             date: "October 2026",
