@@ -170,6 +170,13 @@ function tokensPanel(tokens: Token[], reload: () => void) {
   );
 }
 
+/** Paired glasses (`glasses:<label>`) and caregiver passes (`pass:<name>|…`) carry their kind in the name. */
+function tokenName(name: string): string {
+  if (name.startsWith("glasses:")) return `${name.slice(8)} (Even G2 glasses)`;
+  if (name.startsWith("pass:")) return `${name.slice(5).split("|")[0]} (caregiver pass)`;
+  return name;
+}
+
 function tokenList(tokens: Token[], reload: () => void) {
   if (!tokens.length) return el("p", { class: "muted small" }, "No tokens yet.");
   return el(
@@ -190,12 +197,12 @@ function tokenList(tokens: Token[], reload: () => void) {
             class: "btn danger small",
             type: "button",
             onclick: async () => {
-              if (!confirm(`Revoke "${t.name}"? Assistants using it lose access immediately.`)) return;
+              if (!confirm(`Revoke "${tokenName(t.name)}"? Assistants using it lose access immediately.`)) return;
               await rpc("revoke_access_token", { p_id: t.id }).catch((e) => alert(e.message));
               reload();
             },
           }, "Revoke");
-      return el("div", { class: "item" }, el("div", {}, el("div", {}, t.name), el("div", { class: "muted small" }, meta)), action);
+      return el("div", { class: "item" }, el("div", {}, el("div", {}, tokenName(t.name)), el("div", { class: "muted small" }, meta)), action);
     }),
   );
 }

@@ -3,28 +3,84 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Wee Hours · Glasses</title>
+    <title>Wee Hours</title>
     <style>
-      :root { color-scheme: dark; --bg: #0b0f0c; --fg: #d6f5dc; --hud: #3dff7a; --muted: #7d9483; --card: #141b16; }
-      body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.45 -apple-system, system-ui, sans-serif; padding: 16px; }
-      h1 { font-size: 17px; margin: 0 0 12px; }
-      .hud { background: #000; color: var(--hud); font: 18px/1.5 ui-monospace, Menlo, monospace; padding: 18px; border-radius: 14px;
-             white-space: pre-wrap; min-height: 64px; border: 1px solid #1d3a24; text-shadow: 0 0 6px rgba(61,255,122,.55); }
-      .card { background: var(--card); border-radius: 12px; padding: 12px; margin-top: 12px; }
+      :root { color-scheme: dark; --bg: #0b0f0c; --fg: #e4f3e7; --hud: #3dff7a; --muted: #8aa092; --card: #141b16; --line: #243128; --accent: #3dff7a; --warn: #ffb06b; }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 -apple-system, system-ui, sans-serif; padding: 16px; max-width: 560px; margin-inline: auto; }
+      h1 { font-size: 20px; margin: 4px 0 2px; }
+      h2 { font-size: 13px; margin: 0 0 8px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+      p { margin: 0 0 8px; }
+      .sub { color: var(--muted); font-size: 14px; margin-bottom: 14px; }
+      .hud { background: #000; color: var(--hud); font: 16px/1.5 ui-monospace, Menlo, monospace; padding: 16px; border-radius: 14px;
+             white-space: pre-wrap; min-height: 64px; border: 1px solid #1d3a24; text-shadow: 0 0 6px rgba(61,255,122,.5); overflow-wrap: anywhere; }
+      .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-top: 12px; }
+      ol { margin: 0 0 12px; padding-left: 20px; } li { margin-bottom: 4px; }
       .row { display: flex; gap: 8px; flex-wrap: wrap; }
-      button, input { font: inherit; border-radius: 8px; border: 1px solid #2c3a30; background: #1b241e; color: var(--fg); padding: 8px 10px; }
+      button, input { font: inherit; border-radius: 10px; border: 1px solid #2c3a30; background: #1b241e; color: var(--fg); padding: 10px 12px; }
       button { cursor: pointer; }
-      input { flex: 1; min-width: 120px; }
-      pre { color: var(--muted); font-size: 12px; white-space: pre-wrap; margin: 0; max-height: 180px; overflow: auto; }
+      button.primary { background: var(--accent); color: #062010; border-color: var(--accent); font-weight: 600; }
+      button.danger { color: var(--warn); border-color: #4a3424; background: transparent; width: 100%; }
+      input.code { flex: 1; min-width: 0; font: 600 24px/1 ui-monospace, Menlo, monospace; letter-spacing: .3em; text-align: center; }
+      .error { color: var(--warn); font-size: 14px; min-height: 1.4em; margin-top: 8px; }
+      dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0; font-size: 14px; }
+      dt { color: var(--muted); } dd { margin: 0; }
+      table { width: 100%; border-collapse: collapse; font-size: 14px; }
+      td { padding: 6px 0; border-top: 1px solid var(--line); vertical-align: top; }
+      td:first-child { color: var(--accent); white-space: nowrap; padding-right: 12px; font-weight: 600; }
+      tr:first-child td { border-top: 0; }
+      pre { color: var(--muted); font-size: 12px; white-space: pre-wrap; margin: 8px 0 0; max-height: 180px; overflow: auto; }
       .muted { color: var(--muted); font-size: 13px; }
+      [hidden] { display: none !important; }
     </style>
   </head>
   <body>
-    <h1>Wee Hours · glasses</h1>
-    <div id="hud" class="hud">Wee Hours</div>
-    <div class="card">
-      <div class="muted">Ring / temple (same as the simulator inputs)</div>
-      <div class="row" style="margin-top:8px">
+    <h1>Wee Hours</h1>
+    <div class="sub">Log feeds, diapers and sleep from your glasses and ring, without picking up your phone.</div>
+    <div id="hud" class="hud" aria-label="What the glasses show">Wee Hours</div>
+
+    <section id="pairing" class="card" hidden>
+      <h2>Pair with your household</h2>
+      <ol>
+        <li>Open <b>Wee Hours</b> on your iPhone (signed in to your household).</li>
+        <li>Go to <b>Settings → Even G2 glasses</b> and tap <b>Get pairing code</b>.</li>
+        <li>Type the 6 digits here. The code lasts ten minutes.</li>
+      </ol>
+      <form id="pair-form" class="row" autocomplete="off">
+        <input id="code" class="code" inputmode="numeric" pattern="[0-9 ]*" maxlength="7" placeholder="000000" aria-label="Pairing code" required />
+        <button class="primary">Pair</button>
+      </form>
+      <div id="pair-error" class="error" role="alert"></div>
+      <p class="muted">Don't have Wee Hours yet? Get it for iPhone at weehours.hejitech.workers.dev. The glasses need an account, and what you say is turned into a log entry on a household phone.</p>
+    </section>
+
+    <section id="paired" hidden>
+      <div class="card">
+        <h2>Connected</h2>
+        <dl>
+          <dt>Household</dt><dd id="household"></dd>
+          <dt>Children</dt><dd id="kids"></dd>
+          <dt>Sync</dt><dd id="queue"></dd>
+        </dl>
+      </div>
+      <div class="card">
+        <h2>Gestures (ring or temple)</h2>
+        <table>
+          <tr><td>Press</td><td>Start a feed, or finish the one that's open</td></tr>
+          <tr><td>Double press</td><td>Diaper: swipe to pick wet, dirty, both or dry, press to log</td></tr>
+          <tr><td>Swipe</td><td>Menu: asleep / awake, switch side, next child, on duty, undo last</td></tr>
+          <tr><td>Hold</td><td>Speak while holding ("drank 90", "left side"). Your phone turns it into an entry next time Wee Hours opens.</td></tr>
+        </table>
+      </div>
+      <div class="card">
+        <button id="unpair" class="danger">Unpair these glasses</button>
+        <p class="muted" style="margin-top:8px">To cut off a lost pair, unpair it on your phone: Settings → Even G2 glasses.</p>
+      </div>
+    </section>
+
+    <section id="debug" class="card" hidden>
+      <h2>Developer</h2>
+      <div class="row">
         <button data-input="click">Press</button>
         <button data-input="double_click">Double press</button>
         <button data-input="up">Swipe up</button>
@@ -32,16 +88,8 @@
         <button data-input="long_press">Hold</button>
         <button data-input="long_press_release">Release</button>
       </div>
-    </div>
-    <form id="signin" class="card">
-      <div class="muted" id="who">Sign in with your household account</div>
-      <div class="row" style="margin-top:8px">
-        <input id="email" type="email" placeholder="email" value="parent1@example.com" />
-        <input id="password" type="password" placeholder="password" value="newborn-dev" />
-        <button>Sign in</button>
-      </div>
-    </form>
-    <div class="card"><pre id="log"></pre></div>
+      <pre id="log"></pre>
+    </section>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

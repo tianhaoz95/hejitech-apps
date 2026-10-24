@@ -83,6 +83,15 @@ The PRD ("Newborn Log — PRD") plus the changes agreed while planning, and the 
 | Camera | Shots taken in the app are also saved, full size, to the iPhone's Photos library (add-only access) | Owner request: the camera roll should have the picture too |
 | While it happens | Now shows a card for each ongoing feed, nap or timed activity with camera and library buttons that attach to it; the toast after logging offers the same | Owner request: catch the moment during the activity |
 
+## Glasses release (2026-10-23)
+
+| Topic | Decision | Why |
+|---|---|---|
+| Sign-in | The glasses pair with a 6-digit code from Settings → Even G2 glasses on the iPhone (10 minutes, single use, wrong codes throttled per address); the Worker trades it for a `glasses:<label>` access token, one per pair, revoked from the same screen | Owner asked to make the glasses release-ready: real accounts sign in with Apple or Google, so the prototype's email + password couldn't work, and typing a password on the Even app's page was never good |
+| Transport | The glasses talk only to the Wee Hours Worker (`/api/glasses/*`, service key, household and author taken from the token), no longer to Supabase directly; this supersedes "typed events go straight to Supabase" above. Same outbox, same capture flow, same event ids | No Supabase coordinates or session in the plugin (graduation stays a Worker config change), and the Worker validates every entry with `@weehours/core` |
+| Release | The plugin's version is the iPhone app's `MARKETING_VERSION`; `weehours-glasses-release.yml` attaches the `.ehpk` to each `weehours-v<version>` release; uploading to the Even Hub portal stays by hand | One version across surfaces, as `cut_release.sh` intends; the Even Hub portal has no upload API |
+| Paywall | Pairing follows `Entitlement.allows(.glasses)` on the phone; paired glasses keep logging after a trial ends | Logging never stops working (Billing above) |
+
 ## Not done yet
 
 See the report (`report/v0/site`, "What's verified") for what was verified in simulators and what still needs devices or the hosted project.

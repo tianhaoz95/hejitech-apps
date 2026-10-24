@@ -57,8 +57,9 @@ recovery: `projects/waypack/docs/DEPLOY.md` §4b.
 
 For Wee Hours it bumps `MARKETING_VERSION` in `projects/weehours/apps/ios/project.yml`, pushes
 (Cloudflare deploys the site + MCP Worker), and publishes `weehours-v<version>`, which runs
-`weehours-testflight.yml` with the same team-wide Apple signing secrets. Setup:
-`projects/weehours/docs/DEPLOY.md`.
+`weehours-testflight.yml` with the same team-wide Apple signing secrets and
+`weehours-glasses-release.yml` (the Even G2 plugin `.ehpk`, same version, attached to the release;
+upload it to the Even Hub portal by hand). Setup: `projects/weehours/docs/DEPLOY.md`.
 
 For Voxbrief it bumps `MARKETING_VERSION` in `projects/voxbrief/project.yml` (refusing until the
 in-app What's New describes the version), and publishes `voxbrief-v<version>`, which runs

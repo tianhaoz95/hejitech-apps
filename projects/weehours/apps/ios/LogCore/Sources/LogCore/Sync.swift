@@ -143,6 +143,14 @@ public final class SupabaseClient: @unchecked Sendable {
         setSession(nil)
     }
 
+    /// The session's access token, refreshed when it's about to expire: for the site Worker's
+    /// endpoints that take a Supabase session (glasses pairing codes).
+    public func sessionToken() async throws -> String {
+        try await refreshIfNeeded()
+        guard let s = currentSession() else { throw BackendError.notSignedIn }
+        return s.accessToken
+    }
+
     private func currentSession() -> AuthSession? {
         lock.lock(); defer { lock.unlock() }
         return session

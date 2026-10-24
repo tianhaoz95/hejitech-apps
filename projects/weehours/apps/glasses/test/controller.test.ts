@@ -3,7 +3,7 @@ import { GlassesController, type World } from "../src/controller.ts";
 
 const world = (over: Partial<World> = {}): World => ({
   statusLine: "Fed 2h ago", openFeed: null, sleeping: false, nextSide: "left", defaultFeed: "bottle",
-  me: "me", onDuty: null, night: false, children: [], focus: null, ...over,
+  me: "me", onDuty: null, children: [], focus: null, ...over,
 });
 
 describe("ring gestures", () => {

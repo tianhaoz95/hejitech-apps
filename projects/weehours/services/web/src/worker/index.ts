@@ -8,11 +8,13 @@
 //   GET  /authorize          starts consent, then redirects to the consent page /oauth/consent/
 //   POST /authorize          the consent page approves or denies, with the user's Supabase session
 //   GET/DELETE /api/grants   the account page lists and revokes connected assistants
+//   /api/glasses/…           the Even G2 glasses: pairing codes, device tokens, state, events, captures (glasses.ts)
 //   everything else          static assets
 
 import { AuthorizationError, OAuthProvider, type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import { createClient } from "@supabase/supabase-js";
 import { derive, status, statusLine, validate, type LogEvent } from "@weehours/core";
+import { handleGlasses } from "./glasses.ts";
 import { handleMcp, type Caller, type Db } from "./mcp.ts";
 
 export interface Env {
@@ -270,9 +272,13 @@ function passHtml(title: string, body: string): string {
 }
 
 const app = {
-  async fetch(req: Request, env: Env): Promise<Response> {
+  async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(req.url);
     if (url.pathname === "/authorize") return authorize(req, env);
+    if (url.pathname.startsWith("/api/glasses/")) {
+      const deps = { db: admin(env), kv: env.OAUTH_KV, supabaseUrl: env.SUPABASE_URL, serviceKey: env.SUPABASE_SERVICE_ROLE_KEY, sessionUser: (r: Request) => supabaseUser(env, r) };
+      return handleGlasses(req, url, deps, ctx);
+    }
     if (url.pathname === "/api/grants" || url.pathname.startsWith("/api/grants/")) return grants(req, env, url);
     if (url.pathname.startsWith("/pass/")) return caregiverPass(req, env, url);
     return env.ASSETS.fetch(req);

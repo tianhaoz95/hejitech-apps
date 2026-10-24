@@ -8,7 +8,7 @@ apps. Conventions for the shared parts: `../../../supabase/README.md`.
 | Database | Supabase `jitdzllkxfhlrxxvljhp`, schema `weehours`, bucket `weehours` | `supabase db push` (by hand, repo root) |
 | Site + MCP + OAuth | Cloudflare Worker `weehours` → https://weehours.hejitech.workers.dev | push to `main` (Workers Builds), or `npm run deploy -w @weehours/web` |
 | iPhone app (+ widgets, watch) | App Store Connect `com.hejitech.weehours`, TestFlight | GitHub Release `weehours-v<version>` (`scripts/cut_release.sh weehours`), weekly Wednesday run, manual dispatch |
-| Glasses app | Even Hub (`apps/glasses`, `npm run package`) | by hand |
+| Glasses app (Even G2 + R1) | Even Hub plugin `com.hejitech.weehours.glasses`; its API is the site Worker (`/api/glasses/*`) | `.ehpk` attached to each `weehours-v<version>` release (`weehours-glasses-release.yml`); upload to the Even Hub portal by hand (§4) |
 
 ## 1. Supabase (shared project)
 
@@ -54,3 +54,19 @@ pins). Optional: `WEEHOURS_FEEDBACKKIT_RELEASE_TOKEN`, created with
 `npx feedbackkit-cli token create github-actions --preset ci | gh secret set WEEHOURS_FEEDBACKKIT_RELEASE_TOKEN`
 after `npx feedbackkit-cli login`. The workflow imports the existing identities, so CI never
 creates certificates.
+
+## 4. Even Hub (glasses)
+
+The glasses app ships with the iPhone app, under the same version: `scripts/cut_release.sh weehours`
+bumps `MARKETING_VERSION` in `apps/ios/project.yml`, `apps/glasses/scripts/pack.mjs` stamps it into
+the plugin's `app.json`, and `weehours-glasses-release.yml` attaches
+`weehours-glasses-<version>.ehpk` to the GitHub Release. Locally: `npm run package -w
+@weehours/glasses` → `apps/glasses/build/weehours.ehpk`.
+
+1. Wait for the release's Worker deploy (the glasses' API is `https://weehours.hejitech.workers.dev/api/glasses/*`; the plugin's only network whitelist entry).
+2. Download the `.ehpk` from the release and upload it in the Even Hub developer portal (package `com.hejitech.weehours.glasses`). The pack refuses a manifest that whitelists local addresses.
+3. Check on real glasses: install from the Even Hub, pair with a code from Settings → Even G2 glasses on a Release build, press (feed), double press (diaper), hold to speak, and see the entries and the capture on the phone. The simulator isn't faithful for BLE lag, font metrics or the microphone.
+
+Pairing codes and the wrong-code throttle live in the Worker's `OAUTH_KV` namespace (`glasses-code:*`,
+`glasses-pairfail:*`); paired glasses are rows in `weehours.access_tokens` named `glasses:<label>`.
+

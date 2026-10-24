@@ -9,7 +9,8 @@
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "package": "npm run build && evenhub pack app.json dist -o dist/app.ehpk"
+    "package": "npm run build && node scripts/pack.mjs",
+    "simulator": "evenhub-simulator \"http://127.0.0.1:5173/?api=http://127.0.0.1:8788\""
   },
   "dependencies": {
     "@evenrealities/even_hub_sdk": "^0.0.16",

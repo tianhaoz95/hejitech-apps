@@ -224,6 +224,8 @@ struct SettingsView: View {
                 Section {
                     NavigationLink { WatchSettingsView() } label: { Label("Apple Watch", systemImage: "applewatch") }
                         .accessibilityIdentifier("settings-watch")
+                    NavigationLink { GlassesSettingsView() } label: { Label("Even G2 glasses", systemImage: "eyeglasses") }
+                        .accessibilityIdentifier("settings-glasses")
                 }
                 Section {
                     if thumbDock == .off {
@@ -774,7 +776,7 @@ struct AgentsView: View {
                 }
             }
             Section("Tokens") {
-                ForEach(model.tokens) { t in
+                ForEach(model.tokens.filter { !$0.name.hasPrefix("glasses:") }) { t in
                     HStack {
                         VStack(alignment: .leading) {
                             Text(t.name)

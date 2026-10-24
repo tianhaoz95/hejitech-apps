@@ -440,6 +440,42 @@ final class AppModel: ObservableObject {
         }
     }
 
+    // MARK: Even G2 glasses
+
+    struct GlassesPairing: Equatable {
+        let code: String
+        let createdAt: Date
+        let expiresAt: Date
+    }
+
+    /// Paired glasses: `glasses:<label>` access tokens the Worker created when a code was redeemed.
+    var glasses: [AccessToken] { tokens.filter { $0.name.hasPrefix("glasses:") } }
+
+    /// A 6-digit code the glasses' page in the Even app trades for a device token
+    /// (`services/web/src/worker/glasses.ts`). Asking again replaces the previous code.
+    func glassesPairingCode() async -> GlassesPairing? {
+        do {
+            let jwt = try await backend.sessionToken()
+            var req = URLRequest(url: URL(string: "\(passBaseURL)/api/glasses/pairing-code")!)
+            req.httpMethod = "POST"
+            req.timeoutInterval = 15
+            req.setValue("Bearer \(jwt)", forHTTPHeaderField: "Authorization")
+            let (data, resp) = try await URLSession.shared.data(for: req)
+            let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
+            guard (resp as? HTTPURLResponse)?.statusCode == 200, let code = obj["code"] as? String else {
+                self.error = obj["error"] as? String ?? "Couldn't get a pairing code. Check your connection and try again."
+                return nil
+            }
+            let iso = ISO8601DateFormatter()
+            iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            let expires = (obj["expires_at"] as? String).flatMap(iso.date(from:)) ?? Date().addingTimeInterval(600)
+            return GlassesPairing(code: code, createdAt: Date(), expiresAt: expires)
+        } catch {
+            self.error = error.localizedDescription
+            return nil
+        }
+    }
+
     func invite() async -> String? {
         do { return try await backend.createInvite() } catch { self.error = error.localizedDescription; return nil }
     }

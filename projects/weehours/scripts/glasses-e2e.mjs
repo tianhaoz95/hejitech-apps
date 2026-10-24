@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Drives the Even Hub simulator through its automation API and checks the backend: gestures
 // become typed events, a held press becomes a capture for the phone. Saves HUD screenshots for
-// the report. Run via `scripts/glasses-sim.sh --e2e`.
+// the report. Run via `scripts/glasses-sim.sh --e2e` (which pairs the app with a fresh code).
 import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -19,6 +19,8 @@ async function waitFor(fn, label, timeout = 30_000) {
     try { if (await fn()) return; } catch { /* retry */ }
     await sleep(500);
   }
+  const logs = await console_().catch(() => []);
+  for (const l of (logs.logs ?? logs.entries ?? logs).filter?.((l) => !/Flutter Bridge intercepted/.test(l.message)) ?? []) console.error(l.message);
   throw new Error(`timed out: ${label}`);
 }
 const input = async (action) => {
@@ -30,11 +32,11 @@ const shot = async (name) => {
   writeFileSync(join(shots, `glasses-${name}.png`), Buffer.from(await res.arrayBuffer()));
 };
 const console_ = async () => (await (await fetch(`${sim}/api/console`)).json());
-const rest = async (path) => (await fetch(`http://127.0.0.1:55421/rest/v1/${path}`, { headers: { apikey: SERVICE, Authorization: `Bearer ${SERVICE}` } })).json();
+const rest = async (path) => (await fetch(`http://127.0.0.1:55421/rest/v1/${path}`, { headers: { apikey: SERVICE, Authorization: `Bearer ${SERVICE}`, "Accept-Profile": "weehours" } })).json();
 
 const before = new Date().toISOString();
 await waitFor(async () => (await fetch(`${sim}/api/ping`)).ok, "simulator up");
-await waitFor(async () => JSON.stringify(await console_()).includes("signed in"), "app signed in", 45_000);
+await waitFor(async () => JSON.stringify(await console_()).includes("paired with"), "app paired", 45_000);
 await sleep(1500);
 await shot("1-status");
 

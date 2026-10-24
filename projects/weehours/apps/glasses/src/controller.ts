@@ -22,7 +22,6 @@ export interface World {
   defaultFeed: "bottle" | "breast";
   me: string;
   onDuty: string | null;
-  night: boolean;
   /** The household's children (in order) and the one gestures act on; one child: no names shown. */
   children: { id: string; name: string }[];
   focus: string | null;

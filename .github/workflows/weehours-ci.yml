@@ -60,6 +60,8 @@ jobs:
       - run: npm run build:weehours
         env:
           WEB_ALLOW_LOCAL: "1"
+      - name: Glasses plugin packs (.ehpk, production manifest)
+        run: npm run package -w @weehours/glasses
 
   backend:
     name: Shared Supabase schema + MCP/OAuth integration
@@ -87,6 +89,7 @@ jobs:
           for i in $(seq 1 60); do curl -sf -o /dev/null http://127.0.0.1:8788/ && break; sleep 1; done
           curl -sf -o /dev/null http://127.0.0.1:8788/ || { cat /tmp/worker.log; exit 1; }
       - run: node projects/weehours/scripts/test-mcp.mjs
+      - run: node projects/weehours/scripts/test-glasses-api.mjs
       - if: failure()
         run: cat /tmp/worker.log || true
       - if: always()

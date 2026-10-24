@@ -22,7 +22,7 @@ Voice is understood **on the iPhone** by [Laya](https://huggingface.co/ggml-org/
 | `apps/ios/LogCore` | Swift package: event model, append-only derivation (sessions, duplicates, status line), the decision layer (Laya prompt port, two-step questions, confidence policy, deterministic time and number parsers), reminders, billing rules, SQLite store, Supabase sync, plus the `logeval` CLI |
 | `apps/ios/LayaRuntime` | Runs Laya in-process with llama.cpp: a Swift port of llama.cpp's server-side decision path, verified against llama-server |
 | `apps/ios/App`, `Widgets`, `Watch` | iPhone app (SwiftUI), widgets, Live Activity, App Intents (Siri / Action Button), StoreKit 2 paywall with a dummy store, watch app |
-| `apps/glasses/` | Even Hub web app for G2 + R1: gesture logging, hold-to-speak capture, one-line HUD |
+| `apps/glasses/` | Even Hub plugin for G2 + R1: gesture logging, hold-to-speak capture, one-line HUD; pairs with a code from the iPhone and talks only to the site Worker (`/api/glasses/*`) |
 | `packages/core/` | `@weehours/core`: the TypeScript twin of LogCore's derivation, shared by the site, the MCP Worker and the glasses |
 | `services/web/` | Website + Cloudflare Worker: landing, agent setup, account, legal pages, and the **MCP server** with its own OAuth endpoints |
 | `../../supabase/schemas/weehours/` | Postgres schema `weehours` in the shared project: tables with RLS (append-only for clients), RPCs; migrations in `../../supabase/migrations/*_weehours_*`, seed in `../../supabase/seeds/weehours.sql` |
@@ -45,7 +45,7 @@ Sign in with `parent1@example.com` / `newborn-dev` (or `parent2@…`). Both acco
 
 - **Bundled models.** `scripts/fetch-models.sh` (run by `dev.sh`) puts Laya (~450 MB), WhisperKit base.en (~150 MB) and the multilingual WhisperKit small for Spanish and Chinese (~210 MB) into `apps/ios/App/Models`, which the app ships, so voice works offline right after install. Without them the app falls back to downloading. They are git-ignored; before the App Store, consider Apple-hosted Background Assets to keep the binary small and update the model without an app update.
 - **Voice in the simulator.** Hold the floating mic button (the simulator records from the Mac's microphone), or launch with `-demoText "finished, drank half"` to run a transcript through the same pipeline. With the bundled models, the default *On-device Laya* runs in the simulator on the CPU. You can also run `llama-server -m Laya-Q8_0.gguf --port 8089` and pick *Settings → Voice → Laya on Mac*.
-- **Glasses.** `scripts/glasses-sim.sh` opens the official Even Hub simulator, signed in. `scripts/glasses-sim.sh --e2e` drives the simulator through its automation API, checks the backend and saves HUD screenshots.
+- **Glasses.** `scripts/glasses-sim.sh` starts the Worker and opens the official Even Hub simulator, paired to the seeded household with a fresh code. `scripts/glasses-sim.sh --e2e` drives the simulator through its automation API, checks the backend and saves HUD screenshots.
 - **MCP.** `npm run dev:worker -w @weehours/web` serves the site and the MCP endpoint `http://127.0.0.1:8788/mcp` (use `Authorization: Bearer wh_dev_local_token`, or connect an OAuth-capable client and sign in as a seeded parent). It needs `services/web/.dev.vars` with the local `SUPABASE_SERVICE_ROLE_KEY` (`supabase status`). `node scripts/test-mcp.mjs` runs the integration checks, the OAuth flow included.
 - **Billing.** Run from Xcode to use `Subscriptions.storekit` (monthly, yearly, lifetime). Launched any other way, the paywall uses a built-in dummy store through the same entitlement path.
 - **Eval.** `LAYA_MODEL=… LLAMA_SERVER_BIN=… scripts/eval.sh` re-runs the decision eval and refits `spec/calibration.json`. In CI, `weehours-llm-eval.yml` runs it on the real Laya (CPU) when the questions or the model change, monthly on the 15th, or by hand, and compares with `eval/results`.
@@ -58,6 +58,7 @@ SUPABASE_IT=1 swift test --filter BackendIntegrationTests         # against the 
 cd apps/ios/LayaRuntime && LAYA_MODEL=… LAYA_SERVER=http://127.0.0.1:8089 swift test   # on-device port == llama-server
 npm run test:weehours                                             # (repo root) core fixtures, glasses
 node scripts/test-mcp.mjs                                         # MCP + OAuth against dev:worker
+node scripts/test-glasses-api.mjs                                 # glasses pairing + API against dev:worker
 scripts/glasses-sim.sh --e2e                                      # glasses in the Even Hub simulator
 ```
 

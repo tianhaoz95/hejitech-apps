@@ -10,31 +10,38 @@ import {
   type EvenHubEvent,
 } from "@evenrealities/even_hub_sdk";
 import { derive, status, statusLine } from "@weehours/core";
-import { Api, type KV } from "./api.ts";
+import { Api, Unpaired, type KV } from "./api.ts";
 import { GlassesController, LABELS, type Input, type World } from "./controller.ts";
 import { concat, durationMs, wav } from "./wav.ts";
 
-const LOCAL = { url: "http://127.0.0.1:55421", anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0" };
+/** The Wee Hours Worker. Dev builds use the local `dev:worker`; `?api=` overrides either (simulator, tests). */
+const PRODUCTION = "https://weehours.hejitech.workers.dev";
+const LOCAL = "http://127.0.0.1:8788";
+const BRIDGE_TIMEOUT_MS = 5_000;
 const params = new URLSearchParams(location.search);
+const apiBase = params.get("api") ?? (import.meta.env.DEV ? LOCAL : PRODUCTION);
+const debug = params.has("debug") || import.meta.env.DEV;
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
 let bridge: EvenAppBridge | null = null;
 const kv: KV = {
   async get(k) {
-    if (bridge) return (await bridge.getLocalStorage(k)) || null;
+    if (bridge) return (await bridge.getLocalStorage(k).catch(() => "")) || null;
     try { return localStorage.getItem(k); } catch { return null; }
   },
   async set(k, v) {
-    if (bridge) { await bridge.setLocalStorage(k, v); return; }
+    if (bridge) { await bridge.setLocalStorage(k, v).catch(() => false); return; }
     try { localStorage.setItem(k, v); } catch { /* preview without storage */ }
   },
 };
 
-const api = new Api({ url: params.get("url") ?? LOCAL.url, anonKey: params.get("key") ?? LOCAL.anonKey }, kv);
+const api = new Api(apiBase, kv);
 const controller = new GlassesController();
-let world: World = { statusLine: "Sign in on the phone page", openFeed: null, sleeping: false, nextSide: null, defaultFeed: "bottle", me: "", onDuty: null, night: false, children: [], focus: null };
+const UNPAIRED_HUD = "Wee Hours · not paired\nOn your phone: Wee Hours → Settings → Even G2 glasses";
+let world: World = { statusLine: "Loading…", openFeed: null, sleeping: false, nextSide: null, defaultFeed: "bottle", me: "", onDuty: null, children: [], focus: null };
 /** The child gestures act on (several children); kept across launches. */
 let focus: string | null = null;
+let queued = 0;
 let frames: Uint8Array[] = [];
 let recordingSurface: "glasses" | "ring" = "ring";
 
@@ -44,50 +51,79 @@ function log(msg: string) {
   if (el) el.textContent = `${new Date().toLocaleTimeString()} ${msg}\n${el.textContent}`.slice(0, 4000);
 }
 
+/** The Even app injects its WebView handler; the SDK hands out a bridge object in any browser, so check first. */
+async function detectBridge(): Promise<EvenAppBridge | null> {
+  const host = () => (globalThis as { flutter_inappwebview?: { callHandler?: unknown } }).flutter_inappwebview;
+  for (let waited = 0; !host() && waited < BRIDGE_TIMEOUT_MS; waited += 250) await new Promise((r) => setTimeout(r, 250));
+  if (!host()) return null;
+  const timeout = new Promise<null>((r) => setTimeout(() => r(null), BRIDGE_TIMEOUT_MS));
+  return (await Promise.race([waitForEvenAppBridge().catch(() => null), timeout])) as EvenAppBridge | null;
+}
+
+let lastHud = "";
 async function render() {
-  const text = controller.hud(world, Date.now());
+  const text = api.paired && api.state ? controller.hud(world, Date.now()) : api.paired ? "Wee Hours\nConnecting…" : UNPAIRED_HUD;
   $("hud").textContent = text;
-  if (!bridge) return;
-  await bridge.textContainerUpgrade(new TextContainerUpgrade({ containerID: 1, containerName: "hud", contentOffset: 0, contentLength: text.length, content: text }));
+  renderPage();
+  if (!bridge || text === lastHud) return;
+  lastHud = text;
+  await bridge.textContainerUpgrade(new TextContainerUpgrade({ containerID: 1, containerName: "hud", contentOffset: 0, contentLength: text.length, content: text })).catch(() => false);
+}
+
+/** The phone-side page inside the Even app: pairing, or what's connected. */
+function renderPage() {
+  const paired = api.paired;
+  $("pairing").hidden = paired;
+  $("paired").hidden = !paired;
+  if (!paired) return;
+  const s = api.state;
+  $("household").textContent = s ? s.household.name || "Your household" : "Connecting…";
+  $("kids").textContent = s ? s.children.map((c) => c.name + (c.expected ? " (expected)" : "")).join(", ") : "";
+  $("queue").textContent = queued ? `${queued} waiting to send (offline)` : "Everything is sent";
 }
 
 async function refresh() {
-  if (!api.session || !api.household) return;
+  if (!api.paired) return render();
   try {
-    const remaining = await api.flush();
-    const events = [...(await api.recentEvents()), ...(await api.queued())];
-    const kids = api.household.children;
+    if (!api.state) await api.loadState();   // the outbox only sends this household's entries
+    queued = await api.flush();
+    const s0 = await api.loadState();
+    const events = [...s0.events, ...(await api.queued())];
+    const kids = api.loggable;
     if (!kids.some((c) => c.id === focus)) focus = kids[0]?.id ?? null;
     const d = derive(events, focus ?? undefined);
-    const s = status(d, { pendingCaptures: kids.length > 1 ? 0 : await api.pendingCaptures() });
-    const h = api.household.settings as Record<string, unknown>;
+    const st = status(d, { pendingCaptures: s0.children.length > 1 ? 0 : s0.pending_captures });
     const child = kids.find((c) => c.id === focus);
     world = {
-      statusLine: statusLine(s, Date.now()) + (remaining ? ` · ${remaining} offline` : ""),
-      openFeed: (s.open_feed_kind as World["openFeed"]) ?? null,
-      sleeping: s.sleeping_since !== undefined,
-      nextSide: s.next_side ?? null,
-      defaultFeed: ((child?.default_feed ?? h.default_feed) as World["defaultFeed"]) ?? "bottle",
-      me: api.session.user_id,
-      onDuty: s.on_duty ?? null,
-      night: false,
+      statusLine: kids.length ? statusLine(st, Date.now()) + (queued ? ` · ${queued} offline` : "") : "Logging opens once your baby arrives",
+      openFeed: (st.open_feed_kind as World["openFeed"]) ?? null,
+      sleeping: st.sleeping_since !== undefined,
+      nextSide: st.next_side ?? null,
+      defaultFeed: child?.default_feed ?? s0.household.default_feed ?? "bottle",
+      me: s0.me.id,
+      onDuty: st.on_duty ?? null,
       children: kids.map((c) => ({ id: c.id, name: c.name })),
       focus,
     };
   } catch (e) {
-    log(`offline: ${(e as Error).message}`);
+    if (e instanceof Unpaired) log(`unpaired: ${e.message}`);
+    else log(`offline: ${(e as Error).message}`);
   }
   await render();
 }
 
 async function onInput(input: Input, surface: "glasses" | "ring") {
-  if (!api.household) { log("not signed in"); return; }
+  if (!api.state) { log(api.paired ? "still connecting" : "not paired"); return; }
+  if (!focus) {
+    controller.flash("Nothing to log until your baby arrives", Date.now());
+    return render();
+  }
   const commands = controller.handle(input, world, Date.now());
   for (const c of commands) {
     if (c.kind === "focus") {
       focus = c.id;
       await kv.set("focus", c.id);
-      controller.flash(`Logging for ${api.household!.children.find((k) => k.id === c.id)?.name ?? ""}`, Date.now());
+      controller.flash(`Logging for ${api.loggable.find((k) => k.id === c.id)?.name ?? ""}`, Date.now());
     } else if (c.kind === "log" || c.kind === "undo") {
       const row = c.kind === "log" ? api.newEvent(c.type, c.fields, surface, focus) : api.newEvent("undo", {}, surface, focus, c.id);
       await api.enqueueEvent(row);
@@ -132,17 +168,23 @@ function inputFrom(event: EvenHubEvent): { input: Input; surface: "glasses" | "r
   return input ? { input, surface } : null;
 }
 
-async function signIn(email: string, password: string) {
-  await api.signIn(email, password);
-  await api.loadHousehold();
-  $("who").textContent = `${email} · ${api.household!.children.map((c) => c.name).join(", ")}`;
-  log("signed in");
-  await refresh();
+async function pair(code: string) {
+  const error = $("pair-error");
+  error.textContent = "";
+  try {
+    const { name } = await api.pair(code);
+    log(`paired with ${name || "household"}`);
+    ($("code") as HTMLInputElement).value = "";
+    controller.flash("Paired ✓", Date.now());
+    await refresh();
+  } catch (e) {
+    error.textContent = (e as Error).message;
+    log(`pairing failed: ${(e as Error).message}`);
+  }
 }
 
 async function boot() {
-  const timeout = new Promise<null>((r) => setTimeout(() => r(null), 1500));
-  bridge = (await Promise.race([waitForEvenAppBridge(), timeout])) as EvenAppBridge | null;
+  bridge = await detectBridge();
   if (bridge) {
     await bridge.createStartUpPageContainer(new CreateStartUpPageContainer({
       containerTotalNum: 1,
@@ -158,22 +200,36 @@ async function boot() {
     });
     log("bridge connected");
   } else {
-    log("no bridge: browser preview (use the buttons)");
+    log("no bridge: browser preview");
   }
 
+  $("debug").hidden = !debug;
   document.querySelectorAll<HTMLButtonElement>("[data-input]").forEach((b) =>
     b.addEventListener("click", () => void onInput(b.dataset.input as Input, "ring")));
-  $("signin").addEventListener("submit", (e) => {
+  $("pair-form").addEventListener("submit", (e) => {
     e.preventDefault();
-    void signIn(($("email") as HTMLInputElement).value, ($("password") as HTMLInputElement).value).catch((err) => log(err.message));
+    void pair(($("code") as HTMLInputElement).value);
+  });
+  // Two taps (a WebView may not show confirm()).
+  const unpair = $("unpair") as HTMLButtonElement;
+  let armed = 0;
+  unpair.addEventListener("click", () => {
+    if (Date.now() - armed > 4_000) {
+      armed = Date.now();
+      unpair.textContent = "Tap again to unpair";
+      setTimeout(() => { unpair.textContent = "Unpair these glasses"; }, 4_000);
+      return;
+    }
+    armed = 0;
+    unpair.textContent = "Unpair these glasses";
+    void api.forget().then(() => { log("unpaired"); return render(); });   // the phone's list keeps the token until it's unpaired there
   });
 
   await api.restore();
   focus = await kv.get("focus");
-  const email = params.get("email"), password = params.get("password");
-  if (email && password) await signIn(email, password).catch((e) => log(e.message));
-  else if (api.session) await api.loadHousehold().then(refresh).catch((e) => log(e.message));
-  await render();
+  const code = params.get("pair");
+  if (code) await pair(code);   // ?pair= (simulator, tests) re-pairs even when already paired
+  else await refresh();
   setInterval(() => void refresh(), 15_000);
   setInterval(() => void render(), 1_000);
 }

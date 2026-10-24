@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.12.0"
+    static let currentVersion = "0.13.0"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,21 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "0.13.0",
+            date: "October 2026",
+            tagline: "Log From Your Glasses",
+            features: [
+                WhatsNewItem(
+                    icon: "eyeglasses",
+                    tint: Theme.feed,
+                    title: "Even G2 glasses",
+                    description: "Install Wee Hours from the Even Hub, then pair it in Settings → Even G2 glasses with a six-digit code. Press the ring or temple to start and finish a feed, double press for a diaper, hold to speak.",
+                    detailedDescription: "The glasses show the same one-line status as Now and work for every child in the household. Entries are logged under your name, wait on the glasses while there's no connection, and what you say is turned into an entry on your phone, never on a server. Unpair a lost pair from the same screen.",
+                    highlights: ["Six-digit pairing", "Ring or temple", "Voice handled on your phone"]
+                ),
+            ]
+        ),
         ReleaseHistoryItem(
             version: "0.12.0",
             date: "October 2026",
