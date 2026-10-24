@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.13.0"
+    static let currentVersion = "0.13.1"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,21 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "0.13.1",
+            date: "October 2026",
+            tagline: "Arrange Right on Now",
+            features: [
+                WhatsNewItem(
+                    icon: "hand.draw",
+                    tint: Theme.sleep,
+                    title: "Drag the cards themselves",
+                    description: "Tap the arrows at the top of Now and the cards wiggle, like apps on your Home Screen. Hold one for a moment and drag it into place; the others slide out of the way.",
+                    detailedDescription: "Dragging near the top or bottom scrolls the list. Cards that only show up some of the time appear as outlines while you arrange, so you can place them too. Reset at the top puts everything back in the default order, and with VoiceOver each card has Move up and Move down.",
+                    highlights: ["Hold and drag", "Scrolls at the edges", "Reset to default"]
+                ),
+            ]
+        ),
         ReleaseHistoryItem(
             version: "0.13.0",
             date: "October 2026",
