@@ -89,22 +89,17 @@ struct HomeView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if arranging {
-                    ArrangeNowList(stored: $layout, shown: sections)
-                } else {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 16) {
-                            ForEach(sections) { card($0) }
-                        }
-                        .padding()
-                    }
-                }
-            }
+            NowCards(stored: $layout, shown: sections, arranging: arranging) { card($0) }
             .navigationTitle(arranging ? "Arrange Now" : title)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    if !arranging { SyncBadge(visible: badge) { showingSync = true } }
+                    if !arranging {
+                        SyncBadge(visible: badge) { showingSync = true }
+                    } else if !layout.isEmpty {
+                        Button("Reset") { withAnimation(.snappy) { layout = "" } }
+                            .accessibilityLabel("Reset to default order")
+                            .accessibilityIdentifier("arrangeReset")
+                    }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     if arranging {
