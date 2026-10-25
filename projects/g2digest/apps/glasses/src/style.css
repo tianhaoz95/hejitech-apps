@@ -7,3 +7,4 @@ button.primary { background: #3dff7a; color: #052310; border-color: transparent;
 .small { font-size: 13px; }
 h2 { font-size: 18px; margin: 0; }
 [hidden] { display: none !important; }
+.addr { user-select: all; -webkit-user-select: all; overflow-wrap: anywhere; }

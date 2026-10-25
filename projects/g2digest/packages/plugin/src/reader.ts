@@ -23,6 +23,8 @@ export interface ReaderOptions {
   persist?: (date: string, index: number) => void;
   /** Resolves a bundle audio_path to a playable URL (signed URL or a cached copy). */
   audioUrl: (path: string) => Promise<string | null>;
+  /** Double tap with nothing playing: open the system exit dialog (glasses only). */
+  onExit?: () => void;
   now?: () => number;
 }
 
@@ -83,6 +85,9 @@ export class Reader {
         return;
       case "stop":
         a.stop();
+        return;
+      case "exit":
+        this.opts.onExit?.();
         return;
       case "play": {
         const card = this.bundle?.cards.find((x) => x.slug === c.slug);

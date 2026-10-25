@@ -65,6 +65,30 @@ it, with the reason for each.
   appear elsewhere. To make it the owner's real brief: paste the JSON into the brief editor's "Edit
   as JSON".
 
+## Even Hub readiness (2026-10-24)
+
+The submission checklist (hub.evenrealities.com, ship/app-submission) set these:
+
+- **Double-tap exits when nothing plays.** Even Hub rejects a root page whose double-tap doesn't
+  open the system exit dialog (`shutDownPageContainer(1)`). The plugin has one page, so double-tap
+  stops audio when audio is on (or paused), and otherwise asks to exit. The contextual menu's "Stop
+  audio" and the lock screen's stop button send the separate `stop` gesture, which never exits; the
+  menu also has "Exit".
+- **The tour instead of a message.** Reviewers install without an account, and the core flow must
+  work on the glasses alone with every gesture answering. So whenever there's no edition (not
+  paired, nothing published, offline with nothing fetched) the plugin plays a built-in seven-card
+  bundle (`core/src/tour.ts`): how it works, the ring, and a next-step card for the reason. It has
+  no audio, so tap and tap-then-hold flash their "no audio" notes. Its position isn't remembered.
+- **No links on the plugin's phone page.** A link would navigate the Even app's WebView away from
+  the plugin, so the site address, help and privacy are selectable text.
+- **Privacy policy, support page, delete my data.** The listing needs a privacy policy covering the
+  `network` permission. "Delete all my G2 Digest data" (Pair page, `DELETE /api/account`) removes
+  every G2 Digest row, the audio and the OAuth grants. It keeps the sign-in, which is a HEJI account
+  shared with the other apps; the policy says to email for that.
+- **Not decided here:** a demo account for reviewers (the tour covers the core flow; ask Even
+  Hub if they want one), and hosted edition building for users without their own agent (it would
+  mean server-side AI and TTS, which PRD §3 and the owner's audio answer rule out for now).
+
 ## Observed in the simulator (2026-10-23)
 
 The glasses' font is narrow: a 25-character line fills about 40% of the 576 px width. The 25

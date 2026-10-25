@@ -79,9 +79,9 @@ function kicker(bundle: Bundle, card: CardInput, index: number): string {
 function footer(bundle: Bundle, card: CardInput): string {
   if (card.kind === "cover") {
     const audio = bundle.cards.reduce((s, c) => s + (c.glance?.duration_sec ?? 0) + (c.deep_dive?.duration_sec ?? 0), 0);
-    return `${bundle.cards.length} CARDS · ${Math.round(audio / 60)} MIN AUDIO`;
+    return audio ? `${bundle.cards.length} CARDS · ${Math.round(audio / 60)} MIN AUDIO` : `${bundle.cards.length} CARDS`;
   }
-  if (card.kind === "end" && !card.glance && !card.deep_dive) return "DOUBLE-TAP TO STOP";
+  if (card.kind === "end" && !card.glance && !card.deep_dive) return "DOUBLE-TAP TO EXIT";
   return audioFooter(card);
 }
 

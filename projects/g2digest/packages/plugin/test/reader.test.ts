@@ -9,6 +9,7 @@ const bundle: Bundle = JSON.parse(readFileSync(join(dirname(fileURLToPath(import
 
 function setup(urls: Record<string, string | null> = {}) {
   const calls: string[] = [];
+  let exits = 0;
   let ended = () => {};
   const audio: AudioOut = {
     play: async (u) => void calls.push(`play ${u}`),
@@ -24,10 +25,11 @@ function setup(urls: Record<string, string | null> = {}) {
     audioUrl: async (p) => (p in urls ? urls[p] : `https://audio/${p}`),
     onChange: (lines) => void shown.push(lines),
     persist: (_d, i) => void persisted.push(i),
+    onExit: () => void exits++,
     now: () => 1000,
   });
   reader.load(bundle);
-  return { reader, calls, shown, persisted, end: () => ended() };
+  return { reader, calls, shown, persisted, end: () => ended(), exits: () => exits };
 }
 
 describe("Reader", () => {
@@ -66,5 +68,15 @@ describe("Reader", () => {
     expect(calls.filter((c) => c.startsWith("play"))).toEqual([]);
     // Episodes: tldr glance 1, providers glance 2, proteina glance 3, proteina deep dive 4.
     expect(shown.at(-1)!.at(-1)).toBe("[ PODCAST EPISODE 4 ]");
+  });
+  it("double tap stops audio first, then asks to exit", async () => {
+    const { reader, calls, exits } = setup();
+    await reader.gesture("next");
+    await reader.gesture("tap");
+    await reader.gesture("double_tap");
+    expect(calls.at(-1)).toBe("stop");
+    expect(exits()).toBe(0);
+    await reader.gesture("double_tap");
+    expect(exits()).toBe(1);
   });
 });

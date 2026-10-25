@@ -86,3 +86,16 @@ label.check input { width: auto; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .hero { padding: 24px 0 8px; }
 .hero p.lede { font-size: 18.5px; color: var(--muted); max-width: 640px; }
+
+/* Policy and help pages (privacy, support). */
+.doc { padding-bottom: 40px; }
+.doc h2 { margin-top: 28px; }
+.doc h3 { margin-top: 18px; }
+.doc ul, .doc ol { padding-left: 22px; margin: 0 0 12px; }
+.doc li { margin-bottom: 6px; }
+.doc .panel { margin: 16px 0; }
+.doc .lede { font-size: 18px; color: var(--muted); }
+.doc code { overflow-wrap: anywhere; }
+.doc details { border-bottom: 1px solid var(--line); padding: 10px 0; }
+.doc summary { cursor: pointer; font-weight: 600; }
+.doc details > :not(summary) { margin-top: 10px; }

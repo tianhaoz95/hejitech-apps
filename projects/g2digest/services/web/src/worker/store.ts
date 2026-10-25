@@ -174,3 +174,22 @@ export async function supabaseUser(env: Env, req: Request): Promise<{ id: string
   const u = (await res.json()) as { id: string; email?: string };
   return { id: u.id, email: u.email };
 }
+
+/**
+ * Deletes everything G2 Digest holds for a user: audio files, editions and cards, brief, profile,
+ * devices, feeds, agent tokens and pairing codes. The sign-in itself is a HEJI account shared with
+ * the other apps, so it stays (the privacy policy says to email for that).
+ */
+export async function deleteUserData(db: Db, userId: string): Promise<void> {
+  const bucket = db.storage.from(BUCKET);
+  const { data: dates } = await bucket.list(userId, { limit: 1000 });
+  for (const d of dates ?? []) {
+    const { data: files } = await bucket.list(`${userId}/${d.name}`, { limit: 1000 });
+    const paths = (files ?? []).map((f) => `${userId}/${d.name}/${f.name}`);
+    if (paths.length) await bucket.remove(paths);
+  }
+  for (const table of ["cards", "editions", "pairing_codes", "device_tokens", "access_tokens", "briefs", "profiles"]) {
+    const { error } = await db.from(table).delete().eq("user_id", userId);
+    if (error) throw new Error(`delete ${table}: ${error.message}`);
+  }
+}

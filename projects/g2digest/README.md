@@ -16,5 +16,5 @@ scripts/           test-api.mjs (integration), publish-bundle.mjs (reference pip
 supabase           ../../supabase/schemas/g2digest, migrations *_g2digest_*, seeds/g2digest.sql
 ```
 
-Docs: [decisions](docs/decisions.md), [deployment](docs/DEPLOY.md), [pipeline](pipeline/README.md).
+Docs: [decisions](docs/decisions.md), [deployment](docs/DEPLOY.md), [pipeline](pipeline/README.md), [Even Hub listing](docs/even-hub/LISTING.md).
 Working on it: [CLAUDE.md](CLAUDE.md).

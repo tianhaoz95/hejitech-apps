@@ -5,10 +5,12 @@
 //   swipe down / up     next / previous card (stops audio: audio belongs to the card on screen)
 //   tap                 play / pause the current card's glance (or the deep dive already playing)
 //   long press          play the current card's deep dive; none → "NO DEEP DIVE" flash
-//   double tap          stop audio, back to skimming
+//   double tap          stop audio, back to skimming; with nothing playing, ask to exit (Even Hub
+//                       review: a double tap on the root page opens the system exit dialog)
+//   stop                stop audio only (the contextual menu, the lock screen's stop button)
 import type { Frame } from "./types.ts";
 
-export type Gesture = "next" | "prev" | "tap" | "long_press" | "double_tap";
+export type Gesture = "next" | "prev" | "tap" | "long_press" | "double_tap" | "stop";
 export type AudioKind = "glance" | "deep_dive";
 
 export interface PlayerState {
@@ -22,6 +24,8 @@ export type PlayerCommand =
   | { kind: "pause" }
   | { kind: "resume" }
   | { kind: "stop" }
+  /** Open the system exit dialog (the plugin calls shutDownPageContainer(1)). */
+  | { kind: "exit" }
   /** Remember the position (bridge local storage) so reopening resumes here. */
   | { kind: "persist"; index: number };
 
@@ -78,6 +82,10 @@ export function step(state: PlayerState, gesture: Gesture, frames: Frame[], now:
       }
       break;
     case "double_tap":
+      if (s.audio) stopAudio();
+      else commands.push({ kind: "exit" });
+      break;
+    case "stop":
       stopAudio();
       break;
   }

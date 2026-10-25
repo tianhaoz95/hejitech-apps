@@ -47,6 +47,14 @@ describe("gesture map (PRD §7.1)", () => {
     expect(s.audio).toBeNull();
     expect(view(s, frames, 1000)).toEqual(frames[1].lines);
   });
+  it("double tap with nothing playing asks to exit (Even Hub: system exit dialog on the root page)", () => {
+    expect(run(["next", "double_tap"]).all.at(-1)).toEqual({ kind: "exit" });
+    expect(run(["next", "tap", "double_tap", "double_tap"]).all.slice(-2)).toEqual([{ kind: "stop" }, { kind: "exit" }]);
+  });
+  it("stop only ever stops audio, never exits", () => {
+    expect(run(["next", "tap", "stop"]).all.at(-1)).toEqual({ kind: "stop" });
+    expect(run(["next", "stop"]).all.filter((c) => c.kind !== "persist")).toEqual([]);
+  });
   it("swiping stops the playing card's audio", () => {
     const { s, all } = run(["next", "tap", "next"]);
     expect(all.filter((c) => c.kind === "stop")).toHaveLength(1);

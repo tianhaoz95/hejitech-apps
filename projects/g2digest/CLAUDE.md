@@ -17,7 +17,7 @@ node projects/g2digest/scripts/check-no-topics.mjs     # PRD §13 grep test (CI)
 # local stack: `supabase start` from the repo root (seed: reader@example.com / g2digest-dev)
 echo "SUPABASE_SERVICE_ROLE_KEY=<local service key>" > projects/g2digest/services/web/.dev.vars
 npm run dev:worker -w @g2digest/web                    # 127.0.0.1:8790, email sign-in for the seed account
-node projects/g2digest/scripts/test-api.mjs            # integration (20 checks incl. OAuth, pairing, feed)
+node projects/g2digest/scripts/test-api.mjs            # integration (21 checks incl. OAuth, pairing, feed, delete)
 npm run package -w @g2digest/glasses                   # build/g2digest.ehpk
 npx evenhub-simulator --automation-port 9898 "http://127.0.0.1:8790/glasses/?pair=<code>"
 ```
@@ -56,6 +56,10 @@ Local tokens from the seed: agent `g2a_dev_local_token`, glasses `g2d_dev_local_
   repeated wrong codes block local pairing for 10 minutes; tests send their own `CF-Connecting-IP`.
 - The simulator isn't faithful for BLE lag, font metrics or container limits: a layout change
   isn't done until it's checked on the glasses.
+- Even Hub review rules the plugin must keep (`docs/decisions.md` §Even Hub readiness): double-tap
+  with nothing playing calls `shutDownPageContainer(1)` (never `0`, never a custom dialog); the glasses
+  never show a dead end (no edition → the tour); no links on the phone page. Listing kit:
+  `docs/even-hub/`.
 
 ## Releasing
 

@@ -14,6 +14,8 @@ const pages = {
   consent: "oauth/consent/index.html",
   glasses: "glasses/index.html",
   spike: "spike/index.html",
+  privacy: "privacy/index.html",
+  support: "support/index.html",
   notFound: "404.html",
 };
 

@@ -13,7 +13,7 @@ const CONTROLS: { g: Gesture; label: string; key: string; hint: string }[] = [
   { g: "next", label: "Swipe down", key: "↓", hint: "next card" },
   { g: "tap", label: "Tap", key: "Space", hint: "play / pause glance" },
   { g: "long_press", label: "Tap, then hold", key: "L", hint: "deep dive" },
-  { g: "double_tap", label: "Double tap", key: "Esc", hint: "stop audio" },
+  { g: "double_tap", label: "Double tap", key: "Esc", hint: "stop audio / exit" },
 ];
 
 const KEYS: Record<string, Gesture> = { ArrowDown: "next", j: "next", ArrowUp: "prev", k: "prev", " ": "tap", l: "long_press", L: "long_press", Escape: "double_tap" };

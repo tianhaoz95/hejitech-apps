@@ -273,9 +273,34 @@ await step("OAuth: register → consent (deny, approve) → token → MCP → di
   assert.equal((await viaOAuth.rpc("tools/list")).status, 401);
 });
 
+// ---------------------------------------------------------------- deleting your data
+await step("delete all my data: brief, devices, tokens and audio go; the next sign-in starts fresh", async () => {
+  const userId = JSON.parse(Buffer.from(other.split(".")[1], "base64url").toString()).sub;
+  const brief = (await call("/api/brief", { auth: other })).body;
+  assert.equal((await call("/api/brief", { method: "PUT", auth: other, body: { brief: { ...brief.brief, title: "Doomed brief" }, expected_version: brief.brief_version } })).status, 200);
+  const code = (await call("/api/pairing-code", { method: "POST", auth: other })).body.code;
+  const device = (await call("/api/pair", { method: "POST", body: { code, label: "Doomed glasses" }, headers: { "CF-Connecting-IP": "10.9.9.9" } })).body.device_token;
+  const agent = (await call("/api/tokens", { method: "POST", auth: other, body: { name: "Doomed agent" } })).body.token;
+  const audio = `${supabase}/storage/v1/object/g2digest/${userId}/2026-10-22/doomed-glance.mp3`;
+  const up = await fetch(audio, { method: "POST", headers: { apikey: SERVICE, Authorization: `Bearer ${SERVICE}`, "Content-Type": "audio/mpeg" }, body: new Uint8Array([1, 2, 3]) });
+  assert.equal(up.status, 200, `upload: ${await up.text()}`);
+
+  assert.equal((await call("/api/account", { method: "DELETE" })).status, 401);
+  assert.equal((await call("/api/account", { method: "DELETE", auth: other })).status, 200);
+  assert.equal((await call("/api/editions/latest", { auth: device })).status, 401);
+  assert.equal((await mcpClient(mcpUrl, agent).rpc("tools/list")).status, 401);
+  assert.deepEqual((await call("/api/devices", { auth: other })).body, []);
+  assert.equal((await fetch(audio, { headers: { apikey: SERVICE, Authorization: `Bearer ${SERVICE}` } })).status, 400);
+  const fresh = await call("/api/brief", { auth: other });
+  assert.equal(fresh.status, 200);
+  assert.notEqual(fresh.body.brief.title, "Doomed brief");
+  // The reader's data is untouched.
+  assert.equal((await call("/api/editions/latest", { auth: session })).status, 200);
+});
+
 // ---------------------------------------------------------------- pages
-await step("pages: home, pretty edition/preview routes, plugin page, spike, fixture audio", async () => {
-  for (const p of ["/", "/login/", "/pair/", "/brief/", "/edition/2026-10-22", "/preview/latest", "/preview/fixture", "/agents/", "/glasses/", "/spike/"]) {
+await step("pages: home, pretty edition/preview routes, plugin page, spike, fixture audio, privacy, support", async () => {
+  for (const p of ["/", "/login/", "/pair/", "/brief/", "/edition/2026-10-22", "/preview/latest", "/preview/fixture", "/agents/", "/glasses/", "/spike/", "/privacy/", "/support/"]) {
     const r = await fetch(`${site}${p}`);
     assert.equal(r.status, 200, p);
   }

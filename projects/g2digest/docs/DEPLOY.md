@@ -53,6 +53,23 @@ a token (401 with `resource_metadata`).
 - Release: `scripts/cut_release.sh g2digest` bumps `apps/glasses/package.json`, tags
   `g2digest-v<version>`, and `g2digest-plugin-release.yml` attaches the `.ehpk`.
 
+### Even Hub submission
+
+Listing text, icon, background and screenshots: `docs/even-hub/LISTING.md`. In the portal: upload
+the release's `.ehpk` as a **Beta** build, install it on the glasses as a beta tester (QR sideloads
+die when the phone locks, so they can't check the rest), then go through the review checklist:
+
+- [ ] First launch, unpaired: the tour shows within a few seconds, never a black screen.
+- [ ] Every gesture answers on every card: swipe moves, tap and tap-then-hold flash on the tour.
+- [ ] Double-tap with nothing playing opens the **system** exit dialog; confirming closes the phone
+      page too; Conversate then opens without a restart. Exit in the contextual menu does the same.
+- [ ] Phone locked, Even app in the background, 5 minutes: still alive and responsive.
+- [ ] Pair with a code, read an edition, play a glance and a deep dive, double-tap stops audio first.
+- [ ] Release notes for `en` (1–3 lines), then the tag → **Public** → submit.
+
+Published versions are immutable: a fix needs a higher version (`cut_release.sh`), so the build
+under review must be the one on the release.
+
 ## 5. The audio spike (do first on hardware, PRD §7.3)
 
 `evenhub qr --url https://g2digest.hejitech.workers.dev/spike/`, press Start, lock the phone for

@@ -5,6 +5,9 @@
 //
 // On open: fetch the latest edition with the device token; offline, play the last fetched bundle
 // (bundles are self-contained); revoked, fail closed into "pair again". Position resumes per edition.
+// With no edition to read (not paired, nothing published, offline with nothing fetched) the glasses
+// play the built-in tour, so every gesture always answers and the last card says what to do.
+// Double tap with nothing playing opens the system exit dialog (Even Hub review rule).
 import {
   CreateStartUpPageContainer,
   MenuContainerProperty,
@@ -16,7 +19,7 @@ import {
   type EvenAppBridge,
   type EvenHubEvent,
 } from "@evenrealities/even_hub_sdk";
-import { audioPaths, DISPLAY, type Bundle, type Gesture } from "@g2digest/core";
+import { audioPaths, DISPLAY, isTour, tour, type Bundle, type Gesture, type TourReason } from "@g2digest/core";
 import { AudioCache, HtmlAudio } from "./audio.ts";
 import { mountPreview, previewStatus } from "./preview.ts";
 import { Reader, type AudioMode } from "./reader.ts";
@@ -27,11 +30,12 @@ const CONTAINER = { id: 1, name: "card" };
 const K = { token: "g2digest:device_token", bundle: "g2digest:bundle", pos: "g2digest:position", mode: "g2digest:audio_mode" };
 
 /** Contextual menu (tap, then long-press on the R1 when the firmware routes it to a menu). */
-const MENU: { id: number; name: string; gesture: Gesture }[] = [
+const MENU: { id: number; name: string; gesture: Gesture | "exit" }[] = [
   { id: 1, name: "Deep dive", gesture: "long_press" },
   { id: 2, name: "Glance audio", gesture: "tap" },
-  { id: 3, name: "Stop audio", gesture: "double_tap" },
+  { id: 3, name: "Stop audio", gesture: "stop" },
   { id: 4, name: "Next card", gesture: "next" },
+  { id: 5, name: "Exit", gesture: "exit" },
 ];
 
 const GESTURES: Partial<Record<OsEventTypeList, Gesture>> = {
@@ -114,12 +118,14 @@ export async function bootPlugin(opts: PluginOptions) {
   // ------------------------------------------------------------------ reader
   const cache = new AudioCache();
   const audio = new HtmlAudio({
-    onRemote: (a) => void reader.gesture(a === "stop" ? "double_tap" : "tap"),
+    onRemote: (a) => void reader.gesture(a === "stop" ? "stop" : "tap"),
   });
   const reader: Reader = new Reader({
     audio,
     audioUrl: (p) => cache.resolve(p),
-    persist: (date, index) => void kv.set(K.pos, JSON.stringify({ date, index })),
+    persist: (date, index) => void (isTour(reader.bundle) || kv.set(K.pos, JSON.stringify({ date, index }))),
+    // The system dialog: the user confirms on the glasses, then the host closes this WebView.
+    onExit: () => void bridge?.shutDownPageContainer(1).catch(() => false),
     onChange: (lines, r) => {
       const text = lines.join("\n");
       void push(text);
@@ -131,19 +137,24 @@ export async function bootPlugin(opts: PluginOptions) {
   });
 
   // ------------------------------------------------------------------ phone page
-  const ui = phonePage(opts.root, Boolean(bridge));
+  const ui = phonePage(opts.root, Boolean(bridge), api);
   const preview = mountPreview(ui.mirror, { onGesture: (g) => void reader.gesture(g), note: !bridge });
 
   if (bridge) {
     bridge.onEvenHubEvent((event: EvenHubEvent) => {
       if (event.menuItemClickEvent?.itemID) {
         const m = MENU.find((x) => x.id === event.menuItemClickEvent!.itemID);
-        if (m) void reader.gesture(m.gesture);
+        if (m?.gesture === "exit") void bridge.shutDownPageContainer(1).catch(() => false);
+        else if (m) void reader.gesture(m.gesture);
         return;
       }
       const sys = event.sysEvent ?? event.textEvent ?? event.listEvent;
       if (!sys) return;
       const type = OsEventTypeList.fromJson(sys.eventType ?? 0);
+      if (type === OsEventTypeList.SYSTEM_EXIT_EVENT) {
+        audio.stop();
+        return;
+      }
       if (type === OsEventTypeList.FOREGROUND_ENTER_EVENT) {
         lastPushed = "";
         void refresh();
@@ -171,12 +182,19 @@ export async function bootPlugin(opts: PluginOptions) {
     void cache.prefetch(audioPaths(stored.bundle)).then((n) => ui.cacheNote(n, audioPaths(stored.bundle).length));
   }
 
+  /** No edition to read: the tour, ending with what to do next. */
+  function showTour(reason: TourReason, message: string) {
+    ui.state(reason === "pair" ? "pair" : "reading", message);
+    const t = tour(reason, today());
+    if (!isTour(reader.bundle) || reader.bundle!.edition.sections.at(-1)!.body !== t.edition.sections.at(-1)!.body) reader.load(t);
+    ui.cacheNote(0, 0);
+  }
+
   async function refresh() {
     const token = await kv.get(K.token);
     const cached = JSON.parse((await kv.get(K.bundle)) ?? "null") as Stored | null;
     if (!token) {
-      ui.state("pair");
-      await push("G2 DIGEST\n\nOpen G2 Digest on your\nphone and enter the\npairing code from the\nweb app.");
+      showTour("pair", "");
       return;
     }
     let res: Response | null = null;
@@ -188,9 +206,8 @@ export async function bootPlugin(opts: PluginOptions) {
     if (res && res.status === 401) {
       // Revoked from the web app: fail closed.
       await kv.set(K.token, "");
-      ui.state("pair", "This device was unpaired. Pair it again with a new code.");
-      reader.bundle = null;
-      await push("G2 DIGEST\n\nThis device was unpaired.\nPair again from your\nphone.");
+      await kv.set(K.bundle, "");
+      showTour("pair", "This device was unpaired. Pair it again with a new code.");
       return;
     }
     if (res && res.ok) {
@@ -202,13 +219,11 @@ export async function bootPlugin(opts: PluginOptions) {
       return;
     }
     if (res && res.status === 404 && !cached) {
-      ui.state("reading", "Paired. No edition published yet.");
-      await push("G2 DIGEST\n\nPaired. Your first\nedition isn't out yet.");
+      showTour("waiting", "Paired. No edition published yet: connect the agent that builds your editions (Agents on the web app).");
       return;
     }
     if (cached) return show(cached, ` · offline, fetched ${new Date(cached.fetched_at).toLocaleString()}`);
-    ui.state("reading", "Offline and nothing fetched yet.");
-    await push("G2 DIGEST\n\nOffline. Nothing fetched\nyet.");
+    showTour("offline", "Offline and nothing fetched yet.");
   }
 
   async function pairWith(code: string, label: string): Promise<string | null> {
@@ -228,7 +243,6 @@ export async function bootPlugin(opts: PluginOptions) {
     audio.stop();
     await kv.set(K.token, "");
     await kv.set(K.bundle, "");
-    reader.bundle = null;
     await refresh();
   });
 
@@ -247,13 +261,19 @@ export async function bootPlugin(opts: PluginOptions) {
 
 // ---------------------------------------------------------------------- phone page DOM
 
-function phonePage(root: HTMLElement, onGlasses: boolean) {
+/** The local calendar date, YYYY-MM-DD (the tour's date). */
+const today = () => new Date().toLocaleDateString("en-CA");
+
+function phonePage(root: HTMLElement, onGlasses: boolean, api: string) {
+  // Addresses as text, not links: a link would navigate the Even app's WebView away from the plugin.
+  const site = api.replace(/^https?:\/\//, "");
   root.innerHTML = `
     <div class="plugin">
       <header><b>G2 Digest</b><span class="pill">${onGlasses ? "glasses connected" : "browser preview"}</span></header>
       <section class="pair" hidden>
         <h2>Pair your glasses</h2>
-        <p class="muted msg">Sign in on the G2 Digest web app, open <b>Pair</b>, and type the 6-digit code here.</p>
+        <p class="muted">In your browser, sign in at <b class="addr">${site}</b>, open <b>Pair</b>, and type the 6-digit code here. Meanwhile, the glasses show a short tour.</p>
+        <p class="msg" hidden></p>
         <form class="row">
           <input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456" aria-label="Pairing code" />
           <button class="primary">Pair</button>
@@ -262,7 +282,9 @@ function phonePage(root: HTMLElement, onGlasses: boolean) {
       </section>
       <section class="reading" hidden>
         <p class="muted title"></p>
-        <div class="mirror"></div>
+      </section>
+      <div class="mirror"></div>
+      <section class="reading-more" hidden>
         <p class="muted small cache"></p>
         <fieldset class="mode">
           <legend>Audio</legend>
@@ -274,9 +296,10 @@ function phonePage(root: HTMLElement, onGlasses: boolean) {
           <button class="unpair">Unpair</button>
         </div>
       </section>
+      <p class="muted small">Help: <span class="addr">${site}/support</span> · Privacy: <span class="addr">${site}/privacy</span></p>
     </div>`;
   const $ = <T extends Element>(s: string) => root.querySelector(s) as T;
-  const pair = $<HTMLElement>(".pair"), reading = $<HTMLElement>(".reading");
+  const pair = $<HTMLElement>(".pair"), reading = $<HTMLElement>(".reading"), more = $<HTMLElement>(".reading-more");
   const err = $<HTMLElement>(".error");
   let pairHandler: ((code: string, label: string) => Promise<string | null>) | null = null;
   $<HTMLFormElement>(".pair form").addEventListener("submit", async (e) => {
@@ -293,8 +316,10 @@ function phonePage(root: HTMLElement, onGlasses: boolean) {
     mirror: $<HTMLElement>(".mirror"),
     state(s: "pair" | "reading", message?: string) {
       pair.hidden = s !== "pair";
-      reading.hidden = s !== "reading";
-      if (s === "pair" && message) $<HTMLElement>(".pair .msg").textContent = message;
+      reading.hidden = more.hidden = s !== "reading";
+      const msg = $<HTMLElement>(".pair .msg");
+      msg.textContent = s === "pair" ? message ?? "" : "";
+      msg.hidden = !msg.textContent;
       if (s === "reading") $<HTMLElement>(".reading .title").textContent = message ?? "";
     },
     cacheNote(n: number, of: number) {

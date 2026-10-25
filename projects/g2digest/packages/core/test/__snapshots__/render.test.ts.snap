@@ -67,7 +67,7 @@ exports[`render > matches the snapshot 1`] = `
 │ That's the brief          │
 │ See the full edition on   │
 │ the web.                  │
-│ DOUBLE-TAP TO STOP        │
+│ DOUBLE-TAP TO EXIT        │
 │                           │
 │                           │
 └───────────────────────────┘"

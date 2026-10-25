@@ -9,6 +9,7 @@
 //   GET  /authorize               starts consent, then redirects to the consent page /oauth/consent/
 //   POST /authorize               the consent page approves or denies, with the user's Supabase session
 //   GET/DELETE /api/grants        connected assistants (signed-in user)
+//   DELETE /api/account           delete all of the signed-in user's G2 Digest data
 //   /api/*, /feed/*               api.ts
 //   /edition/<date>, /preview/<date>   the edition and preview pages
 //   everything else               static assets
@@ -16,7 +17,7 @@
 import { AuthorizationError, OAuthProvider, type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import { handleApi } from "./api.ts";
 import { handleMcp, type Caller } from "./mcp.ts";
-import { admin, json, PREFIX, sha256, supabaseUser, type Env as BaseEnv } from "./store.ts";
+import { admin, deleteUserData, json, PREFIX, sha256, supabaseUser, type Env as BaseEnv } from "./store.ts";
 
 export interface Env extends BaseEnv {
   OAUTH_PROVIDER: OAuthHelpers;
@@ -112,11 +113,26 @@ async function grants(req: Request, env: Env, url: URL): Promise<Response> {
   return json({ error: "not found" }, 404);
 }
 
+/** Everything G2 Digest holds for the signed-in user, and the assistants they connected. */
+async function deleteAccount(req: Request, env: Env): Promise<Response> {
+  const user = await supabaseUser(env, req);
+  if (!user) return json({ error: "sign in required" }, 401);
+  const { items } = await env.OAUTH_PROVIDER.listUserGrants(user.id);
+  for (const g of items) await env.OAUTH_PROVIDER.revokeGrant(g.id, user.id);
+  try {
+    await deleteUserData(admin(env), user.id);
+  } catch {
+    return json({ error: "Couldn't delete everything. Try again, or email us." }, 500);
+  }
+  return json({ ok: true });
+}
+
 const app = {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
     if (url.pathname === "/authorize") return authorize(req, env);
     if (url.pathname === "/api/grants" || url.pathname.startsWith("/api/grants/")) return grants(req, env, url);
+    if (url.pathname === "/api/account" && req.method === "DELETE") return deleteAccount(req, env);
     if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/feed/")) return handleApi(req, env, url);
     // Pretty routes for one date: the page reads the date from location.pathname.
     const page = url.pathname.match(/^\/(edition|preview)\/(?:\d{4}-\d{2}-\d{2}|latest|fixture)\/?$/);

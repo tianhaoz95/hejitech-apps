@@ -97,7 +97,25 @@ async function render() {
     tokenOut,
     el("h3", { style: "margin-top: 18px" }, "Connected assistants"), grants);
 
-  root.replaceChildren(pairPanel, devicesPanel, agentsPanel);
+  // ---------------------------------------------------------------- delete everything
+  const deleteNote = el("p", { class: "error", role: "alert", hidden: true });
+  const dataPanel = el("section", { class: "panel" },
+    el("h2", {}, "Your data"),
+    el("p", { class: "muted" }, "Delete your brief, every edition and its audio, paired glasses, feeds, agent tokens and connected assistants. This can't be undone. Your sign-in is a HEJI account shared with our other apps: to delete it too, email ",
+      el("a", { href: "mailto:info@hejitech.com" }, "info@hejitech.com"), ". See the ", el("a", { href: "/privacy/" }, "Privacy Policy"), "."),
+    el("button", { class: "btn danger", type: "button", onclick: async () => {
+      if (!confirm("Delete all your G2 Digest data? Your editions, audio, brief, paired glasses and tokens are removed for good.")) return;
+      const r = await api<{ ok?: boolean; error?: string }>("/api/account", { method: "DELETE" });
+      if (!r.ok) {
+        deleteNote.textContent = r.body.error ?? "Couldn't delete your data.";
+        deleteNote.hidden = false;
+        return;
+      }
+      location.href = "/";
+    } }, "Delete all my G2 Digest data"),
+    deleteNote);
+
+  root.replaceChildren(pairPanel, devicesPanel, agentsPanel, dataPanel);
   await Promise.all([newCode(), loadDevices(), loadTokens()]);
 }
 void render();
