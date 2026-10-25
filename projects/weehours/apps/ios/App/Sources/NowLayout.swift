@@ -121,7 +121,6 @@ struct NowCards<Card: View>: View {
     }
 
     @State private var lift: Lift?
-    @GestureState private var holding = false
     @State private var frames: [NowSection: CGRect] = [:]
     @State private var empty: Set<NowSection> = []
     @State private var position = ScrollPosition(edge: .top)
@@ -139,7 +138,11 @@ struct NowCards<Card: View>: View {
                         .font(.footnote).foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
                 }
-                ForEach(order) { s in item(s) }
+                // Outside arranging the cards go in bare: a wrapper around a card that isn't there
+                // right now would still take the stack's spacing and leave a gap.
+                ForEach(order) { s in
+                    if arranging { item(s) } else { card(s) }
+                }
             }
             .padding()
         }
@@ -147,7 +150,6 @@ struct NowCards<Card: View>: View {
         .scrollDisabled(lift != nil)
         .onScrollGeometryChange(for: ScrollGeometry.self) { $0 } action: { _, g in scroll = g }
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { viewport = $0 }
-        .onChange(of: holding) { _, held in if !held { drop() } }
         .onChange(of: arranging) { _, on in if !on { drop() } }
         .sensoryFeedback(.selection, trigger: lift?.order)
         .sensoryFeedback(.impact(weight: .medium), trigger: lift?.section) { $1 != nil }
@@ -173,7 +175,9 @@ struct NowCards<Card: View>: View {
         .offset(y: lifted ? offset(of: s) : 0)
         .zIndex(lifted ? 1 : 0)
         .contentShape(RoundedRectangle(cornerRadius: 18))
-        .gesture(arranging ? drag(s) : nil)
+        // UIKit's long press, not a SwiftUI drag: any SwiftUI drag on a card keeps the list from
+        // scrolling on iOS 18+, while this one gives way to the scroll view's pan until it fires.
+        .gesture(HoldToDrag(enabled: arranging) { phase, y in hold(s, phase, y) })
         .animation(.snappy(duration: 0.25), value: lifted)
         .modifier(Arranging(on: arranging, section: s) { by in nudge(s, by: by) })
     }
@@ -184,23 +188,19 @@ struct NowCards<Card: View>: View {
         return lift.finger - lift.grab - f.minY
     }
 
-    private func drag(_ s: NowSection) -> some Gesture {
-        LongPressGesture(minimumDuration: 0.2)
-            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .global))
-            .updating($holding) { value, held, _ in
-                if case .second(true, _) = value { held = true }
-            }
-            .onChanged { value in
-                guard case .second(true, let d?) = value else { return }
-                if lift == nil {
-                    guard let f = frames[s] else { return }
-                    lift = Lift(section: s, grab: d.startLocation.y - f.minY, finger: d.location.y, order: shown)
-                    startAutoscroll()
-                } else {
-                    lift?.finger = d.location.y
-                }
-                reorder()
-            }
+    private func hold(_ s: NowSection, _ phase: HoldToDrag.Phase, _ y: CGFloat) {
+        switch phase {
+        case .lift:
+            guard lift == nil, let f = frames[s] else { return }
+            lift = Lift(section: s, grab: y - f.minY, finger: y, order: shown)
+            startAutoscroll()
+        case .move:
+            guard lift?.section == s else { return }
+            lift?.finger = y
+            reorder()
+        case .drop:
+            drop()
+        }
     }
 
     /// Puts the lifted card where its middle is: past a neighbour's middle, they swap.
@@ -253,6 +253,33 @@ struct NowCards<Card: View>: View {
         guard let i = shown.firstIndex(of: s), shown.indices.contains(i + by) else { return }
         withAnimation(.snappy) {
             stored = NowLayout.encode(NowLayout.move(NowLayout.order(stored), shown: shown, from: [i], to: by > 0 ? i + 2 : i - 1))
+        }
+    }
+}
+
+/// Hold for a moment, then drag; reports the finger's y in global coordinates.
+private struct HoldToDrag: UIGestureRecognizerRepresentable {
+    enum Phase { case lift, move, drop }
+    let enabled: Bool
+    let changed: (Phase, CGFloat) -> Void
+
+    func makeUIGestureRecognizer(context: Context) -> UILongPressGestureRecognizer {
+        let g = UILongPressGestureRecognizer()
+        g.minimumPressDuration = 0.2
+        return g
+    }
+
+    func updateUIGestureRecognizer(_ g: UILongPressGestureRecognizer, context: Context) {
+        g.isEnabled = enabled
+    }
+
+    func handleUIGestureRecognizerAction(_ g: UILongPressGestureRecognizer, context: Context) {
+        let y = context.converter.location(in: .global).y
+        switch g.state {
+        case .began: changed(.lift, y)
+        case .changed: changed(.move, y)
+        case .ended, .cancelled, .failed: changed(.drop, y)
+        default: break
         }
     }
 }
