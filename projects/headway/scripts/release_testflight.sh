@@ -1,0 +1,165 @@
+#!/usr/bin/env bash
+# Builds a Release archive of the Headway iPhone app and uploads it to App Store Connect for
+# TestFlight. Copied from Wee Hours' script (projects stay self-contained).
+#
+# Signing is automatic via an App Store Connect API key, reusing the certificates already in this
+# Mac's keychain (the archive pins the HEJI Apple Development identity by hash, and the export
+# re-signs with the existing HEJI Apple Distribution certificate). You need:
+#   1. An App Store Connect API key (App Manager or higher) for team 68CTFST8W2.
+#   2. The app record in App Store Connect (com.hejitech.headway) -- this script doesn't create it.
+#
+# Usage:
+#   APPLE_TEAM_ID=68CTFST8W2 ./scripts/release_testflight.sh
+#
+# Credentials (first match wins):
+#   ASC_KEY_ID    / FA_ASC_KEY_ID     App Store Connect API Key ID
+#   ASC_ISSUER_ID / FA_ASC_ISSUER_ID  App Store Connect API Issuer ID
+#   ASC_KEY_PATH  / FA_KEY_LOCATION   path to the AuthKey_<KEY_ID>.p8 file
+#   APPLE_TEAM_ID                     Apple Developer Team ID (no fallback)
+#
+# The build number (CFBundleVersion) is the current UTC timestamp, so uploads never collide.
+#
+# After the upload, `feedbackkit release` marks merged FeedbackKit fixes as shipped in this build so
+# reporters get asked "is it fixed?". It needs `npx feedbackkit-cli login` locally or
+# FEEDBACKKIT_RELEASE_TOKEN (a project access token with releases:write) in CI; without either it
+# only warns, and the upload still counts.
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+IOS_DIR="$REPO_ROOT/apps/ios"
+BUILD_DIR="$REPO_ROOT/build/release"
+ARCHIVE_PATH="$BUILD_DIR/Headway.xcarchive"
+EXPORT_PATH="$BUILD_DIR/export"
+EXPORT_OPTIONS_PLIST="$BUILD_DIR/ExportOptions.plist"
+# The archive signs with the existing "Apple Development: Tianhao Zhou (6522A974B3)" (team
+# 68CTFST8W2). Xcode 27 rejects a pinned SHA-1 under automatic signing ("conflicting provisioning
+# settings"), so the generic "Apple Development" is used and the preflight below requires exactly
+# one such identity in the keychain -- headless signing then has nothing to choose between and no
+# reason to mint a new certificate. Development, not Distribution, because SPM package targets are
+# always signed as development; the export re-signs with the existing Apple Distribution cert.
+CODE_SIGN_IDENTITY_SHA1="2CF449D6E3C37D5B9F2E03F601D13A879E96D5A7"
+
+ASC_KEY_ID="${ASC_KEY_ID:-${FA_ASC_KEY_ID:-}}"
+ASC_ISSUER_ID="${ASC_ISSUER_ID:-${FA_ASC_ISSUER_ID:-}}"
+ASC_KEY_PATH="${ASC_KEY_PATH:-${FA_KEY_LOCATION:-}}"
+APPLE_TEAM_ID="${APPLE_TEAM_ID:-}"
+
+# --- Validate credentials ---------------------------------------------------
+
+missing=()
+[[ -z "$ASC_KEY_ID" ]] && missing+=("ASC_KEY_ID (or FA_ASC_KEY_ID)")
+[[ -z "$ASC_ISSUER_ID" ]] && missing+=("ASC_ISSUER_ID (or FA_ASC_ISSUER_ID)")
+[[ -z "$ASC_KEY_PATH" ]] && missing+=("ASC_KEY_PATH (or FA_KEY_LOCATION)")
+[[ -z "$APPLE_TEAM_ID" ]] && missing+=("APPLE_TEAM_ID")
+
+if [[ ${#missing[@]} -gt 0 ]]; then
+  echo "error: missing required credentials:" >&2
+  for m in "${missing[@]}"; do echo "  - $m" >&2; done
+  exit 1
+fi
+
+if [[ ! -f "$ASC_KEY_PATH" ]]; then
+  echo "error: App Store Connect API key not found at: $ASC_KEY_PATH" >&2
+  exit 1
+fi
+
+identities="$(security find-identity -v -p codesigning)"
+for kind in "Apple Development" "Apple Distribution"; do
+  if [[ "$(grep -c "\"$kind:" <<<"$identities")" != "1" ]]; then
+    echo "error: expected exactly one \"$kind\" identity in the keychain:" >&2
+    echo "$identities" >&2
+    echo "  Signing could pick the wrong one (or mint a new one). Remove the extras first." >&2
+    exit 1
+  fi
+done
+if ! grep -q "$CODE_SIGN_IDENTITY_SHA1" <<<"$identities"; then
+  echo "error: the HEJI Apple Development identity ($CODE_SIGN_IDENTITY_SHA1) is not in the keychain." >&2
+  echo "  Import it from ~/Credentials (APPLE_DEV_CERT_P12_PATH in hejitech.env) rather than minting a new one." >&2
+  exit 1
+fi
+
+# --- Preflight: app icon ----------------------------------------------------
+
+if ! find "$IOS_DIR/App/Resources/Assets.xcassets/AppIcon.appiconset" -maxdepth 1 -iname "*.png" | grep -q .; then
+  echo "error: the app has no icon image (App/Resources/Assets.xcassets/AppIcon.appiconset)." >&2
+  exit 1
+fi
+
+# --- Build ------------------------------------------------------------------
+
+echo "-> Regenerating Xcode project via xcodegen..."
+(cd "$IOS_DIR" && xcodegen generate)
+
+BUILD_NUMBER="$(date -u +%Y%m%d%H%M)"
+echo "-> Using build number $BUILD_NUMBER (CFBundleVersion)"
+
+mkdir -p "$BUILD_DIR"
+rm -rf "$ARCHIVE_PATH" "$EXPORT_PATH"
+
+echo "-> Archiving App (Release)..."
+xcodebuild archive \
+  -project "$IOS_DIR/Headway.xcodeproj" \
+  -scheme App \
+  -configuration Release \
+  -archivePath "$ARCHIVE_PATH" \
+  -destination "generic/platform=iOS" \
+  -allowProvisioningUpdates \
+  -authenticationKeyPath "$ASC_KEY_PATH" \
+  -authenticationKeyID "$ASC_KEY_ID" \
+  -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+  CODE_SIGNING_ALLOWED=YES \
+  CODE_SIGNING_REQUIRED=YES \
+  CODE_SIGN_STYLE=Automatic \
+  CODE_SIGN_IDENTITY="Apple Development" \
+  DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+  CURRENT_PROJECT_VERSION="$BUILD_NUMBER"
+
+cat > "$EXPORT_OPTIONS_PLIST" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>method</key>
+	<string>app-store-connect</string>
+	<key>teamID</key>
+	<string>$APPLE_TEAM_ID</string>
+	<key>signingStyle</key>
+	<string>automatic</string>
+	<key>destination</key>
+	<string>upload</string>
+</dict>
+</plist>
+PLIST
+
+echo "-> Exporting and uploading to App Store Connect (TestFlight)..."
+xcodebuild -exportArchive \
+  -archivePath "$ARCHIVE_PATH" \
+  -exportPath "$EXPORT_PATH" \
+  -exportOptionsPlist "$EXPORT_OPTIONS_PLIST" \
+  -allowProvisioningUpdates \
+  -authenticationKeyPath "$ASC_KEY_PATH" \
+  -authenticationKeyID "$ASC_KEY_ID" \
+  -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+echo "-> Build $BUILD_NUMBER uploaded; waiting for App Store Connect to process it..."
+# An accepted upload can still be rejected while processing (Wee Hours 0.8.2 and 0.8.3 were, ITMS-90626),
+# and then nothing reaches TestFlight. Wait for the verdict: a rejection fails the release with
+# Apple's reason and isn't announced to FeedbackKit as shipped.
+BUNDLE_ID="com.hejitech.$(sed -nE 's/^[[:space:]]*PRODUCT_SLUG:[[:space:]]*"?([a-z0-9.-]+)"?.*/\1/p' "$IOS_DIR/project.yml" | head -1)"
+status=0
+swift "$REPO_ROOT/scripts/asc_build_status.swift" "$ASC_KEY_PATH" "$ASC_KEY_ID" "$ASC_ISSUER_ID" "$BUNDLE_ID" "$BUILD_NUMBER" 1500 || status=$?
+if [[ $status == 1 ]]; then
+  exit 1
+elif [[ $status != 0 ]]; then
+  echo "warning: build $BUILD_NUMBER is still processing; check App Store Connect, then announce it by hand:" >&2
+  echo "  npx feedbackkit-cli release --build $BUILD_NUMBER" >&2
+  exit 0
+fi
+echo "✅ Build $BUILD_NUMBER is processed and on its way to TestFlight."
+
+echo "-> Announcing build $BUILD_NUMBER to FeedbackKit..."
+APP_VERSION="$(sed -nE 's/^[[:space:]]*MARKETING_VERSION:[[:space:]]*"?([0-9.]+)"?.*/\1/p' "$IOS_DIR/project.yml" | head -1)"
+if ! (cd "$REPO_ROOT" && npx -y feedbackkit-cli release --build "$BUILD_NUMBER" --app-version "$APP_VERSION"); then
+  echo "warning: feedbackkit release failed; run it by hand: npx feedbackkit-cli release --build $BUILD_NUMBER" >&2
+fi

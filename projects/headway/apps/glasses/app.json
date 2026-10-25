@@ -1,0 +1,13 @@
+{
+  "package_id": "com.hejitech.headway.glasses",
+  "edition": "202601",
+  "name": "Headway",
+  "version": "0.0.0",
+  "min_app_version": "2.2.10",
+  "min_sdk_version": "0.0.16",
+  "entrypoint": "index.html",
+  "permissions": [
+    { "name": "network", "desc": "Fetch live Caltrain departures and your saved commute from Headway", "whitelist": ["https://headway.hejitech.workers.dev"] }
+  ],
+  "supported_languages": ["en"]
+}

@@ -1,0 +1,104 @@
+name: Headway CI
+
+# Checks pushes and PRs that touch Headway or what it shares with other projects (root workspace
+# files, supabase/, CI plumbing). Keep `paths` in sync with CI_PATHS in projects/headway/release.env:
+# cut_release.sh requires this workflow to be green on the newest commit that touched them. Deploys
+# are separate: Cloudflare Workers Builds deploys the Worker on push to main; a headway-v<version>
+# release runs headway-testflight.yml and headway-glasses-release.yml.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "projects/headway/**"
+      - "supabase/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - ".github/workflows/headway-ci.yml"
+  pull_request:
+    paths:
+      - "projects/headway/**"
+      - "supabase/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - ".github/workflows/headway-ci.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: headway-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  node:
+    name: Core, web + Worker, glasses (tests, typecheck, build, pack)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck:headway
+      - run: npm run test:headway
+      - run: npm run build:headway
+        env:
+          WEB_ALLOW_LOCAL: "1"
+      - name: Pack the plugin
+        run: node projects/headway/apps/glasses/scripts/pack.mjs
+
+  backend:
+    name: Shared Supabase schema + Worker integration (boards, pairing, push, MCP/OAuth, RLS)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          # pinned: "latest" asks the GitHub API, which rate-limits shared runners
+          version: 2.121.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # Applies every project's migrations and seeds: the whole shared history must replay.
+      - run: supabase start -x studio,imgproxy,vector,logflare,supavisor,mailpit,edge-runtime
+      - name: Worker against the local stack
+        working-directory: projects/headway/services/web
+        run: |
+          echo "SUPABASE_SERVICE_ROLE_KEY=$(supabase status -o json | jq -r .SERVICE_ROLE_KEY)" > .dev.vars
+          npm run dev:worker > /tmp/worker.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf -o /dev/null http://127.0.0.1:8792/ && break; sleep 1; done
+          curl -sf -o /dev/null http://127.0.0.1:8792/ || { cat /tmp/worker.log; exit 1; }
+      - run: node projects/headway/scripts/test-api.mjs
+      - if: failure()
+        run: cat /tmp/worker.log || true
+      - if: always()
+        run: supabase stop
+
+  ios:
+    name: iPhone app (HeadwayKit tests, simulator build)
+    runs-on: macos-26
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: projects/headway/apps/ios
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "26"
+      - run: brew install xcodegen
+      - name: HeadwayKit tests
+        working-directory: projects/headway/apps/ios/HeadwayKit
+        run: swift test
+      - run: xcodegen generate
+      - name: Build for the simulator
+        run: xcodebuild -project Headway.xcodeproj -scheme App -destination 'generic/platform=iOS Simulator' build CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO

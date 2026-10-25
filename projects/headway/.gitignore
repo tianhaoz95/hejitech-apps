@@ -1,0 +1,9 @@
+node_modules
+dist
+build
+.wrangler
+.dev.vars
+apps/ios/Headway.xcodeproj
+apps/ios/.derived
+apps/ios/HeadwayKit/.build
+apps/ios/.derived-device

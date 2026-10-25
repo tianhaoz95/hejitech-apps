@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- @head -->
+    <title>Headway · Caltrain on your Even G2</title>
+    <meta name="description" content="Live Caltrain departures, delays and alerts on Even G2 glasses, steered with the R1 ring, plus iPhone alerts when your train is late, cancelled or almost at your stop." />
+  </head>
+  <body>
+    <!-- @header -->
+    <main>
+      <div class="wrap">
+        <section class="hero">
+          <h1>Your next Caltrain, at a glance.</h1>
+          <p class="lede">Headway puts your commute on Even G2 glasses: the next trains from your station, live delays and Caltrain's alerts. Swipe the R1 ring to look further, tap to flip direction, hold to follow the train you're on. Your iPhone taps you when it's late, cancelled, time to leave, or a few minutes from your stop.</p>
+          <div class="row" style="margin: 18px 0 26px">
+            <a class="btn primary" href="/login/?next=/settings/" data-signed-out>Sign in with Google</a>
+            <a class="btn primary" href="/settings/" data-signed-in hidden>Your commute</a>
+            <a class="btn secondary" href="/support/">How it works</a>
+          </div>
+        </section>
+        <div class="grid2">
+          <section class="panel" aria-labelledby="board-title">
+            <div class="row" style="justify-content: space-between">
+              <h2 id="board-title">Next trains</h2>
+              <span class="badge" id="live">…</span>
+            </div>
+            <form class="pair-form" id="pair">
+              <label class="field"><span>From</span><select name="from" id="from"></select></label>
+              <button class="btn secondary swap" type="button" id="swap" aria-label="Swap stations" title="Swap">⇅</button>
+              <label class="field"><span>To</span><select name="to" id="to"></select></label>
+            </form>
+            <ol class="trains" id="trains" aria-live="polite"><li class="muted">Loading…</li></ol>
+            <div id="alerts"></div>
+          </section>
+          <section class="panel" aria-labelledby="g2-title">
+            <h2 id="g2-title">On the glasses</h2>
+            <p class="muted small">The same board as the G2 shows it. Try the ring: swipe, tap, double-tap, hold.</p>
+            <pre class="g2" id="g2" aria-label="Glasses preview"></pre>
+            <div class="ring" role="group" aria-label="R1 ring">
+              <button type="button" data-in="up">Swipe up</button>
+              <button type="button" data-in="down">Swipe down</button>
+              <button type="button" data-in="tap">Tap</button>
+              <button type="button" data-in="double_tap">Double-tap</button>
+              <button type="button" data-in="long_press">Hold</button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+    <!-- @footer -->
+    <script type="module" src="/src/board.ts"></script>
+  </body>
+</html>

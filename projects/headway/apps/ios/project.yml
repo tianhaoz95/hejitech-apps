@@ -1,0 +1,71 @@
+# XcodeGen spec. `xcodegen generate` creates Headway.xcodeproj (git-ignored).
+name: Headway
+options:
+  bundleIdPrefix: com.hejitech
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+  defaultConfig: Debug
+
+settings:
+  base:
+    APP_DISPLAY_NAME: Headway
+    PRODUCT_SLUG: headway
+    DEVELOPMENT_TEAM: 68CTFST8W2
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+
+packages:
+  HeadwayKit:
+    path: HeadwayKit
+
+targets:
+  App:
+    type: application
+    platform: iOS
+    sources:
+      - path: App/Sources
+      - path: App/Resources
+    dependencies:
+      - package: HeadwayKit
+    settings:
+      base:
+        PRODUCT_NAME: Headway
+        PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.$(PRODUCT_SLUG)
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        INFOPLIST_KEY_CFBundleDisplayName: $(APP_DISPLAY_NAME)
+        TARGETED_DEVICE_FAMILY: "1"
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: $(APP_DISPLAY_NAME)
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen: {}
+        UIBackgroundModes: [remote-notification]
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        ITSAppUsesNonExemptEncryption: false
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        CFBundleURLTypes:
+          - CFBundleURLName: com.hejitech.headway
+            CFBundleURLSchemes: [headway]
+    entitlements:
+      path: App/App.entitlements
+      properties:
+        com.apple.developer.applesignin: [Default]
+        aps-environment: development
+        com.apple.developer.usernotifications.time-sensitive: true
+
+schemes:
+  App:
+    build:
+      targets:
+        App: all
+    run:
+      config: Debug
+    test:
+      config: Debug

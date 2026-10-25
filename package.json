@@ -20,6 +20,9 @@
     "build:g2digest": "npm run build -w @g2digest/web -w @g2digest/glasses",
     "test:g2digest": "npm test -w projects/g2digest/packages -w projects/g2digest/services --if-present",
     "typecheck:g2digest": "npm run typecheck -w projects/g2digest/packages -w projects/g2digest/apps -w projects/g2digest/services --if-present",
+    "build:headway": "npm run build -w @headway/web -w @headway/glasses",
+    "test:headway": "npm test -w projects/headway/packages -w projects/headway/apps --if-present",
+    "typecheck:headway": "npm run typecheck -w projects/headway/packages -w projects/headway/apps -w projects/headway/services --if-present",
     "pages:dev": "node scripts/pages_sync.mjs && vitepress dev pages",
     "pages:build": "node scripts/pages_sync.mjs && vitepress build pages"
   },

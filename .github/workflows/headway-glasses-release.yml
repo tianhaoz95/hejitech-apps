@@ -1,0 +1,46 @@
+name: Headway glasses (Even Hub plugin)
+
+# Packs the Even G2 glasses app (.ehpk) for a published headway-v<version> release and attaches it.
+# The plugin ships with the iPhone app under the same version: scripts/cut_release.sh headway bumps
+# MARKETING_VERSION in apps/ios/project.yml, which apps/glasses/scripts/pack.mjs stamps into the
+# plugin's app.json. Upload the .ehpk to the Even Hub portal by hand (projects/headway/docs/DEPLOY.md).
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (headway-v<version>)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  pack:
+    if: startsWith(github.event.release.tag_name || inputs.tag, 'headway-v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test -w @headway/glasses
+      - run: npm run package -w @headway/glasses
+      - name: Version matches the tag
+        run: |
+          v=$(node -p "require('./projects/headway/apps/glasses/build/app.json').version")
+          [ "headway-v$v" = "$TAG" ] || { echo "app.json $v doesn't match $TAG"; exit 1; }
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp projects/headway/apps/glasses/build/headway.ehpk "headway-glasses-${TAG#headway-v}.ehpk"
+          gh release upload "$TAG" "headway-glasses-${TAG#headway-v}.ehpk" --clobber
