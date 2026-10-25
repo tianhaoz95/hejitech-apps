@@ -1,6 +1,6 @@
 # HEJI projects monorepo
 
-Several products live in `projects/<name>/` (`waypack`, `weehours`, `feedbackkit`, `voxbrief`, `meowtrix`, `contempo`, `toddlercam`, `tinytouch`, `g2digest`, `headway`), sharing one
+Several products live in `projects/<name>/` (`waypack`, `weehours`, `feedbackkit`, `voxbrief`, `meowtrix`, `contempo`, `toddlercam`, `tinytouch`, `g2digest`, `headway`, `fitloop`), sharing one
 Supabase project (FeedbackKit keeps its own: `BACKEND=own`; Voxbrief, Meowtrix, ToddlerCam and TinyTouch have none: `BACKEND=none`) (`supabase/`, read `supabase/README.md` before any schema change), npm workspaces and CI
 plumbing. Layout and how to add a project: `README.md`. Keep each project self-contained; put
 something at the root only when it is genuinely shared. Each project has its own `CLAUDE.md`
@@ -96,6 +96,12 @@ in-app What's New describes the version) and publishes `headway-v<version>`, whi
 `headway-testflight.yml` and `headway-glasses-release.yml` (the Even Hub plugin `.ehpk`, same version,
 attached to the release; upload it to the Even Hub portal by hand). Its Worker (site, API, the
 every-minute realtime + alert cron, MCP) deploys on push. See `projects/headway/CLAUDE.md`.
+
+For FitLoop it bumps `MARKETING_VERSION` in `projects/fitloop/apps/ios/project.yml` (refusing until the
+in-app What's New describes the version) and publishes `fitloop-v<version>`, which runs
+`fitloop-testflight.yml` (iPhone app with its Watch app) and `fitloop-glasses-release.yml` (the Even Hub
+plugin `.ehpk`, same version; upload it to the Even Hub portal by hand). Its Worker (web app, API,
+MCP) deploys on push. See `projects/fitloop/CLAUDE.md`.
 
 ## Common pitfalls
 

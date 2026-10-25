@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- @head -->
+    <title>Privacy · FitLoop</title>
+  </head>
+  <body>
+    <!-- @header -->
+    <main>
+      <div class="wrap narrow">
+        <h1>Privacy</h1>
+        <p class="muted">Last updated October 25, 2026.</p>
+        <h2>What FitLoop keeps</h2>
+        <ul>
+          <li><b>Your account</b>: you sign in with Google or Apple; FitLoop receives your email address and an account id, shared with other HEJI apps that use the same sign-in.</li>
+          <li><b>Your plans</b>: what your AI agent publishes for you, every version.</li>
+          <li><b>What you log</b>: check-ins (sets, workouts, meals, portions, swaps), notes for your agent and your agent's replies.</li>
+          <li><b>Only the data you switch on</b>: live heart rate during workouts (from your Apple Watch), a daily Apple Health summary (weight, resting heart rate, HRV, sleep, steps, active energy), entries you type in, and progress photos. Each is a switch in Settings; turning one off stops it.</li>
+          <li><b>Your devices</b>: paired glasses and agent tokens (only a hash of each token).</li>
+        </ul>
+        <h2>Your agent</h2>
+        <p>FitLoop exists so an AI agent you choose (Claude, Meta's assistant, others) can coach you. An agent sees your data only after you connect it and approve it, and only what Settings → "What your agent may see" allows. Disconnect it any time in Settings. What the agent does with what it reads is governed by its provider's terms.</p>
+        <h2>What FitLoop doesn't do</h2>
+        <ul>
+          <li>No ads, no analytics, no selling or sharing your data. Apple Health data is never used for anything but showing it to you and your agent.</li>
+          <li>No medical advice: FitLoop shows your agent's plan and your records.</li>
+        </ul>
+        <h2>Where it goes</h2>
+        <p>Your data is stored with Supabase and processed by a Cloudflare Worker. Photos are private files only you (and, if you allow it, your agent through short-lived links) can open.</p>
+        <h2>Deleting it</h2>
+        <p>Settings → Delete my FitLoop data, in the app or on the web, removes everything above at once and disconnects your agents. Questions: <a href="mailto:support@waypack.app">support@waypack.app</a>.</p>
+      </div>
+    </main>
+    <!-- @footer -->
+  </body>
+</html>

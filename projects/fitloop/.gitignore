@@ -1,0 +1,9 @@
+node_modules
+dist
+build
+.wrangler
+.dev.vars
+apps/ios/FitLoop.xcodeproj
+apps/ios/.derived
+apps/ios/.derived-device
+apps/ios/FitLoopKit/.build

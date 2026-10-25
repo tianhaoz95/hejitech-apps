@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- @head -->
+    <title>FitLoop · your agent's fitness plan, on you</title>
+    <meta name="description" content="Your own AI agent writes your workout and meal plan; FitLoop puts it on your iPhone, Apple Watch, the web and Even G2 glasses, and brings your check-ins and feedback back to the agent." />
+  </head>
+  <body>
+    <!-- @header -->
+    <main>
+      <div class="wrap">
+        <section class="hero">
+          <h1>Your agent coaches. FitLoop keeps you on the plan.</h1>
+          <p class="lede">Ask Claude, Meta's assistant or any agent that speaks MCP to build your training and meals around your goals, time and limits. FitLoop puts the plan where you are: iPhone, Apple Watch, the web and Even G2 glasses mid-set. Check things off, leave a note when something's off, and your agent picks it all up next time.</p>
+          <div class="row" style="margin: 18px 0 26px">
+            <a class="btn primary" href="/login/" data-signed-out>Sign in with Google</a>
+            <a class="btn primary" href="/today/" data-signed-in hidden>Today's plan</a>
+            <a class="btn secondary" href="/support/">Connect your agent</a>
+          </div>
+        </section>
+        <div class="grid2">
+          <section class="panel">
+            <h2>The loop</h2>
+            <ol>
+              <li><b>Your agent writes the plan</b> through FitLoop's MCP connector: workouts with sets, rest and cues; meals with portions and macros; around your injuries, schedule and diet.</li>
+              <li><b>You follow it</b> on your phone, your wrist or your glasses: tap a set done and the rest timer starts, check off lunch, see today's progress.</li>
+              <li><b>You say what's off, right then</b>: "too hard", "knee hurt", "still hungry", or a note.</li>
+              <li><b>Your agent reads it back</b> with your check-ins and the vitals you choose to share, replies to your notes and publishes the next version.</li>
+            </ol>
+            <p class="muted small">Every data source is a switch: live heart rate, Apple Health, manual entries, progress photos, and what your agent may see.</p>
+          </section>
+          <section class="panel" aria-labelledby="g2-title">
+            <h2 id="g2-title">On the Even G2</h2>
+            <p class="muted small">A sample plan, as the glasses show it. Try the ring.</p>
+            <pre class="g2" id="g2" aria-label="Glasses preview"></pre>
+            <div class="ring" role="group" aria-label="R1 ring">
+              <button type="button" data-in="up">Swipe up</button>
+              <button type="button" data-in="down">Swipe down</button>
+              <button type="button" data-in="tap">Tap</button>
+              <button type="button" data-in="double_tap">Double-tap</button>
+              <button type="button" data-in="long_press">Hold</button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+    <!-- @footer -->
+    <script type="module" src="/src/home.ts"></script>
+  </body>
+</html>

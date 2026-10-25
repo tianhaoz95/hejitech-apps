@@ -16,6 +16,7 @@ one npm workspace and the CI plumbing.
 | TinyTouch | Toddler lock + low-stimulation play on Apple Watch (touch shield, Digital Crown toys, 3-second parent hold) with an iPhone remote (Swift). Kids Category, no backend (`BACKEND=none`) | [`projects/tinytouch`](projects/tinytouch/README.md) |
 | G2 Digest | A brief compiled ahead of time into glanceable cards for Even G2 glasses + R1 ring and pre-made audio: web app + brief editor + G2 preview, Even Hub plugin, MCP for the build agent (one Worker, TypeScript) | [`projects/g2digest`](projects/g2digest/README.md) |
 | Headway | Caltrain status on Even G2 glasses + R1 ring and iPhone alerts (delays, cancellations, leave now, before your stop): Even Hub plugin, iPhone app (Swift), site + API + alert cron + MCP Worker (TypeScript) | [`projects/headway`](projects/headway/README.md) |
+| FitLoop | The fitness and nutrition plan your own AI agent writes over MCP, followed and checked in on iPhone + Apple Watch (Swift), the web and Even G2 glasses, with in-the-moment feedback back to the agent (one Worker, TypeScript) | [`projects/fitloop`](projects/fitloop/README.md) |
 
 ## Layout
 ```
@@ -36,7 +37,7 @@ tsconfig.base.json      shared TypeScript settings
 ```sh
 npm install                 # every project's workspaces
 supabase start              # shared local stack (ports 554xx)
-npm run build:waypack       # per-project scripts: build:<name>, test:<name>, typecheck:<name> (waypack, weehours, g2digest, headway)
+npm run build:waypack       # per-project scripts: build:<name>, test:<name>, typecheck:<name> (waypack, weehours, g2digest, headway, fitloop)
 ```
 
 ## Adding a project

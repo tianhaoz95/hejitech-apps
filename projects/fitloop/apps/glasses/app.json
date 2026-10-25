@@ -1,0 +1,13 @@
+{
+  "package_id": "com.hejitech.fitloop.glasses",
+  "edition": "202601",
+  "name": "FitLoop",
+  "version": "0.0.0",
+  "min_app_version": "2.2.10",
+  "min_sdk_version": "0.0.16",
+  "entrypoint": "index.html",
+  "permissions": [
+    { "name": "network", "desc": "Fetch today's plan and send your check-ins and notes for your agent to FitLoop", "whitelist": ["https://fitloop.hejitech.workers.dev"] }
+  ],
+  "supported_languages": ["en"]
+}

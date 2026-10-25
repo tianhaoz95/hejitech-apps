@@ -1,0 +1,13 @@
+{
+  "name": "FitLoop",
+  "sidebar": [
+    {
+      "text": "FitLoop",
+      "items": [
+        { "text": "Overview", "link": "" },
+        { "text": "Decisions", "link": "decisions" },
+        { "text": "Deployment", "link": "DEPLOY" }
+      ]
+    }
+  ]
+}
