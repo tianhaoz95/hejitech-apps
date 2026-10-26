@@ -19,11 +19,12 @@ import { dirname, join, normalize, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { schemaOf } from "./check_supabase.mjs";
 
-/** Team-wide CI secrets every project may use (one Apple developer team). */
+/** Team-wide CI secrets every project may use (Apple developer team, Even Hub credentials). */
 export const SHARED_CI_NAMES = new Set([
   "GITHUB_TOKEN", "APPLE_TEAM_ID", "ASC_KEY_ID", "ASC_ISSUER_ID", "ASC_KEY_P8_BASE64",
   "SIGNING_P12_BASE64", "SIGNING_P12_PASSWORD", "DEV_SIGNING_P12_BASE64", "DEV_SIGNING_P12_PASSWORD",
   "MAC_SIGNING_P12_BASE64", "MAC_SIGNING_P12_PASSWORD",
+  "EVENHUB_CREDENTIALS",
 ]);
 /** Unprefixed names from before this rule, not backend-related. Don't add to this list. */
 export const LEGACY_CI_NAMES = { waypack: ["SPARKLE_PRIVATE_KEY"] };
@@ -78,7 +79,7 @@ export function checkWorkflow(text, project) {
   for (const m of text.matchAll(/\b(vars|secrets)\.([A-Za-z_][A-Za-z0-9_]*)/g)) {
     const name = m[2];
     if (name.startsWith(prefix) || SHARED_CI_NAMES.has(name) || legacy.has(name)) continue;
-    problems.push(`${m[1]}.${name}: project settings must be named ${prefix}… (only the Apple team secrets are shared)`);
+    problems.push(`${m[1]}.${name}: project settings must be named ${prefix}… (only Apple and Even Hub credentials are shared)`);
   }
   return [...new Set(problems)];
 }
