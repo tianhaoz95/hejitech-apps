@@ -162,7 +162,13 @@ package ID free). Icon, background, screenshots and the final Submit are in the 
 - **Private build:** upload the `.ehpk`, then Even Hub → **Me → Apps → Private builds → Install**.
   Only the owner's account sees it; the glasses' own menu lists Beta and Public apps only.
 - **Beta build:** what reviewers install, and the only one that survives a locked phone: run the
-  §1 lock checks on it before submitting.
+  §1 lock checks on it before submitting. Two things must both be true, or the Even app shows "Test
+  version expired · This version is no longer available": the build is **promoted to Beta** (Builds
+  tab: click its grey `Private` tag → Beta → Promote to Beta; one beta slot per app, promoting
+  another version replaces it) and the tester row in **Testing group** reads **`Active`** (the
+  invitation email accepted with the same account the Even app uses; `Invited` installs nothing,
+  invitations expire after 7 days, re-inviting kills the older link). Then install from the Even app:
+  **Me → Beta tester → Install**, not from the email link.
 
 ## 5. Screenshots from the simulator
 
