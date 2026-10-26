@@ -92,6 +92,14 @@ personal name); Contact email ≤ 50 → `info@hejitech.com` (the portal pre-fil
 account email: replace it); Contact telephone ≤ 20 and Contact address ≤ 100 → only business ones, or
 blank if the portal allows (never a home address: it's public).
 
+**Access Permissions Required**: checkboxes Microphone of Even Smart Glasses, Location, Push
+notifications, Local network, Bluetooth, Run background services, plus a free-text Other. Tick only
+what `app.json` declares and the code uses: `g2-microphone` → Microphone of Even Smart Glasses,
+`location` → Location. The internet `network` permission has no box ("Local network" means the LAN,
+not the internet): write it in Other, e.g. `Network: fetch your editions and audio from G2 Digest`.
+`album`, `camera` and `phone-microphone` also go in Other. Don't tick Run background services for
+WebView audio that merely keeps playing.
+
 **Privacy and terms** ("Fill out privacy and terms"): the privacy policy and terms and conditions
 (G2 Digest: `services/web/privacy/`, `services/web/terms/`; the terms say it isn't financial,
 medical or news advice, which Even's content rules care about).
