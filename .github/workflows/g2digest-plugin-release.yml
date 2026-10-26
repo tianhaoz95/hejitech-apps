@@ -68,8 +68,9 @@ jobs:
           notes=$(gh release view "$TAG" --json body -q .body | sed '/^## What.s Changed/,$d; /Full Changelog/d' | sed '/^[[:space:]]*$/d' | head -c 480)
           [ -n "$notes" ] || notes="G2 Digest $v"
           # One JSON object on stdout; exit codes: 2 auth refused, 4 version exists, 5 version already on a channel, 8 rate limit.
-          run() { local out code; out=$(npx -y -p "$EVENHUB_CLI" evenhub "$@" --json 2>/dev/null); code=$?; echo "$out"; return $code; }
-          out=$(run upload build/g2digest.ehpk -m "$notes"); code=$?
+          # (bash -e: a failing command substitution would end the step, so every call captures its exit code.)
+          run() { local out code=0; out=$(npx -y -p "$EVENHUB_CLI" evenhub "$@" --json 2>/dev/null) || code=$?; echo "$out"; return $code; }
+          code=0; out=$(run upload build/g2digest.ehpk -m "$notes") || code=$?
           echo "$out"
           case $code in
             0) echo "uploaded $v (Private)";;
@@ -78,7 +79,7 @@ jobs:
             *) echo "::error::evenhub upload failed (exit $code)"; exit $code;;
           esac
           if [ "$BETA" = on ]; then
-            out=$(run promote "$v" --to beta); code=$?
+            code=0; out=$(run promote "$v" --to beta) || code=$?
             echo "$out"
             [ $code -eq 0 ] || [ $code -eq 5 ] || { echo "::error::evenhub promote failed (exit $code)"; exit $code; }
           fi
