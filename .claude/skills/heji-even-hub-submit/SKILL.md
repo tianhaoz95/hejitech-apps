@@ -86,6 +86,12 @@ Travel; FitLoop → Health; Wee Hours → Lifestyle.
 export (576 × 288 RGBA). **Background**: foreground and background must both be set, monochrome or
 greyscale.
 
+**Contact information** (shown publicly on the plugin's page): Developer name ≤ 25 → `HEJI
+TECHNOLOGY LLC` (the legal publisher, as on every privacy policy and terms page; not the owner's
+personal name); Contact email ≤ 50 → `info@hejitech.com` (the portal pre-fills the owner's personal
+account email: replace it); Contact telephone ≤ 20 and Contact address ≤ 100 → only business ones, or
+blank if the portal allows (never a home address: it's public).
+
 **Privacy and terms** ("Fill out privacy and terms"): the privacy policy and terms and conditions
 (G2 Digest: `services/web/privacy/`, `services/web/terms/`; the terms say it isn't financial,
 medical or news advice, which Even's content rules care about).
