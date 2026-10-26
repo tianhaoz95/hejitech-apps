@@ -61,9 +61,9 @@ Icon grid (12 × 12 blocks, each block = 2 × 2 pixels):
 > "NO DEEP DIVE" because the tour has no audio). Double-tap with nothing playing opens the system
 > exit dialog; Exit is also in the contextual menu. Reading your own editions needs an account and
 > pairing: sign in at g2digest.hejitech.workers.dev, open Pair, and type the 6-digit code into the
-> app's phone page. The app only talks to g2digest.hejitech.workers.dev (our API, Cloudflare) and
-> jitdzllkxfhlrxxvljhp.supabase.co (expiring audio links, Supabase), both operated by HEJI
-> TECHNOLOGY LLC.
+> app's phone page. The app only talks to g2digest.hejitech.workers.dev (our API, on Cloudflare)
+> and our Supabase project's supabase.co address (expiring audio links), both operated by HEJI
+> TECHNOLOGY LLC. (The exact Supabase address is the second entry of the app's network whitelist.)
 
 Regenerate the images: run the plugin in the simulator (`CLAUDE.md` commands, unpaired so the tour
 shows) and save `/api/screenshot/glasses` at each card.
