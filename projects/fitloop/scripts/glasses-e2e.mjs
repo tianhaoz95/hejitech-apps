@@ -37,18 +37,18 @@ await input("click");                // finish it → goblet squat, rest running
 await shot("4-next-exercise");
 await input("click");                // set 1 done → rest 1:30
 await shot("5-rest");
-await input("long_press");           // how-to
-await shot("6-how-to");
+await input("long_press");           // the workout menu: How-to first
+await shot("6-menu");
+await input("click");                // how-to
+await shot("7-how-to");
 await input("click");                // back
-await input("double_click");         // workout menu
-await shot("7-menu");
+await input("long_press");
+await input("down");                 // Skip
 await input("down");                 // Tell agent: Too hard
 await input("click");
 await shot("8-feedback-sent");
-if (process.env.DEBUG_CONSOLE) {
-  const logs = await (await fetch(`${sim}/api/console`)).json();
-  for (const l of (logs.logs ?? logs.entries ?? logs)) if (/\[fitloop\]/.test(l.message ?? JSON.stringify(l))) console.log(l.message ?? JSON.stringify(l));
-}
+await input("double_click");         // back to today (the workout stays open)
+await shot("9-today");
 await waitFor(async () => {
   const t = await today();
   const squat = t.state.workouts[0].exercises[1];

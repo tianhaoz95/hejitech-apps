@@ -1,21 +1,21 @@
 // The Even G2 screens and the R1 ring's state machine. Pure: inputs plus the world (today's state,
-// heart rate, the time) in, commands (check-ins, feedback) and the screen's lines out. The plugin
-// pushes the lines; the web preview and the tests drive the same class.
+// heart rate, the time) in, commands (check-ins, feedback, exit) and the screen's lines out. The
+// plugin pushes the lines; the web preview and the tests drive the same class. Lines are laid out by
+// the glasses' measured glyph widths (font.ts): proportional, so columns are padded in pixels.
 //
-//   today     swipe moves through today's workouts and meals, tap opens one, hold shows progress,
-//             double tap opens the menu (progress, feedback, refresh)
-//   workout   tap: set done (starts the rest timer) or, on a timed set, start/finish the work timer;
-//             swipe: previous/next exercise; hold: how-to cues; double tap: workout menu
-//             (skip exercise, tell your agent, end workout, back to today)
-//   meal      tap: eaten as planned; hold: ate less / more / skipped / swapped + feedback;
-//             double tap: back
-//   progress  any gesture: back
+//   today (root)  swipe moves through today's workouts and meals, tap opens one, hold opens the menu
+//                 (progress, tell your agent, refresh, exit), double tap exits (the system dialog;
+//                 Even Hub requires it on the root page)
+//   workout       tap: set done (starts the rest timer) or, on a timed set, start/finish the work
+//                 timer; swipe: previous/next exercise; hold: workout menu (how-to, skip exercise,
+//                 tell your agent, end workout); double tap: back to today (the workout stays open)
+//   meal          tap: eaten as planned; hold: ate less / more / something else / skipped + notes;
+//                 double tap: back
+//   cues, progress  any gesture: back
 import { type Checkin, type CheckinStatus, type FEEDBACK_TAGS, type Portion } from "./types.ts";
+import { fitPx, LINE_PX, MAX_LINES, padPx, spreadPx, wrapPx } from "./font.ts";
 import { formatSeconds, nextSet, setTarget, type DayState, type MealState, type WorkoutState } from "./plan.ts";
 
-export const DISPLAY = { width: 576, height: 288 } as const;
-export const LINE_WIDTH = 30;
-export const MAX_LINES = 6;
 export const FLASH_MS = 2500;
 
 export type Input = "up" | "down" | "tap" | "double_tap" | "long_press";
@@ -32,6 +32,8 @@ export interface World {
   autoRest: boolean;
   /** One line when the data isn't fresh ("Offline: last synced 8:01"). */
   note?: string;
+  /** The built-in demo day (not paired): check-ins stay on the glasses. */
+  demo?: boolean;
 }
 
 export type NewCheckin = Pick<Checkin, "date" | "ref" | "kind" | "status"> & { data?: Checkin["data"]; note?: string };
@@ -40,7 +42,9 @@ export type Command =
   | { kind: "checkin"; checkin: NewCheckin }
   | { kind: "feedback"; date: string; ref: string | null; tags: string[] }
   | { kind: "workout"; active: boolean; ref: string }
-  | { kind: "refresh" };
+  | { kind: "refresh" }
+  /** Ask the system to close the plugin (its confirm dialog). */
+  | { kind: "exit" };
 
 /** Feedback tags as the glasses say them (≤ 13 characters, so "Tell agent: …" fits a line). */
 export const GLASSES_TAG_LABELS: Record<(typeof FEEDBACK_TAGS)[number], string> = {
@@ -53,23 +57,8 @@ interface MenuItem {
   run: () => Command[];
 }
 
-const pad = (s: string, n: number) => (s.length > n ? s.slice(0, n) : s + " ".repeat(n - s.length));
-export function spread(left: string, right: string, width = LINE_WIDTH): string {
-  const room = Math.max(0, width - right.length - 1);
-  return pad(left, room) + " " + right;
-}
-export function wrap(text: string, width = LINE_WIDTH): string[] {
-  const out: string[] = [];
-  let line = "";
-  for (const word of text.replace(/\s+/g, " ").trim().split(" ")) {
-    if (!word) continue;
-    if (!line) line = word.slice(0, width);
-    else if (line.length + 1 + word.length <= width) line += " " + word;
-    else { out.push(line); line = word.slice(0, width); }
-  }
-  if (line) out.push(line);
-  return out;
-}
+export const spread = (left: string, right: string) => spreadPx(left, right);
+export const wrap = (text: string) => wrapPx(text);
 /** Glasses text is plain ASCII: the G2 font's coverage of other characters is unverified. */
 export const ascii = (s: string) => s.normalize("NFKD").replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, "-").replace(/[^\x20-\x7e]/g, "");
 /**
@@ -196,21 +185,25 @@ export class Navigator {
       case "today": {
         const entries = todayEntries(world.day);
         if (input === "up" || input === "down") {
-          this.cursor = Math.max(0, Math.min(entries.length - 1, this.cursor + (input === "down" ? 1 : -1)));
+          const next = Math.max(0, Math.min(entries.length - 1, this.cursor + (input === "down" ? 1 : -1)));
+          // Every gesture answers: at either end, say so.
+          if (next === this.cursor) this.say(entries.length ? (input === "down" ? "That's the last one today" : "That's the first one today") : "Nothing planned today", now);
+          this.cursor = Math.max(0, next);
           return [];
         }
-        if (input === "long_press") { this.screen = "progress"; return []; }
-        if (input === "double_tap") {
+        if (input === "double_tap") return [{ kind: "exit" }];
+        if (input === "long_press") {
           this.openMenu("FITLOOP", [
             { label: "Progress", run: () => { this.screen = "progress"; return []; } },
             ...this.feedbackItems(world, null, ["too_hard", "too_easy", "no_time", "loved_it"], "today"),
             { label: "Refresh", run: () => [{ kind: "refresh" }] },
+            { label: "Exit FitLoop", run: () => [{ kind: "exit" }] },
           ], "today");
           return [];
         }
         if (input === "tap") {
           const e = entries[this.cursor];
-          if (!e) return [{ kind: "refresh" }];
+          if (!e) { this.say("Refreshing", now); return [{ kind: "refresh" }]; }
           if (e.type === "workout") return this.openWorkout(world, e.w.workout.id);
           this.mealId = e.m.meal.id;
           this.screen = "meal";
@@ -228,9 +221,10 @@ export class Navigator {
           this.work = null;
           return [];
         }
-        if (input === "long_press") { this.screen = "cues"; return []; }
-        if (input === "double_tap") {
+        if (input === "double_tap") { this.screen = "today"; return []; }
+        if (input === "long_press") {
           this.openMenu(e.exercise.name, [
+            { label: "How-to", run: () => { this.screen = "cues"; return []; } },
             { label: "Skip this exercise", run: () => {
               this.screen = "workout";
               const cmds: Command[] = [{ kind: "checkin", checkin: { date: world.date, ref: e.ref, kind: "exercise", status: "skipped" } }];
@@ -238,7 +232,6 @@ export class Navigator {
             } },
             ...this.feedbackItems(world, e.ref, ["too_hard", "too_easy", "pain"], "workout"),
             { label: "End workout", run: () => this.endWorkout(world, w, w.setsDone > 0 ? "partial" : "skipped") },
-            { label: "Back to today", run: () => { this.screen = "today"; return []; } },
           ], "workout");
           return [];
         }
@@ -261,6 +254,7 @@ export class Navigator {
         if (!m) { this.screen = "today"; return []; }
         if (input === "tap") return this.mealCheckin(world, m, "done", "as_planned");
         if (input === "double_tap") { this.screen = "today"; return []; }
+        if (input === "up" || input === "down") { this.say("Tap: ate it  hold: other", now); return []; }
         if (input === "long_press") {
           this.openMenu(m.meal.name, [
             { label: "Ate less", run: () => this.mealCheckin(world, m, "done", "less") },
@@ -306,12 +300,15 @@ export class Navigator {
         const items = this.menuItems;
         const sel = Math.min(this.menuIndex, items.length - 1);
         const first = Math.max(0, Math.min(sel - 2, items.length - (MAX_LINES - 1)));
-        lines = [ascii(this.menuTitle).toUpperCase(), ...items.slice(first, first + MAX_LINES - 1).map((m, i) => `${first + i === sel ? ">" : " "} ${m.label}`)];
+        lines = [spreadPx(ascii(this.menuTitle).toUpperCase(), "2x: back"), ...items.slice(first, first + MAX_LINES - 1).map((m, i) => `${first + i === sel ? ">" : "  "} ${m.label}`)];
         break;
       }
     }
     if (this.flash && this.flash.until > world.now) lines = [...lines.slice(0, MAX_LINES - 1), `>> ${this.flash.text}`];
-    return lines.slice(0, MAX_LINES).map((l) => ascii(l).slice(0, LINE_WIDTH));
+    // Plain ASCII, each line within the frame; no trailing empty lines (they'd scroll).
+    const out = lines.slice(0, MAX_LINES).map((l) => fitPx(ascii(l), LINE_PX));
+    while (out.length && !out[out.length - 1].trim()) out.pop();
+    return out;
   }
 
   /** True while a timer is showing: the plugin re-renders every second. */
@@ -337,7 +334,7 @@ export class Navigator {
     } else timer = x.duration_sec !== undefined ? `tap: start ${formatSeconds(x.duration_sec)}` : "tap: set done";
     const hr = world.showHr && world.hr ? `HR ${world.hr}` : "";
     const sets = `${w.setsDone}/${w.setsTotal} sets`;
-    return [head, setLine, spread(timer, hr), sets, world.note ?? "hold: how-to  2x: menu"];
+    return [head, "", setLine, spread(timer, hr), "", sets, world.demo ? "" : world.note ?? "", "hold: how-to, menu  2x: today"];
   }
 
   private cuesLines(world: World): string[] {
@@ -356,24 +353,27 @@ export function entryLine(e: Entry, selected: boolean): string {
   if (e.type === "workout") {
     const w = e.w;
     const right = w.status === "done" ? "done" : w.status === "skipped" ? "skip" : `${w.setsDone}/${w.setsTotal}`;
-    return spread(`${c}${w.workout.time ?? "--:--"} ${w.workout.title}`, right);
+    return spreadPx(padPx(c, 16) + padPx(w.workout.time ?? "--:--", 62) + w.workout.title, right);
   }
   const m = e.m;
   const right = m.status === "done" ? "ate" : m.status === "swapped" ? "swap" : m.status === "skipped" ? "skip" : "";
-  return spread(`${c}${m.meal.time ?? "--:--"} ${m.meal.name}`, right);
+  return spreadPx(padPx(c, 16) + padPx(m.meal.time ?? "--:--", 62) + m.meal.name, right);
 }
 
 export function todayLines(world: World, cursor: number): string[] {
   const d = world.day;
-  if (!d || !d.day) return ["FITLOOP", "", "No plan for today yet.", "Ask your agent to publish", "one (FitLoop MCP)."];
+  const hint = world.note && !world.demo ? world.note : "tap: open  hold: menu  2x: exit";
+  if (!d || !d.day) return ["FITLOOP", "", "No plan for today yet.", "Ask your agent to publish one", "with the FitLoop connector.", "", hint];
   const entries = todayEntries(d);
-  const head = spread(d.day.title.toUpperCase(), `${Math.round(d.completion * 100)}%`);
-  if (!entries.length) return [head, "", "Nothing planned today.", "Rest well."];
+  const head = spreadPx(`${world.demo ? "DEMO: " : ""}${d.day.title.toUpperCase()}`, `${Math.round(d.completion * 100)}%`);
+  if (!entries.length) return [head, "", "Nothing planned today.", "Rest well.", "", hint];
   const rows = MAX_LINES - 2;
   const first = Math.max(0, Math.min(cursor - 1, entries.length - rows));
   const lines = [head, ...entries.slice(first, first + rows).map((e, i) => entryLine(e, first + i === cursor))];
   while (lines.length < MAX_LINES - 1) lines.push("");
-  lines.push(world.note ?? "tap: open  hold: progress");
+  // The demo says so above the gesture hint, which always shows.
+  if (world.demo && !lines[MAX_LINES - 2].trim()) lines[MAX_LINES - 2] = "Demo day: pair in the FitLoop app";
+  lines.push(hint);
   return lines;
 }
 
@@ -381,10 +381,13 @@ export function mealLines(m: MealState | null): string[] {
   if (!m) return ["MEAL", "", "Not in today's plan."];
   const head = spread(`${m.meal.name.toUpperCase()}${m.meal.time ? " " + m.meal.time : ""}`, m.status === "todo" ? "" : m.status);
   const items = m.meal.items.map((i) => `${i.name} ${i.amount}`);
-  const shown = items.length > 3 ? [...items.slice(0, 2), `+${items.length - 2} more`] : items;
+  const shown = items.length > 5 ? [...items.slice(0, 4), `+${items.length - 4} more`] : items;
   const mac = m.meal.macros;
   const macros = mac ? [mac.calories !== undefined ? `${mac.calories} kcal` : "", mac.protein_g !== undefined ? `${mac.protein_g}P` : "", mac.carbs_g !== undefined ? `${mac.carbs_g}C` : "", mac.fat_g !== undefined ? `${mac.fat_g}F` : ""].filter(Boolean).join(" ") : "";
-  return [head, ...shown, macros, "tap: ate it  hold: other"].filter((l, i) => i === 0 || l !== "").slice(0, MAX_LINES);
+  const body = [...shown, macros].filter(Boolean);
+  const lines = [head, ...body];
+  while (lines.length < MAX_LINES - 1) lines.push("");
+  return [...lines.slice(0, MAX_LINES - 1), "tap: ate it  hold: other  2x: back"];
 }
 
 export function progressLines(world: World): string[] {
@@ -397,5 +400,5 @@ export function progressLines(world: World): string[] {
   if (n.targets.calories || n.planned.calories) lines.push(spread("Calories", `${n.eaten.calories ?? 0}/${n.targets.calories ?? n.planned.calories}`));
   if (n.targets.protein_g || n.planned.protein_g) lines.push(spread("Protein", `${n.eaten.protein_g ?? 0}/${n.targets.protein_g ?? n.planned.protein_g} g`));
   if (world.showHr && world.hr) lines.push(spread("Heart rate", `${world.hr} bpm`));
-  return lines.slice(0, MAX_LINES);
+  return [...lines.slice(0, MAX_LINES - 2), "", "any gesture: back"];
 }

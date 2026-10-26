@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { LINE_WIDTH, type Plan } from "@fitloop/core";
+import { LINE_PX, textPx, type Plan } from "@fitloop/core";
 import { FitLoopApp, K, type Store, type TodayData } from "../src/app.ts";
 
 const plan: Plan = JSON.parse(readFileSync(new URL("../../../packages/core/fixtures/example-plan.json", import.meta.url), "utf8"));
@@ -35,16 +35,28 @@ function setup(route: (url: URL, init?: RequestInit) => Response | Promise<Respo
 }
 
 describe("plugin", () => {
-  it("asks to pair when there's no token", async () => {
-    const { app, lines } = setup(() => json({}, 404), memory());
+  it("without pairing: a working demo day that sends nothing (no dead end for a reviewer)", async () => {
+    const store = memory();
+    const { app, lines, posts } = setup(() => json({}, 404), store);
     await app.start();
-    expect(lines().join(" ")).toContain("Pair these glasses");
+    expect(lines()[0]).toMatch(/^DEMO: FULL BODY A/);
+    expect(lines().at(-2)).toBe("Demo day: pair in the FitLoop app");
+    expect(lines().at(-1)).toBe("tap: open  hold: menu  2x: exit");
+    await app.input("tap"); // breakfast
+    await app.input("tap"); // ate it
+    expect(posts).toEqual([]);
+    expect(JSON.parse(store.data[K.demo])[0]).toMatchObject({ ref: "breakfast", status: "done" });
+    let exited = 0;
+    const b = new FitLoopApp({ api: "https://fl.test", store: memory(), today: () => DATE, fetch: async () => json({}), onLines: () => {}, onExit: () => exited++ });
+    await b.start();
+    await b.input("double_tap");
+    expect(exited).toBe(1);
   });
   it("shows today and checks a meal off through the Worker", async () => {
     const { app, lines, posts } = setup((u) => (u.pathname === "/api/today" ? json(todayData()) : json({ ok: true })));
     await app.start();
     expect(lines()[0]).toMatch(/^FULL BODY A +0%$/);
-    for (const l of lines()) expect(l.length).toBeLessThanOrEqual(LINE_WIDTH);
+    for (const l of lines()) expect(textPx(l)).toBeLessThanOrEqual(LINE_PX);
     await app.input("tap"); // breakfast (07:30) is first
     await app.input("tap"); // ate it
     expect(posts[0]).toMatchObject({ path: "/api/checkins", body: { date: DATE, ref: "breakfast", kind: "meal", status: "done", plan_version: 3 } });
@@ -60,7 +72,7 @@ describe("plugin", () => {
     await t.app.input("tap"); // finish it
     expect(JSON.parse(t.store.data[K.queue])).toHaveLength(2);
     expect(t.app.world().day!.workouts[0].exercises[0].status).toBe("done"); // applied at once
-    expect(t.lines().at(-1)).toMatch(/^Offline: 2 to send/);
+    expect(t.lines().at(-2)).toMatch(/^Offline: 2 to send/);
     t.offline(false);
     await t.app.refresh();
     expect(t.posts.map((p) => (p.body as { ref: string }).ref)).toEqual(["full-body-a/bike/1", "full-body-a/bike"]);
@@ -78,8 +90,8 @@ describe("plugin", () => {
     await t.app.start();
     t.app.nav.cursor = 1;
     await t.app.input("tap");
-    await t.app.input("double_tap");
-    t.app.nav.menuIndex = 2; // Skip, Too hard, Too easy, Pain…
+    await t.app.input("long_press"); // the workout menu
+    t.app.nav.menuIndex = 3; // How-to, Skip, Too hard, Too easy, It hurts…
     await t.app.input("tap");
     expect(t.posts.at(-1)).toEqual({ path: "/api/feedback", body: { date: DATE, ref: "full-body-a/bike", tags: ["too_easy"] } });
     expect(t.lines().at(-1)).toBe(">> SENT TO YOUR AGENT");

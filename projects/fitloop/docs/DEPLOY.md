@@ -60,10 +60,12 @@ Then connect a real agent: in Claude, Settings → Connectors → Add custom con
 
 ## 5. Even Hub plugin
 
-The release attaches `fitloop-glasses-<version>.ehpk` (`fitloop-glasses-release.yml`). Sideload it
-on real glasses first (`npx evenhub qr` in `apps/glasses`), check the layout, the ring gestures and
-the timer cadence over Bluetooth, then upload it to the Even Hub portal (package
-`com.hejitech.fitloop.glasses`).
+The release attaches `fitloop-glasses-<version>.ehpk` (`fitloop-glasses-release.yml`). Everything the
+portal asks, ready to paste and upload (text, category, tags, data rows, icon, background,
+screenshots, reviewer note): `docs/even-hub/LISTING.md`; the portal's rules and quirks:
+`.claude/skills/heji-even-hub-submit/SKILL.md`. Before submitting, install the Beta build on real
+glasses and check the layout, every ring gesture, the exit dialog (the simulator doesn't draw it)
+and five minutes with the phone locked (package `com.hejitech.fitloop.glasses`).
 
 ## 6. Docs
 

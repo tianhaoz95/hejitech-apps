@@ -50,7 +50,13 @@ made while building, with the reason for each.
   allowed. Vitals from a source that's switched off are refused on upload and hidden from the agent.
 - **The agent may update the "about you" notes** (`update_profile_notes`) so what it learns in one
   chat carries to the next, and to other agents.
-- **Glasses text is ASCII ≤ 30 × 6** (core tests), "Tell agent: …" menu items with short tag labels.
+- **Glasses text is laid out in pixels** (`core/src/font.ts`: the firmware font's measured glyph
+  widths, 9 lines in a bordered frame; core tests check every screen), "Tell agent: …" menu items
+  with short tag labels.
+- **Even Hub review (2026-10-26):** double-tap on Today (the root page) opens the system exit
+  dialog and "Exit FitLoop" is in the menu; menus moved to a hold of the ring (the workout menu
+  starts with How-to); double-tap in a workout or meal goes back to Today. Unpaired glasses play a
+  demo day from the example plan (nothing sent), and every gesture answers on every screen.
 - **No FeedbackKit SDK yet** (needs its own FeedbackKit project and key); in-app feedback here means
   notes for the agent.
 - **No medical advice.** FitLoop shows the agent's plan and the user's records; the guide tells the

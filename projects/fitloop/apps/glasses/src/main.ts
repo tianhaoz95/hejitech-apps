@@ -12,7 +12,7 @@ import {
   type EvenAppBridge,
   type EvenHubEvent,
 } from "@evenrealities/even_hub_sdk";
-import { DISPLAY, type Input } from "@fitloop/core";
+import { DISPLAY, FRAME, type Input } from "@fitloop/core";
 import { FitLoopApp, K, type AppStatus, type Store } from "./app.ts";
 import "./style.css";
 
@@ -70,9 +70,11 @@ async function boot() {
       created = true;
       await bridge.createStartUpPageContainer(new CreateStartUpPageContainer({
         containerTotalNum: 1,
+        // The bordered frame other G2 apps draw (FRAME in core's font.ts).
         textObject: [new TextContainerProperty({
-          containerID: 1, containerName: "fitloop", xPosition: 0, yPosition: 0,
-          width: DISPLAY.width, height: DISPLAY.height, paddingLength: 8, content: text, isEventCapture: 1,
+          containerID: 1, containerName: "fitloop", xPosition: 0, yPosition: 0, width: DISPLAY.width, height: DISPLAY.height,
+          borderWidth: FRAME.border, borderColor: FRAME.color, borderRadius: FRAME.radius, paddingLength: FRAME.padding,
+          content: text, isEventCapture: 1,
         })],
       }));
       return;
@@ -91,6 +93,8 @@ async function boot() {
       void push(text);
     },
     onStatus: (s) => ui.status(s),
+    // The system's exit dialog (Even Hub review requires it on the root page); the host closes the plugin.
+    onExit: () => void bridge?.shutDownPageContainer(1).catch(() => false),
   });
 
   if (bridge) {
@@ -129,7 +133,7 @@ function phonePage(root: HTMLElement, onGlasses: boolean) {
       <p class="muted source"></p>
       <section class="pair">
         <h2>Pair with your FitLoop account</h2>
-        <p class="muted">In the FitLoop iPhone app open <b>Glasses</b> (or fitloop.hejitech.workers.dev → Settings), get a code and type it here.</p>
+        <p class="muted">Until then the glasses show a demo day (nothing is sent). In the FitLoop iPhone app open <b>Settings → Even G2 → Pair glasses</b> (or fitloop.hejitech.workers.dev → Settings), get a code and type it here.</p>
         <form class="row">
           <input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456" aria-label="Pairing code" />
           <button class="primary">Pair</button>
@@ -141,7 +145,7 @@ function phonePage(root: HTMLElement, onGlasses: boolean) {
       </section>
       <details>
         <summary>Ring gestures</summary>
-        <p class="muted small">Today: swipe to choose, tap to open, hold for progress, double-tap for the menu. Workout: tap = set done (rest timer starts), swipe = next/previous exercise, hold = how-to, double-tap = skip, tell your agent, end. Meal: tap = ate it, hold = less / more / something else / skipped / a note.</p>
+        <p class="muted small">Today: swipe to choose, tap to open, hold for the menu (progress, tell your agent, refresh), double-tap to exit. Workout: tap = set done (rest timer starts), swipe = next/previous exercise, hold = how-to, skip, tell your agent, end; double-tap = back to today. Meal: tap = ate it, hold = less / more / something else / skipped / a note, double-tap = back.</p>
       </details>
     </div>`;
   const $ = <T extends Element>(s: string) => root.querySelector(s) as T;

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   adherence, checkCheckin, checkFeedback, checkPlan, checkSettings, checkVital, dayPlan, dayState, defaultSettings, errorsOf, GUIDE,
-  LINE_WIDTH, MAX_LINES, Navigator, normalizeSettings, setTarget, weekdayOf, type Checkin, type Command, type Plan, type World,
+  LINE_PX, MAX_LINES, Navigator, normalizeSettings, textPx, setTarget, weekdayOf, type Checkin, type Command, type Plan, type World,
 } from "../src/index.ts";
 
 const plan = (): Plan => JSON.parse(readFileSync(new URL("../fixtures/example-plan.json", import.meta.url), "utf8"));
@@ -116,64 +116,80 @@ describe("glasses", () => {
   const fits = (lines: string[]) => {
     expect(lines.length).toBeLessThanOrEqual(MAX_LINES);
     for (const l of lines) {
-      expect(l.length).toBeLessThanOrEqual(LINE_WIDTH);
+      expect(textPx(l)).toBeLessThanOrEqual(LINE_PX); // measured glyph widths, inside the frame
       expect(l).toMatch(/^[\x20-\x7e]*$/);
     }
   };
+  const has = (lines: string[], re: RegExp) => expect(lines.some((l) => re.test(l)), `${re} in\n${lines.join("\n")}`).toBe(true);
   /** Applies check-in commands to a list, as the plugin does before re-rendering. */
   const apply = (cmds: Command[], into: Checkin[], t: number) => {
     for (const c of cmds) if (c.kind === "checkin") into.push({ ...c.checkin, plan_version: 1, at: new Date(t).toISOString() });
   };
+  const pick = (nav: Navigator, w: World, label: RegExp) => {
+    const lines = nav.lines(w);
+    nav.menuIndex = lines.findIndex((l) => label.test(l)) - 1;
+    expect(nav.menuIndex).toBeGreaterThanOrEqual(0);
+  };
 
-  it("today lists workouts and meals by time", () => {
-    const lines = new Navigator().lines(world(at(11)));
+  it("today lists workouts and meals by time; double tap exits, hold opens the menu", () => {
+    const nav = new Navigator();
+    const lines = nav.lines(world(at(11)));
     fits(lines);
     expect(lines[0]).toMatch(/^FULL BODY A +0%$/);
-    expect(lines[1]).toMatch(/^>07:30 Breakfast *$/);
-    expect(lines[2].startsWith(" 12:00 Full body A")).toBe(true);
+    expect(lines[1]).toMatch(/^> +07:30 +Breakfast *$/);
+    expect(lines[2]).toMatch(/^ +12:00 +Full body A +0\/13$/);
+    expect(lines.at(-1)).toBe("tap: open  hold: menu  2x: exit");
+    expect(nav.input("double_tap", world(at(11)))).toEqual([{ kind: "exit" }]);
+    nav.input("long_press", world(at(11)));
+    expect(nav.screen).toBe("menu");
+    fits(nav.lines(world(at(11))));
+    pick(nav, world(at(11)), /Exit FitLoop/);
+    expect(nav.input("tap", world(at(11)))).toEqual([{ kind: "exit" }]);
   });
   it("runs a workout: sets, rest timer, timed sets, next exercise, finish", () => {
     const nav = new Navigator();
     const done: Checkin[] = [];
     let t = at(12);
     nav.cursor = 1;
-    const open = nav.input("tap", world(t));
-    expect(open).toEqual([{ kind: "workout", active: true, ref: "full-body-a" }]);
+    expect(nav.input("tap", world(t))).toEqual([{ kind: "workout", active: true, ref: "full-body-a" }]);
     let lines = nav.lines(world(t));
     fits(lines);
     expect(lines[0]).toMatch(/^BIKE WARM-UP +1\/5$/);
-    expect(lines[2]).toMatch(/^tap: start 5 min +HR 128$/);
+    has(lines, /^tap: start 5 min +HR 128$/);
     // Timed set: tap starts the work timer, tap again finishes it.
     expect(nav.input("tap", world(t))).toEqual([]);
     t += 10_000;
-    expect(nav.lines(world(t))[2]).toMatch(/^WORK 4:50/);
-    expect(nav.lines(world(t + 4000))[2]).toMatch(/^WORK 4:50/); // 5-second steps: fewer Bluetooth updates
-    expect(nav.lines(world(t + 6000))[2]).toMatch(/^WORK 4:45/);
+    has(nav.lines(world(t)), /^WORK 4:50/);
+    has(nav.lines(world(t + 4000)), /^WORK 4:50/); // 5-second steps: fewer Bluetooth updates
+    has(nav.lines(world(t + 6000)), /^WORK 4:45/);
     apply(nav.input("tap", world(t, done)), done, t);
     expect(done.map((c) => c.ref)).toEqual(["full-body-a/bike/1", "full-body-a/bike"]);
     expect(done[0].data).toMatchObject({ duration_sec: 10, avg_hr: 128 });
-    // On to the squats, with the bike's rest running.
     lines = nav.lines(world(t, done));
     expect(lines[0]).toMatch(/^GOBLET SQUAT +2\/5$/);
-    expect(lines[1]).toMatch(/^Set 1 of 3 +8-10 reps @ 24 kg$/);
-    expect(lines[2]).toMatch(/^REST 1:00/);
+    has(lines, /^Set 1 of 3 +8-10 reps @ 24 kg$/);
+    has(lines, /^REST 1:00/);
     apply(nav.input("tap", world(t, done)), done, t);
-    expect(nav.lines(world(t + 30_000, done))[2]).toMatch(/^REST 1:00/); // squat rest is 90 s
-    expect(nav.lines(world(t, done))[1]).toMatch(/^Set 2 of 3/);
-    // Hold shows the cues.
+    has(nav.lines(world(t + 30_000, done)), /^REST 1:00/); // squat rest is 90 s
+    has(nav.lines(world(t, done)), /^Set 2 of 3/);
+    // Hold opens the workout menu; its first item is the how-to.
     nav.input("long_press", world(t, done));
+    expect(nav.screen).toBe("menu");
+    nav.menuIndex = 0;
+    nav.input("tap", world(t, done));
     const cues = nav.lines(world(t, done));
     fits(cues);
     expect(cues[1]).toBe("- Bell at chest, elbows in");
     nav.input("tap", world(t, done));
     expect(nav.screen).toBe("workout");
-    // Skip the rest through the menu and end the workout.
+    // Double tap is back to today (the workout stays open); tapping it again resumes it.
     nav.input("double_tap", world(t, done));
-    expect(nav.screen).toBe("menu");
-    fits(nav.lines(world(t, done)));
-    nav.menuIndex = nav.lines(world(t, done)).findIndex((l) => l.includes("End workout")) - 1;
-    const end = nav.input("tap", world(t, done));
-    expect(end).toEqual([
+    expect(nav.screen).toBe("today");
+    nav.input("tap", world(t, done));
+    expect(nav.screen).toBe("workout");
+    nav.input("long_press", world(t, done));
+    pick(nav, world(t, done), /End workout/);
+    expect(nav.input("tap", world(t, done))).toEqual([
       { kind: "checkin", checkin: { date: MON, ref: "full-body-a", kind: "workout", status: "partial" } },
       { kind: "workout", active: false, ref: "full-body-a" },
     ]);
@@ -183,13 +199,12 @@ describe("glasses", () => {
     const nav = new Navigator();
     nav.openWorkout(world(at(12)), "full-body-a");
     nav.input("down", world(at(12)));
-    nav.input("double_tap", world(at(12)));
-    const labels = nav.lines(world(at(12)));
-    nav.menuIndex = labels.findIndex((l) => l.includes("It hurts")) - 1;
+    nav.input("long_press", world(at(12)));
+    pick(nav, world(at(12)), /It hurts/);
     expect(nav.input("tap", world(at(12)))).toEqual([{ kind: "feedback", date: MON, ref: "full-body-a/goblet-squat", tags: ["pain"] }]);
     expect(nav.lines(world(at(12))).at(-1)).toBe(">> SENT TO YOUR AGENT");
   });
-  it("meals: tap checks off, hold offers portions", () => {
+  it("meals: tap checks off, hold offers portions, swipes answer", () => {
     const nav = new Navigator();
     nav.cursor = 2; // lunch
     nav.input("tap", world(at(13)));
@@ -197,16 +212,24 @@ describe("glasses", () => {
     fits(lines);
     expect(lines[0]).toMatch(/^LUNCH 13:00 *$/);
     expect(lines).toContain("680 kcal 48P 75C 20F");
+    nav.input("down", world(at(13)));
+    expect(nav.lines(world(at(13))).at(-1)).toBe(">> TAP: ATE IT  HOLD: OTHER");
     nav.input("long_press", world(at(13)));
     nav.menuIndex = 0;
     expect(nav.input("tap", world(at(13)))).toEqual([{ kind: "checkin", checkin: { date: MON, ref: "lunch", kind: "meal", status: "done", data: { portion: "less" } } }]);
   });
-  it("progress and the empty state fit", () => {
+  it("progress, the ends of the list, the demo and the empty state fit", () => {
     const nav = new Navigator();
     nav.input("long_press", world(at(20), [ci("breakfast", "meal")]));
+    pick(nav, world(at(20)), /Progress/);
+    nav.input("tap", world(at(20)));
     const p = nav.lines(world(at(20), [ci("breakfast", "meal")]));
     fits(p);
-    expect(p.some((l) => /^Calories +520\/2200$/.test(l))).toBe(true);
+    has(p, /^Calories +520\/2200$/);
+    nav.input("tap", world(at(20)));
+    nav.input("up", world(at(20)));
+    expect(nav.lines(world(at(20))).at(-1)).toBe(">> THAT'S THE FIRST ONE TODAY");
+    expect(new Navigator().lines({ ...world(at(9)), demo: true })[0]).toMatch(/^DEMO: FULL BODY A/);
     const empty = new Navigator().lines({ ...world(at(9)), day: null });
     fits(empty);
     expect(empty.join(" ")).toContain("No plan for today");

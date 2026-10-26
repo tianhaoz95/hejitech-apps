@@ -35,8 +35,8 @@ local stack), `-screen today|plan|progress|feedback|settings`, `-date YYYY-MM-DD
   feedback, vitals, settings), `validate.ts` (every plan rule; `LIMITS` keep text G2-sized),
   `plan.ts` (day for a date, `dayState`/`dayStateOf`, `adherence`), `settings.ts` (defaults,
   `normalizeSettings`, checks for settings / check-ins / feedback / vitals), `guide.ts` (what
-  `get_plan_guide` serves; bump `GUIDE_VERSION` with a rule change), `glasses.ts` (screens ≤ 30
-  ASCII × 6 lines and the R1 `Navigator`). Change behaviour there, with a test.
+  `get_plan_guide` serves; bump `GUIDE_VERSION` with a rule change), `glasses.ts` (screens laid out
+  in pixels by `font.ts`, 9 lines in a bordered frame, and the R1 `Navigator`). Change behaviour there, with a test.
 - **Worker** (`services/web/src/worker`): `api.ts` (session / glasses token / pairing; every write
   checked with core), `mcp.ts` (13 tools, each with annotations; `agent_access` switches enforced
   here), `store.ts` (db, tokens, plan versions, `today()`), `index.ts` (OAuth provider). Service key
@@ -64,6 +64,10 @@ local stack), `-screen today|plan|progress|feedback|settings`, `-date YYYY-MM-DD
 - `.env.production` is git-ignored at the root: it's force-added (`git add -f`).
 - An unsigned simulator build can't use the Keychain: build with `CODE_SIGN_IDENTITY=-`.
 - No "Apple" in App Intent strings if intents are added (root CLAUDE.md).
+- Even Hub review rules the plugin keeps (`heji-even-hub-submit` skill, `docs/decisions.md`): double
+  tap on Today (the root page) sends `exit` → `shutDownPageContainer(1)`; menus live on a hold;
+  unpaired it plays a demo day (`demoDay` in `apps/glasses/src/app.ts`, nothing sent); every gesture
+  answers. Listing kit: `docs/even-hub/`.
 
 ## Releasing
 

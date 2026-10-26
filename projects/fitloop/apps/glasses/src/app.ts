@@ -2,14 +2,15 @@
 // and feedback applied at once and queued until they reach the Worker (gyms have bad signal), live
 // heart rate during a workout, timers, pairing. main.ts wires it to the bridge and the phone page;
 // tests drive it with fakes.
-import { dayStateOf, Navigator, type Checkin, type Command, type DayPlan, type Input, type Macros, type World } from "@fitloop/core";
+import { dayStateOf, Navigator, WEEKDAYS, type Checkin, type Command, type DayPlan, type Input, type Macros, type Plan, type World } from "@fitloop/core";
+import example from "@fitloop/core/fixtures/example-plan.json";
 
 export interface Store {
   get(k: string): Promise<string | null>;
   set(k: string, v: string): Promise<void>;
 }
 
-export const K = { token: "fitloop:device_token", today: "fitloop:today", queue: "fitloop:queue" } as const;
+export const K = { token: "fitloop:device_token", today: "fitloop:today", queue: "fitloop:queue", demo: "fitloop:demo_checkins" } as const;
 
 type Fetch = (url: string, init?: RequestInit) => Promise<Response>;
 
@@ -42,6 +43,22 @@ export interface AppOptions {
   today?: () => string;
   onLines: (lines: string[]) => void;
   onStatus?: (s: AppStatus) => void;
+  /** The user asked to leave (double tap on Today, or Exit in the menu): the system dialog. */
+  onExit?: () => void;
+}
+
+/**
+ * The built-in demo (not paired): the example plan's day for today's weekday (Monday's on a rest
+ * day, so there's a workout to try). Check-ins stay on the glasses; nothing is sent.
+ */
+export function demoDay(date: string, checkins: Checkin[]): TodayData {
+  const plan = example as unknown as Plan;
+  const weekday = WEEKDAYS[(new Date(`${date}T12:00:00Z`).getUTCDay() + 6) % 7];
+  const day = plan.week[weekday].workouts.length ? plan.week[weekday] : plan.week.mon;
+  return {
+    date, plan: { version: 0, title: plan.title, targets: plan.targets ?? null }, state: { day }, checkins,
+    live: null, glasses: { show_hr: true, auto_rest_timer: true },
+  };
 }
 
 const parse = <T>(s: string | null): T | null => {
@@ -77,15 +94,12 @@ export class FitLoopApp {
       hr: this.hr,
       showHr: d?.glasses.show_hr ?? true,
       autoRest: d?.glasses.auto_rest_timer ?? true,
-      note: !this.online ? `Offline${this.queue.length ? `: ${this.queue.length} to send` : ""}` : undefined,
+      note: !this.paired ? undefined : !this.online ? `Offline${this.queue.length ? `: ${this.queue.length} to send` : ""}` : undefined,
+      demo: !this.paired,
     };
   }
 
   render() {
-    if (!this.paired && !this.data) {
-      this.opts.onLines(["FITLOOP", "", "Pair these glasses:", "FitLoop app > Glasses,", "then type the code on the", "plugin page in the Even app."]);
-      return;
-    }
     this.opts.onLines(this.nav.lines(this.world()));
   }
 
@@ -110,7 +124,8 @@ export class FitLoopApp {
     const token = await this.token();
     this.paired = Boolean(token);
     if (!token) {
-      this.data = null;
+      // A first launch or a reviewer: a working demo day, never a dead end.
+      this.data = demoDay(this.today(), parse<Checkin[]>(await this.opts.store.get(K.demo)) ?? []);
       this.render();
       this.status();
       return;
@@ -190,9 +205,12 @@ export class FitLoopApp {
         const checkin: Checkin = { ...c.checkin, plan_version: this.data?.plan?.version ?? 0, at: new Date(this.now()).toISOString() };
         this.data?.checkins.push(checkin);
         this.render();
-        await this.send({ path: "/api/checkins", body: checkin });
+        if (!this.paired) await this.opts.store.set(K.demo, JSON.stringify(this.data?.checkins ?? []));
+        else await this.send({ path: "/api/checkins", body: checkin });
       } else if (c.kind === "feedback") {
-        await this.send({ path: "/api/feedback", body: { date: c.date, ref: c.ref, tags: c.tags } });
+        if (this.paired) await this.send({ path: "/api/feedback", body: { date: c.date, ref: c.ref, tags: c.tags } });
+      } else if (c.kind === "exit") {
+        this.opts.onExit?.();
       } else if (c.kind === "workout") {
         this.workoutActive = c.active;
         if (!c.active) this.hr = null;
@@ -200,7 +218,7 @@ export class FitLoopApp {
         await this.refresh();
       }
     }
-    if (this.data) await this.opts.store.set(K.today, JSON.stringify(this.data));
+    if (this.data && this.paired) await this.opts.store.set(K.today, JSON.stringify(this.data));
   }
 
   /** Trades a 6-digit code for a glasses token. Returns a problem to show, or null. */

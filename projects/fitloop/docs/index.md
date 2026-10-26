@@ -22,7 +22,7 @@ features:
   - title: Bring your own agent
     details: FitLoop has no coach of its own. Your agent connects over MCP with OAuth, reads the plan guide and your profile, validates and publishes plan versions, and replies to your notes.
   - title: Mid-set on the G2
-    details: The exercise, the set and its target, a rest timer that starts itself, heart rate from your Watch, how-to cues on a hold of the ring. Meals check off with a tap.
+    details: The exercise, the set and its target, a rest timer that starts itself, heart rate from your Watch, how-to cues from the ring's menu. Meals check off with a tap.
   - title: Every option a switch
     details: Live heart rate, Apple Health, manual entries and progress photos are each optional, and so is what your agent may see. The defaults save effort.
 ---

@@ -141,7 +141,7 @@ struct GlassesPairing: View {
                 Button(code == nil ? "Get a pairing code" : "Get a new code") {
                     Task { do { code = try await model.backend.pairingCode() } catch { self.error = error.localizedDescription } }
                 }
-            } footer: { Text("On the glasses: swipe through today, tap to open, tap a set done, hold for how-to, double-tap for the menu.") }
+            } footer: { Text("On the glasses: swipe through today, tap to open, tap a set done, hold for the menu (how-to, skip, notes), double-tap to go back or exit.") }
             Section("Paired glasses") {
                 if devices.isEmpty { Text("None yet").foregroundStyle(.secondary) }
                 ForEach(devices) { d in
