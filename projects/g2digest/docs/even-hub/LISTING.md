@@ -33,7 +33,7 @@ developer information, screenshots, permission information and the icon. Rules t
 
 | File | What |
 | --- | --- |
-| `icon-24.png` | Store icon, 24 × 24, 1-bit, every lit pixel in a 2 × 2 block (a card with text lines). The portal has a 24 × 24 editor: the grid below redraws it there if uploading isn't offered. |
+| `icon-24.png` | Store icon, 24 × 24 RGBA: lit pixels `#F4F4F4` fully opaque, the rest fully transparent (the portal checks both), every lit pixel in a 2 × 2 block (a card with text lines). The portal has a 24 × 24 editor: the grid below redraws it there if uploading isn't offered. |
 | `background-576x288.png` | Greyscale background (the icon's card, large, on black). The docs don't give a size, so it matches the display; resize if the portal asks for another. |
 | `screenshots/*.png` | Simulator exports (`/api/screenshot/glasses`, RGBA, 576 × 288): the tour's cover, the ring card, a gesture's feedback flash, the next-step card, and the contextual menu. |
 
