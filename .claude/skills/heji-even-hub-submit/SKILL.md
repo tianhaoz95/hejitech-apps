@@ -103,9 +103,12 @@ WebView audio that merely keeps playing.
 
 **Data collection**: checkboxes Location tracked and AI technology used, plus Other (a `+` adds
 entries). Make it say exactly what the privacy policy says. Tick AI technology used whenever users
-see AI-made content, even if the AI is the user's own agent rather than ours (G2 Digest: yes). In
-Other, list each kind of data the backend stores (G2 Digest: account email via Google sign-in; the
-brief; editions with their sources and audio; paired devices and tokens).
+see AI-made content, even if the AI is the user's own agent rather than ours (G2 Digest: yes). Other
+is rows of two fields, data type ("Eg. User ID") and purpose ("Eg. Used for identification"), one
+row per `+`. List each kind of data the backend stores. G2 Digest's rows: Email address → Signing
+in to your account (Sign in with Google); Brief → Telling your agent what to put in each edition;
+Editions and audio → Showing your cards on the glasses and playing their audio; Paired devices and
+tokens → Letting your glasses, podcast app and agent reach your account.
 
 **Privacy and terms** ("Fill out privacy and terms"): the privacy policy and terms and conditions
 (G2 Digest: `services/web/privacy/`, `services/web/terms/`; the terms say it isn't financial,
