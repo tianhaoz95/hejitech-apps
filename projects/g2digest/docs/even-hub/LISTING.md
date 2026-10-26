@@ -20,8 +20,7 @@ developer information, screenshots, permission information and the icon. Rules t
   > Needs a free G2 Digest account (sign in with Google at g2digest.hejitech.workers.dev) and an
   > agent that builds your editions. Until then, the glasses show a short tour.
 
-- **Category:** News if the list has it, otherwise Productivity (or the closest to "information
-  / reading").
+- **Category:** Productivity (the portal has no News; AI is the runner-up).
 - **Tags** (5 max): `news, briefing, audio, commute, ai`
 - **Permission (network):** Fetch your editions and their audio from G2 Digest (same text as
   `app.json`).
