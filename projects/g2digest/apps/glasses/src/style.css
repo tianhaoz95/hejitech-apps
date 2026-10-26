@@ -8,3 +8,4 @@ button.primary { background: #3dff7a; color: #052310; border-color: transparent;
 h2 { font-size: 18px; margin: 0; }
 [hidden] { display: none !important; }
 .addr { user-select: all; -webkit-user-select: all; overflow-wrap: anywhere; }
+.editions { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; } .editions button { width: 100%; text-align: left; }

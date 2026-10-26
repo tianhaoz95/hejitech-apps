@@ -10,6 +10,7 @@ const bundle: Bundle = JSON.parse(readFileSync(join(dirname(fileURLToPath(import
 function setup(urls: Record<string, string | null> = {}) {
   const calls: string[] = [];
   let exits = 0;
+  let editions = 0;
   let ended = () => {};
   const audio: AudioOut = {
     play: async (u) => void calls.push(`play ${u}`),
@@ -26,10 +27,11 @@ function setup(urls: Record<string, string | null> = {}) {
     onChange: (lines) => void shown.push(lines),
     persist: (_d, i) => void persisted.push(i),
     onExit: () => void exits++,
+    onEditions: () => void editions++,
     now: () => 1000,
   });
   reader.load(bundle);
-  return { reader, calls, shown, persisted, end: () => ended(), exits: () => exits };
+  return { reader, calls, shown, persisted, end: () => ended(), exits: () => exits, editions: () => editions };
 }
 
 describe("Reader", () => {
@@ -78,5 +80,12 @@ describe("Reader", () => {
     expect(exits()).toBe(0);
     await reader.gesture("double_tap");
     expect(exits()).toBe(1);
+  });
+  it("swiping down on the End opens the past editions; a flash answers when they can't", async () => {
+    const { reader, shown, editions } = setup();
+    for (let i = 0; i < reader.frames.length; i++) await reader.gesture("next");
+    expect(editions()).toBe(1);
+    reader.flash("OFFLINE");
+    expect(shown.at(-1)!.at(-1)).toBe("[ OFFLINE ]");
   });
 });

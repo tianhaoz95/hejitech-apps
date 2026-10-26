@@ -4,6 +4,7 @@
 // Hub reviewers see it too, since they install without an account. Generic product copy only, no
 // topics (check-no-topics.mjs), no audio (nothing to fetch), and no URLs (cards never show one: the
 // phone page carries the address).
+import { TOUR_GUIDE_VERSION } from "./render.ts";
 import type { Bundle, CardInput } from "./types.ts";
 
 /** Why there's no edition: decides the tour's "next step" card. */
@@ -16,14 +17,14 @@ const NEXT: Record<TourReason, Pick<CardInput, "title" | "body">> = {
 };
 
 /** True for a bundle made by `tour()` (the plugin doesn't remember a position on it). */
-export const isTour = (b: Bundle | null | undefined) => b?.edition.title === TOUR_TITLE;
+export const isTour = (b: Bundle | null | undefined) => b?.guide_version === TOUR_GUIDE_VERSION;
 const TOUR_TITLE = "Welcome to G2 Digest";
 
 export function tour(reason: TourReason, date: string): Bundle {
   const section = (section_id: string, slug: string, title: string, body: string): CardInput => ({ slug, kind: "section", section_id, template: "note", title, body });
   return {
     date,
-    guide_version: "tour",
+    guide_version: TOUR_GUIDE_VERSION,
     brief_version: 0,
     edition: {
       title: TOUR_TITLE,
@@ -36,7 +37,7 @@ export function tour(reason: TourReason, date: string): Bundle {
     cards: [
       { slug: "cover", kind: "cover", title: "G2 Digest", body: "Your brief as cards and audio. Swipe down for a short tour." },
       section("how", "made-ahead", "Made before you wake", "An agent writes each edition from your brief. The glasses only play it back."),
-      section("ring", "swipe", "Swipe to move", "Down for the next card, up for the previous one."),
+      section("ring", "swipe", "Swipe to move", "Down for the next card, up for the previous one. Past the last card: your past editions."),
       section("ring", "tap", "Tap to listen", "Tap plays a card's short audio. Tap, then hold, plays its deep dive."),
       section("ring", "double-tap", "Double-tap to leave", "Double-tap stops audio. With nothing playing, it asks to exit."),
       section("next", "next-step", NEXT[reason].title, NEXT[reason].body),

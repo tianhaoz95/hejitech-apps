@@ -39,8 +39,9 @@ const cases: [code: string, what: string, mutate: (b: Bundle, brief: Brief) => u
   ["E_TEMPLATE", "wrong template for the section", (b) => { card(b, "proteina-binders").template = "note"; }],
   ["E_SLUG", "duplicate slug", (b) => { card(b, "open-coder-speed").slug = "proteina-binders"; }],
   ["E_SLUG", "not kebab-case", (b) => { card(b, "cover").slug = "Cover Card"; }],
-  ["E_LINES", "too many lines", (b) => { card(b, "proteina-binders").body = "Far fewer lab tries per working design, which changes the arithmetic of every project."; }],
-  ["E_LINE_WIDTH", "an unbreakable word", (b) => { card(b, "markets-close").body = "Supercalifragilisticexpialidocious."; }],
+  // Words too wide to share a line: one per line, so the card runs past the frame's lines.
+  ["E_LINES", "too many lines", (b) => { card(b, "proteina-binders").body = Array(7).fill("M".repeat(18)).join(" "); }],
+  ["E_LINE_WIDTH", "an unbreakable word", (b) => { card(b, "markets-close").body = "Pneumonoultramicroscopicsilicovolcanoconiosis-and-then-some-more."; }],
   ["E_CHARS", "too many characters", (b) => { Object.assign(card(b, "cover"), { title: "Afternoonish brieflings Afternoonish brieflings", body: "Quietnessful providership Quietnessful providership Quietnessful providership." }); }],
   ["E_URL", "a URL on a card", (b) => { card(b, "markets-close").body = "See example.com now."; }],
   ["E_MARKDOWN", "markdown on a card", (b) => { card(b, "markets-close").body = "**Bond** yields jumped."; }],

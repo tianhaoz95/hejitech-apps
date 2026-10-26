@@ -2,7 +2,8 @@
 // warnings don't. Card form is measured on the rendered frames, so what passes here is exactly
 // what the glasses and the preview show.
 import { canonical, SLUG } from "./brief.ts";
-import { len, LINE_WIDTH, MAX_CHARS, MAX_LINES, render, snapshot } from "./render.ts";
+import { textPx } from "./font.ts";
+import { len, LINE_PX, MAX_CHARS, MAX_LINES, render, snapshot } from "./render.ts";
 import type { Audio, Brief, Bundle, CardInput, Frame, Issue, Section } from "./types.ts";
 
 export interface ValidateContext {
@@ -131,8 +132,9 @@ export function validate(bundle: unknown, ctx: ValidateContext): ValidationResul
 
     // form (§2.1), measured on the rendered frame
     if (f.lines.length > MAX_LINES) err("E_LINES", `${f.lines.length} lines (max ${MAX_LINES}): shorten the title or body`, c.slug);
-    for (const l of f.lines) if (len(l) > LINE_WIDTH) err("E_LINE_WIDTH", `"${l}" is ${len(l)} characters (max ${LINE_WIDTH})`, c.slug);
-    const chars = f.lines.reduce((n, l) => n + len(l), 0);
+    for (const l of f.lines) if (textPx(l) > LINE_PX) err("E_LINE_WIDTH", `"${l}" is ${textPx(l)} px wide (max ${LINE_PX}): a word that long can't wrap`, c.slug);
+    // Alignment padding (a metric line's dots) counts as one space, as the guide says.
+    const chars = f.lines.reduce((n, l) => n + len(l.replace(/ \.{3,} /g, " ")), 0);
     if (chars > MAX_CHARS) err("E_CHARS", `${chars} characters (max ${MAX_CHARS})`, c.slug);
 
     // never on a card (§2.4)

@@ -5,9 +5,13 @@
   width: 576px; height: 288px; transform-origin: 0 0; background: #000; border-radius: 14px;
   box-shadow: 0 0 0 1px #12301c, 0 10px 30px rgb(0 0 0 / .35); overflow: hidden; position: absolute; left: 0; top: 0;
 }
+/* The card's frame as the glasses draw it (core FRAME: 2 px border, radius 6, 8 px padding), and a
+   proportional face at the glasses' scale (27 px lines). The line breaks come from the renderer,
+   which measures the glasses' own glyph widths; this font only approximates how wide they look. */
 .g2-text {
-  margin: 0; padding: 10px 16px; color: var(--g2); white-space: pre; overflow: hidden;
-  font: 500 30px/38px "SF Mono", ui-monospace, Menlo, Consolas, monospace; letter-spacing: -.01em;
+  margin: 0; height: 288px; box-sizing: border-box; padding: 8px; border: 2px solid rgb(61 255 122 / .8); border-radius: 6px;
+  color: var(--g2); white-space: pre; overflow: hidden;
+  font: 400 19px/27px "Helvetica Neue", Helvetica, Arial, sans-serif;
   text-shadow: 0 0 6px rgb(61 255 122 / .45); background: transparent;
 }
 .g2-status { font-size: 13px; color: var(--muted, #7d9483); min-height: 1.2em; }

@@ -27,7 +27,9 @@ Local tokens from the seed: agent `g2a_dev_local_token`, glasses `g2d_dev_local_
 
 ## Architecture
 
-- **One render function** (`core/src/render.ts`): bundle → frames. The plugin, the web preview, the
+- **One render function** (`core/src/render.ts`): bundle → frames, wrapped by the glasses' measured
+  glyph widths (`core/src/font.ts`, 536 px lines, 9 lines in the bordered frame, footer pinned by
+  `screenText`). The plugin, the web preview, the
   validator and the publish snapshot all use it; never format card text anywhere else.
 - **One gesture state machine** (`core/src/player.ts`), driven by R1 events in the plugin and by
   on-screen buttons/keys in `<G2Preview>`, both through `plugin/src/reader.ts`.
@@ -40,8 +42,9 @@ Local tokens from the seed: agent `g2a_dev_local_token`, glasses `g2d_dev_local_
   (podcast fallback), `mcp.ts` (six tools), `publish.ts` (validate + publish), `store.ts` (db,
   tokens, brief join). Service key only here. Clients read own rows via RLS; all writes go through
   the Worker.
-- **Plugin** (`packages/plugin`): `detectBridge()` (Even WebView handler, 5 s), one full-screen
-  text container, contextual menu as a second route to the deep dive, bridge local storage for the
+- **Plugin** (`packages/plugin`): `detectBridge()` (Even WebView handler, 5 s), two pages (the
+  cards: one bordered full-screen text container, the root; past editions: a list container,
+  double tap back), contextual menu as a second route to the deep dive, bridge local storage for the
   token / last bundle / position / audio mode, Cache Storage for audio.
 
 ## Pitfalls
@@ -50,6 +53,11 @@ Local tokens from the seed: agent `g2a_dev_local_token`, glasses `g2d_dev_local_
   `detectBridge` does) before trusting it.
 - `textContainerUpgrade` with just `content` replaces the whole text (verified in the simulator).
 - Simulator screenshots are RGBA with the text in alpha: composite on black to look at them.
+- List events leave out a click's `eventType` (0) and the first row's `currentSelectItemIndex`:
+  treat both as missing-means-zero. `createStartUpPageContainer` works once; switch pages with
+  `rebuildPageContainer`.
+- Re-measure `font.ts` if the firmware font changes:
+  `node .claude/skills/heji-even-hub-submit/measure-font/measure.mjs` (prints the widths as JSON).
 - Local Worker builds must not load `.env.production` (production Supabase): `dev:worker` builds
   with `--mode development`.
 - Pairing is throttled per client address (KV `pairfail:<ip>`): locally everything is "local", so

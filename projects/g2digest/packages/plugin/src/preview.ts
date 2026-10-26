@@ -2,7 +2,7 @@
 // showing one card at a time, with simulated R1 controls that drive the same Reader (and so the
 // same state machine) as the real gestures. Used by the web app's preview page and by the plugin's
 // phone page as a mirror of what the glasses show.
-import type { Gesture } from "@g2digest/core";
+import { screenText, type Gesture } from "@g2digest/core";
 import type { Reader } from "./reader.ts";
 
 export const FIDELITY_NOTE =
@@ -93,7 +93,7 @@ export function mountPreview(host: HTMLElement, opts: { onGesture: (g: Gesture) 
   return {
     root,
     show(lines) {
-      text.textContent = lines.join("\n");
+      text.textContent = screenText(lines);
     },
     status(t) {
       status.textContent = t;

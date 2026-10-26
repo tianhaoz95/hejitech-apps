@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { len, LINE_WIDTH, MAX_CHARS, MAX_LINES, render, snapshot } from "../src/render.ts";
+import { textPx } from "../src/font.ts";
+import { len, LINE_PX, MAX_CHARS, MAX_LINES, render, snapshot } from "../src/render.ts";
 import { initialState, step } from "../src/player.ts";
 import { isTour, tour, type TourReason } from "../src/tour.ts";
 import { fixtureBundle } from "./helpers.ts";
@@ -10,7 +11,7 @@ describe("tour (the bundle shown when there's no edition)", () => {
   it.each(REASONS)("every card fits the glasses (%s)", (reason) => {
     for (const f of render(tour(reason, "2026-10-24"))) {
       expect(f.lines.length, f.slug).toBeLessThanOrEqual(MAX_LINES);
-      for (const l of f.lines) expect(len(l), `${f.slug}: ${l}`).toBeLessThanOrEqual(LINE_WIDTH);
+      for (const l of f.lines) expect(textPx(l), `${f.slug}: ${l}`).toBeLessThanOrEqual(LINE_PX);
       expect(f.lines.reduce((n, l) => n + len(l), 0), f.slug).toBeLessThanOrEqual(MAX_CHARS);
     }
   });

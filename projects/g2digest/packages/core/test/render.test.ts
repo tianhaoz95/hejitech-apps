@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { dateKicker, len, metricLine, render, snapshot, wrap } from "../src/render.ts";
+import { textPx } from "../src/font.ts";
+import { dateKicker, LINE_PX, MAX_LINES, metricLine, render, screenText, snapshot, wrap } from "../src/render.ts";
 import { fixtureBundle } from "./helpers.ts";
 
 describe("render", () => {
@@ -21,7 +22,7 @@ describe("render", () => {
     const metric = fixtureBundle().cards[5].metrics![0];
     expect(frames[5].lines[2]).toBe(metricLine(metric.label, metric.value));
     expect(frames[5].lines[2]).toMatch(/^[A-Z]+ \.{3,} -1\.2%$/);
-    for (const f of frames) for (const l of f.lines) expect(len(l)).toBeLessThanOrEqual(25);
+    for (const f of frames) for (const l of f.lines) expect(textPx(l)).toBeLessThanOrEqual(LINE_PX);
   });
   it("matches the snapshot", () => {
     expect(snapshot(render(fixtureBundle()))).toMatchSnapshot();
@@ -29,11 +30,32 @@ describe("render", () => {
 });
 
 describe("helpers", () => {
-  it("wraps at word boundaries", () => {
-    expect(wrap("one two three four five six seven", 10)).toEqual(["one two", "three four", "five six", "seven"]);
+  it("wraps at word boundaries by the glasses' pixel widths", () => {
+    expect(wrap("one two three four five six seven", 90)).toEqual(["one two", "three four", "five six", "seven"]);
+    const lines = wrap("A plain sentence that is long enough to need more than one line on the glasses, even at full width.");
+    expect(lines.length).toBe(2);
+    for (const [i, l] of lines.entries()) {
+      expect(textPx(l)).toBeLessThanOrEqual(LINE_PX);
+      if (i < lines.length - 1) expect(textPx(`${l} ${lines[i + 1].split(" ")[0]}`)).toBeGreaterThan(LINE_PX);
+    }
   });
-  it("pads metric lines to the width", () => {
-    expect(len(metricLine("Dow", "-0.5%"))).toBe(25);
+  it("pads metric lines out to the right edge", () => {
+    const l = metricLine("Dow", "-0.5%");
+    expect(l.startsWith("DOW ") && l.endsWith(" -0.5%")).toBe(true);
+    expect(textPx(l)).toBeLessThanOrEqual(LINE_PX);
+    expect(LINE_PX - textPx(l)).toBeLessThan(textPx("."));
+  });
+  it("pins the footer to the frame's last line", () => {
+    const text = screenText(["KICKER", "Title", "Body", "FOOTER"]);
+    expect(text.split("\n")).toHaveLength(MAX_LINES);
+    expect(text.split("\n").at(-1)).toBe("FOOTER");
+    expect(text.endsWith("\n")).toBe(false);
+  });
+  it("points the End card to the past editions (the tour's End to exit)", () => {
+    expect(render(fixtureBundle()).at(-1)!.footer).toBe("SWIPE DOWN: PAST EDITIONS");
+  });
+  it("fits the frame: 536 px lines, 9 of them", () => {
+    expect([LINE_PX, MAX_LINES]).toEqual([536, 9]);
   });
   it("names the day", () => {
     expect(dateKicker("2026-10-22")).toBe("THU OCT 22");

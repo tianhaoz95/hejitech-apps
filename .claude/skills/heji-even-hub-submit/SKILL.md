@@ -35,6 +35,21 @@ to screenshot it again.** G2 Digest 0.2.0 (2026-10-26) went through this; its ki
 - **No links on the plugin's phone page**: a link navigates the Even app's WebView away from the
   plugin. Show addresses as selectable text.
 - The SDK has **no audio output** to the glasses; phone audio (HTML `<audio>`) is the app's own.
+
+**Layout on the glasses** (what owners notice first):
+- The firmware font is **proportional and narrow** (4–18 px glyphs, 27 px line pitch): a
+  25-character line covers ~40% of the 576 px width. Wrap by pixel widths, not characters.
+  `node .claude/skills/heji-even-hub-submit/measure-font/measure.mjs` measures the font in the
+  simulator and prints every glyph's width as JSON (the backtick isn't in the font at all).
+  G2 Digest's table and pixel wrapping: `projects/g2digest/packages/core/src/font.ts`, `render.ts`.
+- Other G2 apps draw a **bordered frame**: `borderWidth` 0–5, `borderColor` greyscale 0–15
+  (13 is bright), `borderRadius` 0–10, `paddingLength` 0–32. With a 2 px border and 8 px padding,
+  9 lines fit; leave ~20 px of width spare for real-glasses metrics. No trailing `\n` (scrollbar).
+- **A second page** (e.g. a list): `createStartUpPageContainer` works once per session, so switch
+  with `rebuildPageContainer` (it redraws everything and drops the menu unless passed again). List
+  rows share the container's height (show ≤ 8, page the rest), and list clicks arrive as
+  `listEvent` with `eventType` and the first row's `currentSelectItemIndex` left out (0). Double tap
+  on a sub-page goes back; only the root page exits.
 - No medical diagnosis, financial advice or emergency routing; no impersonation or keyword stuffing.
 
 Manifest (`apps/glasses/app.json`): `package_id` reverse-domain, lowercase, no `-`/`_`; `edition`

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { render } from "../src/render.ts";
+import { textPx } from "../src/font.ts";
+import { LINE_PX, render } from "../src/render.ts";
 import { ended, initialState, NO_DEEP_DIVE, step, view, type Gesture, type PlayerState } from "../src/player.ts";
 import { fixtureBundle } from "./helpers.ts";
 
@@ -24,6 +25,12 @@ describe("gesture map (PRD §7.1)", () => {
   it("stops at both ends", () => {
     expect(run(["prev"]).s.index).toBe(0);
     expect(run(Array(20).fill("next")).s.index).toBe(frames.length - 1);
+  });
+  it("swiping down past the End asks for the past editions", () => {
+    const { s, all } = run(Array(frames.length).fill("next"));
+    expect(s.index).toBe(frames.length - 1);
+    expect(all.at(-1)).toEqual({ kind: "editions" });
+    expect(run(["prev"]).all).toEqual([]);
   });
   it("tap plays and pauses the glance", () => {
     const { s, all } = run(["next", "tap", "tap", "tap"]);
@@ -71,7 +78,7 @@ describe("gesture map (PRD §7.1)", () => {
   });
   it("every player footer fits the line width", () => {
     for (const g of [["next", "tap"], ["next", "tap", "tap"], ["next", "next", "next", "long_press"], ["next", "next", "next", "long_press", "tap"], ["long_press"]] as Gesture[][]) {
-      for (const l of view(run(g).s, frames, 1000)) expect([...l].length).toBeLessThanOrEqual(25);
+      for (const l of view(run(g).s, frames, 1000)) expect(textPx(l)).toBeLessThanOrEqual(LINE_PX);
     }
   });
 });

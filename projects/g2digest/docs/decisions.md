@@ -89,11 +89,32 @@ The submission checklist (hub.evenrealities.com, ship/app-submission) set these:
   Hub if they want one), and hosted edition building for users without their own agent (it would
   mean server-side AI and TTS, which PRD §3 and the owner's audio answer rule out for now).
 
+## The whole display, a frame, past editions (2026-10-26)
+
+After the owner's first days on the glasses:
+
+- **Lines are measured in pixels, not characters.** The 25-characters-per-line rule (PRD) left
+  most of the display empty: the font is proportional and narrow, so 25 characters cover about 40%
+  of the width. The glyph widths were measured in the simulator (`core/src/font.ts`: each glyph
+  drawn 10 and 30 times, widths differenced; the line pitch is 27 px) and the renderer now wraps at
+  536 px (the frame's inner width less a 20 px margin for real-glasses metrics). The **150-character
+  budget stays**: it is what keeps a card a glance. Guide 0.3 says this, so agents' editions follow.
+- **A frame.** Like other G2 apps, the card is a bordered text container across the display
+  (`FRAME`: 2 px, level 13, radius 6, 8 px padding); 9 lines fit inside, and the footer is pinned
+  to the last one (`screenText`) so every card has the same shape. The web preview draws the same
+  frame with a proportional face; its line breaks come from the renderer, so they match.
+- **Past editions on the glasses.** Swiping down past the End card (the End's footer says so), or
+  "Past editions" in the menu, opens a list page: up to 8 editions, newest first, with "Older" and
+  "Newer" rows, since a list's rows share the frame's height. Clicking one reads it; double tap goes
+  back to the cards (the list isn't the root page, so it doesn't exit). A past edition stays pinned
+  until the reader picks the latest again, so the 15-minute refresh doesn't swap it out. The phone
+  page lists the same editions as buttons. Past editions need the network (only the latest is kept
+  offline).
+
 ## Observed in the simulator (2026-10-23)
 
-The glasses' font is narrow: a 25-character line fills about 40% of the 576 px width. The 25
-characters per line limit is the PRD's (glanceability, not space), so it stays; whether the text is
-big enough to read on a moving train is a question for the on-device check.
+The glasses' font is narrow: a 25-character line fills about 40% of the 576 px width. (Superseded
+on 2026-10-26: lines are now measured in pixels, see above.)
 
 ## Open (PRD §15 defaults applied)
 

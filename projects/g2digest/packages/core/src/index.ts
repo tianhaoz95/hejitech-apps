@@ -9,3 +9,4 @@ export * from "./player.ts";
 export { GUIDE, GUIDE_VERSION } from "./guide.gen.ts";
 export * from "./episodes.ts";
 export * from "./tour.ts";
+export * from "./font.ts";

@@ -1,6 +1,6 @@
 # G2 Digest card authoring guide
 
-guide_version: 0.2
+guide_version: 0.3
 
 This guide covers the **form** of a G2 Digest edition: card anatomy, budgets, the template
 registry, audio and validation. It's the same for every user. The **content** (what goes in a
@@ -28,17 +28,20 @@ attention, and a real risk of motion sickness from reading. So:
 
 ### 2.1 Hard limits (errors)
 
-The display is 576 × 288 px, monochrome green. One card fills one screen and never scrolls.
+The display is 576 × 288 px, monochrome green, and the card is a bordered frame across all of it.
+One card fills one screen and never scrolls. The glasses' font is proportional, so lines are
+measured in pixels: a line holds about 50 characters of ordinary text.
 
 | Rule | Limit | Code |
 |---|---|---|
-| Lines per card, kicker and footer included | ≤ 7 | `E_LINES` |
-| Characters per line (the renderer word-wraps; a single word longer than this fails) | ≤ 25 | `E_LINE_WIDTH` |
+| Lines per card, kicker and footer included | ≤ 9 | `E_LINES` |
+| Line width in the glasses' font (the renderer word-wraps; a single word wider than this fails) | ≤ 536 px | `E_LINE_WIDTH` |
 | Characters per card, every line counted (alignment padding counts as one space) | ≤ 150 | `E_CHARS` |
 
-You don't place line breaks yourself: `title` and `body` are single lines of text, and the
-renderer wraps them at word boundaries. `validate_cards` returns the rendered frames, so you can see
-exactly what will show.
+The 150-character budget is what keeps a card a glance, not the space: a full card is still three
+or four lines, with the footer at the bottom of the frame. You don't place line breaks yourself:
+`title` and `body` are single lines of text, and the renderer wraps them at word boundaries.
+`validate_cards` returns the rendered frames, so you can see exactly what will show.
 
 ### 2.2 Anatomy (fixed order)
 
@@ -175,7 +178,8 @@ Cover → [alert cards] → [TL;DR] → section cards in brief section order →
   know today, with its key number.
 - **Section cards** (`kind: "section"`, `section_id`, `template` = the section's, `E_TEMPLATE`) in
   the brief's section order (`E_ORDER`).
-- **End** (`kind: "end"`, last, `E_END`): a short sign-off; the footer is rendered for you.
+- **End** (`kind: "end"`, last, `E_END`): a short sign-off; the footer is rendered for you (it
+  points to the past editions, which open when the reader swipes down past the End).
 
 ### 4.3 Template registry
 

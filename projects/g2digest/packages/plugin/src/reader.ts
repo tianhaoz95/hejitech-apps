@@ -25,6 +25,8 @@ export interface ReaderOptions {
   audioUrl: (path: string) => Promise<string | null>;
   /** Double tap with nothing playing: open the system exit dialog (glasses only). */
   onExit?: () => void;
+  /** Swipe down on the last card: show the past editions. */
+  onEditions?: () => void;
   now?: () => number;
 }
 
@@ -89,6 +91,9 @@ export class Reader {
       case "exit":
         this.opts.onExit?.();
         return;
+      case "editions":
+        this.opts.onEditions?.();
+        return;
       case "play": {
         const card = this.bundle?.cards.find((x) => x.slug === c.slug);
         const path = card?.[c.audio]?.audio_path;
@@ -109,6 +114,14 @@ export class Reader {
         });
       }
     }
+  }
+
+  /** A short note in the footer (e.g. "OFFLINE"), as the state machine's own flashes are shown. */
+  flash(text: string, ms = 1500) {
+    if (!this.bundle) return;
+    this.podcastFlash = null;
+    this.state = { ...this.state, flash: { text, until: this.now() + ms } };
+    this.emit();
   }
 
   private emit() {

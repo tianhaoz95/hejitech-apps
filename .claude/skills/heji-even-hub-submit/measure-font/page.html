@@ -1,0 +1,22 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>G2 font calibration</title>
+<body>
+<script type="module">
+// Shown in the Even Hub simulator by measure.mjs: screen 0 is nine probe lines (line pitch), then
+// each screen holds four glyphs, each drawn 10 and 30 times on its own line, then a space probe.
+// A click (from the automation API) moves to the next screen.
+import { waitForEvenAppBridge, CreateStartUpPageContainer, TextContainerProperty, TextContainerUpgrade } from "./sdk.js";
+const { screens } = await (await fetch("screens.json")).json();
+const bridge = await waitForEvenAppBridge();
+let i = 0;
+await bridge.createStartUpPageContainer(new CreateStartUpPageContainer({ containerTotalNum: 1, textObject: [new TextContainerProperty({
+  containerID: 1, containerName: "c", xPosition: 0, yPosition: 0, width: 576, height: 288, paddingLength: 0, borderWidth: 0, content: screens[0], isEventCapture: 1,
+})] }));
+console.log("screen 0");
+bridge.onEvenHubEvent(async () => {
+  i = Math.min(i + 1, screens.length - 1);
+  await bridge.textContainerUpgrade(new TextContainerUpgrade({ containerID: 1, containerName: "c", content: screens[i] }));
+  console.log("screen " + i);
+});
+</script>

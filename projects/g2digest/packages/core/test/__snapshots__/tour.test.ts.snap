@@ -2,73 +2,87 @@
 
 exports[`tour (the bundle shown when there's no edition) > matches the snapshot 1`] = `
 "#1 2026-10-24-cover
-┌───────────────────────────┐
-│ SAT OCT 24                │
-│ G2 Digest                 │
-│ Your brief as cards and   │
-│ audio. Swipe down for a   │
-│ short tour.               │
-│ 7 CARDS                   │
-│                           │
-└───────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│ SAT OCT 24                                                     │
+│ G2 Digest                                                      │
+│ Your brief as cards and audio. Swipe down for a short tour.    │
+│                                                                │
+│                                                                │
+│                                                                │
+│                                                                │
+│                                                                │
+│ 7 CARDS                                                        │
+└────────────────────────────────────────────────────────────────┘
 #2 2026-10-24-made-ahead
-┌───────────────────────────┐
-│ HOW IT WORKS              │
-│ Made before you wake      │
-│ An agent writes each      │
-│ edition from your brief.  │
-│ The glasses only play it  │
-│ back.                     │
-│ NO AUDIO                  │
-└───────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│ HOW IT WORKS                                                   │
+│ Made before you wake                                           │
+│ An agent writes each edition from your brief. The glasses only │
+│ play it back.                                                  │
+│                                                                │
+│                                                                │
+│                                                                │
+│                                                                │
+│ NO AUDIO                                                       │
+└────────────────────────────────────────────────────────────────┘
 #3 2026-10-24-swipe
-┌───────────────────────────┐
-│ THE RING 1/3              │
-│ Swipe to move             │
-│ Down for the next card,   │
-│ up for the previous one.  │
-│ NO AUDIO                  │
-│                           │
-│                           │
-└───────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│ THE RING 1/3                                                   │
+│ Swipe to move                                                  │
+│ Down for the next card, up for the previous one. Past the last │
+│ card: your past editions.                                      │
+│                                                                │
+│                                                                │
+│                                                                │
+│                                                                │
+│ NO AUDIO                                                       │
+└────────────────────────────────────────────────────────────────┘
 #4 2026-10-24-tap
-┌───────────────────────────┐
-│ THE RING 2/3              │
-│ Tap to listen             │
-│ Tap plays a card's short  │
-│ audio. Tap, then hold,    │
-│ plays its deep dive.      │
-│ NO AUDIO                  │
-│                           │
-└───────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│ THE RING 2/3                                                   │
+│ Tap to listen                                                  │
+│ Tap plays a card's short audio. Tap, then hold, plays its deep │
+│ dive.                                                          │
+│                                                                │
+│                                                                │
+│                                                                │
+│                                                                │
+│ NO AUDIO                                                       │
+└────────────────────────────────────────────────────────────────┘
 #5 2026-10-24-double-tap
-┌───────────────────────────┐
-│ THE RING 3/3              │
-│ Double-tap to leave       │
-│ Double-tap stops audio.   │
-│ With nothing playing, it  │
-│ asks to exit.             │
-│ NO AUDIO                  │
-│                           │
-└───────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│ THE RING 3/3                                                   │
+│ Double-tap to leave                                            │
+│ Double-tap stops audio. With nothing playing, it asks to exit. │
+│                                                                │
+│                                                                │
+│                                                                │
+│                                                                │
+│                                                                │
+│ NO AUDIO                                                       │
+└────────────────────────────────────────────────────────────────┘
 #6 2026-10-24-next-step
-┌───────────────────────────┐
-│ NEXT STEP                 │
-│ Pair your glasses         │
-│ Sign in to G2 Digest on   │
-│ the web, open Pair, and   │
-│ type the code on your     │
-│ phone.                    │
-│ NO AUDIO                  │
-└───────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│ NEXT STEP                                                      │
+│ Pair your glasses                                              │
+│ Sign in to G2 Digest on the web, open Pair, and type the code  │
+│ on your phone.                                                 │
+│                                                                │
+│                                                                │
+│                                                                │
+│                                                                │
+│ NO AUDIO                                                       │
+└────────────────────────────────────────────────────────────────┘
 #7 2026-10-24-end
-┌───────────────────────────┐
-│ END                       │
-│ End of the tour           │
-│ Swipe up to go back       │
-│ through it.               │
-│ DOUBLE-TAP TO EXIT        │
-│                           │
-│                           │
-└───────────────────────────┘"
+┌────────────────────────────────────────────────────────────────┐
+│ END                                                            │
+│ End of the tour                                                │
+│ Swipe up to go back through it.                                │
+│                                                                │
+│                                                                │
+│                                                                │
+│                                                                │
+│                                                                │
+│ DOUBLE-TAP TO EXIT                                             │
+└────────────────────────────────────────────────────────────────┘"
 `;

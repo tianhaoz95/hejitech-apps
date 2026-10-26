@@ -1,25 +1,34 @@
 // The one render function (PRD §6): bundle JSON in, card frames out. The glasses plugin pushes
 // these lines into a text container, the web preview draws them in a 576 × 288 frame, and the
 // validator measures them. Pure and deterministic: no DOM, no clock, no brief lookups (section
-// titles come from the bundle's own edition).
+// titles come from the bundle's own edition). Lines wrap by the glasses' own glyph widths
+// (font.ts), so they use the whole width of the display.
+import { LINE_PITCH_PX, textPx } from "./font.ts";
 import type { Bundle, CardInput, Frame } from "./types.ts";
 
-export const LINE_WIDTH = 25;
-export const MAX_LINES = 7;
-export const MAX_CHARS = 150;
 export const DISPLAY = { width: 576, height: 288 } as const;
+/** The card's frame: border (greyscale level `color`) and padding of the one full-screen text container. */
+export const FRAME = { border: 2, padding: 8, radius: 6, color: 13 } as const;
+const INSET = FRAME.border + FRAME.padding;
+/** Usable line width: the frame's inner width less a 20 px margin, since the glasses may measure a little wider than the simulator. */
+export const LINE_PX = DISPLAY.width - 2 * INSET - 20;
+/** Lines that fit inside the frame (kicker and footer included). */
+export const MAX_LINES = Math.floor((DISPLAY.height - 2 * INSET) / LINE_PITCH_PX);
+export const MAX_CHARS = 150;
+/** `guide_version` of the built-in tour (tour.ts), which isn't an edition. */
+export const TOUR_GUIDE_VERSION = "tour";
 
 /** Code points, so "♪" or "·" count as one character like on the display. */
 export const len = (s: string) => [...s].length;
 
-/** Word-wraps at spaces. A word longer than `width` keeps its own (too long) line for the validator to flag. */
-export function wrap(text: string, width = LINE_WIDTH): string[] {
+/** Word-wraps at spaces by pixel width. A word wider than `widthPx` keeps its own (too wide) line for the validator to flag. */
+export function wrap(text: string, widthPx = LINE_PX): string[] {
   const words = text.trim().split(/\s+/).filter(Boolean);
   const lines: string[] = [];
   let line = "";
   for (const w of words) {
     if (!line) line = w;
-    else if (len(line) + 1 + len(w) <= width) line += " " + w;
+    else if (textPx(`${line} ${w}`) <= widthPx) line += " " + w;
     else {
       lines.push(line);
       line = w;
@@ -29,11 +38,11 @@ export function wrap(text: string, width = LINE_WIDTH): string[] {
   return lines;
 }
 
-/** `LABEL ..... VALUE` padded to the line width (one space minimum between them). */
-export function metricLine(label: string, value: string, width = LINE_WIDTH): string {
+/** `LABEL ..... VALUE` with the value at the right edge of the line (one space minimum between them). */
+export function metricLine(label: string, value: string, widthPx = LINE_PX): string {
   const l = label.toUpperCase(), v = value;
-  const gap = width - len(l) - len(v);
-  return gap >= 3 ? `${l} ${".".repeat(gap - 2)} ${v}` : `${l} ${v}`;
+  const dots = Math.floor((widthPx - textPx(`${l}  ${v}`)) / textPx("."));
+  return dots >= 3 ? `${l} ${".".repeat(dots)} ${v}` : `${l} ${v}`;
 }
 
 export function audioFooter(card: Pick<CardInput, "glance" | "deep_dive">): string {
@@ -81,7 +90,7 @@ function footer(bundle: Bundle, card: CardInput): string {
     const audio = bundle.cards.reduce((s, c) => s + (c.glance?.duration_sec ?? 0) + (c.deep_dive?.duration_sec ?? 0), 0);
     return audio ? `${bundle.cards.length} CARDS · ${Math.round(audio / 60)} MIN AUDIO` : `${bundle.cards.length} CARDS`;
   }
-  if (card.kind === "end" && !card.glance && !card.deep_dive) return "DOUBLE-TAP TO EXIT";
+  if (card.kind === "end" && !card.glance && !card.deep_dive) return bundle.guide_version === TOUR_GUIDE_VERSION ? "DOUBLE-TAP TO EXIT" : "SWIPE DOWN: PAST EDITIONS";
   return audioFooter(card);
 }
 
@@ -109,18 +118,26 @@ export function render(bundle: Bundle): Frame[] {
   return bundle.cards.map((c, i) => renderCard(bundle, c, i));
 }
 
-/** The frame's text as one string, as pushed to the glasses' text container. */
-export const frameText = (lines: string[]) => lines.join("\n");
+/**
+ * The screen's text, as pushed to the glasses' text container: the card's lines with the footer
+ * moved down to the frame's last line, so every card is laid out the same (kicker top, footer
+ * bottom). No trailing newline: the firmware would show a scrollbar.
+ */
+export function screenText(lines: string[]): string {
+  if (lines.length < 2 || lines.length >= MAX_LINES) return lines.join("\n");
+  return [...lines.slice(0, -1), ...Array<string>(MAX_LINES - lines.length).fill(""), lines[lines.length - 1]].join("\n");
+}
 
-/** ASCII picture of every frame (for run logs, the publish snapshot and tests). */
+/** ASCII picture of every frame (for run logs, the publish snapshot and tests). Characters, not pixels: a sketch. */
 export function snapshot(frames: Frame[]): string {
-  const w = LINE_WIDTH;
+  const w = Math.max(25, ...frames.flatMap((f) => f.lines.map(len)));
   const out: string[] = [];
   frames.forEach((f, i) => {
     out.push(`#${i + 1} ${f.id}`);
     out.push("┌" + "─".repeat(w + 2) + "┐");
-    for (const l of f.lines) out.push("│ " + l + " ".repeat(Math.max(0, w - len(l))) + " │");
-    for (let k = f.lines.length; k < MAX_LINES; k++) out.push("│ " + " ".repeat(w) + " │");
+    const shown = screenText(f.lines).split("\n");
+    for (const l of shown) out.push("│ " + l + " ".repeat(Math.max(0, w - len(l))) + " │");
+    for (let k = shown.length; k < MAX_LINES; k++) out.push("│ " + " ".repeat(w) + " │");
     out.push("└" + "─".repeat(w + 2) + "┘");
   });
   return out.join("\n");

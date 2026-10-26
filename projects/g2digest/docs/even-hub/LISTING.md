@@ -15,7 +15,8 @@ developer information, screenshots, permission information and the icon. Rules t
   > An agent you connect (Claude, for example) compiles each edition ahead of time: it researches
   > your sections, writes the cards and the audio, and checks every card against the display's
   > limits. On the way, swipe the R1 ring to skim the cards, tap for a short glance, and tap then
-  > hold for the deep dive. Editions are saved on your phone, so they work offline.
+  > hold for the deep dive. Swipe past the last card for your past editions. Editions are saved on
+  > your phone, so they work offline.
   >
   > Needs a free G2 Digest account (sign in with Google at g2digest.hejitech.workers.dev) and an
   > agent that builds your editions. Until then, the glasses show a short tour.
@@ -24,9 +25,10 @@ developer information, screenshots, permission information and the icon. Rules t
 - **Tags** (5 max): `news, briefing, audio, commute, ai`
 - **Permission (network):** Fetch your editions and their audio from G2 Digest (same text as
   `app.json`).
-- **Release notes (0.2.0):**
-  - A short tour on the glasses until your first edition arrives.
-  - Double-tap with nothing playing asks to exit; Exit is also in the menu.
+- **Release notes (0.3.0)**, the first version on Even Hub, so they describe the app:
+  - Your brief as cards in a bordered frame across the whole display, with audio for the deep dives.
+  - Swipe past the last card (or open the menu) for your past editions.
+  - A short tour until your first edition arrives; double-tap with nothing playing asks to exit.
 - **Privacy policy:** <https://g2digest.hejitech.workers.dev/privacy/>
 - **Terms of use:** <https://g2digest.hejitech.workers.dev/terms/>
 - **Support:** <https://g2digest.hejitech.workers.dev/support/> · info@hejitech.com
@@ -38,7 +40,7 @@ developer information, screenshots, permission information and the icon. Rules t
 | --- | --- |
 | `icon-24.png` | Store icon, 24 × 24 RGBA: lit pixels `#F4F4F4` fully opaque, the rest fully transparent (the portal checks both), every lit pixel in a 2 × 2 block (a card with text lines). The portal has a 24 × 24 editor: the grid below redraws it there if uploading isn't offered. |
 | `background-576x288.png` | Greyscale background (the icon's card, large, on black). The docs don't give a size, so it matches the display; resize if the portal asks for another. |
-| `screenshots/*.png` | Simulator exports (`/api/screenshot/glasses`, RGBA, 576 × 288): the tour's cover, the ring card, a gesture's feedback flash, the next-step card, and the contextual menu. |
+| `screenshots/*.png` | Simulator exports (`/api/screenshot/glasses`, RGBA, 576 × 288): the tour's cover, the ring card, a gesture's feedback flash, the next-step card, the contextual menu, and the past editions list (from the local seed account: dates and the generic title only). |
 
 Icon grid (12 × 12 blocks, each block = 2 × 2 pixels):
 
@@ -62,7 +64,8 @@ Icon grid (12 × 12 blocks, each block = 2 × 2 pixels):
 > G2 Digest works without an account: on first launch the glasses play a seven-card tour, and every
 > ring gesture answers on every card (swipe to move; tap and tap-then-hold flash "NO GLANCE AUDIO" /
 > "NO DEEP DIVE" because the tour has no audio). Double-tap with nothing playing opens the system
-> exit dialog; Exit is also in the contextual menu. Reading your own editions needs an account and
+> exit dialog; Exit is also in the contextual menu. Swiping down past the last card opens the list
+> of past editions (a second page: double-tap there goes back to the cards). Reading your own editions needs an account and
 > pairing: sign in at g2digest.hejitech.workers.dev, open Pair, and type the 6-digit code into the
 > app's phone page. The app only talks to g2digest.hejitech.workers.dev (our API, on Cloudflare)
 > and our Supabase project's supabase.co address (expiring audio links), both operated by HEJI
