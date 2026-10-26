@@ -110,6 +110,14 @@ backend stores. G2 Digest's rows: Email address → Signing in to your account (
 Brief → Telling your agent what to put in each edition; Editions and audio → Showing your cards and
 playing their audio; Paired devices and tokens → Connecting your glasses, podcast app and agent.
 
+**Third-party services (optional)**, the last step, then "Generate document": one text row per `+`
+("Including links to third-party services"). List the providers the backend and plugin use, each
+with its privacy link, under 50 characters to be safe: `Supabase (data, audio): supabase.com/privacy`,
+`Cloudflare (API): cloudflare.com/privacypolicy`, `Google Sign-In: policies.google.com/privacy`
+(add Apple, Stripe, etc. where a project uses them). The user's own agent isn't one: we don't
+integrate it. Read the generated document before accepting it: it must agree with the project's
+own privacy policy.
+
 **Privacy and terms** ("Fill out privacy and terms"): the privacy policy and terms and conditions
 (G2 Digest: `services/web/privacy/`, `services/web/terms/`; the terms say it isn't financial,
 medical or news advice, which Even's content rules care about).
