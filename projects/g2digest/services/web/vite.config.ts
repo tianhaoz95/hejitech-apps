@@ -16,6 +16,7 @@ const pages = {
   spike: "spike/index.html",
   privacy: "privacy/index.html",
   support: "support/index.html",
+  terms: "terms/index.html",
   notFound: "404.html",
 };
 

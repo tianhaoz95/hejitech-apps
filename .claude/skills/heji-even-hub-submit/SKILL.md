@@ -57,9 +57,9 @@ is public):
 kit, privacy pages or docs: `scripts/check_isolation.mjs` fails CI on them outside the project's
 `backend.env` files. Say "our Supabase project's supabase.co address" instead.
 
-The listing needs a **privacy policy URL** that covers every permission and names the backend
-domains as the developer's, and a **support URL** (G2 Digest: `services/web/privacy/`,
-`services/web/support/`). Developer: HEJI TECHNOLOGY LLC, info@hejitech.com.
+The listing needs a **privacy policy** that covers every permission and names the backend
+domains as the developer's, **terms and conditions**, and a **support URL** (G2 Digest:
+`services/web/privacy/`, `services/web/terms/`, `services/web/support/`). Developer: HEJI TECHNOLOGY LLC, info@hejitech.com.
 
 ## 3. The portal, field by field
 
@@ -85,6 +85,10 @@ Travel; FitLoop → Health; Wee Hours → Lifestyle.
 **Screenshots**: "Add screenshots"; they must match what the device renders, so use the simulator's
 export (576 × 288 RGBA). **Background**: foreground and background must both be set, monochrome or
 greyscale.
+
+**Privacy and terms** ("Fill out privacy and terms"): the privacy policy and terms and conditions
+(G2 Digest: `services/web/privacy/`, `services/web/terms/`; the terms say it isn't financial,
+medical or news advice, which Even's content rules care about).
 
 **Submit**: Confirm stays disabled until the listing has developer information, product screenshots,
 permission information and the icon. New versions need a changelog: release notes 1–3 lines per

@@ -28,6 +28,7 @@ developer information, screenshots, permission information and the icon. Rules t
   - A short tour on the glasses until your first edition arrives.
   - Double-tap with nothing playing asks to exit; Exit is also in the menu.
 - **Privacy policy:** <https://g2digest.hejitech.workers.dev/privacy/>
+- **Terms of use:** <https://g2digest.hejitech.workers.dev/terms/>
 - **Support:** <https://g2digest.hejitech.workers.dev/support/> · info@hejitech.com
 - **Developer:** HEJI TECHNOLOGY LLC · info@hejitech.com
 

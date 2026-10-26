@@ -299,8 +299,8 @@ await step("delete all my data: brief, devices, tokens and audio go; the next si
 });
 
 // ---------------------------------------------------------------- pages
-await step("pages: home, pretty edition/preview routes, plugin page, spike, fixture audio, privacy, support", async () => {
-  for (const p of ["/", "/login/", "/pair/", "/brief/", "/edition/2026-10-22", "/preview/latest", "/preview/fixture", "/agents/", "/glasses/", "/spike/", "/privacy/", "/support/"]) {
+await step("pages: home, pretty edition/preview routes, plugin page, spike, fixture audio, privacy, support, terms", async () => {
+  for (const p of ["/", "/login/", "/pair/", "/brief/", "/edition/2026-10-22", "/preview/latest", "/preview/fixture", "/agents/", "/glasses/", "/spike/", "/privacy/", "/support/", "/terms/"]) {
     const r = await fetch(`${site}${p}`);
     assert.equal(r.status, 200, p);
   }
