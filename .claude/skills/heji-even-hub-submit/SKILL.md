@@ -101,6 +101,12 @@ audio from G2 Digest"), so `network` needs no box and nothing in Other ("Local n
 LAN, not the internet). Leave Other empty unless the app uses something neither list covers. Don't tick Run background services for
 WebView audio that merely keeps playing.
 
+**Data collection**: checkboxes Location tracked and AI technology used, plus Other (a `+` adds
+entries). Make it say exactly what the privacy policy says. Tick AI technology used whenever users
+see AI-made content, even if the AI is the user's own agent rather than ours (G2 Digest: yes). In
+Other, list each kind of data the backend stores (G2 Digest: account email via Google sign-in; the
+brief; editions with their sources and audio; paired devices and tokens).
+
 **Privacy and terms** ("Fill out privacy and terms"): the privacy policy and terms and conditions
 (G2 Digest: `services/web/privacy/`, `services/web/terms/`; the terms say it isn't financial,
 medical or news advice, which Even's content rules care about).
