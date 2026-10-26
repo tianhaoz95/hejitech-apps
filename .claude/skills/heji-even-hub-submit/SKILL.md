@@ -95,9 +95,10 @@ blank if the portal allows (never a home address: it's public).
 **Access Permissions Required**: checkboxes Microphone of Even Smart Glasses, Location, Push
 notifications, Local network, Bluetooth, Run background services, plus a free-text Other. Tick only
 what `app.json` declares and the code uses: `g2-microphone` → Microphone of Even Smart Glasses,
-`location` → Location. The internet `network` permission has no box ("Local network" means the LAN,
-not the internet): write it in Other, e.g. `Network: fetch your editions and audio from G2 Digest`.
-`album`, `camera` and `phone-microphone` also go in Other. Don't tick Run background services for
+`location` → Location. The portal lists the `.ehpk`'s `app.json` permissions on its own (a
+Permissions section showing each `name` and `desc`, e.g. "Network · Fetch your editions and their
+audio from G2 Digest"), so `network` needs no box and nothing in Other ("Local network" means the
+LAN, not the internet). Leave Other empty unless the app uses something neither list covers. Don't tick Run background services for
 WebView audio that merely keeps playing.
 
 **Privacy and terms** ("Fill out privacy and terms"): the privacy policy and terms and conditions
