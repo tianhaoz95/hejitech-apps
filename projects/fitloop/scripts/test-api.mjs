@@ -11,6 +11,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { LINE_PX, textPx } from "../packages/core/src/font.ts"; // no imports of its own: Node runs it as is
 import { mcpClient } from "./mcp-client.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -85,7 +86,7 @@ await step("validate_plan: errors block, the glasses preview fits", async () => 
   const ok = await tool("validate_plan", { plan: example() });
   assert.equal(ok.ok, true, JSON.stringify(ok.errors));
   assert.ok(ok.glasses_preview.lines.length > 6);
-  for (const l of ok.glasses_preview.lines) assert.ok(l.length <= 30, l);
+  for (const l of ok.glasses_preview.lines) assert.ok(textPx(l) <= LINE_PX, `wider than the glasses: ${l}`);
   const refused = await tool("publish_plan", { plan: bad, change_note: "x" });
   assert.equal(refused.published, false);
 });

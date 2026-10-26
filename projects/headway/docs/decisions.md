@@ -61,7 +61,7 @@ calls made while building, with the reason for each.
   first round of TestFlight feedback.
 - **Even Hub review (2026-10-26):** double-tap on the board (the root page) opens the system exit
   dialog and "Exit Headway" is in the menu; the menu moved to a hold of the ring, with "Track
-  <train>" first. Unpaired (or with no commute saved) the glasses open on a live San Francisco →
+  (the selected train)" first. Unpaired (or with no commute saved) the glasses open on a live San Francisco →
   San José board instead of an empty screen, and every gesture answers. Screens are laid out in
   pixels (`core/src/font.ts`: the firmware font's measured glyph widths, 9 lines in a bordered
   frame).
