@@ -87,7 +87,8 @@ which runs `tinytouch-testflight.yml`. See `projects/tinytouch/CLAUDE.md`.
 
 For G2 Digest it bumps the Even Hub plugin's version in `projects/g2digest/apps/glasses/package.json`
 (stamped into `app.json` when packing) and publishes `g2digest-v<version>`, which runs
-`g2digest-plugin-release.yml` (attaches the `.ehpk`; upload it to the Even Hub portal by hand). Its
+`g2digest-plugin-release.yml` (attaches the `.ehpk`, uploads it to Even Hub and promotes it to Beta;
+submit for review in the portal). Its
 Worker (web app, API, MCP) deploys on push. See `projects/g2digest/CLAUDE.md`.
 
 ## Common pitfalls

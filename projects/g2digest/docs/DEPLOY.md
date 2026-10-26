@@ -51,7 +51,13 @@ a token (401 with `resource_metadata`).
   upload it in the Even Hub portal (`evenhub login`). The network whitelist in `app.json` is the
   Worker origin and the Supabase origin (signed audio URLs).
 - Release: `scripts/cut_release.sh g2digest` bumps `apps/glasses/package.json`, tags
-  `g2digest-v<version>`, and `g2digest-plugin-release.yml` attaches the `.ehpk`.
+  `g2digest-v<version>`, and `g2digest-plugin-release.yml` attaches the `.ehpk`, uploads it to Even
+  Hub (`evenhub upload`, changelog = the release notes) and promotes it to Beta, so it installs from
+  Me → Beta tester. Submitting for review and publishing stay in the portal (no API for them).
+  Secret `EVENHUB_CREDENTIALS` = `~/.config/evenhub/credentials.yaml` after
+  `npx -p @evenrealities/evenhub-cli evenhub login`; refused (exit 2) → log in again and
+  `gh secret set EVENHUB_CREDENTIALS < ~/.config/evenhub/credentials.yaml`. Logging out anywhere
+  revokes it. Repository variable `G2DIGEST_EVENHUB_BETA=off` uploads without promoting.
 
 ### Even Hub submission
 

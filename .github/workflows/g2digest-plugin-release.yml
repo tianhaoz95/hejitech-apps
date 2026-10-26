@@ -1,8 +1,14 @@
 name: G2 Digest plugin release
 
-# Packs the Even Hub plugin (.ehpk) for a published g2digest-v<version> release and attaches it.
-# scripts/cut_release.sh g2digest bumps apps/glasses/package.json and publishes the release; upload
-# the .ehpk to the Even Hub portal from there (docs/DEPLOY.md §4).
+# Packs the Even Hub plugin (.ehpk) for a published g2digest-v<version> release, attaches it, uploads
+# it to Even Hub and promotes it to Beta (testers install it from Me → Beta tester). Submitting for
+# review and publishing stay in the portal: Even Hub has no API for them.
+#
+# Even Hub auth: the EVENHUB_CREDENTIALS secret is ~/.config/evenhub/credentials.yaml from an
+# interactive `evenhub login` (no API tokens exist); the CLI refreshes it. When it's refused (exit 2),
+# log in again and `gh secret set EVENHUB_CREDENTIALS < ~/.config/evenhub/credentials.yaml`. Never run
+# `evenhub logout` here: it revokes the token in the secret. Repository variable
+# G2DIGEST_EVENHUB_BETA=off uploads without promoting (the build stays Private).
 on:
   release:
     types: [published]
@@ -42,3 +48,45 @@ jobs:
         run: |
           cp projects/g2digest/apps/glasses/build/g2digest.ehpk "g2digest-${TAG#g2digest-v}.ehpk"
           gh release upload "$TAG" "g2digest-${TAG#g2digest-v}.ehpk" --clobber
+      - name: Upload to Even Hub and promote to Beta
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENHUB_CREDENTIALS: ${{ secrets.EVENHUB_CREDENTIALS }}
+          BETA: ${{ vars.G2DIGEST_EVENHUB_BETA || 'on' }}
+          PACKAGE_ID: com.hejitech.g2digest.glasses
+          # Pinned here, not taken from the tag's lockfile, so re-running an older release still has upload/promote.
+          EVENHUB_CLI: "@evenrealities/evenhub-cli@0.2.0"
+        working-directory: projects/g2digest/apps/glasses
+        run: |
+          [ -n "$EVENHUB_CREDENTIALS" ] || { echo "::error::EVENHUB_CREDENTIALS isn't set: evenhub login, then gh secret set EVENHUB_CREDENTIALS < ~/.config/evenhub/credentials.yaml"; exit 1; }
+          export XDG_CONFIG_HOME="$RUNNER_TEMP/evenhub-config"
+          mkdir -p "$XDG_CONFIG_HOME/evenhub"
+          trap 'rm -rf "$XDG_CONFIG_HOME"' EXIT
+          (umask 077; printf '%s\n' "$EVENHUB_CREDENTIALS" > "$XDG_CONFIG_HOME/evenhub/credentials.yaml")
+          v="${TAG#g2digest-v}"
+          # The changelog is the release notes cut_release.sh was given (before GitHub's generated list), ≤ 500 characters.
+          notes=$(gh release view "$TAG" --json body -q .body | sed '/^## What.s Changed/,$d; /Full Changelog/d' | sed '/^[[:space:]]*$/d' | head -c 480)
+          [ -n "$notes" ] || notes="G2 Digest $v"
+          # One JSON object on stdout; exit codes: 2 auth refused, 4 version exists, 5 version already on a channel, 8 rate limit.
+          run() { local out code; out=$(npx -y -p "$EVENHUB_CLI" evenhub "$@" --json 2>/dev/null); code=$?; echo "$out"; return $code; }
+          out=$(run upload build/g2digest.ehpk -m "$notes"); code=$?
+          echo "$out"
+          case $code in
+            0) echo "uploaded $v (Private)";;
+            4) echo "$v was already uploaded: keeping that build";;
+            2) echo "::error::Even Hub refused the login: evenhub login, then gh secret set EVENHUB_CREDENTIALS < ~/.config/evenhub/credentials.yaml"; exit 2;;
+            *) echo "::error::evenhub upload failed (exit $code)"; exit $code;;
+          esac
+          if [ "$BETA" = on ]; then
+            out=$(run promote "$v" --to beta); code=$?
+            echo "$out"
+            [ $code -eq 0 ] || [ $code -eq 5 ] || { echo "::error::evenhub promote failed (exit $code)"; exit $code; }
+          fi
+          ls=$(run ls "$PACKAGE_ID") || { echo "$ls"; exit 1; }
+          echo "$ls" | V="$v" BETA="$BETA" node -e '
+            const d = JSON.parse(require("fs").readFileSync(0, "utf8"));
+            const b = (d.versions || []).find((x) => x.version === process.env.V);
+            if (!b) { console.error(`::error::${process.env.V} is not on Even Hub`); process.exit(1); }
+            if (process.env.BETA === "on" && !(b.channels || []).includes("beta")) { console.error(`::error::${process.env.V} is not on Beta`); process.exit(1); }
+            console.log(`Even Hub: ${b.version} ${b.status}${b.channels.length ? " · " + b.channels.join(", ") : ""}`);
+          ' 

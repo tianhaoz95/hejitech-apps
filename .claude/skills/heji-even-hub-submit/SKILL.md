@@ -171,6 +171,10 @@ Even Hub has no public API, webhooks, API tokens or GitHub Action, but the `even
 - Steps: `evenhub upload <file>.ehpk -m "<changelog ≤ 500 chars>" --json` (new builds start Private;
   an existing version exits 4), `evenhub promote <version> --to beta --json` (one beta slot: replaces
   what's there), then `evenhub ls <package_id> --json` to check.
+- Working example: `.github/workflows/g2digest-plugin-release.yml` (secret `EVENHUB_CREDENTIALS`,
+  CLI pinned to 0.2.0 in the step, upload → promote → verify with `ls`, exit 4/5 treated as already
+  done so re-runs are safe). The npm package is `@evenrealities/evenhub-cli` (bins `evenhub`, `eh`):
+  `npx evenhub` only works where it's installed, elsewhere `npx -p @evenrealities/evenhub-cli evenhub`.
 - `--json` prints one object (`ok`, `exit`, `code`, `message`, `hint`). Exit codes: 2 auth, 4 version
   exists, 5 version on a channel, 8 quota/rate limit (server code 1007: wait and retry; no automatic
   retry), 10 network/server (outcome uncertain), 11 done on the server but a later local step failed.

@@ -74,4 +74,6 @@ Local tokens from the seed: agent `g2a_dev_local_token`, glasses `g2d_dev_local_
 
 `scripts/cut_release.sh g2digest --dry-run`, then for real. It bumps `apps/glasses/package.json`
 (the plugin's version; `scripts/pack.mjs` stamps it into `app.json`) and publishes
-`g2digest-v<version>`, whose workflow attaches the `.ehpk`. The Worker deploys on push to `main`.
+`g2digest-v<version>`, whose workflow attaches the `.ehpk`, uploads it to Even Hub and promotes it to
+Beta (secret `EVENHUB_CREDENTIALS`, see `docs/DEPLOY.md` §4). Review and publishing are in the portal.
+The Worker deploys on push to `main`.
