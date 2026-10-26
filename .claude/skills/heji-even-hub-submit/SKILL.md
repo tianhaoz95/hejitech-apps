@@ -156,6 +156,25 @@ The `evenhub` CLI does the build side once the owner runs `! npx evenhub login`:
 `evenhub promote <version> --to beta`, `evenhub testers add`, and `evenhub pack … --check` (is the
 package ID free). Icon, background, screenshots and the final Submit are in the portal.
 
+### Automating uploads (CI)
+
+Even Hub has no public API, webhooks, API tokens or GitHub Action, but the `evenhub` CLI runs in CI
+(docs: `/docs/cli/scripting`, `/docs/cli/auth`). Upload and promote to Beta can be automated;
+**review submission and publishing are portal-only** (`promote --to public` is refused locally).
+
+- Auth: `evenhub login` needs an interactive terminal (no password flag or token env var). Log in
+  once on a Mac, store `~/.config/evenhub/credentials.yaml` (access + refresh token, auto-refreshed)
+  as a CI file secret, and in the job set `XDG_CONFIG_HOME` to a job-owned dir and restore it to
+  `$XDG_CONFIG_HOME/evenhub/credentials.yaml` (mode 600). Never `evenhub logout` in CI: it revokes
+  the refresh token in the secret. When both tokens expire, commands exit 2: log in again and
+  replace the secret.
+- Steps: `evenhub upload <file>.ehpk -m "<changelog ≤ 500 chars>" --json` (new builds start Private;
+  an existing version exits 4), `evenhub promote <version> --to beta --json` (one beta slot: replaces
+  what's there), then `evenhub ls <package_id> --json` to check.
+- `--json` prints one object (`ok`, `exit`, `code`, `message`, `hint`). Exit codes: 2 auth, 4 version
+  exists, 5 version on a channel, 8 quota/rate limit (server code 1007: wait and retry; no automatic
+  retry), 10 network/server (outcome uncertain), 11 done on the server but a later local step failed.
+
 ## 4. Testing on the owner's glasses
 
 - **Developer mode has no toggle.** Sign in at <https://hub.evenrealities.com/login> with the account
