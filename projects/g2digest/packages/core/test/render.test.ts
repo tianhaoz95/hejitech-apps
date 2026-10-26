@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { textPx } from "../src/font.ts";
-import { dateKicker, LINE_PX, MAX_LINES, metricLine, render, screenText, snapshot, wrap } from "../src/render.ts";
+import { dateKicker, LINE_PX, MAX_LINES, metricLine, positionDots, render, screenText, snapshot, wrap } from "../src/render.ts";
 import { fixtureBundle } from "./helpers.ts";
 
 describe("render", () => {
@@ -52,10 +52,21 @@ describe("helpers", () => {
     expect(text.endsWith("\n")).toBe(false);
   });
   it("points the End card to the past editions (the tour's End to exit)", () => {
-    expect(render(fixtureBundle()).at(-1)!.footer).toBe("SWIPE UP: PAST EDITIONS");
+    expect(render(fixtureBundle()).at(-1)!.footer).toBe("SWIPE UP: ALL EDITIONS");
   });
-  it("fits the frame: 536 px lines, 9 of them", () => {
-    expect([LINE_PX, MAX_LINES]).toEqual([536, 9]);
+  it("fits the frame and leaves the dots' column: 510 px lines, 9 of them", () => {
+    expect([LINE_PX, MAX_LINES]).toEqual([510, 9]);
+  });
+  it("shows the position as dots, one per card", () => {
+    expect(positionDots(0, 4)).toEqual(["●", "○", "○", "○"]);
+    expect(positionDots(2, 4)).toEqual(["○", "○", "●", "○"]);
+    expect(positionDots(0, 1)).toEqual([]);
+  });
+  it("keeps the dot in a window when there are more cards than rows", () => {
+    expect(positionDots(0, 12)).toEqual(["●", "○", "○", "○", "○", "○", "○", "○", "↓"]);
+    expect(positionDots(6, 12)).toEqual(["↑", "○", "○", "○", "●", "○", "○", "○", "↓"]);
+    expect(positionDots(11, 12)).toEqual(["↑", "○", "○", "○", "○", "○", "○", "○", "●"]);
+    for (let i = 0; i < 12; i++) expect(positionDots(i, 12)).toContain("●");
   });
   it("names the day", () => {
     expect(dateKicker("2026-10-22")).toBe("THU OCT 22");

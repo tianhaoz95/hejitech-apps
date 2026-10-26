@@ -4,7 +4,7 @@
 <body>
 <script type="module">
 // Shown in the Even Hub simulator by measure.mjs: screen 0 is nine probe lines (line pitch), then
-// each screen holds four glyphs, each drawn 10 and 30 times on its own line, then a space probe.
+// each screen holds four glyphs, each drawn 10 and 20 times on its own line, then a space probe.
 // A click (from the automation API) moves to the next screen.
 import { waitForEvenAppBridge, CreateStartUpPageContainer, TextContainerProperty, TextContainerUpgrade } from "./sdk.js";
 const { screens } = await (await fetch("screens.json")).json();

@@ -60,8 +60,9 @@ export class AudioCache {
   private urls: Record<string, string> = {};
 
   /** Signed URLs from the latest fetch, keyed by audio_path. */
+  /** Adds signed URLs (paths are per date, so editions never collide; the latest's are kept for offline). */
   setUrls(urls: Record<string, string>) {
-    this.urls = urls;
+    this.urls = { ...this.urls, ...urls };
   }
 
   /** Downloads every file not yet cached (in the background; failures just stay online-only). */

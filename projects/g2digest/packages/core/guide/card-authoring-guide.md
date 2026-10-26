@@ -1,6 +1,6 @@
 # G2 Digest card authoring guide
 
-guide_version: 0.3
+guide_version: 0.4
 
 This guide covers the **form** of a G2 Digest edition: card anatomy, budgets, the template
 registry, audio and validation. It's the same for every user. The **content** (what goes in a
@@ -30,12 +30,13 @@ attention, and a real risk of motion sickness from reading. So:
 
 The display is 576 × 288 px, monochrome green, and the card is a bordered frame across all of it.
 One card fills one screen and never scrolls. The glasses' font is proportional, so lines are
-measured in pixels: a line holds about 50 characters of ordinary text.
+measured in pixels: a line holds about 48 characters of ordinary text. The frame's right edge
+holds the reader's position dots.
 
 | Rule | Limit | Code |
 |---|---|---|
 | Lines per card, kicker and footer included | ≤ 9 | `E_LINES` |
-| Line width in the glasses' font (the renderer word-wraps; a single word wider than this fails) | ≤ 536 px | `E_LINE_WIDTH` |
+| Line width in the glasses' font (the renderer word-wraps; a single word wider than this fails) | ≤ 510 px | `E_LINE_WIDTH` |
 | Characters per card, every line counted (alignment padding counts as one space) | ≤ 150 | `E_CHARS` |
 
 The 150-character budget is what keeps a card a glance, not the space: a full card is still three
@@ -179,7 +180,7 @@ Cover → [alert cards] → [TL;DR] → section cards in brief section order →
 - **Section cards** (`kind: "section"`, `section_id`, `template` = the section's, `E_TEMPLATE`) in
   the brief's section order (`E_ORDER`).
 - **End** (`kind: "end"`, last, `E_END`): a short sign-off; the footer is rendered for you (it
-  points to the past editions, which open when the reader swipes up past the End).
+  points back to the list of editions, which the reader reaches by swiping up past the End).
 
 ### 4.3 Template registry
 

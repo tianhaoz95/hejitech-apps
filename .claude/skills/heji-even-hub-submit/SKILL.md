@@ -45,6 +45,12 @@ to screenshot it again.** G2 Digest 0.2.0 (2026-10-26) went through this; its ki
 - Other G2 apps draw a **bordered frame**: `borderWidth` 0–5, `borderColor` greyscale 0–15
   (13 is bright), `borderRadius` 0–10, `paddingLength` 0–32. With a 2 px border and 8 px padding,
   9 lines fit; leave ~20 px of width spare for real-glasses metrics. No trailing `\n` (scrollbar).
+- **Position dots / side indicators:** a second text container (no border, `isEventCapture: 0`,
+  higher `zOrderIndex`) laid over the frame's right edge on the same line grid, updated with its own
+  `textContainerUpgrade`; `●`/`○` are 20 px and render well, `↑`/`↓` 14 px, `◦` isn't in the font.
+  G2 Digest: `positionDots` in `core/src/render.ts`, the `dots` container in `plugin/src/plugin.ts`.
+- **Navigation that passes review:** make the app's home (e.g. a list of items) the root page, where
+  double tap exits; on detail pages double tap goes back to it.
 - **A second page** (e.g. a list): `createStartUpPageContainer` works once per session, so switch
   with `rebuildPageContainer` (it redraws everything and drops the menu unless passed again). List
   rows share the container's height (show ≤ 8, page the rest), and list clicks arrive as

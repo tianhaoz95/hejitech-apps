@@ -1,5 +1,5 @@
 // The glasses' text metrics: the firmware's one proportional font, measured in the Even Hub
-// simulator (2026-10-26) by drawing each glyph 10 and 30 times and differencing the widths, and the
+// simulator (2026-10-26) by drawing each glyph 10 and 20 times and differencing the widths, and the
 // line pitch of a text container. The renderer wraps by these pixel widths, so the line breaks the
 // validator, the preview and the plugin compute are the ones the glasses draw. Characters not in the
 // table (the font has no backtick; accents beyond é weren't measured) count as UNKNOWN_GLYPH_PX.
@@ -13,7 +13,8 @@ export const GLYPH_PX: Record<string, number> = {
   "c": 10, "d": 11, "e": 10, "f": 7, "g": 11, "h": 11, "i": 5, "j": 5, "k": 9, "l": 4, "m": 16,
   "n": 11, "o": 10, "p": 11, "q": 11, "r": 7, "s": 10, "t": 6, "u": 11, "v": 11, "w": 15, "x": 11,
   "y": 11, "z": 9, "{": 8, "|": 4, "}": 8, "~": 16, "£": 13, "¥": 12, "°": 7, "·": 5, "×": 10,
-  "é": 10, "–": 15, "—": 15, "‘": 5, "’": 5, "“": 8, "”": 8, "•": 9, "…": 10, "€": 15, "♪": 18,
+  "é": 10, "–": 15, "—": 15, "‘": 5, "’": 5, "“": 8, "”": 8, "•": 9, "…": 10, "€": 15, "♪": 20,
+  "↑": 14, "↓": 14, "■": 20, "□": 20, "▲": 20, "▼": 20, "◆": 20, "◇": 20, "○": 20, "●": 20,
 };
 
 export const UNKNOWN_GLYPH_PX = 12;

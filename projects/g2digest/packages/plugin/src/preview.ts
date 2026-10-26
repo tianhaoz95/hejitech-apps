@@ -21,7 +21,8 @@ const KEYS: Record<string, Gesture> = { ArrowDown: "next", j: "next", ArrowUp: "
 export interface PreviewHandle {
   root: HTMLElement;
   /** Draw these lines in the frame. */
-  show(lines: string[]): void;
+  /** Draw these lines in the frame, with the position dots (one per card) at its right edge. */
+  show(lines: string[], dots?: string[]): void;
   /** Card n of N, under the frame. */
   status(text: string): void;
 }
@@ -35,7 +36,10 @@ export function mountPreview(host: HTMLElement, opts: { onGesture: (g: Gesture) 
   frame.setAttribute("aria-label", "Glasses display");
   const text = document.createElement("pre");
   text.className = "g2-text";
-  frame.append(text);
+  const dotsCol = document.createElement("pre");
+  dotsCol.className = "g2-dots";
+  dotsCol.setAttribute("aria-hidden", "true");
+  frame.append(text, dotsCol);
   const scaler = document.createElement("div");
   scaler.className = "g2-scaler";
   scaler.append(frame);
@@ -92,8 +96,9 @@ export function mountPreview(host: HTMLElement, opts: { onGesture: (g: Gesture) 
 
   return {
     root,
-    show(lines) {
+    show(lines, dots = []) {
       text.textContent = screenText(lines);
+      dotsCol.textContent = dots.join("\n");
     },
     status(t) {
       status.textContent = t;

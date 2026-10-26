@@ -26,7 +26,7 @@ function setup(urls: Record<string, string | null> = {}) {
     audioUrl: async (p) => (p in urls ? urls[p] : `https://audio/${p}`),
     onChange: (lines) => void shown.push(lines),
     persist: (_d, i) => void persisted.push(i),
-    onExit: () => void exits++,
+    onBack: () => void exits++,
     onEditions: () => void editions++,
     now: () => 1000,
   });
@@ -71,7 +71,7 @@ describe("Reader", () => {
     // Episodes: tldr glance 1, providers glance 2, proteina glance 3, proteina deep dive 4.
     expect(shown.at(-1)!.at(-1)).toBe("[ PODCAST EPISODE 4 ]");
   });
-  it("double tap stops audio first, then asks to exit", async () => {
+  it("double tap stops audio first, then goes back", async () => {
     const { reader, calls, exits } = setup();
     await reader.gesture("next");
     await reader.gesture("tap");

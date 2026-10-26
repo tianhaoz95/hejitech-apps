@@ -89,6 +89,28 @@ The submission checklist (hub.evenrealities.com, ship/app-submission) set these:
   Hub if they want one), and hosted edition building for users without their own agent (it would
   mean server-side AI and TTS, which PRD §3 and the owner's audio answer rule out for now).
 
+## The list is home, dots show the position, editions start at the top (2026-10-26)
+
+The owner's next round on the glasses:
+
+- **The list of editions is the root page.** The plugin opens on it (newest first, 8 a page with
+  Older/Newer rows); picking one opens its cards; on a card, a double tap with nothing playing (or
+  swiping up past the End, whose footer says so, or "All editions" in the menu) goes back to it. The
+  Even Hub rule, a double tap on the *root* page opens the system exit dialog, now applies to the
+  list. When there's nothing to read, the tour is the root page and keeps that rule. The core state
+  machine says `back` for a double tap with nothing playing and `editions` for swiping past the
+  End; the plugin decides what each means on the page it shows.
+- **An edition always opens at its first card.** Positions aren't remembered any more (the
+  `g2digest:position` key is gone), and the 15-minute refresh never swaps the cards under the
+  reader: it only updates the list.
+- **Position dots.** A second, narrow text container (`DOTS_PX`, 22 px, no border, not capturing
+  events, above the card in z-order) at the frame's right edge shows one `●`/`○` per card on the
+  card's own line grid, top to bottom in reading order, so swiping up moves the `●` down. More cards
+  than the frame's 9 rows: a window that keeps the `●` in view, with `↑`/`↓` for the rest
+  (`positionDots`). The glyphs were checked in the simulator; the font has no `◦`. Lines wrap at
+  510 px now (guide 0.4) to leave the dots their column. The web preview draws the same dots.
+- **Offline,** the list shrinks to the edition kept on the phone (the latest), and that one opens.
+
 ## Swipe up moves on (2026-10-26)
 
 On the R1, swipe up (`SCROLL_TOP_EVENT`) now goes to the next card and swipe down goes back, as the
@@ -109,7 +131,7 @@ After the owner's first days on the glasses:
   (`FRAME`: 2 px, level 13, radius 6, 8 px padding); 9 lines fit inside, and the footer is pinned
   to the last one (`screenText`) so every card has the same shape. The web preview draws the same
   frame with a proportional face; its line breaks come from the renderer, so they match.
-- **Past editions on the glasses.** Swiping up past the End card (the End's footer says so), or
+- **Past editions on the glasses** (superseded the same day: the list became the home page, above). Swiping up past the End card (the End's footer says so), or
   "Past editions" in the menu, opens a list page: up to 8 editions, newest first, with "Older" and
   "Newer" rows, since a list's rows share the frame's height. Clicking one reads it; double tap goes
   back to the cards (the list isn't the root page, so it doesn't exit). A past edition stays pinned

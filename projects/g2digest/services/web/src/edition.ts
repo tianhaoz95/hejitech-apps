@@ -3,7 +3,7 @@
 // plugin, through the same Reader, so what this shows is the plugin's card sequence. `latest` is the
 // newest edition; /preview/fixture shows the development fixture without signing in.
 import { Reader, HtmlAudio, mountPreview, previewStatus } from "@g2digest/plugin";
-import type { Bundle } from "@g2digest/core";
+import { positionDots, type Bundle } from "@g2digest/core";
 import fixture from "@g2digest/core/fixtures/2026-10-22/bundle.json";
 import { api, el, requireSession, spinner } from "./supabase.ts";
 
@@ -42,7 +42,7 @@ function previewPanel(b: Bundle, audioUrl: (path: string) => string | null) {
   const reader: Reader = new Reader({
     audio,
     audioUrl: async (p) => audioUrl(p),
-    onChange: (lines, r) => { preview.show(lines); preview.status(previewStatus(r)); },
+    onChange: (lines, r) => { preview.show(lines, positionDots(r.state.index, r.frames.length)); preview.status(previewStatus(r)); },
   });
   const preview = mountPreview(host, { onGesture: (g) => void reader.gesture(g) });
   host.append(el("p", { class: "muted small" }, "Keys: ↓ / ↑ next / previous card, Space tap, L tap-then-hold, Esc double tap. Or load this edition on real glasses: ",

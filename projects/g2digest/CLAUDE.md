@@ -28,8 +28,8 @@ Local tokens from the seed: agent `g2a_dev_local_token`, glasses `g2d_dev_local_
 ## Architecture
 
 - **One render function** (`core/src/render.ts`): bundle → frames, wrapped by the glasses' measured
-  glyph widths (`core/src/font.ts`, 536 px lines, 9 lines in the bordered frame, footer pinned by
-  `screenText`). The plugin, the web preview, the
+  glyph widths (`core/src/font.ts`, 510 px lines, 9 lines in the bordered frame, footer pinned by
+  `screenText`, `positionDots` for the right edge). The plugin, the web preview, the
   validator and the publish snapshot all use it; never format card text anywhere else.
 - **One gesture state machine** (`core/src/player.ts`), driven by R1 events in the plugin and by
   on-screen buttons/keys in `<G2Preview>`, both through `plugin/src/reader.ts`.
@@ -43,8 +43,9 @@ Local tokens from the seed: agent `g2a_dev_local_token`, glasses `g2d_dev_local_
   tokens, brief join). Service key only here. Clients read own rows via RLS; all writes go through
   the Worker.
 - **Plugin** (`packages/plugin`): `detectBridge()` (Even WebView handler, 5 s), two pages (the
-  cards: one bordered full-screen text container, the root; past editions: a list container,
-  double tap back), contextual menu as a second route to the deep dive, bridge local storage for the
+  list of editions, the root page, where double tap exits; an edition's cards, opened at the first
+  card: a bordered full-screen text container plus the position-dots container, double tap back to
+  the list; the tour is the root page when there's nothing to read), contextual menu as a second route to the deep dive, bridge local storage for the
   token / last bundle / position / audio mode, Cache Storage for audio.
 
 ## Pitfalls

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Measures the Even G2 firmware font in the Even Hub simulator: the line pitch of a text container
-// and every glyph's advance width (each glyph drawn 10 and 30 times, widths differenced), printed as
+// and every glyph's advance width (each glyph drawn 10 and 20 times, widths differenced), printed as
 // JSON. G2 Digest's table (projects/g2digest/packages/core/src/font.ts, 2026-10-26) came from this.
 // Needs only Node and `npx evenhub-simulator`; run from the repo root (node_modules has the SDK):
 //   node .claude/skills/heji-even-hub-submit/measure-font/measure.mjs [extra characters] > font.json
@@ -16,7 +16,7 @@ const sdk = readFileSync(join(process.cwd(), "node_modules/@evenrealities/even_h
 const chars = [...Array.from({ length: 94 }, (_, i) => String.fromCharCode(33 + i)), ..."·♪–—’‘“”…•×°€£¥é", ...(process.argv[2] ?? "")];
 const batches = [];
 for (let i = 0; i < chars.length; i += 4) batches.push(chars.slice(i, i + 4));
-const screens = [Array.from({ length: 9 }, (_, i) => `H${i}`).join("\n"), ...batches.map((b) => b.flatMap((c) => [c.repeat(10), c.repeat(30)]).join("\n")), ["x" + " ".repeat(10) + "x", "x" + " ".repeat(30) + "x"].join("\n")];
+const screens = [Array.from({ length: 9 }, (_, i) => `H${i}`).join("\n"), ...batches.map((b) => b.flatMap((c) => [c.repeat(10), c.repeat(20)]).join("\n")), ["x" + " ".repeat(10) + "x", "x" + " ".repeat(20) + "x"].join("\n")];
 
 const PORT = 8799, AUTO = 9898, PITCH_GUESS = 27;
 const server = createServer((req, res) => {
@@ -80,14 +80,15 @@ try {
     const img = await shot();
     batch.forEach((c, j) => {
       const w10 = extent(img, 2 * j * pitch, (2 * j + 1) * pitch), w30 = extent(img, (2 * j + 1) * pitch, (2 * j + 2) * pitch);
-      if (w10 === null || w30 === null) missing.push(c);
-      else glyphs[c] = Math.round((w30 - w10) / 20);
+      // A glyph that isn't in the font draws nothing, or the same width however often it repeats.
+      if (w10 === null || w30 === null || w30 === w10) missing.push(c);
+      else glyphs[c] = Math.round((w30 - w10) / 10);
     });
   }
   await click();
   await sleep(700);
   const sp = await shot();
-  glyphs[" "] = Math.round((extent(sp, pitch, 2 * pitch) - extent(sp, 0, pitch)) / 20);
+  glyphs[" "] = Math.round((extent(sp, pitch, 2 * pitch) - extent(sp, 0, pitch)) / 10);
   console.log(JSON.stringify({ measured: new Date().toISOString().slice(0, 10), line_pitch_px: pitch, missing, glyphs }, null, 1));
 } finally {
   sim.kill();

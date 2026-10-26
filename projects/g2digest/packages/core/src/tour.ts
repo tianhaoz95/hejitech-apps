@@ -30,14 +30,14 @@ export function tour(reason: TourReason, date: string): Bundle {
       title: TOUR_TITLE,
       sections: [
         { section_id: "how", title: "How it works", body: "An agent compiles each edition ahead of time from your brief. The glasses only play it back.", sources: [] },
-        { section_id: "ring", title: "The ring", body: "Swipe to move between cards, tap to listen, double-tap to stop or exit.", sources: [] },
+        { section_id: "ring", title: "The ring", body: "Swipe to move between cards, tap to listen, double-tap to stop or go back.", sources: [] },
         { section_id: "next", title: "Next step", body: NEXT[reason].body, sources: [] },
       ],
     },
     cards: [
       { slug: "cover", kind: "cover", title: "G2 Digest", body: "Your brief as cards and audio. Swipe up for a short tour." },
       section("how", "made-ahead", "Made before you wake", "An agent writes each edition from your brief. The glasses only play it back."),
-      section("ring", "swipe", "Swipe to move", "Up for the next card, down for the previous one. Past the last card: your past editions."),
+      section("ring", "swipe", "Swipe to move", "Up for the next card, down for the previous one. The dots on the right show where you are."),
       section("ring", "tap", "Tap to listen", "Tap plays a card's short audio. Tap, then hold, plays its deep dive."),
       section("ring", "double-tap", "Double-tap to leave", "Double-tap stops audio. With nothing playing, it asks to exit."),
       section("next", "next-step", NEXT[reason].title, NEXT[reason].body),

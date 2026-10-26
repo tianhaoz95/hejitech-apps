@@ -10,8 +10,13 @@ export const DISPLAY = { width: 576, height: 288 } as const;
 /** The card's frame: border (greyscale level `color`) and padding of the one full-screen text container. */
 export const FRAME = { border: 2, padding: 8, radius: 6, color: 13 } as const;
 const INSET = FRAME.border + FRAME.padding;
-/** Usable line width: the frame's inner width less a 20 px margin, since the glasses may measure a little wider than the simulator. */
-export const LINE_PX = DISPLAY.width - 2 * INSET - 20;
+/** The position dots' column at the frame's right edge (one ● or ○ per card, 20 px wide). */
+export const DOTS_PX = 22;
+/**
+ * Usable line width: the frame's inner width less the dots' column and a 24 px gap, which also
+ * absorbs the glasses measuring a little wider than the simulator.
+ */
+export const LINE_PX = DISPLAY.width - 2 * INSET - DOTS_PX - 24;
 /** Lines that fit inside the frame (kicker and footer included). */
 export const MAX_LINES = Math.floor((DISPLAY.height - 2 * INSET) / LINE_PITCH_PX);
 export const MAX_CHARS = 150;
@@ -90,7 +95,7 @@ function footer(bundle: Bundle, card: CardInput): string {
     const audio = bundle.cards.reduce((s, c) => s + (c.glance?.duration_sec ?? 0) + (c.deep_dive?.duration_sec ?? 0), 0);
     return audio ? `${bundle.cards.length} CARDS · ${Math.round(audio / 60)} MIN AUDIO` : `${bundle.cards.length} CARDS`;
   }
-  if (card.kind === "end" && !card.glance && !card.deep_dive) return bundle.guide_version === TOUR_GUIDE_VERSION ? "DOUBLE-TAP TO EXIT" : "SWIPE UP: PAST EDITIONS";
+  if (card.kind === "end" && !card.glance && !card.deep_dive) return bundle.guide_version === TOUR_GUIDE_VERSION ? "DOUBLE-TAP TO EXIT" : "SWIPE UP: ALL EDITIONS";
   return audioFooter(card);
 }
 
@@ -126,6 +131,23 @@ export function render(bundle: Bundle): Frame[] {
 export function screenText(lines: string[]): string {
   if (lines.length < 2 || lines.length >= MAX_LINES) return lines.join("\n");
   return [...lines.slice(0, -1), ...Array<string>(MAX_LINES - lines.length).fill(""), lines[lines.length - 1]].join("\n");
+}
+
+/**
+ * The position dots down the frame's right edge: one row per card, ● for the card on screen and ○
+ * for the others, top to bottom in reading order (swipe up moves the ● down). With more cards than
+ * rows, a window that keeps the ● in view, with ↑ / ↓ standing for the cards beyond it.
+ */
+export function positionDots(index: number, total: number, rows = MAX_LINES): string[] {
+  if (total <= 1) return [];
+  const shown = Math.min(total, rows);
+  const start = Math.max(0, Math.min(index - Math.floor(shown / 2), total - shown));
+  return Array.from({ length: shown }, (_, k) => {
+    const card = start + k;
+    if (k === 0 && start > 0) return "↑";
+    if (k === shown - 1 && start + shown < total) return "↓";
+    return card === index ? "●" : "○";
+  });
 }
 
 /** ASCII picture of every frame (for run logs, the publish snapshot and tests). Characters, not pixels: a sketch. */

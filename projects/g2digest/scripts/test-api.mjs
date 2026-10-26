@@ -100,7 +100,7 @@ await step("MCP: 401 with the OAuth hint, metadata, initialize, six tools", asyn
   const names = (await rpc("tools/list")).body.result.tools.map((t) => t.name);
   assert.deepEqual(names.sort(), ["create_audio_upload", "get_card_authoring_guide", "get_last_cards", "get_user_brief", "publish_cards", "validate_cards"]);
   const g = await tool("get_card_authoring_guide");
-  assert.match(g.guide, /guide_version: 0\.3/);
+  assert.match(g.guide, /guide_version: 0\.4/);
 });
 await step("validate_cards rejects a stale guide and a stale brief", async () => {
   const b = fixture();

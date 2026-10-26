@@ -23,7 +23,7 @@ describe("tour (the bundle shown when there's no edition)", () => {
     const frames = render(tour("pair", "2026-10-24"));
     frames.forEach((_, index) => {
       for (const g of ["tap", "long_press"] as const) expect(step(initialState(index), g, frames, 0).state.flash, `${g} on ${index}`).not.toBeNull();
-      expect(step(initialState(index), "double_tap", frames, 0).commands).toEqual([{ kind: "exit" }]);
+      expect(step(initialState(index), "double_tap", frames, 0).commands).toEqual([{ kind: "back" }]);
     });
   });
   it("is told apart from a real edition", () => {

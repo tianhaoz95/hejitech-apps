@@ -23,9 +23,9 @@ export interface ReaderOptions {
   persist?: (date: string, index: number) => void;
   /** Resolves a bundle audio_path to a playable URL (signed URL or a cached copy). */
   audioUrl: (path: string) => Promise<string | null>;
-  /** Double tap with nothing playing: open the system exit dialog (glasses only). */
-  onExit?: () => void;
-  /** Swipe up on the last card: show the past editions. */
+  /** Double tap with nothing playing: leave the cards (the list of editions, or the exit dialog on the root page). */
+  onBack?: () => void;
+  /** Swipe up on the last card: show the list of editions. */
   onEditions?: () => void;
   now?: () => number;
 }
@@ -88,8 +88,8 @@ export class Reader {
       case "stop":
         a.stop();
         return;
-      case "exit":
-        this.opts.onExit?.();
+      case "back":
+        this.opts.onBack?.();
         return;
       case "editions":
         this.opts.onEditions?.();
