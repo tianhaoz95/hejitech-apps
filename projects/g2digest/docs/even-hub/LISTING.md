@@ -8,7 +8,7 @@ developer information, screenshots, permission information and the icon. Rules t
 ## Text
 
 - **Name:** `G2 Digest` (matches `app.json` and what the glasses show; 20 characters max, no "Even").
-- **Short description:** Your daily brief as glanceable cards, with audio for the deep dives.
+- **Tagline** (50 characters max): `Your daily brief as glanceable cards and audio`
 - **Description:**
 
   > G2 Digest turns a brief you write into cards for your G2 glasses and audio for your headphones.
