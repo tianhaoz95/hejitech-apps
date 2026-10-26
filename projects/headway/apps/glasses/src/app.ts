@@ -11,6 +11,8 @@ export interface Store {
 export const K = { token: "headway:device_token", pair: "headway:pair", last: "headway:last_pair", tracked: "headway:tracked" } as const;
 
 type Pair = { from: string; to: string };
+/** What the glasses show before anything is chosen: the length of the line, live. */
+export const DEFAULT_PAIR: Pair = { from: "san_francisco", to: "sj_diridon" };
 type Fetch = (url: string, init?: RequestInit) => Promise<Response>;
 
 export interface AppOptions {
@@ -22,6 +24,8 @@ export interface AppOptions {
   onLines: (lines: string[]) => void;
   /** Called when pairing state or the source of the board changes (the phone page). */
   onStatus?: (s: AppStatus) => void;
+  /** The user asked to leave (double tap on the board, or Exit in the menu): the system dialog. */
+  onExit?: () => void;
 }
 
 export interface AppStatus {
@@ -51,6 +55,12 @@ export class HeadwayApp {
   constructor(private readonly opts: AppOptions) {
     this.fetch = opts.fetch ?? ((u, i) => fetch(u, i));
     this.now = opts.now ?? Date.now;
+  }
+
+  private async publicBoard(pair: Pair): Promise<Board> {
+    const res = await this.get(`/api/board?from=${pair.from}&to=${pair.to}`, null);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return (await res.json()) as Board;
   }
 
   world(): World {
@@ -101,21 +111,19 @@ export class HeadwayApp {
         const body = (await res.json()) as { board: Board | null; has_commute: boolean; tracked: (Tracked & { progress: TrainProgress }) | null };
         this.board = body.board;
         this.hasCommute = body.has_commute;
+        // No commute saved yet: a live default board, never an empty screen.
+        if (!this.board) this.board = await this.publicBoard(DEFAULT_PAIR);
         // The phone (or an assistant) may have started or stopped tracking.
         this.tracked = body.tracked ? { trip_id: body.tracked.trip_id, service_date: body.tracked.service_date, from: body.tracked.from, to: body.tracked.to } : null;
         this.progress = body.tracked?.progress ?? null;
         await this.opts.store.set(K.tracked, JSON.stringify(this.tracked));
       } else {
         this.hasCommute = false;
-        this.board = null;
-        if (this.pair) {
-          const res = await this.get(`/api/board${q}`, null);
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          this.board = (await res.json()) as Board;
-        }
+        // Unpaired (a reviewer, a first launch): a live board for any pair, the default one first.
+        this.board = await this.publicBoard(this.pair ?? DEFAULT_PAIR);
         await this.refreshProgress(null);
       }
-      this.note = undefined;
+      this.note = !token ? "Pair in the Headway app for your commute" : !this.hasCommute && !this.pair ? "Set your commute in the Headway app" : undefined;
       if (this.board) await this.opts.store.set(K.last, JSON.stringify({ from: this.board.from.id, to: this.board.to.id }));
     } catch {
       this.offline();
@@ -136,7 +144,7 @@ export class HeadwayApp {
   /** No network: the timetable bundled with the plugin, for the pair last shown. */
   private offline() {
     const now = this.now();
-    const pair = this.pair ?? (this.board ? { from: this.board.from.id, to: this.board.to.id } : null);
+    const pair = this.pair ?? (this.board ? { from: this.board.from.id, to: this.board.to.id } : DEFAULT_PAIR);
     if (pair) this.board = scheduleBoard(pair.from, pair.to, now, null, this.pair ? "custom" : this.board?.leg ?? "custom");
     if (this.tracked) this.progress = progress(this.tracked, now, null);
     this.note = "Offline: timetable times";
@@ -186,6 +194,8 @@ export class HeadwayApp {
         this.render();
       } else if (c.kind === "refresh") {
         await this.refresh();
+      } else if (c.kind === "exit") {
+        this.opts.onExit?.();
       }
     }
   }

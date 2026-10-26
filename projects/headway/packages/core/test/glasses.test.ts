@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { board, checkSettings, commuteBoard, decodeFeed, defaultSettings, encode, LINE_WIDTH, MAX_LINES, Navigator, progress, station, STATIONS, type World } from "../src/index.ts";
+import { board, checkSettings, commuteBoard, decodeFeed, defaultSettings, encode, LINE_PX, MAX_LINES, Navigator, textPx, progress, station, STATIONS, type World } from "../src/index.ts";
 import { at, commuter, firstTrain, snapshot, WEEKDAY } from "./helpers.ts";
 
 const now = at(WEEKDAY, "07:55");
@@ -7,7 +7,7 @@ const world = (over: Partial<World> = {}): World => ({ board: commuteBoard(commu
 const fits = (lines: string[]) => {
   expect(lines.length).toBeLessThanOrEqual(MAX_LINES);
   for (const l of lines) {
-    expect(l.length).toBeLessThanOrEqual(LINE_WIDTH);
+    expect(textPx(l)).toBeLessThanOrEqual(LINE_PX); // measured glyph widths, inside the frame
     expect(l).toMatch(/^[\x20-\x7e]*$/); // the G2 font: plain ASCII only
   }
 };
@@ -20,7 +20,8 @@ describe("board screen", () => {
     expect(lines[0]).toMatch(/^MTN VIEW > SF/);
     expect(lines[0]).toContain("SCHED");
     expect(lines[1].startsWith(">")).toBe(true);
-    expect(lines.at(-1)).toBe("Timetable only, no live data");
+    expect(lines.at(-2)).toBe("Timetable only, no live data");
+    expect(lines.at(-1)).toBe("tap: flip  hold: menu  2x: exit");
   });
   it("shows live delays and the first alert", () => {
     const t = firstTrain(WEEKDAY, "07:55");
@@ -28,30 +29,44 @@ describe("board screen", () => {
     const lines = new Navigator().lines(world({ board: commuteBoard(commuter(), now, snap) }));
     fits(lines);
     expect(lines[1]).toContain("+4");
-    expect(lines.at(-1)).toBe("! Delays near Mountain View");
+    expect(lines.at(-2)).toBe("! Delays near Mountain View");
   });
-  it("swipes move the cursor; tap flips; long press tracks", () => {
+  it("swipes move the cursor; tap flips; hold opens the menu whose first item tracks", () => {
     const nav = new Navigator(), w = world();
     nav.input("down", w);
     expect(nav.lines(w)[2].startsWith(">")).toBe(true);
-    const [flip] = nav.input("tap", w);
-    expect(flip).toEqual({ kind: "show_pair", pair: { from: "san_francisco", to: "mountain_view" } });
-    const [track] = nav.input("long_press", w);
+    nav.input("long_press", w);
+    expect(nav.screen).toBe("menu");
+    const lines = nav.lines(w);
+    fits(lines);
+    expect(lines[1]).toMatch(/^> Track \d+/);
+    const [track] = nav.input("tap", w);
     expect(track.kind).toBe("track");
     expect(nav.screen).toBe("track");
     fits(nav.lines(w));
+    nav.input("double_tap", w);
+    const [flip] = nav.input("tap", w);
+    expect(flip).toEqual({ kind: "show_pair", pair: { from: "san_francisco", to: "mountain_view" } });
   });
-  it("explains the empty state", () => {
-    const lines = new Navigator().lines(world({ board: null, hasCommute: false }));
-    fits(lines);
-    expect(lines.join(" ")).toContain("pick stations");
+  it("double tap on the board (the root page) exits; the menu offers it too", () => {
+    const nav = new Navigator(), w = world();
+    expect(nav.input("double_tap", w)).toEqual([{ kind: "exit" }]);
+    nav.input("long_press", w);
+    nav.menuIndex = nav.menu(w).findIndex((m) => m.label === "Exit Headway");
+    expect(nav.input("tap", w)).toEqual([{ kind: "exit" }]);
+  });
+  it("every gesture answers, even at the end of the list", () => {
+    const nav = new Navigator(), w = world();
+    nav.input("up", w);
+    expect(nav.lines(w).at(-1)).toBe(">> NEXT TRAIN IS FIRST");
+    fits(new Navigator().lines(world({ board: null })));
   });
 });
 
 describe("menu and station picker", () => {
   it("picks a custom pair", () => {
     const nav = new Navigator(), w = world();
-    nav.input("double_tap", w);
+    nav.input("long_press", w);
     expect(nav.screen).toBe("menu");
     fits(nav.lines(w));
     const items = nav.menu(w).map((m) => m.label);
@@ -69,7 +84,7 @@ describe("menu and station picker", () => {
   });
   it("offers the commute again from a custom pair", () => {
     const w = world({ custom: true, board: board("palo_alto", "sj_diridon", now, null) });
-    expect(new Navigator().menu(w)[0].label).toBe("My commute");
+    expect(new Navigator().menu(w).map((m) => m.label)).toContain("My commute");
   });
 });
 

@@ -54,8 +54,8 @@ struct GlassesView: View {
                 Section("On the R1 ring") {
                     LabeledContent("Swipe", value: "next trains")
                     LabeledContent("Tap", value: "flip direction")
-                    LabeledContent("Hold", value: "track the train")
-                    LabeledContent("Double-tap", value: "menu")
+                    LabeledContent("Hold", value: "menu: track, stations, alerts")
+                    LabeledContent("Double-tap", value: "exit")
                 }
                 if let error { Text(error).foregroundStyle(.red).font(.footnote) }
             }

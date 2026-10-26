@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { atLocal, board, LINE_WIDTH } from "@headway/core";
+import { atLocal, board, LINE_PX, textPx } from "@headway/core";
 import { HeadwayApp, K, type Store } from "../src/app.ts";
 
 const NOW = atLocal("20261027", "07:55");
@@ -24,23 +24,38 @@ function setup(route: Route, store = memory()) {
 }
 
 describe("unpaired", () => {
-  it("asks to pick stations, then shows the public board", async () => {
-    const live = { ...board("palo_alto", "sj_diridon", NOW, null)!, live: true };
-    const { app, calls, lines, store } = setup((u) => (u.pathname === "/api/board" ? json(live) : json({}, 404)));
+  it("opens on a live default board (no dead end for a first launch), then any pair", async () => {
+    const { app, calls, lines, store } = setup((u) => (u.pathname === "/api/board"
+      ? json({ ...board(u.searchParams.get("from")!, u.searchParams.get("to")!, NOW, null)!, live: true }) : json({}, 404)));
     await app.start();
-    expect(lines().join(" ")).toContain("pick stations");
+    expect(calls).toContain("GET /api/board?from=san_francisco&to=sj_diridon");
+    expect(lines()[0]).toMatch(/^SF > SJ DIRIDON/);
+    expect(lines().at(-2)).toBe("Pair in the Headway app for your commute");
+    expect(lines().at(-1)).toBe("tap: flip  hold: menu  2x: exit");
     await app.run([{ kind: "show_pair", pair: { from: "palo_alto", to: "sj_diridon" } }]);
     expect(calls).toContain("GET /api/board?from=palo_alto&to=sj_diridon");
     expect(lines()[0]).toMatch(/^PALO ALTO > SJ DIRIDON/);
     expect(JSON.parse(store.data[K.pair])).toEqual({ from: "palo_alto", to: "sj_diridon" });
-    for (const l of lines()) expect(l.length).toBeLessThanOrEqual(LINE_WIDTH);
+    for (const l of lines()) expect(textPx(l)).toBeLessThanOrEqual(LINE_PX);
   });
   it("falls back to the bundled timetable offline", async () => {
     const { app, lines } = setup(() => { throw new TypeError("offline"); }, memory({ [K.pair]: JSON.stringify({ from: "mountain_view", to: "san_francisco" }) }));
     await app.start();
     expect(lines()[0]).toMatch(/^MTN VIEW > SF/);
-    expect(lines().at(-1)).toBe("Offline: timetable times");
+    expect(lines().at(-2)).toBe("Offline: timetable times");
     expect(app.board!.trains.length).toBeGreaterThan(0);
+  });
+  it("offline on the very first launch: the default board from the timetable", async () => {
+    const { app, lines } = setup(() => { throw new TypeError("offline"); });
+    await app.start();
+    expect(lines()[0]).toMatch(/^SF > SJ DIRIDON/);
+  });
+  it("double tap on the board asks to exit", async () => {
+    let exited = 0;
+    const app = new HeadwayApp({ api: "https://hw.test", store: memory(), now: () => NOW, fetch: async () => { throw new TypeError("offline"); }, onLines: () => {}, onExit: () => exited++ });
+    await app.start();
+    await app.input("double_tap");
+    expect(exited).toBe(1);
   });
 });
 
@@ -56,7 +71,8 @@ describe("paired", () => {
     await app.start();
     expect(app.paired).toBe(true);
     expect(lines()[0]).toMatch(/^MTN VIEW > SF/);
-    await app.input("long_press");
+    await app.input("long_press"); // menu: "Track <train>" first
+    await app.input("tap");
     expect(posts[0]).toMatchObject({ trip_id: commute.trains[0].trip_id, from: "mountain_view", to: "san_francisco" });
     expect(calls.filter((c) => c.startsWith("GET /api/me/board")).length).toBeGreaterThan(1);
   });

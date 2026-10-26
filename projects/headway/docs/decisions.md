@@ -39,7 +39,7 @@ calls made while building, with the reason for each.
   cancellations, leave-now and arrival are time-sensitive notifications; service alerts are ordinary.
   The Even app can mirror iPhone notifications to the glasses, so no glasses-side background work is
   needed.
-- **Tracking is shared.** Holding the ring on a train, swiping it in the app or asking an assistant
+- **Tracking is shared.** Tracking from the glasses' menu (hold the ring, then Track), swiping it in the app or asking an assistant
   all write the same `headway.tracked_trips` row: the glasses show its progress and the iPhone gets
   the arrival alert. It clears itself after arrival.
 - **Sign in with Apple too.** The owner chose Google; App Store guideline 4.8 requires an equivalent
@@ -59,3 +59,9 @@ calls made while building, with the reason for each.
   tracked row on the Trains tab and the arrival push cover the need for now.
 - **No FeedbackKit SDK yet.** It needs a FeedbackKit project and key for Headway; add it with the
   first round of TestFlight feedback.
+- **Even Hub review (2026-10-26):** double-tap on the board (the root page) opens the system exit
+  dialog and "Exit Headway" is in the menu; the menu moved to a hold of the ring, with "Track
+  <train>" first. Unpaired (or with no commute saved) the glasses open on a live San Francisco →
+  San José board instead of an empty screen, and every gesture answers. Screens are laid out in
+  pixels (`core/src/font.ts`: the firmware font's measured glyph widths, 9 lines in a bordered
+  frame).

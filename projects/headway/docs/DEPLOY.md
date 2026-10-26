@@ -68,11 +68,12 @@ not used for tracking); no location, no analytics. Privacy policy:
 
 ## 5. Even Hub plugin
 
-The same release attaches `headway-glasses-<version>.ehpk` (`headway-glasses-release.yml`). Upload
-it to the Even Hub developer portal by hand (package id `com.hejitech.headway.glasses`). Before the
-first upload, sideload it on real glasses (`npx evenhub qr` in `apps/glasses`) and check the layout,
-the R1 gestures (does the ring send long press, or does firmware route it elsewhere?) and BLE
-refresh lag.
+The release attaches `headway-glasses-<version>.ehpk` (`headway-glasses-release.yml`). Everything the
+portal asks, ready to paste and upload (text, category, tags, data rows, icon, background,
+screenshots, reviewer note): `docs/even-hub/LISTING.md`; the portal's rules and quirks:
+`.claude/skills/heji-even-hub-submit/SKILL.md`. Before submitting, install the Beta build on real
+glasses and check the layout, every ring gesture, the exit dialog (the simulator doesn't draw it)
+and five minutes with the phone locked (package `com.hejitech.headway.glasses`).
 
 ## 6. Docs
 

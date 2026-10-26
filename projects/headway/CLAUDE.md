@@ -34,9 +34,10 @@ stack), `-screen trains|commute|glasses|settings`, `-production` (Debug build ag
 
 - **`@headway/core` is the one engine** (`packages/core/src`): `schedule.ts` (timetable → departures,
   live predictions, boards, the commute leg for now, a train's progress), `alerts.ts` (which
-  notifications are due, pure), `glasses.ts` (screens ≤ 30 ASCII chars × 6 lines and the R1
-  `Navigator`), `gtfsrt.ts` (protobuf reader), `settings.ts` (defaults + `checkSettings`). Change
-  behaviour there, with a test; never format glasses text elsewhere.
+  notifications are due, pure), `glasses.ts` (screens laid out in pixels by `font.ts`'s measured
+  glyph widths, 9 lines in a bordered frame, and the R1 `Navigator`), `gtfsrt.ts` (protobuf
+  reader), `settings.ts` (defaults + `checkSettings`). Change behaviour there, with a test; never
+  format glasses text elsewhere.
 - **Worker** (`services/web/src/worker`): `api.ts` (public boards, session / glasses token, pairing,
   push registration), `cron.ts` + `realtime.ts` (511 → `headway.realtime` snapshot, alert engine →
   `push.ts` APNs), `mcp.ts` (seven tools), `store.ts`. Service key only here; clients read their own
@@ -63,6 +64,9 @@ stack), `-screen trains|commute|glasses|settings`, `-production` (Debug build ag
 - The Even SDK returns a bridge object in any browser: `main.ts` checks `flutter_inappwebview` first.
   Simulator screenshots are RGBA with the text in alpha: composite on black to look at them.
 - No "Apple" in any App Intent strings if intents are added (root CLAUDE.md pitfall).
+- Even Hub review rules the plugin keeps (`heji-even-hub-submit` skill, `docs/decisions.md`): double
+  tap on the board (the root page) sends `exit` → `shutDownPageContainer(1)`; menus live on a hold;
+  unpaired it opens on a live default board; every gesture answers. Listing kit: `docs/even-hub/`.
 
 ## Releasing
 

@@ -12,7 +12,7 @@ import {
   type EvenAppBridge,
   type EvenHubEvent,
 } from "@evenrealities/even_hub_sdk";
-import { DISPLAY, type Input } from "@headway/core";
+import { DISPLAY, FRAME, type Input } from "@headway/core";
 import { HeadwayApp, type AppStatus, type Store } from "./app.ts";
 import "./style.css";
 
@@ -72,9 +72,11 @@ async function boot() {
       created = true;
       await bridge.createStartUpPageContainer(new CreateStartUpPageContainer({
         containerTotalNum: 1,
+        // The bordered frame other G2 apps draw (FRAME in core's font.ts).
         textObject: [new TextContainerProperty({
-          containerID: 1, containerName: "board", xPosition: 0, yPosition: 0,
-          width: DISPLAY.width, height: DISPLAY.height, paddingLength: 8, content: text, isEventCapture: 1,
+          containerID: 1, containerName: "board", xPosition: 0, yPosition: 0, width: DISPLAY.width, height: DISPLAY.height,
+          borderWidth: FRAME.border, borderColor: FRAME.color, borderRadius: FRAME.radius, paddingLength: FRAME.padding,
+          content: text, isEventCapture: 1,
         })],
       }));
       return;
@@ -91,6 +93,8 @@ async function boot() {
       void push(text);
     },
     onStatus: (s) => ui.status(s),
+    // The system's exit dialog (Even Hub review requires it on the root page); the host closes the plugin.
+    onExit: () => void bridge?.shutDownPageContainer(1).catch(() => false),
   });
 
   if (bridge) {
@@ -144,7 +148,7 @@ function phonePage(root: HTMLElement, onGlasses: boolean) {
       </section>
       <details>
         <summary>Ring gestures</summary>
-        <p class="muted small">Swipe: next trains · Tap: flip direction · Hold: track the selected train · Double-tap: menu (commute, pick stations, alerts, tracked train).</p>
+        <p class="muted small">Swipe: next trains · Tap: flip direction · Hold: menu (track the selected train, your commute, pick stations, alerts, the tracked train) · Double-tap: exit (on a train you track: back to the board).</p>
       </details>
     </div>`;
   const $ = <T extends Element>(s: string) => root.querySelector(s) as T;

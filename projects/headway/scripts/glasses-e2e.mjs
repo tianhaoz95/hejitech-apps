@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Drives the Even Hub simulator through its automation API: the plugin pairs with a code, shows the
-// commute board, and the R1 gestures move, track and open the menu; the backend sees the tracked
-// train. Needs the local stack, `npm run dev:worker -w @headway/web` and the simulator started by
+// commute board, and the R1 gestures move, open the menu, track and stop tracking; the backend sees
+// the tracked train. (Double tap on the board exits; the simulator doesn't draw the system dialog.)
+// Needs the local stack, `npm run dev:worker -w @headway/web` and the simulator started by
 // scripts/glasses-sim.sh --e2e. Screenshots land in $SHOTS (default /tmp/headway-glasses).
 import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -27,15 +28,17 @@ await sleep(9000);
 await shot("1-board");
 await input("down");
 await shot("2-cursor");
-await input("long_press");
-await shot("3-tracking");
+await input("long_press");          // menu: "Track <train>" first
+await shot("3-menu");
+await input("click");               // track it
+await shot("4-tracking");
 await waitFor(async () => Boolean(await tracked()), "the Worker sees the tracked train", 10_000);
-await input("double_click");
-await shot("4-board-again");
-await input("double_click");
-await shot("5-menu");
-await input("double_click");
-await input("long_press");
-await input("long_press");
+await input("double_click");        // back to the board
+await shot("5-board-again");
+await input("long_press");          // menu → the tracked train
+await input("down");
+await input("click");
+await input("long_press");          // stop tracking
 await shot("6-untracked");
+await waitFor(async () => !(await tracked()), "the Worker sees tracking stopped", 10_000);
 console.log(`glasses e2e: ok, screenshots in ${shots}`);

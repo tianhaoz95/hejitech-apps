@@ -22,7 +22,7 @@ features:
   - title: Your commute by default
     details: Save a morning and an evening pair of stations. Before your switch time the glasses open on the morning trains, after it on the evening ones. No taps on the platform.
   - title: Made for the ring
-    details: Swipe through the next trains, tap to flip direction, hold to track the train you're on, double-tap for any station. Plain text, one glance.
+    details: Swipe through the next trains, tap to flip direction, hold for the menu (track the train you're on, any two stations, alerts), double-tap to exit. One glance.
   - title: Alerts that matter
     details: Delays past your threshold, cancellations, Caltrain's service alerts for your stations, a leave-now reminder for your usual train, and a heads-up before your stop.
 ---
