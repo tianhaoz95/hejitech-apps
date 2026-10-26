@@ -64,7 +64,7 @@ the plugin's `app.json`, and `weehours-glasses-release.yml` attaches
 @weehours/glasses` → `apps/glasses/build/weehours.ehpk`.
 
 1. Wait for the release's Worker deploy (the glasses' API is `https://weehours.hejitech.workers.dev/api/glasses/*`; the plugin's only network whitelist entry).
-2. Download the `.ehpk` from the release and upload it in the Even Hub developer portal (package `com.hejitech.weehours.glasses`). The pack refuses a manifest that whitelists local addresses.
+2. Download the `.ehpk` from the release and upload it in the Even Hub developer portal (package `com.hejitech.weehours.glasses`). The portal's fields, icon format, categories and review rules: the `heji-even-hub-submit` skill. The pack refuses a manifest that whitelists local addresses.
 3. Check on real glasses: install from the Even Hub, pair with a code from Settings → Even G2 glasses on a Release build, press (feed), double press (diaper), hold to speak, and see the entries and the capture on the phone. The simulator isn't faithful for BLE lag, font metrics or the microphone.
 
 Pairing codes and the wrong-code throttle live in the Worker's `OAUTH_KV` namespace (`glasses-code:*`,

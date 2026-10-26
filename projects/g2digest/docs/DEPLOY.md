@@ -55,7 +55,7 @@ a token (401 with `resource_metadata`).
 
 ### Even Hub submission
 
-Listing text, icon, background and screenshots: `docs/even-hub/LISTING.md`. In the portal: upload
+Listing text, icon, background and screenshots: `docs/even-hub/LISTING.md`. The portal's forms, limits and review rules for every HEJI plugin: the `heji-even-hub-submit` skill. In the portal: upload
 the release's `.ehpk` as a **Beta** build, install it on the glasses as a beta tester (QR sideloads
 die when the phone locks, so they can't check the rest), then go through the review checklist:
 
