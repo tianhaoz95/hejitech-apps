@@ -89,6 +89,12 @@ The submission checklist (hub.evenrealities.com, ship/app-submission) set these:
   Hub if they want one), and hosted edition building for users without their own agent (it would
   mean server-side AI and TTS, which PRD §3 and the owner's audio answer rule out for now).
 
+## Swipe up moves on (2026-10-26)
+
+On the R1, swipe up (`SCROLL_TOP_EVENT`) now goes to the next card and swipe down goes back, as the
+owner expected from scrolling a page; it was the other way round. The list page is the firmware's
+own and moves its highlight by itself.
+
 ## The whole display, a frame, past editions (2026-10-26)
 
 After the owner's first days on the glasses:
@@ -103,7 +109,7 @@ After the owner's first days on the glasses:
   (`FRAME`: 2 px, level 13, radius 6, 8 px padding); 9 lines fit inside, and the footer is pinned
   to the last one (`screenText`) so every card has the same shape. The web preview draws the same
   frame with a proportional face; its line breaks come from the renderer, so they match.
-- **Past editions on the glasses.** Swiping down past the End card (the End's footer says so), or
+- **Past editions on the glasses.** Swiping up past the End card (the End's footer says so), or
   "Past editions" in the menu, opens a list page: up to 8 editions, newest first, with "Older" and
   "Newer" rows, since a list's rows share the frame's height. Clicking one reads it; double tap goes
   back to the cards (the list isn't the root page, so it doesn't exit). A past edition stays pinned

@@ -52,7 +52,7 @@ describe("helpers", () => {
     expect(text.endsWith("\n")).toBe(false);
   });
   it("points the End card to the past editions (the tour's End to exit)", () => {
-    expect(render(fixtureBundle()).at(-1)!.footer).toBe("SWIPE DOWN: PAST EDITIONS");
+    expect(render(fixtureBundle()).at(-1)!.footer).toBe("SWIPE UP: PAST EDITIONS");
   });
   it("fits the frame: 536 px lines, 9 of them", () => {
     expect([LINE_PX, MAX_LINES]).toEqual([536, 9]);

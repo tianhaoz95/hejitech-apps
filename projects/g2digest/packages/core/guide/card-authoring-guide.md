@@ -179,7 +179,7 @@ Cover → [alert cards] → [TL;DR] → section cards in brief section order →
 - **Section cards** (`kind: "section"`, `section_id`, `template` = the section's, `E_TEMPLATE`) in
   the brief's section order (`E_ORDER`).
 - **End** (`kind: "end"`, last, `E_END`): a short sign-off; the footer is rendered for you (it
-  points to the past editions, which open when the reader swipes down past the End).
+  points to the past editions, which open when the reader swipes up past the End).
 
 ### 4.3 Template registry
 

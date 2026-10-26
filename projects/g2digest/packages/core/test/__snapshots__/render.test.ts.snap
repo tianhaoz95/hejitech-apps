@@ -83,6 +83,6 @@ exports[`render > matches the snapshot 1`] = `
 │                                                                                                  │
 │                                                                                                  │
 │                                                                                                  │
-│ SWIPE DOWN: PAST EDITIONS                                                                        │
+│ SWIPE UP: PAST EDITIONS                                                                          │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘"
 `;

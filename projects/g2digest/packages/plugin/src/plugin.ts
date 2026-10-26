@@ -55,8 +55,9 @@ const MENU: { id: number; name: string; gesture: Gesture | "exit" | "editions" }
 const GESTURES: Partial<Record<OsEventTypeList, Gesture>> = {
   [OsEventTypeList.CLICK_EVENT]: "tap",
   [OsEventTypeList.DOUBLE_CLICK_EVENT]: "double_tap",
-  [OsEventTypeList.SCROLL_BOTTOM_EVENT]: "next",
-  [OsEventTypeList.SCROLL_TOP_EVENT]: "prev",
+  // Swipe up on the ring (SCROLL_TOP) moves on, like scrolling a page; swipe down goes back.
+  [OsEventTypeList.SCROLL_TOP_EVENT]: "next",
+  [OsEventTypeList.SCROLL_BOTTOM_EVENT]: "prev",
   [OsEventTypeList.LONG_PRESS_EVENT]: "long_press",
 };
 

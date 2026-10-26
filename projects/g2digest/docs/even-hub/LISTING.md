@@ -64,8 +64,9 @@ Icon grid (12 × 12 blocks, each block = 2 × 2 pixels):
 > G2 Digest works without an account: on first launch the glasses play a seven-card tour, and every
 > ring gesture answers on every card (swipe to move; tap and tap-then-hold flash "NO GLANCE AUDIO" /
 > "NO DEEP DIVE" because the tour has no audio). Double-tap with nothing playing opens the system
-> exit dialog; Exit is also in the contextual menu. Swiping down past the last card opens the list
-> of past editions (a second page: double-tap there goes back to the cards). Reading your own editions needs an account and
+> exit dialog; Exit is also in the contextual menu. Swiping up past the last card opens the list
+> of past editions (a second page: double-tap there goes back to the cards). On the ring, swipe up
+> moves to the next card and swipe down goes back. Reading your own editions needs an account and
 > pairing: sign in at g2digest.hejitech.workers.dev, open Pair, and type the 6-digit code into the
 > app's phone page. The app only talks to g2digest.hejitech.workers.dev (our API, on Cloudflare)
 > and our Supabase project's supabase.co address (expiring audio links), both operated by HEJI

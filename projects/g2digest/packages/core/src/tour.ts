@@ -35,13 +35,13 @@ export function tour(reason: TourReason, date: string): Bundle {
       ],
     },
     cards: [
-      { slug: "cover", kind: "cover", title: "G2 Digest", body: "Your brief as cards and audio. Swipe down for a short tour." },
+      { slug: "cover", kind: "cover", title: "G2 Digest", body: "Your brief as cards and audio. Swipe up for a short tour." },
       section("how", "made-ahead", "Made before you wake", "An agent writes each edition from your brief. The glasses only play it back."),
-      section("ring", "swipe", "Swipe to move", "Down for the next card, up for the previous one. Past the last card: your past editions."),
+      section("ring", "swipe", "Swipe to move", "Up for the next card, down for the previous one. Past the last card: your past editions."),
       section("ring", "tap", "Tap to listen", "Tap plays a card's short audio. Tap, then hold, plays its deep dive."),
       section("ring", "double-tap", "Double-tap to leave", "Double-tap stops audio. With nothing playing, it asks to exit."),
       section("next", "next-step", NEXT[reason].title, NEXT[reason].body),
-      { slug: "end", kind: "end", title: "End of the tour", body: "Swipe up to go back through it." },
+      { slug: "end", kind: "end", title: "End of the tour", body: "Swipe down to go back through it." },
     ],
   };
 }

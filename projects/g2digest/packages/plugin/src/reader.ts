@@ -25,7 +25,7 @@ export interface ReaderOptions {
   audioUrl: (path: string) => Promise<string | null>;
   /** Double tap with nothing playing: open the system exit dialog (glasses only). */
   onExit?: () => void;
-  /** Swipe down on the last card: show the past editions. */
+  /** Swipe up on the last card: show the past editions. */
   onEditions?: () => void;
   now?: () => number;
 }

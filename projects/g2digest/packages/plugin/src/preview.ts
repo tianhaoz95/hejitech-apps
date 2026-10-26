@@ -9,8 +9,8 @@ export const FIDELITY_NOTE =
   "Faithful for layout and wrapping. Not for Bluetooth lag, the glasses' own font metrics, or hardware container limits. Check on the glasses before calling a layout change done.";
 
 const CONTROLS: { g: Gesture; label: string; key: string; hint: string }[] = [
-  { g: "prev", label: "Swipe up", key: "↑", hint: "previous card" },
-  { g: "next", label: "Swipe down", key: "↓", hint: "next card" },
+  { g: "prev", label: "Swipe down", key: "↑", hint: "previous card" },
+  { g: "next", label: "Swipe up", key: "↓", hint: "next card" },
   { g: "tap", label: "Tap", key: "Space", hint: "play / pause glance" },
   { g: "long_press", label: "Tap, then hold", key: "L", hint: "deep dive" },
   { g: "double_tap", label: "Double tap", key: "Esc", hint: "stop audio / exit" },

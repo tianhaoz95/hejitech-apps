@@ -90,7 +90,7 @@ function footer(bundle: Bundle, card: CardInput): string {
     const audio = bundle.cards.reduce((s, c) => s + (c.glance?.duration_sec ?? 0) + (c.deep_dive?.duration_sec ?? 0), 0);
     return audio ? `${bundle.cards.length} CARDS · ${Math.round(audio / 60)} MIN AUDIO` : `${bundle.cards.length} CARDS`;
   }
-  if (card.kind === "end" && !card.glance && !card.deep_dive) return bundle.guide_version === TOUR_GUIDE_VERSION ? "DOUBLE-TAP TO EXIT" : "SWIPE DOWN: PAST EDITIONS";
+  if (card.kind === "end" && !card.glance && !card.deep_dive) return bundle.guide_version === TOUR_GUIDE_VERSION ? "DOUBLE-TAP TO EXIT" : "SWIPE UP: PAST EDITIONS";
   return audioFooter(card);
 }
 

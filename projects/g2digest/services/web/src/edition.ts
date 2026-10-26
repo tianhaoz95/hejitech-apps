@@ -45,7 +45,7 @@ function previewPanel(b: Bundle, audioUrl: (path: string) => string | null) {
     onChange: (lines, r) => { preview.show(lines); preview.status(previewStatus(r)); },
   });
   const preview = mountPreview(host, { onGesture: (g) => void reader.gesture(g) });
-  host.append(el("p", { class: "muted small" }, "Keys: ↓ / ↑ swipe, Space tap, L tap-then-hold, Esc double tap. Or load this edition on real glasses: ",
+  host.append(el("p", { class: "muted small" }, "Keys: ↓ / ↑ next / previous card, Space tap, L tap-then-hold, Esc double tap. Or load this edition on real glasses: ",
     el("code", {}, `evenhub qr --url ${location.origin}/glasses/`), "."));
   reader.load(b);
   return host;

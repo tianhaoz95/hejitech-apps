@@ -2,8 +2,8 @@
 // and the web preview's simulated controls. Pure: gestures in, commands and the screen's lines
 // out; the caller plays audio and pushes text.
 //
-//   swipe down / up     next / previous card (stops audio: audio belongs to the card on screen);
-//                       swipe down on the last card opens the list of past editions
+//   swipe up / down     next / previous card (stops audio: audio belongs to the card on screen);
+//                       swipe up on the last card opens the list of past editions
 //   tap                 play / pause the current card's glance (or the deep dive already playing)
 //   long press          play the current card's deep dive; none → "NO DEEP DIVE" flash
 //   double tap          stop audio, back to skimming; with nothing playing, ask to exit (Even Hub
@@ -25,7 +25,7 @@ export type PlayerCommand =
   | { kind: "pause" }
   | { kind: "resume" }
   | { kind: "stop" }
-  /** Show the list of past editions (swipe down past the last card). */
+  /** Show the list of past editions (swipe up past the last card). */
   | { kind: "editions" }
   /** Open the system exit dialog (the plugin calls shutDownPageContainer(1)). */
   | { kind: "exit" }
