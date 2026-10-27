@@ -374,6 +374,16 @@ public struct SettingsSheetView: View {
                         Text("Right Side").tag(ControllerSidebarPosition.right)
                     }
 
+                    Picker("Phone Orientation", selection: $store.settings.controllerOrientation) {
+                        Text("Landscape (Default)").tag(ControllerOrientation.landscape)
+                        Text("Portrait (Up/Down)").tag(ControllerOrientation.portrait)
+                        Text("Landscape (Flipped)").tag(ControllerOrientation.landscapeFlipped)
+                        Text("Auto-Rotate").tag(ControllerOrientation.auto)
+                    }
+                    .onChange(of: store.settings.controllerOrientation) { _, newOrient in
+                        DisplayHost.shared.phoneControllerVC?.applyOrientationChange(newOrient)
+                    }
+
                     Toggle("Show Touchpad Buttons", isOn: $store.settings.showTouchpadButtons)
 
                     Text("When buttons are hidden, use pure gestures: 1-finger tap to click, tap-and-hold to drag, 2-finger scroll, and 2-finger tap for escape / back.")

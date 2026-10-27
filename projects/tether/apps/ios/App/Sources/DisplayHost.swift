@@ -90,9 +90,16 @@ public final class DisplayHost: NSObject {
     }
 
     /// Preferred interface orientations:
-    /// - Phone is forced to landscape (left & right) for optimal trackpad and split-pane usability.
+    /// Follows user preference in settings (landscape, portrait, or auto).
     public var supportedOrientations: UIInterfaceOrientationMask {
-        return [.landscapeLeft, .landscapeRight]
+        switch store.settings.controllerOrientation {
+        case .landscape, .landscapeFlipped:
+            return [.landscapeLeft, .landscapeRight]
+        case .portrait:
+            return [.portrait, .portraitUpsideDown]
+        case .auto:
+            return [.landscapeLeft, .landscapeRight, .portrait, .portraitUpsideDown]
+        }
     }
 
     private func setupDisplayObservers() {
@@ -207,7 +214,7 @@ final class TetherAppDelegate: UIResponder, UIApplicationDelegate {
         _ application: UIApplication,
         supportedInterfaceOrientationsFor window: UIWindow?
     ) -> UIInterfaceOrientationMask {
-        return [.landscapeLeft, .landscapeRight]
+        return DisplayHost.shared.supportedOrientations
     }
 
     func application(

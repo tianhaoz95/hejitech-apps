@@ -185,7 +185,7 @@ export function formatTabTitle(
  */
 export function resolveAddressBarInput(input: string, searchPrefix = DEFAULT_SETTINGS.defaultSearchEngine): string {
   const trimmed = input.trim();
-  if (!trimmed) return "https://example.com";
+  if (!trimmed) return "about:home";
   if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(trimmed)) {
     try {
       return new URL(trimmed).toString();
@@ -227,9 +227,9 @@ export function getFocusedPane(tree: PaneTree): PaneNode {
 
 // ---------------------------------------------------------------- Factory Helpers
 
-export function createWebTab(id: string, url = "https://example.com", title?: string): Tab {
+export function createWebTab(id: string, url = "about:home", title?: string): Tab {
   const tab: Tab = { id, type: "web", title: title ?? "", web: { url } };
-  tab.title = formatTabTitle(tab, { pageTitle: title });
+  tab.title = formatTabTitle(tab, { pageTitle: title ?? (url === "about:home" ? "New Tab" : undefined) });
   return tab;
 }
 
@@ -644,7 +644,7 @@ export function createAndAddTab(
   const id = nextTabId(tree);
   let tab: Tab;
   if (type === "web") {
-    tab = createWebTab(id, opts?.url ?? "https://example.com");
+    tab = createWebTab(id, opts?.url ?? "about:home");
   } else if (type === "ssh") {
     tab = createSshTab(id, opts?.hostId ?? "", opts?.host);
   } else {
@@ -715,7 +715,7 @@ export function duplicateActiveWebTab(tree: PaneTree): TreeOperationResult {
   if (active.type !== "web") {
     return { tree, notice: "Only Web tabs can be duplicated in version 1." };
   }
-  const copy = createWebTab(nextTabId(tree), active.web?.url ?? "https://example.com", active.title);
+  const copy = createWebTab(nextTabId(tree), active.web?.url ?? "about:home", active.title);
   return { tree: addTab(tree, copy, pane.id) };
 }
 

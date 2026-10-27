@@ -11,7 +11,7 @@ public enum TetherConstants {
     public static let maxTerminalFontSize = 20
     public static let defaultTerminalFontSize = 14
     public static let minScrollbackLines = 10_000
-    public static let defaultWebHomeURL = "https://example.com"
+    public static let defaultWebHomeURL = "about:home"
     public static let defaultSearchEngineURL = "https://duckduckgo.com/?q=%s"
 
     /// Control keys that MUST pass through to the focused SSH terminal PTY instead of app shortcuts (PRD §13.2).
@@ -343,6 +343,22 @@ public enum ControllerSidebarPosition: String, Codable, Hashable, Sendable, Case
     case right
 }
 
+public enum ControllerOrientation: String, Codable, Hashable, Sendable, CaseIterable {
+    case landscape
+    case landscapeFlipped = "landscape_flipped"
+    case portrait
+    case auto
+
+    public var displayName: String {
+        switch self {
+        case .landscape: return "Landscape"
+        case .landscapeFlipped: return "Landscape (Flipped)"
+        case .portrait: return "Portrait (Up/Down)"
+        case .auto: return "Auto-Rotate"
+        }
+    }
+}
+
 public struct TetherSettings: Codable, Hashable, Sendable {
     public var version: Int = 1
     public var defaultSearchEngineUrl: String
@@ -350,6 +366,7 @@ public struct TetherSettings: Codable, Hashable, Sendable {
     public var theme: ThemeMode
     public var defaultLayoutPreset: LayoutPresetId
     public var controllerSidebarPosition: ControllerSidebarPosition = .left
+    public var controllerOrientation: ControllerOrientation = .landscape
     public var showTouchpadButtons: Bool = false
 
     public init(
@@ -359,6 +376,7 @@ public struct TetherSettings: Codable, Hashable, Sendable {
         theme: ThemeMode = .dark,
         defaultLayoutPreset: LayoutPresetId = .twoColumn,
         controllerSidebarPosition: ControllerSidebarPosition = .left,
+        controllerOrientation: ControllerOrientation = .landscape,
         showTouchpadButtons: Bool = false
     ) {
         self.version = version
@@ -370,6 +388,7 @@ public struct TetherSettings: Codable, Hashable, Sendable {
         self.theme = theme
         self.defaultLayoutPreset = defaultLayoutPreset
         self.controllerSidebarPosition = controllerSidebarPosition
+        self.controllerOrientation = controllerOrientation
         self.showTouchpadButtons = showTouchpadButtons
     }
 
@@ -382,6 +401,7 @@ public struct TetherSettings: Codable, Hashable, Sendable {
         theme = try container.decodeIfPresent(ThemeMode.self, forKey: .theme) ?? .dark
         defaultLayoutPreset = try container.decodeIfPresent(LayoutPresetId.self, forKey: .defaultLayoutPreset) ?? .twoColumn
         controllerSidebarPosition = try container.decodeIfPresent(ControllerSidebarPosition.self, forKey: .controllerSidebarPosition) ?? .left
+        controllerOrientation = try container.decodeIfPresent(ControllerOrientation.self, forKey: .controllerOrientation) ?? .landscape
         showTouchpadButtons = try container.decodeIfPresent(Bool.self, forKey: .showTouchpadButtons) ?? false
     }
 }
@@ -435,7 +455,7 @@ public enum PaneTreeOps {
     ) -> Tab {
         switch type {
         case .web:
-            return Tab(id: id, type: .web, title: "Web: example.com", url: TetherConstants.defaultWebHomeURL)
+            return Tab(id: id, type: .web, title: "New Tab", url: TetherConstants.defaultWebHomeURL)
         case .ssh:
             let defaultHost = hosts.first
             let title: String

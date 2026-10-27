@@ -65,6 +65,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     private let urlTextField = UITextField()
     private let openUrlButton = UIButton(type: .system)
     private let sidebarPosSegment = UISegmentedControl(items: ["Left Side", "Right Side"])
+    private let orientationSegment = UISegmentedControl(items: ["Landscape", "Portrait", "Flipped"])
     private let showButtonsSwitch = UISwitch()
 
     // Touchpad gesture tracking
@@ -85,14 +86,43 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         true
     }
 
-    // MARK: - Orientation Lock (Force Landscape)
+    // MARK: - Orientation Lock & Toggling (PRD §4, §12)
 
     public override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
-        return [.landscapeLeft, .landscapeRight]
+        DisplayHost.shared.supportedOrientations
     }
 
     public override var preferredInterfaceOrientationForPresentation: UIInterfaceOrientation {
-        return .landscapeRight
+        switch store.settings.controllerOrientation {
+        case .landscape: return .landscapeRight
+        case .landscapeFlipped: return .landscapeLeft
+        case .portrait: return .portrait
+        case .auto: return .landscapeRight
+        }
+    }
+
+    public func applyOrientationChange(_ orientation: ControllerOrientation) {
+        if #available(iOS 16.0, *) {
+            setNeedsUpdateOfSupportedInterfaceOrientations()
+            let mask: UIInterfaceOrientationMask
+            switch orientation {
+            case .landscape: mask = .landscapeRight
+            case .landscapeFlipped: mask = .landscapeLeft
+            case .portrait: mask = .portrait
+            case .auto: mask = [.landscapeLeft, .landscapeRight, .portrait]
+            }
+            if let windowScene = view.window?.windowScene ?? UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first(where: { $0.session.role == .windowApplication }) {
+                windowScene.requestGeometryUpdate(.iOS(interfaceOrientations: mask))
+            }
+        }
+        applySidebarLayoutConstraints()
+    }
+
+    public func toggleOrientation() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        let next: ControllerOrientation = (store.settings.controllerOrientation == .landscape) ? .portrait : .landscape
+        store.settings.controllerOrientation = next
+        applyOrientationChange(next)
     }
 
     // MARK: - UIKeyInput Protocol (Captures Physical Dock Keyboard & Software Input)
@@ -126,12 +156,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
 
     public override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        if #available(iOS 16.0, *) {
-            setNeedsUpdateOfSupportedInterfaceOrientations()
-            if let windowScene = view.window?.windowScene ?? UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first(where: { $0.session.role == .windowApplication }) {
-                windowScene.requestGeometryUpdate(.iOS(interfaceOrientations: .landscapeRight))
-            }
-        }
+        applyOrientationChange(store.settings.controllerOrientation)
     }
 
     public override func viewDidAppear(_ animated: Bool) {
@@ -207,6 +232,13 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         divider.widthAnchor.constraint(equalToConstant: 24).isActive = true
         divider.heightAnchor.constraint(equalToConstant: 1).isActive = true
 
+        let paletteBtn = makeSidebarActionButton(systemName: "command") { [weak self] in
+            self?.workspaceVC?.openCommandPalette()
+        }
+        let rotateBtn = makeSidebarActionButton(systemName: "rectangle.landscape.rotate") { [weak self] in
+            self?.toggleOrientation()
+        }
+
         let webBtn = makeSidebarActionButton(systemName: "globe") { [weak self] in
             self?.store.openTab(type: .web)
         }
@@ -243,11 +275,13 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         ])
 
         sidebarStack.addArrangedSubview(statusDot)
-        sidebarStack.setCustomSpacing(14, after: statusDot)
+        sidebarStack.setCustomSpacing(10, after: statusDot)
         sidebarStack.addArrangedSubview(touchpadTabBtn)
         sidebarStack.addArrangedSubview(keyboardTabBtn)
         sidebarStack.addArrangedSubview(settingsTabBtn)
         sidebarStack.addArrangedSubview(divider)
+        sidebarStack.addArrangedSubview(paletteBtn)
+        sidebarStack.addArrangedSubview(rotateBtn)
         sidebarStack.addArrangedSubview(webBtn)
         sidebarStack.addArrangedSubview(sshBtn)
         sidebarStack.addArrangedSubview(filesBtn)
@@ -794,7 +828,24 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         buttonsRow.alignment = .center
         buttonsRow.distribution = .equalSpacing
 
-        let controllerOptionsCard = UIStackView(arrangedSubviews: [sidebarRow, buttonsRow])
+        let orientLabel = UILabel()
+        orientLabel.text = "Orientation"
+        orientLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        orientLabel.textColor = UIColor(white: 0.8, alpha: 1.0)
+
+        orientationSegment.translatesAutoresizingMaskIntoConstraints = false
+        orientationSegment.backgroundColor = UIColor(white: 1.0, alpha: 0.08)
+        orientationSegment.selectedSegmentTintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.35)
+        orientationSegment.setTitleTextAttributes([.foregroundColor: UIColor.white, .font: UIFont.systemFont(ofSize: 11, weight: .semibold)], for: .normal)
+        orientationSegment.setTitleTextAttributes([.foregroundColor: UIColor.white, .font: UIFont.systemFont(ofSize: 11, weight: .bold)], for: .selected)
+        orientationSegment.addTarget(self, action: #selector(handleOrientationSegmentChanged), for: .valueChanged)
+
+        let orientRow = UIStackView(arrangedSubviews: [orientLabel, orientationSegment])
+        orientRow.axis = .horizontal
+        orientRow.alignment = .center
+        orientRow.distribution = .equalSpacing
+
+        let controllerOptionsCard = UIStackView(arrangedSubviews: [sidebarRow, orientRow, buttonsRow])
         controllerOptionsCard.axis = .vertical
         controllerOptionsCard.spacing = 10
         controllerOptionsCard.backgroundColor = UIColor(red: 0.08, green: 0.11, blue: 0.18, alpha: 1.0)
@@ -885,7 +936,25 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
 
     private func syncSettingsControls() {
         sidebarPosSegment.selectedSegmentIndex = store.settings.controllerSidebarPosition == .left ? 0 : 1
+        switch store.settings.controllerOrientation {
+        case .landscape: orientationSegment.selectedSegmentIndex = 0
+        case .portrait: orientationSegment.selectedSegmentIndex = 1
+        case .landscapeFlipped: orientationSegment.selectedSegmentIndex = 2
+        case .auto: orientationSegment.selectedSegmentIndex = 0
+        }
         showButtonsSwitch.isOn = store.settings.showTouchpadButtons
+    }
+
+    @objc private func handleOrientationSegmentChanged() {
+        let selected: ControllerOrientation
+        switch orientationSegment.selectedSegmentIndex {
+        case 0: selected = .landscape
+        case 1: selected = .portrait
+        case 2: selected = .landscapeFlipped
+        default: selected = .landscape
+        }
+        store.settings.controllerOrientation = selected
+        applyOrientationChange(selected)
     }
 
     @objc private func handleSidebarPosChanged() {
@@ -1049,13 +1118,45 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
                 workspaceVC?.routeSpecialKey(.right)
                 handled = true
             default:
-                if key.modifierFlags.contains(.control) {
+                if key.modifierFlags.contains(.command) || key.modifierFlags.contains(.control) {
                     let char = key.charactersIgnoringModifiers.uppercased()
                     switch char {
-                    case "C": workspaceVC?.routeSpecialKey(.ctrlC); handled = true
-                    case "D": workspaceVC?.routeSpecialKey(.ctrlD); handled = true
-                    case "L": workspaceVC?.routeSpecialKey(.ctrlL); handled = true
-                    case "Z": workspaceVC?.routeSpecialKey(.ctrlZ); handled = true
+                    case "K", "P":
+                        workspaceVC?.openCommandPalette()
+                        handled = true
+                    case "T":
+                        store.openTab(type: .web)
+                        handled = true
+                    case "W":
+                        store.closeTab()
+                        handled = true
+                    case "1":
+                        store.applyPreset(.single)
+                        handled = true
+                    case "2":
+                        store.applyPreset(.twoColumn)
+                        handled = true
+                    case "3":
+                        store.applyPreset(.leftPlusTwoRight)
+                        handled = true
+                    case "4":
+                        store.applyPreset(.twoByTwo)
+                        handled = true
+                    case "C":
+                        workspaceVC?.routeSpecialKey(.ctrlC)
+                        handled = true
+                    case "D":
+                        workspaceVC?.routeSpecialKey(.ctrlD)
+                        handled = true
+                    case "L":
+                        workspaceVC?.routeSpecialKey(.ctrlL)
+                        handled = true
+                    case "Z":
+                        workspaceVC?.routeSpecialKey(.ctrlZ)
+                        handled = true
+                    case ",":
+                        openSettingsModal()
+                        handled = true
                     default:
                         workspaceVC?.routeKeyInput(key.characters)
                         handled = true

@@ -87,6 +87,7 @@ public final class TilingWorkspaceViewController: UIViewController {
         let preset3 = makeChromeButton("1+2", action: #selector(presetLeftTwoRightTapped))
         let preset4 = makeChromeButton("2×2", action: #selector(presetGridTapped))
 
+        let paletteBtn = makeChromeButton("⌘K", action: #selector(openCommandPalette))
         let splitH = makeChromeButton("Split ⫿", action: #selector(splitHorizontalTapped))
         let splitV = makeChromeButton("Split ⊟", action: #selector(splitVerticalTapped))
         let swapBtn = makeChromeButton("Swap", action: #selector(swapPanesTapped))
@@ -97,6 +98,7 @@ public final class TilingWorkspaceViewController: UIViewController {
         let spacer = UIView()
         let barStack = UIStackView(arrangedSubviews: [
             brandLabel, displayBadgeLabel, spacer,
+            paletteBtn,
             preset1, preset2, preset3, preset4,
             splitH, splitV, swapBtn, maxBtn, hostsBtn, settingsBtn
         ])
@@ -629,7 +631,20 @@ public final class TilingWorkspaceViewController: UIViewController {
         present(hc, animated: true)
     }
 
-    @objc private func openSettingsTapped() {
+    @objc public func openCommandPalette() {
+        if presentedViewController is CommandPaletteViewController {
+            return
+        }
+        let palette = CommandPaletteViewController(store: store, workspaceVC: self)
+        present(palette, animated: true)
+    }
+
+    public func activeWebTabController() -> WebTabViewController? {
+        guard let active = store.focusedPane?.activeTab else { return nil }
+        return tabControllers[active.id] as? WebTabViewController
+    }
+
+    @objc public func openSettingsTapped() {
         let settingsView = SettingsSheetView(store: store)
         let hc = UIHostingController(rootView: settingsView)
         present(hc, animated: true)
@@ -639,7 +654,19 @@ public final class TilingWorkspaceViewController: UIViewController {
 
     public override var keyCommands: [UIKeyCommand]? {
         var cmds: [UIKeyCommand] = [
-            // Pane Management (Ctrl+Alt / Cmd+Alt)
+            // Global Command Palette (Cmd+K / Ctrl+K / Cmd+P)
+            UIKeyCommand(title: "Command Palette", action: #selector(openCommandPalette), input: "k", modifierFlags: [.command]),
+            UIKeyCommand(title: "Command Palette", action: #selector(openCommandPalette), input: "k", modifierFlags: [.control]),
+            UIKeyCommand(title: "Command Palette", action: #selector(openCommandPalette), input: "p", modifierFlags: [.command]),
+            UIKeyCommand(title: "Command Palette", action: #selector(openCommandPalette), input: "p", modifierFlags: [.command, .shift]),
+
+            // Pane Management
+            UIKeyCommand(title: "Split Vertically", action: #selector(splitHorizontalTapped), input: "d", modifierFlags: [.command]),
+            UIKeyCommand(title: "Split Horizontally", action: #selector(splitVerticalTapped), input: "d", modifierFlags: [.command, .shift]),
+            UIKeyCommand(title: "Close Focused Pane", action: #selector(closeFocusedPaneKey), input: "w", modifierFlags: [.command, .shift]),
+            UIKeyCommand(title: "Toggle Maximise Pane", action: #selector(maximisePaneTapped), input: "m", modifierFlags: [.command, .shift]),
+
+            // Split Horizontally & Vertically (Ctrl+Alt legacy fallback)
             UIKeyCommand(title: "Split Horizontally", action: #selector(splitHorizontalTapped), input: "\\", modifierFlags: [.control, .alternate]),
             UIKeyCommand(title: "Split Vertically", action: #selector(splitVerticalTapped), input: "-", modifierFlags: [.control, .alternate]),
             UIKeyCommand(title: "Close Focused Pane", action: #selector(closeFocusedPaneKey), input: "w", modifierFlags: [.control, .alternate]),
@@ -651,16 +678,27 @@ public final class TilingWorkspaceViewController: UIViewController {
             UIKeyCommand(title: "Swap Panes", action: #selector(swapPanesTapped), input: "s", modifierFlags: [.control, .alternate]),
             UIKeyCommand(title: "Shrink Split", action: #selector(shrinkSplitKey), input: "[", modifierFlags: [.control, .alternate]),
             UIKeyCommand(title: "Grow Split", action: #selector(growSplitKey), input: "]", modifierFlags: [.control, .alternate]),
+
+            // Layout Presets (Cmd+1..4 and Ctrl+Alt+1..4)
+            UIKeyCommand(title: "Preset 1: Single", action: #selector(presetSingleTapped), input: "1", modifierFlags: [.command]),
+            UIKeyCommand(title: "Preset 2: Two Columns", action: #selector(presetTwoColTapped), input: "2", modifierFlags: [.command]),
+            UIKeyCommand(title: "Preset 3: 1+2 Panes", action: #selector(presetLeftTwoRightTapped), input: "3", modifierFlags: [.command]),
+            UIKeyCommand(title: "Preset 4: 2x2 Grid", action: #selector(presetGridTapped), input: "4", modifierFlags: [.command]),
             UIKeyCommand(title: "Preset 1", action: #selector(presetSingleTapped), input: "1", modifierFlags: [.control, .alternate]),
             UIKeyCommand(title: "Preset 2", action: #selector(presetTwoColTapped), input: "2", modifierFlags: [.control, .alternate]),
             UIKeyCommand(title: "Preset 3", action: #selector(presetLeftTwoRightTapped), input: "3", modifierFlags: [.control, .alternate]),
             UIKeyCommand(title: "Preset 4", action: #selector(presetGridTapped), input: "4", modifierFlags: [.control, .alternate]),
 
             // Tab Management
+            UIKeyCommand(title: "New Tab", action: #selector(newTabKey), input: "t", modifierFlags: [.command]),
             UIKeyCommand(title: "New Tab", action: #selector(newTabKey), input: "t", modifierFlags: [.control]),
             UIKeyCommand(title: "Next Tab", action: #selector(nextTabKey), input: "\t", modifierFlags: [.control]),
             UIKeyCommand(title: "Previous Tab", action: #selector(prevTabKey), input: "\t", modifierFlags: [.control, .shift]),
+            UIKeyCommand(title: "Next Tab (Cmd)", action: #selector(nextTabKey), input: "]", modifierFlags: [.command, .shift]),
+            UIKeyCommand(title: "Previous Tab (Cmd)", action: #selector(prevTabKey), input: "[", modifierFlags: [.command, .shift]),
+            UIKeyCommand(title: "Open Settings", action: #selector(openSettingsTapped), input: ",", modifierFlags: [.command]),
             UIKeyCommand(title: "Open Settings", action: #selector(openSettingsTapped), input: ",", modifierFlags: [.control]),
+            UIKeyCommand(title: "Open Hosts", action: #selector(openHostsTapped), input: "h", modifierFlags: [.command, .shift]),
             UIKeyCommand(title: "Open Hosts", action: #selector(openHostsTapped), input: "h", modifierFlags: [.control, .shift]),
         ]
 
@@ -678,8 +716,11 @@ public final class TilingWorkspaceViewController: UIViewController {
                 cmds.append(cmd)
             }
         } else {
+            cmds.append(UIKeyCommand(title: "Close Tab", action: #selector(closeActiveTabKey), input: "w", modifierFlags: [.command]))
             cmds.append(UIKeyCommand(title: "Close Tab", action: #selector(closeActiveTabKey), input: "w", modifierFlags: [.control]))
+            cmds.append(UIKeyCommand(title: "Focus Address Bar", action: #selector(focusAddressBarKey), input: "l", modifierFlags: [.command]))
             cmds.append(UIKeyCommand(title: "Focus Address Bar", action: #selector(focusAddressBarKey), input: "l", modifierFlags: [.control]))
+            cmds.append(UIKeyCommand(title: "Reload Page", action: #selector(reloadWebKey), input: "r", modifierFlags: [.command]))
             cmds.append(UIKeyCommand(title: "Reload Page", action: #selector(reloadWebKey), input: "r", modifierFlags: [.control]))
         }
 

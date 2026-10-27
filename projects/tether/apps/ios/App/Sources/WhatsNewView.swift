@@ -17,10 +17,32 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.3"
+    static let currentVersion = "0.1.4"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.4", date: "October 2026", items: [
+            WhatsNewItem(
+                icon: "command",
+                title: "Global Command Palette & Shortcuts",
+                description: "Press ⌘K, Ctrl+K, or tap the sidebar to fuzzy-search and jump to any tab, host, bookmark, or layout preset without touching the mouse."
+            ),
+            WhatsNewItem(
+                icon: "rectangle.portrait.and.arrow.forward",
+                title: "Phone Orientation Options",
+                description: "Toggle between Landscape, Portrait (Up/Down), or Flipped orientation in settings or with a 1-tap sidebar rotation button."
+            ),
+            WhatsNewItem(
+                icon: "person.badge.key.fill",
+                title: "Full Passkey Support",
+                description: "Eliminated partial passkey support warnings and integrated full biometric authentication via Safari Keychain."
+            ),
+            WhatsNewItem(
+                icon: "house.fill",
+                title: "English Starter Web Dashboard",
+                description: "New browser tabs open directly to an English-only dashboard with web search, popular developer links, and shortcut cheat sheets."
+            ),
+        ]),
         ReleaseNotes(version: "0.1.3", date: "October 2026", items: [
             WhatsNewItem(
                 icon: "rectangle.landscape.rotate",

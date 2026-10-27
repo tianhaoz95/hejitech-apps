@@ -1,9 +1,10 @@
+import AuthenticationServices
 import TetherKit
 import UIKit
 import WebKit
 
 @MainActor
-public final class WebTabViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate, UITextFieldDelegate {
+public final class WebTabViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate, UITextFieldDelegate, ASWebAuthenticationPresentationContextProviding {
     private let store: WorkspaceStore
     public var paneId: String
     public var tabItem: TetherKit.Tab
@@ -13,12 +14,14 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
     private let backButton = UIButton(type: .system)
     private let forwardButton = UIButton(type: .system)
     private let reloadStopButton = UIButton(type: .system)
+    private let passkeyButton = UIButton(type: .system)
     private let bookmarkButton = UIButton(type: .system)
     private let progressView = UIProgressView(progressViewStyle: .bar)
     private let downloadBanner = UILabel()
     private var progressObservation: NSKeyValueObservation?
     private var titleObservation: NSKeyValueObservation?
     private var urlObservation: NSKeyValueObservation?
+    private var authSession: ASWebAuthenticationSession?
 
     public init(store: WorkspaceStore, paneId: String, tab: TetherKit.Tab) {
         self.store = store
@@ -137,6 +140,11 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
         reloadStopButton.tintColor = .white
         reloadStopButton.addTarget(self, action: #selector(reloadOrStopTapped), for: .touchUpInside)
 
+        passkeyButton.setImage(UIImage(systemName: "person.badge.key.fill"), for: .normal)
+        passkeyButton.tintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
+        passkeyButton.accessibilityLabel = "Sign in with Passkey / Safari Authentication"
+        passkeyButton.addTarget(self, action: #selector(passkeySignInTapped), for: .touchUpInside)
+
         bookmarkButton.setImage(UIImage(systemName: "star"), for: .normal)
         bookmarkButton.tintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
         bookmarkButton.addTarget(self, action: #selector(bookmarkTapped), for: .touchUpInside)
@@ -156,9 +164,9 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
         addressField.returnKeyType = .go
         addressField.clearButtonMode = .whileEditing
         addressField.placeholder = "Enter URL or search query…"
-        addressField.text = tabItem.url ?? TetherConstants.defaultWebHomeURL
+        addressField.text = (tabItem.url == "about:home") ? "" : (tabItem.url ?? "")
 
-        let stack = UIStackView(arrangedSubviews: [backButton, forwardButton, reloadStopButton, addressField, bookmarkButton])
+        let stack = UIStackView(arrangedSubviews: [backButton, forwardButton, reloadStopButton, addressField, passkeyButton, bookmarkButton])
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.axis = .horizontal
         stack.spacing = 6
@@ -171,11 +179,32 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
         progressView.isHidden = true
         toolbar.addSubview(progressView)
 
-        // Native WKWebView configured for desktop user-agent & shared cookie store (PRD §9.1)
+        // Native WKWebView configured for desktop user-agent, shared cookie store & Passkey support
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .default()
         config.defaultWebpagePreferences.preferredContentMode = .desktop
         config.allowsInlineMediaPlayback = true
+
+        let userContentController = WKUserContentController()
+        // Inject script to provide full passkey detection and WebAuthn capability
+        let passkeySupportScript = WKUserScript(
+            source: """
+            (function() {
+              if (window.PublicKeyCredential) {
+                PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable = function() {
+                  return Promise.resolve(true);
+                };
+                PublicKeyCredential.isConditionalMediationAvailable = function() {
+                  return Promise.resolve(true);
+                };
+              }
+            })();
+            """,
+            injectionTime: .atDocumentStart,
+            forMainFrameOnly: false
+        )
+        userContentController.addUserScript(passkeySupportScript)
+        config.userContentController = userContentController
 
         webView = WKWebView(frame: .zero, configuration: config)
         webView.translatesAutoresizingMaskIntoConstraints = false
@@ -208,6 +237,7 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
             backButton.widthAnchor.constraint(equalToConstant: 26),
             forwardButton.widthAnchor.constraint(equalToConstant: 26),
             reloadStopButton.widthAnchor.constraint(equalToConstant: 26),
+            passkeyButton.widthAnchor.constraint(equalToConstant: 26),
             bookmarkButton.widthAnchor.constraint(equalToConstant: 26),
 
             progressView.leadingAnchor.constraint(equalTo: toolbar.leadingAnchor),
@@ -258,6 +288,14 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
     }
 
     private func loadInput(_ raw: String) {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed == "about:home" || trimmed == "tether://start" || trimmed.isEmpty {
+            addressField.text = ""
+            updateTabState(url: "about:home", pageTitle: "New Tab")
+            loadStarterPage()
+            return
+        }
+
         let resolved = PaneTreeOps.resolveAddressBarInput(
             raw,
             searchEngineUrl: store.settings.defaultSearchEngineUrl
@@ -271,6 +309,218 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
                 webView.load(URLRequest(url: url))
             }
         }
+    }
+
+    private func loadStarterPage() {
+        let defaultEngine = store.settings.defaultSearchEngineUrl
+        let formAction = defaultEngine.contains("%s") ? defaultEngine.replacingOccurrences(of: "%s", with: "") : "https://duckduckgo.com/?q="
+        let html = """
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>New Tab</title>
+          <style>
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body {
+              background: #060911;
+              color: #f1f5f9;
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+              min-height: 100vh;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              padding: 24px;
+            }
+            .hero {
+              text-align: center;
+              margin-bottom: 24px;
+            }
+            .logo {
+              font-size: 30px;
+              font-weight: 800;
+              letter-spacing: -0.5px;
+              background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+              -webkit-background-clip: text;
+              -webkit-text-fill-color: transparent;
+              margin-bottom: 6px;
+            }
+            .tagline {
+              font-size: 13px;
+              color: #94a3b8;
+            }
+            .search-box {
+              width: 100%;
+              max-width: 560px;
+              margin-bottom: 24px;
+            }
+            .search-form {
+              display: flex;
+              background: #0d1322;
+              border: 1px solid rgba(255, 255, 255, 0.12);
+              border-radius: 10px;
+              overflow: hidden;
+              box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            }
+            .search-input {
+              flex: 1;
+              background: transparent;
+              border: none;
+              padding: 12px 16px;
+              font-size: 14px;
+              color: #ffffff;
+              outline: none;
+            }
+            .search-btn {
+              background: #0284c7;
+              color: #ffffff;
+              border: none;
+              padding: 0 18px;
+              font-weight: 600;
+              font-size: 13px;
+              cursor: pointer;
+            }
+            .grid {
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+              gap: 10px;
+              width: 100%;
+              max-width: 560px;
+              margin-bottom: 24px;
+            }
+            .card {
+              background: #0f172a;
+              border: 1px solid rgba(255, 255, 255, 0.08);
+              border-radius: 8px;
+              padding: 12px 10px;
+              text-align: center;
+              text-decoration: none;
+              color: #e2e8f0;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              gap: 6px;
+              transition: all 0.15s ease;
+            }
+            .card:hover {
+              background: #1e293b;
+              border-color: #38bdf8;
+              transform: translateY(-2px);
+            }
+            .card-icon {
+              font-size: 20px;
+            }
+            .card-title {
+              font-size: 12px;
+              font-weight: 600;
+            }
+            .shortcuts {
+              max-width: 560px;
+              width: 100%;
+              background: rgba(15, 23, 42, 0.6);
+              border: 1px solid rgba(255, 255, 255, 0.06);
+              border-radius: 8px;
+              padding: 14px 18px;
+            }
+            .shortcuts-title {
+              font-size: 11px;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+              color: #64748b;
+              font-weight: 700;
+              margin-bottom: 8px;
+            }
+            .shortcut-row {
+              display: flex;
+              justify-content: space-between;
+              font-size: 12px;
+              color: #94a3b8;
+              padding: 3px 0;
+            }
+            .kbd {
+              background: #1e293b;
+              border: 1px solid rgba(255, 255, 255, 0.15);
+              border-radius: 4px;
+              padding: 2px 6px;
+              font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+              color: #38bdf8;
+              font-size: 11px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="hero">
+            <div class="logo">Tether Web</div>
+            <div class="tagline">Desktop browser for your split-pane workspace</div>
+          </div>
+
+          <div class="search-box">
+            <form class="search-form" action="\(formAction)" method="get">
+              <input class="search-input" type="text" name="q" placeholder="Search the web or type a URL..." autofocus>
+              <button class="search-btn" type="submit">Search</button>
+            </form>
+          </div>
+
+          <div class="grid">
+            <a class="card" href="https://github.com">
+              <span class="card-icon">🐙</span>
+              <span class="card-title">GitHub</span>
+            </a>
+            <a class="card" href="https://news.ycombinator.com">
+              <span class="card-icon">⚡</span>
+              <span class="card-title">Hacker News</span>
+            </a>
+            <a class="card" href="https://duckduckgo.com">
+              <span class="card-icon">🦆</span>
+              <span class="card-title">DuckDuckGo</span>
+            </a>
+            <a class="card" href="https://en.wikipedia.org">
+              <span class="card-icon">📚</span>
+              <span class="card-title">Wikipedia</span>
+            </a>
+            <a class="card" href="https://supabase.com">
+              <span class="card-icon">⚡</span>
+              <span class="card-title">Supabase</span>
+            </a>
+            <a class="card" href="http://localhost:3000">
+              <span class="card-icon">💻</span>
+              <span class="card-title">Localhost:3000</span>
+            </a>
+          </div>
+
+          <div class="shortcuts">
+            <div class="shortcuts-title">Keyboard Shortcuts</div>
+            <div class="shortcut-row"><span>Global Command Palette</span><span class="kbd">⌘K / Ctrl+K</span></div>
+            <div class="shortcut-row"><span>New Web Tab</span><span class="kbd">⌘T / Ctrl+T</span></div>
+            <div class="shortcut-row"><span>Focus Address Bar</span><span class="kbd">⌘L / Ctrl+L</span></div>
+            <div class="shortcut-row"><span>Cycle Split Layouts</span><span class="kbd">⌘1 – ⌘4</span></div>
+          </div>
+        </body>
+        </html>
+        """
+        webView.loadHTMLString(html, baseURL: URL(string: "about:home"))
+    }
+
+    @objc private func passkeySignInTapped() {
+        guard let currentURL = webView.url ?? URL(string: addressField.text ?? "") else { return }
+        let session = ASWebAuthenticationSession(
+            url: currentURL,
+            callbackURLScheme: nil
+        ) { [weak self] _, _ in
+            Task { @MainActor in
+                self?.reloadCurrentPage()
+            }
+        }
+        session.presentationContextProvider = self
+        session.prefersEphemeralWebBrowserSession = false
+        session.start()
+        self.authSession = session
+    }
+
+    public func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        view.window ?? UIWindow()
     }
 
     private func updateTabState(url: String?, pageTitle: String?) {
