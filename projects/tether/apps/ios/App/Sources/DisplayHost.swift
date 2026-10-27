@@ -3,17 +3,20 @@ import TetherKit
 import UIKit
 
 /// Isolated Display Host (PRD §4, §12.1, §12.4).
-/// This is the ONLY file in the iOS app that touches `UIWindowScene`, `UIScreen`, and display
-/// attach/detach notifications. In v1 it runs in mirror mode on the primary window and locks
-/// orientation to landscape when an external display is connected, while keeping a clean boundary
-/// so a future `UIWindowSceneDelegate` external-screen mode can be added here without touching
-/// the workspace or tool views.
+/// Manages primary (phone) and secondary (external monitor) windows:
+/// - External Monitor: Displays the full tiling split-pane desktop workspace (`TilingWorkspaceViewController`).
+/// - Phone: Displays the remote controller (`PhoneControllerViewController`) with alternating Touchpad,
+///   Developer Keyboard, Workspace/Settings manager, and Dock hardware mouse/keyboard bridge.
 @MainActor
 public final class DisplayHost: NSObject {
     public static let shared = DisplayHost()
 
     public let store = WorkspaceStore()
     private weak var primaryWindow: UIWindow?
+    private var externalWindow: UIWindow?
+    private var externalWorkspaceVC: TilingWorkspaceViewController?
+    private var phoneControllerVC: PhoneControllerViewController?
+    private var primaryWorkspaceVC: TilingWorkspaceViewController?
     private var observers: [NSObjectProtocol] = []
 
     private override init() {
@@ -23,38 +26,104 @@ public final class DisplayHost: NSObject {
 
     public func attach(to windowScene: UIWindowScene) -> UIWindow {
         let window = UIWindow(windowScene: windowScene)
-        let rootVC = TilingWorkspaceViewController(store: store)
-        window.rootViewController = rootVC
         self.primaryWindow = window
+
         applyTheme(store.settings.theme, to: window)
         refreshExternalDisplayState()
+
+        if externalWindow == nil {
+            let rootVC = TilingWorkspaceViewController(store: store)
+            self.primaryWorkspaceVC = rootVC
+            window.rootViewController = rootVC
+        }
+
         window.makeKeyAndVisible()
         return window
     }
 
+    public func attachExternal(windowScene: UIWindowScene) {
+        let extWin = UIWindow(windowScene: windowScene)
+        let workspace = TilingWorkspaceViewController(store: store)
+        extWin.rootViewController = workspace
+        applyTheme(store.settings.theme, to: extWin)
+        extWin.isHidden = false
+
+        self.externalWindow = extWin
+        self.externalWorkspaceVC = workspace
+
+        let controller = PhoneControllerViewController(store: store, workspaceVC: workspace)
+        self.phoneControllerVC = controller
+        primaryWindow?.rootViewController = controller
+
+        let bounds = windowScene.screen.nativeBounds
+        let desc = "External Display (\(Int(bounds.width))×\(Int(bounds.height)))"
+        store.handleExternalDisplayChanged(connected: true, description: desc)
+    }
+
+    public func detachExternal() {
+        externalWindow?.isHidden = true
+        externalWindow = nil
+        externalWorkspaceVC = nil
+        phoneControllerVC = nil
+
+        let rootVC = TilingWorkspaceViewController(store: store)
+        self.primaryWorkspaceVC = rootVC
+        primaryWindow?.rootViewController = rootVC
+
+        let bounds = primaryWindow?.windowScene?.screen.bounds ?? CGRect(x: 0, y: 0, width: 852, height: 393)
+        let desc = "Mirror Ready (\(Int(bounds.width))×\(Int(bounds.height))pt)"
+        store.handleExternalDisplayChanged(connected: false, description: desc)
+    }
+
     public func applyTheme(_ theme: ThemeMode, to window: UIWindow? = nil) {
-        let target = window ?? primaryWindow
-        switch theme {
-        case .system:
-            target?.overrideUserInterfaceStyle = .unspecified
-        case .light:
-            target?.overrideUserInterfaceStyle = .light
-        case .dark:
-            target?.overrideUserInterfaceStyle = .dark
+        let targets = [window, primaryWindow, externalWindow].compactMap { $0 }
+        for target in targets {
+            switch theme {
+            case .system:
+                target.overrideUserInterfaceStyle = .unspecified
+            case .light:
+                target.overrideUserInterfaceStyle = .light
+            case .dark:
+                target.overrideUserInterfaceStyle = .dark
+            }
         }
     }
 
-    /// Preferred interface orientations for the root container (PRD §12.4: landscape default,
-    /// locked to landscape while an external monitor is connected).
+    /// Preferred interface orientations:
+    /// - Phone-only mode: landscape default, supports portrait.
+    /// - External monitor connected: phone controller is flexible (portrait or landscape).
     public var supportedOrientations: UIInterfaceOrientationMask {
-        if store.isExternalDisplayConnected {
-            return .landscape
-        }
-        return [.landscapeLeft, .landscapeRight, .portrait]
+        return [.portrait, .landscapeLeft, .landscapeRight]
     }
 
     private func setupDisplayObservers() {
         let center = NotificationCenter.default
+
+        // UIScreen connection notifications (Direct USB-C / HDMI dock)
+        observers.append(
+            center.addObserver(
+                forName: UIScreen.didConnectNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    self?.refreshExternalDisplayState()
+                }
+            }
+        )
+        observers.append(
+            center.addObserver(
+                forName: UIScreen.didDisconnectNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    self?.refreshExternalDisplayState()
+                }
+            }
+        )
+
+        // UIScene notifications (iOS 16+ WindowScenes)
         observers.append(
             center.addObserver(
                 forName: UIScene.willConnectNotification,
@@ -80,23 +149,45 @@ public final class DisplayHost: NSObject {
     }
 
     public func refreshExternalDisplayState() {
-        let windowScenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-        if windowScenes.count > 1, let extScene = windowScenes.last {
-            let bounds = extScene.screen.nativeBounds
-            let desc = "External Display (\(Int(bounds.width))×\(Int(bounds.height)) Mirror)"
-            store.handleExternalDisplayChanged(connected: true, description: desc)
-            requestLandscapeOrientationIfNeeded()
-        } else {
-            let bounds = primaryWindow?.windowScene?.screen.bounds ?? CGRect(x: 0, y: 0, width: 852, height: 393)
-            let desc = "Mirror Ready (\(Int(bounds.width))×\(Int(bounds.height))pt)"
-            store.handleExternalDisplayChanged(connected: false, description: desc)
-        }
-    }
+        let extScene = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first(where: { $0.session.role != .windowApplication })
 
-    private func requestLandscapeOrientationIfNeeded() {
-        guard let windowScene = primaryWindow?.windowScene else { return }
-        let preferences = UIWindowScene.GeometryPreferences.iOS(interfaceOrientations: .landscapeRight)
-        windowScene.requestGeometryUpdate(preferences) { _ in }
+        let extScreen = UIScreen.screens.first(where: { $0 != UIScreen.main })
+
+        if let extScene {
+            if externalWindow == nil {
+                attachExternal(windowScene: extScene)
+            }
+        } else if let extScreen {
+            if externalWindow == nil {
+                let extWin = UIWindow(frame: extScreen.bounds)
+                extWin.screen = extScreen
+                let workspace = TilingWorkspaceViewController(store: store)
+                extWin.rootViewController = workspace
+                applyTheme(store.settings.theme, to: extWin)
+                extWin.isHidden = false
+
+                self.externalWindow = extWin
+                self.externalWorkspaceVC = workspace
+
+                let controller = PhoneControllerViewController(store: store, workspaceVC: workspace)
+                self.phoneControllerVC = controller
+                primaryWindow?.rootViewController = controller
+
+                let bounds = extScreen.nativeBounds
+                let desc = "External Display (\(Int(bounds.width))×\(Int(bounds.height)))"
+                store.handleExternalDisplayChanged(connected: true, description: desc)
+            }
+        } else {
+            if externalWindow != nil {
+                detachExternal()
+            } else {
+                let bounds = primaryWindow?.windowScene?.screen.bounds ?? CGRect(x: 0, y: 0, width: 852, height: 393)
+                let desc = "Mirror Ready (\(Int(bounds.width))×\(Int(bounds.height))pt)"
+                store.handleExternalDisplayChanged(connected: false, description: desc)
+            }
+        }
     }
 }
 
@@ -124,7 +215,6 @@ final class TetherAppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationDidEnterBackground(_ application: UIApplication) {
-        // Request background execution grace window so active SSH connections survive brief app switches (PRD §10.7)
         backgroundTaskId = application.beginBackgroundTask(withName: "TetherSSHKeepAlive") { [weak self] in
             if let id = self?.backgroundTaskId, id != .invalid {
                 application.endBackgroundTask(id)
@@ -150,7 +240,17 @@ final class TetherSceneDelegate: UIResponder, UIWindowSceneDelegate {
         options connectionOptions: UIScene.ConnectionOptions
     ) {
         guard let windowScene = scene as? UIWindowScene else { return }
-        self.window = DisplayHost.shared.attach(to: windowScene)
+        if session.role == .windowApplication {
+            self.window = DisplayHost.shared.attach(to: windowScene)
+        } else {
+            DisplayHost.shared.attachExternal(windowScene: windowScene)
+        }
+    }
+
+    func sceneDidDisconnect(_ scene: UIScene) {
+        if let windowScene = scene as? UIWindowScene, windowScene.session.role != .windowApplication {
+            DisplayHost.shared.detachExternal()
+        }
     }
 
     func sceneDidBecomeActive(_ scene: UIScene) {

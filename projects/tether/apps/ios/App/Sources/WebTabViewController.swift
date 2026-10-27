@@ -49,6 +49,76 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
         webView.reload()
     }
 
+    public func simulateClick(at pointInView: CGPoint) {
+        let ptInWeb = view.convert(pointInView, to: webView)
+        let script = """
+        (function() {
+            var el = document.elementFromPoint(\(ptInWeb.x), \(ptInWeb.y));
+            if (el) {
+                el.focus();
+                el.click();
+                var evt = new MouseEvent('click', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window,
+                    clientX: \(ptInWeb.x),
+                    clientY: \(ptInWeb.y)
+                });
+                el.dispatchEvent(evt);
+            }
+        })();
+        """
+        webView.evaluateJavaScript(script, completionHandler: nil)
+    }
+
+    public func handleKeyInput(text: String) {
+        if addressField.isFirstResponder {
+            if text == "\r" || text == "\n" {
+                _ = textFieldShouldReturn(addressField)
+            } else if text == "\u{7F}" || text == "\u{08}" {
+                var cur = addressField.text ?? ""
+                if !cur.isEmpty {
+                    cur.removeLast()
+                    addressField.text = cur
+                }
+            } else {
+                addressField.text = (addressField.text ?? "") + text
+            }
+            return
+        }
+        if text == " " {
+            let cur = webView.scrollView.contentOffset
+            webView.scrollView.setContentOffset(CGPoint(x: cur.x, y: cur.y + 200), animated: true)
+        }
+    }
+
+    public func handleSpecialKey(_ key: SpecialKey) {
+        switch key {
+        case .up:
+            let cur = webView.scrollView.contentOffset
+            webView.scrollView.setContentOffset(CGPoint(x: cur.x, y: max(0, cur.y - 120)), animated: true)
+        case .down:
+            let cur = webView.scrollView.contentOffset
+            webView.scrollView.setContentOffset(CGPoint(x: cur.x, y: cur.y + 120), animated: true)
+        case .left:
+            let cur = webView.scrollView.contentOffset
+            webView.scrollView.setContentOffset(CGPoint(x: max(0, cur.x - 80), y: cur.y), animated: true)
+        case .right:
+            let cur = webView.scrollView.contentOffset
+            webView.scrollView.setContentOffset(CGPoint(x: cur.x + 80, y: cur.y), animated: true)
+        case .escape:
+            addressField.resignFirstResponder()
+        case .enter:
+            if addressField.isFirstResponder {
+                _ = textFieldShouldReturn(addressField)
+            }
+        case .backspace:
+            handleKeyInput(text: "\u{7F}")
+        default:
+            break
+        }
+    }
+
     private func setupToolbarAndWebView() {
         // Toolbar container
         let toolbar = UIView()

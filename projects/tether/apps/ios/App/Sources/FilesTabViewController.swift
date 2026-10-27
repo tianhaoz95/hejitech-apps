@@ -75,6 +75,37 @@ public final class FilesTabViewController: UIViewController, UITableViewDataSour
         reloadDirectory()
     }
 
+    public func handleKeyInput(text: String) {
+        if text == "\r" || text == "\n" {
+            if let selected = tableView.indexPathForSelectedRow {
+                tableView(tableView, didSelectRowAt: selected)
+            }
+        }
+    }
+
+    public func handleSpecialKey(_ key: SpecialKey) {
+        switch key {
+        case .up:
+            let cur = tableView.indexPathForSelectedRow?.row ?? 0
+            let next = max(0, cur - 1)
+            if next < visibleItems.count {
+                let ip = IndexPath(row: next, section: 0)
+                tableView.selectRow(at: ip, animated: true, scrollPosition: .middle)
+            }
+        case .down:
+            let cur = tableView.indexPathForSelectedRow?.row ?? -1
+            let next = min(visibleItems.count - 1, cur + 1)
+            if next >= 0 && next < visibleItems.count {
+                let ip = IndexPath(row: next, section: 0)
+                tableView.selectRow(at: ip, animated: true, scrollPosition: .middle)
+            }
+        case .enter:
+            handleKeyInput(text: "\n")
+        default:
+            break
+        }
+    }
+
     private func localRootDirectory() -> URL {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         try? FileManager.default.createDirectory(at: docs, withIntermediateDirectories: true)

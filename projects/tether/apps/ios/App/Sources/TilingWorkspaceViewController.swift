@@ -14,6 +14,7 @@ public final class TilingWorkspaceViewController: UIViewController {
     private let phoneSwitcherStack = UIStackView()
     private var phoneSwitcherHeightConstraint: NSLayoutConstraint!
     private let workspaceCanvas = UIView()
+    public private(set) var virtualCursorOverlay: VirtualCursorOverlayView!
 
     /// Live child view controllers keyed by `tab.id` so WebViews, SSH sessions, and Files state persist across layout changes.
     private var tabControllers: [String: UIViewController] = [:]
@@ -110,6 +111,10 @@ public final class TilingWorkspaceViewController: UIViewController {
         view.addSubview(phoneSwitcherBar)
         view.addSubview(workspaceCanvas)
 
+        virtualCursorOverlay = VirtualCursorOverlayView(targetCanvas: workspaceCanvas)
+        virtualCursorOverlay.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(virtualCursorOverlay)
+
         phoneSwitcherHeightConstraint = phoneSwitcherBar.heightAnchor.constraint(equalToConstant: 0)
 
         NSLayoutConstraint.activate([
@@ -135,6 +140,11 @@ public final class TilingWorkspaceViewController: UIViewController {
             workspaceCanvas.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             workspaceCanvas.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             workspaceCanvas.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+
+            virtualCursorOverlay.topAnchor.constraint(equalTo: workspaceCanvas.topAnchor),
+            virtualCursorOverlay.leadingAnchor.constraint(equalTo: workspaceCanvas.leadingAnchor),
+            virtualCursorOverlay.trailingAnchor.constraint(equalTo: workspaceCanvas.trailingAnchor),
+            virtualCursorOverlay.bottomAnchor.constraint(equalTo: workspaceCanvas.bottomAnchor),
         ])
     }
 
@@ -428,6 +438,47 @@ public final class TilingWorkspaceViewController: UIViewController {
         if let paneId = gesture.view?.accessibilityIdentifier {
             store.focusPane(paneId)
         }
+    }
+
+    // MARK: - External Input & Cursor Routing
+
+    public var activeTabController: UIViewController? {
+        guard let focused = store.focusedPane, let activeTab = focused.activeTab else { return nil }
+        return tabControllers[activeTab.id]
+    }
+
+    public func routeKeyInput(_ text: String) {
+        guard let active = activeTabController else { return }
+        if let ssh = active as? SshTabViewController {
+            ssh.handleKeyInput(text: text)
+        } else if let web = active as? WebTabViewController {
+            web.handleKeyInput(text: text)
+        } else if let files = active as? FilesTabViewController {
+            files.handleKeyInput(text: text)
+        }
+    }
+
+    public func routeSpecialKey(_ key: SpecialKey) {
+        guard let active = activeTabController else { return }
+        if let ssh = active as? SshTabViewController {
+            ssh.handleSpecialKey(key)
+        } else if let web = active as? WebTabViewController {
+            web.handleSpecialKey(key)
+        } else if let files = active as? FilesTabViewController {
+            files.handleSpecialKey(key)
+        }
+    }
+
+    public func moveVirtualCursor(delta: CGVector) {
+        virtualCursorOverlay?.move(by: delta)
+    }
+
+    public func performVirtualClick() {
+        virtualCursorOverlay?.performClick()
+    }
+
+    public func performVirtualScroll(deltaX: CGFloat, deltaY: CGFloat) {
+        virtualCursorOverlay?.performScroll(deltaX: deltaX, deltaY: deltaY)
     }
 
     // MARK: - Top Bar Actions

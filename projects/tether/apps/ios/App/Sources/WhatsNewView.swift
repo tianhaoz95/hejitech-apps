@@ -17,10 +17,32 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.0"
+    static let currentVersion = "0.1.1"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.1", date: "October 2026", items: [
+            WhatsNewItem(
+                icon: "display.2",
+                title: "Independent External Monitor Desktop",
+                description: "External monitors connected via USB-C or dock now host the full desktop workspace independently without mirroring the phone."
+            ),
+            WhatsNewItem(
+                icon: "hand.tap",
+                title: "Phone Touchpad & Keyboard Controller",
+                description: "Your phone acts as an alternating smooth trackpad and developer keyboard, letting you move the cursor, scroll, and type into active monitor tabs."
+            ),
+            WhatsNewItem(
+                icon: "keyboard",
+                title: "Dock Keyboard & Mouse Support",
+                description: "Physical USB and Bluetooth keyboards and mice connected to your dock now directly type, click, and scroll inside active monitor panes."
+            ),
+            WhatsNewItem(
+                icon: "slider.horizontal.3",
+                title: "Phone-Only Workspace Controls",
+                description: "Launch websites, manage SSH hosts, and adjust tiling layouts directly from the phone controller without obscuring your external monitor."
+            ),
+        ]),
         ReleaseNotes(version: "0.1.0", date: "October 2026", items: [
             WhatsNewItem(
                 icon: "rectangle.split.2x2",

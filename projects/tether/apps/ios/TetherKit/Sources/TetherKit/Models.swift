@@ -41,6 +41,21 @@ public enum SplitDirection: String, Codable, Hashable, Sendable, CaseIterable {
     case vertical
 }
 
+public enum SpecialKey: String, Codable, Hashable, Sendable, CaseIterable {
+    case up
+    case down
+    case left
+    case right
+    case escape
+    case tab
+    case enter
+    case backspace
+    case ctrlC
+    case ctrlD
+    case ctrlL
+    case ctrlZ
+}
+
 public enum TabType: String, Codable, Hashable, Sendable, CaseIterable {
     case web
     case ssh

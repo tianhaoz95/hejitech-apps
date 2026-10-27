@@ -23,6 +23,8 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
     private let commandField = UITextField()
     private let pasteButton = UIButton(type: .system)
     private var cancellables: Set<AnyCancellable> = []
+    private var commandHistory: [String] = []
+    private var historyIndex: Int = -1
 
     public init(store: WorkspaceStore, paneId: String, tab: TetherKit.Tab) {
         self.store = store
@@ -98,6 +100,68 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
             terminalBuffer.feed("^\(upper)\r\n\(shellPromptString)")
         }
         renderTerminal()
+    }
+
+    public func handleKeyInput(text: String) {
+        if text == "\r" || text == "\n" {
+            let cmd = commandField.text ?? ""
+            commandField.text = ""
+            executeTerminalLine(cmd)
+        } else if text == "\u{7F}" || text == "\u{08}" {
+            var current = commandField.text ?? ""
+            if !current.isEmpty {
+                current.removeLast()
+                commandField.text = current
+            }
+        } else if text == "\t" {
+            let current = commandField.text ?? ""
+            commandField.text = current + "  "
+        } else {
+            let current = commandField.text ?? ""
+            commandField.text = current + text
+        }
+    }
+
+    public func handleSpecialKey(_ key: SpecialKey) {
+        switch key {
+        case .up:
+            if !commandHistory.isEmpty {
+                if historyIndex == -1 {
+                    historyIndex = commandHistory.count - 1
+                } else if historyIndex > 0 {
+                    historyIndex -= 1
+                }
+                commandField.text = commandHistory[historyIndex]
+            }
+        case .down:
+            if historyIndex != -1 {
+                if historyIndex < commandHistory.count - 1 {
+                    historyIndex += 1
+                    commandField.text = commandHistory[historyIndex]
+                } else {
+                    historyIndex = -1
+                    commandField.text = ""
+                }
+            }
+        case .left, .right:
+            break
+        case .escape:
+            commandField.text = ""
+        case .tab:
+            handleKeyInput(text: "\t")
+        case .enter:
+            handleKeyInput(text: "\n")
+        case .backspace:
+            handleKeyInput(text: "\u{7F}")
+        case .ctrlC:
+            sendControlKey("C")
+        case .ctrlD:
+            sendControlKey("D")
+        case .ctrlL:
+            sendControlKey("L")
+        case .ctrlZ:
+            sendControlKey("Z")
+        }
     }
 
     private var currentHost: SshHost? {
@@ -545,6 +609,10 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
 
     private func executeTerminalLine(_ cmd: String) {
         let trimmed = cmd.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty {
+            commandHistory.append(trimmed)
+            historyIndex = -1
+        }
         terminalBuffer.feed("\(cmd)\r\n")
         if !isTerminalConnected {
             terminalBuffer.feed("\u{1B}[38;5;203mNot connected. Click 'Connect' in the SSH toolbar to open an SSH session.\u{1B}[0m\r\n")
