@@ -209,6 +209,7 @@ public final class TilingWorkspaceViewController: UIViewController {
             sub.removeFromSuperview()
         }
         activeSplitDrags.removeAll()
+        renderedDividers.removeAll()
 
         // Rebuild phone-screen pane switcher strip (PRD §7.6)
         for v in phoneSwitcherStack.arrangedSubviews {
@@ -282,10 +283,43 @@ public final class TilingWorkspaceViewController: UIViewController {
 
     private func buildSplitDivider(split: SplitNode, frame: CGRect, parentRect: CGRect) -> UIView {
         let divider = UIView(frame: frame)
-        divider.backgroundColor = UIColor(red: 0.12, green: 0.18, blue: 0.28, alpha: 1.0)
+        divider.backgroundColor = UIColor(red: 0.15, green: 0.22, blue: 0.35, alpha: 1.0)
+        divider.layer.cornerRadius = 2
+
+        let grip = UIView()
+        grip.translatesAutoresizingMaskIntoConstraints = false
+        grip.backgroundColor = UIColor(red: 0.35, green: 0.60, blue: 0.90, alpha: 0.85)
+        grip.layer.cornerRadius = 2
+        divider.addSubview(grip)
+
+        if split.direction == .horizontal {
+            NSLayoutConstraint.activate([
+                grip.centerXAnchor.constraint(equalTo: divider.centerXAnchor),
+                grip.centerYAnchor.constraint(equalTo: divider.centerYAnchor),
+                grip.widthAnchor.constraint(equalToConstant: 4),
+                grip.heightAnchor.constraint(equalToConstant: 28),
+            ])
+        } else {
+            NSLayoutConstraint.activate([
+                grip.centerXAnchor.constraint(equalTo: divider.centerXAnchor),
+                grip.centerYAnchor.constraint(equalTo: divider.centerYAnchor),
+                grip.widthAnchor.constraint(equalToConstant: 28),
+                grip.heightAnchor.constraint(equalToConstant: 4),
+            ])
+        }
+
         let pan = UIPanGestureRecognizer(target: self, action: #selector(handleDividerPan(_:)))
         divider.addGestureRecognizer(pan)
         activeSplitDrags[pan] = (splitId: split.id, direction: split.direction, containerBounds: parentRect)
+
+        let divInfo = SplitDividerInfo(
+            splitId: split.id,
+            direction: split.direction,
+            frame: workspaceCanvas.convert(frame, to: view),
+            containerBounds: workspaceCanvas.convert(parentRect, to: view)
+        )
+        renderedDividers.append(divInfo)
+
         return divider
     }
 
@@ -475,6 +509,18 @@ public final class TilingWorkspaceViewController: UIViewController {
     }
 
     public func routeSpecialKey(_ key: SpecialKey) {
+        if let dialog = activeDialog {
+            switch key {
+            case .enter:
+                dialog.triggerPrimaryAction()
+                return
+            case .escape:
+                dialog.triggerCancelAction()
+                return
+            default:
+                break
+            }
+        }
         guard let active = activeTabController else { return }
         if let ssh = active as? SshTabViewController {
             ssh.handleSpecialKey(key)
@@ -495,6 +541,73 @@ public final class TilingWorkspaceViewController: UIViewController {
 
     public func performVirtualScroll(deltaX: CGFloat, deltaY: CGFloat) {
         virtualCursorOverlay?.performScroll(deltaX: deltaX, deltaY: deltaY)
+    }
+
+    public func handleCursorPan(delta: CGVector, isDragHeld: Bool) {
+        virtualCursorOverlay?.move(by: delta)
+        guard let overlay = virtualCursorOverlay else { return }
+        let cursorPt = overlay.cursorPosition
+
+        if isDragHeld {
+            if let drag = activeDragSplit {
+                let rawRatio: Double
+                if drag.direction == .horizontal {
+                    rawRatio = Double((cursorPt.x - drag.containerBounds.minX) / max(1, drag.containerBounds.width))
+                } else {
+                    rawRatio = Double((cursorPt.y - drag.containerBounds.minY) / max(1, drag.containerBounds.height))
+                }
+                store.tree = PaneTreeOps.updateSplitRatio(store.tree, splitId: drag.splitId, ratio: rawRatio)
+            } else {
+                // Check if drag starts near any divider (generous 30pt hit area)
+                if let hit = renderedDividers.first(where: { $0.frame.insetBy(dx: -15, dy: -15).contains(cursorPt) }) {
+                    activeDragSplit = hit
+                    overlay.setResizeCursor(direction: hit.direction)
+                }
+            }
+        } else {
+            activeDragSplit = nil
+            if let hover = renderedDividers.first(where: { $0.frame.insetBy(dx: -15, dy: -15).contains(cursorPt) }) {
+                overlay.setResizeCursor(direction: hover.direction)
+            } else {
+                overlay.resetDefaultCursor()
+            }
+        }
+    }
+
+    // MARK: - Native Desktop Modal Dialog (PRD §4, §12)
+
+    public func showDesktopDialog(
+        title: String,
+        message: String?,
+        actions: [DesktopAlertAction],
+        textFieldPlaceholder: String? = nil,
+        textFieldDefaultText: String? = nil
+    ) {
+        activeDialog?.removeFromSuperview()
+
+        let dialog = DesktopDialogView(
+            title: title,
+            message: message,
+            actions: actions,
+            textFieldPlaceholder: textFieldPlaceholder,
+            textFieldDefaultText: textFieldDefaultText
+        )
+        dialog.translatesAutoresizingMaskIntoConstraints = false
+        dialog.onDismiss = { [weak self] in
+            self?.activeDialog = nil
+        }
+        self.activeDialog = dialog
+        view.addSubview(dialog)
+
+        NSLayoutConstraint.activate([
+            dialog.topAnchor.constraint(equalTo: view.topAnchor),
+            dialog.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            dialog.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            dialog.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        ])
+
+        // Ensure cursor is always in front of the dialog
+        view.bringSubviewToFront(virtualCursorOverlay)
     }
 
     // MARK: - Top Bar Actions
