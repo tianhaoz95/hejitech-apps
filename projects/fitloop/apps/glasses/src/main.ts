@@ -12,7 +12,7 @@ import {
   type EvenAppBridge,
   type EvenHubEvent,
 } from "@evenrealities/even_hub_sdk";
-import { DISPLAY, FRAME, type Input } from "@fitloop/core";
+import { DISPLAY, FRAME, type Exercise, type Input } from "@fitloop/core";
 import { FitLoopApp, K, type AppStatus, type Store } from "./app.ts";
 import "./style.css";
 
@@ -91,6 +91,8 @@ async function boot() {
       if (params.has("debug")) console.log(`[fitloop] push ${JSON.stringify(text.split("\n").at(-1))}`);
       ui.mirror.textContent = text;
       void push(text);
+      const ex = (app.nav.screen === "workout" || app.nav.screen === "cues") ? app.currentExercise() : null;
+      ui.showExercise(ex);
     },
     onStatus: (s) => ui.status(s),
     // The system's exit dialog (Even Hub review requires it on the root page); the host closes the plugin.
@@ -126,6 +128,11 @@ function phonePage(root: HTMLElement, onGlasses: boolean) {
     <div class="plugin">
       <header><b>FitLoop</b><span class="pill">${onGlasses ? "on your G2" : "browser preview"}</span></header>
       <pre class="mirror" aria-label="What the glasses show"></pre>
+      <div class="exercise-demo" hidden>
+        <img class="exercise-gif" alt="Exercise demonstration" />
+        <p class="muted small exercise-desc"></p>
+        <ol class="exercise-steps"></ol>
+      </div>
       <div class="ring" ${onGlasses ? "hidden" : ""}>
         <button data-in="up">Swipe up</button><button data-in="down">Swipe down</button>
         <button data-in="tap">Tap</button><button data-in="double_tap">Double-tap</button><button data-in="long_press">Hold</button>
@@ -160,6 +167,21 @@ function phonePage(root: HTMLElement, onGlasses: boolean) {
   });
   return {
     mirror: $<HTMLElement>(".mirror"),
+    showExercise(ex: Exercise | null) {
+      const demo = $<HTMLElement>(".exercise-demo");
+      const gif = $<HTMLImageElement>(".exercise-gif");
+      const desc = $<HTMLElement>(".exercise-desc");
+      const steps = $<HTMLElement>(".exercise-steps");
+      const anim = ex?.animation;
+      if (anim?.gifUrl) {
+        demo.hidden = false;
+        if (gif.src !== anim.gifUrl) gif.src = anim.gifUrl;
+        desc.textContent = anim.description ?? ex?.name ?? "";
+        steps.innerHTML = (anim.steps ?? []).map((s) => `<li>${s}</li>`).join("");
+      } else {
+        demo.hidden = true;
+      }
+    },
     status(s: AppStatus) {
       $<HTMLElement>(".pair").hidden = s.paired;
       $<HTMLElement>(".paired").hidden = !s.paired;

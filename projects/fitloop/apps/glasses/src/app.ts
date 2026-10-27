@@ -222,6 +222,10 @@ export class FitLoopApp {
   }
 
   /** Trades a 6-digit code for a glasses token. Returns a problem to show, or null. */
+  currentExercise() {
+    return this.nav.currentExercise(this.world());
+  }
+
   async pairWith(code: string, label: string): Promise<string | null> {
     const res = await this.fetch(`${this.opts.api}/api/pair`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: code.replace(/\D/g, ""), label }) }).catch(() => null);
     const body = (await res?.json().catch(() => ({}))) as { device_token?: string; error?: string };

@@ -4,7 +4,7 @@
 import { LIMITS } from "./validate.ts";
 import { FEEDBACK_TAGS, METRICS, PLAN_FORMAT_VERSION } from "./types.ts";
 
-export const GUIDE_VERSION = "1.2";
+export const GUIDE_VERSION = "1.3";
 
 export const GUIDE = `# FitLoop plan guide (v${GUIDE_VERSION}, plan format ${PLAN_FORMAT_VERSION})
 
@@ -73,7 +73,7 @@ Workout  = { "id", "title": "≤ ${LIMITS.name}", "time"?: "HH:MM", "duration_mi
 Exercise = { "id", "name": "≤ ${LIMITS.name}", "sets": 1–${LIMITS.sets}, "reps"?: 10 | "8-10", "duration_sec"?: 45,
              "load"?: "24 kg" | "bodyweight" | "RPE 7" | "zone 2" (≤ 20), "rest_sec": 0–${LIMITS.restMax},
              "cues"?: [≤ ${LIMITS.cues} × ≤ ${LIMITS.cue} chars], "instructions"?: "longer how-to", "alternative"?: "...", "video_url"?: "https://...",
-             "animation"?: { "frames": ["...\\n..."], "fps"?: 1, "description"?: "..." } }
+             "animation"?: { "gifUrl": "https://...", "steps"?: ["≤ ${LIMITS.animStepLength} chars"], "description"?: "..." } }
 Meal     = { "id", "name": "≤ ${LIMITS.name}", "time"?: "HH:MM", "items": [{ "name", "amount" }] (name + amount ≤ ${LIMITS.item}),
              "macros"?: { "calories", "protein_g", "carbs_g", "fat_g" }, "prep"?: ["steps"], "notes"? }
 \`\`\`
@@ -87,37 +87,36 @@ It is your responsibility as the coaching agent to provide animated instructions
 the plan. FitLoop provides no exercise advice or graphics of its own; it renders what you specify on
 both the phone and Even G2 glasses.
 
-### Device constraints and how to fit them:
+### Device presentation and how to fit them:
 
-1. **Even G2 glasses display**:
+1. **iPhone mobile app**:
+   - The iPhone app renders your animated GIF in a dedicated high-resolution player in the workout player,
+     with smooth looping playback, play/pause controls, and an interactive step-by-step scrubber.
+   - Provide a direct HTTPS URL to a clean, well-framed demonstration GIF (e.g. from an exercise CDN,
+     hosted media repository, or fitness database).
+
+2. **Even G2 glasses display**:
    - Monochrome green micro-LED waveguide display with a 9-line budget in a bordered frame.
-   - Plain ASCII characters only (\`\\x20\` to \`\\x7e\`): stick figures and motion lines using \`o\`,
-     \`(o)\`, \`/|\\\`, \`/ \\\`, \`--\`, \`__\`. Do not use emoji, unicode symbols or unicode box drawings
-     (the firmware font cannot render them).
-   - Each frame must be ≤ ${LIMITS.animLines} lines tall and ≤ ${LIMITS.animLineLength} characters wide per line so it fits the screen
-     with the exercise name header and navigation hints.
-   - Low Bluetooth bandwidth: keep to 2–${LIMITS.animFrames} keyframes (e.g. starting stance -> lowering / eccentric ->
-     bottom pause -> concentric drive -> lockout) and set \`fps\` to 0.5–1.0 (default ~1 frame per 1.5 s).
-     Faster updates backlog Bluetooth packets and delay glasses display.
-   - The glasses show the animation under the workout menu's "How-to / Demo": cycling automatically at
-     the target fps, with tap / swipe stepping frames and double-tap returning to the workout.
-
-2. **iPhone mobile app**:
-   - The iPhone app renders your ASCII frames in a dedicated animated player card in the workout player,
-     styled with crisp monospaced typography, accent framing, frame indicators (e.g. \`2/4\`), play/pause
-     toggle, and step buttons alongside your written cues and how-to details.
+   - Glasses display the instruction under the workout menu's "How-to / Demo": displaying your paced
+     step breakdown (\`steps\`) line by line, with a note that the animated GIF is playing on the phone.
+   - Paced progression: steps cycle at a comfortable, relaxed ~3.5 s interval (or manual tap-to-advance),
+     so instructions never flash through too fast. Tap or swipe steps forward/backward, and double-tap returns
+     to the workout.
+   - Plain ASCII characters only (\`\\x20\` to \`\\x7e\`) for \`steps\`: each step must be ≤ ${LIMITS.animStepLength} characters
+     and at most ${LIMITS.animSteps} steps so each step fits clearly within the waveguide screen width.
 
 ### Example exercise animation (Goblet Squat):
 \`\`\`json
 "animation": {
-  "frames": [
-    "   (o)   stand tall\\n   /|\\\\  bell at chest\\n   / \\\\  feet wide",
-    "   (o)   hips back\\n   /|\\\\  knees bent\\n   / \\\\  chest up",
-    "         hips low\\n   (o)   pause at box\\n  </|>   elbows in",
-    "   (o)   drive up\\n   /|\\\\  through heels\\n   / \\\\  stand tall"
+  "gifUrl": "https://assets.fitloop.hejitech.workers.dev/exercises/goblet-squat.gif",
+  "steps": [
+    "1. Feet shoulder-width",
+    "2. Bell held tight at chest",
+    "3. Sit hips back and down",
+    "4. Elbows graze inside knees",
+    "5. Drive heels to stand tall"
   ],
-  "fps": 1,
-  "description": "Goblet squat: start tall, sit between hips, pause, drive up through heels"
+  "description": "Goblet squat: hold bell at chest, descend into hips, drive through heels to lockout"
 }
 \`\`\`
 

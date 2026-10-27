@@ -22,9 +22,8 @@ export const LIMITS = {
   sets: 20,
   restMax: 900,
   durationMax: 4 * 3600,
-  animFrames: 8,
-  animLines: 6,
-  animLineLength: 28,
+  animSteps: 8,
+  animStepLength: 28,
 } as const;
 
 const ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -115,42 +114,35 @@ function checkDay(day: DayPlan, path: string, err: (p: string, m: string) => voi
       if (e?.video_url !== undefined && !/^https:\/\//.test(e.video_url)) err(`${ep}.video_url`, "an https URL");
       if (e?.animation !== undefined) {
         if (typeof e.animation !== "object" || !e.animation) {
-          err(`${ep}.animation`, "must be an object { frames: string[], fps?: number, description?: string }");
+          err(`${ep}.animation`, "must be an object { gifUrl: string, steps?: string[], description?: string }");
         } else {
           const a = e.animation as Partial<ExerciseAnimation>;
-          if (!Array.isArray(a.frames) || a.frames.length === 0) {
-            err(`${ep}.animation.frames`, "must provide at least 1 frame (2–8 recommended)");
-          } else if (a.frames.length > LIMITS.animFrames) {
-            err(`${ep}.animation.frames`, `at most ${LIMITS.animFrames} frames`);
-          } else {
-            a.frames.forEach((frame, fi) => {
-              if (typeof frame !== "string") {
-                err(`${ep}.animation.frames[${fi}]`, "must be a string");
-                return;
-              }
-              const lines = frame.split("\n");
-              if (lines.length > LIMITS.animLines) {
-                err(`${ep}.animation.frames[${fi}]`, `exceeds ${LIMITS.animLines} lines (must fit Even G2 glasses)`);
-              }
-              lines.forEach((line, li) => {
-                if (line.length > LIMITS.animLineLength) {
-                  err(`${ep}.animation.frames[${fi}].lines[${li}]`, `line exceeds ${LIMITS.animLineLength} characters`);
-                }
-                if (/[^\x20-\x7e]/.test(line)) {
-                  err(`${ep}.animation.frames[${fi}].lines[${li}]`, "plain ASCII characters only (Even G2 font limit)");
+          if (typeof a.gifUrl !== "string" || !/^https?:\/\//i.test(a.gifUrl)) {
+            err(`${ep}.animation.gifUrl`, "must be an HTTPS URL pointing to the animated GIF");
+          }
+          if (a.steps !== undefined) {
+            if (!Array.isArray(a.steps) || a.steps.length === 0) {
+              err(`${ep}.animation.steps`, "must provide at least 1 step");
+            } else if (a.steps.length > LIMITS.animSteps) {
+              err(`${ep}.animation.steps`, `at most ${LIMITS.animSteps} steps`);
+            } else {
+              a.steps.forEach((step, si) => {
+                if (typeof step !== "string" || step.trim().length === 0) {
+                  err(`${ep}.animation.steps[${si}]`, "must be a non-empty string");
+                } else if (step.length > LIMITS.animStepLength) {
+                  err(`${ep}.animation.steps[${si}]`, `step exceeds ${LIMITS.animStepLength} characters (to fit Even G2 glasses display)`);
+                } else if (/[^\x20-\x7e]/.test(step)) {
+                  err(`${ep}.animation.steps[${si}]`, "plain ASCII characters only (Even G2 font limit)");
                 }
               });
-            });
-          }
-          if (a.fps !== undefined && (typeof a.fps !== "number" || a.fps < 0.2 || a.fps > 4)) {
-            err(`${ep}.animation.fps`, "fps must be a number between 0.2 and 4");
+            }
           }
           if (a.description !== undefined && (typeof a.description !== "string" || a.description.length > 80)) {
             err(`${ep}.animation.description`, "description up to 80 characters");
           }
         }
       } else {
-        warn(`${ep}.animation`, "no animated instructions: provide ASCII keyframes (2-8 frames) so users see how to do it on phone and glasses");
+        warn(`${ep}.animation`, "no animated instructions: provide animation { gifUrl, steps? } so users see how to do it on phone and glasses");
       }
     });
     if (w?.exercises?.length && typeof w.duration_min === "number") {

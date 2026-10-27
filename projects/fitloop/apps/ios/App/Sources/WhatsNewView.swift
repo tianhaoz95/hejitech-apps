@@ -20,10 +20,14 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.3"
+    static let currentVersion = "0.1.4"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.4", date: "October 2026", items: [
+            WhatsNewItem(icon: "play.rectangle.fill", title: "High-resolution animated GIF demos", description: "Follow exercises with smooth, high-resolution demonstration GIFs directly in the workout player, with step-by-step cues and manual or auto-stepping."),
+            WhatsNewItem(icon: "eyeglasses", title: "Paced Even G2 instructions", description: "Step through comfortable, paced form cues on your Even G2 glasses at a relaxed rhythm so instructions never flash through too fast."),
+        ]),
         ReleaseNotes(version: "0.1.3", date: "October 2026", items: [
             WhatsNewItem(icon: "figure.walk.motion", title: "Animated workout instructions", description: "Follow exercises with animated ASCII form keyframes designed by your agent for both your phone and Even G2 glasses."),
             WhatsNewItem(icon: "eyeglasses", title: "Even G2 How-to & Demo", description: "Step through exercise motion frames on your Even G2 glasses or let them cycle at a steady pace to learn the form."),

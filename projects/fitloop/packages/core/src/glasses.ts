@@ -12,7 +12,7 @@
 //   meal          tap: eaten as planned; hold: ate less / more / something else / skipped + notes;
 //                 double tap: back
 //   cues, progress  any gesture: back
-import { type Checkin, type CheckinStatus, type FEEDBACK_TAGS, type Portion } from "./types.ts";
+import { type Checkin, type CheckinStatus, type Exercise, type FEEDBACK_TAGS, type Portion } from "./types.ts";
 import { fitPx, LINE_PX, MAX_LINES, padPx, spreadPx, wrapPx } from "./font.ts";
 import { formatSeconds, nextSet, setTarget, type DayState, type MealState, type WorkoutState } from "./plan.ts";
 
@@ -104,8 +104,13 @@ export class Navigator {
     this.flash = { text: ascii(text).toUpperCase(), until: now + FLASH_MS };
   }
 
-  private workout(world: World): WorkoutState | null {
+  workout(world: World): WorkoutState | null {
     return world.day?.workouts.find((w) => w.workout.id === this.workoutId) ?? null;
+  }
+
+  currentExercise(world: World): Exercise | null {
+    const w = this.workout(world);
+    return w?.exercises[this.ex]?.exercise ?? null;
   }
 
   private meal(world: World): MealState | null {
@@ -230,7 +235,7 @@ export class Navigator {
         if (input === "double_tap") { this.screen = "today"; return []; }
         if (input === "long_press") {
           const anim = e.exercise.animation;
-          const hasAnim = Boolean(anim?.frames && anim.frames.length > 0);
+          const hasAnim = Boolean(anim?.gifUrl || (anim?.steps && anim.steps.length > 0));
           this.openMenu(e.exercise.name, [
             { label: hasAnim ? "How-to / Demo" : "How-to", run: () => {
               this.screen = "cues";
@@ -263,19 +268,19 @@ export class Navigator {
       case "cues": {
         const w = this.workout(world);
         const anim = w?.exercises[this.ex]?.exercise?.animation;
-        const frames = anim?.frames ?? [];
-        if (frames.length > 1) {
+        const steps = anim?.steps ?? [];
+        if (steps.length > 1) {
           if (input === "double_tap" || input === "long_press") {
             this.screen = "workout";
             return [];
           }
           if (input === "tap" || input === "down") {
-            this.animFrame = (this.animFrame + 1) % frames.length;
+            this.animFrame = (this.animFrame + 1) % steps.length;
             this.lastAnimTick = world.now;
             return [];
           }
           if (input === "up") {
-            this.animFrame = (this.animFrame - 1 + frames.length) % frames.length;
+            this.animFrame = (this.animFrame - 1 + steps.length) % steps.length;
             this.lastAnimTick = world.now;
             return [];
           }
@@ -379,27 +384,32 @@ export class Navigator {
     const e = w?.exercises[this.ex]?.exercise;
     if (!e) return ["HOW-TO", "", "Nothing here."];
     const anim = e.animation;
-    const frames = anim?.frames ?? [];
-    if (frames.length > 0) {
-      const fps = anim?.fps && anim.fps > 0 ? anim.fps : 0.67;
-      const intervalMs = Math.round(1000 / fps);
-      if (frames.length > 1 && this.lastAnimTick > 0 && world.now - this.lastAnimTick >= intervalMs) {
-        this.animFrame = (this.animFrame + 1) % frames.length;
+    const steps = anim?.steps ?? [];
+    const hasGif = Boolean(anim?.gifUrl);
+
+    if (steps.length > 0) {
+      // Relaxed auto-cycle at 3.5 seconds per step so instructions don't flash through too fast
+      const intervalMs = 3500;
+      if (steps.length > 1 && this.lastAnimTick > 0 && world.now - this.lastAnimTick >= intervalMs) {
+        this.animFrame = (this.animFrame + 1) % steps.length;
         this.lastAnimTick = world.now;
       }
-      const curFrame = Math.min(this.animFrame, frames.length - 1);
-      const header = spread(e.name.toUpperCase(), `${curFrame + 1}/${frames.length}`);
-      const frameLines = frames[curFrame].split("\n").map((l) => ascii(l));
-      const lines = [header, ...frameLines];
-      if (e.cues && e.cues.length > 0 && lines.length < MAX_LINES - 2) {
-        lines.push(`- ${ascii(e.cues[0])}`);
+      const curStep = Math.min(this.animFrame, steps.length - 1);
+      const header = spread(e.name.toUpperCase(), `${curStep + 1}/${steps.length}`);
+      const stepText = ascii(steps[curStep]);
+      const wrapped = wrap(stepText);
+      const lines = [header, "", `STEP ${curStep + 1} OF ${steps.length}`, ...wrapped];
+      if (hasGif && lines.length < MAX_LINES - 2) {
+        lines.push("(GIF playing on phone)");
       }
       while (lines.length < MAX_LINES - 1) lines.push("");
-      lines.push(frames.length > 1 ? "tap: step  2x: back" : "any: back");
+      lines.push(steps.length > 1 ? "tap: next  2x: back" : "any: back");
       return lines;
     }
-    const body = (e.cues?.length ? e.cues : wrap(e.instructions ?? "No cues in the plan for this one.")).map((c) => `- ${c}`);
+
+    const body = (e.cues?.length ? e.cues : wrap(e.instructions ?? "No cues in the plan for this one.")).map((c) => `- ${ascii(c)}`);
     const lines = [spread(e.name.toUpperCase(), "any: back"), ...body.flatMap((l) => wrap(l))];
+    if (hasGif && lines.length < MAX_LINES) lines.push("(GIF playing on phone)");
     if (e.alternative && lines.length < MAX_LINES) lines.push(`Instead: ${e.alternative}`);
     return lines;
   }

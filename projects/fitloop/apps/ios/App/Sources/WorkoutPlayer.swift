@@ -1,5 +1,6 @@
 import FitLoopKit
 import SwiftUI
+import WebKit
 
 /// The workout player: one exercise at a time with its set target, how-to and cues; "Set done"
 /// checks the set in and starts the rest timer; timed sets run a work timer. The Watch (when paired)
@@ -26,7 +27,7 @@ struct WorkoutPlayer: View {
                     VStack(alignment: .leading, spacing: 18) {
                         header
                         exerciseCard(now: ctx.date)
-                        if let anim = current.exercise.animation, !anim.frames.isEmpty {
+                        if let anim = current.exercise.animation, !anim.gifUrl.isEmpty {
                             ExerciseAnimationPlayer(animation: anim)
                         }
                         if let cues = current.exercise.cues, !cues.isEmpty {
@@ -213,27 +214,73 @@ struct WorkoutPlayer: View {
     }
 }
 
-/// Plays animated ASCII movement keyframes provided by the user's coaching agent.
-struct ExerciseAnimationPlayer: View {
-    let animation: ExerciseAnimation
-    @State private var currentFrame = 0
-    @State private var isPlaying = true
+/// Native WebKit-based GIF viewer that renders high-resolution animated GIFs smoothly with zero external dependencies.
+struct GIFPlayerView: UIViewRepresentable {
+    let urlString: String
 
-    private var frames: [String] { animation.frames }
-    private var interval: Double {
-        let fps = animation.fps ?? 1.0
-        return max(0.25, 1.0 / max(fps, 0.1))
+    func makeUIView(context: Context) -> WKWebView {
+        let config = WKWebViewConfiguration()
+        let webView = WKWebView(frame: .zero, configuration: config)
+        webView.isOpaque = false
+        webView.backgroundColor = .clear
+        webView.scrollView.backgroundColor = .clear
+        webView.scrollView.isScrollEnabled = false
+        webView.scrollView.bounces = false
+        return webView
     }
 
+    func updateUIView(_ webView: WKWebView, context: Context) {
+        guard let url = URL(string: urlString) else { return }
+        let html = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 12px;
+        }
+        </style>
+        </head>
+        <body>
+        <img src="\(url.absoluteString)" alt="Exercise animation" />
+        </body>
+        </html>
+        """
+        webView.loadHTMLString(html, baseURL: nil)
+    }
+}
+
+/// Plays high-resolution animated GIF instructions and step breakdown provided by the user's coaching agent.
+struct ExerciseAnimationPlayer: View {
+    let animation: ExerciseAnimation
+    @State private var currentStep = 0
+    @State private var autoAdvance = false
+
+    private var steps: [String] { animation.steps ?? [] }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Label("Animated Instructions", systemImage: "figure.walk.motion")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Spacer()
-                if frames.count > 1 {
-                    Text("\(currentFrame + 1)/\(frames.count)")
+                if !steps.isEmpty {
+                    Text("Step \(currentStep + 1)/\(steps.count)")
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 8)
@@ -242,16 +289,12 @@ struct ExerciseAnimationPlayer: View {
                 }
             }
 
-            if !frames.isEmpty {
-                let frameText = frames[min(currentFrame, frames.count - 1)]
-                Text(frameText)
-                    .font(.system(.body, design: .monospaced))
-                    .foregroundStyle(Color.accentColor)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(14)
-                    .background(Color(uiColor: .secondarySystemBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-            }
+            // High-resolution animated GIF player
+            GIFPlayerView(urlString: animation.gifUrl)
+                .frame(maxWidth: .infinity)
+                .frame(height: 220)
+                .background(Color(uiColor: .secondarySystemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 14))
 
             if let desc = animation.description, !desc.isEmpty {
                 Text(desc)
@@ -259,51 +302,85 @@ struct ExerciseAnimationPlayer: View {
                     .foregroundStyle(.secondary)
             }
 
-            if frames.count > 1 {
-                HStack(spacing: 12) {
-                    Button {
-                        currentFrame = (currentFrame - 1 + frames.count) % frames.count
-                    } label: {
-                        Image(systemName: "backward.frame")
+            if !steps.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Steps & Form Cues")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button {
+                            autoAdvance.toggle()
+                        } label: {
+                            Label(autoAdvance ? "Auto-stepping" : "Step manually", systemImage: autoAdvance ? "play.circle.fill" : "hand.tap")
+                                .font(.caption2)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(autoAdvance ? .accentColor : .secondary)
                     }
-                    .buttonStyle(.bordered)
-                    .accessibilityLabel("Previous frame")
 
-                    Button {
-                        isPlaying.toggle()
-                    } label: {
-                        Label(isPlaying ? "Pause" : "Play", systemImage: isPlaying ? "pause.fill" : "play.fill")
+                    ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
+                        HStack(alignment: .top, spacing: 8) {
+                            Text("\(index + 1).")
+                                .font(.callout.monospacedDigit().weight(.semibold))
+                                .foregroundStyle(index == currentStep ? Color.accentColor : .secondary)
+                                .frame(width: 22, alignment: .leading)
+                            Text(step)
+                                .font(.callout)
+                                .foregroundStyle(index == currentStep ? .primary : .secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(.vertical, 4)
+                        .padding(.horizontal, 8)
+                        .background(index == currentStep ? Color.accentColor.opacity(0.12) : Color.clear, in: RoundedRectangle(cornerRadius: 8))
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            currentStep = index
+                        }
                     }
-                    .buttonStyle(.bordered)
-                    .accessibilityLabel(isPlaying ? "Pause animation" : "Play animation")
 
-                    Button {
-                        currentFrame = (currentFrame + 1) % frames.count
-                    } label: {
-                        Image(systemName: "forward.frame")
+                    if steps.count > 1 {
+                        HStack(spacing: 12) {
+                            Button {
+                                currentStep = (currentStep - 1 + steps.count) % steps.count
+                            } label: {
+                                Image(systemName: "chevron.left")
+                            }
+                            .buttonStyle(.bordered)
+                            .accessibilityLabel("Previous step")
+
+                            Button {
+                                currentStep = (currentStep + 1) % steps.count
+                            } label: {
+                                Image(systemName: "chevron.right")
+                            }
+                            .buttonStyle(.bordered)
+                            .accessibilityLabel("Next step")
+
+                            Spacer()
+                        }
+                        .font(.subheadline)
+                        .padding(.top, 4)
                     }
-                    .buttonStyle(.bordered)
-                    .accessibilityLabel("Next frame")
-
-                    Spacer()
                 }
-                .font(.subheadline)
+                .padding(10)
+                .background(Color(uiColor: .tertiarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
             }
         }
         .padding()
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
-        .task(id: isPlaying) {
-            guard isPlaying && frames.count > 1 else { return }
-            while !Task.isCancelled && isPlaying {
-                try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
-                if !Task.isCancelled && isPlaying {
-                    currentFrame = (currentFrame + 1) % frames.count
+        .task(id: autoAdvance) {
+            guard autoAdvance && steps.count > 1 else { return }
+            while !Task.isCancelled && autoAdvance {
+                try? await Task.sleep(nanoseconds: 3_500_000_000)
+                if !Task.isCancelled && autoAdvance {
+                    currentStep = (currentStep + 1) % steps.count
                 }
             }
         }
         .onChange(of: animation) {
-            currentFrame = 0
-            isPlaying = true
+            currentStep = 0
+            autoAdvance = false
         }
     }
 }

@@ -40,15 +40,15 @@ final class FitLoopKitTests: XCTestCase {
           "reps": "8-10",
           "rest_sec": 90,
           "animation": {
-            "frames": [" (o)\\n /|\\\\\\n / \\\\", " (o)\\n</|>\\n / \\\\"],
-            "fps": 1.0,
+            "gifUrl": "https://assets.fitloop.hejitech.workers.dev/exercises/squat.gif",
+            "steps": ["1. Stand tall", "2. Squat down", "3. Stand up"],
             "description": "Squat movement"
           }
         }
         """.data(using: .utf8)!
         let ex = try Backend.decoder.decode(Exercise.self, from: json)
-        XCTAssertEqual(ex.animation?.frames.count, 2)
-        XCTAssertEqual(ex.animation?.fps, 1.0)
+        XCTAssertEqual(ex.animation?.gifUrl, "https://assets.fitloop.hejitech.workers.dev/exercises/squat.gif")
+        XCTAssertEqual(ex.animation?.steps?.count, 3)
         XCTAssertEqual(ex.animation?.description, "Squat movement")
 
         let encoded = try Backend.encoder.encode(ex)

@@ -52,39 +52,35 @@ describe("plan", () => {
     expect(GUIDE).toContain("update_profile_notes");
     expect(GUIDE).toContain("## Animated workout instructions");
   });
-  it("validates exercise animation frames, line limits, and ASCII characters", () => {
+  it("validates exercise animation gifUrl, steps limits, and ASCII characters", () => {
     const p = plan();
     const ex = p.week.mon.workouts[0].exercises[1];
     ex.animation = {
-      frames: [
-        " (o)   stand\n /|\\  tall\n / \\  ready",
-        " (o)   down\n</|>  pause\n / \\  hold",
+      gifUrl: "https://assets.fitloop.hejitech.workers.dev/exercises/squat.gif",
+      steps: [
+        "1. Stand tall",
+        "2. Squat down",
       ],
-      fps: 1,
       description: "Squat form",
     };
     expect(errorsOf(checkPlan(p))).toEqual([]);
 
-    // Too many frames (> 8)
-    ex.animation.frames = Array(9).fill(" (o)\n /|\\\n / \\");
-    expect(errorsOf(checkPlan(p)).some((e) => e.path.includes("animation.frames"))).toBe(true);
+    // Missing or invalid gifUrl
+    ex.animation.gifUrl = "not-a-url";
+    expect(errorsOf(checkPlan(p)).some((e) => e.path.includes("animation.gifUrl"))).toBe(true);
 
-    // Frame with too many lines (> 6)
-    ex.animation.frames = ["1\n2\n3\n4\n5\n6\n7"];
-    expect(errorsOf(checkPlan(p)).some((e) => e.path.includes("animation.frames[0]"))).toBe(true);
+    // Too many steps (> 8)
+    ex.animation.gifUrl = "https://example.com/squat.gif";
+    ex.animation.steps = Array(9).fill("Step");
+    expect(errorsOf(checkPlan(p)).some((e) => e.path.includes("animation.steps"))).toBe(true);
 
-    // Line too long (> 28 chars)
-    ex.animation.frames = ["x".repeat(29)];
-    expect(errorsOf(checkPlan(p)).some((e) => e.path.includes("animation.frames[0].lines[0]"))).toBe(true);
+    // Step too long (> 28 chars)
+    ex.animation.steps = ["1. " + "x".repeat(26)];
+    expect(errorsOf(checkPlan(p)).some((e) => e.path.includes("animation.steps[0]"))).toBe(true);
 
     // Non-ASCII character
-    ex.animation.frames = ["(o) 🏋️"];
-    expect(errorsOf(checkPlan(p)).some((e) => e.path.includes("animation.frames[0].lines[0]"))).toBe(true);
-
-    // Invalid fps
-    ex.animation.frames = [" (o)\n /|\\\n / \\"];
-    ex.animation.fps = 10;
-    expect(errorsOf(checkPlan(p)).some((e) => e.path.includes("animation.fps"))).toBe(true);
+    ex.animation.steps = ["1. Squat 🏋️"];
+    expect(errorsOf(checkPlan(p)).some((e) => e.path.includes("animation.steps[0]"))).toBe(true);
   });
 });
 
@@ -274,11 +270,11 @@ describe("glasses", () => {
   it("displays and cycles animated exercise instructions on Even G2", () => {
     const p = plan();
     p.week.mon.workouts[0].exercises[1].animation = {
-      frames: [
-        " (o)   stand\n /|\\  tall",
-        " (o)   squat\n</|>  down",
+      gifUrl: "https://example.com/squat.gif",
+      steps: [
+        "1. Stand tall",
+        "2. Squat down",
       ],
-      fps: 1,
     };
     const nav = new Navigator();
     const t = at(12);
@@ -293,23 +289,25 @@ describe("glasses", () => {
     let lines = nav.lines(customWorld);
     fits(lines);
     expect(lines[0]).toMatch(/^GOBLET SQUAT +1\/2$/);
-    expect(lines[1]).toBe(" (o)   stand");
-    expect(lines[2]).toBe(" /|\\  tall");
-    expect(lines.at(-1)).toBe("tap: step  2x: back");
+    expect(lines[2]).toBe("STEP 1 OF 2");
+    expect(lines[3]).toBe("1. Stand tall");
+    expect(lines.join(" ")).toContain("(GIF playing on phone)");
+    expect(lines.at(-1)).toBe("tap: next  2x: back");
     expect(nav.ticking(t)).toBe(true);
 
     // Step to next frame with tap
     nav.input("tap", customWorld);
     lines = nav.lines(customWorld);
     expect(lines[0]).toMatch(/^GOBLET SQUAT +2\/2$/);
-    expect(lines[1]).toBe(" (o)   squat");
+    expect(lines[2]).toBe("STEP 2 OF 2");
+    expect(lines[3]).toBe("2. Squat down");
 
     // Step back with up
     nav.input("up", customWorld);
     expect(nav.lines(customWorld)[0]).toMatch(/^GOBLET SQUAT +1\/2$/);
 
-    // Auto-cycling after interval
-    const tNext = t + 1500;
+    // Auto-cycling after interval (3500ms)
+    const tNext = t + 3500;
     const cycledLines = nav.lines({ ...customWorld, now: tNext });
     expect(cycledLines[0]).toMatch(/^GOBLET SQUAT +2\/2$/);
 

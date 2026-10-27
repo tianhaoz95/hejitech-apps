@@ -25,11 +25,15 @@ export interface Macros {
 }
 
 export interface ExerciseAnimation {
-  /** 1–8 frames of plain ASCII text / stick-figure art depicting movement keyframes. */
-  frames: string[];
-  /** Target frame rate in frames per second (0.2–4 fps, default ~1 fps). */
-  fps?: number;
-  /** Short description of the movement animation (≤ 80 characters). */
+  /** Direct HTTPS URL to the high-resolution animated instruction GIF. */
+  gifUrl: string;
+  /**
+   * Paced step-by-step movement phases for Even G2 glasses and mobile breakdown
+   * (e.g. ["1. Setup: feet shoulder-width", "2. Lower hips with control", "3. Drive up through heels"]).
+   * Up to 8 steps, ≤ 28 characters each to fit Even G2 glasses display.
+   */
+  steps?: string[];
+  /** Short description of the movement instruction (≤ 80 characters). */
   description?: string;
 }
 
@@ -52,7 +56,7 @@ export interface Exercise {
   /** What to do instead if it hurts or the equipment is taken. */
   alternative?: string;
   video_url?: string;
-  /** Animated instructions rendered as ASCII keyframes for Even G2 and phone. */
+  /** High-resolution animated GIF instructions with paced step cues for Even G2 and phone. */
   animation?: ExerciseAnimation;
 }
 
