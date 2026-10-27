@@ -234,5 +234,25 @@ final class TetherKitTests: XCTestCase {
         XCTAssertEqual(resizedDims?.0, 120)
         XCTAssertEqual(resizedDims?.1, 40)
     }
+
+    func testPresetSshHostPasswordAndAutoConnect() {
+        let store = SecureStore(service: "com.hejitech.tether.tests.preset", useInMemoryFallback: true)
+        let manualHost = SshHost(id: "h-manual", label: "Manual Host", host: "192.168.1.10", port: 22, username: "user1", auth: .key, autoConnect: false)
+        let autoHost = SshHost(id: "h-auto", label: "Auto Server", host: "192.168.1.20", port: 22, username: "admin", auth: .password, autoConnect: true)
+
+        // Password saving & loading
+        store.saveHostPassword("preset-secure-pass-99", forHostId: autoHost.id)
+        XCTAssertEqual(store.loadHostPassword(forHostId: autoHost.id), "preset-secure-pass-99")
+        XCTAssertNil(store.loadHostPassword(forHostId: manualHost.id))
+
+        // Default tab selection picks the auto-connect host
+        let defaultTab = PaneTreeOps.createDefaultTab(type: .ssh, hosts: [manualHost, autoHost])
+        XCTAssertEqual(defaultTab.hostId, "h-auto")
+        XCTAssertEqual(defaultTab.title, "SSH: Auto Server")
+
+        // Clean up
+        store.deleteHostPassword(forHostId: autoHost.id)
+        XCTAssertNil(store.loadHostPassword(forHostId: autoHost.id))
+    }
 }
 

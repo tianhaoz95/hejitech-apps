@@ -319,7 +319,7 @@ public final class WorkspaceStore: ObservableObject {
                 if let tab = panes.flatMap(\.tabs).first(where: { $0.id == tabId }),
                    let hostId = tab.hostId,
                    let host = hosts.first(where: { $0.id == hostId }),
-                   host.autoReconnectOnDisplayReconnect == true {
+                   (host.autoReconnectOnDisplayReconnect == true || host.autoConnect == true) {
                     sshStates[tabId] = .connected
                     pausedSshTabs.remove(tabId)
                 }

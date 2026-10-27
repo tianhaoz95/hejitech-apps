@@ -75,6 +75,7 @@ export interface SshHost {
   keyId?: string | null;
   rememberPassword?: boolean;
   autoReconnectOnDisplayReconnect: boolean;
+  autoConnect?: boolean;
 }
 
 export interface KnownHostKey {
@@ -894,6 +895,7 @@ export function normalizeSshHost(h: Partial<SshHost>): SshHost {
     ...(h.keyId ? { keyId: String(h.keyId) } : {}),
     ...(h.rememberPassword ? { rememberPassword: Boolean(h.rememberPassword) } : {}),
     autoReconnectOnDisplayReconnect: Boolean(h.autoReconnectOnDisplayReconnect),
+    ...(h.autoConnect !== undefined ? { autoConnect: Boolean(h.autoConnect) } : {}),
   };
 }
 

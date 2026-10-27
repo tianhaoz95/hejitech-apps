@@ -39,7 +39,23 @@ public struct HostManagerView: View {
                     ForEach(store.hosts) { host in
                         HStack {
                             VStack(alignment: .leading, spacing: 3) {
-                                Text(host.displayTitle).font(.headline)
+                                HStack(spacing: 6) {
+                                    Text(host.displayTitle).font(.headline)
+                                    if host.autoConnect == true {
+                                        Text("AUTO-CONNECT")
+                                            .font(.system(size: 9, weight: .bold))
+                                            .padding(.horizontal, 5)
+                                            .padding(.vertical, 2)
+                                            .background(Color.green.opacity(0.2))
+                                            .foregroundStyle(.green)
+                                            .clipShape(Capsule())
+                                    }
+                                    if store.secureStore.loadHostPassword(forHostId: host.id) != nil {
+                                        Image(systemName: "key.fill")
+                                            .font(.caption2)
+                                            .foregroundStyle(.yellow)
+                                    }
+                                }
                                 Text("\(host.connectionString) · \(host.auth.displayName)")
                                     .font(.caption.monospaced())
                                     .foregroundStyle(.secondary)
@@ -234,7 +250,7 @@ private struct HostEditorSheet: View {
                         .autocorrectionDisabled()
                 }
 
-                Section("Authentication (Secrets Stay in Keychain)") {
+                Section("Authentication & Preset Credentials") {
                     Picker("Auth Method", selection: $host.auth) {
                         ForEach(SshAuthType.allCases, id: \.self) { t in
                             Text(t.displayName).tag(t)
@@ -255,21 +271,25 @@ private struct HostEditorSheet: View {
                     }
 
                     if host.auth == .password || host.auth == .keyAndPassword {
-                        Toggle("Remember password in Keychain", isOn: Binding(
-                            get: { host.rememberPassword ?? false },
-                            set: { host.rememberPassword = $0 }
-                        ))
-                        if host.rememberPassword == true {
-                            SecureField("Password (saved in Keychain only)", text: $passwordInput)
-                        }
+                        SecureField("Preset Host Password (Keychain)", text: $passwordInput)
+                        Text("Passwords are encrypted in the local Keychain only (PRD §14). They are never sent to Cloudflare or Supabase.")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
                     }
                 }
 
-                Section("Display Lifecycle (PRD §12.1)") {
-                    Toggle("Auto-reconnect when external display reconnects", isOn: Binding(
+                Section("Auto-Connect & Display Lifecycle") {
+                    Toggle("Auto-connect when opening SSH tab", isOn: Binding(
+                        get: { host.autoConnect ?? false },
+                        set: { host.autoConnect = $0 }
+                    ))
+                    Toggle("Auto-reconnect on display reconnect", isOn: Binding(
                         get: { host.autoReconnectOnDisplayReconnect ?? false },
                         set: { host.autoReconnectOnDisplayReconnect = $0 }
                     ))
+                    Text("When auto-connect is enabled, Tether automatically connects using your preset password or key without prompting.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
 
                 Section {
@@ -297,10 +317,12 @@ private struct HostEditorSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         host.port = min(65535, max(1, host.port))
-                        if host.rememberPassword == true && !passwordInput.isEmpty {
+                        if !passwordInput.isEmpty {
                             store.secureStore.saveHostPassword(passwordInput, forHostId: host.id)
-                        } else if host.rememberPassword != true {
+                            host.rememberPassword = true
+                        } else {
                             store.secureStore.deleteHostPassword(forHostId: host.id)
+                            host.rememberPassword = false
                         }
                         if let idx = store.hosts.firstIndex(where: { $0.id == host.id }) {
                             store.hosts[idx] = host
@@ -327,6 +349,9 @@ public struct SettingsSheetView: View {
     @State private var syncStatus: String?
     @State private var showingWhatsNew = false
     @State private var showingDeleteAccountAlert = false
+    @State private var showingAddHost = false
+    @State private var editingHost: SshHost?
+    @State private var showingHostManager = false
 
     public init(store: WorkspaceStore) {
         self.store = store
@@ -389,6 +414,70 @@ public struct SettingsSheetView: View {
                     Text("When buttons are hidden, use pure gestures: 1-finger tap to click, tap-and-hold to drag, 2-finger scroll, and 2-finger tap for escape / back.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                }
+
+                Section {
+                    if store.hosts.isEmpty {
+                        Text("No preset SSH hosts yet. Add a host with password to connect automatically.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(store.hosts) { host in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    HStack(spacing: 6) {
+                                        Text(host.displayTitle).font(.subheadline.bold())
+                                        if host.autoConnect == true {
+                                            Text("AUTO-CONNECT")
+                                                .font(.system(size: 9, weight: .bold))
+                                                .padding(.horizontal, 5)
+                                                .padding(.vertical, 2)
+                                                .background(Color.green.opacity(0.2))
+                                                .foregroundStyle(.green)
+                                                .clipShape(Capsule())
+                                        }
+                                        if store.secureStore.loadHostPassword(forHostId: host.id) != nil {
+                                            Image(systemName: "key.fill")
+                                                .font(.caption2)
+                                                .foregroundStyle(.yellow)
+                                        }
+                                    }
+                                    Text("\(host.connectionString) · \(host.auth.displayName)")
+                                        .font(.caption2.monospaced())
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Button("Edit") {
+                                    editingHost = host
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                            }
+                        }
+                        .onDelete { offsets in
+                            for i in offsets {
+                                let h = store.hosts[i]
+                                store.secureStore.deleteHostPassword(forHostId: h.id)
+                            }
+                            store.hosts.remove(atOffsets: offsets)
+                        }
+                    }
+
+                    Button {
+                        showingAddHost = true
+                    } label: {
+                        Label("Preset New SSH Host…", systemImage: "plus.circle.fill")
+                    }
+
+                    Button {
+                        showingHostManager = true
+                    } label: {
+                        Label("Manage SSH Keys & Identities…", systemImage: "key.fill")
+                    }
+                } header: {
+                    Text("SSH Hosts & Preset Passwords")
+                } footer: {
+                    Text("Passwords and private keys remain encrypted in the on-device Keychain only (PRD §14).")
                 }
 
                 Section("Known SSH Host Keys (SHA-256 Fingerprints)") {
@@ -541,6 +630,19 @@ public struct SettingsSheetView: View {
             }
             .sheet(isPresented: $showingWhatsNew) {
                 WhatsNewView()
+            }
+            .sheet(isPresented: $showingAddHost) {
+                HostEditorSheet(
+                    store: store,
+                    host: SshHost(label: "", host: "", port: 22, username: "", auth: .password, autoConnect: true),
+                    isNew: true
+                )
+            }
+            .sheet(item: $editingHost) { host in
+                HostEditorSheet(store: store, host: host, isNew: false)
+            }
+            .sheet(isPresented: $showingHostManager) {
+                HostManagerView(store: store)
             }
             .alert("Delete Cloud Account?", isPresented: $showingDeleteAccountAlert) {
                 Button("Cancel", role: .cancel) {}

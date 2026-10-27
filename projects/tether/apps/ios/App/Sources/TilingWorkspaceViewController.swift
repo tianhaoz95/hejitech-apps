@@ -611,7 +611,8 @@ public final class TilingWorkspaceViewController: UIViewController {
         message: String?,
         actions: [DesktopAlertAction],
         textFieldPlaceholder: String? = nil,
-        textFieldDefaultText: String? = nil
+        textFieldDefaultText: String? = nil,
+        isSecureTextEntry: Bool = false
     ) {
         activeDialog?.removeFromSuperview()
 
@@ -620,7 +621,8 @@ public final class TilingWorkspaceViewController: UIViewController {
             message: message,
             actions: actions,
             textFieldPlaceholder: textFieldPlaceholder,
-            textFieldDefaultText: textFieldDefaultText
+            textFieldDefaultText: textFieldDefaultText,
+            isSecureTextEntry: isSecureTextEntry
         )
         dialog.translatesAutoresizingMaskIntoConstraints = false
         dialog.onDismiss = { [weak self] in

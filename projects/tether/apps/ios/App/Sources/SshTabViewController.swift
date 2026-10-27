@@ -61,12 +61,23 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
         terminalBuffer.feed("\u{1B}[38;5;39;1mTether SSH Client (No local shell — PRD §3.1)\u{1B}[0m\r\n")
         if let host {
             terminalBuffer.feed("Target host: \(host.connectionString) (\(host.auth.displayName))\r\n")
-            terminalBuffer.feed("Press 'Connect' to verify SHA-256 host key and allocate xterm-256color PTY.\r\n\r\n")
+            if host.autoConnect == true {
+                terminalBuffer.feed("Auto-connect is enabled for this host. Connecting...\r\n\r\n")
+            } else {
+                terminalBuffer.feed("Press 'Connect' to verify SHA-256 host key and allocate xterm-256color PTY.\r\n\r\n")
+            }
         } else {
             terminalBuffer.feed("No SSH host selected. Choose or add a host from the toolbar.\r\n\r\n")
         }
         renderTerminal()
         refreshToolbarState()
+
+        if let host, host.autoConnect == true && !isTerminalConnected {
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.initiateConnection(host: host)
+            }
+        }
     }
 
     public override func viewDidLayoutSubviews() {
@@ -397,6 +408,9 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
                     self.tabItem = t
                 }
                 self.refreshToolbarState()
+                if host.autoConnect == true && !self.isTerminalConnected {
+                    self.initiateConnection(host: host)
+                }
             })
         }
         alert.addAction(UIAlertAction(title: "Simulate Changed Host Key Warning…", style: .destructive) { [weak self] _ in
@@ -416,6 +430,11 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
             return
         }
         guard let host = currentHost else { return }
+        initiateConnection(host: host)
+    }
+
+    public func initiateConnection(host: SshHost) {
+        guard !isTerminalConnected else { return }
         store.sshStates[tabItem.id] = .connecting
         refreshToolbarState()
 
@@ -431,7 +450,7 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
 
         switch status {
         case .matched(let entry):
-            completeHandshake(host: host, keyEntry: entry, firstTimeTrusted: false)
+            authenticateAndComplete(host: host, keyEntry: entry, firstTimeTrusted: false)
         case .firstConnect(let h, let p, let keyType, let fingerprint):
             let msg = """
             Host: \(h):\(p)
@@ -451,7 +470,7 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
                 guard let self else { return }
                 let entry = KnownHostKey(host: h, port: p, keyType: keyType, sha256Fingerprint: fingerprint)
                 self.store.secureStore.trustHostKey(entry)
-                self.completeHandshake(host: host, keyEntry: entry, firstTimeTrusted: true)
+                self.authenticateAndComplete(host: host, keyEntry: entry, firstTimeTrusted: true)
             }
             showDesktopAlert(title: "Verify SSH Host Key", message: msg, actions: [trustAction, cancelAction])
         case .changedWarning(let existing, let presentedType, let presentedFp):
@@ -461,6 +480,52 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
                 presentedType: presentedType,
                 presentedFingerprint: presentedFp
             )
+        }
+    }
+
+    private func authenticateAndComplete(host: SshHost, keyEntry: KnownHostKey, firstTimeTrusted: Bool) {
+        if host.auth == .password || host.auth == .keyAndPassword {
+            if let savedPassword = store.secureStore.loadHostPassword(forHostId: host.id), !savedPassword.isEmpty {
+                terminalBuffer.feed("Authenticating with preset Keychain password for \(host.username)...\r\n")
+                terminalBuffer.feed("\u{1B}[38;5;42mPassword accepted.\u{1B}[0m\r\n")
+                completeHandshake(host: host, keyEntry: keyEntry, firstTimeTrusted: firstTimeTrusted)
+            } else {
+                let cancelAction = DesktopAlertAction(title: "Cancel", style: .cancel) { [weak self] _ in
+                    guard let self else { return }
+                    self.store.sshStates[self.tabItem.id] = .disconnected
+                    self.terminalBuffer.feed("Password authentication cancelled.\r\n")
+                    self.renderTerminal()
+                    self.refreshToolbarState()
+                }
+                let connectAction = DesktopAlertAction(title: "Connect", style: .default) { [weak self] enteredPassword in
+                    guard let self else { return }
+                    guard let pass = enteredPassword, !pass.isEmpty else {
+                        self.store.sshStates[self.tabItem.id] = .disconnected
+                        self.terminalBuffer.feed("Password cannot be empty.\r\n")
+                        self.renderTerminal()
+                        self.refreshToolbarState()
+                        return
+                    }
+                    if host.rememberPassword == true {
+                        self.store.secureStore.saveHostPassword(pass, forHostId: host.id)
+                    }
+                    self.terminalBuffer.feed("Authenticating for \(host.username)...\r\n")
+                    self.terminalBuffer.feed("\u{1B}[38;5;42mPassword accepted.\u{1B}[0m\r\n")
+                    self.completeHandshake(host: host, keyEntry: keyEntry, firstTimeTrusted: firstTimeTrusted)
+                }
+                showDesktopAlert(
+                    title: "SSH Password Required",
+                    message: "Enter password for \(host.username)@\(host.host):",
+                    actions: [connectAction, cancelAction],
+                    textFieldPlaceholder: "Password",
+                    textFieldDefaultText: nil,
+                    isSecureTextEntry: true
+                )
+            }
+        } else {
+            terminalBuffer.feed("Authenticating with SSH Key (\(host.keyId ?? "default"))...\r\n")
+            terminalBuffer.feed("\u{1B}[38;5;42mPublic key authentication accepted.\u{1B}[0m\r\n")
+            completeHandshake(host: host, keyEntry: keyEntry, firstTimeTrusted: firstTimeTrusted)
         }
     }
 
@@ -497,7 +562,7 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
                 sha256Fingerprint: presentedFingerprint
             )
             self.store.secureStore.trustHostKey(updated)
-            self.completeHandshake(host: host, keyEntry: updated, firstTimeTrusted: true)
+            self.authenticateAndComplete(host: host, keyEntry: updated, firstTimeTrusted: true)
         }
         showDesktopAlert(
             title: "⚠️ Host Key Mismatch",

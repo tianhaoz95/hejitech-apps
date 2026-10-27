@@ -123,7 +123,8 @@ data class SshHost(
     val auth: SshAuthType = SshAuthType.KEY,
     val keyId: String? = null,
     val rememberPassword: Boolean? = false,
-    val autoReconnectOnDisplayReconnect: Boolean? = false
+    val autoReconnectOnDisplayReconnect: Boolean? = false,
+    val autoConnect: Boolean? = false
 ) {
     val displayTitle: String
         get() = label?.trim()?.takeIf { it.isNotEmpty() } ?: "$username@$host"

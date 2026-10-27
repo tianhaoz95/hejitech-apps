@@ -43,7 +43,8 @@ public final class DesktopDialogView: UIView, UITextFieldDelegate {
         message: String?,
         actions: [DesktopAlertAction],
         textFieldPlaceholder: String? = nil,
-        textFieldDefaultText: String? = nil
+        textFieldDefaultText: String? = nil,
+        isSecureTextEntry: Bool = false
     ) {
         self.actions = actions
         super.init(frame: .zero)
@@ -51,7 +52,8 @@ public final class DesktopDialogView: UIView, UITextFieldDelegate {
             title: title,
             message: message,
             placeholder: textFieldPlaceholder,
-            defaultText: textFieldDefaultText
+            defaultText: textFieldDefaultText,
+            isSecureTextEntry: isSecureTextEntry
         )
     }
 
@@ -60,7 +62,7 @@ public final class DesktopDialogView: UIView, UITextFieldDelegate {
         fatalError("init(coder:) has not been implemented")
     }
 
-    private func setupUI(title: String, message: String?, placeholder: String?, defaultText: String?) {
+    private func setupUI(title: String, message: String?, placeholder: String?, defaultText: String?, isSecureTextEntry: Bool = false) {
         backgroundColor = .clear
 
         backdrop.translatesAutoresizingMaskIntoConstraints = false
@@ -111,6 +113,7 @@ public final class DesktopDialogView: UIView, UITextFieldDelegate {
         inputField.layer.borderColor = UIColor(white: 1.0, alpha: 0.15).cgColor
         inputField.placeholder = placeholder
         inputField.text = defaultText
+        inputField.isSecureTextEntry = isSecureTextEntry
         inputField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 8, height: 1))
         inputField.leftViewMode = .always
 
@@ -263,7 +266,8 @@ extension UIViewController {
         message: String?,
         actions: [DesktopAlertAction],
         textFieldPlaceholder: String? = nil,
-        textFieldDefaultText: String? = nil
+        textFieldDefaultText: String? = nil,
+        isSecureTextEntry: Bool = false
     ) {
         if let ws = tilingWorkspace {
             ws.showDesktopDialog(
@@ -271,7 +275,8 @@ extension UIViewController {
                 message: message,
                 actions: actions,
                 textFieldPlaceholder: textFieldPlaceholder,
-                textFieldDefaultText: textFieldDefaultText
+                textFieldDefaultText: textFieldDefaultText,
+                isSecureTextEntry: isSecureTextEntry
             )
         } else {
             let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
@@ -279,6 +284,7 @@ extension UIViewController {
                 alert.addTextField { tf in
                     tf.placeholder = ph
                     tf.text = textFieldDefaultText
+                    tf.isSecureTextEntry = isSecureTextEntry
                 }
             }
             for a in actions {

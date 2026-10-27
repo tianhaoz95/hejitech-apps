@@ -17,10 +17,27 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.7"
+    static let currentVersion = "0.1.8"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.8", date: "October 2026", items: [
+            WhatsNewItem(
+                icon: "server.rack",
+                title: "Preset SSH Hosts & Passwords in Settings",
+                description: "Configure and manage SSH hosts directly in Settings with secure Keychain-backed preset passwords."
+            ),
+            WhatsNewItem(
+                icon: "bolt.fill",
+                title: "Auto-Connect SSH Sessions",
+                description: "Enable auto-connect on any host to instantly connect and authenticate with your preset password as soon as an SSH tab opens."
+            ),
+            WhatsNewItem(
+                icon: "lock.shield",
+                title: "Strict Secret Isolation",
+                description: "Passwords and private keys are saved exclusively in your device's Keychain (PRD §14) and are never uploaded to the cloud or server."
+            ),
+        ]),
         ReleaseNotes(version: "0.1.7", date: "October 2026", items: [
             WhatsNewItem(
                 icon: "keyboard",

@@ -233,6 +233,7 @@ public struct SshHost: Codable, Hashable, Sendable, Identifiable {
     public var keyId: String?
     public var rememberPassword: Bool?
     public var autoReconnectOnDisplayReconnect: Bool?
+    public var autoConnect: Bool?
 
     public init(
         id: String = "host-\(UUID().uuidString.lowercased().prefix(8))",
@@ -243,7 +244,8 @@ public struct SshHost: Codable, Hashable, Sendable, Identifiable {
         auth: SshAuthType = .key,
         keyId: String? = nil,
         rememberPassword: Bool? = false,
-        autoReconnectOnDisplayReconnect: Bool? = false
+        autoReconnectOnDisplayReconnect: Bool? = false,
+        autoConnect: Bool? = false
     ) {
         self.id = id
         self.label = label
@@ -254,6 +256,7 @@ public struct SshHost: Codable, Hashable, Sendable, Identifiable {
         self.keyId = keyId
         self.rememberPassword = rememberPassword
         self.autoReconnectOnDisplayReconnect = autoReconnectOnDisplayReconnect
+        self.autoConnect = autoConnect
     }
 
     public var displayTitle: String {
@@ -457,7 +460,7 @@ public enum PaneTreeOps {
         case .web:
             return Tab(id: id, type: .web, title: "New Tab", url: TetherConstants.defaultWebHomeURL)
         case .ssh:
-            let defaultHost = hosts.first
+            let defaultHost = hosts.first(where: { $0.autoConnect == true }) ?? hosts.first
             let title: String
             if let h = defaultHost {
                 title = "SSH: \(h.displayTitle)"
