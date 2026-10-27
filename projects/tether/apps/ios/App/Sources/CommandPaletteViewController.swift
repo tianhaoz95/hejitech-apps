@@ -29,46 +29,42 @@ public struct CommandPaletteItem {
     }
 }
 
-/// Global Command Palette HUD (Cmd+K / Ctrl+K / Cmd+P).
-/// Enables 100% keyboard-driven navigation across tabs, panes, SSH hosts, bookmarks, and layout presets.
+/// Global Command Palette Desktop Overlay (Cmd+K / Ctrl+K / Cmd+P).
+/// Renders natively inside the workspace canvas on the external monitor so that:
+/// 1. The virtual mouse cursor can freely reach, hover, and click every row, search field, close button, or backdrop.
+/// 2. Physical keyboard typing, backspace, arrow navigation, Enter, and Escape work seamlessly.
+/// 3. Can be closed via Escape, click-outside, the dedicated "×" button, or pressing Cmd+K again.
 @MainActor
-public final class CommandPaletteViewController: UIViewController, UITextFieldDelegate, UITableViewDelegate, UITableViewDataSource {
+public final class CommandPaletteView: UIView, UITextFieldDelegate, UITableViewDelegate, UITableViewDataSource {
     private let store: WorkspaceStore
     private weak var workspaceVC: TilingWorkspaceViewController?
 
     private var allItems: [CommandPaletteItem] = []
     private var filteredItems: [CommandPaletteItem] = []
     private var selectedIndex: Int = 0
+    private var searchQuery: String = ""
 
-    private let backdropView = UIView()
+    private let backdropButton = UIButton(type: .custom)
     private let dialogCard = UIView()
     private let searchField = UITextField()
+    private let closeButton = UIButton(type: .system)
     private let tableView = UITableView(frame: .zero, style: .plain)
     private let footerLabel = UILabel()
+
+    public var onDismiss: (() -> Void)?
 
     public init(store: WorkspaceStore, workspaceVC: TilingWorkspaceViewController?) {
         self.store = store
         self.workspaceVC = workspaceVC
-        super.init(nibName: nil, bundle: nil)
-        modalPresentationStyle = .overFullScreen
-        modalTransitionStyle = .crossDissolve
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    public override func viewDidLoad() {
-        super.viewDidLoad()
+        super.init(frame: .zero)
         buildAllItems()
         setupUI()
         filterItems(query: "")
     }
 
-    public override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        searchField.becomeFirstResponder()
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
     }
 
     private func buildAllItems() {
@@ -100,10 +96,10 @@ public final class CommandPaletteViewController: UIViewController, UITextFieldDe
         items.append(CommandPaletteItem(
             id: "new-files",
             title: "New File Explorer Tab",
-            subtitle: "Browse local or remote files",
+            subtitle: "Browse local documents and project directories",
             category: "Tabs",
             systemImage: "folder.fill",
-            shortcutHint: "⌘⇧F"
+            shortcutHint: nil
         ) { [weak self] in
             self?.store.openTab(type: .files)
         })
@@ -113,7 +109,7 @@ public final class CommandPaletteViewController: UIViewController, UITextFieldDe
             title: "Close Active Tab",
             subtitle: "Close the currently focused tab",
             category: "Tabs",
-            systemImage: "xmark.circle",
+            systemImage: "xmark.circle.fill",
             shortcutHint: "⌘W"
         ) { [weak self] in
             self?.store.closeTab()
@@ -122,9 +118,9 @@ public final class CommandPaletteViewController: UIViewController, UITextFieldDe
         items.append(CommandPaletteItem(
             id: "next-tab",
             title: "Next Tab",
-            subtitle: "Cycle forward through tabs in pane",
+            subtitle: "Cycle to the next tab in the focused pane",
             category: "Tabs",
-            systemImage: "arrow.right.circle",
+            systemImage: "chevron.right.circle",
             shortcutHint: "Ctrl+Tab"
         ) { [weak self] in
             guard let self else { return }
@@ -134,20 +130,32 @@ public final class CommandPaletteViewController: UIViewController, UITextFieldDe
         items.append(CommandPaletteItem(
             id: "prev-tab",
             title: "Previous Tab",
-            subtitle: "Cycle backward through tabs in pane",
+            subtitle: "Cycle to the previous tab in the focused pane",
             category: "Tabs",
-            systemImage: "arrow.left.circle",
+            systemImage: "chevron.left.circle",
             shortcutHint: "Ctrl+⇧Tab"
         ) { [weak self] in
             guard let self else { return }
             self.store.tree = PaneTreeOps.selectNextTab(self.store.tree, reverse: true)
         })
 
-        // 2. Layout Presets & Split Panes
         items.append(CommandPaletteItem(
-            id: "layout-single",
+            id: "duplicate-tab",
+            title: "Duplicate Active Tab",
+            subtitle: "Duplicate current tab in a new split",
+            category: "Tabs",
+            systemImage: "plus.rectangle.on.rectangle",
+            shortcutHint: nil
+        ) { [weak self] in
+            guard let self, let pane = self.store.focusedPane, let active = pane.activeTab else { return }
+            self.store.tree = PaneTreeOps.duplicateTab(self.store.tree, paneId: pane.id, tabId: active.id)
+        })
+
+        // 2. Layout Presets & Splitting
+        items.append(CommandPaletteItem(
+            id: "preset-single",
             title: "Layout: Single Pane",
-            subtitle: "Maximize workspace to 1 large pane",
+            subtitle: "Focus a single full-screen pane",
             category: "Layout",
             systemImage: "rectangle",
             shortcutHint: "⌘1"
@@ -156,9 +164,9 @@ public final class CommandPaletteViewController: UIViewController, UITextFieldDe
         })
 
         items.append(CommandPaletteItem(
-            id: "layout-2col",
-            title: "Layout: Two Columns (50 / 50)",
-            subtitle: "Side-by-side equal split",
+            id: "preset-two-col",
+            title: "Layout: 2 Columns",
+            subtitle: "Side-by-side vertical split",
             category: "Layout",
             systemImage: "rectangle.split.2x1",
             shortcutHint: "⌘2"
@@ -167,9 +175,9 @@ public final class CommandPaletteViewController: UIViewController, UITextFieldDe
         })
 
         items.append(CommandPaletteItem(
-            id: "layout-1plus2",
-            title: "Layout: 1 Left + 2 Stacked Right",
-            subtitle: "Main focus pane with two utility panes",
+            id: "preset-1-2",
+            title: "Layout: 1 + 2 Split",
+            subtitle: "Primary left pane + 2 stacked right panes",
             category: "Layout",
             systemImage: "rectangle.split.3x1",
             shortcutHint: "⌘3"
@@ -178,9 +186,9 @@ public final class CommandPaletteViewController: UIViewController, UITextFieldDe
         })
 
         items.append(CommandPaletteItem(
-            id: "layout-2x2",
-            title: "Layout: 2 × 2 Grid (4 Panes)",
-            subtitle: "Four independent quadrant panes",
+            id: "preset-2x2",
+            title: "Layout: 2 × 2 Grid",
+            subtitle: "Four equal quadrant panes",
             category: "Layout",
             systemImage: "rectangle.split.2x2",
             shortcutHint: "⌘4"
@@ -191,9 +199,9 @@ public final class CommandPaletteViewController: UIViewController, UITextFieldDe
         items.append(CommandPaletteItem(
             id: "split-vert",
             title: "Split Pane Vertically",
-            subtitle: "Divide focused pane side-by-side",
+            subtitle: "Add a side-by-side vertical split to focused pane",
             category: "Layout",
-            systemImage: "rectangle.split.2x1",
+            systemImage: "square.split.1x2",
             shortcutHint: "⌘D"
         ) { [weak self] in
             self?.store.splitFocusedPane(.horizontal)
@@ -202,9 +210,9 @@ public final class CommandPaletteViewController: UIViewController, UITextFieldDe
         items.append(CommandPaletteItem(
             id: "split-horiz",
             title: "Split Pane Horizontally",
-            subtitle: "Divide focused pane top and bottom",
+            subtitle: "Add a top/bottom horizontal split to focused pane",
             category: "Layout",
-            systemImage: "rectangle.split.1x2",
+            systemImage: "square.split.2x1",
             shortcutHint: "⌘⇧D"
         ) { [weak self] in
             self?.store.splitFocusedPane(.vertical)
@@ -213,18 +221,18 @@ public final class CommandPaletteViewController: UIViewController, UITextFieldDe
         items.append(CommandPaletteItem(
             id: "close-pane",
             title: "Close Focused Pane",
-            subtitle: "Close pane and redistribute remaining tabs",
+            subtitle: "Remove the currently focused split pane",
             category: "Layout",
-            systemImage: "xmark.square",
+            systemImage: "rectangle.badge.xmark",
             shortcutHint: "⌘⇧W"
         ) { [weak self] in
             self?.store.closePane()
         })
 
         items.append(CommandPaletteItem(
-            id: "toggle-max",
-            title: "Toggle Maximize Focused Pane",
-            subtitle: "Temporarily expand pane to full workspace",
+            id: "toggle-maximise",
+            title: "Toggle Maximise Focused Pane",
+            subtitle: "Temporarily expand pane full-screen without losing split layout",
             category: "Layout",
             systemImage: "arrow.up.left.and.arrow.down.right",
             shortcutHint: "⌘⇧M"
@@ -286,8 +294,7 @@ public final class CommandPaletteViewController: UIViewController, UITextFieldDe
                     guard let self else { return }
                     self.store.tree = PaneTreeOps.focusPane(self.store.tree, paneId: pane.id)
                     self.store.tree = PaneTreeOps.selectTab(self.store.tree, paneId: pane.id, tabId: tab.id)
-                }
-                )
+                })
             }
         }
 
@@ -374,27 +381,29 @@ public final class CommandPaletteViewController: UIViewController, UITextFieldDe
     }
 
     private func setupUI() {
-        view.backgroundColor = .clear
+        backgroundColor = .clear
 
-        backdropView.translatesAutoresizingMaskIntoConstraints = false
-        backdropView.backgroundColor = UIColor(white: 0.0, alpha: 0.65)
+        // Backdrop: both a UIButton and UITapGestureRecognizer to guarantee clicks and taps close
+        backdropButton.translatesAutoresizingMaskIntoConstraints = false
+        backdropButton.backgroundColor = UIColor(white: 0.0, alpha: 0.65)
+        backdropButton.addTarget(self, action: #selector(handleBackdropTapped), for: .touchUpInside)
         let tap = UITapGestureRecognizer(target: self, action: #selector(handleBackdropTapped))
-        backdropView.addGestureRecognizer(tap)
-        view.addSubview(backdropView)
+        backdropButton.addGestureRecognizer(tap)
+        addSubview(backdropButton)
 
         dialogCard.translatesAutoresizingMaskIntoConstraints = false
         dialogCard.backgroundColor = UIColor(red: 0.07, green: 0.10, blue: 0.16, alpha: 0.98)
         dialogCard.layer.cornerRadius = 14
-        dialogCard.layer.borderWidth = 1
-        dialogCard.layer.borderColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.35).cgColor
+        dialogCard.layer.borderWidth = 1.5
+        dialogCard.layer.borderColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.45).cgColor
         dialogCard.layer.shadowColor = UIColor.black.cgColor
-        dialogCard.layer.shadowOpacity = 0.5
+        dialogCard.layer.shadowOpacity = 0.65
         dialogCard.layer.shadowOffset = CGSize(width: 0, height: 10)
         dialogCard.layer.shadowRadius = 25
         dialogCard.clipsToBounds = true
-        view.addSubview(dialogCard)
+        addSubview(dialogCard)
 
-        // Search Input Header
+        // Search Header
         let searchHeader = UIView()
         searchHeader.translatesAutoresizingMaskIntoConstraints = false
         searchHeader.backgroundColor = UIColor(red: 0.09, green: 0.13, blue: 0.22, alpha: 1.0)
@@ -406,17 +415,28 @@ public final class CommandPaletteViewController: UIViewController, UITextFieldDe
 
         searchField.translatesAutoresizingMaskIntoConstraints = false
         searchField.delegate = self
-        searchField.placeholder = "Type a command, tab, host, or action… (Esc to exit)"
+        searchField.placeholder = "Search commands, tabs, hosts, layouts… (Esc to close)"
         searchField.font = .systemFont(ofSize: 15, weight: .medium)
         searchField.textColor = .white
         searchField.tintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
         searchField.autocorrectionType = .no
         searchField.autocapitalizationType = .none
         searchField.clearButtonMode = .whileEditing
-        searchField.addTarget(self, action: #selector(handleSearchChanged), for: .editingChanged)
+        searchField.addTarget(self, action: #selector(handleSearchFieldChanged), for: .editingChanged)
+
+        // Dedicated Close ("×") Button on Top Right
+        closeButton.translatesAutoresizingMaskIntoConstraints = false
+        let xConfig = UIImage.SymbolConfiguration(pointSize: 14, weight: .bold)
+        closeButton.setImage(UIImage(systemName: "xmark", withConfiguration: xConfig), for: .normal)
+        closeButton.tintColor = UIColor(white: 0.75, alpha: 1.0)
+        closeButton.backgroundColor = UIColor(white: 1.0, alpha: 0.08)
+        closeButton.layer.cornerRadius = 14
+        closeButton.clipsToBounds = true
+        closeButton.addTarget(self, action: #selector(handleCloseTapped), for: .touchUpInside)
 
         searchHeader.addSubview(searchIcon)
         searchHeader.addSubview(searchField)
+        searchHeader.addSubview(closeButton)
 
         // Table View
         tableView.translatesAutoresizingMaskIntoConstraints = false
@@ -428,7 +448,7 @@ public final class CommandPaletteViewController: UIViewController, UITextFieldDe
         tableView.keyboardDismissMode = .none
         tableView.register(CommandPaletteCell.self, forCellReuseIdentifier: "CommandCell")
 
-        // Footer
+        // Footer Bar
         let footerBar = UIView()
         footerBar.translatesAutoresizingMaskIntoConstraints = false
         footerBar.backgroundColor = UIColor(red: 0.05, green: 0.07, blue: 0.12, alpha: 1.0)
@@ -436,7 +456,7 @@ public final class CommandPaletteViewController: UIViewController, UITextFieldDe
         footerLabel.translatesAutoresizingMaskIntoConstraints = false
         footerLabel.font = .systemFont(ofSize: 11, weight: .regular)
         footerLabel.textColor = UIColor(white: 1.0, alpha: 0.5)
-        footerLabel.text = "↑/↓ to navigate  •  ↵ to run  •  esc to cancel"
+        footerLabel.text = "↑/↓ navigate  •  ↵ run  •  esc or × close"
         footerBar.addSubview(footerLabel)
 
         dialogCard.addSubview(searchHeader)
@@ -444,14 +464,14 @@ public final class CommandPaletteViewController: UIViewController, UITextFieldDe
         dialogCard.addSubview(footerBar)
 
         NSLayoutConstraint.activate([
-            backdropView.topAnchor.constraint(equalTo: view.topAnchor),
-            backdropView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            backdropView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            backdropView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            backdropButton.topAnchor.constraint(equalTo: topAnchor),
+            backdropButton.leadingAnchor.constraint(equalTo: leadingAnchor),
+            backdropButton.trailingAnchor.constraint(equalTo: trailingAnchor),
+            backdropButton.bottomAnchor.constraint(equalTo: bottomAnchor),
 
-            dialogCard.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            dialogCard.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: -40),
-            dialogCard.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.75, constant: 0),
+            dialogCard.centerXAnchor.constraint(equalTo: centerXAnchor),
+            dialogCard.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -30),
+            dialogCard.widthAnchor.constraint(equalTo: widthAnchor, multiplier: 0.75),
             dialogCard.widthAnchor.constraint(lessThanOrEqualToConstant: 580),
             dialogCard.widthAnchor.constraint(greaterThanOrEqualToConstant: 320),
             dialogCard.heightAnchor.constraint(equalToConstant: 380),
@@ -467,8 +487,13 @@ public final class CommandPaletteViewController: UIViewController, UITextFieldDe
             searchIcon.heightAnchor.constraint(equalToConstant: 18),
 
             searchField.leadingAnchor.constraint(equalTo: searchIcon.trailingAnchor, constant: 10),
-            searchField.trailingAnchor.constraint(equalTo: searchHeader.trailingAnchor, constant: -14),
+            searchField.trailingAnchor.constraint(equalTo: closeButton.leadingAnchor, constant: -10),
             searchField.centerYAnchor.constraint(equalTo: searchHeader.centerYAnchor),
+
+            closeButton.trailingAnchor.constraint(equalTo: searchHeader.trailingAnchor, constant: -10),
+            closeButton.centerYAnchor.constraint(equalTo: searchHeader.centerYAnchor),
+            closeButton.widthAnchor.constraint(equalToConstant: 28),
+            closeButton.heightAnchor.constraint(equalToConstant: 28),
 
             tableView.topAnchor.constraint(equalTo: searchHeader.bottomAnchor),
             tableView.leadingAnchor.constraint(equalTo: dialogCard.leadingAnchor),
@@ -485,13 +510,32 @@ public final class CommandPaletteViewController: UIViewController, UITextFieldDe
         ])
     }
 
-    @objc private func handleBackdropTapped() {
-        dismiss(animated: true)
+    // MARK: - Dismiss & Interaction Actions
+
+    @objc private func handleCloseTapped() {
+        dismissPalette()
     }
 
-    @objc private func handleSearchChanged() {
-        let q = (searchField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        filterItems(query: q)
+    @objc private func handleBackdropTapped() {
+        dismissPalette()
+    }
+
+    public func dismissPalette(completion: (() -> Void)? = nil) {
+        UIView.animate(withDuration: 0.15, animations: {
+            self.alpha = 0
+            self.dialogCard.transform = CGAffineTransform(scaleX: 0.95, y: 0.95)
+        }) { _ in
+            self.removeFromSuperview()
+            self.onDismiss?()
+            completion?()
+        }
+    }
+
+    // MARK: - Search & Live Filtering
+
+    @objc private func handleSearchFieldChanged() {
+        searchQuery = searchField.text ?? ""
+        filterItems(query: searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())
     }
 
     private func filterItems(query: String) {
@@ -512,45 +556,51 @@ public final class CommandPaletteViewController: UIViewController, UITextFieldDe
         }
     }
 
-    public func executeSelectedItem() {
-        guard !filteredItems.isEmpty, selectedIndex < filteredItems.count else { return }
-        let item = filteredItems[selectedIndex]
-        dismiss(animated: true) {
-            item.action()
+    // MARK: - Keyboard & Cursor Execution
+
+    public func handleKeyInput(_ text: String) {
+        if text == "\u{7F}" { // Backspace
+            if !searchQuery.isEmpty {
+                searchQuery.removeLast()
+            }
+        } else if text == "\n" || text == "\r" {
+            executeSelectedItem()
+            return
+        } else {
+            // Filter non-printable ASCII
+            let filtered = text.filter { !$0.isASCII || ($0 >= " " && $0 != "\u{7F}") }
+            if !filtered.isEmpty {
+                searchQuery.append(filtered)
+            }
+        }
+        searchField.text = searchQuery
+        filterItems(query: searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())
+    }
+
+    public func selectNextItem() {
+        guard !filteredItems.isEmpty else { return }
+        if selectedIndex < filteredItems.count - 1 {
+            selectedIndex += 1
+            let ip = IndexPath(row: selectedIndex, section: 0)
+            tableView.selectRow(at: ip, animated: true, scrollPosition: .middle)
         }
     }
 
-    // MARK: - Key Handling in Command Palette
-
-    public override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
-        for press in presses {
-            guard let key = press.key else { continue }
-            switch key.keyCode {
-            case .keyboardDownArrow:
-                if selectedIndex < filteredItems.count - 1 {
-                    selectedIndex += 1
-                    let ip = IndexPath(row: selectedIndex, section: 0)
-                    tableView.selectRow(at: ip, animated: true, scrollPosition: .middle)
-                }
-                return
-            case .keyboardUpArrow:
-                if selectedIndex > 0 {
-                    selectedIndex -= 1
-                    let ip = IndexPath(row: selectedIndex, section: 0)
-                    tableView.selectRow(at: ip, animated: true, scrollPosition: .middle)
-                }
-                return
-            case .keyboardReturnOrEnter:
-                executeSelectedItem()
-                return
-            case .keyboardEscape:
-                dismiss(animated: true)
-                return
-            default:
-                break
-            }
+    public func selectPreviousItem() {
+        guard !filteredItems.isEmpty else { return }
+        if selectedIndex > 0 {
+            selectedIndex -= 1
+            let ip = IndexPath(row: selectedIndex, section: 0)
+            tableView.selectRow(at: ip, animated: true, scrollPosition: .middle)
         }
-        super.pressesBegan(presses, with: event)
+    }
+
+    public func executeSelectedItem() {
+        guard !filteredItems.isEmpty, selectedIndex < filteredItems.count else { return }
+        let item = filteredItems[selectedIndex]
+        dismissPalette {
+            item.action()
+        }
     }
 
     public func textFieldShouldReturn(_ textField: UITextField) -> Bool {

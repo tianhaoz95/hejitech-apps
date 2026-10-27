@@ -16,6 +16,7 @@ public final class TilingWorkspaceViewController: UIViewController {
     private let workspaceCanvas = UIView()
     public private(set) var virtualCursorOverlay: VirtualCursorOverlayView!
     public private(set) var activeDialog: DesktopDialogView?
+    public private(set) var activeCommandPalette: CommandPaletteView?
 
     public struct SplitDividerInfo {
         public let splitId: String
@@ -500,6 +501,10 @@ public final class TilingWorkspaceViewController: UIViewController {
     }
 
     public func routeKeyInput(_ text: String) {
+        if let palette = activeCommandPalette {
+            palette.handleKeyInput(text)
+            return
+        }
         guard let active = activeTabController else { return }
         if let ssh = active as? SshTabViewController {
             ssh.handleKeyInput(text: text)
@@ -511,6 +516,24 @@ public final class TilingWorkspaceViewController: UIViewController {
     }
 
     public func routeSpecialKey(_ key: SpecialKey) {
+        if let palette = activeCommandPalette {
+            switch key {
+            case .enter:
+                palette.executeSelectedItem()
+                return
+            case .escape:
+                palette.dismissPalette()
+                return
+            case .up:
+                palette.selectPreviousItem()
+                return
+            case .down:
+                palette.selectNextItem()
+                return
+            default:
+                break
+            }
+        }
         if let dialog = activeDialog {
             switch key {
             case .enter:
@@ -549,6 +572,11 @@ public final class TilingWorkspaceViewController: UIViewController {
         virtualCursorOverlay?.move(by: delta)
         guard let overlay = virtualCursorOverlay else { return }
         let cursorPt = overlay.cursorPosition
+
+        if activeCommandPalette != nil || activeDialog != nil {
+            overlay.resetDefaultCursor()
+            return
+        }
 
         if isDragHeld {
             if let drag = activeDragSplit {
@@ -632,11 +660,58 @@ public final class TilingWorkspaceViewController: UIViewController {
     }
 
     @objc public func openCommandPalette() {
-        if presentedViewController is CommandPaletteViewController {
+        if let palette = activeCommandPalette {
+            palette.dismissPalette()
             return
         }
-        let palette = CommandPaletteViewController(store: store, workspaceVC: self)
-        present(palette, animated: true)
+        let palette = CommandPaletteView(store: store, workspaceVC: self)
+        palette.translatesAutoresizingMaskIntoConstraints = false
+        palette.onDismiss = { [weak self] in
+            self?.activeCommandPalette = nil
+        }
+        self.activeCommandPalette = palette
+        view.addSubview(palette)
+
+        NSLayoutConstraint.activate([
+            palette.topAnchor.constraint(equalTo: view.topAnchor),
+            palette.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            palette.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            palette.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        ])
+
+        // Ensure cursor is always in front of the command palette
+        view.bringSubviewToFront(virtualCursorOverlay)
+    }
+
+    public override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        if let palette = activeCommandPalette {
+            for press in presses {
+                guard let key = press.key else { continue }
+                switch key.keyCode {
+                case .keyboardEscape:
+                    palette.dismissPalette()
+                    return
+                case .keyboardReturnOrEnter:
+                    palette.executeSelectedItem()
+                    return
+                case .keyboardUpArrow:
+                    palette.selectPreviousItem()
+                    return
+                case .keyboardDownArrow:
+                    palette.selectNextItem()
+                    return
+                case .keyboardDeleteOrBackspace:
+                    palette.handleKeyInput("\u{7F}")
+                    return
+                default:
+                    if !key.characters.isEmpty && !key.modifierFlags.contains(.command) && !key.modifierFlags.contains(.control) {
+                        palette.handleKeyInput(key.characters)
+                        return
+                    }
+                }
+            }
+        }
+        super.pressesBegan(presses, with: event)
     }
 
     public func activeWebTabController() -> WebTabViewController? {

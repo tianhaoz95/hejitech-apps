@@ -17,10 +17,32 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.4"
+    static let currentVersion = "0.1.5"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.5", date: "October 2026", items: [
+            WhatsNewItem(
+                icon: "cursorarrow.rays",
+                title: "Cursor Control for Command Palette",
+                description: "The mouse cursor and phone trackpad now freely move over, hover, and click every command palette item, search bar, and button."
+            ),
+            WhatsNewItem(
+                icon: "keyboard.fill",
+                title: "Physical Keyboard Input & Navigation",
+                description: "Type search queries directly from your connected hardware keyboard with live filtering, backspace support, arrow navigation, and Enter to execute."
+            ),
+            WhatsNewItem(
+                icon: "xmark.circle.fill",
+                title: "Quick Palette Dismissal",
+                description: "Close the command palette effortlessly using the new dedicated '×' button, clicking anywhere outside, pressing Escape, or toggling ⌘K."
+            ),
+            WhatsNewItem(
+                icon: "arrow.up.and.down",
+                title: "Scrollable Phone Sidebar",
+                description: "The phone controller's action sidebar is now scrollable in both landscape and portrait, ensuring every control remains reachable on any device."
+            ),
+        ]),
         ReleaseNotes(version: "0.1.4", date: "October 2026", items: [
             WhatsNewItem(
                 icon: "command",

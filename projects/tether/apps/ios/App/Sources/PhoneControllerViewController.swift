@@ -31,6 +31,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
 
     // UI Structure
     private let verticalSidebar = UIView()
+    private let sidebarScrollView = UIScrollView()
     private let sidebarStack = UIStackView()
     private let statusDot = UIView()
     private let touchpadTabBtn = UIButton(type: .system)
@@ -287,7 +288,14 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         sidebarStack.addArrangedSubview(filesBtn)
         sidebarStack.addArrangedSubview(layoutBtn)
 
-        verticalSidebar.addSubview(sidebarStack)
+        sidebarScrollView.translatesAutoresizingMaskIntoConstraints = false
+        sidebarScrollView.showsVerticalScrollIndicator = false
+        sidebarScrollView.showsHorizontalScrollIndicator = false
+        sidebarScrollView.alwaysBounceVertical = true
+        sidebarScrollView.contentInsetAdjustmentBehavior = .never
+
+        verticalSidebar.addSubview(sidebarScrollView)
+        sidebarScrollView.addSubview(sidebarStack)
         containerView.translatesAutoresizingMaskIntoConstraints = false
 
         view.addSubview(verticalSidebar)
@@ -297,9 +305,16 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
             statusDot.widthAnchor.constraint(equalToConstant: 8),
             statusDot.heightAnchor.constraint(equalToConstant: 8),
 
-            sidebarStack.topAnchor.constraint(equalTo: verticalSidebar.safeAreaLayoutGuide.topAnchor, constant: 12),
-            sidebarStack.centerXAnchor.constraint(equalTo: verticalSidebar.centerXAnchor),
-            sidebarStack.widthAnchor.constraint(equalTo: verticalSidebar.widthAnchor),
+            sidebarScrollView.topAnchor.constraint(equalTo: verticalSidebar.safeAreaLayoutGuide.topAnchor),
+            sidebarScrollView.leadingAnchor.constraint(equalTo: verticalSidebar.leadingAnchor),
+            sidebarScrollView.trailingAnchor.constraint(equalTo: verticalSidebar.trailingAnchor),
+            sidebarScrollView.bottomAnchor.constraint(equalTo: verticalSidebar.safeAreaLayoutGuide.bottomAnchor),
+
+            sidebarStack.topAnchor.constraint(equalTo: sidebarScrollView.contentLayoutGuide.topAnchor, constant: 10),
+            sidebarStack.leadingAnchor.constraint(equalTo: sidebarScrollView.contentLayoutGuide.leadingAnchor),
+            sidebarStack.trailingAnchor.constraint(equalTo: sidebarScrollView.contentLayoutGuide.trailingAnchor),
+            sidebarStack.bottomAnchor.constraint(equalTo: sidebarScrollView.contentLayoutGuide.bottomAnchor, constant: -10),
+            sidebarStack.widthAnchor.constraint(equalTo: sidebarScrollView.frameLayoutGuide.widthAnchor),
         ])
 
         applySidebarLayoutConstraints()
@@ -1053,15 +1068,19 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.hasDetectedPhysicalKeyboard = true
+            Task { @MainActor in
+                self?.hasDetectedPhysicalKeyboard = true
+            }
         }
         NotificationCenter.default.addObserver(
             forName: .GCKeyboardDidDisconnect,
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            if GCKeyboard.coalesced == nil {
-                self?.hasDetectedPhysicalKeyboard = false
+            Task { @MainActor in
+                if GCKeyboard.coalesced == nil {
+                    self?.hasDetectedPhysicalKeyboard = false
+                }
             }
         }
     }
@@ -1128,7 +1147,11 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
                         store.openTab(type: .web)
                         handled = true
                     case "W":
-                        store.closeTab()
+                        if workspaceVC?.activeCommandPalette != nil {
+                            workspaceVC?.activeCommandPalette?.dismissPalette()
+                        } else {
+                            store.closeTab()
+                        }
                         handled = true
                     case "1":
                         store.applyPreset(.single)
