@@ -126,7 +126,23 @@ async function glassesPanel() {
   return section("Even G2 glasses", el("p", { class: "muted small" }, "Install FitLoop from the Even Hub, then pair it with a code."), get, codeBox, list);
 }
 
+function copyButton(value: string, label = "Copy") {
+  const btn = el("button", { class: "btn secondary", type: "button", style: "padding: 6px 12px; font-size: 13.5px" }, label);
+  btn.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      btn.textContent = "Copied";
+      setTimeout(() => { btn.textContent = label; }, 1800);
+    } catch {
+      btn.textContent = "Failed";
+      setTimeout(() => { btn.textContent = label; }, 1800);
+    }
+  });
+  return btn;
+}
+
 async function agentsPanel() {
+  const mcpUrl = `${location.origin}/mcp`;
   const grants = el("ul", { class: "list" }), tokens = el("ul", { class: "list" }), fresh = el("div", {});
   const refresh = async () => {
     const [g, t] = await Promise.all([
@@ -142,11 +158,20 @@ async function agentsPanel() {
   const make = el("button", { class: "btn secondary", type: "button" }, "Make a personal token");
   make.addEventListener("click", async () => {
     const r = await api<{ token: string }>("/api/tokens", { method: "POST", body: JSON.stringify({ name: "Agent" }) });
-    if (r.ok) fresh.replaceChildren(el("p", { class: "small" }, "Copy it now; it isn't shown again:"), el("p", { class: "secret mono" }, r.body.token));
+    if (r.ok) {
+      fresh.replaceChildren(
+        el("p", { class: "small", style: "margin-bottom: 6px" }, "Copy it now; it isn't shown again:"),
+        el("div", { class: "row", style: "margin-bottom: 12px" },
+          el("code", { class: "secret mono", style: "flex: 1" }, r.body.token),
+          copyButton(r.body.token, "Copy token")));
+    }
     await refresh();
   });
   return section("Agents (MCP)",
-    el("p", { class: "muted small" }, "Add ", el("code", {}, `${location.origin}/mcp`), " as a custom connector in Claude (or any MCP client) and sign in. Agents that can't sign in use a personal token as a Bearer token."),
+    el("p", { class: "muted small" }, "Add this MCP server URL as a custom connector in Claude (or any MCP client) and sign in. Agents that can't sign in use a personal token as a Bearer token."),
+    el("div", { class: "row", style: "margin-bottom: 12px" },
+      el("code", { class: "secret mono", style: "flex: 1" }, mcpUrl),
+      copyButton(mcpUrl, "Copy URL")),
     grants, el("div", { class: "row", style: "margin: 12px 0" }, make), fresh, tokens);
 }
 
