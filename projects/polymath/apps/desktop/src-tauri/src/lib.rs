@@ -23,6 +23,17 @@ pub struct TestRunResult {
     pub duration_ms: u64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LocalCourseInfo {
+    pub slug: String,
+    pub title: String,
+    pub description: String,
+    pub path: String,
+    pub chapter_count: usize,
+    pub has_agent_skill: bool,
+    pub is_active: bool,
+}
+
 struct PtySession {
     master: Box<dyn MasterPty + Send>,
     writer: Box<dyn Write + Send>,
@@ -251,6 +262,7 @@ fn provision_course_workspace(slug: String, title: String, topic: String) -> Res
     }
 
     fs::create_dir_all(base_dir.join(".agents/skills/course-author")).map_err(|e| e.to_string())?;
+    fs::create_dir_all(base_dir.join(".claude/skills/course-author")).map_err(|e| e.to_string())?;
     fs::create_dir_all(base_dir.join(".mcp")).map_err(|e| e.to_string())?;
     fs::create_dir_all(base_dir.join("chapters")).map_err(|e| e.to_string())?;
     fs::create_dir_all(base_dir.join("exercises")).map_err(|e| e.to_string())?;
@@ -297,7 +309,8 @@ Embed these clean tags directly into your chapter markdown:
 "#,
         topic
     );
-    fs::write(base_dir.join(".agents/skills/course-author/SKILL.md"), skill_md).map_err(|e| e.to_string())?;
+    fs::write(base_dir.join(".agents/skills/course-author/SKILL.md"), &skill_md).map_err(|e| e.to_string())?;
+    fs::write(base_dir.join(".claude/skills/course-author/SKILL.md"), &skill_md).map_err(|e| e.to_string())?;
 
     // 3. Seed starter chapter
     let chapter_md = format!(
@@ -579,6 +592,125 @@ async fn run_exercise_tests(
     }
 }
 
+#[tauri::command]
+fn list_local_courses(active_dir: Option<String>) -> Result<Vec<LocalCourseInfo>, String> {
+    let home = std::env::var("HOME").map_err(|e| e.to_string())?;
+    let courses_root = PathBuf::from(&home).join("heji-courses");
+    if !courses_root.exists() {
+        let _ = fs::create_dir_all(&courses_root);
+    }
+
+    let mut courses = Vec::new();
+    let entries = fs::read_dir(&courses_root).map_err(|e| e.to_string())?;
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let dir_name = entry.file_name().to_string_lossy().to_string();
+        if dir_name.starts_with('.') {
+            continue; // Skip hidden folders like .venv or .git
+        }
+
+        let course_yaml = path.join("course.yaml");
+        let course_json = path.join("course.json");
+        let chapters_dir = path.join("chapters");
+        let agents_skill = path.join(".agents/skills/course-author/SKILL.md");
+        let claude_skill = path.join(".claude/skills/course-author/SKILL.md");
+
+        let chapter_count = if chapters_dir.is_dir() {
+            fs::read_dir(&chapters_dir)
+                .map(|it| {
+                    it.flatten()
+                        .filter(|p| p.path().extension().map_or(false, |ext| ext == "md"))
+                        .count()
+                })
+                .unwrap_or(0)
+        } else {
+            0
+        };
+
+        let mut title = dir_name.replace('-', " ");
+        let mut description = format!("Interactive course in {}", path.display());
+
+        if course_yaml.exists() {
+            if let Ok(content) = fs::read_to_string(&course_yaml) {
+                for line in content.lines() {
+                    let trimmed = line.trim();
+                    if trimmed.starts_with("title:") {
+                        title = trimmed
+                            .trim_start_matches("title:")
+                            .trim()
+                            .trim_matches('"')
+                            .trim_matches('\'')
+                            .to_string();
+                    } else if trimmed.starts_with("description:") {
+                        description = trimmed
+                            .trim_start_matches("description:")
+                            .trim()
+                            .trim_matches('"')
+                            .trim_matches('\'')
+                            .to_string();
+                    }
+                }
+            }
+        } else if course_json.exists() {
+            if let Ok(content) = fs::read_to_string(&course_json) {
+                if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
+                    if let Some(t) = val.get("title").and_then(|v| v.as_str()) {
+                        title = t.to_string();
+                    }
+                    if let Some(d) = val.get("description").and_then(|v| v.as_str()) {
+                        description = d.to_string();
+                    }
+                }
+            }
+        }
+
+        let has_agent_skill = agents_skill.exists() || claude_skill.exists();
+        let path_str = path.to_string_lossy().to_string();
+        let is_active = active_dir.as_ref().map_or(false, |ad| {
+            ad == &path_str || ad.ends_with(&dir_name) || (ad.starts_with("~/") && path_str.ends_with(ad.trim_start_matches("~/")))
+        });
+
+        courses.push(LocalCourseInfo {
+            slug: dir_name,
+            title,
+            description,
+            path: path_str,
+            chapter_count,
+            has_agent_skill,
+            is_active,
+        });
+    }
+
+    courses.sort_by(|a, b| a.slug.cmp(&b.slug));
+    Ok(courses)
+}
+
+#[tauri::command]
+fn reveal_in_finder(path: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        let target = if let Some(stripped) = path.strip_prefix("~/") {
+            let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+            PathBuf::from(home).join(stripped)
+        } else {
+            PathBuf::from(path)
+        };
+        Command::new("open")
+            .arg(&target)
+            .spawn()
+            .map_err(|e| format!("Failed to open path in Finder: {}", e))?;
+        Ok(())
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Ok(())
+    }
+}
+
 pub fn run() {
     tauri::Builder::default()
         .manage(AppPtyState::default())
@@ -589,7 +721,9 @@ pub fn run() {
             init_pty_session,
             write_pty_data,
             resize_pty_session,
-            run_exercise_tests
+            run_exercise_tests,
+            list_local_courses,
+            reveal_in_finder
         ])
         .run(tauri::generate_context!())
         .expect("error while running polymath desktop");

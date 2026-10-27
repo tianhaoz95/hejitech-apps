@@ -9,10 +9,23 @@ import { EmbeddedTerminal, type TestRunInfo } from "./components/EmbeddedTermina
 import { invokeTauri, isTauri } from "./tauriBridge.js";
 import type { Course, Chapter } from "@polymath/core";
 
+export interface LocalCourseInfo {
+  slug: string;
+  title: string;
+  description: string;
+  path: string;
+  chapter_count: number;
+  has_agent_skill: boolean;
+  is_active: boolean;
+}
+
 export const App: React.FC = () => {
-  const [course] = useState<Course>(STARTER_VLLM_COURSE);
+  const [course, setCourse] = useState<Course>(STARTER_VLLM_COURSE);
   const [activeChapterIndex, setActiveChapterIndex] = useState(1); // Default to Chapter 2 (PagedAttention & Block Manager)
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCourseListOpen, setIsCourseListOpen] = useState(false);
+  const [localCourses, setLocalCourses] = useState<LocalCourseInfo[]>([]);
+  const [isLoadingCourses, setIsLoadingCourses] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newSlug, setNewSlug] = useState("");
   const [newTopic, setNewTopic] = useState("");
@@ -57,6 +70,120 @@ export const App: React.FC = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  const fetchLocalCourses = async () => {
+    setIsLoadingCourses(true);
+    try {
+      if (isTauri()) {
+        const list = await invokeTauri<LocalCourseInfo[]>("list_local_courses", {
+          activeDir: activeCourseDir || `~/heji-courses/${activeCourseSlug}`,
+        });
+        setLocalCourses(list);
+      } else {
+        setLocalCourses([
+          {
+            slug: "vllm-sglang-trtllm",
+            title: "PyTorch Deep Systems: Building vLLM, SGLang & TensorRT-LLM",
+            description:
+              "Master modern inference engine internals from scratch: non-contiguous KV-cache paging, Radix tree prefix caching, continuous batching, and arithmetic intensity rooflines.",
+            path: "~/heji-courses/vllm-sglang-trtllm",
+            chapter_count: 6,
+            has_agent_skill: true,
+            is_active: true,
+          },
+        ]);
+      }
+    } catch (err: any) {
+      console.error("Failed to list local courses:", err);
+    } finally {
+      setIsLoadingCourses(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLocalCourses();
+  }, []);
+
+  const handleSelectCourse = (c: LocalCourseInfo) => {
+    setActiveCourseSlug(c.slug);
+    setActiveCourseDir(c.path);
+    if (c.slug === "vllm-sglang-trtllm" || c.slug === STARTER_VLLM_COURSE.id) {
+      setCourse(STARTER_VLLM_COURSE);
+      setActiveChapterIndex(1);
+    } else {
+      setCourse({
+        id: c.slug,
+        title: c.title,
+        description: c.description,
+        domain: "ai-inference",
+        author: "Polymath Learner",
+        version: "1.0.0",
+        tags: [c.slug],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        chapters: [
+          {
+            id: `${c.slug}-ch-01`,
+            slug: "01-overview",
+            title: "1. Overview & Core Foundations",
+            order: 1,
+            summary: `Interactive foundations for ${c.title}`,
+            markdownContent: `# 1. ${c.title}\n\nWelcome to your course workspace at \`${c.path}\`!\n\nUse the embedded terminal dock below to run your AI agent (with \`course-author\` skill) to author additional chapters, exercises, and tests.\n\n### Environment Verification`,
+            components: [
+              {
+                kind: "MemoryBlockGrid",
+                props: {
+                  totalBlocks: 32,
+                  allocatedBlocks: 8,
+                  sharedPrefixBlocks: 4,
+                  title: `${c.title} - Initial Memory Layout`,
+                },
+              },
+              {
+                kind: "CodeExercise",
+                props: {
+                  id: "starter-verification",
+                  title: "1.1 Environment Verification",
+                  targetFile: "exercises/starter.py",
+                  testFile: "tests/test_starter.py",
+                  instructions: "Return True in check_env() to verify the pytest execution pipeline.",
+                  starterCode: "def check_env():\n    return True\n",
+                },
+              },
+              {
+                kind: "SocraticQuiz",
+                props: {
+                  question: "Where are your interactive course exercises and chapters stored?",
+                  options: [
+                    `Locally in ${c.path}`,
+                    "On a remote server",
+                    "In browser cookies",
+                  ],
+                  correctAnswerIndex: 0,
+                  explanation: "Polymath is local-first: every course and test suite lives on your local filesystem under ~/heji-courses/.",
+                },
+              },
+            ],
+            estimatedMinutes: 15,
+          },
+        ],
+      });
+      setActiveChapterIndex(0);
+    }
+    setIsCourseListOpen(false);
+    setStatusMessage(`Switched to course: ${c.title}`);
+    setTimeout(() => setStatusMessage(null), 3500);
+  };
+
+  const handleRevealFinder = async (path: string) => {
+    try {
+      if (isTauri()) {
+        await invokeTauri("reveal_in_finder", { path });
+      }
+    } catch (err: any) {
+      console.error("Failed to reveal in Finder:", err);
+    }
+  };
+
   const handleOpenExternalTerminal = async () => {
     try {
       if (isTauri()) {
@@ -87,11 +214,13 @@ export const App: React.FC = () => {
         setActiveCourseDir(res.path);
         setIsTerminalOpen(true);
         setStatusMessage(`Workspace created at ${res.path}!`);
+        await fetchLocalCourses();
       } else {
         setActiveCourseSlug(newSlug);
         setActiveCourseDir(`~/heji-courses/${newSlug}`);
         setIsTerminalOpen(true);
         setStatusMessage(`Simulated workspace ~/heji-courses/${newSlug} provisioned!`);
+        await fetchLocalCourses();
       }
       setIsModalOpen(false);
     } catch (err: any) {
@@ -150,7 +279,33 @@ export const App: React.FC = () => {
           </div>
 
           <span style={{ color: mutColor, fontSize: 13 }}>/</span>
-          <span style={{ fontSize: 12, color: mutColor }}>{course.title}</span>
+
+          {/* Interactive Course Selector */}
+          <button
+            onClick={() => {
+              setIsCourseListOpen(true);
+              fetchLocalCourses();
+            }}
+            style={{
+              background: isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.06)",
+              border: `1px solid ${borderColor}`,
+              borderRadius: 6,
+              padding: "2px 8px",
+              fontSize: 12,
+              color: textColor,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              fontWeight: 600,
+            }}
+            title="Switch or view all courses in ~/heji-courses/"
+          >
+            <span>📚</span>
+            <span>{course.title.length > 26 ? course.title.slice(0, 24) + "…" : course.title}</span>
+            <span style={{ fontSize: 9, color: mutColor }}>▾</span>
+          </button>
+
           <span style={{ color: mutColor, fontSize: 13 }}>/</span>
           <b style={{ fontSize: 12, color: textColor }}>
             Ch 0{activeChapterIndex + 1}: {activeChapter.title.replace(/^\d+\.\s*/, "")}
@@ -272,6 +427,45 @@ export const App: React.FC = () => {
             title="Open native Terminal.app window"
           >
             ↗ External
+          </button>
+
+          {/* View All Courses Button */}
+          <button
+            onClick={() => {
+              setIsCourseListOpen(true);
+              fetchLocalCourses();
+            }}
+            style={{
+              background: isLight ? "#FFFFFF" : "rgba(255, 255, 255, 0.06)",
+              color: textColor,
+              border: `1px solid ${borderColor}`,
+              borderRadius: 6,
+              padding: "4px 10px",
+              fontSize: 11,
+              fontWeight: 600,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+            }}
+            title="Browse all courses in ~/heji-courses/"
+          >
+            <span>📚</span>
+            <span>Courses</span>
+            {localCourses.length > 0 && (
+              <span
+                style={{
+                  background: isLight ? "rgba(9, 105, 218, 0.12)" : "rgba(88, 166, 255, 0.2)",
+                  color: accentColor,
+                  borderRadius: 10,
+                  padding: "1px 6px",
+                  fontSize: 10,
+                  fontWeight: 700,
+                }}
+              >
+                {localCourses.length}
+              </span>
+            )}
           </button>
 
           {/* Create Course Button */}
@@ -812,6 +1006,385 @@ export const App: React.FC = () => {
                 }}
               >
                 Launch Workspace & Agent Terminal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* "My Courses / Course Library" Modal */}
+      {isCourseListOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.75)",
+            backdropFilter: "blur(8px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 100,
+          }}
+        >
+          <div
+            style={{
+              width: 700,
+              maxHeight: "85vh",
+              background: isLight ? "#FFFFFF" : "#161B22",
+              border: `1px solid ${borderColor}`,
+              borderRadius: 14,
+              display: "flex",
+              flexDirection: "column",
+              boxShadow: "0 24px 64px rgba(0, 0, 0, 0.6)",
+              overflow: "hidden",
+            }}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: "18px 24px",
+                borderBottom: `1px solid ${borderColor}`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexShrink: 0,
+              }}
+            >
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: textColor }}>
+                    Course Library
+                  </h2>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: "2px 8px",
+                      borderRadius: 12,
+                      background: isLight ? "rgba(9, 105, 218, 0.1)" : "rgba(88, 166, 255, 0.15)",
+                      color: accentColor,
+                    }}
+                  >
+                    {localCourses.length} {localCourses.length === 1 ? "Course" : "Courses"}
+                  </span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+                  <span style={{ fontSize: 12, color: mutColor }}>
+                    Stored locally in
+                  </span>
+                  <code
+                    style={{
+                      fontSize: 11,
+                      color: accentColor,
+                      background: isLight ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.06)",
+                      padding: "1px 6px",
+                      borderRadius: 4,
+                      fontFamily: "JetBrains Mono, monospace",
+                    }}
+                  >
+                    ~/heji-courses/
+                  </code>
+                  <button
+                    onClick={() => handleRevealFinder("~/heji-courses")}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: accentColor,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      padding: "0 4px",
+                      textDecoration: "underline",
+                    }}
+                    title="Open ~/heji-courses in macOS Finder"
+                  >
+                    Open in Finder ↗
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button
+                  onClick={() => {
+                    setIsCourseListOpen(false);
+                    setIsModalOpen(true);
+                  }}
+                  style={{
+                    background: "linear-gradient(180deg, #2563EB, #1D4ED8)",
+                    color: "#FFFFFF",
+                    border: "1px solid #3B82F6",
+                    borderRadius: 6,
+                    padding: "6px 12px",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.2)",
+                  }}
+                >
+                  + New Course
+                </button>
+                <button
+                  onClick={() => setIsCourseListOpen(false)}
+                  style={{
+                    background: isLight ? "#F0F2F5" : "rgba(255, 255, 255, 0.08)",
+                    border: "none",
+                    color: mutColor,
+                    borderRadius: 6,
+                    padding: "6px 10px",
+                    fontSize: 12,
+                    cursor: "pointer",
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Courses Scroll Area */}
+            <div
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                padding: "20px 24px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+              }}
+            >
+              {isLoadingCourses ? (
+                <div style={{ textAlign: "center", padding: "40px 0", color: mutColor, fontSize: 13 }}>
+                  Scanning ~/heji-courses/...
+                </div>
+              ) : localCourses.length === 0 ? (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "48px 24px",
+                    border: `1px dashed ${borderColor}`,
+                    borderRadius: 10,
+                  }}
+                >
+                  <p style={{ fontSize: 14, fontWeight: 700, color: textColor, marginBottom: 6 }}>
+                    No courses found in ~/heji-courses/
+                  </p>
+                  <p style={{ fontSize: 12, color: mutColor, marginBottom: 16 }}>
+                    Create your first course workspace to start authoring interactive modules.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setIsCourseListOpen(false);
+                      setIsModalOpen(true);
+                    }}
+                    style={{
+                      background: "linear-gradient(180deg, #2563EB, #1D4ED8)",
+                      color: "#FFFFFF",
+                      border: "none",
+                      borderRadius: 6,
+                      padding: "8px 18px",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    + Create First Course
+                  </button>
+                </div>
+              ) : (
+                localCourses.map((c) => {
+                  const isActive =
+                    c.slug === activeCourseSlug ||
+                    c.path === activeCourseDir ||
+                    activeCourseDir?.endsWith(`/${c.slug}`);
+
+                  return (
+                    <div
+                      key={c.slug}
+                      style={{
+                        background: isActive
+                          ? isLight
+                            ? "rgba(9, 105, 218, 0.05)"
+                            : "rgba(56, 139, 253, 0.08)"
+                          : isLight
+                          ? "#F8F9FA"
+                          : "#0D1117",
+                        border: `1px solid ${
+                          isActive
+                            ? isLight
+                              ? "rgba(9, 105, 218, 0.4)"
+                              : "rgba(56, 139, 253, 0.4)"
+                            : borderColor
+                        }`,
+                        borderRadius: 10,
+                        padding: 16,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 10,
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                            <h3 style={{ fontSize: 14, fontWeight: 800, margin: 0, color: textColor }}>
+                              {c.title}
+                            </h3>
+                            {isActive && (
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  padding: "2px 7px",
+                                  borderRadius: 10,
+                                  background: "#10B981",
+                                  color: "#FFFFFF",
+                                }}
+                              >
+                                ACTIVE
+                              </span>
+                            )}
+                          </div>
+                          <p style={{ fontSize: 12, color: mutColor, margin: 0, lineHeight: 1.4 }}>
+                            {c.description}
+                          </p>
+                        </div>
+
+                        {/* Switch / Select Button */}
+                        <button
+                          onClick={() => handleSelectCourse(c)}
+                          disabled={isActive}
+                          style={{
+                            background: isActive
+                              ? "transparent"
+                              : "linear-gradient(180deg, #2563EB, #1D4ED8)",
+                            color: isActive ? mutColor : "#FFFFFF",
+                            border: isActive ? `1px solid ${borderColor}` : "1px solid #3B82F6",
+                            borderRadius: 6,
+                            padding: "6px 14px",
+                            fontSize: 11,
+                            fontWeight: 700,
+                            cursor: isActive ? "default" : "pointer",
+                            flexShrink: 0,
+                          }}
+                        >
+                          {isActive ? "Currently Loaded" : "Open Course →"}
+                        </button>
+                      </div>
+
+                      {/* Course Metadata Bar */}
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          paddingTop: 8,
+                          borderTop: `1px solid ${borderColor}`,
+                          fontSize: 11,
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <span style={{ fontFamily: "JetBrains Mono, monospace", color: mutColor }}>
+                            ~/heji-courses/{c.slug}
+                          </span>
+                          <span style={{ color: mutColor }}>•</span>
+                          <span style={{ color: textColor, fontWeight: 600 }}>
+                            {c.chapter_count} {c.chapter_count === 1 ? "Chapter" : "Chapters"}
+                          </span>
+                          {c.has_agent_skill && (
+                            <>
+                              <span style={{ color: mutColor }}>•</span>
+                              <span style={{ color: isLight ? "#059669" : "#34D399", fontWeight: 600 }}>
+                                ✓ course-author skill
+                              </span>
+                            </>
+                          )}
+                        </div>
+
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button
+                            onClick={() => handleRevealFinder(c.path)}
+                            style={{
+                              background: "none",
+                              border: `1px solid ${borderColor}`,
+                              borderRadius: 4,
+                              color: mutColor,
+                              padding: "2px 8px",
+                              fontSize: 10,
+                              cursor: "pointer",
+                            }}
+                            title="Reveal course files in macOS Finder"
+                          >
+                            📂 Finder
+                          </button>
+                          <button
+                            onClick={() => {
+                              setActiveCourseSlug(c.slug);
+                              setActiveCourseDir(c.path);
+                              setIsTerminalOpen(true);
+                              setIsCourseListOpen(false);
+                            }}
+                            style={{
+                              background: "none",
+                              border: `1px solid ${borderColor}`,
+                              borderRadius: 4,
+                              color: accentColor,
+                              padding: "2px 8px",
+                              fontSize: 10,
+                              fontWeight: 600,
+                              cursor: "pointer",
+                            }}
+                            title="Open terminal dock at this course"
+                          >
+                            &gt;_ Terminal
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div
+              style={{
+                padding: "12px 24px",
+                borderTop: `1px solid ${borderColor}`,
+                background: isLight ? "#F8F9FA" : "#0D1117",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexShrink: 0,
+              }}
+            >
+              <button
+                onClick={fetchLocalCourses}
+                style={{
+                  background: "none",
+                  border: `1px solid ${borderColor}`,
+                  borderRadius: 6,
+                  padding: "5px 12px",
+                  fontSize: 11,
+                  color: mutColor,
+                  cursor: "pointer",
+                }}
+              >
+                ⟳ Refresh
+              </button>
+
+              <button
+                onClick={() => setIsCourseListOpen(false)}
+                style={{
+                  background: isLight ? "#FFFFFF" : "rgba(255, 255, 255, 0.08)",
+                  border: `1px solid ${borderColor}`,
+                  borderRadius: 6,
+                  padding: "6px 16px",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: textColor,
+                  cursor: "pointer",
+                }}
+              >
+                Done
               </button>
             </div>
           </div>
