@@ -12,11 +12,11 @@ public final class DisplayHost: NSObject {
     public static let shared = DisplayHost()
 
     public let store = WorkspaceStore()
-    private weak var primaryWindow: UIWindow?
-    private var externalWindow: UIWindow?
-    private var externalWorkspaceVC: TilingWorkspaceViewController?
-    private var phoneControllerVC: PhoneControllerViewController?
-    private var primaryWorkspaceVC: TilingWorkspaceViewController?
+    public private(set) weak var primaryWindow: UIWindow?
+    public private(set) var externalWindow: UIWindow?
+    public private(set) var externalWorkspaceVC: TilingWorkspaceViewController?
+    public private(set) var phoneControllerVC: PhoneControllerViewController?
+    public private(set) var primaryWorkspaceVC: TilingWorkspaceViewController?
     private var observers: [NSObjectProtocol] = []
 
     private override init() {

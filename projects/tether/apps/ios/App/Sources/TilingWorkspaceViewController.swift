@@ -15,6 +15,16 @@ public final class TilingWorkspaceViewController: UIViewController {
     private var phoneSwitcherHeightConstraint: NSLayoutConstraint!
     private let workspaceCanvas = UIView()
     public private(set) var virtualCursorOverlay: VirtualCursorOverlayView!
+    public private(set) var activeDialog: DesktopDialogView?
+
+    public struct SplitDividerInfo {
+        public let splitId: String
+        public let direction: SplitDirection
+        public let frame: CGRect
+        public let containerBounds: CGRect
+    }
+    private var renderedDividers: [SplitDividerInfo] = []
+    private var activeDragSplit: SplitDividerInfo?
 
     /// Live child view controllers keyed by `tab.id` so WebViews, SSH sessions, and Files state persist across layout changes.
     private var tabControllers: [String: UIViewController] = [:]
