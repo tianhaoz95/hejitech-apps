@@ -74,7 +74,7 @@ await step("the agent uploads an exercise GIF, and the backend hosts it publicly
   assert.equal(up.exercise, "goblet-squat");
   assert.match(up.gifUrl, /\/api\/exercises\/goblet-squat\.gif$/);
 
-  const res = await call("/api/exercises/goblet-squat.gif", { raw: "" });
+  const res = await call("/api/exercises/goblet-squat.gif");
   assert.equal(res.status, 200);
   assert.equal(res.headers.get("content-type"), "image/gif");
   assert.equal(res.headers.get("access-control-allow-origin"), "*");
