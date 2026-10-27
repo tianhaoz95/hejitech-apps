@@ -64,6 +64,7 @@ public final class TilingWorkspaceViewController: UIViewController {
         phoneSwitcherHeightConstraint.constant = isCompactPhone ? 32 : 0
         phoneSwitcherBar.isHidden = !isCompactPhone
         rebuildWorkspaceLayout()
+        view.bringSubviewToFront(virtualCursorOverlay)
     }
 
     // MARK: - Top Desktop Chrome & Phone Switcher
