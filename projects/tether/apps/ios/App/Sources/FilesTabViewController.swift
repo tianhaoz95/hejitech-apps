@@ -293,12 +293,15 @@ public final class FilesTabViewController: UIViewController, UITableViewDataSour
         let full = currentMode == .local
             ? localRootDirectory().appendingPathComponent(currentPath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))).path
             : "sftp://\(store.hosts.first?.connectionString ?? "example.invalid:22")\(currentPath)"
-        let alert = UIAlertController(title: "Full Directory Path", message: full, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "Copy Path", style: .default) { _ in
+        let copyAction = DesktopAlertAction(title: "Copy Path", style: .default) { _ in
             UIPasteboard.general.string = full
-        })
-        alert.addAction(UIAlertAction(title: "OK", style: .cancel))
-        present(alert, animated: true)
+        }
+        let okAction = DesktopAlertAction(title: "Close", style: .cancel)
+        showDesktopAlert(
+            title: "Full Directory Path",
+            message: full,
+            actions: [copyAction, okAction]
+        )
     }
 
     @objc private func upTapped() {
@@ -316,15 +319,9 @@ public final class FilesTabViewController: UIViewController, UITableViewDataSour
     }
 
     @objc private func newFolderTapped() {
-        let alert = UIAlertController(title: "New Folder", message: "Create folder in \(currentPath)", preferredStyle: .alert)
-        alert.addTextField { tf in
-            tf.placeholder = "folder-name"
-            tf.autocapitalizationType = .none
-        }
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        alert.addAction(UIAlertAction(title: "Create", style: .default) { [weak self] _ in
+        let createAction = DesktopAlertAction(title: "Create Folder", style: .default) { [weak self] name in
             guard let self,
-                  let name = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  let name = name?.trimmingCharacters(in: .whitespacesAndNewlines),
                   !name.isEmpty else { return }
             let newPath = self.currentPath == "/" ? "/\(name)" : "\(self.currentPath)/\(name)"
             if self.currentMode == .local {
@@ -338,8 +335,14 @@ public final class FilesTabViewController: UIViewController, UITableViewDataSour
                 self.sftpEntries[newPath] = []
             }
             self.reloadDirectory()
-        })
-        present(alert, animated: true)
+        }
+        let cancelAction = DesktopAlertAction(title: "Cancel", style: .cancel)
+        showDesktopAlert(
+            title: "New Folder",
+            message: "Create folder in \(currentPath)",
+            actions: [createAction, cancelAction],
+            textFieldPlaceholder: "folder-name"
+        )
     }
 
     @objc private func uploadOrPickDocumentTapped() {
@@ -452,25 +455,25 @@ public final class FilesTabViewController: UIViewController, UITableViewDataSour
     }
 
     private func presentFileActions(for item: FileItem, sourceRow: IndexPath) {
-        let alert = UIAlertController(title: item.name, message: item.path, preferredStyle: .actionSheet)
+        var actions: [DesktopAlertAction] = []
 
         if item.isTextOrHtmlPreviewable {
-            alert.addAction(UIAlertAction(title: "Open in Web Tab", style: .default) { [weak self] _ in
+            actions.append(DesktopAlertAction(title: "Open in Web Tab", style: .default) { [weak self] _ in
                 self?.openItemInWebTab(item)
             })
         }
 
-        alert.addAction(UIAlertAction(title: "Insert Path into Focused Terminal", style: .default) { [weak self] _ in
+        actions.append(DesktopAlertAction(title: "Insert Path into Terminal", style: .default) { [weak self] _ in
             guard let self else { return }
             _ = self.store.insertPathIntoTerminal(item.path)
         })
 
-        alert.addAction(UIAlertAction(title: "Copy Path", style: .default) { _ in
+        actions.append(DesktopAlertAction(title: "Copy Path", style: .default) { _ in
             UIPasteboard.general.string = item.path
         })
 
         if currentMode == .sftp && !item.isDirectory {
-            alert.addAction(UIAlertAction(title: "Download to Local Files", style: .default) { [weak self] _ in
+            actions.append(DesktopAlertAction(title: "Download to Local Files", style: .default) { [weak self] _ in
                 guard let self else { return }
                 self.startSimulatedTransfer(fileName: item.name, totalBytes: max(1_500_000, item.sizeBytes), isUpload: false) {
                     let dest = self.localRootDirectory().appendingPathComponent(item.name)
@@ -479,20 +482,17 @@ public final class FilesTabViewController: UIViewController, UITableViewDataSour
             })
         }
 
-        alert.addAction(UIAlertAction(title: "Rename…", style: .default) { [weak self] _ in
+        actions.append(DesktopAlertAction(title: "Rename…", style: .default) { [weak self] _ in
             self?.promptRename(item)
         })
 
-        alert.addAction(UIAlertAction(title: "Delete…", style: .destructive) { [weak self] _ in
+        actions.append(DesktopAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
             self?.confirmDelete(item)
         })
 
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        if let pop = alert.popoverPresentationController, let cell = tableView.cellForRow(at: sourceRow) {
-            pop.sourceView = cell
-            pop.sourceRect = cell.bounds
-        }
-        present(alert, animated: true)
+        actions.append(DesktopAlertAction(title: "Cancel", style: .cancel))
+
+        showDesktopAlert(title: item.name, message: item.path, actions: actions)
     }
 
     private func openItemInWebTab(_ item: FileItem) {
@@ -508,12 +508,9 @@ public final class FilesTabViewController: UIViewController, UITableViewDataSour
     }
 
     private func promptRename(_ item: FileItem) {
-        let alert = UIAlertController(title: "Rename", message: item.name, preferredStyle: .alert)
-        alert.addTextField { tf in tf.text = item.name }
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        alert.addAction(UIAlertAction(title: "Rename", style: .default) { [weak self] _ in
+        let renameAction = DesktopAlertAction(title: "Rename", style: .default) { [weak self] newName in
             guard let self,
-                  let newName = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  let newName = newName?.trimmingCharacters(in: .whitespacesAndNewlines),
                   !newName.isEmpty else { return }
             let newPath = self.currentPath == "/" ? "/\(newName)" : "\(self.currentPath)/\(newName)"
             if self.currentMode == .local {
@@ -531,18 +528,19 @@ public final class FilesTabViewController: UIViewController, UITableViewDataSour
                 }
             }
             self.reloadDirectory()
-        })
-        present(alert, animated: true)
+        }
+        let cancelAction = DesktopAlertAction(title: "Cancel", style: .cancel)
+        showDesktopAlert(
+            title: "Rename",
+            message: item.name,
+            actions: [renameAction, cancelAction],
+            textFieldPlaceholder: "New name",
+            textFieldDefaultText: item.name
+        )
     }
 
     private func confirmDelete(_ item: FileItem) {
-        let alert = UIAlertController(
-            title: "Delete \(item.name)?",
-            message: "This will permanently delete \(item.path).",
-            preferredStyle: .alert
-        )
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
+        let deleteAction = DesktopAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
             guard let self else { return }
             if self.currentMode == .local {
                 let cleaned = item.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
@@ -552,7 +550,12 @@ public final class FilesTabViewController: UIViewController, UITableViewDataSour
                 self.sftpEntries[self.currentPath]?.removeAll { $0.path == item.path }
             }
             self.reloadDirectory()
-        })
-        present(alert, animated: true)
+        }
+        let cancelAction = DesktopAlertAction(title: "Cancel", style: .cancel)
+        showDesktopAlert(
+            title: "Delete \(item.name)?",
+            message: "This will permanently delete \(item.path).",
+            actions: [deleteAction, cancelAction]
+        )
     }
 }
