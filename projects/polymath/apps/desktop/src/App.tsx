@@ -116,7 +116,10 @@ export const App: React.FC = () => {
       style={{
         display: "flex",
         flexDirection: "column",
-        height: "100vh",
+        height: "100%",
+        width: "100%",
+        maxHeight: "100vh",
+        maxWidth: "100vw",
         background: bg,
         color: textColor,
         fontFamily: '"Plus Jakarta Sans", Inter, system-ui, sans-serif',
@@ -292,7 +295,7 @@ export const App: React.FC = () => {
       </header>
 
       {/* Main Workspace Layout */}
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+      <div style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden" }}>
         {/* Left Sidebar: Progress Telemetry & Chapter Navigation */}
         <aside
           style={{
