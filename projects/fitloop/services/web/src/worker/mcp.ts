@@ -7,6 +7,7 @@ import {
   type DayPlan, type Plan, type World,
 } from "@fitloop/core";
 import { BUCKET, checkinsBetween, feedbackList, loadSettings, PHOTO_URL_TTL_SEC, planSpans, planVersions, published, saveSettings, type Db } from "./store.ts";
+import { uploadExerciseGif } from "./exercise_media.ts";
 
 const PROTOCOL_VERSION = "2025-06-18";
 export const SERVER_VERSION = "0.1.0";
@@ -46,6 +47,21 @@ export const TOOLS = [
   { name: "get_vitals", title: "Get vitals", description: "Daily vitals the user shares (weight, resting heart rate, HRV, sleep, steps, active energy, energy/mood/soreness) from Apple Health, the Watch or typed in. Only metrics whose source is switched on, and only if vitals sharing is on.", inputSchema: { type: "object", properties: { ...RANGE, metrics: { type: "array", items: { type: "string" } } } }, annotations: ro("Get vitals") },
   { name: "list_photos", title: "List progress photos", description: "Progress photo dates and notes; with the user's photo-sharing switch on, also short-lived image links.", inputSchema: { type: "object", properties: RANGE }, annotations: ro("List progress photos") },
   { name: "get_weekly_review", title: "Get the weekly review", description: "One week at a glance for planning the next: adherence, open feedback, swaps and skips, vitals trend, the plan version. Defaults to the last 7 days.", inputSchema: { type: "object", properties: { week_start: { type: "string", description: "YYYY-MM-DD" } } }, annotations: ro("Get the weekly review") },
+  {
+    name: "upload_exercise_gif",
+    title: "Upload exercise demonstration GIF",
+    description: "Upload an exercise animation GIF to FitLoop's permanent hosted storage. Provide the exercise name or slug and either a public source URL (which FitLoop downloads and stores) or base64-encoded GIF data. Returns the permanent hosted gifUrl on FitLoop (https://fitloop.hejitech.workers.dev/api/exercises/<slug>.gif) to place in your plan's animation object.",
+    inputSchema: {
+      type: "object",
+      required: ["exercise"],
+      properties: {
+        exercise: { type: "string", description: "Exercise name or slug (e.g. 'cat-cow', 'goblet-squat', 'bird-dog')" },
+        source_url: { type: "string", description: "Public HTTPS URL to fetch the GIF from (FitLoop downloads and stores it)" },
+        data_base64: { type: "string", description: "Base64-encoded GIF data (if you generated or have the raw bytes)" },
+      },
+    },
+    annotations: rw("Upload exercise demonstration GIF"),
+  },
 ];
 
 const isDate = (s: unknown): s is string => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
@@ -74,7 +90,7 @@ function preview(plan: Plan): { day: string; lines: string[] } | null {
   return null;
 }
 
-async function callTool(name: string, args: Record<string, unknown>, caller: Caller, db: Db): Promise<unknown> {
+async function callTool(name: string, args: Record<string, unknown>, caller: Caller, db: Db, publicUrl = "https://fitloop.hejitech.workers.dev"): Promise<unknown> {
   const userId = caller.userId;
   const { settings } = await loadSettings(db, userId);
   const todayStr = localDate(Date.now(), settings.timezone);
@@ -180,11 +196,17 @@ async function callTool(name: string, args: Record<string, unknown>, caller: Cal
         weight: settings.agent_access.vitals && weights.length >= 2 ? { first: weights[0], last: weights.at(-1), change: Number(weights.at(-1)!.value) - Number(weights[0].value) } : null,
       };
     }
+    case "upload_exercise_gif": {
+      const exercise = String(args.exercise ?? "");
+      const sourceUrl = typeof args.source_url === "string" ? args.source_url : undefined;
+      const dataBase64 = typeof args.data_base64 === "string" ? args.data_base64 : undefined;
+      return uploadExerciseGif(db, publicUrl, exercise, { sourceUrl, dataBase64 });
+    }
   }
   throw new Error(`unknown tool ${name}`);
 }
 
-export async function handleMcp(req: Request, caller: Caller, db: Db): Promise<Response> {
+export async function handleMcp(req: Request, caller: Caller, db: Db, publicUrl = "https://fitloop.hejitech.workers.dev"): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method === "GET") return json({ name: "fitloop-mcp", transport: "streamable-http" });
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
@@ -215,7 +237,7 @@ export async function handleMcp(req: Request, caller: Caller, db: Db): Promise<R
       const name = String(msg.params?.name ?? "");
       const args = (msg.params?.arguments ?? {}) as Record<string, unknown>;
       try {
-        const result = await callTool(name, args, caller, db);
+        const result = await callTool(name, args, caller, db, publicUrl);
         return reply({ content: [{ type: "text", text: JSON.stringify(result, null, 2) }], structuredContent: result });
       } catch (e) {
         return reply({ content: [{ type: "text", text: `Error: ${(e as Error).message}` }], isError: true });

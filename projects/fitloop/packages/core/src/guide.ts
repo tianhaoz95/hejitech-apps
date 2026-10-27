@@ -73,7 +73,7 @@ Workout  = { "id", "title": "≤ ${LIMITS.name}", "time"?: "HH:MM", "duration_mi
 Exercise = { "id", "name": "≤ ${LIMITS.name}", "sets": 1–${LIMITS.sets}, "reps"?: 10 | "8-10", "duration_sec"?: 45,
              "load"?: "24 kg" | "bodyweight" | "RPE 7" | "zone 2" (≤ 20), "rest_sec": 0–${LIMITS.restMax},
              "cues"?: [≤ ${LIMITS.cues} × ≤ ${LIMITS.cue} chars], "instructions"?: "longer how-to", "alternative"?: "...", "video_url"?: "https://...",
-             "animation"?: { "gifUrl": "https://...", "steps"?: ["≤ ${LIMITS.animStepLength} chars"], "description"?: "..." } }
+             "animation"?: { "gifUrl"?: "https://...", "steps"?: ["≤ ${LIMITS.animStepLength} chars"], "description"?: "..." } }
 Meal     = { "id", "name": "≤ ${LIMITS.name}", "time"?: "HH:MM", "items": [{ "name", "amount" }] (name + amount ≤ ${LIMITS.item}),
              "macros"?: { "calories", "protein_g", "carbs_g", "fat_g" }, "prep"?: ["steps"], "notes"? }
 \`\`\`
@@ -81,44 +81,48 @@ Meal     = { "id", "name": "≤ ${LIMITS.name}", "time"?: "HH:MM", "items": [{ "
 Ids are lowercase-kebab-case and unique within a day (workouts and meals share the namespace); keep
 the same id for the same thing across days and versions, so check-ins and progress line up.
 
-## Animated workout instructions (agent responsibility)
+## Animated workout instructions & hosted exercise GIFs
 
-It is your responsibility as the coaching agent to provide animated instructions for each exercise in
-the plan. FitLoop provides no exercise advice or graphics of its own; it renders what you specify on
-both the phone and Even G2 glasses.
+It is your responsibility as the coaching agent to provide animated instructions and form cues for
+each exercise in the plan:
 
-### Device presentation and how to fit them:
+1. **FitLoop hosts your GIFs via \`upload_exercise_gif\`**:
+   - Use the \`upload_exercise_gif\` MCP tool to upload demonstration GIFs directly to FitLoop's storage.
+     You can provide a \`source_url\` from any public fitness CDN, or raw base64 data.
+   - FitLoop validates, permanently stores, and hosts the GIF under \`https://fitloop.hejitech.workers.dev/api/exercises/<slug>.gif\`.
+   - Hosted GIFs have CORS headers enabled for Even G2 glasses display and are cached at the edge.
+
+2. **\`gifUrl\` is optional**:
+   - If an exercise does not have an animated demonstration (e.g. basketball, child's pose, outdoor jog),
+     omit \`gifUrl\` and provide \`steps\`. Even G2 glasses and the web app will cleanly show your paced
+     movement steps without displaying broken images.
+
+3. **Step formatting**:
+   - Write step cues without leading numbers (the web app and Even G2 glasses number steps automatically).
+   - Plain ASCII characters only (\`\\x20\` to \`\\x7e\`), each step ≤ ${LIMITS.animStepLength} characters, at most ${LIMITS.animSteps} steps.
+
+### Device presentation:
 
 1. **iPhone mobile app**:
-   - The iPhone app renders your animated GIF in a dedicated high-resolution player in the workout player,
-     with smooth looping playback, play/pause controls, and an interactive step-by-step scrubber.
-   - Provide a direct HTTPS URL to a clean, well-framed demonstration GIF (e.g. from an exercise CDN,
-     hosted media repository, or fitness database).
+   - Renders the animated GIF in a dedicated player with playback controls and step-by-step scrubber.
 
 2. **Even G2 glasses display**:
-   - The Even G2 glasses render the animated demonstration GIF directly on the glasses waveguide display
-     (via an image container up to 288×144) alongside your paced step cues.
-   - Glasses display the instruction under the workout menu's "How-to / Demo".
-   - Paced progression: steps cycle at a comfortable, relaxed ~3.5 s interval (or manual tap-to-advance),
-     so instructions never flash through too fast. Tap or swipe steps forward/backward, and double-tap returns
-     to the workout.
-   - Plain ASCII characters only (\`\\x20\` to \`\\x7e\`) for \`steps\`: each step must be ≤ ${LIMITS.animStepLength} characters
-     and at most ${LIMITS.animSteps} steps so each step fits clearly within the waveguide screen width.
+   - Renders the demonstration GIF directly on the waveguide display (≤ 288×144) alongside paced step cues.
+   - Paced progression: steps cycle at a comfortable ~3.5 s interval (or manual tap-to-advance).
 
 3. **Web app**:
-   - The web app displays the animated demonstration GIF directly inside the workout card on the Today page,
-     accompanied by the step checklist and form details.
+   - Displays the demonstration GIF directly inside the workout card on the Today page alongside step cues.
 
 ### Example exercise animation (Goblet Squat):
 \`\`\`json
 "animation": {
-  "gifUrl": "https://assets.fitloop.hejitech.workers.dev/exercises/goblet-squat.gif",
+  "gifUrl": "https://fitloop.hejitech.workers.dev/api/exercises/goblet-squat.gif",
   "steps": [
-    "1. Feet shoulder-width",
-    "2. Bell held tight at chest",
-    "3. Sit hips back and down",
-    "4. Elbows graze inside knees",
-    "5. Drive heels to stand tall"
+    "Feet shoulder-width",
+    "Bell held tight at chest",
+    "Sit hips back and down",
+    "Elbows graze inside knees",
+    "Drive heels to stand tall"
   ],
   "description": "Goblet squat: hold bell at chest, descend into hips, drive through heels to lockout"
 }

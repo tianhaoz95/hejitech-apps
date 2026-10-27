@@ -25,8 +25,8 @@ export interface Macros {
 }
 
 export interface ExerciseAnimation {
-  /** Direct HTTPS URL to the high-resolution animated instruction GIF. */
-  gifUrl: string;
+  /** Direct HTTPS URL to the animated instruction GIF (hosted on FitLoop or external CDN). */
+  gifUrl?: string;
   /**
    * Paced step-by-step movement phases for Even G2 glasses and mobile breakdown
    * (e.g. ["1. Setup: feet shoulder-width", "2. Lower hips with control", "3. Drive up through heels"]).

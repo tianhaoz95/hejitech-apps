@@ -78,7 +78,7 @@ async function boot() {
     const anim = ex?.animation;
     const hasGif = isCues && Boolean(anim?.gifUrl);
 
-    if (hasGif && anim) {
+    if (hasGif && anim && anim.gifUrl) {
       if (currentLayout !== "demo") {
         currentLayout = "demo";
         lastText = "";

@@ -56,13 +56,17 @@ describe("plan", () => {
     const p = plan();
     const ex = p.week.mon.workouts[0].exercises[1];
     ex.animation = {
-      gifUrl: "https://assets.fitloop.hejitech.workers.dev/exercises/squat.gif",
+      gifUrl: "https://fitloop.hejitech.workers.dev/api/exercises/squat.gif",
       steps: [
         "1. Stand tall",
         "2. Squat down",
       ],
       description: "Squat form",
     };
+    expect(errorsOf(checkPlan(p))).toEqual([]);
+
+    // Optional gifUrl when steps are present
+    delete ex.animation.gifUrl;
     expect(errorsOf(checkPlan(p))).toEqual([]);
 
     // Missing or invalid gifUrl

@@ -20,10 +20,14 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.5"
+    static let currentVersion = "0.1.6"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.6", date: "October 2026", items: [
+            WhatsNewItem(icon: "arrow.up.doc.fill", title: "FitLoop-hosted exercise GIFs", description: "Coaching agents can now upload and host exercise demonstration GIFs directly on FitLoop with permanent edge caching and CORS."),
+            WhatsNewItem(icon: "list.bullet", title: "Resilient workout steps", description: "Movement steps and cues display gracefully even without an animated demonstration GIF, and with clean step numbering."),
+        ]),
         ReleaseNotes(version: "0.1.5", date: "October 2026", items: [
             WhatsNewItem(icon: "eyeglasses", title: "Even G2 on-glasses GIFs", description: "Watch exercise animation GIFs directly on your Even G2 glasses waveguide display alongside step cues."),
             WhatsNewItem(icon: "globe", title: "Web workout GIFs", description: "Animated workout exercise demonstration GIFs now display seamlessly in the FitLoop web app."),

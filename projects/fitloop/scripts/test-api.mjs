@@ -57,14 +57,27 @@ await step("signs in (seed athlete) and a second user", async () => {
 });
 
 // ---------------------------------------------------------------- the agent's side
-await step("MCP: 401 with the OAuth hint, initialize, thirteen tools with annotations", async () => {
+await step("MCP: 401 with the OAuth hint, initialize, fourteen tools with annotations", async () => {
   const r = await mcpClient(mcpUrl, null).rpc("tools/list");
   assert.equal(r.status, 401);
   assert.match(r.headers.get("WWW-Authenticate") ?? "", /resource_metadata=/);
   assert.equal((await rpc("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "t", version: "1" } })).body.result.serverInfo.name, "fitloop");
   const tools = (await rpc("tools/list")).body.result.tools;
-  assert.equal(tools.length, 13);
+  assert.equal(tools.length, 14);
   for (const t of tools) assert.equal(typeof t.annotations.readOnlyHint, "boolean", t.name);
+});
+await step("the agent uploads an exercise GIF, and the backend hosts it publicly", async () => {
+  // 1x1 transparent GIF base64
+  const gifBase64 = "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+  const up = await tool("upload_exercise_gif", { exercise: "goblet-squat", data_base64: gifBase64 });
+  assert.equal(up.ok, true);
+  assert.equal(up.exercise, "goblet-squat");
+  assert.match(up.gifUrl, /\/api\/exercises\/goblet-squat\.gif$/);
+
+  const res = await call("/api/exercises/goblet-squat.gif", { raw: "" });
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get("content-type"), "image/gif");
+  assert.equal(res.headers.get("access-control-allow-origin"), "*");
 });
 await step("the agent reads the guide, the profile and open feedback", async () => {
   const g = await tool("get_plan_guide");

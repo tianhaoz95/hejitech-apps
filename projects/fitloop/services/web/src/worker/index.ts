@@ -31,7 +31,7 @@ const mcpHandler = {
     const props = ctx.props;
     if (!props?.userId) return new Response("unauthorized", { status: 401 });
     const caller: Caller = { userId: props.userId, via: props.via };
-    return handleMcp(req, caller, admin(env));
+    return handleMcp(req, caller, admin(env), env.PUBLIC_URL);
   },
 };
 

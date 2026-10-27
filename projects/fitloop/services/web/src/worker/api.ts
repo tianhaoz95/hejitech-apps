@@ -12,6 +12,7 @@ import {
   admin, bearer, BUCKET, checkinsBetween, feedbackList, json, LIVE_MAX_AGE_MS, loadSettings, pairingCode, PAIRING_CODE_TTL_MS, PHOTO_URL_TTL_SEC, planOn, planSpans,
   planVersions, PREFIX, published, randomToken, resolveDevice, saveSettings, sha256, supabaseUser, today, type Db, type Env,
 } from "./store.ts";
+import { normalizeExerciseSlug, uploadExerciseGif, type UploadGifOptions } from "./exercise_media.ts";
 
 const PAIR_FAILURES_PER_WINDOW = 10;
 const PAIR_WINDOW_SEC = 600;
@@ -64,6 +65,43 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
       return reply({ error: "that code is wrong, used or expired: get a new one in the FitLoop app" }, 400);
     }
     return reply({ device_token: token, device_id: row.device_id });
+  }
+
+  // ------------------------------------------------------------ public exercise demonstration GIFs
+  const exMatch = path.match(/^\/api\/exercises\/([a-zA-Z0-9_-]+)(?:\.gif)?$/);
+  if (exMatch && req.method === "GET") {
+    const slug = normalizeExerciseSlug(exMatch[1]);
+    const key = `exercises/${slug}.gif`;
+    const { data, error } = await db.storage.from(BUCKET).download(key);
+    if (error || !data) return reply({ error: "exercise GIF not found" }, 404);
+    return new Response(data, {
+      status: 200,
+      headers: {
+        "Content-Type": "image/gif",
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+      },
+    });
+  }
+  if (exMatch && req.method === "POST") {
+    const who = await caller(env, db, req);
+    if (!who) return reply({ error: "sign in or supply an agent token to upload exercise media" }, 401);
+    const contentType = (req.headers.get("Content-Type") ?? "").toLowerCase();
+    try {
+      let opts: UploadGifOptions;
+      if (contentType.includes("application/json")) {
+        const body = (await req.json().catch(() => ({}))) as { source_url?: string; data_base64?: string };
+        opts = { sourceUrl: body.source_url, dataBase64: body.data_base64 };
+      } else {
+        const rawBytes = new Uint8Array(await req.arrayBuffer());
+        opts = { rawBytes };
+      }
+      const res = await uploadExerciseGif(db, env.PUBLIC_URL, exMatch[1], opts);
+      return reply(res);
+    } catch (err) {
+      return reply({ error: (err as Error).message }, 400);
+    }
   }
 
   const who = await caller(env, db, req);

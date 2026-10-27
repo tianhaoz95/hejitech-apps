@@ -114,10 +114,13 @@ function checkDay(day: DayPlan, path: string, err: (p: string, m: string) => voi
       if (e?.video_url !== undefined && !/^https:\/\//.test(e.video_url)) err(`${ep}.video_url`, "an https URL");
       if (e?.animation !== undefined) {
         if (typeof e.animation !== "object" || !e.animation) {
-          err(`${ep}.animation`, "must be an object { gifUrl: string, steps?: string[], description?: string }");
+          err(`${ep}.animation`, "must be an object { gifUrl?: string, steps?: string[], description?: string }");
         } else {
           const a = e.animation as Partial<ExerciseAnimation>;
-          if (typeof a.gifUrl !== "string" || !/^https?:\/\//i.test(a.gifUrl)) {
+          if (!a.gifUrl && (!a.steps || a.steps.length === 0) && !a.description) {
+            err(`${ep}.animation`, "must provide at least gifUrl, steps, or description");
+          }
+          if (a.gifUrl !== undefined && (typeof a.gifUrl !== "string" || !/^https?:\/\//i.test(a.gifUrl))) {
             err(`${ep}.animation.gifUrl`, "must be an HTTPS URL pointing to the animated GIF");
           }
           if (a.steps !== undefined) {
@@ -142,7 +145,7 @@ function checkDay(day: DayPlan, path: string, err: (p: string, m: string) => voi
           }
         }
       } else {
-        warn(`${ep}.animation`, "no animated instructions: provide animation { gifUrl, steps? } so users see how to do it on phone and glasses");
+        warn(`${ep}.animation`, "no animated instructions: provide animation { gifUrl?, steps? } so users see how to do it on phone and glasses");
       }
     });
     if (w?.exercises?.length && typeof w.duration_min === "number") {

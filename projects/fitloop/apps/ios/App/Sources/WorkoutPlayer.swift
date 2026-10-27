@@ -27,7 +27,7 @@ struct WorkoutPlayer: View {
                     VStack(alignment: .leading, spacing: 18) {
                         header
                         exerciseCard(now: ctx.date)
-                        if let anim = current.exercise.animation, !anim.gifUrl.isEmpty {
+                        if let anim = current.exercise.animation, (anim.gifUrl?.isEmpty == false || anim.steps?.isEmpty == false) {
                             ExerciseAnimationPlayer(animation: anim)
                         }
                         if let cues = current.exercise.cues, !cues.isEmpty {
@@ -290,11 +290,13 @@ struct ExerciseAnimationPlayer: View {
             }
 
             // High-resolution animated GIF player
-            GIFPlayerView(urlString: animation.gifUrl)
-                .frame(maxWidth: .infinity)
-                .frame(height: 220)
-                .background(Color(uiColor: .secondarySystemBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 14))
+            if let gifUrl = animation.gifUrl, !gifUrl.isEmpty {
+                GIFPlayerView(urlString: gifUrl)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 220)
+                    .background(Color(uiColor: .secondarySystemBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+            }
 
             if let desc = animation.description, !desc.isEmpty {
                 Text(desc)

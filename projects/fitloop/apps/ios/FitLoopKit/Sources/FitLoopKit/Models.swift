@@ -47,7 +47,7 @@ public enum Reps: Codable, Hashable, Sendable {
 }
 
 public struct ExerciseAnimation: Codable, Hashable, Sendable {
-    public var gifUrl: String
+    public var gifUrl: String?
     public var steps: [String]?
     public var description: String?
 
@@ -58,7 +58,7 @@ public struct ExerciseAnimation: Codable, Hashable, Sendable {
         case description
     }
 
-    public init(gifUrl: String, steps: [String]? = nil, description: String? = nil) {
+    public init(gifUrl: String? = nil, steps: [String]? = nil, description: String? = nil) {
         self.gifUrl = gifUrl
         self.steps = steps
         self.description = description
@@ -66,20 +66,14 @@ public struct ExerciseAnimation: Codable, Hashable, Sendable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        if let url = try? container.decode(String.self, forKey: .gifUrl) {
-            self.gifUrl = url
-        } else if let url = try? container.decode(String.self, forKey: .gif_url) {
-            self.gifUrl = url
-        } else {
-            self.gifUrl = try container.decode(String.self, forKey: .gifUrl)
-        }
+        self.gifUrl = (try? container.decodeIfPresent(String.self, forKey: .gifUrl)) ?? (try? container.decodeIfPresent(String.self, forKey: .gif_url)) ?? nil
         self.steps = try container.decodeIfPresent([String].self, forKey: .steps)
         self.description = try container.decodeIfPresent(String.self, forKey: .description)
     }
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(gifUrl, forKey: .gifUrl)
+        try container.encodeIfPresent(gifUrl, forKey: .gifUrl)
         try container.encodeIfPresent(steps, forKey: .steps)
         try container.encodeIfPresent(description, forKey: .description)
     }
