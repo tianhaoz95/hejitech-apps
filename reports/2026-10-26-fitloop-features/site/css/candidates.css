@@ -1,0 +1,926 @@
+/* Candidate styles for FitLoop Feature Proposals.
+   Scoped to `.scr.<id>` and `.scr.<id>.dark`.
+*/
+
+/* Shared Phone Shell */
+.scr {
+  display: flex;
+  flex-direction: column;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", Inter, sans-serif;
+  color: #111418;
+  background: #F3F4F6;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+}
+
+.fl-phone-screen {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: inherit;
+  position: relative;
+  overflow: hidden;
+}
+
+.fl-sb {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 28px 6px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: inherit;
+}
+
+.fl-sb-icons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.fl-battery {
+  width: 22px;
+  height: 11px;
+  border: 1.5px solid currentColor;
+  border-radius: 3px;
+  position: relative;
+}
+.fl-battery::after {
+  content: "";
+  position: absolute;
+  right: -3.5px;
+  top: 2px;
+  width: 2px;
+  height: 4px;
+  background: currentColor;
+  border-radius: 0 1px 1px 0;
+}
+.fl-battery::before {
+  content: "";
+  position: absolute;
+  left: 1.5px;
+  top: 1.5px;
+  bottom: 1.5px;
+  width: 14px;
+  background: currentColor;
+  border-radius: 1px;
+}
+
+/* Navbars */
+.pnav-today, .pnav-player {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 20px 10px;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+
+.pnav-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.date-arrow {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: inherit;
+  display: flex;
+  align-items: center;
+}
+.date-arrow.right svg {
+  transform: rotate(180deg);
+}
+
+.today-label {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.plan-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.plan-pill .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10B981;
+}
+
+.pnav-player {
+  padding: 10px 18px;
+}
+.nav-btn {
+  background: none;
+  border: none;
+  font-size: 15px;
+  color: #007AFF;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+.pnav-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Scroll Body */
+.fl-scroll-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Home Bar */
+.fl-home-bar {
+  width: 134px;
+  height: 5px;
+  background: currentColor;
+  opacity: 0.25;
+  border-radius: 3px;
+  margin: 8px auto 6px;
+  flex-shrink: 0;
+}
+
+/* Tab Bar */
+.fl-tabbar {
+  display: flex;
+  justify-content: space-around;
+  padding: 8px 0 4px;
+  border-top: 1px solid rgba(0,0,0,0.08);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  flex-shrink: 0;
+}
+
+.tab-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  font-weight: 500;
+  color: #8E8E93;
+}
+.tab-item.on {
+  color: #007AFF;
+}
+
+/* Common UI Elements */
+.fl-card {
+  background: #FFFFFF;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.fl-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.badge-blue { background: rgba(0,122,255,0.12); color: #007AFF; }
+.badge-green { background: rgba(16,185,129,0.12); color: #059669; }
+.badge-amber { background: rgba(245,158,11,0.12); color: #D97706; }
+.badge-red { background: rgba(239,68,68,0.12); color: #DC2626; }
+.badge-purple { background: rgba(139,92,246,0.12); color: #7C3AED; }
+
+.section-title {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6B7280;
+  margin: 6px 0 2px 4px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Candidate 0: Baseline (Current App)
+   ───────────────────────────────────────────────────────────── */
+.scr.baseline {
+  background: #F8F9FA;
+}
+.scr.baseline .summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+.scr.baseline .stat-box {
+  background: #F3F4F6;
+  border-radius: 10px;
+  padding: 10px;
+}
+.scr.baseline .stat-box b {
+  display: block;
+  font-size: 18px;
+  font-weight: 700;
+}
+.scr.baseline .stat-box small {
+  font-size: 11px;
+  color: #6B7280;
+}
+.scr.baseline .workout-item, .scr.baseline .meal-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  background: #FFFFFF;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Candidate 1: Voice Check-in & RPE Audio Memo
+   ───────────────────────────────────────────────────────────── */
+.scr.feat-voice-rpe {
+  background: #F6F8FB;
+}
+.scr.feat-voice-rpe .player-card {
+  background: #FFFFFF;
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.scr.feat-voice-rpe .exercise-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.scr.feat-voice-rpe .target-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 8px 0 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #ECEFF3;
+}
+.scr.feat-voice-rpe .target-val {
+  font-size: 26px;
+  font-weight: 800;
+  color: #007AFF;
+}
+.scr.feat-voice-rpe .rpe-dial-container {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+.scr.feat-voice-rpe .rpe-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.scr.feat-voice-rpe .rpe-chips {
+  display: flex;
+  gap: 6px;
+  justify-content: space-between;
+}
+.scr.feat-voice-rpe .rpe-chip {
+  flex: 1;
+  text-align: center;
+  padding: 6px 0;
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.scr.feat-voice-rpe .rpe-chip.active {
+  background: #007AFF;
+  color: #FFFFFF;
+  border-color: #007AFF;
+  box-shadow: 0 2px 6px rgba(0,122,255,0.3);
+}
+.scr.feat-voice-rpe .voice-waveform-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(249, 115, 22, 0.08));
+  border: 1px dashed rgba(239, 68, 68, 0.35);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+.scr.feat-voice-rpe .mic-pulse-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #EF4444;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 4px rgba(239,68,68,0.2);
+  animation: pulse-ring 2s infinite;
+}
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+  70% { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
+  100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+}
+.scr.feat-voice-rpe .wave-bars {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 24px;
+  flex: 1;
+}
+.scr.feat-voice-rpe .bar {
+  width: 3px;
+  background: #EF4444;
+  border-radius: 2px;
+}
+.scr.feat-voice-rpe .transcript-quote {
+  font-size: 12px;
+  font-style: italic;
+  color: #475569;
+  line-height: 1.35;
+}
+.scr.feat-voice-rpe .set-done-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 14px;
+  background: #10B981;
+  color: white;
+  font-size: 16px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Candidate 2: Barbell Plate Calculator & Rack
+   ───────────────────────────────────────────────────────────── */
+.scr.feat-plate-calc {
+  background: #F4F6F9;
+}
+.scr.feat-plate-calc .plate-visual-card {
+  background: #FFFFFF;
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.scr.feat-plate-calc .barbell-stage {
+  background: #0F172A;
+  border-radius: 12px;
+  padding: 20px 10px;
+  margin: 12px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+.scr.feat-plate-calc .bar-shaft {
+  height: 8px;
+  width: 90%;
+  background: linear-gradient(180deg, #94A3B8, #475569);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+}
+.scr.feat-plate-calc .bar-collar {
+  width: 8px;
+  height: 28px;
+  background: #E2E8F0;
+  border-radius: 2px;
+}
+.scr.feat-plate-calc .sleeve {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.scr.feat-plate-calc .plate {
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 800;
+  color: #FFFFFF;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+.plate-25 { width: 14px; height: 58px; background: #DC2626; } /* Red 25kg/55lb */
+.plate-20 { width: 13px; height: 54px; background: #2563EB; } /* Blue 20kg/45lb */
+.plate-15 { width: 11px; height: 46px; background: #EAB308; } /* Yellow 15kg/35lb */
+.plate-10 { width: 9px;  height: 38px; background: #16A34A; } /* Green 10kg/25lb */
+.plate-5  { width: 7px;  height: 28px; background: #F8FAFC; color: #0F172A; text-shadow: none; border: 1px solid #CBD5E1; }
+.plate-2_5{ width: 6px;  height: 22px; background: #000000; }
+.plate-1_25{ width: 5px; height: 18px; background: #94A3B8; }
+
+.scr.feat-plate-calc .plate-summary-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 10px 0;
+}
+.scr.feat-plate-calc .side-pill {
+  background: #F1F5F9;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.scr.feat-plate-calc .snap-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #EFF6FF;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #1E40AF;
+}
+.scr.feat-plate-calc .snap-btn {
+  background: #2563EB;
+  color: #FFFFFF;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Candidate 3: Meal Photo Smart-Portion & Vision
+   ───────────────────────────────────────────────────────────── */
+.scr.feat-meal-vision {
+  background: #F7F7FA;
+}
+.scr.feat-meal-vision .meal-card-vision {
+  background: #FFFFFF;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.scr.feat-meal-vision .photo-viewport {
+  height: 180px;
+  background: linear-gradient(135deg, #1E293B, #0F172A);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 12px;
+  color: white;
+}
+.scr.feat-meal-vision .photo-hud {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.scr.feat-meal-vision .target-hud {
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(10px);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.scr.feat-meal-vision .shutter-overlay {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+.scr.feat-meal-vision .snap-shutter-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: white;
+  border: 4px solid rgba(255,255,255,0.4);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #111;
+  cursor: pointer;
+}
+.scr.feat-meal-vision .vision-analysis-box {
+  padding: 16px;
+}
+.scr.feat-meal-vision .portion-adjust-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 12px 0;
+}
+.scr.feat-meal-vision .portion-pill {
+  padding: 10px 6px;
+  text-align: center;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.scr.feat-meal-vision .portion-pill.active {
+  background: #10B981;
+  color: white;
+  border-color: #10B981;
+}
+.scr.feat-meal-vision .agent-note-bubble {
+  background: #F3F4F6;
+  border-left: 3px solid #8B5CF6;
+  border-radius: 0 10px 10px 0;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.4;
+  margin-top: 10px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Candidate 4: Superset & Circuit Execution Engine
+   ───────────────────────────────────────────────────────────── */
+.scr.feat-superset-engine {
+  background: #F5F7FA;
+}
+.scr.feat-superset-engine .superset-cluster-card {
+  background: #FFFFFF;
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.scr.feat-superset-engine .cluster-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.scr.feat-superset-engine .exercise-split-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.scr.feat-superset-engine .sub-ex-card {
+  border: 2px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 12px;
+  background: #F8FAFC;
+}
+.scr.feat-superset-engine .sub-ex-card.active {
+  border-color: #007AFF;
+  background: rgba(0,122,255,0.03);
+  box-shadow: 0 2px 6px rgba(0,122,255,0.12);
+}
+.scr.feat-superset-engine .ex-tag {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #64748B;
+  display: block;
+  margin-bottom: 4px;
+}
+.scr.feat-superset-engine .sub-ex-card.active .ex-tag {
+  color: #007AFF;
+}
+.scr.feat-superset-engine .ex-title-sm {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  line-height: 1.25;
+}
+.scr.feat-superset-engine .ex-metric-sm {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+}
+.scr.feat-superset-engine .round-tracker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #F1F5F9;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.scr.feat-superset-engine .shared-clock-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #FEF3C7;
+  color: #B45309;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-top: 12px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Candidate 5: Morning Readiness & Daily Briefing
+   ───────────────────────────────────────────────────────────── */
+.scr.feat-readiness-brief {
+  background: #F4F6F9;
+}
+.scr.feat-readiness-brief .readiness-hero-card {
+  background: linear-gradient(135deg, #0F172A, #1E293B);
+  color: #FFFFFF;
+  border-radius: 20px;
+  padding: 18px;
+  box-shadow: 0 4px 14px rgba(15,23,42,0.18);
+}
+.scr.feat-readiness-brief .readiness-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.scr.feat-readiness-brief .readiness-score-ring {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  border: 4px solid #10B981;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(16,185,129,0.1);
+}
+.scr.feat-readiness-brief .score-num {
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1;
+}
+.scr.feat-readiness-brief .score-lbl {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #A7F3D0;
+}
+.scr.feat-readiness-brief .vitals-triplet {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255,255,255,0.12);
+}
+.scr.feat-readiness-brief .vital-col {
+  text-align: center;
+}
+.scr.feat-readiness-brief .vital-col b {
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+}
+.scr.feat-readiness-brief .vital-col small {
+  font-size: 10px;
+  color: #94A3B8;
+}
+.scr.feat-readiness-brief .coach-brief-card {
+  background: #FFFFFF;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+.scr.feat-readiness-brief .brief-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6366F1;
+  margin-bottom: 8px;
+}
+.scr.feat-readiness-brief .brief-text {
+  font-size: 13px;
+  line-height: 1.45;
+  color: #334155;
+  margin-bottom: 12px;
+}
+.scr.feat-readiness-brief .auto-adjust-banner {
+  background: #EEF2FF;
+  border: 1px solid #C7D2FE;
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.scr.feat-readiness-brief .apply-tune-btn {
+  background: #4F46E5;
+  color: #FFFFFF;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Multi-Surface Hardware Views (Apple Watch & Even G2 HUD)
+   ───────────────────────────────────────────────────────────── */
+.view-surface-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  width: 100%;
+}
+
+/* Apple Watch Chassis */
+.watch-chassis {
+  width: 200px;
+  height: 244px;
+  background: #1C1C1E;
+  border-radius: 46px;
+  padding: 10px;
+  position: relative;
+  box-shadow: 0 16px 36px rgba(0,0,0,0.45);
+}
+.watch-crown {
+  position: absolute;
+  right: -5px;
+  top: 60px;
+  width: 6px;
+  height: 38px;
+  background: #3A3A3C;
+  border-radius: 2px 4px 4px 2px;
+}
+.watch-screen {
+  width: 100%;
+  height: 100%;
+  background: #000000;
+  border-radius: 38px;
+  color: #FFFFFF;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 12px;
+  box-sizing: border-box;
+}
+.w-sb {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 600;
+  color: #98989D;
+  margin-bottom: 8px;
+}
+.w-hr {
+  color: #FF453A;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.w-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.w-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #30D158;
+  margin-bottom: 4px;
+}
+
+/* Even G2 Glasses HUD */
+.glasses-chassis {
+  width: 280px;
+  height: 200px;
+  background: #080A08;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+  font-family: "Courier New", Courier, monospace;
+}
+.hud-frame {
+  width: 100%;
+  height: 100%;
+  border: 1px solid rgba(0, 255, 65, 0.4);
+  position: relative;
+  padding: 8px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: #00FF41;
+  text-shadow: 0 0 4px rgba(0,255,65,0.6);
+}
+.hud-header {
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  border-bottom: 1px solid rgba(0,255,65,0.25);
+  padding-bottom: 4px;
+}
+.hud-content {
+  flex: 1;
+  padding: 6px 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  font-size: 11px;
+  line-height: 1.25;
+}
+.hud-line {
+  white-space: pre;
+}
+.hud-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 8px;
+  opacity: 0.75;
+  border-top: 1px solid rgba(0,255,65,0.25);
+  padding-top: 4px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Dark Mode Overrides (.scr.<id>.dark)
+   ───────────────────────────────────────────────────────────── */
+.scr.dark {
+  background: #0B0E14;
+  color: #F3F4F6;
+}
+
+.scr.dark .fl-tabbar {
+  background: rgba(18, 22, 31, 0.85);
+  border-color: rgba(255,255,255,0.08);
+}
+.scr.dark .pnav-today, .scr.dark .pnav-player {
+  border-color: rgba(255,255,255,0.08);
+}
+.scr.dark .fl-card {
+  background: #151922;
+  box-shadow: none;
+}
+.scr.dark .section-title {
+  color: #94A3B8;
+}
+
+.scr.baseline.dark { background: #0B0E14; }
+.scr.baseline.dark .stat-box { background: #1B212D; }
+.scr.baseline.dark .workout-item, .scr.baseline.dark .meal-item { background: #151922; }
+
+.scr.feat-voice-rpe.dark { background: #0B0E14; }
+.scr.feat-voice-rpe.dark .player-card { background: #151922; }
+.scr.feat-voice-rpe.dark .target-row { border-color: #242C3D; }
+.scr.feat-voice-rpe.dark .rpe-dial-container { background: #1B212D; border-color: #242C3D; }
+.scr.feat-voice-rpe.dark .rpe-chip { background: #242C3D; border-color: #334155; color: #E2E8F0; }
+.scr.feat-voice-rpe.dark .transcript-quote { color: #CBD5E1; }
+
+.scr.feat-plate-calc.dark { background: #0B0E14; }
+.scr.feat-plate-calc.dark .plate-visual-card { background: #151922; }
+.scr.feat-plate-calc.dark .side-pill { background: #1B212D; color: #E2E8F0; }
+.scr.feat-plate-calc.dark .snap-row { background: #1E293B; color: #93C5FD; }
+
+.scr.feat-meal-vision.dark { background: #0B0E14; }
+.scr.feat-meal-vision.dark .meal-card-vision { background: #151922; }
+.scr.feat-meal-vision.dark .portion-pill { border-color: #334155; color: #CBD5E1; }
+.scr.feat-meal-vision.dark .agent-note-bubble { background: #1B212D; color: #E2E8F0; }
+
+.scr.feat-superset-engine.dark { background: #0B0E14; }
+.scr.feat-superset-engine.dark .superset-cluster-card { background: #151922; }
+.scr.feat-superset-engine.dark .sub-ex-card { background: #1B212D; border-color: #242C3D; color: #E2E8F0; }
+.scr.feat-superset-engine.dark .sub-ex-card.active { background: rgba(0,122,255,0.12); }
+.scr.feat-superset-engine.dark .round-tracker { background: #1B212D; color: #E2E8F0; }
+
+.scr.feat-readiness-brief.dark { background: #0B0E14; }
+.scr.feat-readiness-brief.dark .coach-brief-card { background: #151922; }
+.scr.feat-readiness-brief.dark .brief-text { color: #E2E8F0; }
+.scr.feat-readiness-brief.dark .auto-adjust-banner { background: #1E2235; border-color: #373F68; }

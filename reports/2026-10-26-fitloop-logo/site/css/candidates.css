@@ -1,0 +1,465 @@
+/* ── FitLoop Logo Review candidates styling ── */
+
+.frame.icon {
+  border-radius: 24px;
+  background: radial-gradient(circle at 50% 25%, rgba(255, 255, 255, 0.05), transparent 70%), var(--panel);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12), inset 0 0 0 1px var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  width: 320px;
+  height: 320px;
+  position: relative;
+}
+
+.icon-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 24px;
+  position: relative;
+}
+
+.icon-svg {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cand:hover .icon-svg {
+  transform: scale(1.03);
+}
+
+/* ── Even Hub Mini Badge on Gallery Card ── */
+.evenhub-badge {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(15, 20, 28, 0.88);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 3px 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  pointer-events: auto;
+  transition: transform 0.15s, border-color 0.15s;
+}
+
+.cand:hover .evenhub-badge {
+  border-color: rgba(0, 255, 102, 0.4);
+  transform: translateY(-1px);
+}
+
+.eh-lbl {
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #94A3B8;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.eh-mini-icon {
+  width: 24px;
+  height: 24px;
+  background: #000000;
+  border-radius: 4px;
+  border: 1px solid rgba(244, 244, 244, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-sizing: content-box;
+  overflow: hidden;
+  image-rendering: pixelated;
+  flex: none;
+}
+
+/* ── Multi-surface Detail Views ── */
+.view-surface {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 320px;
+  height: 320px;
+  padding: 14px;
+  box-sizing: border-box;
+  background: var(--panel);
+  border-radius: 20px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  position: relative;
+}
+
+.view-tag {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--mut);
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  padding: 4px 10px;
+  border-radius: 99px;
+  flex: none;
+}
+
+/* ── Even Hub Store Listing View ── */
+.view-evenhub {
+  background: radial-gradient(circle at 50% 20%, #171C26, #0A0D14);
+}
+
+.evenhub-store-card {
+  width: 290px;
+  height: 250px;
+  background: rgba(18, 22, 32, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 12px 14px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.45);
+}
+
+.eh-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #94A3B8;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 6px;
+}
+
+.eh-spec {
+  color: #00FF66;
+}
+
+.eh-body {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.eh-icon-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.eh-icon-render {
+  width: 48px;
+  height: 48px;
+  background: #000000;
+  border: 1px solid rgba(244, 244, 244, 0.35);
+  border-radius: 6px;
+  padding: 0;
+  box-sizing: content-box;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  image-rendering: pixelated;
+  flex: none;
+}
+
+.eh-1x-render {
+  width: 24px;
+  height: 24px;
+  background: #000000;
+  border: 1px solid rgba(244, 244, 244, 0.3);
+  border-radius: 4px;
+  padding: 0;
+  box-sizing: content-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  image-rendering: pixelated;
+  flex: none;
+}
+
+.eh-oled-render {
+  border-color: rgba(0, 255, 102, 0.45);
+  box-shadow: 0 0 14px rgba(0, 255, 102, 0.25);
+}
+
+.eh-icon-box small {
+  font-size: 8px;
+  font-weight: 700;
+  color: #64748B;
+  font-family: ui-monospace, Menlo, monospace;
+}
+
+.eh-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.eh-info b {
+  font-size: 14px;
+  color: #F8FAFC;
+  letter-spacing: -0.01em;
+}
+
+.eh-info p {
+  font-size: 11px;
+  color: #94A3B8;
+  margin: 0;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.eh-badges {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.eh-tag {
+  font-size: 8.5px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #1E293B;
+  color: #94A3B8;
+  letter-spacing: 0.04em;
+}
+
+.eh-status {
+  font-size: 8.5px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(0, 255, 102, 0.12);
+  color: #00FF66;
+  border: 1px solid rgba(0, 255, 102, 0.3);
+  letter-spacing: 0.04em;
+}
+
+.eh-grid-preview {
+  background: #06080C;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 5px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.eh-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 7.5px;
+  line-height: 1.05;
+  color: #E2E8F0;
+  margin: 0;
+  letter-spacing: 0.12em;
+}
+
+.eh-grid-preview small {
+  font-size: 8px;
+  color: #64748B;
+  font-family: ui-monospace, Menlo, monospace;
+  text-align: right;
+  line-height: 1.3;
+}
+
+/* Apple Watch preview chassis */
+.view-watch {
+  background: radial-gradient(circle at 50% 30%, #20232A, #121418);
+}
+
+.watch-chassis {
+  position: relative;
+  width: 190px;
+  height: 220px;
+  background: linear-gradient(145deg, #2A2E38, #181A20);
+  border-radius: 46px;
+  box-shadow: 0 16px 36px rgba(0,0,0,0.5), inset 0 1px 2px rgba(255,255,255,0.2), inset 0 0 0 2px #383D4A;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.watch-crown {
+  position: absolute;
+  right: -8px;
+  top: 48px;
+  width: 8px;
+  height: 40px;
+  background: linear-gradient(to right, #444957, #2B2F38);
+  border-radius: 3px 6px 6px 3px;
+  box-shadow: 2px 2px 6px rgba(0,0,0,0.4);
+}
+
+.watch-button {
+  position: absolute;
+  right: -5px;
+  bottom: 52px;
+  width: 5px;
+  height: 30px;
+  background: #2B2F38;
+  border-radius: 2px 4px 4px 2px;
+}
+
+.watch-screen {
+  width: 170px;
+  height: 170px;
+  border-radius: 50%;
+  background: #000;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 12px rgba(0,0,0,0.8);
+}
+
+/* Even G2 HUD preview */
+.view-glasses {
+  background: #040906;
+}
+
+.glasses-hud {
+  width: 250px;
+  height: 220px;
+  border: 1.5px solid #00FF66;
+  border-radius: 12px;
+  background: rgba(0, 255, 102, 0.04);
+  box-shadow: 0 0 20px rgba(0, 255, 102, 0.15), inset 0 0 15px rgba(0, 255, 102, 0.08);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, monospace;
+  color: #00FF66;
+  box-sizing: border-box;
+}
+
+.hud-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  border-bottom: 1px dashed rgba(0, 255, 102, 0.3);
+  padding-bottom: 6px;
+}
+
+.hud-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.hud-svg {
+  filter: drop-shadow(0 0 6px rgba(0, 255, 102, 0.7));
+}
+
+.hud-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 10.5px;
+}
+
+.hud-metrics div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.hud-metrics span {
+  opacity: 0.7;
+}
+
+.hud-metrics b {
+  color: #fff;
+  text-shadow: 0 0 6px #00FF66;
+}
+
+.hud-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  opacity: 0.75;
+  border-top: 1px dashed rgba(0, 255, 102, 0.3);
+  padding-top: 6px;
+}
+
+/* macOS preview */
+.view-mac {
+  background: radial-gradient(circle at 50% 20%, #2A2535, #14121A);
+}
+
+.mac-dock-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+
+/* Favicon Ladder */
+.view-ladder {
+  background: var(--bg);
+}
+
+.ladder-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 18px;
+  padding: 16px 8px;
+  width: 100%;
+}
+
+.ladder-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.ladder-item small {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--mut);
+}
+
+.ladder-item svg {
+  border-radius: 4px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+}
+
+/* Detail view layout enhancements */
+.views .row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+  justify-items: center;
+}
+
+.views figure {
+  margin: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
