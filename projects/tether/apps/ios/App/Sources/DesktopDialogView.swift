@@ -245,3 +245,51 @@ public final class DesktopDialogView: UIView, UITextFieldDelegate {
         }
     }
 }
+
+// MARK: - UIViewController Convenience Extension
+
+extension UIViewController {
+    public var tilingWorkspace: TilingWorkspaceViewController? {
+        var current: UIViewController? = self
+        while let c = current {
+            if let ws = c as? TilingWorkspaceViewController { return ws }
+            current = c.parent
+        }
+        return DisplayHost.shared.externalWorkspaceVC ?? DisplayHost.shared.primaryWorkspaceVC
+    }
+
+    public func showDesktopAlert(
+        title: String,
+        message: String?,
+        actions: [DesktopAlertAction],
+        textFieldPlaceholder: String? = nil,
+        textFieldDefaultText: String? = nil
+    ) {
+        if let ws = tilingWorkspace {
+            ws.showDesktopDialog(
+                title: title,
+                message: message,
+                actions: actions,
+                textFieldPlaceholder: textFieldPlaceholder,
+                textFieldDefaultText: textFieldDefaultText
+            )
+        } else {
+            let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+            if let ph = textFieldPlaceholder {
+                alert.addTextField { tf in
+                    tf.placeholder = ph
+                    tf.text = textFieldDefaultText
+                }
+            }
+            for a in actions {
+                let style: UIAlertAction.Style = (a.style == .cancel) ? .cancel : (a.style == .destructive ? .destructive : .default)
+                alert.addAction(UIAlertAction(title: a.title, style: style) { _ in
+                    let text = alert.textFields?.first?.text
+                    a.handler?(text)
+                })
+            }
+            present(alert, animated: true)
+        }
+    }
+}
+
