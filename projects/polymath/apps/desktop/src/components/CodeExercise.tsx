@@ -9,6 +9,7 @@ export const CodeExercise: React.FC<CodeExerciseProps> = ({
   instructions,
   starterCode,
   solutionHint,
+  courseDir,
 }) => {
   const [code, setCode] = useState(starterCode);
   const [isRunning, setIsRunning] = useState(false);
@@ -26,8 +27,10 @@ export const CodeExercise: React.FC<CodeExerciseProps> = ({
     try {
       if (isTauri()) {
         const res = await invokeTauri<any>("run_exercise_tests", {
-          courseDir: ".",
+          courseDir: courseDir || "",
           testFile,
+          targetFile,
+          code,
         });
         setTestResult({
           success: res.success,

@@ -33,6 +33,7 @@ export interface CodeExerciseProps {
   instructions: string;
   starterCode: string;
   solutionHint?: string;
+  courseDir?: string;
 }
 
 export interface RooflinePlotProps {

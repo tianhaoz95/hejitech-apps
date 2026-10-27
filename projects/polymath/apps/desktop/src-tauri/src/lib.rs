@@ -1,7 +1,13 @@
 use std::fs;
-use std::path::PathBuf;
+use std::io::{Read, Write};
+use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::{Arc, Mutex};
+use std::thread;
+
+use portable_pty::{native_pty_system, CommandBuilder, MasterPty, PtySize};
 use serde::{Deserialize, Serialize};
+use tauri::{AppHandle, Emitter, State};
 
 #[derive(Serialize, Deserialize)]
 pub struct ProvisionResult {
@@ -15,6 +21,220 @@ pub struct TestRunResult {
     pub success: bool,
     pub output: String,
     pub duration_ms: u64,
+}
+
+struct PtySession {
+    master: Box<dyn MasterPty + Send>,
+    writer: Box<dyn Write + Send>,
+}
+
+pub struct AppPtyState {
+    session: Arc<Mutex<Option<PtySession>>>,
+}
+
+impl Default for AppPtyState {
+    fn default() -> Self {
+        Self {
+            session: Arc::new(Mutex::new(None)),
+        }
+    }
+}
+
+fn resolve_course_dir(course_dir: &str) -> PathBuf {
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+    if course_dir.is_empty() || course_dir == "." {
+        PathBuf::from(home).join("heji-courses").join("vllm-sglang-trtllm")
+    } else if let Some(stripped) = course_dir.strip_prefix("~/") {
+        PathBuf::from(home).join(stripped)
+    } else {
+        PathBuf::from(course_dir)
+    }
+}
+
+/// Ensures a managed virtual environment exists with pytest installed.
+/// Prefers:
+/// 1. Course-local `<course_dir>/.venv`
+/// 2. Central managed `~/heji-courses/.venv`
+/// Automatically provisions and installs pytest if absent.
+fn ensure_managed_pytest(base_dir: &Path) -> Result<PathBuf, String> {
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+    let central_venv = PathBuf::from(&home).join("heji-courses").join(".venv");
+
+    // 1. Local course-specific virtual environment
+    let local_pytest = if cfg!(windows) {
+        base_dir.join(".venv").join("Scripts").join("pytest.exe")
+    } else {
+        base_dir.join(".venv").join("bin").join("pytest")
+    };
+    if local_pytest.exists() {
+        return Ok(local_pytest);
+    }
+
+    // 2. Central managed virtual environment
+    let central_pytest = if cfg!(windows) {
+        central_venv.join("Scripts").join("pytest.exe")
+    } else {
+        central_venv.join("bin").join("pytest")
+    };
+    if central_pytest.exists() {
+        return Ok(central_pytest);
+    }
+
+    // 3. Create central virtual environment
+    let heji_courses_dir = PathBuf::from(&home).join("heji-courses");
+    fs::create_dir_all(&heji_courses_dir).map_err(|e| e.to_string())?;
+
+    let python_candidates = [
+        "/opt/homebrew/bin/python3",
+        "/usr/local/bin/python3",
+        "/usr/bin/python3",
+        "python3",
+    ];
+    let mut selected_python = "python3";
+    for cand in python_candidates {
+        if PathBuf::from(cand).exists() {
+            selected_python = cand;
+            break;
+        }
+    }
+
+    let venv_status = Command::new(selected_python)
+        .arg("-m")
+        .arg("venv")
+        .arg(&central_venv)
+        .status()
+        .map_err(|e| format!("Failed to invoke python3 -m venv: {}", e))?;
+
+    if !venv_status.success() {
+        return Err(format!(
+            "Failed to create managed virtualenv at {}",
+            central_venv.display()
+        ));
+    }
+
+    let pip_bin = if cfg!(windows) {
+        central_venv.join("Scripts").join("pip.exe")
+    } else {
+        central_venv.join("bin").join("pip")
+    };
+
+    let pip_status = Command::new(&pip_bin)
+        .arg("install")
+        .arg("pytest")
+        .status()
+        .map_err(|e| format!("Failed to run pip install pytest: {}", e))?;
+
+    if !pip_status.success() {
+        return Err("Failed to install pytest into managed virtualenv".to_string());
+    }
+
+    if central_pytest.exists() {
+        Ok(central_pytest)
+    } else {
+        Err(format!("pytest executable not found at {}", central_pytest.display()))
+    }
+}
+
+/// Ensures default starter tests and exercise stubs exist on disk before testing
+fn ensure_starter_files(
+    base_dir: &Path,
+    target_file: Option<&str>,
+    test_file: &str,
+    code: Option<&str>,
+) -> Result<(), String> {
+    let exercises_dir = base_dir.join("exercises");
+    let tests_dir = base_dir.join("tests");
+    fs::create_dir_all(&exercises_dir).map_err(|e| e.to_string())?;
+    fs::create_dir_all(&tests_dir).map_err(|e| e.to_string())?;
+
+    let ex_init = exercises_dir.join("__init__.py");
+    if !ex_init.exists() {
+        let _ = fs::write(ex_init, "");
+    }
+    let test_init = tests_dir.join("__init__.py");
+    if !test_init.exists() {
+        let _ = fs::write(test_init, "");
+    }
+
+    // Write updated code to target file if provided
+    if let (Some(target), Some(c)) = (target_file, code) {
+        let target_path = base_dir.join(target);
+        if let Some(parent) = target_path.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+        let _ = fs::write(target_path, c);
+    }
+
+    // Seed test file if absent
+    let test_path = base_dir.join(test_file);
+    if !test_path.exists() {
+        if test_file.ends_with("test_block_manager.py") {
+            let test_content = r#"import pytest
+from exercises.block_manager import BlockManager
+
+def test_allocation():
+    mgr = BlockManager(num_blocks=4)
+    b1 = mgr.allocate()
+    b2 = mgr.allocate()
+    assert b1 != b2
+    assert len(mgr.allocated) == 2
+
+def test_out_of_blocks():
+    mgr = BlockManager(num_blocks=2)
+    mgr.allocate()
+    mgr.allocate()
+    with pytest.raises(MemoryError):
+        mgr.allocate()
+
+def test_free_and_reuse():
+    mgr = BlockManager(num_blocks=2)
+    b1 = mgr.allocate()
+    mgr.free(b1)
+    assert b1 not in mgr.allocated
+    b2 = mgr.allocate()
+    assert b2 == b1
+"#;
+            let _ = fs::write(&test_path, test_content);
+        } else if test_file.ends_with("test_starter.py") {
+            let test_content = r#"from exercises.starter import check_env
+
+def test_env():
+    assert check_env() is True
+"#;
+            let _ = fs::write(&test_path, test_content);
+        }
+    }
+
+    // Seed target exercise file if absent
+    if let Some(target) = target_file {
+        let target_path = base_dir.join(target);
+        if !target_path.exists() {
+            if target.ends_with("block_manager.py") {
+                let default_code = r#"class BlockManager:
+    def __init__(self, num_blocks: int):
+        self.free_list = list(range(num_blocks))
+        self.allocated = set()
+
+    def allocate(self) -> int:
+        if not self.free_list:
+            raise MemoryError("Out of KV blocks!")
+        block_id = self.free_list.pop()
+        self.allocated.add(block_id)
+        return block_id
+
+    def free(self, block_id: int):
+        self.allocated.remove(block_id)
+        self.free_list.append(block_id)
+"#;
+                let _ = fs::write(&target_path, default_code);
+            } else if target.ends_with("starter.py") {
+                let default_code = "def check_env():\n    return True\n";
+                let _ = fs::write(&target_path, default_code);
+            }
+        }
+    }
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -131,16 +351,208 @@ fn open_course_terminal(course_dir: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-async fn run_exercise_tests(course_dir: String, test_file: String) -> Result<TestRunResult, String> {
-    let start = std::time::Instant::now();
-    let test_path = PathBuf::from(&course_dir).join(&test_file);
+fn init_pty_session(
+    app: AppHandle,
+    state: State<AppPtyState>,
+    cwd: Option<String>,
+    rows: Option<u16>,
+    cols: Option<u16>,
+) -> Result<String, String> {
+    let pty_system = native_pty_system();
+    let size = PtySize {
+        rows: rows.unwrap_or(24).max(1),
+        cols: cols.unwrap_or(80).max(1),
+        pixel_width: 0,
+        pixel_height: 0,
+    };
 
-    let output = Command::new("python3")
-        .arg("-m")
-        .arg("pytest")
-        .arg(test_path)
+    let pair = pty_system.openpty(size).map_err(|e| format!("Failed to open PTY: {}", e))?;
+
+    let default_shell = std::env::var("SHELL").unwrap_or_else(|_| {
+        if cfg!(windows) {
+            "powershell.exe".to_string()
+        } else {
+            "/bin/zsh".to_string()
+        }
+    });
+
+    let mut cmd = CommandBuilder::new(&default_shell);
+    #[cfg(unix)]
+    cmd.arg("-l"); // Login shell to load full environment (~/.zprofile, PATH, etc.)
+
+    cmd.env("TERM", "xterm-256color");
+    cmd.env("COLORTERM", "truecolor");
+
+    // Explicitly set UTF-8 locale so Python/Node/Ink TUI frameworks render Unicode box borders correctly
+    cmd.env("LANG", std::env::var("LANG").unwrap_or_else(|_| "en_US.UTF-8".to_string()));
+    cmd.env("LC_ALL", std::env::var("LC_ALL").unwrap_or_else(|_| "en_US.UTF-8".to_string()));
+
+    // Ensure PATH has managed virtualenv bin, common developer tools, and agent CLI locations
+    let current_path = std::env::var("PATH").unwrap_or_default();
+    let home = std::env::var("HOME").unwrap_or_default();
+    let central_venv_bin = PathBuf::from(&home).join("heji-courses").join(".venv").join("bin");
+    let extra_paths = format!(
+        "{}:{}/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:{}",
+        central_venv_bin.display(),
+        home,
+        current_path
+    );
+    cmd.env("PATH", extra_paths);
+    cmd.env("VIRTUAL_ENV", PathBuf::from(&home).join("heji-courses").join(".venv"));
+
+    if let Some(ref dir) = cwd {
+        let p = resolve_course_dir(dir);
+        if p.exists() {
+            cmd.cwd(p);
+        }
+    }
+
+    let _child = pair
+        .slave
+        .spawn_command(cmd)
+        .map_err(|e| format!("Failed to spawn shell: {}", e))?;
+
+    let writer = pair
+        .master
+        .take_writer()
+        .map_err(|e| format!("Failed to take writer: {}", e))?;
+
+    let mut reader = pair
+        .master
+        .try_clone_reader()
+        .map_err(|e| format!("Failed to clone reader: {}", e))?;
+
+    // Background reader thread with incomplete UTF-8 sequence boundary buffering
+    let app_clone = app.clone();
+    thread::spawn(move || {
+        let mut incomplete: Vec<u8> = Vec::with_capacity(16);
+        let mut buf = [0u8; 4096];
+        loop {
+            match reader.read(&mut buf) {
+                Ok(0) => break,
+                Ok(n) => {
+                    let data = if incomplete.is_empty() {
+                        buf[..n].to_vec()
+                    } else {
+                        let mut d = std::mem::take(&mut incomplete);
+                        d.extend_from_slice(&buf[..n]);
+                        d
+                    };
+
+                    let mut start = 0;
+                    while start < data.len() {
+                        match std::str::from_utf8(&data[start..]) {
+                            Ok(valid_str) => {
+                                let _ = app_clone.emit("pty-output", valid_str.to_string());
+                                start = data.len();
+                            }
+                            Err(err) => {
+                                let valid_up_to = err.valid_up_to();
+                                if valid_up_to > 0 {
+                                    let valid_str = unsafe {
+                                        std::str::from_utf8_unchecked(&data[start..start + valid_up_to])
+                                    };
+                                    let _ = app_clone.emit("pty-output", valid_str.to_string());
+                                    start += valid_up_to;
+                                }
+
+                                match err.error_len() {
+                                    None => {
+                                        // Incomplete sequence at end of chunk: hold for next read
+                                        incomplete.extend_from_slice(&data[start..]);
+                                        break;
+                                    }
+                                    Some(len) => {
+                                        // Skip invalid byte and emit replacement
+                                        let _ = app_clone.emit("pty-output", "\u{FFFD}".to_string());
+                                        start += len;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                Err(_) => break,
+            }
+        }
+    });
+
+    let session = PtySession {
+        master: pair.master,
+        writer,
+    };
+
+    let mut lock = state.session.lock().map_err(|e| e.to_string())?;
+    *lock = Some(session);
+
+    Ok("PTY session started".to_string())
+}
+
+#[tauri::command]
+fn write_pty_data(state: State<AppPtyState>, data: String) -> Result<(), String> {
+    let mut lock = state.session.lock().map_err(|e| e.to_string())?;
+    if let Some(ref mut session) = *lock {
+        session
+            .writer
+            .write_all(data.as_bytes())
+            .map_err(|e| format!("Failed to write to PTY: {}", e))?;
+        session
+            .writer
+            .flush()
+            .map_err(|e| format!("Failed to flush PTY: {}", e))?;
+        Ok(())
+    } else {
+        Err("No active PTY session".to_string())
+    }
+}
+
+#[tauri::command]
+fn resize_pty_session(state: State<AppPtyState>, rows: u16, cols: u16) -> Result<(), String> {
+    if rows == 0 || cols == 0 {
+        return Ok(());
+    }
+    let lock = state.session.lock().map_err(|e| e.to_string())?;
+    if let Some(ref session) = *lock {
+        session
+            .master
+            .resize(PtySize {
+                rows,
+                cols,
+                pixel_width: 0,
+                pixel_height: 0,
+            })
+            .map_err(|e| format!("Failed to resize PTY: {}", e))?;
+        Ok(())
+    } else {
+        Err("No active PTY session".to_string())
+    }
+}
+
+#[tauri::command]
+async fn run_exercise_tests(
+    course_dir: String,
+    test_file: String,
+    target_file: Option<String>,
+    code: Option<String>,
+) -> Result<TestRunResult, String> {
+    let start = std::time::Instant::now();
+    let base_dir = resolve_course_dir(&course_dir);
+    fs::create_dir_all(&base_dir).map_err(|e| e.to_string())?;
+
+    // 1. Ensure exercise files and user code are written to disk
+    ensure_starter_files(&base_dir, target_file.as_deref(), &test_file, code.as_deref())?;
+
+    // 2. Ensure managed virtual environment and pytest are installed
+    let pytest_bin = ensure_managed_pytest(&base_dir)?;
+
+    let test_path = base_dir.join(&test_file);
+
+    // 3. Execute pytest using the managed virtual environment with PYTHONPATH
+    let output = Command::new(&pytest_bin)
+        .arg(&test_path)
         .arg("-v")
-        .current_dir(&course_dir)
+        .env("PYTHONPATH", &base_dir)
+        .current_dir(&base_dir)
         .output();
 
     let duration_ms = start.elapsed().as_millis() as u64;
@@ -161,7 +573,7 @@ async fn run_exercise_tests(course_dir: String, test_file: String) -> Result<Tes
         }
         Err(e) => Ok(TestRunResult {
             success: false,
-            output: format!("Failed to spawn pytest: {}", e),
+            output: format!("Failed to spawn pytest at {}: {}", pytest_bin.display(), e),
             duration_ms,
         }),
     }
@@ -169,10 +581,14 @@ async fn run_exercise_tests(course_dir: String, test_file: String) -> Result<Tes
 
 pub fn run() {
     tauri::Builder::default()
+        .manage(AppPtyState::default())
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
             provision_course_workspace,
             open_course_terminal,
+            init_pty_session,
+            write_pty_data,
+            resize_pty_session,
             run_exercise_tests
         ])
         .run(tauri::generate_context!())
