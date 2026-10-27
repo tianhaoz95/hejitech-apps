@@ -156,7 +156,7 @@ pre.block { background: var(--bg2); border: 1px solid var(--line); border-radius
   padding: 22px 24px;
   box-shadow: var(--shadow);
 }
-.panel + .panel { margin-top: 16px; }
+.panel + .panel, .cards-grid + .panel { margin-top: 16px; }
 .grid2 > .panel + .panel, .cards-grid > .panel + .panel { margin-top: 0; }
 .panel-header {
   display: flex;
@@ -184,13 +184,13 @@ pre.block { background: var(--bg2); border: 1px solid var(--line); border-radius
 .signin { max-width: 440px; margin: 28px auto; padding: 28px; }
 .grid2 { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); gap: 20px; align-items: start; }
 .grid2.rev { grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); }
-.cards-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: stretch; margin-top: 16px; }
+.cards-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: stretch; margin: 16px 0; }
 @media (max-width: 860px) {
   .grid2, .grid2.rev, .cards-grid { grid-template-columns: minmax(0, 1fr); }
   .panel { padding: 18px; }
 }
 
-.stack { display: grid; gap: 12px; }
+.stack { display: grid; gap: 12px; align-content: start; }
 .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .row-between { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
 .divider { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12.5px; margin: 18px 0 12px; }
