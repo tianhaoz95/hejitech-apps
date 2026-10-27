@@ -121,8 +121,13 @@ public final class TilingWorkspaceViewController: UIViewController {
         view.addSubview(phoneSwitcherBar)
         view.addSubview(workspaceCanvas)
 
-        virtualCursorOverlay = VirtualCursorOverlayView(targetCanvas: workspaceCanvas)
+        virtualCursorOverlay = VirtualCursorOverlayView(targetCanvas: view)
         virtualCursorOverlay.translatesAutoresizingMaskIntoConstraints = false
+        virtualCursorOverlay.onTextInputFocused = { textField in
+            DisplayHost.shared.phoneControllerVC?.switchToKeyboardForInput(
+                placeholder: textField.placeholder ?? "Text input"
+            )
+        }
         view.addSubview(virtualCursorOverlay)
 
         phoneSwitcherHeightConstraint = phoneSwitcherBar.heightAnchor.constraint(equalToConstant: 0)
@@ -151,10 +156,10 @@ public final class TilingWorkspaceViewController: UIViewController {
             workspaceCanvas.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             workspaceCanvas.bottomAnchor.constraint(equalTo: view.bottomAnchor),
 
-            virtualCursorOverlay.topAnchor.constraint(equalTo: workspaceCanvas.topAnchor),
-            virtualCursorOverlay.leadingAnchor.constraint(equalTo: workspaceCanvas.leadingAnchor),
-            virtualCursorOverlay.trailingAnchor.constraint(equalTo: workspaceCanvas.trailingAnchor),
-            virtualCursorOverlay.bottomAnchor.constraint(equalTo: workspaceCanvas.bottomAnchor),
+            virtualCursorOverlay.topAnchor.constraint(equalTo: view.topAnchor),
+            virtualCursorOverlay.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            virtualCursorOverlay.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            virtualCursorOverlay.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
     }
 
