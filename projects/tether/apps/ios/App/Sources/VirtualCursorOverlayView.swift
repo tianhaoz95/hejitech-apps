@@ -133,6 +133,7 @@ public final class VirtualCursorOverlayView: UIView {
             // 4. Web View: DOM element click
             if let webView = findAncestor(of: hitView, matching: { $0 is WKWebView }) as? WKWebView {
                 let ptInWeb = webView.convert(hitPoint, from: canvas)
+                webView.becomeFirstResponder()
                 simulateWebClick(in: webView, at: ptInWeb)
                 return
             }
@@ -189,6 +190,10 @@ public final class VirtualCursorOverlayView: UIView {
                     clientY: \(point.y)
                 });
                 el.dispatchEvent(evt);
+                if (el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA') {
+                    var inner = el.querySelector('input, textarea');
+                    if (inner) inner.focus();
+                }
             }
         })();
         """

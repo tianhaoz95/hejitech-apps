@@ -710,8 +710,89 @@ public final class TilingWorkspaceViewController: UIViewController {
                     }
                 }
             }
+            return
         }
-        super.pressesBegan(presses, with: event)
+
+        var handled = false
+        for press in presses {
+            guard let key = press.key else { continue }
+            switch key.keyCode {
+            case .keyboardReturnOrEnter:
+                routeSpecialKey(.enter)
+                handled = true
+            case .keyboardEscape:
+                routeSpecialKey(.escape)
+                handled = true
+            case .keyboardTab:
+                routeSpecialKey(.tab)
+                handled = true
+            case .keyboardDeleteOrBackspace:
+                routeKeyInput("\u{7F}")
+                handled = true
+            case .keyboardUpArrow:
+                routeSpecialKey(.up)
+                handled = true
+            case .keyboardDownArrow:
+                routeSpecialKey(.down)
+                handled = true
+            case .keyboardLeftArrow:
+                routeSpecialKey(.left)
+                handled = true
+            case .keyboardRightArrow:
+                routeSpecialKey(.right)
+                handled = true
+            default:
+                if key.modifierFlags.contains(.command) || key.modifierFlags.contains(.control) {
+                    let char = key.charactersIgnoringModifiers.uppercased()
+                    switch char {
+                    case "K", "P":
+                        openCommandPalette()
+                        handled = true
+                    case "T":
+                        store.openTab(type: .web)
+                        handled = true
+                    case "W":
+                        store.closeTab()
+                        handled = true
+                    case "1":
+                        store.applyPreset(.single)
+                        handled = true
+                    case "2":
+                        store.applyPreset(.twoColumn)
+                        handled = true
+                    case "3":
+                        store.applyPreset(.leftPlusTwoRight)
+                        handled = true
+                    case "4":
+                        store.applyPreset(.twoByTwo)
+                        handled = true
+                    case "C":
+                        routeSpecialKey(.ctrlC)
+                        handled = true
+                    case "D":
+                        routeSpecialKey(.ctrlD)
+                        handled = true
+                    case "L":
+                        routeSpecialKey(.ctrlL)
+                        handled = true
+                    case "Z":
+                        routeSpecialKey(.ctrlZ)
+                        handled = true
+                    default:
+                        if !key.characters.isEmpty {
+                            routeKeyInput(key.characters)
+                            handled = true
+                        }
+                    }
+                } else if !key.characters.isEmpty {
+                    routeKeyInput(key.characters)
+                    handled = true
+                }
+            }
+        }
+        if !handled {
+            super.pressesBegan(presses, with: event)
+        }
     }
 
     public func activeWebTabController() -> WebTabViewController? {

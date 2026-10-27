@@ -17,10 +17,22 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.6"
+    static let currentVersion = "0.1.7"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.7", date: "October 2026", items: [
+            WhatsNewItem(
+                icon: "keyboard",
+                title: "Physical Keyboard Input in Web Pages",
+                description: "Type smoothly into any web text input, search box, or textarea with full support for hardware typing, backspace, enter, and cursor navigation."
+            ),
+            WhatsNewItem(
+                icon: "safari",
+                title: "Streamlined Web Toolbar",
+                description: "Removed the redundant Safari button to keep the web toolbar focused, clean, and distraction-free."
+            ),
+        ]),
         ReleaseNotes(version: "0.1.6", date: "October 2026", items: [
             WhatsNewItem(
                 icon: "app.badge.checkmark",

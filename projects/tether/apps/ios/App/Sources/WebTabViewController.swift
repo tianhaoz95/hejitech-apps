@@ -13,7 +13,6 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
     private let backButton = UIButton(type: .system)
     private let forwardButton = UIButton(type: .system)
     private let reloadStopButton = UIButton(type: .system)
-    private let safariButton = UIButton(type: .system)
     private let bookmarkButton = UIButton(type: .system)
     private let progressView = UIProgressView(progressViewStyle: .bar)
     private let statusBanner = UILabel()
@@ -52,6 +51,7 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
 
     public func simulateClick(at pointInView: CGPoint) {
         let ptInWeb = view.convert(pointInView, to: webView)
+        webView.becomeFirstResponder()
         let script = """
         (function() {
             var el = document.elementFromPoint(\(ptInWeb.x), \(ptInWeb.y));
@@ -66,6 +66,10 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
                     clientY: \(ptInWeb.y)
                 });
                 el.dispatchEvent(evt);
+                if (el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA') {
+                    var inner = el.querySelector('input, textarea');
+                    if (inner) inner.focus();
+                }
             }
         })();
         """
@@ -87,34 +91,183 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
             }
             return
         }
-        if text == " " {
-            let cur = webView.scrollView.contentOffset
-            webView.scrollView.setContentOffset(CGPoint(x: cur.x, y: cur.y + 200), animated: true)
+
+        guard let data = try? JSONSerialization.data(withJSONObject: [text], options: []),
+              let jsonArray = String(data: data, encoding: .utf8) else { return }
+
+        let js = """
+        (function(args) {
+            var text = args[0];
+            var el = document.activeElement;
+            if (!el) return false;
+
+            var isInput = (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA');
+            var isEditable = isInput || el.isContentEditable || el.getAttribute('contenteditable') === 'true' || el.getAttribute('role') === 'textbox';
+
+            if (!isEditable) {
+                return false;
+            }
+
+            if (text === '\\u007F' || text === '\\b') {
+                if (isInput && typeof el.selectionStart === 'number') {
+                    var start = el.selectionStart;
+                    var end = el.selectionEnd;
+                    if (start === end && start > 0) {
+                        el.setRangeText('', start - 1, start, 'end');
+                    } else if (start !== end) {
+                        el.setRangeText('', start, end, 'end');
+                    }
+                    el.dispatchEvent(new InputEvent('input', { bubbles: true, cancelable: true, inputType: 'deleteContentBackward' }));
+                } else {
+                    document.execCommand('delete', false, null);
+                }
+                return true;
+            }
+
+            if (text === '\\r' || text === '\\n') {
+                if (el.tagName === 'TEXTAREA') {
+                    if (typeof el.selectionStart === 'number') {
+                        el.setRangeText('\\n', el.selectionStart, el.selectionEnd, 'end');
+                        el.dispatchEvent(new InputEvent('input', { bubbles: true, cancelable: true, inputType: 'insertLineBreak' }));
+                    } else {
+                        document.execCommand('insertParagraph', false, null);
+                    }
+                } else if (el.tagName === 'INPUT') {
+                    var ev = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true });
+                    el.dispatchEvent(ev);
+                    if (!ev.defaultPrevented && el.form) {
+                        if (typeof el.form.requestSubmit === 'function') {
+                            el.form.requestSubmit();
+                        } else {
+                            el.form.submit();
+                        }
+                    }
+                } else if (el.isContentEditable) {
+                    document.execCommand('insertParagraph', false, null);
+                }
+                return true;
+            }
+
+            var success = false;
+            try {
+                success = document.execCommand('insertText', false, text);
+            } catch(e) {}
+
+            if (!success) {
+                if (isInput && typeof el.selectionStart === 'number') {
+                    var start = el.selectionStart;
+                    var end = el.selectionEnd;
+                    el.setRangeText(text, start, end, 'end');
+                    el.dispatchEvent(new InputEvent('input', { bubbles: true, cancelable: true, data: text, inputType: 'insertText' }));
+                } else if (el.isContentEditable) {
+                    var sel = window.getSelection();
+                    if (sel && sel.rangeCount > 0) {
+                        var range = sel.getRangeAt(0);
+                        range.deleteContents();
+                        var textNode = document.createTextNode(text);
+                        range.insertNode(textNode);
+                        range.setStartAfter(textNode);
+                        range.setEndAfter(textNode);
+                        sel.removeAllRanges();
+                        sel.addRange(range);
+                        el.dispatchEvent(new InputEvent('input', { bubbles: true, cancelable: true, data: text, inputType: 'insertText' }));
+                    }
+                }
+            }
+            return true;
+        })(\(jsonArray));
+        """
+
+        webView.evaluateJavaScript(js) { [weak self] result, _ in
+            if let isHandled = result as? Bool, !isHandled {
+                if text == " " {
+                    Task { @MainActor in
+                        guard let self else { return }
+                        let cur = self.webView.scrollView.contentOffset
+                        self.webView.scrollView.setContentOffset(CGPoint(x: cur.x, y: cur.y + 200), animated: true)
+                    }
+                }
+            }
         }
     }
 
     public func handleSpecialKey(_ key: SpecialKey) {
-        switch key {
-        case .up:
-            let cur = webView.scrollView.contentOffset
-            webView.scrollView.setContentOffset(CGPoint(x: cur.x, y: max(0, cur.y - 120)), animated: true)
-        case .down:
-            let cur = webView.scrollView.contentOffset
-            webView.scrollView.setContentOffset(CGPoint(x: cur.x, y: cur.y + 120), animated: true)
-        case .left:
-            let cur = webView.scrollView.contentOffset
-            webView.scrollView.setContentOffset(CGPoint(x: max(0, cur.x - 80), y: cur.y), animated: true)
-        case .right:
-            let cur = webView.scrollView.contentOffset
-            webView.scrollView.setContentOffset(CGPoint(x: cur.x + 80, y: cur.y), animated: true)
-        case .escape:
-            addressField.resignFirstResponder()
-        case .enter:
-            if addressField.isFirstResponder {
+        if addressField.isFirstResponder {
+            switch key {
+            case .escape:
+                addressField.resignFirstResponder()
+            case .enter:
                 _ = textFieldShouldReturn(addressField)
+            case .backspace:
+                handleKeyInput(text: "\u{7F}")
+            default:
+                break
             }
+            return
+        }
+
+        switch key {
+        case .enter:
+            handleKeyInput(text: "\n")
         case .backspace:
             handleKeyInput(text: "\u{7F}")
+        case .escape:
+            webView.evaluateJavaScript("if (document.activeElement && typeof document.activeElement.blur === 'function') document.activeElement.blur();", completionHandler: nil)
+        case .up, .down, .left, .right:
+            let dir: String
+            switch key {
+            case .up: dir = "up"
+            case .down: dir = "down"
+            case .left: dir = "left"
+            case .right: dir = "right"
+            default: dir = ""
+            }
+
+            let js = """
+            (function(dir) {
+                var el = document.activeElement;
+                if (!el) return false;
+                var isInput = (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA');
+                if (!isInput && !el.isContentEditable) return false;
+
+                if (isInput && typeof el.selectionStart === 'number') {
+                    var start = el.selectionStart;
+                    var end = el.selectionEnd;
+                    if (dir === 'left') {
+                        var pos = Math.max(0, (start === end ? start - 1 : start));
+                        el.setSelectionRange(pos, pos);
+                        return true;
+                    } else if (dir === 'right') {
+                        var pos = Math.min(el.value.length, (start === end ? start + 1 : end));
+                        el.setSelectionRange(pos, pos);
+                        return true;
+                    }
+                }
+                return false;
+            })('\(dir)');
+            """
+
+            webView.evaluateJavaScript(js) { [weak self] result, _ in
+                if let isHandled = result as? Bool, isHandled {
+                    return
+                }
+                Task { @MainActor in
+                    guard let self else { return }
+                    let cur = self.webView.scrollView.contentOffset
+                    switch key {
+                    case .up:
+                        self.webView.scrollView.setContentOffset(CGPoint(x: cur.x, y: max(0, cur.y - 120)), animated: true)
+                    case .down:
+                        self.webView.scrollView.setContentOffset(CGPoint(x: cur.x, y: cur.y + 120), animated: true)
+                    case .left:
+                        self.webView.scrollView.setContentOffset(CGPoint(x: max(0, cur.x - 80), y: cur.y), animated: true)
+                    case .right:
+                        self.webView.scrollView.setContentOffset(CGPoint(x: cur.x + 80, y: cur.y), animated: true)
+                    default:
+                        break
+                    }
+                }
+            }
         default:
             break
         }
@@ -138,11 +291,6 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
         reloadStopButton.tintColor = .white
         reloadStopButton.addTarget(self, action: #selector(reloadOrStopTapped), for: .touchUpInside)
 
-        safariButton.setImage(UIImage(systemName: "safari"), for: .normal)
-        safariButton.tintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
-        safariButton.accessibilityLabel = "Open in Safari"
-        safariButton.addTarget(self, action: #selector(openInSafariTapped), for: .touchUpInside)
-
         bookmarkButton.setImage(UIImage(systemName: "star"), for: .normal)
         bookmarkButton.tintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
         bookmarkButton.addTarget(self, action: #selector(bookmarkTapped), for: .touchUpInside)
@@ -164,7 +312,7 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
         addressField.placeholder = "Enter URL or search query…"
         addressField.text = (tabItem.url == "about:home") ? "" : (tabItem.url ?? "")
 
-        let stack = UIStackView(arrangedSubviews: [backButton, forwardButton, reloadStopButton, addressField, safariButton, bookmarkButton])
+        let stack = UIStackView(arrangedSubviews: [backButton, forwardButton, reloadStopButton, addressField, bookmarkButton])
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.axis = .horizontal
         stack.spacing = 6
@@ -245,7 +393,6 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
             backButton.widthAnchor.constraint(equalToConstant: 26),
             forwardButton.widthAnchor.constraint(equalToConstant: 26),
             reloadStopButton.widthAnchor.constraint(equalToConstant: 26),
-            safariButton.widthAnchor.constraint(equalToConstant: 26),
             bookmarkButton.widthAnchor.constraint(equalToConstant: 26),
 
             progressView.leadingAnchor.constraint(equalTo: toolbar.leadingAnchor),
@@ -509,13 +656,6 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
         </html>
         """
         webView.loadHTMLString(html, baseURL: URL(string: "about:home"))
-    }
-
-    @objc private func openInSafariTapped() {
-        guard let currentURL = webView.url ?? URL(string: addressField.text ?? "") else { return }
-        if currentURL.scheme?.hasPrefix("http") == true {
-            UIApplication.shared.open(currentURL)
-        }
     }
 
     public func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
