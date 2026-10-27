@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" fill="none">
+  <rect width="1024" height="1024" rx="224" fill="#2E3440"/>
+  <!-- Window Frame -->
+  <rect x="100" y="130" width="824" height="764" rx="90" fill="#3B4252" stroke="#4C566A" stroke-width="18"/>
+  <!-- Title Bar -->
+  <rect x="140" y="170" width="280" height="68" rx="24" fill="#434C5E"/>
+  <circle cx="180" cy="204" r="16" fill="#88C0D0"/>
+  <rect x="220" y="196" width="140" height="16" rx="8" fill="#D8DEE9"/>
+  <!-- Left Pane: Terminal Card -->
+  <rect x="140" y="270" width="340" height="580" rx="44" fill="#2E3440" stroke="#434C5E" stroke-width="12"/>
+  <path d="M220 440L290 510L220 580" stroke="#88C0D0" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M320 580H400" stroke="#81A1C1" stroke-width="32" stroke-linecap="round"/>
+  <!-- Top Right Pane: Web Card -->
+  <rect x="520" y="270" width="364" height="270" rx="44" fill="#2E3440" stroke="#434C5E" stroke-width="12"/>
+  <rect x="570" y="340" width="230" height="44" rx="22" fill="#A3BE8C"/>
+  <rect x="570" y="416" width="160" height="30" rx="15" fill="#D8DEE9" opacity="0.6"/>
+  <!-- Bottom Right Pane: Files Card -->
+  <rect x="520" y="580" width="364" height="270" rx="44" fill="#2E3440" stroke="#434C5E" stroke-width="12"/>
+  <rect x="570" y="650" width="210" height="44" rx="22" fill="#EBCB8B"/>
+  <rect x="570" y="726" width="140" height="30" rx="15" fill="#D8DEE9" opacity="0.6"/>
+</svg>

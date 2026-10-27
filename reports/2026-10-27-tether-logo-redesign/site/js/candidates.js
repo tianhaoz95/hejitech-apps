@@ -901,6 +901,369 @@
   });
 
   // ══════════════════════════════════════════════════════════════════
+  // ROUND 2 · NORD FUSION CONCEPTS & EVOLUTIONS (21–28)
+  // ══════════════════════════════════════════════════════════════════
+
+  // 21 · Nord Cable Loop
+  add({
+    id: "nord-cable",
+    n: 21,
+    group: "concept",
+    round: 2,
+    name: "Nord Cable Loop",
+    tagline: "Continuous braided USB-C tether looping into an unbroken 'T' in matte Nord frost slate",
+    concept: "Applies the winning 02 Nord Frost aesthetic to the continuous hardware tether metaphor. Arctic Polar Night background (#2E3440) hosting an unbroken, heavy braided cable loop forming the letter 'T'. The inner fiber core glows with icy Polar Ice cyan (#88C0D0), flanked by frosted aluminum connector collars.",
+    palette: [["Nord Night", "#2E3440"], ["Polar Ice", "#88C0D0"], ["Frost Blue", "#81A1C1"], ["Snow Storm", "#ECEFF4"], ["Aurora Teal", "#8FBCBB"]],
+    moves: [
+      "Unbroken continuous loop forming an iconic monogram 'T'",
+      "Authentic Arctic Nord palette with glowing Polar Ice inner fiber core",
+      "Frosted aluminum USB-C connector collars on the horizontal crossbar",
+      "Zero eye fatigue, exceptionally readable from 1024px down to 16px"
+    ],
+    facts: { Aesthetic: "Nord Frost", Metaphor: "USB-C Tether", Readability: "Superb 16-1024px" },
+    draw: ({ uid }) => `
+      <defs>
+        <linearGradient id="${uid}_nc_glow" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#88C0D0"/>
+          <stop offset="50%" stop-color="#81A1C1"/>
+          <stop offset="100%" stop-color="#8FBCBB"/>
+        </linearGradient>
+        <filter id="${uid}_nc_sh" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="16" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <rect width="1024" height="1024" fill="#2E3440"/>
+      <!-- Soft Arctic Ambient Radial Bloom -->
+      <circle cx="512" cy="480" r="340" fill="#88C0D0" opacity="0.08" filter="url(#${uid}_nc_sh)"/>
+      <!-- Outer Braided Slate Cable forming 'T' -->
+      <path d="M220 320 H804 M512 320 V760" stroke="#3B4252" stroke-width="120" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M220 320 H804 M512 320 V760" stroke="#4C566A" stroke-width="84" stroke-linecap="round" stroke-linejoin="round"/>
+      <!-- Glowing Inner Polar Ice Core -->
+      <path d="M220 320 H804 M512 320 V760" stroke="url(#${uid}_nc_glow)" stroke-width="36" stroke-linecap="round" stroke-linejoin="round" filter="url(#${uid}_nc_sh)"/>
+      <!-- Frosted Aluminum Connector Collars -->
+      <rect x="140" y="276" width="92" height="88" rx="20" fill="#D8DEE9" stroke="#ECEFF4" stroke-width="8"/>
+      <rect x="792" y="276" width="92" height="88" rx="20" fill="#D8DEE9" stroke="#ECEFF4" stroke-width="8"/>
+      <rect x="468" y="736" width="88" height="92" rx="20" fill="#D8DEE9" stroke="#ECEFF4" stroke-width="8"/>
+      <!-- Center Interlock Knot Jewel -->
+      <circle cx="512" cy="320" r="46" fill="#88C0D0" stroke="#ECEFF4" stroke-width="8" filter="url(#${uid}_nc_sh)"/>
+    `
+  });
+
+  // 22 · Nord Docking Horizon
+  add({
+    id: "nord-docking",
+    n: 22,
+    group: "concept",
+    round: 2,
+    name: "Nord Docking Horizon",
+    tagline: "Nord ultrawide display silhouette linked by a glowing tether beam to a docked phone",
+    concept: "Translates the dual-horizon device docking story into Nord minimalism. A floating 21:9 ultrawide desktop monitor silhouette in deep Polar Night slate (#2E3440 / #3B4252) with illuminated terminal (>_) and web split cards, connected via a luminous Polar Ice data beam to a docked smartphone below.",
+    palette: [["Nord Dark", "#242933"], ["Nord Night", "#2E3440"], ["Polar Ice", "#88C0D0"], ["Aurora Green", "#A3BE8C"], ["Frost Slate", "#4C566A"]],
+    moves: [
+      "Ultrawide monitor upper silhouette with clean 3-pane split",
+      "Compact docked phone silhouette at bottom center",
+      "Vertical glowing data beam connecting phone port to monitor input",
+      "Tells the exact story of Tether: your phone powering an external desktop"
+    ],
+    facts: { Aesthetic: "Nord Frost", Narrative: "Phone → Monitor", Metaphor: "Dual Horizon" },
+    draw: ({ uid }) => `
+      <defs>
+        <linearGradient id="${uid}_nd_beam" x1="0%" y1="100%" x2="0%" y2="0%">
+          <stop offset="0%" stop-color="#EBCB8B"/>
+          <stop offset="50%" stop-color="#88C0D0"/>
+          <stop offset="100%" stop-color="#81A1C1"/>
+        </linearGradient>
+        <filter id="${uid}_nd_glow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="16" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <rect width="1024" height="1024" fill="#242933"/>
+      <!-- Upper Ultrawide Monitor (21:9 ratio) -->
+      <rect x="90" y="160" width="844" height="450" rx="48" fill="#2E3440" stroke="#4C566A" stroke-width="14"/>
+      <!-- Monitor Screen Area -->
+      <rect x="120" y="190" width="784" height="390" rx="30" fill="#3B4252"/>
+      <!-- 3-Pane Split on Monitor -->
+      <line x1="472" y1="190" x2="472" y2="580" stroke="#4C566A" stroke-width="8"/>
+      <line x1="472" y1="385" x2="904" y2="385" stroke="#4C566A" stroke-width="8"/>
+      <!-- Left Terminal Pane -->
+      <path d="M190 320L250 385L190 450" stroke="#88C0D0" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M280 450H370" stroke="#81A1C1" stroke-width="32" stroke-linecap="round"/>
+      <!-- Top Right Web Pane -->
+      <rect x="520" y="240" width="280" height="44" rx="22" fill="#A3BE8C"/>
+      <rect x="520" y="310" width="180" height="28" rx="14" fill="#D8DEE9" opacity="0.6"/>
+      <!-- Bottom Right Files Pane -->
+      <rect x="520" y="430" width="260" height="44" rx="22" fill="#EBCB8B"/>
+      <rect x="520" y="500" width="160" height="28" rx="14" fill="#D8DEE9" opacity="0.6"/>
+      <!-- Monitor Stand & Base -->
+      <rect x="488" y="610" width="48" height="80" rx="8" fill="#4C566A"/>
+      <rect x="420" y="680" width="184" height="18" rx="9" fill="#4C566A"/>
+      <!-- Docked Smartphone (Bottom Center) -->
+      <rect x="444" y="740" width="136" height="220" rx="28" fill="#2E3440" stroke="#88C0D0" stroke-width="8"/>
+      <rect x="464" y="760" width="96" height="170" rx="16" fill="#3B4252"/>
+      <circle cx="512" cy="775" r="5" fill="#88C0D0"/>
+      <!-- Glowing Tether Data Beam -->
+      <line x1="512" y1="740" x2="512" y2="690" stroke="url(#${uid}_nd_beam)" stroke-width="18" stroke-linecap="round" filter="url(#${uid}_nd_glow)"/>
+    `
+  });
+
+  // 23 · Nord T-Matrix
+  add({
+    id: "nord-tmatrix",
+    n: 23,
+    group: "concept",
+    round: 2,
+    name: "Nord T-Matrix",
+    tagline: "The letter 'T' forged directly out of 3 floating Nord Frost matte split-pane cards",
+    concept: "Unifies the 3-pane workspace architecture with typographic brand identity in pure Nord Frost materials. Three floating matte rounded rectangular cards (#3B4252) form the horizontal crossbar and vertical stem of the letter 'T'. Contains an icy cyan terminal prompt on the left and aurora green/gold pill indicators on the right.",
+    palette: [["Polar Night", "#2E3440"], ["Card Slate", "#3B4252"], ["Polar Ice", "#88C0D0"], ["Aurora Green", "#A3BE8C"], ["Snow White", "#ECEFF4"]],
+    moves: [
+      "Workspace panes arranged in negative space to form an unmistakable 'T'",
+      "36px rounded matte floating cards with soft edge contrast",
+      "High-luma Polar Ice terminal prompt (>_) with Aurora Green tab pill",
+      "Instantly recognizable as both an app icon and an architectural layout"
+    ],
+    facts: { Aesthetic: "Nord Frost", Typographic: "Letter T", Metaphor: "Pane Matrix" },
+    draw: () => `
+      <rect width="1024" height="1024" fill="#2E3440"/>
+      <!-- T Crossbar: Left Upper Card -->
+      <rect x="130" y="170" width="360" height="220" rx="44" fill="#3B4252" stroke="#4C566A" stroke-width="12"/>
+      <!-- Terminal Prompt in Left Arm -->
+      <path d="M220 250L266 285L220 320" stroke="#88C0D0" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M290 320H360" stroke="#81A1C1" stroke-width="30" stroke-linecap="round"/>
+      <!-- T Crossbar: Right Upper Card -->
+      <rect x="534" y="170" width="360" height="220" rx="44" fill="#3B4252" stroke="#4C566A" stroke-width="12"/>
+      <!-- Web Aurora Pill in Right Arm -->
+      <rect x="590" y="240" width="220" height="42" rx="21" fill="#A3BE8C"/>
+      <rect x="590" y="306" width="140" height="26" rx="13" fill="#D8DEE9" opacity="0.6"/>
+      <!-- T Vertical Stem: Center Tall Card -->
+      <rect x="340" y="430" width="344" height="440" rx="48" fill="#3B4252" stroke="#4C566A" stroke-width="12"/>
+      <!-- Files Gold & Polar Ice indicators inside stem -->
+      <rect x="400" y="500" width="224" height="44" rx="22" fill="#EBCB8B"/>
+      <rect x="400" y="570" width="150" height="28" rx="14" fill="#D8DEE9" opacity="0.6"/>
+      <rect x="400" y="660" width="224" height="44" rx="22" fill="#88C0D0"/>
+      <rect x="400" y="730" width="130" height="28" rx="14" fill="#D8DEE9" opacity="0.6"/>
+      <!-- Central Linking Anchor Dot -->
+      <circle cx="512" cy="400" r="18" fill="#88C0D0"/>
+    `
+  });
+
+  // 24 · Nord USB-C Portal
+  add({
+    id: "nord-usbc",
+    n: 24,
+    group: "concept",
+    round: 2,
+    name: "Nord USB-C Portal",
+    tagline: "Precision USB-C connector pill framing a tranquil 3-pane Nord desktop portal",
+    concept: "Takes the universal USB-C hardware aperture and finishes it in bead-blasted Scandinavian aluminum. Inside the precision pill-shaped connector cutout sits a tranquil, glowing Nord Frost desktop window with terminal prompt and tiling splits.",
+    palette: [["Nord Night", "#2E3440"], ["Bezel Slate", "#434C5E"], ["Polar Ice", "#88C0D0"], ["Arctic Silver", "#D8DEE9"], ["Aurora Teal", "#8FBCBB"]],
+    moves: [
+      "Symmetrical USB-C connector pill outer bezel with chamfered inner lip",
+      "Framed portal revealing a floating 3-pane tiling split",
+      "Celebrates USB-C single-cable plug-and-play desktop docking",
+      "High contrast icon silhouette on any wallpaper"
+    ],
+    facts: { Aesthetic: "Nord Frost", Hardware: "USB-C Port", Metaphor: "Portal" },
+    draw: ({ uid }) => `
+      <defs>
+        <filter id="${uid}_nu_sh" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="18" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <rect width="1024" height="1024" fill="#2E3440"/>
+      <!-- Outer Anodized Aluminum USB-C Connector Bezel -->
+      <rect x="110" y="240" width="804" height="544" rx="240" fill="#3B4252" stroke="#4C566A" stroke-width="24"/>
+      <rect x="134" y="264" width="756" height="496" rx="216" fill="#2E3440" stroke="#88C0D0" stroke-width="8" opacity="0.8"/>
+      <!-- Inner USB-C Center Tongue / Desktop Window -->
+      <rect x="220" y="330" width="584" height="364" rx="60" fill="#242933" stroke="#4C566A" stroke-width="12"/>
+      <!-- Split Panes Inside Tongue -->
+      <line x1="490" y1="330" x2="490" y2="694" stroke="#4C566A" stroke-width="8"/>
+      <line x1="490" y1="512" x2="804" y2="512" stroke="#4C566A" stroke-width="8"/>
+      <!-- Left Terminal Prompt -->
+      <path d="M290 470L340 512L290 554" stroke="#88C0D0" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M366 554H430" stroke="#81A1C1" stroke-width="28" stroke-linecap="round"/>
+      <!-- Web & File Indicators in Right Splits -->
+      <rect x="540" y="400" width="200" height="34" rx="17" fill="#A3BE8C"/>
+      <rect x="540" y="580" width="180" height="34" rx="17" fill="#EBCB8B"/>
+      <!-- Gold USB-C Pins on Top & Bottom Inner Edges -->
+      ${[320, 420, 520, 620, 700].map((x) => `
+        <rect x="${x - 14}" y="300" width="28" height="18" rx="4" fill="#EBCB8B"/>
+        <rect x="${x - 14}" y="706" width="28" height="18" rx="4" fill="#EBCB8B"/>
+      `).join("")}
+    `
+  });
+
+  // 25 · Nord Geometric Anchor
+  add({
+    id: "nord-anchor",
+    n: 25,
+    group: "concept",
+    round: 2,
+    name: "Nord Geometric Anchor",
+    tagline: "Nautical anchor geometry merged with a 3-pane split grid in matte Arctic Frost",
+    concept: "Reinterprets the 'tether / mooring' metaphor through minimalist Scandinavian geometry. An anchor stock and shank constructed from clean architectural bars that seamlessly interlock with a 3-way workspace split, rendered in serene Polar Night and Frost Blue.",
+    palette: [["Nord Night", "#2E3440"], ["Anchor Slate", "#4C566A"], ["Polar Ice", "#88C0D0"], ["Aurora Gold", "#EBCB8B"], ["Snow Storm", "#ECEFF4"]],
+    moves: [
+      "Modern geometric anchor icon representing stable external connection",
+      "Cross-brace forms the split-pane dividing line",
+      "Flukes curve upward to cradle the terminal and web tools",
+      "Distinctive, memorable silhouette with nautical stability"
+    ],
+    facts: { Aesthetic: "Nord Frost", Metaphor: "Nautical Anchor", Craft: "Geometric Minimal" },
+    draw: () => `
+      <rect width="1024" height="1024" fill="#2E3440"/>
+      <!-- Top Eyelet Ring -->
+      <circle cx="512" cy="230" r="90" fill="none" stroke="#88C0D0" stroke-width="36"/>
+      <circle cx="512" cy="230" r="45" fill="#3B4252"/>
+      <!-- Horizontal Anchor Stock / Crossbar (forms top pane line) -->
+      <rect x="180" y="360" width="664" height="52" rx="26" fill="#4C566A"/>
+      <circle cx="210" cy="386" r="30" fill="#EBCB8B"/>
+      <circle cx="814" cy="386" r="30" fill="#EBCB8B"/>
+      <!-- Vertical Anchor Shank -->
+      <rect x="484" y="320" width="56" height="460" rx="24" fill="#4C566A"/>
+      <!-- Bottom Fluke Crescent Sweep -->
+      <path d="M220 620 Q512 880 804 620" fill="none" stroke="#4C566A" stroke-width="56" stroke-linecap="round"/>
+      <polygon points="220,590 170,660 260,660" fill="#88C0D0"/>
+      <polygon points="804,590 764,660 854,660" fill="#88C0D0"/>
+      <!-- Terminal Prompt in Left Quadrant -->
+      <path d="M290 480L340 520L290 560" stroke="#88C0D0" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M366 560H430" stroke="#81A1C1" stroke-width="32" stroke-linecap="round"/>
+      <!-- Web Aurora Pill in Right Quadrant -->
+      <rect x="580" y="480" width="180" height="38" rx="19" fill="#A3BE8C"/>
+      <rect x="580" y="540" width="120" height="24" rx="12" fill="#D8DEE9" opacity="0.6"/>
+    `
+  });
+
+  // 26 · Nord Frost Evolution
+  add({
+    id: "nord-evo",
+    n: 26,
+    group: "style",
+    round: 2,
+    name: "Nord Frost Evolution",
+    tagline: "Direct optical refinement of Candidate 02 with borderless floating cards and enhanced contrast",
+    concept: "A direct perfection pass on the winning Candidate 02 Nord Frost based on user feedback. Removes extraneous outer borders in favor of soft ambient occlusion shadows, boosts the Polar Ice prompt's visual weight for crisp readability down to 16px, and fine-tunes the corner curvature to Apple's continuous squircle math.",
+    palette: [["Nord Night", "#2E3440"], ["Matte Card", "#3B4252"], ["Polar Ice", "#88C0D0"], ["Aurora Green", "#A3BE8C"], ["Aurora Yellow", "#EBCB8B"], ["Snow", "#ECEFF4"]],
+    moves: [
+      "Borderless floating matte cards with elevated ambient depth",
+      "Optical weight of terminal prompt (>_) increased by 20% for tiny sizes",
+      "Refined title bar pill with illuminated Polar Ice live status dot",
+      "The purest, most polished distillation of the winning 02 Nord Frost design"
+    ],
+    facts: { Aesthetic: "Nord Frost", Type: "Refined Winner", Readability: "Crisp down to 16px" },
+    draw: ({ uid }) => `
+      <defs>
+        <filter id="${uid}_ne_drop" x="-10%" y="-10%" width="120%" height="120%">
+          <feDropShadow dx="0" dy="16" stdDeviation="24" flood-color="#000000" flood-opacity="0.38"/>
+        </filter>
+      </defs>
+      <rect width="1024" height="1024" fill="#2E3440"/>
+      <!-- Window Base Frame -->
+      <rect x="90" y="120" width="844" height="784" rx="100" fill="#3B4252" filter="url(#${uid}_ne_drop)"/>
+      <!-- Title Bar Header Pill -->
+      <rect x="136" y="166" width="310" height="74" rx="26" fill="#434C5E"/>
+      <circle cx="180" cy="203" r="18" fill="#88C0D0"/>
+      <rect x="222" y="193" width="160" height="20" rx="10" fill="#ECEFF4"/>
+      <!-- Left Pane: Floating Terminal Card -->
+      <rect x="136" y="272" width="354" height="588" rx="46" fill="#2E3440" filter="url(#${uid}_ne_drop)"/>
+      <path d="M224 446L302 524L224 602" stroke="#88C0D0" stroke-width="38" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M334 602H424" stroke="#81A1C1" stroke-width="38" stroke-linecap="round"/>
+      <!-- Top Right Pane: Floating Web Card -->
+      <rect x="526" y="272" width="362" height="278" rx="46" fill="#2E3440" filter="url(#${uid}_ne_drop)"/>
+      <rect x="580" y="348" width="240" height="48" rx="24" fill="#A3BE8C"/>
+      <rect x="580" y="426" width="170" height="32" rx="16" fill="#D8DEE9" opacity="0.75"/>
+      <!-- Bottom Right Pane: Floating Files Card -->
+      <rect x="526" y="582" width="362" height="278" rx="46" fill="#2E3440" filter="url(#${uid}_ne_drop)"/>
+      <rect x="580" y="658" width="220" height="48" rx="24" fill="#EBCB8B"/>
+      <rect x="580" y="736" width="150" height="32" rx="16" fill="#D8DEE9" opacity="0.75"/>
+    `
+  });
+
+  // 27 · Nord Command Helix
+  add({
+    id: "nord-helix",
+    n: 27,
+    group: "concept",
+    round: 2,
+    name: "Nord Command Helix",
+    tagline: "Twin fiber-optic strands in Polar Ice and Aurora Green intertwining into a double-helix link",
+    concept: "The command helix metaphor executed in authentic Arctic tones. Two continuous ribbons—one in icy Polar Blue representing the monitor display and one in Aurora Green representing the phone controller—intertwine into a rhythmic double helix on dark Nord slate.",
+    palette: [["Nord Dark", "#242933"], ["Polar Ice", "#88C0D0"], ["Aurora Green", "#A3BE8C"], ["Frost Blue", "#81A1C1"], ["Snow", "#E5E9F0"]],
+    moves: [
+      "Dynamic double-helix weave symbolizing phone and monitor paired in unison",
+      "Nodes along the strands represent terminal keystrokes and touch events",
+      "Continuous organic flow contrasting with rigid tiling rectangles",
+      "Striking abstract brand mark"
+    ],
+    facts: { Aesthetic: "Nord Frost", Metaphor: "DNA / Fiber Helix", Motion: "Continuous Link" },
+    draw: ({ uid }) => `
+      <defs>
+        <filter id="${uid}_nh_glow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="18" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <rect width="1024" height="1024" fill="#242933"/>
+      <!-- Soft Center Ambient Core Glow -->
+      <ellipse cx="512" cy="512" rx="240" ry="380" fill="#88C0D0" opacity="0.07" filter="url(#${uid}_nh_glow)"/>
+      <!-- Helix Rungs (Horizontal Data Bridges) -->
+      ${[280, 420, 560, 700].map((y, i) => `
+        <line x1="320" y1="${y}" x2="704" y2="${y}" stroke="${i % 2 === 0 ? "#81A1C1" : "#EBCB8B"}" stroke-width="18" stroke-dasharray="16 16" opacity="0.8"/>
+      `).join("")}
+      <!-- Strand 1 (Polar Ice Cyan) -->
+      <path d="M340 180 Q680 340 512 512 T680 844" fill="none" stroke="#88C0D0" stroke-width="48" stroke-linecap="round" filter="url(#${uid}_nh_glow)"/>
+      <!-- Strand 2 (Aurora Green) -->
+      <path d="M680 180 Q340 340 512 512 T340 844" fill="none" stroke="#A3BE8C" stroke-width="48" stroke-linecap="round" filter="url(#${uid}_nh_glow)"/>
+      <!-- Terminal & Touch Node Jewels -->
+      <circle cx="512" cy="512" r="32" fill="#ECEFF4" stroke="#88C0D0" stroke-width="8"/>
+      <circle cx="340" cy="180" r="28" fill="#88C0D0"/>
+      <circle cx="680" cy="180" r="28" fill="#A3BE8C"/>
+      <circle cx="680" cy="844" r="28" fill="#88C0D0"/>
+      <circle cx="340" cy="844" r="28" fill="#A3BE8C"/>
+    `
+  });
+
+  // 28 · Nord Tri-Beam Trident
+  add({
+    id: "nord-trident",
+    n: 28,
+    group: "concept",
+    round: 2,
+    name: "Nord Tri-Beam Trident",
+    tagline: "Three radiant geometric beams branching from a central anchor hub: Web, SSH, and Files",
+    concept: "The tri-beam trident metaphor refined into clean Scandinavian graphic design. Three faceted beams emerge from a single USB-C anchor hub, each carrying the signature color of Tether's core trinity: Polar Ice for Terminal, Aurora Green for Web, and Frost Gold for Files.",
+    palette: [["Nord Night", "#2E3440"], ["Terminal Ice", "#88C0D0"], ["Web Aurora", "#A3BE8C"], ["Files Gold", "#EBCB8B"], ["Hub Slate", "#434C5E"]],
+    moves: [
+      "Monolithic central tether hub branching into 3 dedicated tool beams",
+      "Angular geometric facets with soft Nord edge lighting",
+      "Clean tri-color coding matching the 3-pane desktop environment",
+      "Bold, authoritative icon presence"
+    ],
+    facts: { Aesthetic: "Nord Frost", Trinity: "Web · SSH · Files", Metaphor: "Tri-Beam" },
+    draw: () => `
+      <rect width="1024" height="1024" fill="#2E3440"/>
+      <!-- Central Base Anchor Block (USB-C Collar) -->
+      <rect x="372" y="720" width="280" height="150" rx="36" fill="#3B4252" stroke="#4C566A" stroke-width="14"/>
+      <rect x="424" y="800" width="176" height="34" rx="17" fill="#88C0D0"/>
+      <!-- Left Beam: Terminal (Polar Ice) -->
+      <path d="M430 720 L300 320" stroke="#88C0D0" stroke-width="48" stroke-linecap="round"/>
+      <rect x="230" y="220" width="140" height="140" rx="36" fill="#3B4252" stroke="#88C0D0" stroke-width="12"/>
+      <path d="M276 270L308 290L276 310" stroke="#88C0D0" stroke-width="22" stroke-linecap="round"/>
+      <!-- Center Beam: Web (Aurora Green) -->
+      <path d="M512 720 L512 280" stroke="#A3BE8C" stroke-width="56" stroke-linecap="round"/>
+      <circle cx="512" cy="220" r="80" fill="#3B4252" stroke="#A3BE8C" stroke-width="14"/>
+      <circle cx="512" cy="220" r="42" fill="#A3BE8C"/>
+      <!-- Right Beam: Files (Aurora Gold) -->
+      <path d="M594 720 L724 320" stroke="#EBCB8B" stroke-width="48" stroke-linecap="round"/>
+      <rect x="654" y="220" width="140" height="140" rx="36" fill="#3B4252" stroke="#EBCB8B" stroke-width="12"/>
+      <rect x="688" y="260" width="72" height="60" rx="12" fill="#EBCB8B"/>
+    `
+  });
+
+  // ══════════════════════════════════════════════════════════════════
   // REVIEW CONFIGURATION
   // ══════════════════════════════════════════════════════════════════
   window.REVIEW = {
@@ -916,23 +1279,23 @@
     ],
     brief: "Redesign the Tether logo: 20 candidates in total, with 10 style variations of the current 3-pane terminal/web/files logo, and 10 fresh conceptual directions exploring external display tethering, USB-C docking, tiling geometry, cable knots, and command links.",
     title: "Tether · Logo Redesign",
-    subtitle: "20 candidates + baseline across 2 groups: 10 style evolutions & 10 new concepts",
-    heading: "Pick a direction for Tether's logo & app icon",
-    intro: "Compare Tether's baseline against 20 new candidates. <b>Group 1</b> explores 10 distinct stylistic treatments of the current 3-pane terminal + web + files window. <b>Group 2</b> explores 10 fresh metaphors: USB-C monitor tethering, mobile docking, monogram split panes, and command links. Open any candidate for squircle zoom, platform previews (iOS, Dark, iOS 18 Tinted, Android), size ladder (128px to 16px favicon), and live iPhone home screen context.",
-    legend: ["<b>20</b> candidates", "<b>10</b> style takes", "<b>10</b> new concepts"],
-    round: 1,
+    subtitle: "Round 2: 28 candidates across 2 groups · Winner picked for Part 1 (02 Nord Frost), 8 new Nord conceptual fusions in Round 2",
+    heading: "Pick a direction for Tether's logo & app icon (Round 2)",
+    intro: "Round 2 update: <b>02 Nord Frost</b> was chosen as the winner for Part 1! For Part 2, 8 new candidates (21–28) fuse the winning Nord Frost aesthetic with the top conceptual metaphors: USB-C cable loops, mobile docking, T-matrix, anchor, and command helix. Pick a winner for Part 2 to complete the review.",
+    legend: ["<b>28</b> candidates", "<b>Part 1: 02 Nord Frost 🏆</b>", "<b>8</b> new in Round 2", "<b>Part 2</b> deciding"],
+    round: 2,
     frame: "icon",
     size: [400, 400],
     groups: [
       {
         id: "style",
         name: "Part 1 · Style Variations of Current 3-Pane Logo (01–10)",
-        note: "Exploring 10 distinct visual treatments of Tether's terminal + web + files split window"
+        note: "Winner chosen: 02 Nord Frost 🏆 · Refined in Candidate 26 (Nord Frost Evolution)"
       },
       {
         id: "concept",
-        name: "Part 2 · Fresh Conceptual Directions (11–20)",
-        note: "Exploring 10 new metaphors: external display tethering, USB-C, tiling geometry, cable knot, command helix"
+        name: "Part 2 · Fresh Conceptual Directions (11–28)",
+        note: "Exploring conceptual metaphors: USB-C, docking, T-matrix, anchor, and new Round 2 Nord fusions"
       }
     ],
     candidates: C
