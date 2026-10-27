@@ -53,12 +53,16 @@ targets:
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         ITSAppUsesNonExemptEncryption: false
+        UIRequiresFullScreen: true
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationLandscapeRight
           - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationPortrait
         UISupportedInterfaceOrientations~ipad:
           - UIInterfaceOrientationLandscapeRight
           - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
         CFBundleURLTypes:
           - CFBundleURLName: com.hejitech.tether
             CFBundleURLSchemes: [tether]
