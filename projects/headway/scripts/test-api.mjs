@@ -197,7 +197,7 @@ await step("MCP: 401 with the OAuth hint, initialize, tools", async () => {
   assert.match(r.headers.get("WWW-Authenticate") ?? "", /resource_metadata=/);
   assert.equal((await rpc("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "t", version: "1" } })).body.result.serverInfo.name, "headway");
   const names = (await rpc("tools/list")).body.result.tools.map((t) => t.name).sort();
-  assert.deepEqual(names, ["list_stations", "my_commute", "next_trains", "service_alerts", "stop_tracking", "track_train", "tracked_train"]);
+  assert.deepEqual(names, ["list_stations", "my_commute", "next_trains", "service_alerts", "share_eta", "stop_tracking", "track_train", "tracked_train"]);
 });
 await step("MCP: commute, next trains by name, alerts, tracking", async () => {
   const c = await tool("my_commute");
