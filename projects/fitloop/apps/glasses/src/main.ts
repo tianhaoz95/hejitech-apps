@@ -5,7 +5,10 @@
 // launch (simulator automation, or a QR from `evenhub qr`); `?date=YYYY-MM-DD` shows another day.
 import {
   CreateStartUpPageContainer,
+  ImageContainerProperty,
+  ImageRawDataUpdate,
   OsEventTypeList,
+  RebuildPageContainer,
   TextContainerProperty,
   TextContainerUpgrade,
   waitForEvenAppBridge,
@@ -14,6 +17,7 @@ import {
 } from "@evenrealities/even_hub_sdk";
 import { DISPLAY, FRAME, type Exercise, type Input } from "@fitloop/core";
 import { FitLoopApp, K, type AppStatus, type Store } from "./app.ts";
+import { loadGifFrames, type GifFrames } from "./gif.ts";
 import "./style.css";
 
 const PRODUCTION = "https://fitloop.hejitech.workers.dev";
@@ -63,23 +67,127 @@ async function boot() {
   };
 
   let created = false, lastText = "";
-  async function push(text: string) {
-    if (!bridge || text === lastText) return;
-    lastText = text;
-    if (!created) {
-      created = true;
-      await bridge.createStartUpPageContainer(new CreateStartUpPageContainer({
-        containerTotalNum: 1,
-        // The bordered frame other G2 apps draw (FRAME in core's font.ts).
-        textObject: [new TextContainerProperty({
-          containerID: 1, containerName: "fitloop", xPosition: 0, yPosition: 0, width: DISPLAY.width, height: DISPLAY.height,
-          borderWidth: FRAME.border, borderColor: FRAME.color, borderRadius: FRAME.radius, paddingLength: FRAME.padding,
-          content: text, isEventCapture: 1,
-        })],
-      }));
+  let currentLayout: "full" | "demo" = "full";
+  let currentAnimFrames: GifFrames | null = null;
+  let currentAnimIndex = 0;
+  let animInterval: ReturnType<typeof setInterval> | null = null;
+
+  async function push(text: string, screen: string, ex: Exercise | null) {
+    if (!bridge) return;
+    const isCues = screen === "cues";
+    const anim = ex?.animation;
+    const hasGif = isCues && Boolean(anim?.gifUrl);
+
+    if (hasGif && anim) {
+      if (currentLayout !== "demo") {
+        currentLayout = "demo";
+        lastText = "";
+        if (animInterval) { clearInterval(animInterval); animInterval = null; }
+
+        void loadGifFrames(anim.gifUrl).then(async (loaded) => {
+          currentAnimFrames = loaded;
+          currentAnimIndex = 0;
+          if (!bridge || currentLayout !== "demo") return;
+
+          const fw = loaded?.width ?? 288;
+          const fh = loaded?.height ?? 144;
+          const xPos = Math.max(0, Math.round((DISPLAY.width - fw) / 2));
+
+          await bridge.rebuildPageContainer(new RebuildPageContainer({
+            containerTotalNum: 2,
+            textObject: [new TextContainerProperty({
+              containerID: 1, containerName: "fitloop",
+              xPosition: 0, yPosition: fh + 12,
+              width: DISPLAY.width, height: Math.max(80, DISPLAY.height - (fh + 12)),
+              borderWidth: 0, paddingLength: FRAME.padding,
+              content: text, isEventCapture: 1, zOrderIndex: 1,
+            })],
+            imageObject: [new ImageContainerProperty({
+              containerID: 2, containerName: "fitloop_anim",
+              xPosition: xPos, yPosition: 6,
+              width: fw, height: fh,
+              zOrderIndex: 2,
+            })],
+          })).catch(() => false);
+
+          if (loaded && loaded.frames.length > 0) {
+            await bridge.updateImageRawData(new ImageRawDataUpdate({
+              containerID: 2, containerName: "fitloop_anim",
+              imageData: Array.from(loaded.frames[0]),
+            })).catch(() => false);
+
+            if (loaded.frames.length > 1) {
+              animInterval = setInterval(() => {
+                if (currentLayout !== "demo" || !currentAnimFrames) return;
+                currentAnimIndex = (currentAnimIndex + 1) % currentAnimFrames.frames.length;
+                void bridge?.updateImageRawData(new ImageRawDataUpdate({
+                  containerID: 2, containerName: "fitloop_anim",
+                  imageData: Array.from(currentAnimFrames.frames[currentAnimIndex]),
+                })).catch(() => false);
+              }, 1200);
+            }
+          }
+        });
+        return;
+      }
+
+      if (text !== lastText) {
+        lastText = text;
+        await bridge.textContainerUpgrade(new TextContainerUpgrade({
+          containerID: 1, containerName: "fitloop",
+          contentOffset: 0, contentLength: text.length,
+          content: text,
+        })).catch(() => false);
+      }
       return;
     }
-    await bridge.textContainerUpgrade(new TextContainerUpgrade({ containerID: 1, containerName: "fitloop", contentOffset: 0, contentLength: text.length, content: text })).catch(() => false);
+
+    if (animInterval) { clearInterval(animInterval); animInterval = null; }
+    currentAnimFrames = null;
+
+    if (!created) {
+      created = true;
+      currentLayout = "full";
+      lastText = text;
+      await bridge.createStartUpPageContainer(new CreateStartUpPageContainer({
+        containerTotalNum: 1,
+        textObject: [new TextContainerProperty({
+          containerID: 1, containerName: "fitloop",
+          xPosition: 0, yPosition: 0,
+          width: DISPLAY.width, height: DISPLAY.height,
+          borderWidth: FRAME.border, borderColor: FRAME.color,
+          borderRadius: FRAME.radius, paddingLength: FRAME.padding,
+          content: text, isEventCapture: 1,
+        })],
+      })).catch(() => false);
+      return;
+    }
+
+    if (currentLayout !== "full") {
+      currentLayout = "full";
+      lastText = text;
+      await bridge.rebuildPageContainer(new RebuildPageContainer({
+        containerTotalNum: 1,
+        textObject: [new TextContainerProperty({
+          containerID: 1, containerName: "fitloop",
+          xPosition: 0, yPosition: 0,
+          width: DISPLAY.width, height: DISPLAY.height,
+          borderWidth: FRAME.border, borderColor: FRAME.color,
+          borderRadius: FRAME.radius, paddingLength: FRAME.padding,
+          content: text, isEventCapture: 1,
+        })],
+      })).catch(() => false);
+      return;
+    }
+
+    if (text !== lastText) {
+      lastText = text;
+      await bridge.textContainerUpgrade(new TextContainerUpgrade({
+        containerID: 1, containerName: "fitloop",
+        contentOffset: 0, contentLength: text.length,
+        content: text,
+      })).catch(() => false);
+    }
   }
 
   const ui = phonePage(root, Boolean(bridge));
@@ -89,10 +197,11 @@ async function boot() {
     onLines: (lines) => {
       const text = lines.join("\n");
       if (params.has("debug")) console.log(`[fitloop] push ${JSON.stringify(text.split("\n").at(-1))}`);
+      const isCues = app.nav.screen === "cues";
+      const ex = (app.nav.screen === "workout" || isCues) ? app.currentExercise() : null;
       ui.mirror.textContent = text;
-      void push(text);
-      const ex = (app.nav.screen === "workout" || app.nav.screen === "cues") ? app.currentExercise() : null;
-      ui.showExercise(ex);
+      ui.showExercise(ex, isCues);
+      void push(text, app.nav.screen, ex);
     },
     onStatus: (s) => ui.status(s),
     // The system's exit dialog (Even Hub review requires it on the root page); the host closes the plugin.
@@ -127,11 +236,9 @@ function phonePage(root: HTMLElement, onGlasses: boolean) {
   root.innerHTML = `
     <div class="plugin">
       <header><b>FitLoop</b><span class="pill">${onGlasses ? "on your G2" : "browser preview"}</span></header>
-      <pre class="mirror" aria-label="What the glasses show"></pre>
-      <div class="exercise-demo" hidden>
-        <img class="exercise-gif" alt="Exercise demonstration" />
-        <p class="muted small exercise-desc"></p>
-        <ol class="exercise-steps"></ol>
+      <div class="glasses-screen">
+        <img class="glasses-anim" hidden alt="Demonstration on glasses" />
+        <pre class="mirror" aria-label="What the glasses show"></pre>
       </div>
       <div class="ring" ${onGlasses ? "hidden" : ""}>
         <button data-in="up">Swipe up</button><button data-in="down">Swipe down</button>
@@ -167,19 +274,14 @@ function phonePage(root: HTMLElement, onGlasses: boolean) {
   });
   return {
     mirror: $<HTMLElement>(".mirror"),
-    showExercise(ex: Exercise | null) {
-      const demo = $<HTMLElement>(".exercise-demo");
-      const gif = $<HTMLImageElement>(".exercise-gif");
-      const desc = $<HTMLElement>(".exercise-desc");
-      const steps = $<HTMLElement>(".exercise-steps");
+    showExercise(ex: Exercise | null, isCues: boolean) {
+      const animImg = $<HTMLImageElement>(".glasses-anim");
       const anim = ex?.animation;
-      if (anim?.gifUrl) {
-        demo.hidden = false;
-        if (gif.src !== anim.gifUrl) gif.src = anim.gifUrl;
-        desc.textContent = anim.description ?? ex?.name ?? "";
-        steps.innerHTML = (anim.steps ?? []).map((s) => `<li>${s}</li>`).join("");
+      if (isCues && anim?.gifUrl) {
+        animImg.hidden = false;
+        if (animImg.src !== anim.gifUrl) animImg.src = anim.gifUrl;
       } else {
-        demo.hidden = true;
+        animImg.hidden = true;
       }
     },
     status(s: AppStatus) {

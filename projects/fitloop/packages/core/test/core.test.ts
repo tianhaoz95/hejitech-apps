@@ -291,7 +291,6 @@ describe("glasses", () => {
     expect(lines[0]).toMatch(/^GOBLET SQUAT +1\/2$/);
     expect(lines[2]).toBe("STEP 1 OF 2");
     expect(lines[3]).toBe("1. Stand tall");
-    expect(lines.join(" ")).toContain("(GIF playing on phone)");
     expect(lines.at(-1)).toBe("tap: next  2x: back");
     expect(nav.ticking(t)).toBe(true);
 

@@ -96,14 +96,18 @@ both the phone and Even G2 glasses.
      hosted media repository, or fitness database).
 
 2. **Even G2 glasses display**:
-   - Monochrome green micro-LED waveguide display with a 9-line budget in a bordered frame.
-   - Glasses display the instruction under the workout menu's "How-to / Demo": displaying your paced
-     step breakdown (\`steps\`) line by line, with a note that the animated GIF is playing on the phone.
+   - The Even G2 glasses render the animated demonstration GIF directly on the glasses waveguide display
+     (via an image container up to 288×144) alongside your paced step cues.
+   - Glasses display the instruction under the workout menu's "How-to / Demo".
    - Paced progression: steps cycle at a comfortable, relaxed ~3.5 s interval (or manual tap-to-advance),
      so instructions never flash through too fast. Tap or swipe steps forward/backward, and double-tap returns
      to the workout.
    - Plain ASCII characters only (\`\\x20\` to \`\\x7e\`) for \`steps\`: each step must be ≤ ${LIMITS.animStepLength} characters
      and at most ${LIMITS.animSteps} steps so each step fits clearly within the waveguide screen width.
+
+3. **Web app**:
+   - The web app displays the animated demonstration GIF directly inside the workout card on the Today page,
+     accompanied by the step checklist and form details.
 
 ### Example exercise animation (Goblet Squat):
 \`\`\`json

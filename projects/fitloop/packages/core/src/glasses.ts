@@ -399,9 +399,6 @@ export class Navigator {
       const stepText = ascii(steps[curStep]);
       const wrapped = wrap(stepText);
       const lines = [header, "", `STEP ${curStep + 1} OF ${steps.length}`, ...wrapped];
-      if (hasGif && lines.length < MAX_LINES - 2) {
-        lines.push("(GIF playing on phone)");
-      }
       while (lines.length < MAX_LINES - 1) lines.push("");
       lines.push(steps.length > 1 ? "tap: next  2x: back" : "any: back");
       return lines;
@@ -409,7 +406,6 @@ export class Navigator {
 
     const body = (e.cues?.length ? e.cues : wrap(e.instructions ?? "No cues in the plan for this one.")).map((c) => `- ${ascii(c)}`);
     const lines = [spread(e.name.toUpperCase(), "any: back"), ...body.flatMap((l) => wrap(l))];
-    if (hasGif && lines.length < MAX_LINES) lines.push("(GIF playing on phone)");
     if (e.alternative && lines.length < MAX_LINES) lines.push(`Instead: ${e.alternative}`);
     return lines;
   }
