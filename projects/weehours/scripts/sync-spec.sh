@@ -7,6 +7,9 @@ pairs=(
   "spec/event-types.json:apps/ios/LogCore/Sources/LogCore/Resources/event-types.json"
   "spec/calibration.json:apps/ios/LogCore/Sources/LogCore/Resources/calibration.json"
   "spec/fixtures/status.json:apps/ios/LogCore/Tests/LogCoreTests/Fixtures/status.json"
+  "spec/event-types.json:apps/android/core/src/main/resources/event-types.json"
+  "spec/calibration.json:apps/android/core/src/main/resources/calibration.json"
+  "spec/fixtures/status.json:apps/android/core/src/test/resources/fixtures/status.json"
   "spec/event-types.json:packages/core/src/event-types.json"
 )
 status=0

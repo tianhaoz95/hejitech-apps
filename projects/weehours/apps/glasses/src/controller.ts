@@ -25,6 +25,7 @@ export interface World {
   /** The household's children (in order) and the one gestures act on; one child: no names shown. */
   children: { id: string; name: string }[];
   focus: string | null;
+  isDemo?: boolean;
 }
 
 export type Command =
@@ -32,7 +33,8 @@ export type Command =
   | { kind: "undo"; id: string }
   | { kind: "focus"; id: string }
   | { kind: "startRecording" }
-  | { kind: "stopRecording"; attachTo: string | null };
+  | { kind: "stopRecording"; attachTo: string | null }
+  | { kind: "exit" };
 
 type Mode = "status" | "menu" | "diaper" | "recording";
 
@@ -55,6 +57,14 @@ export class GlassesController {
 
   menu(world: World): { label: string; command: () => Command | null }[] {
     const items: { label: string; command: () => Command | null }[] = [];
+    items.push({
+      label: "Log diaper",
+      command: () => {
+        this.mode = "diaper";
+        this.diaperIndex = 0;
+        return null;
+      },
+    });
     items.push({ label: world.sleeping ? "Woke up" : "Fell asleep", command: () => ({ kind: "log", type: world.sleeping ? "sleep.end" : "sleep.start", fields: {} }) });
     if (world.openFeed === "breast") {
       const next = world.nextSide === "left" ? "left" : "right";
@@ -73,6 +83,7 @@ export class GlassesController {
       const last = this.lastCommit;
       items.push({ label: "Undo last", command: () => ({ kind: "undo", id: last.id }) });
     }
+    items.push({ label: "Exit Wee Hours", command: () => ({ kind: "exit" }) });
     items.push({ label: "Back", command: () => null });
     return items;
   }
@@ -105,8 +116,9 @@ export class GlassesController {
         else if (input === "down") this.menuIndex = (this.menuIndex + 1) % items.length;
         else if (input === "double_click") this.mode = "status";
         else if (input === "click") {
-          this.mode = "status";
-          const c = items[this.menuIndex]?.command();
+          const item = items[this.menuIndex];
+          const c = item?.command();
+          if (this.mode === "menu") this.mode = "status";
           return c ? [c] : [];
         }
         return [];
@@ -124,9 +136,7 @@ export class GlassesController {
           return [{ kind: "log", type: "feed.bottle.start", fields: {} }];
         }
         if (input === "double_click") {
-          this.mode = "diaper";
-          this.diaperIndex = 0;
-          return [];
+          return [{ kind: "exit" }];
         }
         if (input === "up" || input === "down") {
           this.mode = "menu";
@@ -167,11 +177,25 @@ export class GlassesController {
       }
       default:
         if (this.message && this.message.until > now) bottom = this.message.text;
-        else bottom = world.openFeed ? "press: finish feed · hold: speak" : "press: feed · 2×: diaper · hold: speak";
+        else if (world.isDemo) bottom = world.openFeed ? "Demo: press finish · swipe menu · 2× exit" : "Demo: press feed · swipe menu · 2× exit · hold speak";
+        else bottom = world.openFeed ? "press: finish feed · swipe: menu · 2×: exit" : "press: feed · swipe: menu · 2×: exit · hold: speak";
     }
     return `${top}\n${bottom}`;
   }
 }
+
+export const DEMO_WORLD: World = {
+  statusLine: "Fed 1h30m ago · left next · diaper 45m ago",
+  openFeed: null,
+  sleeping: false,
+  nextSide: "left",
+  defaultFeed: "bottle",
+  me: "demo-user",
+  onDuty: null,
+  children: [{ id: "demo-baby", name: "Maya" }],
+  focus: "demo-baby",
+  isDemo: true,
+};
 
 export const LABELS: Record<string, string> = {
   "feed.bottle.start": "Bottle started",

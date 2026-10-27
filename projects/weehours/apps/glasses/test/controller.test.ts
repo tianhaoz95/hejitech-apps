@@ -14,9 +14,15 @@ describe("ring gestures", () => {
     expect(c.handle("click", world({ defaultFeed: "breast", nextSide: "right" }), 0)[0]).toMatchObject({ type: "feed.breast.start", fields: { side: "right" } });
   });
 
-  it("double press picks a diaper kind", () => {
+  it("double press on root status requests exit", () => {
     const c = new GlassesController();
-    expect(c.handle("double_click", world(), 0)).toEqual([]);
+    expect(c.handle("double_click", world(), 0)).toEqual([{ kind: "exit" }]);
+  });
+
+  it("menu allows picking a diaper kind", () => {
+    const c = new GlassesController();
+    c.handle("down", world(), 0); // opens menu on "Log diaper"
+    c.handle("click", world(), 0); // enters diaper mode
     expect(c.hud(world(), 0)).toContain("[wet]");
     c.handle("down", world(), 0);
     expect(c.hud(world(), 0)).toContain("[dirty]");
@@ -24,9 +30,11 @@ describe("ring gestures", () => {
     expect(c.mode).toBe("status");
   });
 
-  it("double press in the picker cancels", () => {
+  it("double press in the picker cancels back to status", () => {
     const c = new GlassesController();
-    c.handle("double_click", world(), 0);
+    c.handle("down", world(), 0);
+    c.handle("click", world(), 0); // diaper mode
+    expect(c.mode).toBe("diaper");
     expect(c.handle("double_click", world(), 0)).toEqual([]);
     expect(c.mode).toBe("status");
   });
@@ -46,18 +54,19 @@ describe("ring gestures", () => {
     expect(c.handle("long_press_release", world(), 10 * 60_000 + 3_000)).toEqual([{ kind: "stopRecording", attachTo: null }]);
   });
 
-  it("swipe opens the menu: sleep, switch side, duty, undo", () => {
+  it("swipe opens the menu: sleep, switch side, duty, undo, exit", () => {
     const c = new GlassesController();
     c.committed({ id: "e1", type: "feed.breast.start", at: 0 }, "Nursing", 0);
     const w = world({ openFeed: "breast", nextSide: "right" });
     c.handle("down", w, 0);
-    expect(c.menu(w).map((m) => m.label)).toEqual(["Fell asleep", "Switch to right", "I'm on duty", "Undo last", "Back"]);
-    c.handle("down", w, 0);
+    expect(c.menu(w).map((m) => m.label)).toEqual(["Log diaper", "Fell asleep", "Switch to right", "I'm on duty", "Undo last", "Exit Wee Hours", "Back"]);
+    c.handle("down", w, 0); // "Fell asleep"
+    c.handle("down", w, 0); // "Switch to right"
     expect(c.handle("click", w, 0)).toEqual([{ kind: "log", type: "feed.breast.switch", fields: { side: "right" } }]);
-    c.handle("up", w, 0); // opens the menu at the first item
+    c.handle("up", w, 0); // opens the menu at the first item ("Log diaper")
     c.handle("up", w, 0); // wraps to "Back"
-    c.handle("up", w, 0); // "Undo last"
-    expect(c.handle("click", w, 0)).toEqual([{ kind: "undo", id: "e1" }]);
+    c.handle("up", w, 0); // "Exit Wee Hours"
+    expect(c.handle("click", w, 0)).toEqual([{ kind: "exit" }]);
   });
 
   it("confirmation shows briefly, then the hint", () => {

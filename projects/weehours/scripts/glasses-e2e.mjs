@@ -48,10 +48,11 @@ await shot("3-listening");
 await sleep(600);
 await input("long_press_release");
 await shot("4-captured");
-await input("double_click");                   // diaper picker
+await input("down");                           // open menu ("Log diaper")
+await input("click");                          // enter diaper picker ("wet")
 await input("down");                           // dirty
 await shot("5-diaper-picker");
-await input("click");
+await input("click");                          // log diaper
 await sleep(2500);
 await shot("6-after");
 

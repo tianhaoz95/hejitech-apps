@@ -2,17 +2,27 @@ import LogCore
 import SwiftUI
 
 /// Now's tiles for a child not born yet: "Baby moved" (one tap) and "Count kicks" (a timed count
-/// to ten). Both log for every expected child in the Log-for target.
-struct PregnancyTiles: View {
+/// to ten), each placed on its own (`QuickTiles`). Both log for every expected child in the
+/// Log-for target.
+struct BabyMovedTile: View {
+    @EnvironmentObject var model: AppModel
+    let babies: [UUID]
+
+    var body: some View {
+        let today = Pregnancy.entries(model, babies).filter { $0.type == "movement" && Calendar.current.isDateInToday($0.occurredAt) }.count
+        ActionTile(title: "Baby moved", subtitle: today == 0 ? "tap when you feel one" : "\(today) today", icon: "hand.point.up.left.fill", color: Theme.bump,
+                   action: { model.log("movement", for: babies) },
+                   backdate: { at in model.log("movement", at: at, for: babies) })
+            .accessibilityIdentifier("babyMoved")
+    }
+}
+
+struct CountKicksTile: View {
     @EnvironmentObject var model: AppModel
     let babies: [UUID]
     @State private var counting = false
 
     var body: some View {
-        ActionTile(title: "Baby moved", subtitle: movedText, icon: "hand.point.up.left.fill", color: Theme.bump,
-                   action: { model.log("movement", for: babies) },
-                   backdate: { at in model.log("movement", at: at, for: babies) })
-            .accessibilityIdentifier("babyMoved")
         Button { counting = true } label: {
             Tile(title: "Count kicks", subtitle: lastCountText, icon: "timer", color: Theme.bump)
         }
@@ -23,19 +33,16 @@ struct PregnancyTiles: View {
         }
     }
 
-    private var entries: [LogEvent] { babies.flatMap { model.logs[$0]?.counted ?? [] } }
-
-    private var movedText: String {
-        let today = entries.filter { $0.type == "movement" && Calendar.current.isDateInToday($0.occurredAt) }.count
-        return today == 0 ? "tap when you feel one" : "\(today) today"
-    }
-
     private var lastCountText: String {
-        guard let last = entries.filter({ $0.type == "kick_count" }).max(by: { $0.occurredAt < $1.occurredAt }),
+        guard let last = Pregnancy.entries(model, babies).filter({ $0.type == "kick_count" }).max(by: { $0.occurredAt < $1.occurredAt }),
               let count = last.number("count") else { return "time ten movements" }
         let minutes = last.number("minutes").map { " in \(Int($0))m" } ?? ""
         return "\(Int(count))\(minutes) · \(StatusSnapshot.ago(Date().timeIntervalSince(last.occurredAt)))"
     }
+}
+
+private enum Pregnancy {
+    @MainActor static func entries(_ model: AppModel, _ babies: [UUID]) -> [LogEvent] { babies.flatMap { model.logs[$0]?.counted ?? [] } }
 }
 
 /// Counting movements: tap each one you feel; at ten the count is saved with how long it took.

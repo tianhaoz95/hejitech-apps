@@ -11,7 +11,7 @@ import {
 } from "@evenrealities/even_hub_sdk";
 import { derive, status, statusLine } from "@weehours/core";
 import { Api, Unpaired, type KV } from "./api.ts";
-import { GlassesController, LABELS, type Input, type World } from "./controller.ts";
+import { DEMO_WORLD, GlassesController, LABELS, type Input, type World } from "./controller.ts";
 import { concat, durationMs, wav } from "./wav.ts";
 
 /** The Wee Hours Worker. Dev builds use the local `dev:worker`; `?api=` overrides either (simulator, tests). */
@@ -37,7 +37,7 @@ const kv: KV = {
 
 const api = new Api(apiBase, kv);
 const controller = new GlassesController();
-const UNPAIRED_HUD = "Wee Hours · not paired\nOn your phone: Wee Hours → Settings → Even G2 glasses";
+let demoWorld: World = { ...DEMO_WORLD };
 let world: World = { statusLine: "Loading…", openFeed: null, sleeping: false, nextSide: null, defaultFeed: "bottle", me: "", onDuty: null, children: [], focus: null };
 /** The child gestures act on (several children); kept across launches. */
 let focus: string | null = null;
@@ -62,7 +62,7 @@ async function detectBridge(): Promise<EvenAppBridge | null> {
 
 let lastHud = "";
 async function render() {
-  const text = api.paired && api.state ? controller.hud(world, Date.now()) : api.paired ? "Wee Hours\nConnecting…" : UNPAIRED_HUD;
+  const text = api.paired && api.state ? controller.hud(world, Date.now()) : api.paired ? "Wee Hours\nConnecting…" : controller.hud(demoWorld, Date.now());
   $("hud").textContent = text;
   renderPage();
   if (!bridge || text === lastHud) return;
@@ -113,14 +113,73 @@ async function refresh() {
 }
 
 async function onInput(input: Input, surface: "glasses" | "ring") {
-  if (!api.state) { log(api.paired ? "still connecting" : "not paired"); return; }
+  if (!api.paired) {
+    const commands = controller.handle(input, demoWorld, Date.now());
+    for (const c of commands) {
+      if (c.kind === "exit") {
+        log("exit requested (shutDownPageContainer)");
+        if (bridge) await bridge.shutDownPageContainer(1).catch(() => false);
+        else controller.flash("Exit", Date.now());
+      } else if (c.kind === "log") {
+        if (c.type === "feed.bottle.start") {
+          demoWorld.openFeed = "bottle";
+          demoWorld.statusLine = "Feeding now (bottle) · 0m";
+          controller.flash("Demo: Bottle started ✓", Date.now());
+        } else if (c.type === "feed.bottle.finish") {
+          demoWorld.openFeed = null;
+          demoWorld.statusLine = "Fed just now · left next · diaper 45m ago";
+          controller.flash("Demo: Bottle finished ✓", Date.now());
+        } else if (c.type === "feed.breast.start") {
+          demoWorld.openFeed = "breast";
+          demoWorld.statusLine = `Nursing now (${c.fields.side ?? "left"}) · 0m`;
+          controller.flash("Demo: Nursing started ✓", Date.now());
+        } else if (c.type === "feed.breast.finish") {
+          demoWorld.openFeed = null;
+          demoWorld.statusLine = "Fed just now · diaper 45m ago";
+          controller.flash("Demo: Nursing finished ✓", Date.now());
+        } else if (c.type === "feed.breast.switch") {
+          demoWorld.nextSide = demoWorld.nextSide === "left" ? "right" : "left";
+          controller.flash("Demo: Switched side ✓", Date.now());
+        } else if (c.type === "sleep.start") {
+          demoWorld.sleeping = true;
+          demoWorld.statusLine = "Sleeping now · 0m · Fed 1h30m ago";
+          controller.flash("Demo: Asleep ✓", Date.now());
+        } else if (c.type === "sleep.end") {
+          demoWorld.sleeping = false;
+          demoWorld.statusLine = "Awake just now · Fed 1h30m ago";
+          controller.flash("Demo: Awake ✓", Date.now());
+        } else if (c.type === "diaper") {
+          demoWorld.statusLine = `Diaper just now (${c.fields.kind}) · Fed 1h30m ago`;
+          controller.flash(`Demo: Diaper (${c.fields.kind}) ✓`, Date.now());
+        } else if (c.type === "duty") {
+          controller.flash("Demo: Duty updated ✓", Date.now());
+        }
+      } else if (c.kind === "startRecording") {
+        frames = [];
+        recordingSurface = surface;
+        if (bridge) await bridge.audioControl(true, AudioInputSource.Glasses);
+        controller.flash("● Listening… release to send", Date.now());
+      } else if (c.kind === "stopRecording") {
+        if (bridge) await bridge.audioControl(false);
+        controller.flash("Demo: Captured ✓ (Phone will log)", Date.now());
+      }
+    }
+    await render();
+    return;
+  }
+
+  if (!api.state) { log("still connecting"); return; }
   if (!focus) {
     controller.flash("Nothing to log until your baby arrives", Date.now());
     return render();
   }
   const commands = controller.handle(input, world, Date.now());
   for (const c of commands) {
-    if (c.kind === "focus") {
+    if (c.kind === "exit") {
+      log("exit requested (shutDownPageContainer)");
+      if (bridge) await bridge.shutDownPageContainer(1).catch(() => false);
+      else controller.flash("Exit", Date.now());
+    } else if (c.kind === "focus") {
       focus = c.id;
       await kv.set("focus", c.id);
       controller.flash(`Logging for ${api.loggable.find((k) => k.id === c.id)?.name ?? ""}`, Date.now());

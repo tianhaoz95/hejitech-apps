@@ -1,0 +1,194 @@
+{
+  "about": "Shared derivation fixtures. Each case lists events relative to `now` (minutes_ago) and the expected derived status. Events belong to child `baby` (default \"b\"); `for_baby` derives one child's log instead of the household's. Run by the Swift (LogCore) and TypeScript (core) test suites so both implementations stay identical.",
+  "now": "2026-10-14T15:00:00Z",
+  "caregivers": { "a": "00000000-0000-4000-8000-00000000000a", "b": "00000000-0000-4000-8000-00000000000b" },
+  "cases": [
+    {
+      "name": "empty log",
+      "events": [],
+      "expect": { "line": "No feeds yet", "to_review": 0 }
+    },
+    {
+      "name": "bottle session closed with half",
+      "events": [
+        { "id": "e1", "type": "feed.bottle.start", "minutes_ago": 160, "by": "a" },
+        { "id": "e2", "type": "feed.bottle.finish", "minutes_ago": 140, "by": "a", "fields": { "consumed_fraction": 0.5 } },
+        { "id": "e3", "type": "diaper", "minutes_ago": 70, "by": "b", "fields": { "kind": "wet" } }
+      ],
+      "expect": { "line": "Fed 2h40m ago · diaper 1h10m ago", "to_review": 0, "last_feed_kind": "bottle", "sessions": 1 }
+    },
+    {
+      "name": "open breast session and next side",
+      "events": [
+        { "id": "e1", "type": "feed.breast.start", "minutes_ago": 200, "by": "a", "fields": { "side": "left" } },
+        { "id": "e2", "type": "feed.breast.finish", "minutes_ago": 180, "by": "a" },
+        { "id": "e3", "type": "feed.breast.start", "minutes_ago": 12, "by": "a", "fields": { "side": "right" } }
+      ],
+      "expect": { "line": "Feeding 12m · left next", "open_feed_kind": "breast", "next_side": "left" }
+    },
+    {
+      "name": "switch changes next side",
+      "events": [
+        { "id": "e1", "type": "feed.breast.start", "minutes_ago": 100, "by": "a", "fields": { "side": "left" } },
+        { "id": "e2", "type": "feed.breast.switch", "minutes_ago": 90, "by": "a", "fields": { "side": "right" } },
+        { "id": "e3", "type": "feed.breast.finish", "minutes_ago": 80, "by": "a" }
+      ],
+      "expect": { "line": "Fed 1h40m ago · left next", "next_side": "left" }
+    },
+    {
+      "name": "sleeping replaces the feed part",
+      "events": [
+        { "id": "e1", "type": "feed.bottle.single", "minutes_ago": 90, "by": "a", "fields": { "consumed_fraction": 1 } },
+        { "id": "e2", "type": "sleep.start", "minutes_ago": 45, "by": "b" }
+      ],
+      "expect": { "line": "Sleeping 45m", "sleeping": true }
+    },
+    {
+      "name": "undo removes from status",
+      "events": [
+        { "id": "e1", "type": "diaper", "minutes_ago": 30, "by": "a", "fields": { "kind": "dirty" } },
+        { "id": "e2", "type": "diaper", "minutes_ago": 5, "by": "a", "fields": { "kind": "wet" } },
+        { "id": "u1", "type": "undo", "minutes_ago": 4, "by": "a", "supersedes": "e2" }
+      ],
+      "expect": { "line": "No feeds yet · diaper 30m ago", "status": { "e2": "undone" } }
+    },
+    {
+      "name": "edit supersedes the original",
+      "events": [
+        { "id": "e1", "type": "feed.bottle.single", "minutes_ago": 60, "by": "a", "fields": { "consumed_fraction": 0.25 } },
+        { "id": "e2", "type": "feed.bottle.single", "minutes_ago": 50, "by": "a", "fields": { "consumed_fraction": 0.75 }, "supersedes": "e1" }
+      ],
+      "expect": { "line": "Fed 50m ago", "status": { "e1": "superseded", "e2": "active" } }
+    },
+    {
+      "name": "duplicate from two caregivers is flagged and excluded",
+      "events": [
+        { "id": "e1", "type": "diaper", "minutes_ago": 20, "by": "a", "fields": { "kind": "wet" } },
+        { "id": "e2", "type": "diaper", "minutes_ago": 18, "by": "b", "fields": { "kind": "wet" } }
+      ],
+      "expect": { "line": "No feeds yet · diaper 20m ago · 1 to review", "to_review": 1, "status": { "e2": "duplicate_unresolved" } }
+    },
+    {
+      "name": "same caregiver, two surfaces is flagged",
+      "events": [
+        { "id": "e1", "type": "feed.bottle.start", "minutes_ago": 30, "by": "a", "surface": "ring" },
+        { "id": "e2", "type": "feed.bottle.start", "minutes_ago": 25, "by": "a", "surface": "phone" }
+      ],
+      "expect": { "to_review": 1, "status": { "e2": "duplicate_unresolved" } }
+    },
+    {
+      "name": "merge resolves the duplicate",
+      "events": [
+        { "id": "e1", "type": "diaper", "minutes_ago": 20, "by": "a", "fields": { "kind": "wet" } },
+        { "id": "e2", "type": "diaper", "minutes_ago": 18, "by": "b", "fields": { "kind": "wet" } },
+        { "id": "r1", "type": "resolve", "minutes_ago": 10, "by": "a", "fields": { "original": "e1", "duplicate": "e2", "resolution": "merge" } }
+      ],
+      "expect": { "line": "No feeds yet · diaper 20m ago", "to_review": 0, "status": { "e2": "merged" } }
+    },
+    {
+      "name": "keep both resolves without merging",
+      "events": [
+        { "id": "e1", "type": "diaper", "minutes_ago": 20, "by": "a", "fields": { "kind": "wet" } },
+        { "id": "e2", "type": "diaper", "minutes_ago": 18, "by": "b", "fields": { "kind": "dirty" } },
+        { "id": "r1", "type": "resolve", "minutes_ago": 10, "by": "a", "fields": { "original": "e1", "duplicate": "e2", "resolution": "keep_both" } }
+      ],
+      "expect": { "line": "No feeds yet · diaper 18m ago", "to_review": 0, "status": { "e2": "active" } }
+    },
+    {
+      "name": "finish without start is a session with unknown start",
+      "events": [
+        { "id": "e1", "type": "feed.bottle.finish", "minutes_ago": 30, "by": "a", "fields": { "consumed_fraction": 0.5 } }
+      ],
+      "expect": { "line": "Fed 30m ago", "sessions": 1 }
+    },
+    {
+      "name": "duty handoff",
+      "events": [
+        { "id": "d1", "type": "duty", "minutes_ago": 120, "by": "a", "fields": { "caregiver": "a" } },
+        { "id": "d2", "type": "duty", "minutes_ago": 60, "by": "b", "fields": { "caregiver": "b" } }
+      ],
+      "expect": { "on_duty": "b" }
+    },
+    {
+      "name": "late arriving start re-pairs the session",
+      "events": [
+        { "id": "e2", "type": "feed.bottle.finish", "minutes_ago": 100, "by": "a", "logged_minutes_ago": 99, "fields": { "consumed_fraction": 1 } },
+        { "id": "e1", "type": "feed.bottle.start", "minutes_ago": 120, "by": "b", "logged_minutes_ago": 2 }
+      ],
+      "expect": { "line": "Fed 2h ago", "sessions": 1 }
+    },
+    {
+      "name": "twins fed together by two parents are not duplicates",
+      "events": [
+        { "id": "e1", "type": "feed.bottle.single", "minutes_ago": 20, "by": "a", "baby": "m", "fields": { "consumed_fraction": 1 } },
+        { "id": "e2", "type": "feed.bottle.single", "minutes_ago": 20, "by": "b", "surface": "watch", "baby": "l", "fields": { "consumed_fraction": 0.5 } }
+      ],
+      "expect": { "to_review": 0, "sessions": 2, "status": { "e1": "active", "e2": "active" } }
+    },
+    {
+      "name": "finishing one twin's bottle leaves the other's open",
+      "for_baby": "m",
+      "events": [
+        { "id": "e1", "type": "feed.bottle.start", "minutes_ago": 30, "by": "a", "baby": "m" },
+        { "id": "e2", "type": "feed.bottle.start", "minutes_ago": 25, "by": "b", "baby": "l" },
+        { "id": "e3", "type": "feed.bottle.finish", "minutes_ago": 5, "by": "b", "baby": "l", "fields": { "consumed_fraction": 1 } }
+      ],
+      "expect": { "line": "Feeding 30m", "open_feed_kind": "bottle", "sessions": 1 }
+    },
+    {
+      "name": "the other twin's status",
+      "for_baby": "l",
+      "events": [
+        { "id": "e1", "type": "feed.bottle.start", "minutes_ago": 30, "by": "a", "baby": "m" },
+        { "id": "e2", "type": "feed.bottle.start", "minutes_ago": 25, "by": "b", "baby": "l" },
+        { "id": "e3", "type": "feed.bottle.finish", "minutes_ago": 5, "by": "b", "baby": "l", "fields": { "consumed_fraction": 1 } },
+        { "id": "e4", "type": "feed.breast.start", "minutes_ago": 300, "by": "a", "baby": "m", "fields": { "side": "left" } }
+      ],
+      "expect": { "line": "Fed 25m ago", "sessions": 1 }
+    },
+    {
+      "name": "an edit that moves an entry to the other child",
+      "for_baby": "m",
+      "events": [
+        { "id": "e1", "type": "diaper", "minutes_ago": 30, "by": "a", "baby": "m", "fields": { "kind": "wet" } },
+        { "id": "e2", "type": "diaper", "minutes_ago": 30, "by": "a", "baby": "l", "logged_minutes_ago": 10, "fields": { "kind": "wet" }, "supersedes": "e1" }
+      ],
+      "expect": { "line": "No feeds yet", "status": { "e1": "superseded", "e2": "active" } }
+    },
+    {
+      "name": "duplicates are per child",
+      "for_baby": "l",
+      "events": [
+        { "id": "e1", "type": "diaper", "minutes_ago": 12, "by": "a", "baby": "m", "fields": { "kind": "wet" } },
+        { "id": "e2", "type": "diaper", "minutes_ago": 11, "by": "b", "baby": "m", "fields": { "kind": "wet" } },
+        { "id": "e3", "type": "diaper", "minutes_ago": 10, "by": "b", "baby": "l", "fields": { "kind": "dirty" } }
+      ],
+      "expect": { "line": "No feeds yet · diaper 10m ago", "to_review": 0, "status": { "e2": "duplicate_unresolved", "e3": "active" } }
+    },
+    {
+      "name": "before birth: the last movement",
+      "events": [
+        { "id": "e1", "type": "movement", "minutes_ago": 95, "by": "a" },
+        { "id": "e2", "type": "movement", "minutes_ago": 25, "by": "a" }
+      ],
+      "expect": { "line": "Moved 25m ago", "to_review": 0 }
+    },
+    {
+      "name": "before birth: the last kick count",
+      "events": [
+        { "id": "e1", "type": "kick_count", "minutes_ago": 300, "by": "a", "fields": { "count": 10, "minutes": 52 } },
+        { "id": "e2", "type": "movement", "minutes_ago": 150, "by": "a" },
+        { "id": "e3", "type": "kick_count", "minutes_ago": 120, "by": "a", "fields": { "count": 10, "minutes": 34 } }
+      ],
+      "expect": { "line": "Moved 2h ago · last count 10 in 34m" }
+    },
+    {
+      "name": "after birth the newborn entries take over",
+      "events": [
+        { "id": "e1", "type": "kick_count", "minutes_ago": 3000, "by": "a", "fields": { "count": 10, "minutes": 40 } },
+        { "id": "e2", "type": "diaper", "minutes_ago": 30, "by": "a", "fields": { "kind": "wet" } }
+      ],
+      "expect": { "line": "No feeds yet · diaper 30m ago" }
+    }
+  ]
+}

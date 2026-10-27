@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">Wee Hours</string>
+    <string name="widget_status_label">Wee Hours Status</string>
+    <string name="widget_everyone_label">Wee Hours Everyone</string>
+    <string name="widget_speak_label">Wee Hours Speak</string>
+</resources>

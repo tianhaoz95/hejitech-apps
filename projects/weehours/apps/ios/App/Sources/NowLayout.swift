@@ -1,11 +1,12 @@
 import LogCore
 import SwiftUI
 
-/// The cards on Now, in the order this phone shows them. Each phone keeps its own order
-/// (`NowLayout.key`, a comma list of raw values); the arrange button in Now's toolbar makes the
-/// cards jiggle so they can be dragged into place, like apps on the Home Screen (`NowCards`).
+/// The cards on Now. With the log buttons (`QuickTiles`) they make up Now's items (`NowItem`), in
+/// the order this phone shows them: each phone keeps its own order (`NowLayout.key`, a comma list
+/// of raw values). The arrange button in Now's toolbar makes everything jiggle so cards and buttons
+/// can each be dragged into place, like widgets and apps on the Home Screen (`NowCards`).
 enum NowSection: String, CaseIterable, Identifiable {
-    case rhythm, shiftNote, status, photos, partner, shiftDigest, milkStash, review, needsDetails, actions
+    case rhythm, shiftNote, status, photos, partner, shiftDigest, milkStash, review, needsDetails
 
     var id: String { rawValue }
 
@@ -20,7 +21,6 @@ enum NowSection: String, CaseIterable, Identifiable {
         case .milkStash: "Milk stash"
         case .review: "To review"
         case .needsDetails: "Needs details"
-        case .actions: "Log buttons"
         }
     }
 
@@ -48,7 +48,49 @@ enum NowSection: String, CaseIterable, Identifiable {
         case .milkStash: "refrigerator"
         case .review: "exclamationmark.bubble"
         case .needsDetails: "questionmark.circle"
-        case .actions: "square.grid.2x2"
+        }
+    }
+}
+
+/// One thing on Now: a card, full width, or a log button, two to a row (`NowFlow`).
+enum NowItem: Hashable, Identifiable {
+    case section(NowSection)
+    case tile(String)
+
+    init?(raw: String) {
+        if raw.hasPrefix("tile.") { self = .tile(String(raw.dropFirst(5))) }
+        else if let s = NowSection(rawValue: raw) { self = .section(s) }
+        else { return nil }
+    }
+
+    var raw: String {
+        switch self {
+        case .section(let s): s.rawValue
+        case .tile(let key): "tile.\(key)"
+        }
+    }
+
+    var id: String { raw }
+    var isTile: Bool { if case .tile = self { true } else { false } }
+
+    var title: String {
+        switch self {
+        case .section(let s): s.title
+        case .tile(let key): QuickTiles.title(key)
+        }
+    }
+
+    var note: String? {
+        switch self {
+        case .section(let s): s.note
+        case .tile(let key): QuickTiles.note(key)
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .section(let s): s.icon
+        case .tile(let key): QuickTiles.icon(key)
         }
     }
 }
@@ -56,73 +98,158 @@ enum NowSection: String, CaseIterable, Identifiable {
 enum NowLayout {
     static let key = "nowSectionOrder"
 
-    /// The stored order, with sections it doesn't name (added in a later version) put back right
-    /// after the section they follow by default.
-    static func order(_ stored: String) -> [NowSection] {
-        var order: [NowSection] = []
-        for raw in stored.split(separator: ",") {
-            if let s = NowSection(rawValue: String(raw)), !order.contains(s) { order.append(s) }
+    /// The cards, then the buttons this household has (`QuickTiles.available`).
+    static func defaults(tiles: [String]) -> [NowItem] {
+        NowSection.allCases.map(NowItem.section) + tiles.map(NowItem.tile)
+    }
+
+    /// The stored order, with items it doesn't name (added in a later version, or a category just
+    /// turned on) put back right after the item they follow by default. Buttons it names that the
+    /// household doesn't have now keep their place for when it does. Orders saved before the
+    /// buttons moved one by one name them all as `actions`: they stay together there.
+    static func order(_ stored: String, tiles: [String]) -> [NowItem] {
+        var order: [NowItem] = []
+        for raw in stored.split(separator: ",").map(String.init) {
+            if raw == "actions" {
+                order += tiles.map(NowItem.tile).filter { !order.contains($0) }
+            } else if let item = NowItem(raw: raw), !order.contains(item) {
+                order.append(item)
+            }
         }
-        let all = NowSection.allCases
-        for (i, s) in all.enumerated() where !order.contains(s) {
+        let all = defaults(tiles: tiles)
+        for (i, item) in all.enumerated() where !order.contains(item) {
             let before = all[..<i].last { order.contains($0) }
             let at = before.flatMap { order.firstIndex(of: $0) }.map { $0 + 1 } ?? 0
-            order.insert(s, at: at)
+            order.insert(item, at: at)
         }
         return order
     }
 
-    static func encode(_ order: [NowSection]) -> String {
-        order == NowSection.allCases ? "" : order.map(\.rawValue).joined(separator: ",")
+    static func encode(_ order: [NowItem], tiles: [String]) -> String {
+        order == defaults(tiles: tiles) ? "" : order.map(\.raw).joined(separator: ",")
     }
 
-    /// Moves within the sections listed (`shown`); the others keep their slots.
-    static func move(_ order: [NowSection], shown: [NowSection], from: IndexSet, to: Int) -> [NowSection] {
+    /// Moves within the items listed (`shown`); the others keep their slots.
+    static func move(_ order: [NowItem], shown: [NowItem], from: IndexSet, to: Int) -> [NowItem] {
         var moved = shown
         moved.move(fromOffsets: from, toOffset: to)
         return place(order, shown: shown, as: moved)
     }
 
-    /// `order` with the sections listed (`shown`) rearranged as `arranged`; the others keep their slots.
-    static func place(_ order: [NowSection], shown: [NowSection], as arranged: [NowSection]) -> [NowSection] {
+    /// `order` with the items listed (`shown`) rearranged as `arranged`; the others keep their slots.
+    static func place(_ order: [NowItem], shown: [NowItem], as arranged: [NowItem]) -> [NowItem] {
         guard Set(arranged) == Set(shown), arranged.count == shown.count else { return order }
         var next = arranged.makeIterator()
         return order.map { shown.contains($0) ? next.next()! : $0 }
     }
 
-    /// The cards this household can have, so arranging doesn't list a milk stash nobody keeps.
-    static func available(_ s: NowSection, household h: Household, localOnly: Bool, rhythm: Bool) -> Bool {
-        switch s {
-        case .rhythm: rhythm
-        case .milkStash: h.enabled.contains("pumping") && h.trackMilkStash
-        case .partner: !localOnly   // other caregivers' heads-ups need a shared household
-        default: true
+    /// What this household can have, so arranging doesn't list a milk stash nobody keeps.
+    static func available(_ item: NowItem, tiles: [String], household h: Household, localOnly: Bool, rhythm: Bool) -> Bool {
+        switch item {
+        case .tile(let key): tiles.contains(key)
+        case .section(.rhythm): rhythm
+        case .section(.milkStash): h.enabled.contains("pumping") && h.trackMilkStash
+        case .section(.partner): !localOnly   // other caregivers' heads-ups need a shared household
+        case .section: true
         }
     }
 }
 
+struct NowTileKey: LayoutValueKey {
+    static let defaultValue = false
+}
 
-/// Now's cards. While arranging they jiggle like apps on the Home Screen: hold one for a moment and
-/// drag it, the others slide out of the way, and dragging near the top or bottom edge scrolls. A
-/// quick swipe still scrolls. Cards that come and go show as a placeholder while arranging, so
-/// they can be placed too. Everything is measured in global coordinates, so the lifted card keeps
-/// to the finger while the list scrolls under it.
+extension View {
+    /// Marks a log button for `NowFlow`, which puts two to a row.
+    func nowTile(_ on: Bool = true) -> some View { layoutValue(key: NowTileKey.self, value: on) }
+}
+
+/// Now's column: cards full width, log buttons two to a row, like apps between widgets on the
+/// Home Screen. Views with no height (a card that isn't there right now) take no room.
+struct NowFlow: Layout {
+    var spacing: CGFloat = 16
+    var tileSpacing: CGFloat = 12
+
+    private struct Row {
+        var items: [(index: Int, size: CGSize)]
+        let tiles: Bool
+        var height: CGFloat
+    }
+
+    private func rows(_ width: CGFloat, _ subviews: Subviews) -> [Row] {
+        let half = (width - tileSpacing) / 2
+        var rows: [Row] = []
+        var open = false   // the last row is a button with room beside it
+        for (i, v) in subviews.enumerated() {
+            let tile = v[NowTileKey.self]
+            let size = v.sizeThatFits(ProposedViewSize(width: tile ? half : width, height: nil))
+            guard size.height >= 1 else { continue }
+            if tile, open {
+                rows[rows.count - 1].items.append((i, size))
+                rows[rows.count - 1].height = max(rows[rows.count - 1].height, size.height)
+                open = false
+            } else {
+                rows.append(Row(items: [(i, size)], tiles: tile, height: size.height))
+                open = tile
+            }
+        }
+        return rows
+    }
+
+    private func gap(_ a: Row, _ b: Row) -> CGFloat { a.tiles && b.tiles ? tileSpacing : spacing }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.replacingUnspecifiedDimensions().width
+        let rows = rows(width, subviews)
+        var height: CGFloat = 0
+        for (n, r) in rows.enumerated() { height += r.height + (n > 0 ? gap(rows[n - 1], r) : 0) }
+        return CGSize(width: width, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let half = (bounds.width - tileSpacing) / 2
+        let rows = rows(bounds.width, subviews)
+        let placed = Set(rows.flatMap { $0.items.map(\.index) })
+        for (i, v) in subviews.enumerated() where !placed.contains(i) {
+            v.place(at: bounds.origin, proposal: ProposedViewSize(width: bounds.width, height: 0))
+        }
+        var y = bounds.minY
+        for (n, r) in rows.enumerated() {
+            if n > 0 { y += gap(rows[n - 1], r) }
+            for (k, item) in r.items.enumerated() {
+                let x = bounds.minX + (r.tiles ? CGFloat(k) * (half + tileSpacing) : 0)
+                subviews[item.index].place(at: CGPoint(x: x, y: y + (r.height - item.size.height) / 2),
+                                           proposal: ProposedViewSize(width: r.tiles ? half : bounds.width, height: item.size.height))
+            }
+            y += r.height
+        }
+    }
+}
+
+/// Now's cards and buttons. While arranging they jiggle like apps on the Home Screen: hold one for
+/// a moment and drag it, the others slide out of the way, and dragging near the top or bottom edge
+/// scrolls. A quick swipe still scrolls. Items that come and go show as a placeholder while
+/// arranging, so they can be placed too. Everything is measured in global coordinates, so the
+/// lifted item keeps to the finger while the list scrolls under it.
 struct NowCards<Card: View>: View {
-    @Binding var stored: String
-    let shown: [NowSection]
+    /// Every item in this phone's order, including ones not shown.
+    let order: [NowItem]
+    let shown: [NowItem]
     let arranging: Bool
-    @ViewBuilder let card: (NowSection) -> Card
+    let save: ([NowItem]) -> Void
+    @ViewBuilder let card: (NowItem) -> Card
 
     private struct Lift {
-        let section: NowSection
-        let grab: CGFloat   // finger minus the card's top, when lifted
-        var finger: CGFloat
-        var order: [NowSection]
+        let item: NowItem
+        let grab: CGPoint   // finger minus the item's corner, when lifted
+        var finger: CGPoint
+        var order: [NowItem]
     }
 
     @State private var lift: Lift?
-    @State private var frames: [NowSection: CGRect] = [:]
-    @State private var empty: Set<NowSection> = []
+    @State private var swapped = Date.distantPast
+    @State private var frames: [NowItem: CGRect] = [:]
+    @State private var empty: Set<NowItem> = []
     @State private var position = ScrollPosition(edge: .top)
     @State private var scroll = ScrollGeometry?.none
     @State private var viewport = CGRect.zero
@@ -132,16 +259,16 @@ struct NowCards<Card: View>: View {
     var body: some View {
         let order = lift?.order ?? shown
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            NowFlow {
                 if arranging {
-                    Label("Hold a card, then drag it into place", systemImage: "hand.draw")
+                    Label("Hold a card or button, then drag it into place", systemImage: "hand.draw")
                         .font(.footnote).foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
                 }
-                // Outside arranging the cards go in bare: a wrapper around a card that isn't there
-                // right now would still take the stack's spacing and leave a gap.
-                ForEach(order) { s in
-                    if arranging { item(s) } else { card(s) }
+                // Outside arranging the cards go in bare: `NowFlow` skips the ones that aren't
+                // there right now, and a button can be two (Finish bottle, Start bottle).
+                ForEach(order) { item in
+                    if arranging { cell(item) } else { card(item) }
                 }
             }
             .padding()
@@ -152,67 +279,76 @@ struct NowCards<Card: View>: View {
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { viewport = $0 }
         .onChange(of: arranging) { _, on in if !on { drop() } }
         .sensoryFeedback(.selection, trigger: lift?.order)
-        .sensoryFeedback(.impact(weight: .medium), trigger: lift?.section) { $1 != nil }
+        .sensoryFeedback(.impact(weight: .medium), trigger: lift?.item) { $1 != nil }
     }
 
-    @ViewBuilder private func item(_ s: NowSection) -> some View {
-        let lifted = lift?.section == s
+    @ViewBuilder private func cell(_ item: NowItem) -> some View {
+        let lifted = lift?.item == item
         ZStack(alignment: .top) {
-            VStack(spacing: 0) { card(s) }
+            VStack(spacing: 0) { card(item) }
                 .frame(maxWidth: .infinity)
                 .onGeometryChange(for: Bool.self) { $0.size.height < 1 } action: { e in
-                    if e { empty.insert(s) } else { empty.remove(s) }
+                    if e { empty.insert(item) } else { empty.remove(item) }
                 }
-            if arranging, empty.contains(s) { Placeholder(section: s) }
+            if arranging, empty.contains(item) { Placeholder(item: item) }
         }
         .allowsHitTesting(!arranging)
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { f in
-            if arranging { frames[s] = f }
+            if arranging { frames[item] = f }
         }
-        .modifier(Jiggle(on: arranging && !lifted && lift == nil && !reduceMotion, seed: s.rawValue.hashValue))
-        .scaleEffect(lifted ? 1.03 : 1)
+        .modifier(Jiggle(on: arranging && !lifted && lift == nil && !reduceMotion, degrees: item.isTile ? 1.2 : 0.5, seed: item.raw.hashValue))
+        .scaleEffect(lifted ? (item.isTile ? 1.08 : 1.03) : 1)
         .shadow(color: .black.opacity(lifted ? 0.25 : 0), radius: 16, y: 8)
-        .offset(y: lifted ? offset(of: s) : 0)
+        .offset(lifted ? offset(of: item) : .zero)
         .zIndex(lifted ? 1 : 0)
         .contentShape(RoundedRectangle(cornerRadius: 18))
         // UIKit's long press, not a SwiftUI drag: any SwiftUI drag on a card keeps the list from
         // scrolling on iOS 18+, while this one gives way to the scroll view's pan until it fires.
-        .gesture(HoldToDrag(enabled: arranging) { phase, y in hold(s, phase, y) })
+        .gesture(HoldToDrag(enabled: arranging) { phase, at in hold(item, phase, at) })
         .animation(.snappy(duration: 0.25), value: lifted)
-        .modifier(Arranging(on: arranging, section: s) { by in nudge(s, by: by) })
+        .modifier(Arranging(on: arranging, item: item) { by in nudge(item, by: by) })
+        .nowTile(item.isTile)
     }
 
-    /// The lifted card follows the finger, wherever its slot is now.
-    private func offset(of s: NowSection) -> CGFloat {
-        guard let lift, let f = frames[s] else { return 0 }
-        return lift.finger - lift.grab - f.minY
+    /// The lifted item follows the finger, wherever its slot is now; a card only up and down.
+    private func offset(of item: NowItem) -> CGSize {
+        guard let lift, let f = frames[item] else { return .zero }
+        return CGSize(width: item.isTile ? lift.finger.x - lift.grab.x - f.minX : 0, height: lift.finger.y - lift.grab.y - f.minY)
     }
 
-    private func hold(_ s: NowSection, _ phase: HoldToDrag.Phase, _ y: CGFloat) {
+    private func hold(_ item: NowItem, _ phase: HoldToDrag.Phase, _ at: CGPoint) {
         switch phase {
         case .lift:
-            guard lift == nil, let f = frames[s] else { return }
-            lift = Lift(section: s, grab: y - f.minY, finger: y, order: shown)
+            guard lift == nil, let f = frames[item] else { return }
+            lift = Lift(item: item, grab: CGPoint(x: at.x - f.minX, y: at.y - f.minY), finger: at, order: shown)
             startAutoscroll()
         case .move:
-            guard lift?.section == s else { return }
-            lift?.finger = y
+            guard lift?.item == item else { return }
+            lift?.finger = at
             reorder()
         case .drop:
             drop()
         }
     }
 
-    /// Puts the lifted card where its middle is: past a neighbour's middle, they swap.
+    /// Puts the lifted item where its middle is, in reading order: past a neighbour's middle (a
+    /// button beside it: across its middle), they swap. Once they've swapped, the next swap waits a
+    /// moment, so a row closing up under the finger doesn't send the item straight back.
     private func reorder() {
-        guard var l = lift, let f = frames[l.section] else { return }
-        let middle = l.finger - l.grab + f.height / 2
-        let others = l.order.filter { $0 != l.section }
-        let at = others.filter { (frames[$0]?.midY ?? .infinity) < middle }.count
+        guard var l = lift, let f = frames[l.item], Date().timeIntervalSince(swapped) > 0.25 else { return }
+        let p = CGPoint(x: (l.item.isTile ? l.finger.x - l.grab.x : f.minX) + f.width / 2, y: l.finger.y - l.grab.y + f.height / 2)
+        let others = l.order.filter { $0 != l.item }
+        let at = others.filter { o in
+            guard let r = frames[o] else { return false }
+            if p.y > r.maxY { return true }
+            if p.y < r.minY { return false }
+            return o.isTile && l.item.isTile ? p.x > r.midX : p.y > r.midY
+        }.count
         var next = others
-        next.insert(l.section, at: at)
+        next.insert(l.item, at: at)
         guard next != l.order else { return }
         l.order = next
+        swapped = Date()
         withAnimation(.snappy(duration: 0.3)) { lift = l }
     }
 
@@ -221,7 +357,7 @@ struct NowCards<Card: View>: View {
         autoscroll = nil
         guard let l = lift else { return }
         withAnimation(.snappy(duration: 0.3)) {
-            stored = NowLayout.encode(NowLayout.place(NowLayout.order(stored), shown: shown, as: l.order))
+            save(NowLayout.place(order, shown: shown, as: l.order))
             lift = nil
         }
     }
@@ -233,10 +369,10 @@ struct NowCards<Card: View>: View {
             while !Task.isCancelled, let l = lift {
                 try? await Task.sleep(for: .milliseconds(16))
                 guard let g = scroll else { continue }
-                let edge: CGFloat = 90
+                let edge: CGFloat = 90, finger = l.finger.y
                 let top = viewport.minY + g.contentInsets.top, bottom = viewport.maxY - g.contentInsets.bottom
-                let speed = l.finger < top + edge ? -(top + edge - l.finger) / edge * 14
-                    : l.finger > bottom - edge ? (l.finger - (bottom - edge)) / edge * 14 : 0
+                let speed = finger < top + edge ? -(top + edge - finger) / edge * 14
+                    : finger > bottom - edge ? (finger - (bottom - edge)) / edge * 14 : 0
                 guard speed != 0 else { continue }
                 let y = g.contentOffset.y + g.contentInsets.top
                 let maxY = max(0, g.contentSize.height + g.contentInsets.top + g.contentInsets.bottom - g.containerSize.height)
@@ -248,20 +384,20 @@ struct NowCards<Card: View>: View {
         }
     }
 
-    /// VoiceOver: Move up / Move down, one card at a time.
-    private func nudge(_ s: NowSection, by: Int) {
-        guard let i = shown.firstIndex(of: s), shown.indices.contains(i + by) else { return }
+    /// VoiceOver: Move up / Move down, one item at a time.
+    private func nudge(_ item: NowItem, by: Int) {
+        guard let i = shown.firstIndex(of: item), shown.indices.contains(i + by) else { return }
         withAnimation(.snappy) {
-            stored = NowLayout.encode(NowLayout.move(NowLayout.order(stored), shown: shown, from: [i], to: by > 0 ? i + 2 : i - 1))
+            save(NowLayout.move(order, shown: shown, from: [i], to: by > 0 ? i + 2 : i - 1))
         }
     }
 }
 
-/// Hold for a moment, then drag; reports the finger's y in global coordinates.
+/// Hold for a moment, then drag; reports the finger in global coordinates.
 private struct HoldToDrag: UIGestureRecognizerRepresentable {
     enum Phase { case lift, move, drop }
     let enabled: Bool
-    let changed: (Phase, CGFloat) -> Void
+    let changed: (Phase, CGPoint) -> Void
 
     func makeUIGestureRecognizer(context: Context) -> UILongPressGestureRecognizer {
         let g = UILongPressGestureRecognizer()
@@ -274,43 +410,56 @@ private struct HoldToDrag: UIGestureRecognizerRepresentable {
     }
 
     func handleUIGestureRecognizerAction(_ g: UILongPressGestureRecognizer, context: Context) {
-        let y = context.converter.location(in: .global).y
+        let at = context.converter.location(in: .global)
         switch g.state {
-        case .began: changed(.lift, y)
-        case .changed: changed(.move, y)
-        case .ended, .cancelled, .failed: changed(.drop, y)
+        case .began: changed(.lift, at)
+        case .changed: changed(.move, at)
+        case .ended, .cancelled, .failed: changed(.drop, at)
         default: break
         }
     }
 }
 
-/// A card that isn't there right now, so it can still be placed while arranging.
+/// A card or button that isn't there right now, so it can still be placed while arranging.
 private struct Placeholder: View {
-    let section: NowSection
+    let item: NowItem
 
     var body: some View {
-        Label {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(section.title).font(.subheadline.weight(.semibold))
-                if let note = section.note { Text(note).font(.caption).foregroundStyle(.secondary) }
+        Group {
+            if item.isTile {
+                VStack(alignment: .leading, spacing: 6) {
+                    Image(systemName: item.icon).font(.title2).foregroundStyle(Theme.sleep)
+                    Text(item.title).font(.headline)
+                    if let note = item.note { Text(note).font(.caption).foregroundStyle(.secondary) }
+                }
+                .padding()
+                .frame(maxWidth: .infinity, minHeight: 96, alignment: .leading)
+            } else {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(item.title).font(.subheadline.weight(.semibold))
+                        if let note = item.note { Text(note).font(.caption).foregroundStyle(.secondary) }
+                    }
+                } icon: { Image(systemName: item.icon).foregroundStyle(Theme.sleep) }
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-        } icon: { Image(systemName: section.icon).foregroundStyle(Theme.sleep) }
-            .padding()
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.card.opacity(0.5), in: RoundedRectangle(cornerRadius: 18))
-            .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(.secondary.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
+        }
+        .background(Theme.card.opacity(0.5), in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(.secondary.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
     }
 }
 
-/// The Home Screen wobble, a little out of step from card to card.
+/// The Home Screen wobble, a little out of step from item to item.
 private struct Jiggle: ViewModifier {
     let on: Bool
+    let degrees: Double
     let seed: Int
     @State private var tilt = false
 
     func body(content: Content) -> some View {
         content
-            .rotationEffect(.degrees(on ? (tilt ? 0.5 : -0.5) : 0))
+            .rotationEffect(.degrees(on ? (tilt ? degrees : -degrees) : 0))
             .onChange(of: on, initial: true) { _, on in
                 guard on else { tilt = false; return }
                 let delay = Double(abs(seed) % 7) * 0.02
@@ -319,21 +468,21 @@ private struct Jiggle: ViewModifier {
     }
 }
 
-/// While arranging, each card is one element with its name and Move up / Move down actions.
+/// While arranging, each item is one element with its name and Move up / Move down actions.
 private struct Arranging: ViewModifier {
     let on: Bool
-    let section: NowSection
+    let item: NowItem
     let nudge: (Int) -> Void
 
     func body(content: Content) -> some View {
         if on {
             content
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel(section.title)
+                .accessibilityLabel(item.title)
                 .accessibilityHint("Hold, then drag to move it")
                 .accessibilityAction(named: "Move up") { nudge(-1) }
                 .accessibilityAction(named: "Move down") { nudge(1) }
-                .accessibilityIdentifier("arrange-\(section.rawValue)")
+                .accessibilityIdentifier("arrange-\(item.raw)")
         } else {
             content
         }

@@ -142,3 +142,20 @@ jobs:
           xcodebuild -project WeeHours.xcodeproj -scheme App \
             -destination 'generic/platform=iOS Simulator' -derivedDataPath .derived \
             build CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO | tail -40
+
+  android:
+    name: Android + Wear OS (:core, :app, :wear tests & build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: projects/weehours/apps/android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - name: Run unit tests & build Debug/Release APKs
+        run: ./gradlew test assembleDebug assembleRelease --console=plain

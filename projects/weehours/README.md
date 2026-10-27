@@ -22,6 +22,7 @@ Voice is understood **on the iPhone** by [Laya](https://huggingface.co/ggml-org/
 | `apps/ios/LogCore` | Swift package: event model, append-only derivation (sessions, duplicates, status line), the decision layer (Laya prompt port, two-step questions, confidence policy, deterministic time and number parsers), reminders, billing rules, SQLite store, Supabase sync, plus the `logeval` CLI |
 | `apps/ios/LayaRuntime` | Runs Laya in-process with llama.cpp: a Swift port of llama.cpp's server-side decision path, verified against llama-server |
 | `apps/ios/App`, `Widgets`, `Watch` | iPhone app (SwiftUI), widgets, Live Activity, App Intents (Siri / Action Button), StoreKit 2 paywall with a dummy store, watch app |
+| `apps/android/` | Android + Wear OS multi-module project (`:core`, `:app`, `:wear`): Kotlin port of `LogCore` passing `spec/fixtures/status.json`, Jetpack Compose phone app (Now, Night HUD, Voice + Review, Timeline, Settings, Widgets, Ongoing Notification), and Wear OS companion app (Buttons Mode, 4-way Tilt Compass with `TiltLock`, Tile, and Complications) |
 | `apps/glasses/` | Even Hub plugin for G2 + R1: gesture logging, hold-to-speak capture, one-line HUD; pairs with a code from the iPhone and talks only to the site Worker (`/api/glasses/*`) |
 | `packages/core/` | `@weehours/core`: the TypeScript twin of LogCore's derivation, shared by the site, the MCP Worker and the glasses |
 | `services/web/` | Website + Cloudflare Worker: landing, agent setup, account, legal pages, and the **MCP server** with its own OAuth endpoints |
@@ -54,6 +55,7 @@ Sign in with `parent1@example.com` / `newborn-dev` (or `parent2@…`). Both acco
 
 ```bash
 cd apps/ios/LogCore && swift test                                 # 37 tests, incl. the PRD acceptance criteria
+cd apps/android && ./gradlew test                                 # 31 Kotlin LogCore unit + fixture tests
 SUPABASE_IT=1 swift test --filter BackendIntegrationTests         # against the local stack
 cd apps/ios/LayaRuntime && LAYA_MODEL=… LAYA_SERVER=http://127.0.0.1:8089 swift test   # on-device port == llama-server
 npm run test:weehours                                             # (repo root) core fixtures, glasses

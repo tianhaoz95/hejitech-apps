@@ -89,7 +89,9 @@ struct HomeView: View {
 
     var body: some View {
         NavigationStack {
-            NowCards(stored: $layout, shown: sections, arranging: arranging) { card($0) }
+            let tiles = QuickTiles.available(model.household)
+            NowCards(order: NowLayout.order(layout, tiles: tiles), shown: items(tiles), arranging: arranging,
+                     save: { layout = NowLayout.encode($0, tiles: tiles) }) { card($0) }
             .navigationTitle(arranging ? "Arrange Now" : title)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -135,9 +137,18 @@ struct HomeView: View {
         }
     }
 
-    /// Now's cards in this phone's order, leaving out the ones this household can't have.
-    private var sections: [NowSection] {
-        NowLayout.order(layout).filter { NowLayout.available($0, household: model.household, localOnly: model.localOnly, rhythm: showRhythm) }
+    /// Now's cards and buttons in this phone's order, leaving out the ones this household can't have.
+    private func items(_ tiles: [String]) -> [NowItem] {
+        NowLayout.order(layout, tiles: tiles).filter {
+            NowLayout.available($0, tiles: tiles, household: model.household, localOnly: model.localOnly, rhythm: showRhythm)
+        }
+    }
+
+    @ViewBuilder private func card(_ item: NowItem) -> some View {
+        switch item {
+        case .section(let s): card(s)
+        case .tile(let key): QuickTileView(key: key, single: arranging)
+        }
     }
 
     @ViewBuilder private func card(_ section: NowSection) -> some View {
@@ -167,8 +178,6 @@ struct HomeView: View {
             let shownIds = Set(model.shown.map(\.id))
             let blind = model.log.effective.filter { $0.needsDetails && shownIds.contains($0.babyId) }
             if !blind.isEmpty { NeedsDetailsCard(entries: blind.sorted { $0.occurredAt > $1.occurredAt }) }
-        case .actions:
-            QuickActions()
         }
     }
 
@@ -668,209 +677,6 @@ struct DuplicateRow: View {
             }
             .controlSize(.small)
         }
-    }
-}
-
-struct QuickActions: View {
-    @EnvironmentObject var model: AppModel
-    @State private var measuring: String?   // the growth type whose sheet is open
-    @State private var showingSolids = false
-    @State private var showingPump = false
-    /// Start bottle tapped while another caregiver said they're making one.
-    @State private var confirmingBottle: [UUID]?
-    private let columns = [GridItem(.flexible()), GridItem(.flexible())]
-
-    /// The buttons act on the Log-for target: each applies to the children it makes sense for
-    /// (finish for those feeding, start for the others), one entry per child.
-    var body: some View {
-        let h = model.household
-        // children not born yet get only the pregnancy tiles; the newborn buttons are for the rest
-        let expecting = model.target.filter { h.baby($0)?.isExpected == true }
-        let targets = model.target.filter { !expecting.contains($0) }
-        let logs = targets.map { ($0, model.logs[$0] ?? DerivedLog(events: [])) }
-        let feeding = logs.compactMap { id, log in log.openFeedSession().map { (id, $0) } }
-        let idle = logs.filter { $0.1.openFeedSession() == nil }.map(\.0)
-        let bottles = feeding.filter { $0.1.kind == .bottle }
-        let nursing = feeding.filter { $0.1.kind == .breast }
-        let asleep = logs.filter { $0.1.openSession(.sleep) != nil }.map(\.0)
-        let awake = targets.filter { !asleep.contains($0) }
-        let many = targets.count > 1
-        LazyVGrid(columns: columns, spacing: 12) {
-            if !expecting.isEmpty {
-                PregnancyTiles(babies: expecting)
-            }
-            if !targets.isEmpty {
-            if !bottles.isEmpty {
-                let ids = bottles.map(\.0)
-                Menu {
-                    ForEach([(0.25, "A quarter"), (0.5, "Half"), (0.75, "Three quarters"), (1.0, "All of it")], id: \.0) { f, label in
-                        Button(label) { model.log("feed.bottle.finish", ["consumed_fraction": .number(f)], for: ids) }
-                    }
-                    if h.trackMilkStash {
-                        Divider()
-                        Menu("Used breast milk from fridge") {
-                            ForEach([(0.5, "Half"), (0.75, "Three quarters"), (1.0, "All of it")], id: \.0) { f, label in
-                                Button(label) { model.log("feed.bottle.finish", ["consumed_fraction": .number(f), "contents": .string("breast_milk")], for: ids) }
-                            }
-                        }
-                    }
-                    Divider()
-                    Menu("Ended earlier…") {
-                        ForEach([5, 10, 15, 30], id: \.self) { mins in
-                            Button("\(mins) min ago (All)") {
-                                model.log("feed.bottle.finish", ["consumed_fraction": .number(1.0)], at: Date().addingTimeInterval(-Double(mins * 60)), for: ids)
-                            }
-                        }
-                    }
-                    Button("Not sure") { model.log("feed.bottle.finish", for: ids) }
-                } label: {
-                    Tile(title: ids.count > 1 ? "Finish bottles" : "Finish bottle",
-                         subtitle: many ? names(ids) : "since \(bottles[0].1.start?.formatted(date: .omitted, time: .shortened) ?? "")",
-                         icon: "waterbottle.fill", color: Theme.feed)
-                }
-            }
-            if !nursing.isEmpty {
-                let ids = nursing.map(\.0)
-                ActionTile(title: "Finish nursing", subtitle: many ? names(ids) : nursing[0].1.sides.last.map { "on \($0)" } ?? "", icon: "heart.fill", color: Theme.feed,
-                           action: { model.log("feed.breast.finish", for: ids) },
-                           backdate: { at in model.log("feed.breast.finish", at: at, for: ids) })
-                ActionTile(title: "Switch side", subtitle: many ? names(ids) : "to \(nursing[0].1.sides.last == "left" ? "right" : "left")",
-                           icon: "arrow.left.arrow.right", color: Theme.feed) {
-                    model.performEach(ids) { s, baby, group in try s.switchSide(baby: baby, surface: .phone, fields: group) }
-                }
-            }
-            if !idle.isEmpty {
-                if h.enabled.contains("bottle") {
-                    ActionTile(title: idle.count > 1 ? "Start bottles" : "Start bottle", subtitle: bottleText(idle), icon: "waterbottle.fill", color: Theme.feed,
-                               action: {
-                        if model.partnerPrepping(for: idle) != nil { confirmingBottle = idle } else { model.log("feed.bottle.start", for: idle) }
-                    }, backdate: { at in model.log("feed.bottle.start", at: at, for: idle) },
-                               announce: model.localOnly ? nil : { model.announcePreppingBottle(for: idle) })
-                }
-                if h.enabled.contains("breast") {
-                    ActionTile(title: "Start nursing", subtitle: sideText(idle), icon: "heart.fill", color: Theme.feed,
-                               action: {
-                        model.performEach(idle) { s, baby, group in
-                            let side = StatusSnapshot(log: try s.derived(baby: baby), now: Date()).nextSide ?? "left"
-                            return try s.log(type: "feed.breast.start", fields: ["side": .string(side)].merging(group) { $1 },
-                                             provenance: Provenance(surface: .phone, input: .tap), baby: baby)
-                        }
-                    }, backdate: { at in
-                        model.performEach(idle) { s, baby, group in
-                            let side = StatusSnapshot(log: try s.derived(baby: baby), now: Date()).nextSide ?? "left"
-                            return try s.log(type: "feed.breast.start", fields: ["side": .string(side)].merging(group) { $1 },
-                                             occurredAt: at, provenance: Provenance(surface: .phone, input: .tap), baby: baby)
-                        }
-                    })
-                }
-            }
-            if h.enabled.contains("solids") {
-                let summary = (logs.first?.1 ?? model.log).solidsSummary()
-                let triedAllergens = summary.allergenCounts.values.filter { $0 > 0 }.count
-                Button { showingSolids = true } label: {
-                    Tile(title: "Solids", subtitle: summary.triedFoods.isEmpty ? "first foods & reactions" : "\(summary.triedFoods.count) foods · \(triedAllergens)/9 allergens",
-                         icon: "fork.knife", color: Theme.feed)
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("solidsTile")
-            }
-            if h.enabled.contains("diaper") {
-                Menu {
-                    ForEach(["wet", "dirty", "both", "dry"], id: \.self) { k in
-                        Button(k.capitalized) { model.log("diaper", ["kind": .string(k)]) }
-                    }
-                    Divider()
-                    Menu("Changed earlier…") {
-                        ForEach([5, 10, 15, 30], id: \.self) { mins in
-                            Button("Wet · \(mins) min ago") { model.log("diaper", ["kind": .string("wet")], at: Date().addingTimeInterval(-Double(mins * 60))) }
-                            Button("Dirty · \(mins) min ago") { model.log("diaper", ["kind": .string("dirty")], at: Date().addingTimeInterval(-Double(mins * 60))) }
-                            Button("Both · \(mins) min ago") { model.log("diaper", ["kind": .string("both")], at: Date().addingTimeInterval(-Double(mins * 60))) }
-                        }
-                    }
-                } label: { Tile(title: many ? "Diapers" : "Diaper", subtitle: "wet · dirty · both", icon: "humidity.fill", color: Theme.diaper) }
-            }
-            if h.enabled.contains("sleep") {
-                if !awake.isEmpty {
-                    ActionTile(title: "Fell asleep", subtitle: many ? names(awake) : "start sleep", icon: "moon.zzz.fill", color: Theme.sleep,
-                               action: { model.log("sleep.start", for: awake) },
-                               backdate: { at in model.log("sleep.start", at: at, for: awake) })
-                }
-                if !asleep.isEmpty {
-                    ActionTile(title: "Woke up", subtitle: many ? names(asleep) : "end sleep", icon: "sun.max.fill", color: Theme.sleep,
-                               action: { model.log("sleep.end", for: asleep) },
-                               backdate: { at in model.log("sleep.end", at: at, for: asleep) })
-                }
-            }
-            if h.enabled.contains("pumping") {
-                // pumping is the parent's: one entry, filed under the first child logged for
-                if h.trackMilkStash {
-                    Button { showingPump = true } label: {
-                        Tile(title: "Pumped", subtitle: "amount & stash", icon: "drop.triangle.fill", color: Theme.other)
-                    }
-                    .buttonStyle(.plain)
-                } else {
-                    ActionTile(title: "Pumped", subtitle: "both sides", icon: "drop.triangle.fill", color: Theme.other,
-                               action: { model.log("pump", ["side": .string("both")], for: Array(targets.prefix(1))) },
-                               backdate: { at in model.log("pump", ["side": .string("both")], at: at, for: Array(targets.prefix(1))) })
-                }
-            }
-            if h.enabled.contains("growth") {
-                ForEach(Growth.types, id: \.self) { type in
-                    Button { measuring = type } label: {
-                        Tile(title: Growth.title(type), subtitle: growthText(type, logs) ?? "tap to log",
-                             icon: Growth.icon(type), color: Theme.growth)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("growthTile-\(type)")
-                }
-            }
-            ForEach(Care.types(enabled: h.enabled).filter { $0.category != Baby.movementCategory }, id: \.id) { CareTile(type: $0) }
-            }
-        }
-        .sheet(isPresented: Binding { measuring != nil } set: { if !$0 { measuring = nil } }) {
-            if let measuring { GrowthSheet(type: measuring, babies: model.targetBabies).presentationDetents([.medium, .large]) }
-        }
-        .sheet(isPresented: $showingSolids) {
-            SolidsSheet().presentationDetents([.medium, .large])
-        }
-        .sheet(isPresented: $showingPump) {
-            PumpSheet().presentationDetents([.medium])
-        }
-        .confirmationDialog(confirmTitle, isPresented: Binding { confirmingBottle != nil } set: { if !$0 { confirmingBottle = nil } },
-                            titleVisibility: .visible) {
-            Button("Start my bottle anyway") { if let ids = confirmingBottle { model.log("feed.bottle.start", for: ids) } }
-            Button("Cancel", role: .cancel) {}
-        }
-        .onAppear {   // automation: `-screen growth` opens the sheet (screenshots)
-            if model.screen == "growth" { model.screen = "home"; measuring = "weight" }
-        }
-    }
-
-    private func names(_ ids: [UUID]) -> String { Household.names(ids.compactMap { model.household.baby($0) }) }
-
-    private var confirmTitle: String {
-        let who = confirmingBottle.flatMap { model.partnerPrepping(for: $0) }.map { model.household.caregiverName($0.caregiver) } ?? "Someone"
-        return "\(who) is making a bottle"
-    }
-
-    /// "120 ml", or each child's size when they differ ("Mia 90 · Leo 110 ml").
-    private func bottleText(_ ids: [UUID]) -> String {
-        let h = model.household
-        let sizes = ids.map { Int(h.bottleMl(for: $0)) }
-        if Set(sizes).count <= 1 { return "\(sizes.first ?? Int(h.bottleMl)) ml" }
-        return zip(ids, sizes).map { "\(h.babyName($0)) \($1)" }.joined(separator: " · ") + " ml"
-    }
-
-    private func sideText(_ ids: [UUID]) -> String {
-        let sides = ids.map { model.statuses[$0]?.nextSide ?? "left" }
-        if ids.count == 1 { return "\(sides[0]) side" }
-        return zip(ids, sides).map { "\(model.household.babyName($0)) \($1)" }.joined(separator: " · ")
-    }
-
-    private func growthText(_ type: String, _ logs: [(UUID, DerivedLog)]) -> String? {
-        if logs.count == 1 { return Growth.latestText(type, in: logs[0].1) }
-        let parts = logs.compactMap { id, log in Growth.latestText(type, in: log).map { "\(model.household.babyName(id)) \($0)" } }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 }
 
