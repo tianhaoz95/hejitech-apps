@@ -15,19 +15,19 @@ struct SettingsView: View {
             Form {
                 Section {
                     NavigationLink("About you (for your agent)") { AboutEditor(about: $draft.about) }
-                } footer: { Text("Every agent you connect reads this first.") }
+                } footer: { Text("Your agent fills this in by interviewing you over MCP; you don't need to type it first. Every agent you connect reads it at the start of a session.") }
                 Section {
                     Toggle("Live heart rate in workouts", isOn: $draft.vitals.liveHr)
                     Toggle("Daily Apple Health summary", isOn: $draft.vitals.healthDaily)
                     Toggle("Manual entries", isOn: $draft.vitals.manual)
                     Toggle("Progress photos", isOn: $draft.vitals.photos)
-                } header: { Text("Data FitLoop keeps") } footer: { Text("Heart rate comes from your Apple Watch during a workout; Apple Health adds weight, resting HR, HRV, sleep, steps and active energy once a day.") }
-                Section("What your agent may see") {
+                } header: { Text("Data FitLoop keeps") } footer: { Text("Heart rate comes from your Apple Watch during a workout; Apple Health adds weight, resting HR, HRV, sleep, steps and active energy once a day. Never used for advertising, marketing or data mining.") }
+                Section {
                     Toggle("Check-ins", isOn: $draft.agentAccess.checkins)
                     Toggle("Feedback notes", isOn: $draft.agentAccess.feedback)
                     Toggle("Vitals", isOn: $draft.agentAccess.vitals)
                     Toggle("Progress photo images", isOn: $draft.agentAccess.photos)
-                }
+                } header: { Text("What your agent may see") } footer: { Text("Shared over MCP only with the third-party AI agents you connect. Vitals include Apple Health metrics (weight, resting HR, HRV, sleep, steps, active energy, workout HR) for the sources switched on above.") }
                 Section {
                     Toggle("Before a workout", isOn: $draft.reminders.workout.on)
                     if draft.reminders.workout.on { Stepper("\(draft.reminders.workout.minutesBefore) min before", value: $draft.reminders.workout.minutesBefore, in: 0...120, step: 5) }
@@ -59,6 +59,7 @@ struct SettingsView: View {
                 Section("About") {
                     Button("What's New") { whatsNew = true }
                     Link("Help", destination: model.backend.config.site.appendingPathComponent("support/"))
+                    Link("Terms", destination: model.backend.config.site.appendingPathComponent("terms/"))
                     Link("Privacy", destination: model.backend.config.site.appendingPathComponent("privacy/"))
                     LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "")
                 }

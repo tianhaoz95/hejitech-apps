@@ -53,11 +53,17 @@ struct SignInView: View {
                 }
                 #endif
 
-                Text("Your account is shared with other HEJI apps. FitLoop keeps your plans, check-ins, notes for your agent and only the health data you switch on.")
+                Text("Your account is shared with other HEJI apps. FitLoop keeps your plans, check-ins, notes for your agent and only the health data you switch on. FitLoop isn't medical advice.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: 16) {
+                    Link("Terms", destination: model.backend.config.site.appendingPathComponent("terms/"))
+                    Link("Privacy", destination: model.backend.config.site.appendingPathComponent("privacy/"))
+                }
+                .font(.footnote)
             }
             if let e = model.error {
                 Text(e).font(.footnote).foregroundStyle(.red).multilineTextAlignment(.center)

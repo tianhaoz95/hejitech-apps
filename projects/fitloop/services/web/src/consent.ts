@@ -48,9 +48,9 @@ async function render() {
     el("h1", {}, `Let ${client} coach you in FitLoop?`),
     el("p", { class: "muted small" }, domain ? `Published by ${domain}.` : "This assistant registered itself; its name isn't verified."),
     el("ul", {},
-      el("li", {}, "Read your profile notes, plans, check-ins, feedback and the vitals and photos you chose to share"),
+      el("li", {}, "Read your profile notes, plans, check-ins, feedback and the vitals (including Apple Health weight, resting HR, HRV, sleep, steps, active energy and workout heart rate) and photos you chose to share"),
       el("li", {}, "Publish new plan versions, reply to your feedback and update your profile notes")),
-    el("p", { class: "muted small" }, "It can't change your settings or check-ins, see your devices or read other apps' data."),
+    el("p", { class: "muted small" }, "It can't change your settings or check-ins, see your devices or read other apps' data. Data shared with this third-party AI is governed by its provider's privacy policy. Neither FitLoop nor your agent gives medical advice."),
     loopback && el("p", { class: "error" }, `Access goes to a program on this computer (${host}). Continue only if you just started connecting.`),
     el("div", { class: "stack" }, ...buttons),
     el("p", { class: "muted small", style: "margin-top: 14px" }, `Signed in as ${session.user.email ?? "your account"}. Disconnect any time on the `, el("a", { href: "/settings/" }, "Settings"), "."));

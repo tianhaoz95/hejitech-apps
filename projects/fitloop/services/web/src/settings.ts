@@ -13,14 +13,32 @@ function toggle(label: string, on: boolean, hint?: string) {
 }
 const section = (title: string, ...body: (Node | null)[]) => el("section", { class: "panel" }, el("h2", {}, title), ...body);
 
-async function render() {
-  const session = await requireSession(root, render);
+async function render(savedMsg?: string) {
+  const session = await requireSession(root, () => void render());
   if (!session) return;
   const r = await api<{ settings: Settings; saved: boolean; email: string | null }>("/api/settings");
   if (!r.ok) return void root.replaceChildren(el("p", { class: "error" }, "Couldn't load settings."));
   const s = r.body.settings;
 
-  const about = Object.fromEntries((["goals", "restrictions", "equipment", "schedule", "diet", "notes"] as const).map((k) => [k, el("textarea", {}, s.about[k])])) as Record<keyof Settings["about"], HTMLTextAreaElement>;
+  const ABOUT_LABELS: [keyof Settings["about"], string][] = [
+    ["goals", "Goals"],
+    ["restrictions", "Injuries and limits"],
+    ["equipment", "Equipment"],
+    ["schedule", "When you can train"],
+    ["diet", "Diet"],
+    ["notes", "Anything else"],
+  ];
+  const about = Object.fromEntries(ABOUT_LABELS.map(([k]) => [k, el("textarea", {}, s.about[k])])) as Record<keyof Settings["about"], HTMLTextAreaElement>;
+  const filledAbout = ABOUT_LABELS.filter(([k]) => s.about[k].trim().length > 0);
+  const aboutSummary = filledAbout.length
+    ? el("ul", { class: "list", style: "margin-bottom: 8px" },
+        ...filledAbout.map(([k, label]) => el("li", { style: "display: grid; gap: 2px; justify-content: start" },
+          el("span", { class: "small muted" }, label),
+          el("span", { style: "white-space: pre-wrap" }, s.about[k]))))
+    : el("p", { class: "small", style: "margin: 0 0 6px" },
+        "Nothing saved yet. Connect your agent and tell it ",
+        el("code", {}, "Interview me and build my FitLoop plan"),
+        " — it will ask what it needs and fill this in for you.");
   const v = {
     live_hr: toggle("Live heart rate in workouts", s.vitals.live_hr, "from your Apple Watch, shown on the glasses"),
     health_daily: toggle("Daily Apple Health summary", s.vitals.health_daily, "weight, resting HR, HRV, sleep, steps, active energy"),
@@ -43,7 +61,7 @@ async function render() {
   units.value = s.units;
   const tz = el("input", { value: s.timezone });
 
-  const status = el("p", { class: "small", role: "status" });
+  const status = el("p", { class: savedMsg ? "small saved" : "small", role: "status" }, savedMsg ?? "");
   const save = el("button", { class: "btn primary", type: "button" }, "Save");
   save.addEventListener("click", async () => {
     const next: Settings = {
@@ -60,24 +78,34 @@ async function render() {
     const issues = checkSettings(next);
     if (issues.length) { status.className = "small error"; status.textContent = issues.map((i) => `${i.path}: ${i.message}`).join("; "); return; }
     const res = await api("/api/settings", { method: "PUT", body: JSON.stringify({ settings: next }) });
-    status.className = res.ok ? "small saved" : "small error";
-    status.textContent = res.ok ? "Saved." : "Couldn't save.";
+    if (res.ok) {
+      await render("Saved.");
+      return;
+    }
+    status.className = "small error";
+    status.textContent = "Couldn't save.";
   });
 
   root.replaceChildren(
     el("h1", {}, "Settings"),
     el("p", { class: "muted" }, `Signed in as ${r.body.email ?? "you"}. Every option is yours to switch; the defaults are a good start.`),
+    await agentsPanel(),
     section("About you (for your agent)",
-      el("p", { class: "small muted" }, "Every agent you connect reads this first, and may add what it learns from you."),
-      el("div", { class: "stack" }, field("Goals", about.goals), field("Injuries and limits", about.restrictions), field("Equipment", about.equipment), field("When you can train", about.schedule), field("Diet", about.diet), field("Anything else", about.notes))),
+      el("p", { class: "small muted" }, "Your agent fills this in by interviewing you over MCP — you don't need to type anything here first. Every agent you connect reads it at the start of a session and updates it as it learns about you."),
+      aboutSummary,
+      el("details", {},
+        el("summary", { class: "link", style: "display: inline-block; padding: 4px 0" }, filledAbout.length ? "Edit yourself" : "Or fill it in yourself"),
+        el("div", { class: "stack", style: "margin-top: 10px" }, ...ABOUT_LABELS.map(([k, label]) => field(label, about[k]))))),
     section("Data FitLoop keeps", el("div", { class: "toggles" }, ...Object.values(v).map((t) => t.node))),
-    section("What your agent may see", el("div", { class: "toggles" }, ...Object.values(a).map((t) => t.node))),
+    section("What your agent may see",
+      el("p", { class: "small muted" }, "Shared over MCP only with the third-party AI agents you connect above. Vitals include Apple Health metrics (weight, resting HR, HRV, sleep, steps, active energy, workout HR) for the sources switched on above."),
+      el("div", { class: "toggles" }, ...Object.values(a).map((t) => t.node))),
     section("Reminders",
       el("p", { class: "small muted" }, "They ring on your iPhone (and Watch), from the plan's times."),
       el("div", { class: "toggles" }, el("div", { class: "row" }, rw.node, rwMin, el("span", { class: "small muted" }, "minutes before")), rm.node, el("div", { class: "row" }, re.node, reTime), el("div", { class: "row" }, rk.node, rkDay, rkTime))),
     section("Glasses and units", el("div", { class: "toggles" }, gHr.node, gRest.node), el("div", { class: "fields", style: "margin-top: 10px" }, field("Units", units), field("Time zone", tz))),
     el("div", { class: "row", style: "margin: 16px 0" }, save, status),
-    await glassesPanel(), await agentsPanel(), dangerPanel());
+    await glassesPanel(), dangerPanel());
 }
 
 async function glassesPanel() {

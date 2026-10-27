@@ -36,14 +36,14 @@ struct PlanView: View {
                             }
                         }
                     }
-                    Section("Versions") {
+                    Section {
                         ForEach(model.plan?.versions ?? []) { v in
                             VStack(alignment: .leading) {
                                 Text("v\(v.version) · from \(v.startsOn)").font(.subheadline.bold())
                                 Text(v.changeNote.isEmpty ? v.title : v.changeNote).font(.caption).foregroundStyle(.secondary)
                             }
                         }
-                    }
+                    } header: { Text("Versions") } footer: { Text("Plans and targets are written by the AI agent you connected — not medical or clinical nutrition advice. Talk to a doctor before starting a new exercise or diet program, and stop if anything hurts, you feel dizzy or have chest symptoms.") }
                 } else {
                     ContentUnavailableView("No plan yet", systemImage: "calendar.badge.plus", description: Text("Your AI agent publishes plans to FitLoop over MCP. Connect it in Settings → Agents."))
                 }

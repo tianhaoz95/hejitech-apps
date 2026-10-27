@@ -204,6 +204,11 @@ struct NoteSheet: View {
                     ForEach(target.tags) { t in
                         Toggle(t.label, isOn: Binding(get: { tags.contains(t) }, set: { if $0 { tags.insert(t) } else { tags.remove(t) } }))
                     }
+                    if tags.contains(.pain) {
+                        Text("Stop if something hurts, you feel dizzy or have chest symptoms, and see a doctor or physio — your agent isn't a medical professional.")
+                            .font(.footnote)
+                            .foregroundStyle(.orange)
+                    }
                 }
                 Section("In your words") { TextField("What should your agent know?", text: $text, axis: .vertical).lineLimit(3...8) }
                 Section { Text("Your agent reads this next time it looks at your plan, and replies in Feedback.").font(.footnote).foregroundStyle(.secondary) }

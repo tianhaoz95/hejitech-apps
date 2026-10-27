@@ -31,11 +31,14 @@ async function checkin(c: Omit<Checkin, "plan_version">) {
 function noteForm(ref: string | null, tags: readonly string[]) {
   const box = el("div", { class: "stack", hidden: true });
   const chosen = new Set<string>();
+  const painWarn = el("p", { class: "small warn", hidden: true, style: "margin: 0" },
+    "Stop if something hurts, you feel dizzy or have chest symptoms, and see a doctor or physio — your agent isn't a medical professional.");
   const chips = tags.map((t) => {
     const b = el("button", { class: "chip", type: "button", "aria-pressed": "false" }, FEEDBACK_LABELS[t as keyof typeof FEEDBACK_LABELS]);
     b.addEventListener("click", () => {
       chosen.has(t) ? chosen.delete(t) : chosen.add(t);
       b.setAttribute("aria-pressed", String(chosen.has(t)));
+      painWarn.hidden = !chosen.has("pain");
     });
     return b;
   });
@@ -45,9 +48,9 @@ function noteForm(ref: string | null, tags: readonly string[]) {
   send.addEventListener("click", async () => {
     const r = await api("/api/feedback", { method: "POST", body: JSON.stringify({ date, ref, text: text.value, tags: [...chosen] }) });
     status.textContent = r.ok ? "Sent. Your agent sees it next time." : (r.body as { error?: string }).error ?? "Couldn't send";
-    if (r.ok) { text.value = ""; chosen.clear(); chips.forEach((c) => c.setAttribute("aria-pressed", "false")); }
+    if (r.ok) { text.value = ""; chosen.clear(); painWarn.hidden = true; chips.forEach((c) => c.setAttribute("aria-pressed", "false")); }
   });
-  box.append(el("div", { class: "row" }, ...chips), text, el("div", { class: "row" }, send, status));
+  box.append(el("div", { class: "row" }, ...chips), painWarn, text, el("div", { class: "row" }, send, status));
   const toggle = el("button", { class: "link", type: "button" }, "Note for my agent");
   toggle.addEventListener("click", () => (box.hidden = !box.hidden));
   return [toggle, box];

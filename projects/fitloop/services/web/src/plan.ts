@@ -38,7 +38,8 @@ async function render() {
     p.overrides && Object.keys(p.overrides).length ? el("h2", { style: "margin-top: 18px" }, "Special days") : null,
     p.overrides ? el("div", { class: "stack" }, ...Object.entries(p.overrides).map(([d, day]) => dayView(d, day))) : null,
     el("h2", { style: "margin-top: 18px" }, "Versions"),
-    el("ul", { class: "list" }, ...r.body.versions.map((v) => el("li", {}, el("span", {}, el("b", {}, `v${v.version} `), v.change_note || v.title), el("span", { class: "muted small" }, `from ${v.starts_on}`)))));
+    el("ul", { class: "list" }, ...r.body.versions.map((v) => el("li", {}, el("span", {}, el("b", {}, `v${v.version} `), v.change_note || v.title), el("span", { class: "muted small" }, `from ${v.starts_on}`)))),
+    el("p", { class: "muted small", style: "margin-top: 18px" }, "Plans and targets are written by the AI agent you connected — not medical or clinical nutrition advice. Talk to a doctor before starting a new exercise or diet program, and stop if anything hurts, you feel dizzy or have chest symptoms."));
 }
 
 fill(root, spinner());
