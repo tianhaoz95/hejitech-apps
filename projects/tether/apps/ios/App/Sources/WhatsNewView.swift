@@ -17,10 +17,27 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.5"
+    static let currentVersion = "0.1.6"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.6", date: "October 2026", items: [
+            WhatsNewItem(
+                icon: "app.badge.checkmark",
+                title: "Nord Frost Brand & App Icon",
+                description: "Adopted the winning Nordic slate and polar ice blue split-pane design as Tether's official app icon and brand identity."
+            ),
+            WhatsNewItem(
+                icon: "key.fill",
+                title: "Reliable Web Authentication",
+                description: "Seamless iCloud Keychain Face ID / Touch ID AutoFill in web views, with graceful guidance on iOS embedded passkey sandbox rules."
+            ),
+            WhatsNewItem(
+                icon: "safari",
+                title: "One-Tap Safari Handoff",
+                description: "Dedicated Safari launch button in the web toolbar to open any active page in system Safari with full passkey and extension access."
+            ),
+        ]),
         ReleaseNotes(version: "0.1.5", date: "October 2026", items: [
             WhatsNewItem(
                 icon: "cursorarrow.rays",
