@@ -1,4 +1,5 @@
 import Combine
+import GameController
 import SwiftUI
 import TetherKit
 import UIKit
@@ -7,10 +8,12 @@ import UIKit
 /// When an external monitor is attached:
 /// - The external monitor renders the full tiling split-pane desktop workspace.
 /// - The phone does NOT mirror the workspace; instead it acts as:
-///   1. Smooth Trackpad (1-finger move/click, 2-finger scroll, left/right click buttons).
+///   1. Smooth Trackpad (1-finger move/click, 2-finger scroll, tap-hold drag, optional click buttons).
 ///   2. Developer Keyboard (iOS software keyboard + Esc, Tab, Ctrl, Alt, ^C, ^D, arrows).
 ///   3. Workspace & Settings Manager (launch URLs, manage hosts & keys, switch layouts).
 ///   4. Dock Hardware Bridge (captures physical USB/Bluetooth keyboard and mouse from dock).
+///
+/// Forced landscape orientation with vertical icon-only sidebar (left or right side configurable).
 @MainActor
 public final class PhoneControllerViewController: UIViewController, UITextFieldDelegate, UIKeyInput {
     public enum ControllerMode: Int {
@@ -24,21 +27,28 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     private var cancellables: Set<AnyCancellable> = []
 
     private var currentMode: ControllerMode = .touchpad
+    private var hasDetectedPhysicalKeyboard: Bool = false
 
-    // UI Elements
-    private let topHeaderBar = UIView()
-    private let statusBadge = UILabel()
-    private let modeSegmentedControl = UISegmentedControl(items: ["Touchpad", "Keyboard", "Settings"])
+    // UI Structure
+    private let verticalSidebar = UIView()
+    private let sidebarStack = UIStackView()
+    private let statusDot = UIView()
+    private let touchpadTabBtn = UIButton(type: .system)
+    private let keyboardTabBtn = UIButton(type: .system)
+    private let settingsTabBtn = UIButton(type: .system)
     private let containerView = UIView()
+
+    private var activeSidebarConstraints: [NSLayoutConstraint] = []
+    private var activeTouchpadConstraints: [NSLayoutConstraint] = []
 
     // Touchpad Mode views
     private let touchpadView = UIView()
     private let touchpadSurface = UIView()
     private let touchpadHelpLabel = UILabel()
+    private let clickButtonsStack = UIStackView()
     private let leftClickButton = UIButton(type: .system)
     private let dragResizeButton = UIButton(type: .system)
     private let rightClickButton = UIButton(type: .system)
-    private let switchModeButton = UIButton(type: .system)
 
     private var isDragModeActive: Bool = false
     private var isHoldingLeftClick: Bool = false
@@ -54,6 +64,8 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     private let settingsStack = UIStackView()
     private let urlTextField = UITextField()
     private let openUrlButton = UIButton(type: .system)
+    private let sidebarPosSegment = UISegmentedControl(items: ["Left Side", "Right Side"])
+    private let showButtonsSwitch = UISwitch()
 
     // Touchpad gesture tracking
     private var lastPanLocation: CGPoint = .zero
@@ -73,6 +85,16 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         true
     }
 
+    // MARK: - Orientation Lock (Force Landscape)
+
+    public override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
+        return [.landscapeLeft, .landscapeRight]
+    }
+
+    public override var preferredInterfaceOrientationForPresentation: UIInterfaceOrientation {
+        return .landscapeRight
+    }
+
     // MARK: - UIKeyInput Protocol (Captures Physical Dock Keyboard & Software Input)
 
     public var hasText: Bool {
@@ -90,13 +112,26 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     public override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = UIColor(red: 0.04, green: 0.06, blue: 0.10, alpha: 1.0)
-        setupTopHeader()
+
+        setupVerticalSidebar()
         setupTouchpadView()
         setupKeyboardMode()
         setupSettingsMode()
         setupDockMouseListeners()
+        setupHardwareKeyboardListeners()
         bindStore()
         showMode(.touchpad)
+        updateTouchpadButtonsVisibility()
+    }
+
+    public override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        if #available(iOS 16.0, *) {
+            setNeedsUpdateOfSupportedInterfaceOrientations()
+            if let windowScene = view.window?.windowScene ?? UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first(where: { $0.session.role == .windowApplication }) {
+                windowScene.requestGeometryUpdate(.iOS(interfaceOrientations: .landscapeRight))
+            }
+        }
     }
 
     public override func viewDidAppear(_ animated: Bool) {
@@ -107,8 +142,8 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     private func bindStore() {
         store.$externalDisplayDescription
             .receive(on: RunLoop.main)
-            .sink { [weak self] desc in
-                self?.statusBadge.text = "🖥️ \(desc)"
+            .sink { [weak self] _ in
+                self?.updateStatusDot()
             }
             .store(in: &cancellables)
 
@@ -118,6 +153,22 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
                 self?.updateActivePaneIndicator()
             }
             .store(in: &cancellables)
+
+        store.$settings
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.applySidebarLayoutConstraints()
+                self?.updateTouchpadButtonsVisibility()
+                self?.syncSettingsControls()
+            }
+            .store(in: &cancellables)
+    }
+
+    private func updateStatusDot() {
+        let isConnected = store.isExternalDisplayConnected
+        statusDot.backgroundColor = isConnected
+            ? UIColor(red: 0.20, green: 0.83, blue: 0.60, alpha: 1.0)
+            : UIColor(red: 0.95, green: 0.60, blue: 0.20, alpha: 1.0)
     }
 
     private func updateActivePaneIndicator() {
@@ -128,64 +179,182 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         }
     }
 
-    // MARK: - Top Header & Mode Switcher
+    // MARK: - Vertical Icon-Only Sidebar (PRD §4, §12)
 
-    private func setupTopHeader() {
-        topHeaderBar.translatesAutoresizingMaskIntoConstraints = false
-        topHeaderBar.backgroundColor = UIColor(red: 0.07, green: 0.10, blue: 0.17, alpha: 1.0)
-        topHeaderBar.layer.borderWidth = 1
-        topHeaderBar.layer.borderColor = UIColor(white: 1.0, alpha: 0.08).cgColor
+    private func setupVerticalSidebar() {
+        verticalSidebar.translatesAutoresizingMaskIntoConstraints = false
+        verticalSidebar.backgroundColor = UIColor(red: 0.06, green: 0.08, blue: 0.14, alpha: 1.0)
+        verticalSidebar.layer.borderWidth = 1
+        verticalSidebar.layer.borderColor = UIColor(white: 1.0, alpha: 0.08).cgColor
 
-        statusBadge.translatesAutoresizingMaskIntoConstraints = false
-        statusBadge.font = .monospacedSystemFont(ofSize: 11, weight: .semibold)
-        statusBadge.textColor = UIColor(red: 0.20, green: 0.83, blue: 0.60, alpha: 1.0)
-        statusBadge.text = "🖥️ \(store.externalDisplayDescription)"
+        statusDot.translatesAutoresizingMaskIntoConstraints = false
+        statusDot.backgroundColor = UIColor(red: 0.20, green: 0.83, blue: 0.60, alpha: 1.0)
+        statusDot.layer.cornerRadius = 4
+        statusDot.clipsToBounds = true
 
-        modeSegmentedControl.translatesAutoresizingMaskIntoConstraints = false
-        modeSegmentedControl.selectedSegmentIndex = 0
-        modeSegmentedControl.backgroundColor = UIColor(white: 1.0, alpha: 0.08)
-        modeSegmentedControl.selectedSegmentTintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.35)
-        modeSegmentedControl.setTitleTextAttributes([.foregroundColor: UIColor.white, .font: UIFont.systemFont(ofSize: 12, weight: .semibold)], for: .normal)
-        modeSegmentedControl.setTitleTextAttributes([.foregroundColor: UIColor.white, .font: UIFont.systemFont(ofSize: 12, weight: .bold)], for: .selected)
-        modeSegmentedControl.addTarget(self, action: #selector(handleModeSegmentChanged), for: .valueChanged)
+        sidebarStack.translatesAutoresizingMaskIntoConstraints = false
+        sidebarStack.axis = .vertical
+        sidebarStack.alignment = .center
+        sidebarStack.spacing = 10
 
+        configureTabButton(touchpadTabBtn, systemName: "hand.point.up.left.fill", mode: .touchpad)
+        configureTabButton(keyboardTabBtn, systemName: "keyboard.fill", mode: .keyboard)
+        configureTabButton(settingsTabBtn, systemName: "gearshape.fill", mode: .settings)
+
+        let divider = UIView()
+        divider.translatesAutoresizingMaskIntoConstraints = false
+        divider.backgroundColor = UIColor(white: 1.0, alpha: 0.12)
+        divider.widthAnchor.constraint(equalToConstant: 24).isActive = true
+        divider.heightAnchor.constraint(equalToConstant: 1).isActive = true
+
+        let webBtn = makeSidebarActionButton(systemName: "globe") { [weak self] in
+            self?.store.openTab(type: .web)
+        }
+        let sshBtn = makeSidebarActionButton(systemName: "terminal.fill") { [weak self] in
+            self?.store.openTab(type: .ssh)
+        }
+        let filesBtn = makeSidebarActionButton(systemName: "folder.fill") { [weak self] in
+            self?.store.openTab(type: .files)
+        }
+
+        let layoutBtn = UIButton(type: .system)
+        layoutBtn.translatesAutoresizingMaskIntoConstraints = false
+        let config = UIImage.SymbolConfiguration(pointSize: 17, weight: .semibold)
+        layoutBtn.setImage(UIImage(systemName: "square.split.2x2", withConfiguration: config), for: .normal)
+        layoutBtn.tintColor = UIColor(white: 1.0, alpha: 0.75)
+        layoutBtn.backgroundColor = UIColor(white: 1.0, alpha: 0.06)
+        layoutBtn.layer.cornerRadius = 8
+        layoutBtn.widthAnchor.constraint(equalToConstant: 38).isActive = true
+        layoutBtn.heightAnchor.constraint(equalToConstant: 38).isActive = true
+        layoutBtn.showsMenuAsPrimaryAction = true
+        layoutBtn.menu = UIMenu(title: "Monitor Split Layout", children: [
+            UIAction(title: "Single Pane", image: UIImage(systemName: "rectangle")) { [weak self] _ in
+                self?.store.applyPreset(.single)
+            },
+            UIAction(title: "2-Pane Split", image: UIImage(systemName: "rectangle.split.2x1")) { [weak self] _ in
+                self?.store.applyPreset(.twoColumn)
+            },
+            UIAction(title: "1 + 2 Split", image: UIImage(systemName: "rectangle.split.3x1")) { [weak self] _ in
+                self?.store.applyPreset(.leftPlusTwoRight)
+            },
+            UIAction(title: "2 × 2 Grid", image: UIImage(systemName: "rectangle.split.2x2")) { [weak self] _ in
+                self?.store.applyPreset(.twoByTwo)
+            },
+        ])
+
+        sidebarStack.addArrangedSubview(statusDot)
+        sidebarStack.setCustomSpacing(14, after: statusDot)
+        sidebarStack.addArrangedSubview(touchpadTabBtn)
+        sidebarStack.addArrangedSubview(keyboardTabBtn)
+        sidebarStack.addArrangedSubview(settingsTabBtn)
+        sidebarStack.addArrangedSubview(divider)
+        sidebarStack.addArrangedSubview(webBtn)
+        sidebarStack.addArrangedSubview(sshBtn)
+        sidebarStack.addArrangedSubview(filesBtn)
+        sidebarStack.addArrangedSubview(layoutBtn)
+
+        verticalSidebar.addSubview(sidebarStack)
         containerView.translatesAutoresizingMaskIntoConstraints = false
 
-        view.addSubview(topHeaderBar)
-        topHeaderBar.addSubview(statusBadge)
-        topHeaderBar.addSubview(modeSegmentedControl)
+        view.addSubview(verticalSidebar)
         view.addSubview(containerView)
 
         NSLayoutConstraint.activate([
-            topHeaderBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            topHeaderBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            topHeaderBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            topHeaderBar.heightAnchor.constraint(equalToConstant: 76),
+            statusDot.widthAnchor.constraint(equalToConstant: 8),
+            statusDot.heightAnchor.constraint(equalToConstant: 8),
 
-            statusBadge.topAnchor.constraint(equalTo: topHeaderBar.topAnchor, constant: 8),
-            statusBadge.leadingAnchor.constraint(equalTo: topHeaderBar.leadingAnchor, constant: 14),
-            statusBadge.trailingAnchor.constraint(equalTo: topHeaderBar.trailingAnchor, constant: -14),
-
-            modeSegmentedControl.topAnchor.constraint(equalTo: statusBadge.bottomAnchor, constant: 6),
-            modeSegmentedControl.leadingAnchor.constraint(equalTo: topHeaderBar.leadingAnchor, constant: 14),
-            modeSegmentedControl.trailingAnchor.constraint(equalTo: topHeaderBar.trailingAnchor, constant: -14),
-            modeSegmentedControl.heightAnchor.constraint(equalToConstant: 30),
-
-            containerView.topAnchor.constraint(equalTo: topHeaderBar.bottomAnchor),
-            containerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            containerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            containerView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            sidebarStack.topAnchor.constraint(equalTo: verticalSidebar.safeAreaLayoutGuide.topAnchor, constant: 12),
+            sidebarStack.centerXAnchor.constraint(equalTo: verticalSidebar.centerXAnchor),
+            sidebarStack.widthAnchor.constraint(equalTo: verticalSidebar.widthAnchor),
         ])
+
+        applySidebarLayoutConstraints()
     }
 
-    @objc private func handleModeSegmentChanged() {
-        guard let mode = ControllerMode(rawValue: modeSegmentedControl.selectedSegmentIndex) else { return }
-        showMode(mode)
+    private func configureTabButton(_ btn: UIButton, systemName: String, mode: ControllerMode) {
+        btn.translatesAutoresizingMaskIntoConstraints = false
+        let config = UIImage.SymbolConfiguration(pointSize: 18, weight: .semibold)
+        btn.setImage(UIImage(systemName: systemName, withConfiguration: config), for: .normal)
+        btn.layer.cornerRadius = 8
+        btn.widthAnchor.constraint(equalToConstant: 40).isActive = true
+        btn.heightAnchor.constraint(equalToConstant: 40).isActive = true
+        btn.addAction(UIAction { [weak self] _ in
+            UISelectionFeedbackGenerator().selectionChanged()
+            self?.showMode(mode)
+        }, for: .touchUpInside)
+    }
+
+    private func makeSidebarActionButton(systemName: String, action: @escaping () -> Void) -> UIButton {
+        let btn = UIButton(type: .system)
+        btn.translatesAutoresizingMaskIntoConstraints = false
+        let config = UIImage.SymbolConfiguration(pointSize: 16, weight: .medium)
+        btn.setImage(UIImage(systemName: systemName, withConfiguration: config), for: .normal)
+        btn.tintColor = UIColor(white: 1.0, alpha: 0.70)
+        btn.backgroundColor = UIColor(white: 1.0, alpha: 0.06)
+        btn.layer.cornerRadius = 8
+        btn.widthAnchor.constraint(equalToConstant: 38).isActive = true
+        btn.heightAnchor.constraint(equalToConstant: 38).isActive = true
+        btn.addAction(UIAction { _ in
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            action()
+        }, for: .touchUpInside)
+        return btn
+    }
+
+    private func applySidebarLayoutConstraints() {
+        NSLayoutConstraint.deactivate(activeSidebarConstraints)
+        activeSidebarConstraints.removeAll()
+
+        let pos = store.settings.controllerSidebarPosition
+        if pos == .left {
+            activeSidebarConstraints = [
+                verticalSidebar.topAnchor.constraint(equalTo: view.topAnchor),
+                verticalSidebar.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+                verticalSidebar.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
+                verticalSidebar.widthAnchor.constraint(equalToConstant: 52),
+
+                containerView.topAnchor.constraint(equalTo: view.topAnchor),
+                containerView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+                containerView.leadingAnchor.constraint(equalTo: verticalSidebar.trailingAnchor),
+                containerView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
+            ]
+        } else {
+            activeSidebarConstraints = [
+                verticalSidebar.topAnchor.constraint(equalTo: view.topAnchor),
+                verticalSidebar.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+                verticalSidebar.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
+                verticalSidebar.widthAnchor.constraint(equalToConstant: 52),
+
+                containerView.topAnchor.constraint(equalTo: view.topAnchor),
+                containerView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+                containerView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
+                containerView.trailingAnchor.constraint(equalTo: verticalSidebar.leadingAnchor),
+            ]
+        }
+        NSLayoutConstraint.activate(activeSidebarConstraints)
+        view.layoutIfNeeded()
+    }
+
+    private func updateTabButtonSelection() {
+        let tabs: [(UIButton, ControllerMode)] = [
+            (touchpadTabBtn, .touchpad),
+            (keyboardTabBtn, .keyboard),
+            (settingsTabBtn, .settings)
+        ]
+        for (btn, mode) in tabs {
+            if mode == currentMode {
+                btn.backgroundColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.28)
+                btn.tintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
+            } else {
+                btn.backgroundColor = .clear
+                btn.tintColor = UIColor(white: 1.0, alpha: 0.6)
+            }
+        }
     }
 
     private func showMode(_ mode: ControllerMode) {
         currentMode = mode
-        modeSegmentedControl.selectedSegmentIndex = mode.rawValue
+        updateTabButtonSelection()
 
         touchpadView.isHidden = (mode != .touchpad)
         keyboardContainer.isHidden = (mode != .keyboard)
@@ -227,15 +396,20 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         touchpadSurface.addGestureRecognizer(twoFingerTap)
         tapGesture.require(toFail: twoFingerTap)
 
+        // Long press for drag without buttons
+        let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleTouchpadLongPress(_:)))
+        longPress.minimumPressDuration = 0.26
+        touchpadSurface.addGestureRecognizer(longPress)
+
         touchpadHelpLabel.translatesAutoresizingMaskIntoConstraints = false
-        touchpadHelpLabel.text = "1-Finger: Move & Tap to Click\n2-Finger: Scroll & Right-Click"
+        touchpadHelpLabel.text = "1-Finger: Move & Tap to Click • Press & Hold: Drag\n2-Finger: Scroll • 2-Finger Tap: Escape / Back"
         touchpadHelpLabel.numberOfLines = 2
         touchpadHelpLabel.textAlignment = .center
         touchpadHelpLabel.textColor = UIColor(white: 1.0, alpha: 0.35)
-        touchpadHelpLabel.font = .systemFont(ofSize: 13, weight: .medium)
+        touchpadHelpLabel.font = .systemFont(ofSize: 12, weight: .medium)
         touchpadSurface.addSubview(touchpadHelpLabel)
 
-        // Bottom action buttons
+        // Optional bottom action buttons (controlled by settings.showTouchpadButtons)
         leftClickButton.translatesAutoresizingMaskIntoConstraints = false
         leftClickButton.setTitle("Left Click", for: .normal)
         leftClickButton.titleLabel?.font = .systemFont(ofSize: 13, weight: .bold)
@@ -267,23 +441,16 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         rightClickButton.layer.borderColor = UIColor(white: 1.0, alpha: 0.15).cgColor
         rightClickButton.addTarget(self, action: #selector(handleRightClickTapped), for: .touchUpInside)
 
-        switchModeButton.translatesAutoresizingMaskIntoConstraints = false
-        switchModeButton.setTitle("⌨️ Switch to Keyboard", for: .normal)
-        switchModeButton.titleLabel?.font = .systemFont(ofSize: 13, weight: .bold)
-        switchModeButton.setTitleColor(UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0), for: .normal)
-        switchModeButton.backgroundColor = UIColor(red: 0.08, green: 0.12, blue: 0.20, alpha: 1.0)
-        switchModeButton.layer.cornerRadius = 8
-        switchModeButton.addTarget(self, action: #selector(switchToKeyboardTapped), for: .touchUpInside)
-
-        let clickButtonsStack = UIStackView(arrangedSubviews: [leftClickButton, dragResizeButton, rightClickButton])
         clickButtonsStack.translatesAutoresizingMaskIntoConstraints = false
         clickButtonsStack.axis = .horizontal
         clickButtonsStack.distribution = .fillEqually
         clickButtonsStack.spacing = 8
+        clickButtonsStack.addArrangedSubview(leftClickButton)
+        clickButtonsStack.addArrangedSubview(dragResizeButton)
+        clickButtonsStack.addArrangedSubview(rightClickButton)
 
         touchpadView.addSubview(touchpadSurface)
         touchpadView.addSubview(clickButtonsStack)
-        touchpadView.addSubview(switchModeButton)
 
         NSLayoutConstraint.activate([
             touchpadView.topAnchor.constraint(equalTo: containerView.topAnchor),
@@ -291,24 +458,39 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
             touchpadView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
             touchpadView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
 
-            touchpadSurface.topAnchor.constraint(equalTo: touchpadView.topAnchor, constant: 12),
-            touchpadSurface.leadingAnchor.constraint(equalTo: touchpadView.leadingAnchor, constant: 14),
-            touchpadSurface.trailingAnchor.constraint(equalTo: touchpadView.trailingAnchor, constant: -14),
-            touchpadSurface.bottomAnchor.constraint(equalTo: clickButtonsStack.topAnchor, constant: -12),
+            touchpadSurface.topAnchor.constraint(equalTo: touchpadView.topAnchor, constant: 10),
+            touchpadSurface.leadingAnchor.constraint(equalTo: touchpadView.leadingAnchor, constant: 12),
+            touchpadSurface.trailingAnchor.constraint(equalTo: touchpadView.trailingAnchor, constant: -12),
 
             touchpadHelpLabel.centerXAnchor.constraint(equalTo: touchpadSurface.centerXAnchor),
             touchpadHelpLabel.centerYAnchor.constraint(equalTo: touchpadSurface.centerYAnchor),
-
-            clickButtonsStack.leadingAnchor.constraint(equalTo: touchpadView.leadingAnchor, constant: 14),
-            clickButtonsStack.trailingAnchor.constraint(equalTo: touchpadView.trailingAnchor, constant: -14),
-            clickButtonsStack.bottomAnchor.constraint(equalTo: switchModeButton.topAnchor, constant: -10),
-            clickButtonsStack.heightAnchor.constraint(equalToConstant: 44),
-
-            switchModeButton.leadingAnchor.constraint(equalTo: touchpadView.leadingAnchor, constant: 14),
-            switchModeButton.trailingAnchor.constraint(equalTo: touchpadView.trailingAnchor, constant: -14),
-            switchModeButton.bottomAnchor.constraint(equalTo: touchpadView.safeAreaLayoutGuide.bottomAnchor, constant: -10),
-            switchModeButton.heightAnchor.constraint(equalToConstant: 38),
         ])
+
+        updateTouchpadButtonsVisibility()
+    }
+
+    private func updateTouchpadButtonsVisibility() {
+        let show = store.settings.showTouchpadButtons
+        clickButtonsStack.isHidden = !show
+
+        NSLayoutConstraint.deactivate(activeTouchpadConstraints)
+        activeTouchpadConstraints.removeAll()
+
+        if show {
+            activeTouchpadConstraints = [
+                touchpadSurface.bottomAnchor.constraint(equalTo: clickButtonsStack.topAnchor, constant: -8),
+                clickButtonsStack.leadingAnchor.constraint(equalTo: touchpadView.leadingAnchor, constant: 12),
+                clickButtonsStack.trailingAnchor.constraint(equalTo: touchpadView.trailingAnchor, constant: -12),
+                clickButtonsStack.bottomAnchor.constraint(equalTo: touchpadView.safeAreaLayoutGuide.bottomAnchor, constant: -10),
+                clickButtonsStack.heightAnchor.constraint(equalToConstant: 38),
+            ]
+        } else {
+            activeTouchpadConstraints = [
+                touchpadSurface.bottomAnchor.constraint(equalTo: touchpadView.safeAreaLayoutGuide.bottomAnchor, constant: -10),
+            ]
+        }
+        NSLayoutConstraint.activate(activeTouchpadConstraints)
+        touchpadView.layoutIfNeeded()
     }
 
     @objc private func handleTouchpadPan(_ gesture: UIPanGestureRecognizer) {
@@ -332,6 +514,18 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
 
     @objc private func handleTouchpadTwoFingerTap(_ gesture: UITapGestureRecognizer) {
         workspaceVC?.routeSpecialKey(.escape)
+    }
+
+    @objc private func handleTouchpadLongPress(_ gesture: UILongPressGestureRecognizer) {
+        switch gesture.state {
+        case .began:
+            isHoldingLeftClick = true
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        case .ended, .cancelled, .failed:
+            isHoldingLeftClick = false
+        default:
+            break
+        }
     }
 
     @objc private func handleLeftClickDown() {
@@ -362,11 +556,12 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         workspaceVC?.routeSpecialKey(.escape)
     }
 
-    @objc private func switchToKeyboardTapped() {
-        showMode(.keyboard)
-    }
-
     public func switchToKeyboardForInput(placeholder: String) {
+        // If a physical keyboard is connected via dock USB or Bluetooth,
+        // do not interrupt the user or switch away from touchpad mode!
+        if hasDetectedPhysicalKeyboard || GCKeyboard.coalesced != nil {
+            return
+        }
         activePaneLabel.text = "⌨️ Focused: \(placeholder)"
         showMode(.keyboard)
     }
@@ -382,15 +577,6 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         activePaneLabel.textColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
         activePaneLabel.textAlignment = .center
         updateActivePaneIndicator()
-
-        let switchToTouchpadBtn = UIButton(type: .system)
-        switchToTouchpadBtn.translatesAutoresizingMaskIntoConstraints = false
-        switchToTouchpadBtn.setTitle("🖱️ Switch to Touchpad", for: .normal)
-        switchToTouchpadBtn.titleLabel?.font = .systemFont(ofSize: 13, weight: .bold)
-        switchToTouchpadBtn.setTitleColor(.white, for: .normal)
-        switchToTouchpadBtn.backgroundColor = UIColor(red: 0.12, green: 0.16, blue: 0.26, alpha: 1.0)
-        switchToTouchpadBtn.layer.cornerRadius = 8
-        switchToTouchpadBtn.addTarget(self, action: #selector(switchToTouchpadTapped), for: .touchUpInside)
 
         // Custom Developer Keypad Grid
         let devKeysContainer = buildDeveloperKeypad()
@@ -416,6 +602,15 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         hiddenInputTextField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 10, height: 1))
         hiddenInputTextField.leftViewMode = .always
 
+        let switchToTouchpadBtn = UIButton(type: .system)
+        switchToTouchpadBtn.translatesAutoresizingMaskIntoConstraints = false
+        switchToTouchpadBtn.setTitle("🖱️ Return to Touchpad", for: .normal)
+        switchToTouchpadBtn.titleLabel?.font = .systemFont(ofSize: 13, weight: .bold)
+        switchToTouchpadBtn.setTitleColor(.white, for: .normal)
+        switchToTouchpadBtn.backgroundColor = UIColor(red: 0.12, green: 0.16, blue: 0.26, alpha: 1.0)
+        switchToTouchpadBtn.layer.cornerRadius = 8
+        switchToTouchpadBtn.addTarget(self, action: #selector(switchToTouchpadTapped), for: .touchUpInside)
+
         keyboardContainer.addSubview(activePaneLabel)
         keyboardContainer.addSubview(hiddenInputTextField)
         keyboardContainer.addSubview(devKeysContainer)
@@ -427,30 +622,30 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
             keyboardContainer.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
             keyboardContainer.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
 
-            activePaneLabel.topAnchor.constraint(equalTo: keyboardContainer.topAnchor, constant: 10),
+            activePaneLabel.topAnchor.constraint(equalTo: keyboardContainer.topAnchor, constant: 8),
             activePaneLabel.leadingAnchor.constraint(equalTo: keyboardContainer.leadingAnchor, constant: 14),
             activePaneLabel.trailingAnchor.constraint(equalTo: keyboardContainer.trailingAnchor, constant: -14),
 
-            hiddenInputTextField.topAnchor.constraint(equalTo: activePaneLabel.bottomAnchor, constant: 8),
+            hiddenInputTextField.topAnchor.constraint(equalTo: activePaneLabel.bottomAnchor, constant: 6),
             hiddenInputTextField.leadingAnchor.constraint(equalTo: keyboardContainer.leadingAnchor, constant: 14),
             hiddenInputTextField.trailingAnchor.constraint(equalTo: keyboardContainer.trailingAnchor, constant: -14),
-            hiddenInputTextField.heightAnchor.constraint(equalToConstant: 40),
+            hiddenInputTextField.heightAnchor.constraint(equalToConstant: 36),
 
-            devKeysContainer.topAnchor.constraint(equalTo: hiddenInputTextField.bottomAnchor, constant: 10),
+            devKeysContainer.topAnchor.constraint(equalTo: hiddenInputTextField.bottomAnchor, constant: 8),
             devKeysContainer.leadingAnchor.constraint(equalTo: keyboardContainer.leadingAnchor, constant: 14),
             devKeysContainer.trailingAnchor.constraint(equalTo: keyboardContainer.trailingAnchor, constant: -14),
 
             switchToTouchpadBtn.leadingAnchor.constraint(equalTo: keyboardContainer.leadingAnchor, constant: 14),
             switchToTouchpadBtn.trailingAnchor.constraint(equalTo: keyboardContainer.trailingAnchor, constant: -14),
-            switchToTouchpadBtn.bottomAnchor.constraint(equalTo: keyboardContainer.safeAreaLayoutGuide.bottomAnchor, constant: -10),
-            switchToTouchpadBtn.heightAnchor.constraint(equalToConstant: 38),
+            switchToTouchpadBtn.bottomAnchor.constraint(equalTo: keyboardContainer.safeAreaLayoutGuide.bottomAnchor, constant: -8),
+            switchToTouchpadBtn.heightAnchor.constraint(equalToConstant: 34),
         ])
     }
 
     private func buildDeveloperKeypad() -> UIView {
         let container = UIStackView()
         container.axis = .vertical
-        container.spacing = 8
+        container.spacing = 6
         container.distribution = .fillEqually
 
         let row1Keys = ["Esc", "Tab", "Ctrl+C", "Ctrl+D", "Ctrl+L", "/", "-"]
@@ -479,7 +674,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
             btn.layer.cornerRadius = 6
             btn.layer.borderWidth = 1
             btn.layer.borderColor = UIColor(white: 1.0, alpha: 0.12).cgColor
-            btn.heightAnchor.constraint(equalToConstant: 36).isActive = true
+            btn.heightAnchor.constraint(equalToConstant: 34).isActive = true
             btn.addAction(UIAction { [weak self] _ in
                 self?.handleDeveloperKey(key)
             }, for: .touchUpInside)
@@ -544,7 +739,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
 
         settingsStack.translatesAutoresizingMaskIntoConstraints = false
         settingsStack.axis = .vertical
-        settingsStack.spacing = 16
+        settingsStack.spacing = 14
         settingsScrollView.addSubview(settingsStack)
 
         NSLayoutConstraint.activate([
@@ -553,10 +748,10 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
             settingsScrollView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
             settingsScrollView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
 
-            settingsStack.topAnchor.constraint(equalTo: settingsScrollView.topAnchor, constant: 14),
+            settingsStack.topAnchor.constraint(equalTo: settingsScrollView.topAnchor, constant: 12),
             settingsStack.leadingAnchor.constraint(equalTo: settingsScrollView.leadingAnchor, constant: 14),
             settingsStack.trailingAnchor.constraint(equalTo: settingsScrollView.trailingAnchor, constant: -14),
-            settingsStack.bottomAnchor.constraint(equalTo: settingsScrollView.bottomAnchor, constant: -20),
+            settingsStack.bottomAnchor.constraint(equalTo: settingsScrollView.bottomAnchor, constant: -18),
             settingsStack.widthAnchor.constraint(equalTo: settingsScrollView.widthAnchor, constant: -28),
         ])
 
@@ -564,6 +759,49 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     }
 
     private func buildSettingsContent() {
+        // Section 0: Phone Controller Layout & Options
+        let section0Title = makeSectionHeader("📱 Phone Remote Controller")
+
+        sidebarPosSegment.translatesAutoresizingMaskIntoConstraints = false
+        sidebarPosSegment.selectedSegmentIndex = store.settings.controllerSidebarPosition == .left ? 0 : 1
+        sidebarPosSegment.backgroundColor = UIColor(white: 1.0, alpha: 0.08)
+        sidebarPosSegment.selectedSegmentTintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.35)
+        sidebarPosSegment.setTitleTextAttributes([.foregroundColor: UIColor.white, .font: UIFont.systemFont(ofSize: 12, weight: .semibold)], for: .normal)
+        sidebarPosSegment.setTitleTextAttributes([.foregroundColor: UIColor.white, .font: UIFont.systemFont(ofSize: 12, weight: .bold)], for: .selected)
+        sidebarPosSegment.addTarget(self, action: #selector(handleSidebarPosChanged), for: .valueChanged)
+
+        let sidebarLabel = UILabel()
+        sidebarLabel.text = "Sidebar Position"
+        sidebarLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        sidebarLabel.textColor = UIColor(white: 0.8, alpha: 1.0)
+
+        let sidebarRow = UIStackView(arrangedSubviews: [sidebarLabel, sidebarPosSegment])
+        sidebarRow.axis = .horizontal
+        sidebarRow.alignment = .center
+        sidebarRow.distribution = .equalSpacing
+
+        let buttonsLabel = UILabel()
+        buttonsLabel.text = "Show Click & Resize Buttons"
+        buttonsLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        buttonsLabel.textColor = UIColor(white: 0.8, alpha: 1.0)
+
+        showButtonsSwitch.isOn = store.settings.showTouchpadButtons
+        showButtonsSwitch.onTintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
+        showButtonsSwitch.addTarget(self, action: #selector(handleShowButtonsToggled), for: .valueChanged)
+
+        let buttonsRow = UIStackView(arrangedSubviews: [buttonsLabel, showButtonsSwitch])
+        buttonsRow.axis = .horizontal
+        buttonsRow.alignment = .center
+        buttonsRow.distribution = .equalSpacing
+
+        let controllerOptionsCard = UIStackView(arrangedSubviews: [sidebarRow, buttonsRow])
+        controllerOptionsCard.axis = .vertical
+        controllerOptionsCard.spacing = 10
+        controllerOptionsCard.backgroundColor = UIColor(red: 0.08, green: 0.11, blue: 0.18, alpha: 1.0)
+        controllerOptionsCard.layer.cornerRadius = 8
+        controllerOptionsCard.isLayoutMarginsRelativeArrangement = true
+        controllerOptionsCard.layoutMargins = UIEdgeInsets(top: 10, left: 12, bottom: 10, right: 12)
+
         // Section 1: Open Website on External Monitor
         let section1Title = makeSectionHeader("🌐 Open Website on Monitor")
         urlTextField.translatesAutoresizingMaskIntoConstraints = false
@@ -582,7 +820,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         openUrlButton.backgroundColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
         openUrlButton.setTitleColor(.black, for: .normal)
         openUrlButton.layer.cornerRadius = 6
-        openUrlButton.heightAnchor.constraint(equalToConstant: 38).isActive = true
+        openUrlButton.heightAnchor.constraint(equalToConstant: 36).isActive = true
         openUrlButton.addAction(UIAction { [weak self] _ in
             self?.handleOpenUrlTapped()
         }, for: .touchUpInside)
@@ -633,6 +871,8 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         hostsStack.axis = .vertical
         hostsStack.spacing = 8
 
+        settingsStack.addArrangedSubview(section0Title)
+        settingsStack.addArrangedSubview(controllerOptionsCard)
         settingsStack.addArrangedSubview(section1Title)
         settingsStack.addArrangedSubview(urlRow)
         settingsStack.addArrangedSubview(section2Title)
@@ -641,6 +881,22 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         settingsStack.addArrangedSubview(layoutStack)
         settingsStack.addArrangedSubview(section4Title)
         settingsStack.addArrangedSubview(hostsStack)
+    }
+
+    private func syncSettingsControls() {
+        sidebarPosSegment.selectedSegmentIndex = store.settings.controllerSidebarPosition == .left ? 0 : 1
+        showButtonsSwitch.isOn = store.settings.showTouchpadButtons
+    }
+
+    @objc private func handleSidebarPosChanged() {
+        let newPos: ControllerSidebarPosition = sidebarPosSegment.selectedSegmentIndex == 0 ? .left : .right
+        store.settings.controllerSidebarPosition = newPos
+        applySidebarLayoutConstraints()
+    }
+
+    @objc private func handleShowButtonsToggled() {
+        store.settings.showTouchpadButtons = showButtonsSwitch.isOn
+        updateTouchpadButtonsVisibility()
     }
 
     private func handleOpenUrlTapped() {
@@ -722,6 +978,25 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         view.addGestureRecognizer(scrollGesture)
     }
 
+    private func setupHardwareKeyboardListeners() {
+        NotificationCenter.default.addObserver(
+            forName: .GCKeyboardDidConnect,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.hasDetectedPhysicalKeyboard = true
+        }
+        NotificationCenter.default.addObserver(
+            forName: .GCKeyboardDidDisconnect,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            if GCKeyboard.coalesced == nil {
+                self?.hasDetectedPhysicalKeyboard = false
+            }
+        }
+    }
+
     @objc private func handleDockMouseHover(_ gesture: UIHoverGestureRecognizer) {
         let location = gesture.location(in: view)
         if gesture.state == .began {
@@ -744,6 +1019,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     // MARK: - Physical Keyboard Event Interception (UIPressesEvent)
 
     public override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        hasDetectedPhysicalKeyboard = true
         var handled = false
         for press in presses {
             guard let key = press.key else { continue }

@@ -17,10 +17,32 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.2"
+    static let currentVersion = "0.1.3"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.3", date: "October 2026", items: [
+            WhatsNewItem(
+                icon: "rectangle.landscape.rotate",
+                title: "Landscape-First Phone Controller",
+                description: "The phone controller is now locked in landscape mode for a wider, natural, ergonomic trackpad surface."
+            ),
+            WhatsNewItem(
+                icon: "keyboard.badge.ellipsis",
+                title: "Hardware Keyboard Auto-Detection",
+                description: "Clicking text fields on monitor tabs will not interrupt you when a physical dock keyboard is connected."
+            ),
+            WhatsNewItem(
+                icon: "hand.draw",
+                title: "Gesture-First Trackpad",
+                description: "Touchpad buttons are hidden by default for maximum glass area; use intuitive gestures or tap-and-hold to drag."
+            ),
+            WhatsNewItem(
+                icon: "sidebar.left",
+                title: "Configurable Vertical Icon Sidebar",
+                description: "Space-saving icon-only vertical sidebar with quick actions, dockable to either the left or right side in settings."
+            ),
+        ]),
         ReleaseNotes(version: "0.1.2", date: "October 2026", items: [
             WhatsNewItem(
                 icon: "text.cursor",

@@ -90,10 +90,9 @@ public final class DisplayHost: NSObject {
     }
 
     /// Preferred interface orientations:
-    /// - Phone-only mode: landscape default, supports portrait.
-    /// - External monitor connected: phone controller is flexible (portrait or landscape).
+    /// - Phone is forced to landscape (left & right) for optimal trackpad and split-pane usability.
     public var supportedOrientations: UIInterfaceOrientationMask {
-        return [.portrait, .landscapeLeft, .landscapeRight]
+        return [.landscapeLeft, .landscapeRight]
     }
 
     private func setupDisplayObservers() {
@@ -202,6 +201,13 @@ final class TetherAppDelegate: UIResponder, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         return true
+    }
+
+    func application(
+        _ application: UIApplication,
+        supportedInterfaceOrientationsFor window: UIWindow?
+    ) -> UIInterfaceOrientationMask {
+        return [.landscapeLeft, .landscapeRight]
     }
 
     func application(
