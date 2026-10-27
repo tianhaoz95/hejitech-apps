@@ -373,14 +373,8 @@ public struct SettingsSheetView: View {
                         Text("Left Side").tag(ControllerSidebarPosition.left)
                         Text("Right Side").tag(ControllerSidebarPosition.right)
                     }
-                    .onChange(of: store.settings.controllerSidebarPosition) { _, _ in
-                        store.saveSettings()
-                    }
 
                     Toggle("Show Touchpad Buttons", isOn: $store.settings.showTouchpadButtons)
-                        .onChange(of: store.settings.showTouchpadButtons) { _, _ in
-                            store.saveSettings()
-                        }
 
                     Text("When buttons are hidden, use pure gestures: 1-finger tap to click, tap-and-hold to drag, 2-finger scroll, and 2-finger tap for escape / back.")
                         .font(.caption)
