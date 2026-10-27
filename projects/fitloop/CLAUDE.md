@@ -75,4 +75,4 @@ local stack), `-screen today|plan|progress|feedback|settings`, `-date YYYY-MM-DD
 sets `currentVersion`; `release.env`'s `release_check` refuses a version it doesn't describe.
 `scripts/cut_release.sh fitloop --dry-run`, then for real: it bumps `MARKETING_VERSION`, pushes
 (Cloudflare deploys the Worker) and publishes `fitloop-v<version>` → `fitloop-testflight.yml`
-(iPhone + Watch) and `fitloop-glasses-release.yml` (the `.ehpk`; upload it to the Even Hub portal).
+(iPhone + Watch) and `fitloop-glasses-release.yml` (attaches the `.ehpk`, uploads it to Even Hub and promotes it to Beta; submit for review in the portal).

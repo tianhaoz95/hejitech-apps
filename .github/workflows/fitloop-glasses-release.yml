@@ -1,9 +1,11 @@
 name: FitLoop glasses (Even Hub plugin)
 
-# Packs the Even G2 glasses app (.ehpk) for a published fitloop-v<version> release and attaches it.
-# The plugin ships with the iPhone app under the same version: scripts/cut_release.sh fitloop bumps
-# MARKETING_VERSION in apps/ios/project.yml, which apps/glasses/scripts/pack.mjs stamps into the
-# plugin's app.json. Upload the .ehpk to the Even Hub portal by hand (projects/fitloop/docs/DEPLOY.md).
+# Packs the Even G2 glasses app (.ehpk) for a published fitloop-v<version> release, attaches it,
+# uploads it to Even Hub and promotes it to Beta (testers install it from Me → Beta tester).
+# Submitting for review and publishing stay in the portal: Even Hub has no API for them.
+#
+# Even Hub auth: the EVENHUB_CREDENTIALS secret is ~/.config/evenhub/credentials.yaml from an
+# interactive `evenhub login` (no API tokens exist); the CLI refreshes it.
 on:
   release:
     types: [published]
@@ -44,3 +46,44 @@ jobs:
         run: |
           cp projects/fitloop/apps/glasses/build/fitloop.ehpk "fitloop-glasses-${TAG#fitloop-v}.ehpk"
           gh release upload "$TAG" "fitloop-glasses-${TAG#fitloop-v}.ehpk" --clobber
+      - name: Upload to Even Hub and promote to Beta
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENHUB_CREDENTIALS: ${{ secrets.EVENHUB_CREDENTIALS }}
+          BETA: ${{ vars.FITLOOP_EVENHUB_BETA || 'on' }}
+          PACKAGE_ID: com.hejitech.fitloop.glasses
+          EVENHUB_CLI: "@evenrealities/evenhub-cli@0.2.0"
+        working-directory: projects/fitloop/apps/glasses
+        run: |
+          [ -n "$EVENHUB_CREDENTIALS" ] || { echo "::error::EVENHUB_CREDENTIALS isn't set: evenhub login, then gh secret set EVENHUB_CREDENTIALS < ~/.config/evenhub/credentials.yaml"; exit 1; }
+          export XDG_CONFIG_HOME="$RUNNER_TEMP/evenhub-config"
+          mkdir -p "$XDG_CONFIG_HOME/evenhub"
+          trap 'rm -rf "$XDG_CONFIG_HOME"' EXIT
+          (umask 077; printf '%s\n' "$EVENHUB_CREDENTIALS" > "$XDG_CONFIG_HOME/evenhub/credentials.yaml")
+          v="${TAG#fitloop-v}"
+          # The changelog is the release notes cut_release.sh was given (before GitHub's generated list), ≤ 500 characters.
+          notes=$(gh release view "$TAG" --json body -q .body | sed '/^## What.s Changed/,$d; /Full Changelog/d' | sed '/^[[:space:]]*$/d' | head -c 480)
+          [ -n "$notes" ] || notes="FitLoop $v"
+          # One JSON object on stdout; exit codes: 2 auth refused, 4 version exists, 5 version already on a channel, 8 rate limit.
+          run() { local out code=0; out=$(npx -y -p "$EVENHUB_CLI" evenhub "$@" --json 2>/dev/null) || code=$?; echo "$out"; return $code; }
+          code=0; out=$(run upload build/fitloop.ehpk -m "$notes") || code=$?
+          echo "$out"
+          case $code in
+            0) echo "uploaded $v (Private)";;
+            4) echo "$v was already uploaded: keeping that build";;
+            2) echo "::error::Even Hub refused the login: evenhub login, then gh secret set EVENHUB_CREDENTIALS < ~/.config/evenhub/credentials.yaml"; exit 2;;
+            *) echo "::error::evenhub upload failed (exit $code)"; exit $code;;
+          esac
+          if [ "$BETA" = on ]; then
+            code=0; out=$(run promote "$v" --to beta) || code=$?
+            echo "$out"
+            [ $code -eq 0 ] || [ $code -eq 5 ] || { echo "::error::evenhub promote failed (exit $code)"; exit $code; }
+          fi
+          ls=$(run ls "$PACKAGE_ID") || { echo "$ls"; exit 1; }
+          echo "$ls" | V="$v" BETA="$BETA" node -e '
+            const d = JSON.parse(require("fs").readFileSync(0, "utf8"));
+            const b = (d.versions || []).find((x) => x.version === process.env.V);
+            if (!b) { console.error(`::error::${process.env.V} is not on Even Hub`); process.exit(1); }
+            if (process.env.BETA === "on" && !(b.channels || []).includes("beta")) { console.error(`::error::${process.env.V} is not on Beta`); process.exit(1); }
+            console.log(`Even Hub: ${b.version} ${b.status}${b.channels.length ? " · " + b.channels.join(", ") : ""}`);
+          '

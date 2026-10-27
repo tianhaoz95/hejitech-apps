@@ -60,7 +60,8 @@ Then connect a real agent: in Claude, Settings → Connectors → Add custom con
 
 ## 5. Even Hub plugin
 
-The release attaches `fitloop-glasses-<version>.ehpk` (`fitloop-glasses-release.yml`). Everything the
+The release attaches `fitloop-glasses-<version>.ehpk`, uploads it to Even Hub and promotes it to Beta
+(`fitloop-glasses-release.yml`). Everything the
 portal asks, ready to paste and upload (text, category, tags, data rows, icon, background,
 screenshots, reviewer note): `docs/even-hub/LISTING.md`; the portal's rules and quirks:
 `.claude/skills/heji-even-hub-submit/SKILL.md`. Before submitting, install the Beta build on real

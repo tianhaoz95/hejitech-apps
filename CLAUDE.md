@@ -100,7 +100,8 @@ every-minute realtime + alert cron, MCP) deploys on push. See `projects/headway/
 For FitLoop it bumps `MARKETING_VERSION` in `projects/fitloop/apps/ios/project.yml` (refusing until the
 in-app What's New describes the version) and publishes `fitloop-v<version>`, which runs
 `fitloop-testflight.yml` (iPhone app with its Watch app) and `fitloop-glasses-release.yml` (the Even Hub
-plugin `.ehpk`, same version; upload it to the Even Hub portal by hand). Its Worker (web app, API,
+plugin `.ehpk`, same version; attaches the `.ehpk`, uploads it to Even Hub and promotes it to Beta;
+submit for review in the portal). Its Worker (web app, API,
 MCP) deploys on push. See `projects/fitloop/CLAUDE.md`.
 
 For Tether it bumps `MARKETING_VERSION` in `projects/tether/apps/ios/project.yml` (refusing until the
