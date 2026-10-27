@@ -338,19 +338,28 @@ public enum LayoutPresetId: String, Codable, Hashable, Sendable, CaseIterable {
     }
 }
 
+public enum ControllerSidebarPosition: String, Codable, Hashable, Sendable, CaseIterable {
+    case left
+    case right
+}
+
 public struct TetherSettings: Codable, Hashable, Sendable {
     public var version: Int = 1
     public var defaultSearchEngineUrl: String
     public var terminalFontSizePt: Int
     public var theme: ThemeMode
     public var defaultLayoutPreset: LayoutPresetId
+    public var controllerSidebarPosition: ControllerSidebarPosition = .left
+    public var showTouchpadButtons: Bool = false
 
     public init(
         version: Int = 1,
         defaultSearchEngineUrl: String = TetherConstants.defaultSearchEngineURL,
         terminalFontSizePt: Int = TetherConstants.defaultTerminalFontSize,
         theme: ThemeMode = .dark,
-        defaultLayoutPreset: LayoutPresetId = .twoColumn
+        defaultLayoutPreset: LayoutPresetId = .twoColumn,
+        controllerSidebarPosition: ControllerSidebarPosition = .left,
+        showTouchpadButtons: Bool = false
     ) {
         self.version = version
         self.defaultSearchEngineUrl = defaultSearchEngineUrl
@@ -360,6 +369,20 @@ public struct TetherSettings: Codable, Hashable, Sendable {
         )
         self.theme = theme
         self.defaultLayoutPreset = defaultLayoutPreset
+        self.controllerSidebarPosition = controllerSidebarPosition
+        self.showTouchpadButtons = showTouchpadButtons
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        version = try container.decodeIfPresent(Int.self, forKey: .version) ?? 1
+        defaultSearchEngineUrl = try container.decodeIfPresent(String.self, forKey: .defaultSearchEngineUrl) ?? TetherConstants.defaultSearchEngineURL
+        let fontPt = try container.decodeIfPresent(Int.self, forKey: .terminalFontSizePt) ?? TetherConstants.defaultTerminalFontSize
+        terminalFontSizePt = min(TetherConstants.maxTerminalFontSize, max(TetherConstants.minTerminalFontSize, fontPt))
+        theme = try container.decodeIfPresent(ThemeMode.self, forKey: .theme) ?? .dark
+        defaultLayoutPreset = try container.decodeIfPresent(LayoutPresetId.self, forKey: .defaultLayoutPreset) ?? .twoColumn
+        controllerSidebarPosition = try container.decodeIfPresent(ControllerSidebarPosition.self, forKey: .controllerSidebarPosition) ?? .left
+        showTouchpadButtons = try container.decodeIfPresent(Bool.self, forKey: .showTouchpadButtons) ?? false
     }
 }
 
