@@ -55,9 +55,9 @@ struct WhatsNewView: View {
                 description: "Toggle between Landscape, Portrait (Up/Down), or Flipped orientation in settings or with a 1-tap sidebar rotation button."
             ),
             WhatsNewItem(
-                icon: "person.badge.key.fill",
-                title: "Full Passkey Support",
-                description: "Eliminated partial passkey support warnings and integrated full biometric authentication via Safari Keychain."
+                icon: "key.fill",
+                title: "Keychain AutoFill & Safari Handoff",
+                description: "Seamless Face ID / Touch ID credential AutoFill in web views, with direct Safari handoff for external passkeys."
             ),
             WhatsNewItem(
                 icon: "house.fill",

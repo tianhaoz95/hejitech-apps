@@ -1,10 +1,9 @@
-import AuthenticationServices
 import TetherKit
 import UIKit
 import WebKit
 
 @MainActor
-public final class WebTabViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate, UITextFieldDelegate, ASWebAuthenticationPresentationContextProviding {
+public final class WebTabViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate, UITextFieldDelegate, WKScriptMessageHandler {
     private let store: WorkspaceStore
     public var paneId: String
     public var tabItem: TetherKit.Tab
@@ -14,14 +13,13 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
     private let backButton = UIButton(type: .system)
     private let forwardButton = UIButton(type: .system)
     private let reloadStopButton = UIButton(type: .system)
-    private let passkeyButton = UIButton(type: .system)
+    private let safariButton = UIButton(type: .system)
     private let bookmarkButton = UIButton(type: .system)
     private let progressView = UIProgressView(progressViewStyle: .bar)
-    private let downloadBanner = UILabel()
+    private let statusBanner = UILabel()
     private var progressObservation: NSKeyValueObservation?
     private var titleObservation: NSKeyValueObservation?
     private var urlObservation: NSKeyValueObservation?
-    private var authSession: ASWebAuthenticationSession?
 
     public init(store: WorkspaceStore, paneId: String, tab: TetherKit.Tab) {
         self.store = store
@@ -140,10 +138,10 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
         reloadStopButton.tintColor = .white
         reloadStopButton.addTarget(self, action: #selector(reloadOrStopTapped), for: .touchUpInside)
 
-        passkeyButton.setImage(UIImage(systemName: "person.badge.key.fill"), for: .normal)
-        passkeyButton.tintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
-        passkeyButton.accessibilityLabel = "Sign in with Passkey / Safari Authentication"
-        passkeyButton.addTarget(self, action: #selector(passkeySignInTapped), for: .touchUpInside)
+        safariButton.setImage(UIImage(systemName: "safari"), for: .normal)
+        safariButton.tintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
+        safariButton.accessibilityLabel = "Open in Safari"
+        safariButton.addTarget(self, action: #selector(openInSafariTapped), for: .touchUpInside)
 
         bookmarkButton.setImage(UIImage(systemName: "star"), for: .normal)
         bookmarkButton.tintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
@@ -166,7 +164,7 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
         addressField.placeholder = "Enter URL or search query…"
         addressField.text = (tabItem.url == "about:home") ? "" : (tabItem.url ?? "")
 
-        let stack = UIStackView(arrangedSubviews: [backButton, forwardButton, reloadStopButton, addressField, passkeyButton, bookmarkButton])
+        let stack = UIStackView(arrangedSubviews: [backButton, forwardButton, reloadStopButton, addressField, safariButton, bookmarkButton])
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.axis = .horizontal
         stack.spacing = 6
@@ -179,23 +177,33 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
         progressView.isHidden = true
         toolbar.addSubview(progressView)
 
-        // Native WKWebView configured for desktop user-agent, shared cookie store & Passkey support
+        // Native WKWebView configured for desktop mode & shared cookie store
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .default()
         config.defaultWebpagePreferences.preferredContentMode = .desktop
         config.allowsInlineMediaPlayback = true
 
         let userContentController = WKUserContentController()
-        // Inject script to provide full passkey detection and WebAuthn capability
+        userContentController.add(self, name: "passkeyHandler")
+
+        // Intercept WebAuthn credential calls to provide clear user guidance
+        // when iOS restricts platform passkeys in embedded web views.
         let passkeySupportScript = WKUserScript(
             source: """
             (function() {
-              if (window.PublicKeyCredential) {
-                PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable = function() {
-                  return Promise.resolve(true);
-                };
-                PublicKeyCredential.isConditionalMediationAvailable = function() {
-                  return Promise.resolve(true);
+              if (window.navigator && window.navigator.credentials && window.navigator.credentials.get) {
+                var origGet = window.navigator.credentials.get.bind(window.navigator.credentials);
+                window.navigator.credentials.get = function(options) {
+                  return origGet(options).catch(function(err) {
+                    try {
+                      if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.passkeyHandler) {
+                        window.webkit.messageHandlers.passkeyHandler.postMessage({
+                          error: err ? (err.message || err.name) : 'NotAllowedError'
+                        });
+                      }
+                    } catch(e) {}
+                    throw err;
+                  });
                 };
               }
             })();
@@ -211,18 +219,18 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.allowsBackForwardNavigationGestures = true
-        webView.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15"
 
-        downloadBanner.translatesAutoresizingMaskIntoConstraints = false
-        downloadBanner.backgroundColor = UIColor(red: 0.06, green: 0.32, blue: 0.20, alpha: 0.95)
-        downloadBanner.textColor = .white
-        downloadBanner.font = .systemFont(ofSize: 12, weight: .medium)
-        downloadBanner.textAlignment = .center
-        downloadBanner.isHidden = true
+        statusBanner.translatesAutoresizingMaskIntoConstraints = false
+        statusBanner.backgroundColor = UIColor(red: 0.06, green: 0.32, blue: 0.20, alpha: 0.95)
+        statusBanner.textColor = .white
+        statusBanner.font = .systemFont(ofSize: 12, weight: .medium)
+        statusBanner.textAlignment = .center
+        statusBanner.isHidden = true
+        statusBanner.numberOfLines = 0
 
         view.addSubview(toolbar)
         view.addSubview(webView)
-        view.addSubview(downloadBanner)
+        view.addSubview(statusBanner)
 
         NSLayoutConstraint.activate([
             toolbar.topAnchor.constraint(equalTo: view.topAnchor),
@@ -237,7 +245,7 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
             backButton.widthAnchor.constraint(equalToConstant: 26),
             forwardButton.widthAnchor.constraint(equalToConstant: 26),
             reloadStopButton.widthAnchor.constraint(equalToConstant: 26),
-            passkeyButton.widthAnchor.constraint(equalToConstant: 26),
+            safariButton.widthAnchor.constraint(equalToConstant: 26),
             bookmarkButton.widthAnchor.constraint(equalToConstant: 26),
 
             progressView.leadingAnchor.constraint(equalTo: toolbar.leadingAnchor),
@@ -250,10 +258,10 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
             webView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             webView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
 
-            downloadBanner.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            downloadBanner.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            downloadBanner.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            downloadBanner.heightAnchor.constraint(equalToConstant: 28),
+            statusBanner.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            statusBanner.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            statusBanner.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            statusBanner.heightAnchor.constraint(greaterThanOrEqualToConstant: 28),
         ])
 
         progressObservation = webView.observe(\.estimatedProgress, options: [.new]) { [weak self] wv, _ in
@@ -503,24 +511,29 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
         webView.loadHTMLString(html, baseURL: URL(string: "about:home"))
     }
 
-    @objc private func passkeySignInTapped() {
+    @objc private func openInSafariTapped() {
         guard let currentURL = webView.url ?? URL(string: addressField.text ?? "") else { return }
-        let session = ASWebAuthenticationSession(
-            url: currentURL,
-            callbackURLScheme: nil
-        ) { [weak self] _, _ in
-            Task { @MainActor in
-                self?.reloadCurrentPage()
-            }
+        if currentURL.scheme?.hasPrefix("http") == true {
+            UIApplication.shared.open(currentURL)
         }
-        session.presentationContextProvider = self
-        session.prefersEphemeralWebBrowserSession = false
-        session.start()
-        self.authSession = session
     }
 
-    public func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-        view.window ?? UIWindow()
+    public func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        if message.name == "passkeyHandler" {
+            showStatusBanner("Passkeys in embedded views are restricted by iOS. Tap password & use Face ID AutoFill to sign in.", isWarning: true)
+        }
+    }
+
+    public func showStatusBanner(_ message: String, isWarning: Bool = false) {
+        statusBanner.text = message
+        statusBanner.backgroundColor = isWarning
+            ? UIColor(red: 0.65, green: 0.25, blue: 0.05, alpha: 0.95)
+            : UIColor(red: 0.06, green: 0.32, blue: 0.20, alpha: 0.95)
+        statusBanner.isHidden = false
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            self.statusBanner.isHidden = true
+        }
     }
 
     private func updateTabState(url: String?, pageTitle: String?) {
@@ -561,6 +574,11 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
             let bm = Bookmark(title: currentTitle.isEmpty ? currentURL : currentTitle, url: currentURL)
             self.store.bookmarks.insert(bm, at: 0)
         })
+        if let url = webView.url ?? URL(string: currentURL), url.scheme?.hasPrefix("http") == true {
+            actions.append(DesktopAlertAction(title: "Open in Safari", style: .default) { _ in
+                UIApplication.shared.open(url)
+            })
+        }
         for bm in store.bookmarks.prefix(6) {
             actions.append(DesktopAlertAction(title: "Open: \(bm.title)", style: .default) { [weak self] _ in
                 self?.loadInput(bm.url)
@@ -630,11 +648,6 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
     }
 
     public func downloadDidFinish(_ download: WKDownload) {
-        downloadBanner.text = "Downloaded to Documents/Downloads"
-        downloadBanner.isHidden = false
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
-            self.downloadBanner.isHidden = true
-        }
+        showStatusBanner("Downloaded to Documents/Downloads", isWarning: false)
     }
 }
