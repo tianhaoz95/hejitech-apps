@@ -37,6 +37,66 @@ async function token(env: Env): Promise<string> {
 
 export type PushResult = { ok: true } | { ok: false; status: number; reason: string; gone: boolean };
 
+export interface LiveActivityContentState {
+  pred_arr: number;
+  delay_min: number | null;
+  next: string | null;
+  next_pred: number | null;
+  stops_left: number;
+  cancelled: boolean;
+  arrived: boolean;
+}
+
+export interface LiveActivityPayload {
+  event: "start" | "update" | "end";
+  timestamp?: number; // epoch seconds
+  dismissalDate?: number; // epoch seconds
+  attributes?: {
+    trip_id: string;
+    train: string;
+    kind: string;
+    to: string;
+  };
+  contentState: LiveActivityContentState;
+}
+
+/** Sends an ActivityKit Live Activity update, start or end push. */
+export async function sendLiveActivityPush(
+  env: Env,
+  device: { token: string; environment: "production" | "sandbox" },
+  payload: LiveActivityPayload
+): Promise<PushResult> {
+  const nowSec = payload.timestamp ?? Math.floor(Date.now() / 1000);
+  const aps: Record<string, unknown> = {
+    timestamp: nowSec,
+    event: payload.event,
+    "content-state": payload.contentState,
+  };
+  if (payload.event === "start" && payload.attributes) {
+    aps["attributes-type"] = "TrackActivityAttributes";
+    aps.attributes = payload.attributes;
+  }
+  if (payload.event === "end" && payload.dismissalDate) {
+    aps["dismissal-date"] = payload.dismissalDate;
+  }
+
+  const topic = `${env.APNS_TOPIC || "com.hejitech.headway"}.push-type.liveactivity`;
+  const res = await fetch(`${HOST[device.environment]}/3/device/${device.token}`, {
+    method: "POST",
+    headers: {
+      authorization: `bearer ${await token(env)}`,
+      "apns-topic": topic,
+      "apns-push-type": "liveactivity",
+      "apns-priority": payload.contentState.cancelled || (payload.contentState.delay_min ?? 0) >= 5 ? "10" : "5",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ aps }),
+  });
+  if (res.ok) return { ok: true };
+  const reason = ((await res.json().catch(() => ({}))) as { reason?: string }).reason ?? `HTTP ${res.status}`;
+  return { ok: false, status: res.status, reason, gone: res.status === 410 || reason === "BadDeviceToken" || reason === "Unregistered" };
+}
+
 /** Sends one notification to one device. `gone` means the token is dead: delete the device. */
 export async function sendPush(env: Env, device: { apns_token: string; environment: "production" | "sandbox" }, n: Notification): Promise<PushResult> {
   const res = await fetch(`${HOST[device.environment]}/3/device/${device.apns_token}`, {

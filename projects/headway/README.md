@@ -11,6 +11,10 @@ projects/headway/
   services/web/         @headway/web: Cloudflare Worker (site, /api, every-minute cron, APNs, /mcp + OAuth)
   apps/glasses/         @headway/glasses: Even Hub plugin (.ehpk)
   apps/ios/             iPhone app (SwiftUI, XcodeGen) + HeadwayKit (models, API client, sign-in)
+  apps/android/         Android & Wear OS companion apps:
+                          app/    Phone app (Jetpack Compose Material 3)
+                          wear/   Wear OS watch app (Wear Compose, Tile & Complication)
+                          core/   Shared Kotlin models, API client & Wearable sync
   scripts/              timetable compiler, integration test, simulator e2e, TestFlight release
   branding/             icon source
   docs/                 decisions, deployment, the docs page

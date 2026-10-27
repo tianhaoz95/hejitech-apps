@@ -2,6 +2,7 @@
 // settings, and the boards every surface (glasses, iPhone, web, MCP, alert engine) shows.
 
 export type ServiceKind = "LOC" | "LTD" | "EXP" | "SCC";
+export type ExpressPreference = "all" | "prefer_express" | "express_only";
 /** N = toward San Francisco, S = toward San Jose / Gilroy. */
 export type Direction = "N" | "S";
 
@@ -101,6 +102,8 @@ export interface Leg {
   usual: string | null;
   /** When to watch this leg for alerts, "HH:MM" Pacific. */
   window: { start: string; end: string };
+  /** Train filter/preference for this leg: all (default), prefer_express, or express_only. */
+  express_preference?: ExpressPreference;
 }
 
 export interface AlertSettings {
@@ -113,6 +116,8 @@ export interface AlertSettings {
   arrival: boolean;
   /** Minutes before arriving at the tracked train's stop. */
   arrival_minutes: number;
+  /** Alert when a later-departing train arrives sooner (overtakes your train). */
+  better_train: boolean;
 }
 
 export interface Settings {
@@ -123,11 +128,17 @@ export interface Settings {
   /** Days the legs are watched for alerts, 0 = Monday … 6 = Sunday. */
   days: number[];
   alerts: AlertSettings;
+  /** Global default train filter/preference: all (default), prefer_express, or express_only. */
+  express_preference?: ExpressPreference;
+  /** Optional first name shown on shared live ETA pages (e.g. "Sam"). Max 20 chars. */
+  share_name?: string | null;
 }
 
 // ---------------------------------------------------------------- boards
 
 export type TrainStatus = "on_time" | "late" | "early" | "cancelled" | "scheduled";
+
+export type CatchState = "later" | "leave" | "run" | "missed";
 
 export interface BoardTrain {
   trip_id: string;
@@ -146,9 +157,33 @@ export interface BoardTrain {
   status: TrainStatus;
   /** Stops between from and to, excluding both. */
   stops_between: number;
+  /** When to walk out the door: pred_dep - (walk_minutes * 60_000). Set when board has walk_minutes. */
+  leave_by?: number | null;
+  /** Catch state relative to departure and walk time. */
+  catch?: CatchState | null;
+  /** Ride duration in minutes: (pred_arr - pred_dep) / 60_000. */
+  ride_min?: number | null;
+  /** Trip id of a later-departing train that arrives sooner, if overtaken. */
+  overtaken_by?: string | null;
+  /** Train number of the overtaker (e.g. "511"), if overtaken. */
+  overtaken_by_train?: string | null;
+  /** True if this train is the earliest predicted arrival among visible trains. */
+  first_in?: boolean | null;
+  /** True if this train has the shortest ride among visible non-cancelled trains. */
+  shortest?: boolean | null;
 }
 
 export type LegName = "morning" | "evening" | "custom";
+
+export interface BoardTip {
+  wait_for: string;
+  wait_for_kind: ServiceKind;
+  wait_for_dep: number;
+  wait_for_arr: number;
+  instead_of: string;
+  instead_of_arr: number;
+  saves_min: number;
+}
 
 export interface Board {
   from: Pick<Station, "id" | "name" | "short">;
@@ -160,6 +195,12 @@ export interface Board {
   live: boolean;
   trains: BoardTrain[];
   alerts: ServiceAlert[];
+  /** Train filter/preference applied to this board: all, prefer_express, or express_only. */
+  express_preference?: ExpressPreference;
+  /** Walk time in minutes to the departure station for this commute leg. */
+  walk_minutes?: number | null;
+  /** Faster train recommendation when your next train is overtaken. */
+  tip?: BoardTip | null;
 }
 
 /** A train someone follows on board, from the glasses or the iPhone: arrival alerts and the track view. */

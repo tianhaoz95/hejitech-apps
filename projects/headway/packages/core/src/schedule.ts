@@ -4,7 +4,7 @@
 import data from "./timetable.gen.json" with { type: "json" };
 import { addDays, hhmm, serviceDayStart, weekdayOf, zoned } from "./time.ts";
 import type {
-  Board, BoardTrain, Direction, LegName, RealtimeSnapshot, RealtimeTrip, ServiceAlert, Settings, Station, Timetable, Tracked, TrainProgress, Trip, TrainStatus,
+  Board, BoardTip, BoardTrain, CatchState, Direction, ExpressPreference, Leg, LegName, RealtimeSnapshot, RealtimeTrip, ServiceAlert, Settings, Station, Timetable, Tracked, TrainProgress, Trip, TrainStatus,
 } from "./types.ts";
 
 export const TIMETABLE = data as Timetable;
@@ -110,6 +110,24 @@ export interface DepartureOptions {
   /** Only trains departing at or after / before these instants (by schedule). */
   after?: number;
   before?: number;
+  /** Train filter/preference: all (default), prefer_express, or express_only. */
+  expressPreference?: ExpressPreference;
+  /** Walk time in minutes for calculating catch info. */
+  walkMinutes?: number;
+}
+
+/** Computes leave-by timestamp and catch state for a train given walk time. */
+export function catchInfo(
+  predDep: number,
+  now: number,
+  walkMinutes: number,
+  isFirstCatchable = false
+): { leave_by: number; catch: CatchState } {
+  const leave_by = predDep - walkMinutes * MIN;
+  const d = (predDep - now) / MIN;
+  if (d < walkMinutes / 2) return { leave_by, catch: "missed" };
+  if (d < walkMinutes) return { leave_by, catch: "run" };
+  return { leave_by, catch: isFirstCatchable ? "leave" : "later" };
 }
 
 /** Trains from one station to another, soonest first, with live predictions where the snapshot has them. */
@@ -124,6 +142,7 @@ export function departures(fromId: string, toId: string, now: number, snapshot: 
   for (const date of [addDays(today, -1), today, addDays(today, 1)]) {
     const dayStart = serviceDayStart(date);
     for (const trip of tt.trips) {
+      if (opts.expressPreference === "express_only" && trip.kind !== "EXP") continue;
       if (!serviceRuns(tt, trip.svc, date)) continue;
       const a = stopPos(trip, fi), b = stopPos(trip, ti);
       if (a < 0 || b < 0 || a >= b) continue;
@@ -146,8 +165,109 @@ export function departures(fromId: string, toId: string, now: number, snapshot: 
       });
     }
   }
-  out.sort((x, y) => x.pred_dep - y.pred_dep || x.dep - y.dep);
-  return out.slice(0, opts.limit ?? BOARD_TRAINS);
+  if (opts.expressPreference === "prefer_express") {
+    out.sort((x, y) => {
+      // Prioritize express trains that arrive earlier or within 5 minutes of a slower train
+      if (x.kind === "EXP" && y.kind !== "EXP" && x.pred_arr <= y.pred_arr + 5 * MIN) return -1;
+      if (y.kind === "EXP" && x.kind !== "EXP" && y.pred_arr <= x.pred_arr + 5 * MIN) return 1;
+      return x.pred_dep - y.pred_dep || x.dep - y.dep;
+    });
+  } else {
+    out.sort((x, y) => x.pred_dep - y.pred_dep || x.dep - y.dep);
+  }
+
+  let result = out;
+  if (opts.walkMinutes !== undefined && opts.walkMinutes !== null) {
+    const walk = opts.walkMinutes;
+    const hasCatchable = result.some((t) => t.status !== "cancelled" && (t.pred_dep - now) / MIN >= walk / 2);
+    if (hasCatchable) {
+      result = result.filter((t) => t.status === "cancelled" || (t.pred_dep - now) / MIN >= walk / 2);
+    }
+    let foundLeave = false;
+    for (const t of result) {
+      if (t.status === "cancelled") {
+        t.leave_by = null;
+        t.catch = null;
+      } else {
+        const isFirst = !foundLeave && (t.pred_dep - now) / MIN >= walk;
+        const info = catchInfo(t.pred_dep, now, walk, isFirst);
+        t.leave_by = info.leave_by;
+        t.catch = info.catch;
+        if (info.catch === "leave") foundLeave = true;
+      }
+    }
+  }
+
+  const finalSlice = result.slice(0, opts.limit ?? BOARD_TRAINS);
+  applyTrainInsights(finalSlice);
+  return finalSlice;
+}
+
+/** Enriches trains with ride duration, overtaking detection, earliest arrival, and shortest ride. */
+export function applyTrainInsights(trains: BoardTrain[]): BoardTrain[] {
+  for (const t of trains) {
+    t.ride_min = Math.round((t.pred_arr - t.pred_dep) / MIN);
+    t.overtaken_by = null;
+    t.overtaken_by_train = null;
+    t.first_in = false;
+    t.shortest = false;
+  }
+
+  const active = trains.filter((t) => t.status !== "cancelled");
+  if (!active.length) return trains;
+
+  let earliest = active[0];
+  for (const t of active) {
+    if (t.pred_arr < earliest.pred_arr) earliest = t;
+  }
+  earliest.first_in = true;
+
+  let shortestTrain = active[0];
+  for (const t of active) {
+    if ((t.ride_min ?? Infinity) < (shortestTrain.ride_min ?? Infinity)) shortestTrain = t;
+  }
+  shortestTrain.shortest = true;
+
+  for (const t1 of active) {
+    const overtakers = active.filter((t2) => t2.pred_dep > t1.pred_dep && t2.pred_arr < t1.pred_arr);
+    if (overtakers.length > 0) {
+      overtakers.sort((a, b) => a.pred_arr - b.pred_arr);
+      const best = overtakers[0];
+      t1.overtaken_by = best.trip_id;
+      t1.overtaken_by_train = best.train;
+    }
+  }
+
+  return trains;
+}
+
+/** Computes the tip for the board when the next catchable train is overtaken by a later train. */
+export function computeBoardTip(trains: BoardTrain[], walkMinutes?: number | null): BoardTip | null {
+  const active = trains.filter((t) => t.status !== "cancelled");
+  if (!active.length) return null;
+
+  const leaveTrain = trains.find((t) => t.catch === "leave" && t.status !== "cancelled");
+  const target = (leaveTrain && leaveTrain.overtaken_by)
+    ? leaveTrain
+    : active.find((t) => t.overtaken_by != null);
+
+  if (!target || !target.overtaken_by) return null;
+
+  const overtaker = active.find((t) => t.trip_id === target.overtaken_by);
+  if (!overtaker) return null;
+
+  const saves_min = Math.round((target.pred_arr - overtaker.pred_arr) / MIN);
+  if (saves_min < 2) return null;
+
+  return {
+    wait_for: overtaker.train,
+    wait_for_kind: overtaker.kind,
+    wait_for_dep: overtaker.pred_dep,
+    wait_for_arr: overtaker.pred_arr,
+    instead_of: target.train,
+    instead_of_arr: target.pred_arr,
+    saves_min,
+  };
 }
 
 /** Alerts that matter for a pair of stations: ones naming either station, plus system-wide ones. Active now. */
@@ -157,33 +277,41 @@ export function relevantAlerts(alerts: ServiceAlert[], stationIds: string[], now
     .filter((a) => (a.stations.length === 0 && a.routes.length === 0) || a.stations.some((s) => stationIds.includes(s)) || (a.stations.length === 0 && a.routes.length > 0));
 }
 
-export function board(fromId: string, toId: string, now: number, snapshot: RealtimeSnapshot | null, leg: LegName = "custom", tt: Timetable = TIMETABLE): Board | null {
+export function board(fromId: string, toId: string, now: number, snapshot: RealtimeSnapshot | null, leg: LegName = "custom", tt: Timetable = TIMETABLE, opts: DepartureOptions = {}): Board | null {
   const f = station(fromId), t = station(toId);
   if (!f || !t || f.id === t.id) return null;
   const live = isFresh(snapshot, now);
+  const trains = departures(f.id, t.id, now, snapshot, opts, tt);
+  const tip = live ? computeBoardTip(trains, opts.walkMinutes) : null;
   return {
     from: lite(f), to: lite(t), leg, generated_at: now, live,
-    trains: departures(f.id, t.id, now, snapshot, {}, tt),
+    trains,
     alerts: live ? relevantAlerts(snapshot!.alerts, [f.id, t.id], now) : [],
+    express_preference: opts.expressPreference ?? "all",
+    walk_minutes: opts.walkMinutes ?? null,
+    tip,
   };
 }
 
 /** Which leg applies at `now`: morning before `switch_at`, evening after (falling back to whichever is set). */
-export function currentLeg(settings: Settings, now: number): { name: "morning" | "evening"; from: string; to: string } | null {
+export function currentLeg(settings: Settings, now: number): { name: "morning" | "evening"; from: string; to: string; leg: Leg } | null {
   const before = zoned(now).minuteOfDay < (hhmm(settings.switch_at) ?? 12 * 60);
   const order = before ? (["morning", "evening"] as const) : (["evening", "morning"] as const);
   for (const name of order) {
     const leg = settings[name];
-    if (leg) return { name, from: leg.from, to: leg.to };
+    if (leg) return { name, from: leg.from, to: leg.to, leg };
   }
   return null;
 }
 
 /** The commute board for now, or a custom pair when `from`/`to` are given. */
-export function commuteBoard(settings: Settings | null, now: number, snapshot: RealtimeSnapshot | null, pair?: { from: string; to: string }): Board | null {
-  if (pair) return board(pair.from, pair.to, now, snapshot, "custom");
-  const leg = settings ? currentLeg(settings, now) : null;
-  return leg ? board(leg.from, leg.to, now, snapshot, leg.name) : null;
+export function commuteBoard(settings: Settings | null, now: number, snapshot: RealtimeSnapshot | null, pair?: { from: string; to: string }, opts: DepartureOptions = {}): Board | null {
+  if (pair) return board(pair.from, pair.to, now, snapshot, "custom", TIMETABLE, opts);
+  const cur = settings ? currentLeg(settings, now) : null;
+  if (!cur) return null;
+  const pref = opts.expressPreference ?? cur.leg.express_preference ?? settings?.express_preference ?? "all";
+  const walkMinutes = opts.walkMinutes ?? cur.leg.walk_minutes;
+  return board(cur.from, cur.to, now, snapshot, cur.name, TIMETABLE, { ...opts, expressPreference: pref, walkMinutes });
 }
 
 /** Where a train is relative to someone riding it to `to`. */
@@ -219,6 +347,59 @@ export function progress(tracked: Tracked, now: number, snapshot: RealtimeSnapsh
     next: arrived ? null : next, pred_arr, arr, delay_min, stops_left: arrived ? 0 : stopsLeft, cancelled: Boolean(rt?.cancelled),
     arrived, live: Boolean(live),
   };
+}
+
+export interface EtaStopInfo {
+  id: string;
+  name: string;
+  short: string;
+  pred: number;
+  status: "done" | "now" | "upcoming";
+}
+
+/** Lists the stops between from and to for an ETA share, with predicted times and progression. */
+export function tripProgressStops(tracked: Tracked, now: number, snapshot: RealtimeSnapshot | null, tt: Timetable = TIMETABLE): EtaStopInfo[] {
+  const trip = tt.trips.find((t) => t.id === tracked.trip_id);
+  const to = station(tracked.to);
+  if (!trip || !to) return [];
+  const from = station(tracked.from);
+  const a = from ? Math.max(0, stopPos(trip, stationIndex(from.id))) : 0;
+  const b = stopPos(trip, stationIndex(to.id));
+  if (b < 0 || b < a) return [];
+
+  const live = isFresh(snapshot, now) ? snapshot : null;
+  const rt = liveTrip(live, trip, tracked.service_date);
+  const dayStart = serviceDayStart(tracked.service_date);
+
+  const stops: EtaStopInfo[] = [];
+  let foundCurrent = false;
+
+  for (let p = a; p <= b; p++) {
+    const isDest = p === b;
+    const delaySec = delayAt(trip, p, rt, dayStart, isDest ? "arr" : "dep") ?? 0;
+    const scheduledMin = trip.stops[p * 3 + (isDest ? 1 : 2)];
+    const pred = dayStart + scheduledMin * MIN + delaySec * 1000;
+    const s = STATIONS[trip.stops[p * 3]];
+    const passed = pred < now - 30_000;
+
+    let status: "done" | "now" | "upcoming" = "upcoming";
+    if (passed) {
+      status = "done";
+    } else if (!foundCurrent) {
+      status = "now";
+      foundCurrent = true;
+    }
+
+    stops.push({
+      id: s.id,
+      name: s.name,
+      short: s.short,
+      pred,
+      status,
+    });
+  }
+
+  return stops;
 }
 
 /** Days until the compiled timetable runs out (rebuild it with scripts/build-timetable.mjs before then). */

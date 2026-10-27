@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  addDays, board, clock, commuteBoard, currentLeg, departures, findStation, progress, serviceDayStart, STATIONS, station, TIMETABLE, timetableDaysLeft, zoned,
+  addDays, board, checkSettings, clock, commuteBoard, currentLeg, defaultSettings, departures, findStation, newLeg, normalizeSettings, progress, serviceDayStart, STATIONS, station, TIMETABLE, timetableDaysLeft, zoned,
 } from "../src/index.ts";
 import { at, commuter, firstTrain, SATURDAY, snapshot, THANKSGIVING, WEEKDAY } from "./helpers.ts";
 
@@ -147,3 +147,136 @@ describe("progress", () => {
     expect(p.next).toBeNull();
   });
 });
+
+describe("express preference", () => {
+  it("filters strictly with express_only", () => {
+    const now = at(WEEKDAY, "07:30");
+    const trains = departures("mountain_view", "san_francisco", now, null, { expressPreference: "express_only" });
+    expect(trains.length).toBeGreaterThan(0);
+    for (const t of trains) {
+      expect(t.kind).toBe("EXP");
+    }
+  });
+
+  it("prioritizes express trains when prefer_express is set", () => {
+    const now = at(WEEKDAY, "07:30");
+    const allTrains = departures("mountain_view", "san_francisco", now, null, { expressPreference: "all" });
+    const preferred = departures("mountain_view", "san_francisco", now, null, { expressPreference: "prefer_express" });
+    expect(allTrains.length).toBeGreaterThan(0);
+    expect(preferred.length).toBeGreaterThan(0);
+    // Express trains should be present and ranked ahead of slower overlapping trips
+    const firstExp = preferred.find((t) => t.kind === "EXP");
+    expect(firstExp).toBeDefined();
+  });
+
+  it("returns empty when express_only is requested on weekends or stations without express", () => {
+    const sat = at(SATURDAY, "08:00");
+    const trains = departures("mountain_view", "san_francisco", sat, null, { expressPreference: "express_only" });
+    expect(trains).toHaveLength(0);
+
+    // San Antonio has no express service
+    const weekday = at(WEEKDAY, "08:00");
+    const saTrains = departures("san_antonio", "san_francisco", weekday, null, { expressPreference: "express_only" });
+    expect(saTrains).toHaveLength(0);
+  });
+
+  it("attaches express preference to board and commuteBoard", () => {
+    const now = at(WEEKDAY, "08:00");
+    const b = board("mountain_view", "san_francisco", now, null, "custom", TIMETABLE, { expressPreference: "express_only" });
+    expect(b?.express_preference).toBe("express_only");
+    for (const t of b!.trains) expect(t.kind).toBe("EXP");
+
+    const settings = commuter({
+      morning: { ...newLeg("mountain_view", "san_francisco", "morning"), express_preference: "express_only" },
+    });
+    const cb = commuteBoard(settings, now, null);
+    expect(cb?.express_preference).toBe("express_only");
+  });
+
+  it("validates and normalizes express_preference in settings", () => {
+    expect(checkSettings({ ...defaultSettings(), express_preference: "invalid" as any })).toHaveLength(1);
+    expect(checkSettings({ ...defaultSettings(), express_preference: "express_only" })).toHaveLength(0);
+
+    const norm = normalizeSettings({
+      morning: { from: "mountain_view", to: "san_francisco", express_preference: "prefer_express" },
+      evening: { from: "san_francisco", to: "mountain_view" },
+      express_preference: "express_only",
+    });
+    expect(norm.express_preference).toBe("express_only");
+    expect(norm.morning?.express_preference).toBe("prefer_express");
+    expect(norm.evening?.express_preference).toBe("express_only");
+  });
+});
+
+describe("catch it (leave-by times)", () => {
+  it("calculates leave-by and catch state across boundaries", () => {
+    const s = commuter();
+    // At 07:55, with a 10 min walk:
+    // A train departing at 08:16: d = 21 min >= walk + 1 -> "leave" (if first catchable)
+    // A train departing at 08:03: d = 8 min (walk/2 <= d < walk) -> "run"
+    // A train departing at 07:58: d = 3 min (d < walk/2) -> "missed"
+    const b = commuteBoard(s, at(WEEKDAY, "07:55"), null);
+    expect(b?.walk_minutes).toBe(10);
+    expect(b?.trains.length).toBeGreaterThan(0);
+    const leaveTrain = b?.trains.find((t) => t.catch === "leave");
+    expect(leaveTrain).toBeDefined();
+    expect(leaveTrain!.leave_by).toBe(leaveTrain!.pred_dep - 10 * MIN);
+
+    const first = b!.trains[0];
+    if (first.catch === "run") {
+      const dMin = (first.pred_dep - at(WEEKDAY, "07:55")) / MIN;
+      expect(dMin).toBeGreaterThanOrEqual(5);
+      expect(dMin).toBeLessThan(10);
+    }
+  });
+
+  it("updates leave-by when a live delay pushes departure later", () => {
+    const t = firstTrain(WEEKDAY, "08:00");
+    const now = t.dep - 15 * MIN;
+    const mv = station("mountain_view")!;
+    const snap = snapshot(now, { [t.trip_id]: { stops: { [mv.nb!]: { delay: 8 * 60 } } } });
+    const b = commuteBoard(commuter(), now, snap);
+    const found = b?.trains.find((x) => x.trip_id === t.trip_id)!;
+    expect(found.delay_min).toBe(8);
+    expect(found.leave_by).toBe(found.pred_dep - 10 * MIN);
+    expect(found.leave_by).toBe(found.dep + 8 * MIN - 10 * MIN);
+  });
+
+  it("leaves walk_minutes undefined on custom pairs", () => {
+    const now = at(WEEKDAY, "08:00");
+    const b = board("mountain_view", "san_francisco", now, null);
+    expect(b?.walk_minutes ?? null).toBeNull();
+    for (const t of b!.trains) {
+      expect(t.leave_by ?? null).toBeNull();
+      expect(t.catch ?? null).toBeNull();
+    }
+  });
+});
+
+describe("wait for express (overtaken trains & board tips)", () => {
+  it("detects when a later train arrives earlier due to delays", () => {
+    const now = at(WEEKDAY, "07:55");
+    const trains = departures("mountain_view", "san_francisco", now, null, { limit: 6 });
+    const t113 = trains.find((t) => t.train === "113")!;
+    const mv = station("mountain_view")!;
+    const snap = snapshot(now, { [t113.trip_id]: { stops: { [mv.nb!]: { delay: 8 * 60 } } } });
+
+    const b = board("mountain_view", "san_francisco", now, snap, "custom")!;
+    expect(b.live).toBe(true);
+    const delayed113 = b.trains.find((t) => t.train === "113")!;
+    expect(delayed113.delay_min).toBe(8);
+    expect(delayed113.overtaken_by_train).toBe("511");
+
+    const exp511 = b.trains.find((t) => t.train === "511")!;
+    expect(exp511.shortest).toBe(true);
+
+    const first = b.trains.find((t) => t.train === "409")!;
+    expect(first.first_in).toBe(true);
+
+    expect(b.tip).toBeDefined();
+    expect(b.tip?.wait_for).toBe("511");
+    expect(b.tip?.instead_of).toBe("113");
+    expect(b.tip?.saves_min).toBe(2);
+  });
+});
+

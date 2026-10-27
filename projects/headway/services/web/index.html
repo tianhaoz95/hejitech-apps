@@ -32,6 +32,11 @@
               <button class="btn secondary swap" type="button" id="swap" aria-label="Swap stations" title="Swap stations">⇄</button>
               <label class="field"><span>To</span><select name="to" id="to"></select></label>
             </form>
+            <div class="filter-bar" id="express-filters" role="group" aria-label="Express train filter">
+              <button type="button" class="filter-btn active" data-pref="all">All trains</button>
+              <button type="button" class="filter-btn" data-pref="prefer_express">⚡ Prefer express</button>
+              <button type="button" class="filter-btn" data-pref="express_only">⚡ Express only</button>
+            </div>
             <ol class="trains" id="trains" aria-live="polite"><li class="empty-state">Loading departures…</li></ol>
             <div id="alerts"></div>
           </section>

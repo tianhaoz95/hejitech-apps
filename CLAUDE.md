@@ -93,7 +93,7 @@ Worker (web app, API, MCP) deploys on push. See `projects/g2digest/CLAUDE.md`.
 
 For Headway it bumps `MARKETING_VERSION` in `projects/headway/apps/ios/project.yml` (refusing until the
 in-app What's New describes the version) and publishes `headway-v<version>`, which runs
-`headway-testflight.yml` and `headway-glasses-release.yml` (the Even Hub plugin `.ehpk`, same version,
+`headway-testflight.yml` (iPhone app with its Watch app) and `headway-glasses-release.yml` (the Even Hub plugin `.ehpk`, same version,
 attached to the release; upload it to the Even Hub portal by hand). Its Worker (site, API, the
 every-minute realtime + alert cron, MCP) deploys on push. See `projects/headway/CLAUDE.md`.
 

@@ -20,10 +20,21 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.1"
+    static let currentVersion = "0.2.0"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.2.0", date: "October 2026", items: [
+            WhatsNewItem(icon: "square.and.arrow.up", title: "Share my live ETA", description: "Send friends or family an ephemeral link to follow your train live on the web with arrival countdowns, stop timeline, and delay updates. Link revokes automatically when you arrive or untrack."),
+            WhatsNewItem(icon: "bolt.badge.clock.fill", title: "Wait for the express", description: "Spot when a later-departing express train arrives at your stop sooner. See arrival insights directly on the board and get a heads-up push before taking a delayed local."),
+            WhatsNewItem(icon: "figure.walk", title: "Catch it: leave-by times", description: "Know exactly when to walk out the door. Headway subtracts your walk from live delays, highlights the best train to leave for, and warns when a train needs a run."),
+            WhatsNewItem(icon: "dot.radiowaves.left.and.right", title: "Lock Screen Live Activity", description: "Follow your tracked train right on your Lock Screen and in the Dynamic Island with live arrival times, countdowns, and upcoming stops."),
+        ]),
+        ReleaseNotes(version: "0.1.2", date: "October 2026", items: [
+            WhatsNewItem(icon: "applewatch", title: "Watch companion app", description: "Glance at Caltrain departures, live countdowns, and delays from your wrist. Tap to track your train, flip direction, or filter for express trips."),
+            WhatsNewItem(icon: "bolt.fill", title: "Express train preferences", description: "Choose to only take express trains or prefer faster express departures in your commute settings and directly on the departures board."),
+            WhatsNewItem(icon: "tag.fill", title: "Prominent express train badges", description: "Caltrain Express trains now stand out with high-visibility badges and faster trip indicators across the iPhone app, web board, and glasses HUD."),
+        ]),
         ReleaseNotes(version: "0.1.1", date: "October 2026", items: [
             WhatsNewItem(icon: "globe", title: "Refined web commute & board UI", description: "Redesigned web settings with morning/evening toggles, quick route mirroring, interactive weekday pills, structured alert controls, and an upgraded departure board and G2 waveguide preview."),
         ]),

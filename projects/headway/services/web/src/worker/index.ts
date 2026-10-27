@@ -15,10 +15,12 @@
 //   everything else               static assets
 
 import { AuthorizationError, OAuthProvider, type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
+import { progress, tripProgressStops, type Tracked } from "@headway/core";
 import { handleApi } from "./api.ts";
 import { runCron } from "./cron.ts";
+import { renderEtaHtml } from "./eta.ts";
 import { handleMcp, type Caller } from "./mcp.ts";
-import { admin, json, PREFIX, resolveAgent, supabaseUser, type Env as BaseEnv } from "./store.ts";
+import { admin, json, loadEtaShare, loadSnapshot, PREFIX, resolveAgent, supabaseUser, updateEtaShareExpiry, type Env as BaseEnv } from "./store.ts";
 
 export interface Env extends BaseEnv {
   OAUTH_PROVIDER: OAuthHelpers;
@@ -126,6 +128,55 @@ const app = {
         const { items } = await env.OAUTH_PROVIDER.listUserGrants(user.id);
         await Promise.all(items.map((g) => env.OAUTH_PROVIDER.revokeGrant(g.id, user.id)));
       }
+    }
+    const etaPageMatch = url.pathname.match(/^\/eta\/([^/]+)$/);
+    if (etaPageMatch && req.method === "GET") {
+      const token = etaPageMatch[1];
+      const db = admin(env);
+      const row = await loadEtaShare(db, token);
+      if (!row) {
+        return new Response("This live ETA link has ended or expired.", {
+          status: 404,
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        });
+      }
+      const now = Date.now();
+      const tracked: Tracked = { trip_id: row.trip_id, service_date: row.service_date, from: row.from_station, to: row.to_station };
+      const snapshot = await loadSnapshot(db);
+      const p = progress(tracked, now, snapshot);
+      if (!p) {
+        return new Response("Train progress currently unavailable.", {
+          status: 404,
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        });
+      }
+      const stops = tripProgressStops(tracked, now, snapshot);
+      if (p.arrived) {
+        const exp = new Date(now + 30 * 60_000).toISOString();
+        if (row.expires_at > exp) await updateEtaShareExpiry(db, row.token_hash, exp);
+      }
+      const html = renderEtaHtml(token, {
+        name: row.name,
+        train: p.train,
+        kind: p.kind,
+        to: p.to.id,
+        to_name: p.to.name,
+        to_short: p.to.short,
+        pred_arr: p.pred_arr,
+        arr: p.arr,
+        delay_min: p.delay_min,
+        cancelled: p.cancelled,
+        arrived: p.arrived,
+        stops,
+        updated_at: now,
+      });
+      return new Response(html, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "public, max-age=15",
+        },
+      });
     }
     if (url.pathname.startsWith("/api/")) return handleApi(req, env, url);
     return env.ASSETS.fetch(req);

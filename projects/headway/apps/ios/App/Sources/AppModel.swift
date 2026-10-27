@@ -21,10 +21,12 @@ final class AppModel {
     var stations: [Station] = []
     /// A pair picked on the Trains tab instead of the commute (nil: the commute for the time of day).
     var customPair: (from: String, to: String)?
+    var expressPreference: ExpressPreference = .all
     var error: String?
     var loading = false
     var notificationsAllowed: Bool?
 
+    let watch = WatchLink()
     private(set) var backend: Backend
     private var pushToken: String?
 
@@ -55,13 +57,52 @@ final class AppModel {
         }
         let session = Keychain.get("session").flatMap { try? JSONDecoder().decode(AuthSession.self, from: $0) }
         backend = Backend(config: Self.config, session: session)
-        backend.onSessionChange = { s in Keychain.set(s.flatMap { try? JSONEncoder().encode($0) }, for: "session") }
+        backend.onSessionChange = { [weak self] s in
+            Keychain.set(s.flatMap { try? JSONEncoder().encode($0) }, for: "session")
+            Task { @MainActor in self?.syncWatch() }
+        }
         if let cached = UserDefaults.standard.data(forKey: "stations"), let s = try? JSONDecoder().decode([Station].self, from: cached) { stations = s }
+
+        watch.onTrack = { [weak self] tripId, serviceDate, from, to in
+            Task { @MainActor in
+                try? await self?.backend.track(Tracked(tripId: tripId, serviceDate: serviceDate, from: from, to: to))
+                await self?.refresh()
+            }
+        }
+        watch.onUntrack = { [weak self] in
+            Task { @MainActor in
+                await self?.untrack()
+            }
+        }
+        watch.onFlip = { [weak self] in
+            Task { @MainActor in
+                await self?.flip()
+            }
+        }
+        watch.onRefresh = { [weak self] in
+            Task { @MainActor in
+                await self?.refresh()
+            }
+        }
+        watch.onSelectStations = { [weak self] from, to in
+            Task { @MainActor in
+                await self?.show(from: from, to: to)
+            }
+        }
+        watch.onFilterExpress = { [weak self] pref in
+            Task { @MainActor in
+                await self?.setExpressPreference(pref)
+            }
+        }
     }
 
     // MARK: launch and routing
 
     func start() async {
+        watch.activate()
+        #if os(iOS) && canImport(ActivityKit)
+        LiveActivityManager.shared.startMonitoring(backend: backend)
+        #endif
         await loadStations()
         await route()
     }
@@ -76,6 +117,7 @@ final class AppModel {
             settingsSaved = r.saved
             email = r.email ?? s.email
             phase = .ready
+            expressPreference = settings.expressPreference
             await refresh()
             await registerForPushIfAllowed()
         } catch BackendError.notSignedIn {
@@ -139,42 +181,73 @@ final class AppModel {
 
     func signOut() async {
         if let t = pushToken { try? await backend.unregisterPush(token: t) }
+        #if os(iOS) && canImport(ActivityKit)
+        await LiveActivityManager.shared.endCurrentActivity()
+        #endif
         backend.signOut()
         board = nil
         tracked = nil
         settings = .defaults
         customPair = nil
         phase = .signedOut
+        syncWatch()
     }
 
     func deleteData() async {
         do {
             try await backend.deleteData()
+            #if os(iOS) && canImport(ActivityKit)
+            await LiveActivityManager.shared.endCurrentActivity()
+            #endif
             backend.signOut()
             board = nil
             tracked = nil
             settings = .defaults
             phase = .signedOut
+            syncWatch()
         } catch { self.error = error.localizedDescription }
     }
 
     // MARK: board
 
+    func syncWatch() {
+        let state = WatchSyncState(
+            session: backend.session,
+            board: board,
+            tracked: tracked,
+            hasCommute: hasCommute,
+            stations: stations,
+            expressPreference: expressPreference
+        )
+        watch.sync(state: state)
+    }
+
     func refresh() async {
         guard phase == .ready else { return }
         loading = true
-        defer { loading = false }
+        defer {
+            loading = false
+            syncWatch()
+        }
         do {
-            let r = try await backend.myBoard(from: customPair?.from, to: customPair?.to)
+            let r = try await backend.myBoard(from: customPair?.from, to: customPair?.to, express: expressPreference)
             board = r.board
             hasCommute = r.hasCommute
             tracked = r.tracked
+            #if os(iOS) && canImport(ActivityKit)
+            await LiveActivityManager.shared.syncTracked(tracked, backend: backend)
+            #endif
             error = nil
         } catch let e as BackendError where e.isUnauthorized || e == .notSignedIn {
             phase = .signedOut
         } catch {
             self.error = "Couldn't refresh: \(error.localizedDescription)"
         }
+    }
+
+    func setExpressPreference(_ pref: ExpressPreference) async {
+        expressPreference = pref
+        await refresh()
     }
 
     func show(from: String, to: String) async {
@@ -203,8 +276,16 @@ final class AppModel {
     func untrack() async {
         do {
             try await backend.untrack()
+            #if os(iOS) && canImport(ActivityKit)
+            await LiveActivityManager.shared.endCurrentActivity()
+            #endif
             tracked = nil
+            syncWatch()
         } catch { self.error = error.localizedDescription }
+    }
+
+    func shareEta(name: String? = nil) async throws -> EtaShareResponse {
+        try await backend.createEtaShare(name: name)
     }
 
     // MARK: settings

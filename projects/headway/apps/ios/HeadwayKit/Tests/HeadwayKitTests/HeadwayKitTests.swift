@@ -26,13 +26,22 @@ final class HeadwayKitTests: XCTestCase {
     func testEncodesSettingsWithNulls() throws {
         var s = Settings.defaults
         s.morning = .morning(from: "mountain_view", to: "san_francisco")
+        s.morning?.expressPreference = .preferExpress
         let obj = try XCTUnwrap(JSONSerialization.jsonObject(with: Backend.encoder.encode(s)) as? [String: Any])
         XCTAssertTrue(obj["evening"] is NSNull)
         let m = try XCTUnwrap(obj["morning"] as? [String: Any])
         XCTAssertTrue(m["usual"] is NSNull)
         XCTAssertEqual(m["walk_minutes"] as? Int, 10)
+        XCTAssertEqual(m["express_preference"] as? String, "prefer_express")
         XCTAssertEqual((obj["alerts"] as? [String: Any])?["delay_threshold"] as? Int, 5)
         XCTAssertEqual(try Backend.decoder.decode(Settings.self, from: Backend.encoder.encode(s)), s)
+    }
+
+    func testExpressPreferenceProperties() {
+        XCTAssertEqual(ExpressPreference.all.title, "All trains")
+        XCTAssertEqual(ExpressPreference.preferExpress.title, "Prefer express")
+        XCTAssertEqual(ExpressPreference.expressOnly.title, "Express only")
+        XCTAssertEqual(ExpressPreference.allCases.count, 3)
     }
 
     func testClock() {

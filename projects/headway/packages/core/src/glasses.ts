@@ -73,25 +73,51 @@ export function untilText(t: number, now: number): string {
 /** Column widths of a train row, in pixels: cursor, number, kind, time, status. */
 const COLS = [16, 48, 46, 62, 44] as const;
 
-/** One train row: `> 152  LTD  8:14  +3 … 12m`, columns aligned in pixels. */
-export function trainRow(t: BoardTrain, now: number, selected: boolean): string {
+/** One train row: `> 152  LTD  8:14  +3 … 12m` (or `go 12m` / `RUN`), columns aligned in pixels. */
+export function trainRow(t: BoardTrain, now: number, selected: boolean, walkMinutes?: number | null): string {
   const cells = [selected ? ">" : "", t.train, t.kind, clock(t.pred_dep), statusText(t)];
   const left = cells.map((c, i) => padPx(c, COLS[i])).join("");
-  return spreadPx(left.trimEnd(), t.status === "cancelled" ? "" : untilText(t.pred_dep, now));
+  let right = "";
+  if (t.status !== "cancelled") {
+    if (walkMinutes != null && t.catch && t.leave_by != null) {
+      if (t.catch === "run") {
+        right = "RUN";
+      } else {
+        right = `go ${untilText(t.leave_by, now)}`;
+      }
+    } else {
+      right = untilText(t.pred_dep, now);
+    }
+  }
+  return spreadPx(left.trimEnd(), right);
 }
 
 export function boardLines(world: World, cursor: number): string[] {
   const b = world.board;
   if (!b) return ["HEADWAY", "", "Loading trains...", "", "hold: menu  2x tap: exit"];
-  const lines = [spreadPx(`${b.from.short} > ${b.to.short}`, b.live ? clockAmPm(world.now) : `SCHED ${clock(world.now)}`)];
-  // The footer: an alert or a note (offline, pair, timetable only) above the gesture hint, which
-  // always shows (a first-time user, or a reviewer, learns the ring from it).
-  const footer = [b.alerts.length ? fitPx(`! ${b.alerts[0].header}`) : world.note ?? (!b.live ? "Timetable only, no live data" : null), "tap: flip  hold: menu  2x: exit"]
-    .filter((l): l is string => Boolean(l));
+  const title = b.express_preference === "express_only" ? `${b.from.short} > ${b.to.short} EXP` : `${b.from.short} > ${b.to.short}`;
+  const lines = [spreadPx(title, b.live ? clockAmPm(world.now) : `SCHED ${clock(world.now)}`)];
+
+  const leaveTrain = b.walk_minutes != null
+    ? (b.trains.find((t) => t.catch === "leave") ?? b.trains.find((t) => t.catch === "run"))
+    : null;
+  const leaveHint = leaveTrain && leaveTrain.leave_by != null
+    ? (untilText(leaveTrain.leave_by, world.now) === "now" || leaveTrain.catch === "run"
+        ? `Leave now for ${leaveTrain.train} (walk ${b.walk_minutes})`
+        : `Leave in ${untilText(leaveTrain.leave_by, world.now)} for ${leaveTrain.train} (walk ${b.walk_minutes})`)
+    : null;
+  const tipHint = b.tip ? `Wait for ${b.tip.wait_for}: beats ${b.tip.instead_of} by ${b.tip.saves_min}m` : null;
+
+  // The footer: an alert, an overtaking tip, a leave-by hint, or a note (offline, pair, timetable only) above the gesture hint,
+  // which always shows (a first-time user, or a reviewer, learns the ring from it).
+  const footer = [
+    b.alerts.length ? fitPx(`! ${b.alerts[0].header}`) : tipHint ?? leaveHint ?? world.note ?? (!b.live ? "Timetable only, no live data" : null),
+    "tap: flip  hold: menu  2x: exit"
+  ].filter((l): l is string => Boolean(l));
   const rows = MAX_LINES - 1 - footer.length;
-  if (!b.trains.length) lines.push("", "No more trains today.");
+  if (!b.trains.length) lines.push("", b.express_preference === "express_only" ? "No express trains today." : "No more trains today.");
   const first = Math.max(0, Math.min(cursor - 1, b.trains.length - rows));
-  b.trains.slice(first, first + rows).forEach((t, i) => lines.push(trainRow(t, world.now, first + i === cursor)));
+  b.trains.slice(first, first + rows).forEach((t, i) => lines.push(trainRow(t, world.now, first + i === cursor, b.walk_minutes)));
   while (lines.length < 1 + rows) lines.push("");
   return [...lines, ...footer].slice(0, MAX_LINES);
 }
@@ -149,11 +175,16 @@ export class Navigator {
     return [];
   }
 
-  /** Keeps the cursor on the same train when a new board arrives. */
+  /** Keeps the cursor on the same train when a new board arrives, or picks the first catchable train. */
   boardChanged(world: World) {
     const trains = world.board?.trains ?? [];
     const i = this.cursorTrip ? trains.findIndex((t) => t.trip_id === this.cursorTrip) : -1;
-    this.cursor = i >= 0 ? i : Math.min(this.cursor, Math.max(0, trains.length - 1));
+    if (i >= 0) {
+      this.cursor = i;
+    } else {
+      const leaveIdx = trains.findIndex((t) => t.catch === "leave");
+      this.cursor = leaveIdx >= 0 ? leaveIdx : Math.min(this.cursor, Math.max(0, trains.length - 1));
+    }
     if (i < 0) this.cursorTrip = trains[this.cursor]?.trip_id ?? null;
   }
 
@@ -258,6 +289,9 @@ export class Navigator {
     let lines: string[];
     switch (this.screen) {
       case "board":
+        if (this.cursorTrip === null && world.board) {
+          this.boardChanged(world);
+        }
         lines = boardLines(world, this.cursor);
         break;
       case "track":

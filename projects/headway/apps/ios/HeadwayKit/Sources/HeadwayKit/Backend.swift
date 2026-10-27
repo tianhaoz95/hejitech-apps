@@ -192,9 +192,17 @@ public final class Backend: @unchecked Sendable {
     public struct OK: Decodable, Sendable {}
 
     public func stations() async throws -> [Station] { try await call("GET", "/api/stations", auth: false) }
-    public func myBoard(from: String? = nil, to: String? = nil) async throws -> MyBoard {
-        let q = (from != nil && to != nil) ? "?from=\(from!)&to=\(to!)" : ""
+    public func myBoard(from: String? = nil, to: String? = nil, express: ExpressPreference? = nil) async throws -> MyBoard {
+        var items: [String] = []
+        if let from, let to { items.append("from=\(from)&to=\(to)") }
+        if let express, express != .all { items.append("express=\(express.rawValue)") }
+        let q = items.isEmpty ? "" : "?\(items.joined(separator: "&"))"
         return try await call("GET", "/api/me/board\(q)")
+    }
+    public func board(from: String, to: String, express: ExpressPreference? = nil) async throws -> Board {
+        var items = ["from=\(from)&to=\(to)"]
+        if let express, express != .all { items.append("express=\(express.rawValue)") }
+        return try await call("GET", "/api/board?\(items.joined(separator: "&"))", auth: false)
     }
     public func settings() async throws -> SettingsResponse { try await call("GET", "/api/settings") }
     public func save(_ settings: Settings) async throws -> SettingsResponse {
@@ -211,6 +219,26 @@ public final class Backend: @unchecked Sendable {
         let _: OK = try await call("POST", "/api/push", body: Body(token: token, environment: sandbox ? "sandbox" : "production", label: label))
     }
     public func unregisterPush(token: String) async throws { let _: OK = try await call("DELETE", "/api/push/\(token)") }
+    public func registerActivityToken(token: String, kind: String, tripId: String? = nil, sandbox: Bool) async throws {
+        struct Body: Encodable {
+            let token: String
+            let kind: String
+            let trip_id: String?
+            let environment: String
+        }
+        let _: OK = try await call("POST", "/api/me/activity", body: Body(token: token, kind: kind, trip_id: tripId, environment: sandbox ? "sandbox" : "production"))
+    }
+    public func unregisterActivityToken(token: String? = nil) async throws {
+        struct Body: Encodable { let token: String? }
+        let _: OK = try await call("DELETE", "/api/me/activity", body: Body(token: token))
+    }
+    public func createEtaShare(name: String? = nil) async throws -> EtaShareResponse {
+        struct Body: Encodable { let name: String? }
+        return try await call("POST", "/api/me/share", body: Body(name: name))
+    }
+    public func revokeEtaShare() async throws {
+        let _: OK = try await call("DELETE", "/api/me/share")
+    }
     public func testPush() async throws { let _: OK = try await call("POST", "/api/push/test") }
     public func deleteData() async throws { let _: OK = try await call("DELETE", "/api/account") }
 }

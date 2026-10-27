@@ -49,6 +49,17 @@ export function randomToken(prefix: string): string {
   return prefix + btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+const B62_CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+export function randomBase62(len = 9): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(len));
+  let str = "";
+  for (let i = 0; i < len; i++) {
+    str += B62_CHARS[bytes[i] % 62];
+  }
+  return str;
+}
+
 /** Six digits, uniformly random (rejection sampling). */
 export function pairingCode(): string {
   const max = 4_294_000_000; // largest multiple of 1e6 below 2^32
@@ -114,11 +125,77 @@ export async function loadTracked(db: Db, userId: string): Promise<Tracked | nul
 
 export async function saveTracked(db: Db, userId: string, t: Tracked | null): Promise<void> {
   if (!t) {
-    await db.from("tracked_trips").delete().eq("user_id", userId);
+    await Promise.all([
+      db.from("tracked_trips").delete().eq("user_id", userId),
+      revokeEtaShares(db, userId),
+    ]);
     return;
   }
   const { error } = await db.from("tracked_trips").upsert({ user_id: userId, trip_id: t.trip_id, service_date: t.service_date, from_station: t.from, to_station: t.to, created_at: new Date().toISOString() });
   if (error) throw new Error(`couldn't track the train: ${error.message}`);
+}
+
+// ---------------------------------------------------------------- eta shares
+
+export interface EtaShareRow {
+  token_hash: string;
+  user_id: string;
+  trip_id: string;
+  service_date: string;
+  from_station: string;
+  to_station: string;
+  name: string | null;
+  expires_at: string;
+  revoked_at: string | null;
+  created_at: string;
+}
+
+export async function createEtaShare(
+  db: Db,
+  userId: string,
+  trip: Tracked,
+  name?: string | null,
+  publicUrl = "https://headway.hejitech.workers.dev",
+  expiresInMs = 4 * 3600_000
+): Promise<{ token: string; url: string; expires_at: string }> {
+  const token = randomBase62(9);
+  const token_hash = await sha256(token);
+  const expires_at = new Date(Date.now() + expiresInMs).toISOString();
+
+  const { error } = await db.from("eta_shares").insert({
+    token_hash,
+    user_id: userId,
+    trip_id: trip.trip_id,
+    service_date: trip.service_date,
+    from_station: trip.from,
+    to_station: trip.to,
+    name: name?.trim() ? name.trim().slice(0, 20) : null,
+    expires_at,
+  });
+  if (error) throw new Error(`couldn't create eta share: ${error.message}`);
+  const base = publicUrl.replace(/\/+$/, "");
+  return { token, url: `${base}/eta/${token}`, expires_at };
+}
+
+export async function loadEtaShare(db: Db, token: string): Promise<EtaShareRow | null> {
+  const token_hash = await sha256(token);
+  const now = new Date().toISOString();
+  const { data } = await db
+    .from("eta_shares")
+    .select("token_hash, user_id, trip_id, service_date, from_station, to_station, name, expires_at, revoked_at, created_at")
+    .eq("token_hash", token_hash)
+    .is("revoked_at", null)
+    .gt("expires_at", now)
+    .maybeSingle();
+  return data ?? null;
+}
+
+export async function updateEtaShareExpiry(db: Db, tokenHash: string, expiresAt: string): Promise<void> {
+  await db.from("eta_shares").update({ expires_at: expiresAt }).eq("token_hash", tokenHash);
+}
+
+export async function revokeEtaShares(db: Db, userId: string): Promise<void> {
+  await db.from("eta_shares").update({ revoked_at: new Date().toISOString() }).eq("user_id", userId).is("revoked_at", null);
 }
 
 // ---------------------------------------------------------------- http

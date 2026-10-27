@@ -457,6 +457,41 @@ label.check input[type="checkbox"]:focus-visible, input.switch:focus-visible {
   font-size: 15px;
   font-variant-numeric: tabular-nums;
 }
+.filter-bar {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0 16px;
+  flex-wrap: wrap;
+}
+.filter-btn {
+  background: var(--bg2);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+.filter-btn:hover {
+  color: var(--fg);
+  border-color: var(--muted);
+}
+.filter-btn.active {
+  background: var(--card);
+  color: var(--fg);
+  border-color: var(--accent);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.1);
+  font-weight: 600;
+}
+.filter-btn.active[data-pref="express_only"],
+.filter-btn.active[data-pref="prefer_express"] {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+
 .trains .kind-pill {
   font-size: 11px;
   font-weight: 600;
@@ -466,7 +501,16 @@ label.check input[type="checkbox"]:focus-visible, input.switch:focus-visible {
   color: var(--muted);
   letter-spacing: 0.01em;
 }
-.trains .kind-pill.EXP { background: var(--bad-soft); color: var(--bad); }
+.trains .kind-pill.EXP {
+  background: var(--bad-soft);
+  color: var(--bad);
+  font-weight: 700;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  box-shadow: 0 1px 2px rgba(239, 68, 68, 0.15);
+}
+.trains li.train.is-express {
+  border-left: 3px solid var(--bad);
+}
 .trains .kind-pill.LTD { background: var(--warn-soft); color: var(--warn); }
 .trains .kind-pill.LOC { background: var(--bg2); color: var(--muted); }
 .trains .times { display: flex; flex-direction: column; gap: 2px; min-width: 0; }

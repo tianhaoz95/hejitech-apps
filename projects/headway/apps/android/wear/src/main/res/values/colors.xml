@@ -1,0 +1,6 @@
+<resources>
+    <color name="caltrain_red">#E31837</color>
+    <color name="caltrain_red_dark">#B31027</color>
+    <color name="bg_black">#000000</color>
+    <color name="surface_dark">#181818</color>
+</resources>

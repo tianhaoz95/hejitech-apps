@@ -15,6 +15,15 @@ function stationSelect(value: string | null, allowNone: boolean) {
   return s;
 }
 
+function expressSelect(value: string | undefined) {
+  const s = el("select", {});
+  s.append(el("option", { value: "all" }, "All trains (Local, Limited, Express)"));
+  s.append(el("option", { value: "prefer_express" }, "⚡ Prefer express (faster trains first)"));
+  s.append(el("option", { value: "express_only" }, "⚡ Express only (strictly express trains)"));
+  s.value = value && (value === "prefer_express" || value === "express_only") ? value : "all";
+  return s;
+}
+
 const field = (label: string, input: HTMLElement, hint?: string) =>
   el("label", { class: "field" }, el("span", {}, label), input, hint ? el("span", { class: "hint" }, hint) : null);
 const time = (v: string | null) => el("input", { type: "time", value: v ?? "" });
@@ -42,6 +51,7 @@ function legEditor(part: "morning" | "evening", leg: Leg | null, onMirror?: () =
   const to = stationSelect(leg?.to ?? null, true);
   const walk = num(base.walk_minutes, 0, 90);
   const usual = time(base.usual);
+  const expPref = expressSelect(base.express_preference);
   const start = time(base.window.start);
   const end = time(base.window.end);
   const routeBadge = el("span", { class: "badge" });
@@ -70,6 +80,11 @@ function legEditor(part: "morning" | "evening", leg: Leg | null, onMirror?: () =
         swapBtn,
         field("To", to)),
       el("div", { class: "leg-subgrid" },
+        el("div", { class: "subcard" },
+          el("div", { class: "subcard-title" }, "Train preference"),
+          el("div", { class: "subcard-fields" },
+            field("Trains to take", expPref)),
+          el("p", { class: "subcard-hint" }, "Choose whether to prioritize or strictly ride Caltrain express trains.")),
         el("div", { class: "subcard" },
           el("div", { class: "subcard-title" }, "Leave-now & walk"),
           el("div", { class: "subcard-fields" },
@@ -133,6 +148,7 @@ function legEditor(part: "morning" | "evening", leg: Leg | null, onMirror?: () =
         walk_minutes: Number(walk.value),
         usual: usual.value || null,
         window: { start: start.value, end: end.value },
+        express_preference: expPref.value as any,
       };
     },
   };
@@ -186,6 +202,7 @@ async function render() {
   const leaveSw = toggle(a.leave_now, "Leave-now reminder");
   const arrivalSw = toggle(a.arrival, "Arrival alert for tracked train");
   const arrivalMin = num(a.arrival_minutes, 1, 60, "num-inline");
+  const betterTrainSw = toggle(a.better_train, "Better train alerts");
 
   const status = el("p", { class: "small muted", role: "status" }, "Changes apply to your glasses and iPhone on save.");
   const save = el("button", { class: "btn primary", type: "button" }, "Save commute & alerts");
@@ -204,6 +221,7 @@ async function render() {
         leave_now: leaveSw.checked,
         arrival: arrivalSw.checked,
         arrival_minutes: Number(arrivalMin.value),
+        better_train: betterTrainSw.checked,
       },
     };
     const issues = checkSettings(next);
@@ -259,6 +277,10 @@ async function render() {
           "Caltrain service alerts",
           "Station advisories affecting your origin or destination",
           serviceSw),
+        settingRow(
+          "Faster train available",
+          "Notify when a later-departing express train reaches your stop sooner",
+          betterTrainSw),
         settingRow(
           "Leave-now reminder",
           "Fires your walk time before your usual train's predicted departure",

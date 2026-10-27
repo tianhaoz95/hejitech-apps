@@ -19,9 +19,30 @@ describe("board screen", () => {
     fits(lines);
     expect(lines[0]).toMatch(/^MTN VIEW > SF/);
     expect(lines[0]).toContain("SCHED");
-    expect(lines[1].startsWith(">")).toBe(true);
-    expect(lines.at(-2)).toBe("Timetable only, no live data");
+    expect(lines[2].startsWith(">")).toBe(true);
+    expect(lines.at(-2)).toBe("Leave in 11m for 113 (walk 10)");
     expect(lines.at(-1)).toBe("tap: flip  hold: menu  2x: exit");
+  });
+  it("shows go Xm or RUN on rows when walk_minutes is set", () => {
+    const nav = new Navigator();
+    const lines = nav.lines(world());
+    fits(lines);
+    expect(lines[1]).toContain("RUN");
+    expect(lines[2]).toMatch(/go \d+m/);
+  });
+  it("shows timetable note when no commute leg walk is set", () => {
+    const nav = new Navigator();
+    const customWorld = world({ board: board("mountain_view", "san_francisco", now, null) });
+    const lines = nav.lines(customWorld);
+    fits(lines);
+    expect(lines.at(-2)).toBe("Timetable only, no live data");
+  });
+  it("shows overtaking tip in footer when a train is overtaken", () => {
+    const t113 = firstTrain(WEEKDAY, "08:15");
+    const snap = snapshot(now, { [t113.trip_id]: { stops: { [station("mountain_view")!.nb!]: { delay: 480 } } } });
+    const lines = new Navigator().lines(world({ board: commuteBoard(commuter(), now, snap) }));
+    fits(lines);
+    expect(lines.at(-2)).toBe("Wait for 511: beats 113 by 2m");
   });
   it("shows live delays and the first alert", () => {
     const t = firstTrain(WEEKDAY, "07:55");

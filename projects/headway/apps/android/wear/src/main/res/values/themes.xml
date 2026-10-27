@@ -1,0 +1,5 @@
+<resources>
+    <style name="Theme.Headway.Wear" parent="android:Theme.DeviceDefault">
+        <item name="android:windowBackground">@color/bg_black</item>
+    </style>
+</resources>

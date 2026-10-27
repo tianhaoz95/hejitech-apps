@@ -55,8 +55,32 @@ calls made while building, with the reason for each.
   the snapshot and the sent log aren't readable at all. Tokens: `hwd_` glasses, `hwa_` assistants
   (hashes only). "Delete my Headway data" removes every row and disconnects assistants; the shared
   sign-in stays (other HEJI apps use it).
-- **No Live Activity in v1.** Its updates would need ActivityKit push tokens per activity; the
-  tracked row on the Trains tab and the arrival push cover the need for now.
+- **Live Activity on Lock Screen and Dynamic Island (v0.2.0).** Backed by ActivityKit and the
+  HeadwayWidgets app-extension. When tracking starts (on the phone, glasses or assistant),
+  ActivityKit tokens are registered in `headway.activity_tokens` (`start` tokens for push-to-start
+  and `update` tokens for active sessions). The Worker cron pushes updates and arrival endings as
+  `liveactivity` APNs pushes, so the activity stays live throughout the trip without waking the app.
+- **Catch it: leave-by times (2026-10-27).** The board answers "when do I have to walk out the door?":
+  `leave_by = pred_dep - walk_minutes * 60_000`. Trains are classified into catch states: `leave` (first
+  catchable train), `later`, `run` (departure within walk/2 to walk), and `missed` (< walk/2). Custom pairs
+  keep minute-until countdowns. On the Even G2 glasses, rows display `go 17m` or `RUN`, the footer hints
+  which train to leave for, and the cursor starts on the best train. On iOS, a `CatchCard` counts down with a
+  circular ring, and `TrainRow` shows leave-by times with `RUN` alerts.
+- **Wait for the express: overtaking tips & better train alerts (2026-10-27).** When mixed service and
+  live delays cause a later-departing express train to reach a destination earlier than a delayed train,
+  Headway flags the train as overtaken (`t.overtaken_by`), tags the fastest arrival (`first_in`) and
+  shortest ride (`shortest`), and highlights an overtaking tip (`board.tip`) saving ≥ 2 minutes. The Even
+  G2 footer shows `Wait for 511: beats 113 by 2m`, the iPhone board displays an `InsightBanner` and
+  supports Leaving vs Arriving sort, and the alert engine delivers a time-sensitive `better_train` push
+  ("take 511 instead") inside the watched commute window.
+- **Share my live ETA (2026-10-27).** Riders can share an ephemeral live tracking web link (`/eta/:token`)
+  with friends or family directly from the tracked row on the iPhone app (`ShareLink` / share sheet) or MCP
+  (`share_eta`). The link resolves without login, showing a mobile-first responsive status card with live
+  prediction, delay badge, countdown, upcoming stops progress timeline, and 30-second live polling.
+  Security & privacy: URL tokens are 9 base62 characters (~53 bits entropy) hashed with SHA-256 before storage
+  in `headway.eta_shares`, with no GPS or location tracking. Links automatically expire 30 minutes after train
+  arrival, are instantly revoked upon untracking or starting a new share, and can display an optional user-chosen
+  name (customized in Commute settings). Expired rows are cleaned up daily by the Worker cron.
 - **No FeedbackKit SDK yet.** It needs a FeedbackKit project and key for Headway; add it with the
   first round of TestFlight feedback.
 - **Even Hub review (2026-10-26):** double-tap on the board (the root page) opens the system exit

@@ -60,6 +60,18 @@ describe("leave now", () => {
     const s = commuter();
     expect(run(leave, undefined, { morning: { ...s.morning!, usual: null } }).notifications.filter((n) => n.kind === "leave_now")).toHaveLength(0);
   });
+  it("targets express train when express_only is set", () => {
+    const s = commuter();
+    // 08:36 train is express; leave time is 08:26 (10 min walk)
+    const leave = at(WEEKDAY, "08:26");
+    const res = run(leave, undefined, {
+      morning: { ...s.morning!, usual: "08:00", walk_minutes: 10, express_preference: "express_only" },
+    });
+    const n = res.notifications.find((x) => x.kind === "leave_now");
+    expect(n).toBeDefined();
+    expect(n?.title).toContain("8:36");
+    expect(n?.body).toContain("Express");
+  });
 });
 
 describe("service alerts", () => {
@@ -83,5 +95,26 @@ describe("arrival", () => {
   });
   it("ends tracking after arrival", () => {
     expect(run(t.arr + 5 * MIN, null, {}, new Set(), tracked).trackingDone).toBe(true);
+  });
+});
+
+describe("better train alerts", () => {
+  it("fires when a train inside the window is overtaken by a later train that arrives sooner", () => {
+    const now = at(WEEKDAY, "07:55");
+    const t113 = firstTrain(WEEKDAY, "08:15");
+    const snap = snapshot(now, { [t113.trip_id]: { stops: { [mv.nb!]: { delay: 8 * 60 } } } });
+    const res = run(now, snap);
+    const n = res.notifications.find((x) => x.kind === "better_train");
+    expect(n).toBeDefined();
+    expect(n?.title).toContain("take 511 instead");
+    expect(n?.body).toContain("2 min before");
+
+    // Dedupe prevents sending again
+    const again = run(now, snap, {}, new Set([n!.key]));
+    expect(again.notifications.filter((x) => x.kind === "better_train")).toHaveLength(0);
+
+    // Disabled setting prevents sending
+    const disabled = run(now, snap, { alerts: { ...commuter().alerts, better_train: false } });
+    expect(disabled.notifications.filter((x) => x.kind === "better_train")).toHaveLength(0);
   });
 });

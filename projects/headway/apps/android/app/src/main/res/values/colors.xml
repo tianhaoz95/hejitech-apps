@@ -1,0 +1,8 @@
+<resources>
+    <color name="caltrain_red">#E31837</color>
+    <color name="caltrain_red_dark">#B31027</color>
+    <color name="bg_dark">#121212</color>
+    <color name="surface_dark">#1E1E1E</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#AAAAAA</color>
+</resources>

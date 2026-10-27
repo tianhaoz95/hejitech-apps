@@ -21,7 +21,7 @@ export const DELAY_STEP_MIN = 5;
 /** Delay and cancellation alerts cover this many upcoming trains of a leg. */
 export const ALERT_TRAINS = 3;
 
-export type NotificationKind = "delay" | "cancellation" | "service" | "leave_now" | "arrival";
+export type NotificationKind = "delay" | "cancellation" | "service" | "leave_now" | "arrival" | "better_train";
 
 export interface Notification {
   /** Dedupe key: the same key is never sent twice to one user. */
@@ -63,8 +63,9 @@ function legNotifications(leg: Leg, part: "morning" | "evening", input: AlertInp
   const out: Notification[] = [];
   const from = station(leg.from), to = station(leg.to);
   if (!from || !to) return out;
+  const pref = leg.express_preference ?? settings.express_preference ?? "all";
   const windowEnd = atLocal(z.date, leg.window.end);
-  const trains = departures(leg.from, leg.to, now, snapshot, { lookbackMs: 0, horizonMs: ALERT_LOOKAHEAD_MS, before: windowEnd, limit: 20 });
+  const trains = departures(leg.from, leg.to, now, snapshot, { lookbackMs: 0, horizonMs: ALERT_LOOKAHEAD_MS, before: windowEnd, limit: 20, expressPreference: pref });
   const soon = (t: BoardTrain) => t.pred_dep >= now && t.dep - now <= ALERT_LOOKAHEAD_MS;
   const route = `${from.name} → ${to.name}`;
 
@@ -85,11 +86,31 @@ function legNotifications(leg: Leg, part: "morning" | "evening", input: AlertInp
         body: `Leaves ${from.name} ${clock(t.pred_dep)} (scheduled ${clock(t.dep)}), arrives ${to.name} ${clock(t.pred_arr)}.`,
       });
     }
+    if (a.better_train !== false && t.overtaken_by && t.status !== "cancelled") {
+      const overtaker = trains.find((o) => o.trip_id === t.overtaken_by && o.status !== "cancelled");
+      if (overtaker) {
+        const savesMin = Math.round((t.pred_arr - overtaker.pred_arr) / MIN);
+        if (savesMin >= 2) {
+          out.push({
+            key: `better:${t.service_date}:${t.trip_id}:${overtaker.trip_id}`, kind: "better_train", thread,
+            title: `${t.train} is ${t.delay_min ? `${t.delay_min} min late` : "delayed"}: take ${overtaker.train} instead`,
+            body: `${trainName(overtaker)} leaves ${from.name} at ${clock(overtaker.pred_dep)} and reaches ${to.name} at ${clock(overtaker.pred_arr)}, ${savesMin} min before ${t.train}.`,
+          });
+        }
+      }
+    }
   }
 
   if (a.leave_now && leg.usual) {
     const usual = atLocal(z.date, leg.usual);
-    const target = departures(leg.from, leg.to, now, snapshot, { lookbackMs: 0, after: usual, limit: 6 }).find((t) => t.status !== "cancelled" && t.service_date === z.date);
+    const pool = departures(leg.from, leg.to, now, snapshot, { lookbackMs: 0, after: usual, limit: 8, expressPreference: pref });
+    let target: BoardTrain | undefined;
+    if (pref === "prefer_express") {
+      const exp = pool.find((t) => t.kind === "EXP" && t.status !== "cancelled" && t.service_date === z.date && t.dep - usual <= 30 * MIN);
+      target = exp ?? pool.find((t) => t.status !== "cancelled" && t.service_date === z.date);
+    } else {
+      target = pool.find((t) => t.status !== "cancelled" && t.service_date === z.date);
+    }
     if (target) {
       const leaveAt = target.pred_dep - leg.walk_minutes * MIN;
       if (now >= leaveAt - MIN / 2 && now < target.pred_dep) {

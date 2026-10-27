@@ -4,11 +4,11 @@
 //   none                          stations, any board, a train's progress, status; POST /api/pair (throttled)
 //   session or glasses token      the user's commute board, the tracked train
 //   Supabase session (web, iPhone) settings, pairing codes, devices, push registration, agent tokens, delete data
-import { board, checkSettings, commuteBoard, normalizeSettings, progress, station, STATIONS, timetableDaysLeft, TIMETABLE, type Notification, type Settings, type Tracked } from "@headway/core";
+import { board, checkSettings, commuteBoard, normalizeSettings, progress, station, STATIONS, timetableDaysLeft, TIMETABLE, tripProgressStops, type ExpressPreference, type Notification, type Settings, type Tracked } from "@headway/core";
 import { pushConfigured, sendPush } from "./push.ts";
 import {
-  admin, bearer, json, loadSettings, loadSnapshot, loadTracked, pairingCode, PAIRING_CODE_TTL_MS, PREFIX, randomToken, resolveDevice,
-  saveSettings, saveTracked, sha256, supabaseUser, type Db, type Env,
+  admin, bearer, createEtaShare, json, loadEtaShare, loadSettings, loadSnapshot, loadTracked, pairingCode, PAIRING_CODE_TTL_MS, PREFIX, randomToken, resolveDevice,
+  revokeEtaShares, saveSettings, saveTracked, sha256, supabaseUser, updateEtaShareExpiry, type Db, type Env,
 } from "./store.ts";
 
 const PAIR_FAILURES_PER_WINDOW = 10;
@@ -53,6 +53,9 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
   const path = url.pathname;
   const now = Date.now();
 
+  const expressParam = (url.searchParams.get("express") ?? url.searchParams.get("express_preference")) as ExpressPreference | null;
+  const validExpress = expressParam === "all" || expressParam === "prefer_express" || expressParam === "express_only" ? expressParam : undefined;
+
   // ------------------------------------------------------------ public
   if (path === "/api/stations" && req.method === "GET") {
     return reply(STATIONS.map(({ id, name, short, lat, lon }) => ({ id, name, short, lat, lon })), 200, { "Cache-Control": "public, max-age=86400" });
@@ -60,7 +63,7 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
   if (path === "/api/board" && req.method === "GET") {
     const p = pairOf(url);
     if (!p) return reply({ error: "send ?from=<station>&to=<station> (ids from /api/stations)" }, 400);
-    const b = board(p.from, p.to, now, await loadSnapshot(db));
+    const b = board(p.from, p.to, now, await loadSnapshot(db), "custom", TIMETABLE, validExpress ? { expressPreference: validExpress } : {});
     return b ? reply(b, 200, { "Cache-Control": "public, max-age=20" }) : reply({ error: "unknown stations, or the same station twice" }, 400);
   }
   if (path === "/api/train" && req.method === "GET") {
@@ -95,6 +98,37 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
     }
     return reply({ device_token: token, device_id: row.device_id });
   }
+  const etaMatch = path.match(/^\/api\/eta\/([^/]+)$/);
+  if (etaMatch && req.method === "GET") {
+    const token = etaMatch[1];
+    const row = await loadEtaShare(db, token);
+    if (!row) return reply({ error: "share not found or expired" }, 404);
+    const tracked: Tracked = { trip_id: row.trip_id, service_date: row.service_date, from: row.from_station, to: row.to_station };
+    const snapshot = await loadSnapshot(db);
+    const p = progress(tracked, now, snapshot);
+    if (!p) return reply({ error: "train progress unavailable" }, 404);
+    const stops = tripProgressStops(tracked, now, snapshot);
+    if (p.arrived) {
+      const exp = new Date(now + 30 * 60_000).toISOString();
+      if (row.expires_at > exp) await updateEtaShareExpiry(db, row.token_hash, exp);
+    }
+    return reply({
+      name: row.name,
+      train: p.train,
+      kind: p.kind,
+      to: p.to.id,
+      to_name: p.to.name,
+      to_short: p.to.short,
+      pred_arr: p.pred_arr,
+      arr: p.arr,
+      delay_min: p.delay_min,
+      cancelled: p.cancelled,
+      arrived: p.arrived,
+      stops,
+      updated_at: now,
+      expires_at: row.expires_at,
+    }, 200, { "Cache-Control": "public, max-age=15" });
+  }
 
   const who = await caller(env, db, req);
   if (!who) return reply({ error: "sign in, or pair these glasses again" }, 401);
@@ -104,7 +138,7 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
   if (path === "/api/device" && req.method === "GET") return reply({ paired: true, via: who.via });
   if (path === "/api/me/board" && req.method === "GET") {
     const [{ settings, saved }, snapshot, tracked] = await Promise.all([loadSettings(db, userId), loadSnapshot(db), loadTracked(db, userId)]);
-    const b = commuteBoard(settings, now, snapshot, pairOf(url));
+    const b = commuteBoard(settings, now, snapshot, pairOf(url), validExpress ? { expressPreference: validExpress } : {});
     const p = tracked ? progress(tracked, now, snapshot) : null;
     return reply({ board: b, has_commute: Boolean(settings.morning || settings.evening), saved, tracked: tracked && p && !p.arrived ? { ...tracked, progress: p } : null });
   }
@@ -116,6 +150,50 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
   }
   if (path === "/api/track" && req.method === "DELETE") {
     await saveTracked(db, userId, null);
+    await db.from("activity_tokens").delete().eq("user_id", userId).eq("kind", "update");
+    return reply({ ok: true });
+  }
+  if (path === "/api/me/share" && req.method === "POST") {
+    const tracked = await loadTracked(db, userId);
+    if (!tracked) return reply({ error: "no train currently tracked" }, 400);
+    const { settings } = await loadSettings(db, userId);
+    const body = (await req.json().catch(() => ({}))) as { name?: string };
+    const name = typeof body?.name === "string" ? body.name : settings.share_name;
+    const share = await createEtaShare(db, userId, tracked, name, env.PUBLIC_URL);
+    return reply(share, 201);
+  }
+  if (path === "/api/me/share" && req.method === "DELETE") {
+    await revokeEtaShares(db, userId);
+    return reply({ ok: true });
+  }
+
+  // ------------------------------------------------------------ live activity tokens
+  if (path === "/api/me/activity" && req.method === "POST") {
+    const body = (await req.json().catch(() => ({}))) as { token?: string; kind?: string; trip_id?: string; environment?: string };
+    const token = String(body.token ?? "").trim();
+    if (!token || token.length < 16) return reply({ error: "valid push token required" }, 400);
+    const kind = body.kind === "start" ? "start" : body.kind === "update" ? "update" : null;
+    if (!kind) return reply({ error: "kind must be start or update" }, 400);
+    const environment = body.environment === "sandbox" ? "sandbox" : "production";
+    const tripId = body.trip_id ? String(body.trip_id) : null;
+    const { error } = await db.from("activity_tokens").upsert({
+      user_id: userId,
+      kind,
+      token,
+      trip_id: tripId,
+      environment,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) return reply({ error: error.message }, 500);
+    return reply({ ok: true });
+  }
+  if (path === "/api/me/activity" && req.method === "DELETE") {
+    const body = (await req.json().catch(() => ({}))) as { token?: string };
+    let q = db.from("activity_tokens").delete().eq("user_id", userId);
+    if (body.token) q = q.eq("token", String(body.token).trim());
+    else q = q.eq("kind", "update");
+    const { error } = await q;
+    if (error) return reply({ error: error.message }, 500);
     return reply({ ok: true });
   }
 
@@ -200,7 +278,7 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
 
   // ------------------------------------------------------------ delete everything Headway keeps
   if (path === "/api/account" && req.method === "DELETE") {
-    for (const t of ["profiles", "pairing_codes", "device_tokens", "access_tokens", "push_devices", "tracked_trips", "sent_notifications"]) {
+    for (const t of ["profiles", "pairing_codes", "device_tokens", "access_tokens", "push_devices", "activity_tokens", "tracked_trips", "sent_notifications"]) {
       const { error } = await db.from(t).delete().eq("user_id", userId);
       if (error) return reply({ error: `couldn't delete ${t}: ${error.message}` }, 500);
     }

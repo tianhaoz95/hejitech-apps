@@ -1,6 +1,6 @@
 # Headway
 
-Caltrain status on Even G2 glasses + R1 ring, with iPhone alerts. A Worker merges Caltrain's
+Caltrain status on Apple Watch, Even G2 glasses + R1 ring, with iPhone alerts. A Worker merges Caltrain's
 timetable (compiled in) with 511.org's live feed into boards for the glasses, the iPhone app, the
 web page and an MCP server, and its every-minute cron pushes alerts through APNs. Layout:
 `README.md`. Why things are the way they are: `docs/decisions.md` (read it before changing
@@ -24,6 +24,11 @@ npm run package -w @headway/glasses                    # apps/glasses/build/head
 cd projects/headway/apps/ios/HeadwayKit && swift test  # models, API client, sign-in helpers
 cd projects/headway/apps/ios && xcodegen generate      # Headway.xcodeproj is generated and git-ignored
 xcodebuild -project Headway.xcodeproj -scheme App -destination 'generic/platform=iOS Simulator' -derivedDataPath .derived CODE_SIGN_IDENTITY=- build
+
+# Android & Wear OS apps
+./projects/headway/apps/android/gradlew -p projects/headway/apps/android :core:test          # shared Kotlin models, clock & sync
+./projects/headway/apps/android/gradlew -p projects/headway/apps/android :app:assembleDebug   # Android mobile app (Compose Material 3)
+./projects/headway/apps/android/gradlew -p projects/headway/apps/android :wear:assembleDebug  # Wear OS watch app (Wear Compose + Tile + Complication)
 ```
 
 Local tokens from the seed: glasses `hwd_dev_local_device`, assistant `hwa_dev_local_token` (MCP at
@@ -48,7 +53,11 @@ stack), `-screen trains|commute|glasses|settings`, `-production` (Debug build ag
 - **iPhone app** (`apps/ios`): `HeadwayKit` (Codable mirrors of core's JSON, the Worker client,
   Supabase sign-in without an SDK) and `App/Sources` (`AppModel` drives `phase`; `route()` ends every
   sign-in path). Release builds use production, Debug the local stack. Tabs: Trains (board, flip,
-  pick, swipe to track), Commute (legs, alerts), Glasses (pairing code), Settings.
+  pick, swipe to track), Commute (legs, alerts), Glasses (pairing code), Settings. Keeps the Watch in step via `WatchLink`.
+- **Apple Watch app** (`apps/ios/Watch`): Companion watchOS app with glanceable departure board, live delays, countdowns, direction flip, express filtering, and train progress tracking synced with the iPhone app via WatchConnectivity and able to refresh directly.
+- **Android app** (`apps/android/app`): Native Jetpack Compose Material 3 phone app. Tabs: Trains (board, live delays, flip, station picker, track train), Commute (legs, alerts), Glasses (pairing code), Settings. Keeps paired Wear OS watches in step via Google Play Services Wearable Data Layer (`/headway/sync_state`).
+- **Wear OS app** (`apps/android/wear`): Companion smartwatch app built with Wear Compose. Features live wrist departure board, one-tap trip tracking, a glanceable Wear OS Tile (`HeadwayBoardTileService`) on the watch carousel, and a watch face complication (`NextTrainComplicationService`) for departure countdowns.
+- **Android Core library** (`apps/android/core`): Shared Kotlin data models, Caltrain station index, Pacific time conversions (`Clock`), coroutine HTTP API client (`HeadwayApiClient`), and Wearable Data Layer message serialization (`WatchSyncState`).
 
 ## Pitfalls
 

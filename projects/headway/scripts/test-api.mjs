@@ -274,6 +274,12 @@ await step("RLS: clients read only their own rows; codes and snapshot aren't rea
   assert.ok((await get("pairing_codes", session)).status >= 400);
   assert.ok((await get("realtime", session)).status >= 400);
 });
+await step("registers and removes activity tokens", async () => {
+  const reg = await call("/api/me/activity", { method: "POST", auth: session, body: { token: "activity-token-test-123", kind: "update", trip_id: "409" } });
+  assert.equal(reg.status, 200);
+  const del = await call("/api/me/activity", { method: "DELETE", auth: session, body: { token: "activity-token-test-123" } });
+  assert.equal(del.status, 200);
+});
 await step("deleting Headway data removes the user's rows only", async () => {
   assert.equal((await call("/api/account", { method: "DELETE", auth: other })).status, 200);
   const o = await call("/api/settings", { auth: other });

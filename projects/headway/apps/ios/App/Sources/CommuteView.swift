@@ -20,6 +20,21 @@ struct CommuteView: View {
                     Text("Before the switch time the glasses and the Trains tab open on your morning trains, after it on your evening ones. Commute alerts come only on these days.")
                 }
                 AlertsSection(alerts: $draft.alerts)
+                Section {
+                    HStack {
+                        Text("Display name")
+                        Spacer()
+                        TextField("Optional (e.g. Alex)", text: Binding(
+                            get: { draft.shareName ?? "" },
+                            set: { draft.shareName = $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : String($0.prefix(20)) }
+                        ))
+                        .multilineTextAlignment(.trailing)
+                    }
+                } header: {
+                    Text("Live ETA Sharing")
+                } footer: {
+                    Text("Shown on the live ETA web page when you share your ride with friends or family.")
+                }
                 if let e = model.error { Text(e).foregroundStyle(.red).font(.footnote) }
             }
             .navigationTitle("Commute")
@@ -63,6 +78,11 @@ struct LegSection: View {
                 let bind = Binding(get: { leg ?? current }, set: { leg = $0 })
                 StationPickerRow(title: "From", selection: bind.from)
                 StationPickerRow(title: "To", selection: bind.to)
+                Picker("Train preference", selection: bind.expressPreference) {
+                    ForEach(ExpressPreference.allCases, id: \.self) { pref in
+                        Text(pref.title).tag(pref)
+                    }
+                }
                 Toggle("Usual train", isOn: Binding(get: { current.usual != nil }, set: { leg?.usual = $0 ? (title == "Morning" ? "08:00" : "17:30") : nil }))
                 if current.usual != nil {
                     TimeField(title: "At or after", hhmm: Binding(get: { leg?.usual ?? "08:00" }, set: { leg?.usual = $0 }))
@@ -74,7 +94,7 @@ struct LegSection: View {
             }
         } footer: {
             if leg != nil {
-                Text("The leave-now reminder is for the first train at or after your usual time, your walk before it leaves. Delay, cancellation and service alerts only come inside the watch window.")
+                Text("Train preference lets you prefer or only take faster Caltrain express trains. The leave-now reminder targets the first matching train at or after your usual time. Alerts only come inside the watch window.")
             }
         }
     }
@@ -133,13 +153,14 @@ struct AlertsSection: View {
             if alerts.delay { Stepper("At least \(alerts.delayThreshold) min late", value: $alerts.delayThreshold, in: 1...60) }
             Toggle("Cancellations", isOn: $alerts.cancellation)
             Toggle("Caltrain service alerts", isOn: $alerts.service)
+            Toggle("Faster train alerts", isOn: $alerts.betterTrain)
             Toggle("Leave-now reminder", isOn: $alerts.leaveNow)
             Toggle("Before my stop", isOn: $alerts.arrival)
             if alerts.arrival { Stepper("\(alerts.arrivalMinutes) min before arriving", value: $alerts.arrivalMinutes, in: 1...60) }
         } header: {
             Text("Alerts")
         } footer: {
-            Text("\"Before my stop\" follows the train you track (here or with a long press on the R1 ring), any day. The Even app can show these alerts on your glasses too.")
+            Text("\"Faster train alerts\" tells you when a later express reaches your destination first. \"Before my stop\" follows the train you track (here or with a long press on the R1 ring), any day.")
         }
     }
 }

@@ -19,6 +19,20 @@ public enum TrainStatus: String, Codable, Sendable {
     case onTime = "on_time", late, early, cancelled, scheduled
 }
 
+public enum ExpressPreference: String, Codable, CaseIterable, Sendable {
+    case all
+    case preferExpress = "prefer_express"
+    case expressOnly = "express_only"
+
+    public var title: String {
+        switch self {
+        case .all: return "All trains"
+        case .preferExpress: return "Prefer express"
+        case .expressOnly: return "Express only"
+        }
+    }
+}
+
 public struct BoardTrain: Codable, Hashable, Identifiable, Sendable {
     public var tripId: String
     public var train: String
@@ -33,13 +47,30 @@ public struct BoardTrain: Codable, Hashable, Identifiable, Sendable {
     public var delayMin: Int?
     public var status: TrainStatus
     public var stopsBetween: Int
+    /// Epoch milliseconds when rider must leave (predDep - walk).
+    public var leaveBy: Double?
+    /// Catch state: "later", "leave", "run", "missed".
+    public var catchState: String?
+    /// Ride duration in minutes: (predArr - predDep) / 60_000.
+    public var rideMin: Int?
+    /// Trip id of a later-departing train that arrives sooner, if overtaken.
+    public var overtakenBy: String?
+    /// Train number of the overtaker (e.g. "511"), if overtaken.
+    public var overtakenByTrain: String?
+    /// True if this train is the earliest predicted arrival among visible trains.
+    public var firstIn: Bool?
+    /// True if this train has the shortest ride among visible non-cancelled trains.
+    public var shortest: Bool?
 
     public var id: String { "\(serviceDate):\(tripId)" }
     public var kindName: String { ["LOC": "Local", "LTD": "Limited", "EXP": "Express", "SCC": "South County"][kind] ?? kind }
+    public var isExpress: Bool { kind == "EXP" }
 
     enum CodingKeys: String, CodingKey {
         case train, kind, dir, dep, arr, status
         case tripId = "trip_id", serviceDate = "service_date", predDep = "pred_dep", predArr = "pred_arr", delayMin = "delay_min", stopsBetween = "stops_between"
+        case leaveBy = "leave_by", catchState = "catch"
+        case rideMin = "ride_min", overtakenBy = "overtaken_by", overtakenByTrain = "overtaken_by_train", firstIn = "first_in", shortest
     }
 }
 
@@ -50,6 +81,26 @@ public struct ServiceAlert: Codable, Hashable, Identifiable, Sendable {
     public var url: String?
 }
 
+public struct BoardTip: Codable, Hashable, Sendable {
+    public var waitFor: String
+    public var waitForKind: String
+    public var waitForDep: Double
+    public var waitForArr: Double
+    public var insteadOf: String
+    public var insteadOfArr: Double
+    public var savesMin: Int
+
+    enum CodingKeys: String, CodingKey {
+        case waitFor = "wait_for"
+        case waitForKind = "wait_for_kind"
+        case waitForDep = "wait_for_dep"
+        case waitForArr = "wait_for_arr"
+        case insteadOf = "instead_of"
+        case insteadOfArr = "instead_of_arr"
+        case savesMin = "saves_min"
+    }
+}
+
 public struct Board: Codable, Hashable, Sendable {
     public var from: StationRef
     public var to: StationRef
@@ -58,10 +109,15 @@ public struct Board: Codable, Hashable, Sendable {
     public var live: Bool
     public var trains: [BoardTrain]
     public var alerts: [ServiceAlert]
+    public var expressPreference: String?
+    public var walkMinutes: Int?
+    public var tip: BoardTip?
 
     enum CodingKeys: String, CodingKey {
-        case from, to, leg, live, trains, alerts
+        case from, to, leg, live, trains, alerts, tip
         case generatedAt = "generated_at"
+        case expressPreference = "express_preference"
+        case walkMinutes = "walk_minutes"
     }
 }
 
@@ -152,13 +208,15 @@ public struct Leg: Codable, Hashable, Sendable {
     /// "HH:MM": the first train at or after it gets the leave-now reminder.
     public var usual: String?
     public var window: TimeWindow
+    public var expressPreference: ExpressPreference
 
-    public init(from: String, to: String, walkMinutes: Int = 10, usual: String? = nil, window: TimeWindow) {
+    public init(from: String, to: String, walkMinutes: Int = 10, usual: String? = nil, window: TimeWindow, expressPreference: ExpressPreference = .all) {
         self.from = from
         self.to = to
         self.walkMinutes = walkMinutes
         self.usual = usual
         self.window = window
+        self.expressPreference = expressPreference
     }
 
     public static func morning(from: String, to: String) -> Leg { Leg(from: from, to: to, window: TimeWindow(start: "06:00", end: "10:30")) }
@@ -167,6 +225,17 @@ public struct Leg: Codable, Hashable, Sendable {
     enum CodingKeys: String, CodingKey {
         case from, to, usual, window
         case walkMinutes = "walk_minutes"
+        case expressPreference = "express_preference"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        from = try c.decode(String.self, forKey: .from)
+        to = try c.decode(String.self, forKey: .to)
+        walkMinutes = try c.decode(Int.self, forKey: .walkMinutes)
+        usual = try c.decodeIfPresent(String.self, forKey: .usual)
+        window = try c.decode(TimeWindow.self, forKey: .window)
+        expressPreference = (try? c.decodeIfPresent(ExpressPreference.self, forKey: .expressPreference)) ?? .all
     }
 
     // `usual` is always sent (null clears it).
@@ -177,6 +246,7 @@ public struct Leg: Codable, Hashable, Sendable {
         try c.encode(walkMinutes, forKey: .walkMinutes)
         try c.encode(usual, forKey: .usual)
         try c.encode(window, forKey: .window)
+        try c.encode(expressPreference, forKey: .expressPreference)
     }
 }
 
@@ -188,10 +258,34 @@ public struct AlertSettings: Codable, Hashable, Sendable {
     public var leaveNow: Bool
     public var arrival: Bool
     public var arrivalMinutes: Int
+    public var betterTrain: Bool
+
+    public init(delay: Bool = true, delayThreshold: Int = 5, cancellation: Bool = true, service: Bool = true, leaveNow: Bool = true, arrival: Bool = true, arrivalMinutes: Int = 5, betterTrain: Bool = true) {
+        self.delay = delay
+        self.delayThreshold = delayThreshold
+        self.cancellation = cancellation
+        self.service = service
+        self.leaveNow = leaveNow
+        self.arrival = arrival
+        self.arrivalMinutes = arrivalMinutes
+        self.betterTrain = betterTrain
+    }
 
     enum CodingKeys: String, CodingKey {
         case delay, cancellation, service, arrival
-        case delayThreshold = "delay_threshold", leaveNow = "leave_now", arrivalMinutes = "arrival_minutes"
+        case delayThreshold = "delay_threshold", leaveNow = "leave_now", arrivalMinutes = "arrival_minutes", betterTrain = "better_train"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        delay = try c.decode(Bool.self, forKey: .delay)
+        delayThreshold = try c.decode(Int.self, forKey: .delayThreshold)
+        cancellation = try c.decode(Bool.self, forKey: .cancellation)
+        service = try c.decode(Bool.self, forKey: .service)
+        leaveNow = try c.decode(Bool.self, forKey: .leaveNow)
+        arrival = try c.decode(Bool.self, forKey: .arrival)
+        arrivalMinutes = try c.decode(Int.self, forKey: .arrivalMinutes)
+        betterTrain = (try? c.decodeIfPresent(Bool.self, forKey: .betterTrain)) ?? true
     }
 }
 
@@ -202,15 +296,42 @@ public struct Settings: Codable, Hashable, Sendable {
     /// 0 = Monday … 6 = Sunday.
     public var days: [Int]
     public var alerts: AlertSettings
+    public var expressPreference: ExpressPreference
+    public var shareName: String?
 
     enum CodingKeys: String, CodingKey {
         case morning, evening, days, alerts
         case switchAt = "switch_at"
+        case expressPreference = "express_preference"
+        case shareName = "share_name"
+    }
+
+    public init(morning: Leg?, evening: Leg?, switchAt: String, days: [Int], alerts: AlertSettings, expressPreference: ExpressPreference = .all, shareName: String? = nil) {
+        self.morning = morning
+        self.evening = evening
+        self.switchAt = switchAt
+        self.days = days
+        self.alerts = alerts
+        self.expressPreference = expressPreference
+        self.shareName = shareName
     }
 
     public static let defaults = Settings(
         morning: nil, evening: nil, switchAt: "12:00", days: [0, 1, 2, 3, 4],
-        alerts: AlertSettings(delay: true, delayThreshold: 5, cancellation: true, service: true, leaveNow: true, arrival: true, arrivalMinutes: 5))
+        alerts: AlertSettings(delay: true, delayThreshold: 5, cancellation: true, service: true, leaveNow: true, arrival: true, arrivalMinutes: 5, betterTrain: true),
+        expressPreference: .all,
+        shareName: nil)
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        morning = try c.decodeIfPresent(Leg.self, forKey: .morning)
+        evening = try c.decodeIfPresent(Leg.self, forKey: .evening)
+        switchAt = try c.decode(String.self, forKey: .switchAt)
+        days = try c.decode([Int].self, forKey: .days)
+        alerts = try c.decode(AlertSettings.self, forKey: .alerts)
+        expressPreference = (try? c.decodeIfPresent(ExpressPreference.self, forKey: .expressPreference)) ?? .all
+        shareName = try c.decodeIfPresent(String.self, forKey: .shareName)
+    }
 
     // Legs are always sent (null clears one).
     public func encode(to encoder: Encoder) throws {
@@ -220,6 +341,8 @@ public struct Settings: Codable, Hashable, Sendable {
         try c.encode(switchAt, forKey: .switchAt)
         try c.encode(days, forKey: .days)
         try c.encode(alerts, forKey: .alerts)
+        try c.encode(expressPreference, forKey: .expressPreference)
+        try c.encode(shareName, forKey: .shareName)
     }
 }
 
@@ -241,6 +364,23 @@ public struct PairedDevice: Codable, Identifiable, Hashable, Sendable {
     public var createdAt: String
     public var lastUsedAt: String?
     enum CodingKeys: String, CodingKey { case id, label; case createdAt = "created_at"; case lastUsedAt = "last_used_at" }
+}
+
+public struct EtaShareResponse: Codable, Hashable, Sendable {
+    public var token: String
+    public var url: String
+    public var expiresAt: String
+
+    public init(token: String, url: String, expiresAt: String) {
+        self.token = token
+        self.url = url
+        self.expiresAt = expiresAt
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case token, url
+        case expiresAt = "expires_at"
+    }
 }
 
 // MARK: - time

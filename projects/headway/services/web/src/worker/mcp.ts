@@ -1,8 +1,8 @@
 // MCP server (Streamable HTTP, JSON responses) at /mcp: an assistant asks "when's my next train?"
 // for the signed-in user. Authentication happens before this runs (index.ts): OAuth grants issued
 // by this Worker, or personal access tokens `hwa_…` made in the Headway app or on the web.
-import { atLocal, board, commuteBoard, departures, findStation, progress, STATIONS, station, zoned, type Board, type BoardTrain } from "@headway/core";
-import { loadSettings, loadSnapshot, loadTracked, saveTracked, type Db } from "./store.ts";
+import { atLocal, board, commuteBoard, departures, findStation, progress, STATIONS, station, TIMETABLE, zoned, type Board, type BoardTrain, type ExpressPreference } from "@headway/core";
+import { createEtaShare, loadSettings, loadSnapshot, loadTracked, saveTracked, type Db } from "./store.ts";
 
 const PROTOCOL_VERSION = "2025-06-18";
 export const SERVER_VERSION = "0.1.0";
@@ -25,15 +25,15 @@ export const TOOLS = [
   {
     name: "my_commute",
     title: "My commute",
-    description: "The user's commute board right now: their morning leg before their switch time, the evening leg after, with the next trains, live delays (when Caltrain's feed is fresh) and service alerts for those stations. `leg` forces one.",
-    inputSchema: { type: "object", properties: { leg: { type: "string", enum: ["auto", "morning", "evening"] } } },
+    description: "The user's commute board right now: their morning leg before their switch time, the evening leg after, with the next trains, live delays (when Caltrain's feed is fresh), leave-by times based on their walk, and service alerts for those stations. `leg` forces one. `express_preference` optionally filters or prioritizes express trains (all, prefer_express, express_only).",
+    inputSchema: { type: "object", properties: { leg: { type: "string", enum: ["auto", "morning", "evening"] }, express_preference: { type: "string", enum: ["all", "prefer_express", "express_only"] } } },
     annotations: { title: "My commute", readOnlyHint: true, openWorldHint: false },
   },
   {
     name: "next_trains",
     title: "Next trains between two stations",
-    description: "The next Caltrain departures from one station to another (direction follows from the pair), with live predictions and delays where available. `after` (HH:MM, Pacific, today) looks later in the day.",
-    inputSchema: { type: "object", required: ["from", "to"], properties: { from: STATION_ARG, to: STATION_ARG, after: { type: "string", description: "Optional HH:MM, Pacific time today." }, limit: { type: "integer", minimum: 1, maximum: 20 } } },
+    description: "The next Caltrain departures from one station to another (direction follows from the pair), with live predictions and delays where available. `after` (HH:MM, Pacific, today) looks later in the day. `express_preference` filters or prioritizes express trains. `walk_minutes` calculates leave-by times and catch state for each train.",
+    inputSchema: { type: "object", required: ["from", "to"], properties: { from: STATION_ARG, to: STATION_ARG, after: { type: "string", description: "Optional HH:MM, Pacific time today." }, limit: { type: "integer", minimum: 1, maximum: 20 }, express_preference: { type: "string", enum: ["all", "prefer_express", "express_only"] }, walk_minutes: { type: "integer", minimum: 0, maximum: 120 } } },
     annotations: { title: "Next trains", readOnlyHint: true, openWorldHint: false },
   },
   {
@@ -71,15 +71,30 @@ export const TOOLS = [
     inputSchema: { type: "object", properties: {} },
     annotations: { title: "Stop tracking", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
+  {
+    name: "share_eta",
+    title: "Share live train ETA",
+    description: "Generates a shareable live web link (valid until 30 min after arrival) for the train the user is currently tracking.",
+    inputSchema: { type: "object", properties: { name: { type: "string", description: "Optional name to display on the link (e.g. 'Sam')." } } },
+    annotations: { title: "Share ETA", readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  },
 ];
 
+const KIND_NAMES: Record<string, string> = { LOC: "Local", LTD: "Limited", EXP: "Express", SCC: "South County" };
 const local = (ms: number) => new Date(ms).toLocaleTimeString("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "2-digit" });
 const trainFacts = (t: BoardTrain) => ({
-  train: t.train, kind: t.kind, trip_id: t.trip_id, service_date: t.service_date, status: t.status, delay_min: t.delay_min,
+  train: t.train, kind: t.kind, kind_name: KIND_NAMES[t.kind] ?? t.kind, is_express: t.kind === "EXP", trip_id: t.trip_id, service_date: t.service_date, status: t.status, delay_min: t.delay_min,
   departs: local(t.pred_dep), arrives: local(t.pred_arr), scheduled_departure: local(t.dep), scheduled_arrival: local(t.arr), stops_between: t.stops_between,
+  ride_min: t.ride_min ?? undefined,
+  overtaken_by: t.overtaken_by_train ?? undefined,
+  first_in: t.first_in ?? undefined,
+  shortest: t.shortest ?? undefined,
+  leave_by: t.leave_by ? local(t.leave_by) : undefined, catch: t.catch ?? undefined,
 });
 const boardFacts = (b: Board) => ({
-  from: b.from.name, to: b.to.name, leg: b.leg, live: b.live, as_of: local(b.generated_at),
+  from: b.from.name, to: b.to.name, leg: b.leg, live: b.live, as_of: local(b.generated_at), express_preference: b.express_preference ?? "all",
+  walk_minutes: b.walk_minutes ?? undefined,
+  tip: b.tip ? { wait_for: b.tip.wait_for, instead_of: b.tip.instead_of, saves_min: b.tip.saves_min } : undefined,
   trains: b.trains.map(trainFacts), alerts: b.alerts.map((a) => ({ header: a.header, description: a.description, url: a.url })),
   note: b.live ? undefined : "No fresh live data: times are the timetable's.",
 });
@@ -96,7 +111,10 @@ async function callTool(name: string, args: Record<string, unknown>, caller: Cal
     case "my_commute": {
       const { settings } = await loadSettings(db, caller.userId);
       const leg = args.leg === "morning" || args.leg === "evening" ? settings[args.leg] : null;
-      const b = leg ? board(leg.from, leg.to, now, await loadSnapshot(db), args.leg as "morning" | "evening") : commuteBoard(settings, now, await loadSnapshot(db));
+      const expPref = (args.express_preference as ExpressPreference) || undefined;
+      const b = leg
+        ? board(leg.from, leg.to, now, await loadSnapshot(db), args.leg as "morning" | "evening", TIMETABLE, expPref ? { expressPreference: expPref } : {})
+        : commuteBoard(settings, now, await loadSnapshot(db), undefined, expPref ? { expressPreference: expPref } : {});
       if (!b) return { commute: null, note: "No commute saved yet. The user sets morning and evening stations in the Headway app or at /settings/." };
       return boardFacts(b);
     }
@@ -105,10 +123,15 @@ async function callTool(name: string, args: Record<string, unknown>, caller: Cal
       if (from.id === to.id) throw new Error("from and to are the same station");
       const snapshot = await loadSnapshot(db);
       const after = typeof args.after === "string" && /^\d{1,2}:\d{2}$/.test(args.after) ? args.after : null;
-      const b = board(from.id, to.id, now, snapshot)!;
+      const expPref = (args.express_preference as ExpressPreference) || undefined;
+      const walk = typeof args.walk_minutes === "number" ? Number(args.walk_minutes) : undefined;
+      const b = board(from.id, to.id, now, snapshot, "custom", TIMETABLE, {
+        expressPreference: expPref,
+        walkMinutes: walk,
+      })!;
       if (after) {
         const t0 = atLocal(zoned(now).date, after);
-        b.trains = departures(from.id, to.id, Math.max(now, t0), snapshot, { after: t0, limit: Number(args.limit ?? 8) });
+        b.trains = departures(from.id, to.id, Math.max(now, t0), snapshot, { after: t0, limit: Number(args.limit ?? 8), expressPreference: expPref, walkMinutes: walk });
       } else if (args.limit) b.trains = b.trains.slice(0, Number(args.limit));
       return boardFacts(b);
     }
@@ -138,6 +161,14 @@ async function callTool(name: string, args: Record<string, unknown>, caller: Cal
     case "stop_tracking":
       await saveTracked(db, caller.userId, null);
       return { tracking: false };
+    case "share_eta": {
+      const t = await loadTracked(db, caller.userId);
+      if (!t) throw new Error("no train currently tracked; call track_train first");
+      const { settings } = await loadSettings(db, caller.userId);
+      const name = typeof args.name === "string" ? args.name : settings.share_name;
+      const share = await createEtaShare(db, caller.userId, t, name, "https://headway.hejitech.workers.dev");
+      return { url: share.url, expires_at: share.expires_at, train: t.trip_id };
+    }
   }
   throw new Error(`unknown tool ${name}`);
 }

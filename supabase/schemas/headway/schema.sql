@@ -84,6 +84,33 @@ create table headway.sent_notifications (
 );
 create index sent_notifications_sent_at on headway.sent_notifications(sent_at);
 
+-- Public shareable live ETA links for tracked trips.
+create table headway.eta_shares (
+  token_hash text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  trip_id text not null,
+  service_date text not null check (service_date ~ '^\d{8}$'),
+  from_station text not null,
+  to_station text not null,
+  name text,
+  expires_at timestamptz not null,
+  revoked_at timestamptz,
+  created_at timestamptz not null default now()
+);
+create index eta_shares_user on headway.eta_shares(user_id);
+
+-- ActivityKit push tokens for Live Activities (start tokens and update tokens).
+create table headway.activity_tokens (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  kind text not null check (kind in ('start', 'update')),
+  token text not null,
+  trip_id text,
+  environment text not null default 'production' check (environment in ('production', 'sandbox')),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, kind, token)
+);
+create index activity_tokens_user on headway.activity_tokens(user_id);
+
 -- The latest Caltrain realtime snapshot (511.org TripUpdates + ServiceAlerts), one row, written by
 -- the Worker's cron and read by every board. Not visible to clients.
 create table headway.realtime (
@@ -102,6 +129,8 @@ alter table headway.access_tokens enable row level security;
 alter table headway.push_devices enable row level security;
 alter table headway.tracked_trips enable row level security;
 alter table headway.sent_notifications enable row level security;
+alter table headway.eta_shares enable row level security;
+alter table headway.activity_tokens enable row level security;
 alter table headway.realtime enable row level security;
 
 create policy "own profile" on headway.profiles for select using (user_id = auth.uid());
@@ -109,9 +138,11 @@ create policy "own devices" on headway.device_tokens for select using (user_id =
 create policy "own access tokens" on headway.access_tokens for select using (user_id = auth.uid());
 create policy "own push devices" on headway.push_devices for select using (user_id = auth.uid());
 create policy "own tracked trip" on headway.tracked_trips for select using (user_id = auth.uid());
+create policy "own eta shares" on headway.eta_shares for select using (user_id = auth.uid());
+create policy "own activity tokens" on headway.activity_tokens for select using (user_id = auth.uid());
 -- pairing_codes, sent_notifications, realtime: no client access at all (the Worker owns them).
 
-grant select on headway.profiles, headway.device_tokens, headway.access_tokens, headway.push_devices, headway.tracked_trips to authenticated;
+grant select on headway.profiles, headway.device_tokens, headway.access_tokens, headway.push_devices, headway.tracked_trips, headway.eta_shares, headway.activity_tokens to authenticated;
 grant select, insert, update, delete on all tables in schema headway to service_role;
 
 -- ---------------------------------------------------------------- worker rpc (service role only)
