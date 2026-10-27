@@ -69,18 +69,18 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
 
   // ------------------------------------------------------------ public exercise demonstration GIFs
   const exMatch = path.match(/^\/api\/exercises\/([a-zA-Z0-9_-]+)(?:\.gif)?$/);
-  if (exMatch && req.method === "GET") {
+  if (exMatch && (req.method === "GET" || req.method === "HEAD")) {
     const slug = normalizeExerciseSlug(exMatch[1]);
     const key = `exercises/${slug}.gif`;
     const { data, error } = await db.storage.from(BUCKET).download(key);
     if (error || !data) return reply({ error: "exercise GIF not found" }, 404);
-    return new Response(data, {
+    return new Response(req.method === "HEAD" ? null : data, {
       status: 200,
       headers: {
         "Content-Type": "image/gif",
         "Cache-Control": "public, max-age=31536000, immutable",
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
       },
     });
   }
