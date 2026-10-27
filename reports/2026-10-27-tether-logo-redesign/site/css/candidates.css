@@ -1,0 +1,93 @@
+/* Tether logo review styling */
+
+/* Frame and icon stage */
+.frame.icon { border-radius: 20px; overflow: hidden; background: #0c0e12; border: 1px solid rgba(255,255,255,0.06); }
+.scr { width: 100%; height: 100%; display: flex; flex-direction: column; }
+
+/* Main Stage */
+.icon-stage { position: relative; width: 100%; height: 100%; display: grid; place-items: center; overflow: hidden; }
+.icon-stage.dark { background: radial-gradient(circle at 50% 40%, #1a1e28 0%, #0d1017 75%, #07080c 100%); }
+.icon-stage.light { background: radial-gradient(circle at 50% 35%, #ffffff 0%, #f1f3f7 65%, #e2e6ee 100%); }
+.icon-stage.thumb { background: transparent; }
+
+.stage-backdrop {
+  position: absolute; width: 220px; height: 220px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.15) 0%, transparent 70%);
+  pointer-events: none; filter: blur(28px);
+}
+.icon-stage.light .stage-backdrop {
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.08) 0%, transparent 70%);
+}
+.stage-center { position: relative; z-index: 2; }
+
+/* Platforms View */
+.view-platforms { width: 100%; height: 100%; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; }
+.view-platforms.dark { background: #0c0e14; }
+.view-platforms.light { background: #f3f5f8; }
+
+.plat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; width: 100%; max-width: 340px; margin: 0 auto; }
+.plat-tile { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.plat-icon-box {
+  width: 140px; height: 130px; border-radius: 14px; display: grid; place-items: center;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.plat-icon-box.dark-box { background: #131722; }
+.plat-icon-box.light-box { background: #e8ecf4; border-color: rgba(0,0,0,0.06); }
+.plat-icon-box.android-box { background: #181d28; }
+.plat-lbl { font-size: 11px; font-weight: 600; color: #8b949e; letter-spacing: 0.02em; }
+.view-platforms.light .plat-lbl { color: #57606a; }
+
+/* Tinted Icon Simulation (iOS 18) */
+.ttr-tint { position: relative; overflow: hidden; isolation: isolate; background: #000; display: inline-block; }
+.ttr-tint .ttr-svg { filter: grayscale(1) contrast(1.2) brightness(1.1); }
+.ttr-tint::after { content: ""; position: absolute; inset: 0; background: #38bdf8; mix-blend-mode: multiply; pointer-events: none; }
+
+/* Ladder View */
+.view-ladder { width: 100%; height: 100%; padding: 24px 16px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; }
+.view-ladder.dark { background: #0c0e14; }
+.view-ladder.light { background: #f3f5f8; }
+
+.ladder-row { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 340px; margin: 0 auto; }
+.ladder-item { display: flex; align-items: center; gap: 16px; padding: 8px 12px; border-radius: 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); }
+.view-ladder.light .ladder-item { background: #ffffff; border-color: rgba(0,0,0,0.06); }
+.ladder-box { width: 124px; display: flex; justify-content: center; align-items: center; }
+.ladder-lbl { font-size: 12px; font-weight: 600; color: #94a3b8; font-family: Inter, system-ui, sans-serif; }
+.view-ladder.light .ladder-lbl { color: #475569; }
+
+/* Home Screen Context View */
+.view-homescreen { width: 100%; height: 100%; padding: 12px; box-sizing: border-box; display: flex; justify-content: center; align-items: center; }
+.view-homescreen.dark { background: #090a0f; }
+.view-homescreen.light { background: #ebedf2; }
+
+.hs-mock {
+  width: 100%; max-width: 320px; height: 376px; border-radius: 32px;
+  background: linear-gradient(175deg, #1e1b4b 0%, #0f172a 50%, #030712 100%);
+  border: 4px solid #27272a; box-shadow: 0 16px 36px rgba(0,0,0,0.4);
+  padding: 10px 14px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between;
+}
+.view-homescreen.light .hs-mock {
+  background: linear-gradient(175deg, #93c5fd 0%, #c084fc 40%, #f472b6 100%);
+  border-color: #d1d5db;
+}
+
+.hs-statusbar {
+  display: flex; justify-content: space-between; align-items: center; padding: 2px 8px;
+  font-size: 11px; font-weight: 600; color: #ffffff;
+}
+.hs-status-icons { display: flex; align-items: center; gap: 5px; color: #ffffff; }
+.hs-battery { width: 18px; height: 9px; border: 1.5px solid currentColor; border-radius: 2.5px; padding: 1px; display: flex; align-items: center; }
+.hs-bat-lvl { width: 70%; height: 100%; background: currentColor; border-radius: 1px; }
+
+.hs-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px 10px; justify-items: center; padding: 6px 0;
+}
+.hs-app { display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; }
+.hs-app span { font-size: 10px; font-weight: 500; color: #ffffff; text-shadow: 0 1px 3px rgba(0,0,0,0.7); }
+.hs-app.me span { font-weight: 700; color: #38bdf8; }
+
+.hs-dock {
+  display: flex; justify-content: space-around; align-items: center;
+  padding: 8px 6px; border-radius: 22px;
+  background: rgba(255,255,255,0.14); backdrop-filter: blur(14px);
+  margin-top: 6px;
+}
