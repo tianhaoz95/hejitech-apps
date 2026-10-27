@@ -46,6 +46,18 @@ public enum Reps: Codable, Hashable, Sendable {
     public var count: Int? { if case .count(let n) = self { n } else { nil } }
 }
 
+public struct ExerciseAnimation: Codable, Hashable, Sendable {
+    public var frames: [String]
+    public var fps: Double?
+    public var description: String?
+
+    public init(frames: [String], fps: Double? = nil, description: String? = nil) {
+        self.frames = frames
+        self.fps = fps
+        self.description = description
+    }
+}
+
 public struct Exercise: Codable, Hashable, Sendable, Identifiable {
     public var id: String
     public var name: String
@@ -58,9 +70,10 @@ public struct Exercise: Codable, Hashable, Sendable, Identifiable {
     public var instructions: String?
     public var alternative: String?
     public var videoUrl: String?
+    public var animation: ExerciseAnimation?
 
     enum CodingKeys: String, CodingKey {
-        case id, name, sets, reps, load, cues, instructions, alternative
+        case id, name, sets, reps, load, cues, instructions, alternative, animation
         case durationSec = "duration_sec", restSec = "rest_sec", videoUrl = "video_url"
     }
 

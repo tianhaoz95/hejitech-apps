@@ -24,6 +24,15 @@ export interface Macros {
   fat_g?: number;
 }
 
+export interface ExerciseAnimation {
+  /** 1–8 frames of plain ASCII text / stick-figure art depicting movement keyframes. */
+  frames: string[];
+  /** Target frame rate in frames per second (0.2–4 fps, default ~1 fps). */
+  fps?: number;
+  /** Short description of the movement animation (≤ 80 characters). */
+  description?: string;
+}
+
 export interface Exercise {
   id: string;
   name: string;
@@ -43,6 +52,8 @@ export interface Exercise {
   /** What to do instead if it hurts or the equipment is taken. */
   alternative?: string;
   video_url?: string;
+  /** Animated instructions rendered as ASCII keyframes for Even G2 and phone. */
+  animation?: ExerciseAnimation;
 }
 
 export interface Workout {

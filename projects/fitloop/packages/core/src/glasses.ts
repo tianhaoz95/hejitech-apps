@@ -93,6 +93,9 @@ export class Navigator {
   rest: { until: number } | null = null;
   work: { started: number; until: number } | null = null;
   mealId: string | null = null;
+  animFrame = 0;
+  lastAnimTick = 0;
+  hasAnimation = false;
   private menuItems: MenuItem[] = [];
   private menuTitle = "";
   private back: Screen = "today";
@@ -133,6 +136,9 @@ export class Navigator {
     this.set = n?.set ?? 1;
     this.rest = null;
     this.work = null;
+    this.animFrame = 0;
+    this.lastAnimTick = 0;
+    this.hasAnimation = false;
     this.screen = "workout";
     return [{ kind: "workout", active: true, ref: id }];
   }
@@ -223,8 +229,16 @@ export class Navigator {
         }
         if (input === "double_tap") { this.screen = "today"; return []; }
         if (input === "long_press") {
+          const anim = e.exercise.animation;
+          const hasAnim = Boolean(anim?.frames && anim.frames.length > 0);
           this.openMenu(e.exercise.name, [
-            { label: "How-to", run: () => { this.screen = "cues"; return []; } },
+            { label: hasAnim ? "How-to / Demo" : "How-to", run: () => {
+              this.screen = "cues";
+              this.hasAnimation = hasAnim;
+              this.animFrame = 0;
+              this.lastAnimTick = world.now;
+              return [];
+            } },
             { label: "Skip this exercise", run: () => {
               this.screen = "workout";
               const cmds: Command[] = [{ kind: "checkin", checkin: { date: world.date, ref: e.ref, kind: "exercise", status: "skipped" } }];
@@ -246,9 +260,30 @@ export class Navigator {
         }
         return [];
       }
-      case "cues":
+      case "cues": {
+        const w = this.workout(world);
+        const anim = w?.exercises[this.ex]?.exercise?.animation;
+        const frames = anim?.frames ?? [];
+        if (frames.length > 1) {
+          if (input === "double_tap" || input === "long_press") {
+            this.screen = "workout";
+            return [];
+          }
+          if (input === "tap" || input === "down") {
+            this.animFrame = (this.animFrame + 1) % frames.length;
+            this.lastAnimTick = world.now;
+            return [];
+          }
+          if (input === "up") {
+            this.animFrame = (this.animFrame - 1 + frames.length) % frames.length;
+            this.lastAnimTick = world.now;
+            return [];
+          }
+          return [];
+        }
         this.screen = "workout";
         return [];
+      }
       case "meal": {
         const m = this.meal(world);
         if (!m) { this.screen = "today"; return []; }
@@ -311,9 +346,11 @@ export class Navigator {
     return out;
   }
 
-  /** True while a timer is showing: the plugin re-renders every second. */
+  /** True while a timer is showing or animation is playing: the plugin re-renders every second. */
   ticking(now: number): boolean {
-    return (this.screen === "workout" || this.screen === "cues") && Boolean((this.rest && this.rest.until > now - 5000) || this.work);
+    const timer = (this.screen === "workout" || this.screen === "cues") && Boolean((this.rest && this.rest.until > now - 5000) || this.work);
+    const anim = this.screen === "cues" && this.hasAnimation;
+    return timer || anim;
   }
 
   private workoutLines(world: World): string[] {
@@ -341,6 +378,26 @@ export class Navigator {
     const w = this.workout(world);
     const e = w?.exercises[this.ex]?.exercise;
     if (!e) return ["HOW-TO", "", "Nothing here."];
+    const anim = e.animation;
+    const frames = anim?.frames ?? [];
+    if (frames.length > 0) {
+      const fps = anim?.fps && anim.fps > 0 ? anim.fps : 0.67;
+      const intervalMs = Math.round(1000 / fps);
+      if (frames.length > 1 && this.lastAnimTick > 0 && world.now - this.lastAnimTick >= intervalMs) {
+        this.animFrame = (this.animFrame + 1) % frames.length;
+        this.lastAnimTick = world.now;
+      }
+      const curFrame = Math.min(this.animFrame, frames.length - 1);
+      const header = spread(e.name.toUpperCase(), `${curFrame + 1}/${frames.length}`);
+      const frameLines = frames[curFrame].split("\n").map((l) => ascii(l));
+      const lines = [header, ...frameLines];
+      if (e.cues && e.cues.length > 0 && lines.length < MAX_LINES - 2) {
+        lines.push(`- ${ascii(e.cues[0])}`);
+      }
+      while (lines.length < MAX_LINES - 1) lines.push("");
+      lines.push(frames.length > 1 ? "tap: step  2x: back" : "any: back");
+      return lines;
+    }
     const body = (e.cues?.length ? e.cues : wrap(e.instructions ?? "No cues in the plan for this one.")).map((c) => `- ${c}`);
     const lines = [spread(e.name.toUpperCase(), "any: back"), ...body.flatMap((l) => wrap(l))];
     if (e.alternative && lines.length < MAX_LINES) lines.push(`Instead: ${e.alternative}`);

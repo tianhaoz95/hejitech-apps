@@ -31,6 +31,31 @@ final class FitLoopKitTests: XCTestCase {
         XCTAssertFalse(s.settings.vitals.photos)
     }
 
+    func testExerciseAnimation() throws {
+        let json = """
+        {
+          "id": "squat",
+          "name": "Goblet squat",
+          "sets": 3,
+          "reps": "8-10",
+          "rest_sec": 90,
+          "animation": {
+            "frames": [" (o)\\n /|\\\\\\n / \\\\", " (o)\\n</|>\\n / \\\\"],
+            "fps": 1.0,
+            "description": "Squat movement"
+          }
+        }
+        """.data(using: .utf8)!
+        let ex = try Backend.decoder.decode(Exercise.self, from: json)
+        XCTAssertEqual(ex.animation?.frames.count, 2)
+        XCTAssertEqual(ex.animation?.fps, 1.0)
+        XCTAssertEqual(ex.animation?.description, "Squat movement")
+
+        let encoded = try Backend.encoder.encode(ex)
+        let roundTrip = try Backend.decoder.decode(Exercise.self, from: encoded)
+        XCTAssertEqual(roundTrip.animation, ex.animation)
+    }
+
     func testSettingsRoundTripWithSnakeCase() throws {
         let data = try Backend.encoder.encode(Settings.defaults)
         let obj = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])

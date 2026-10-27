@@ -4,7 +4,7 @@
 import { LIMITS } from "./validate.ts";
 import { FEEDBACK_TAGS, METRICS, PLAN_FORMAT_VERSION } from "./types.ts";
 
-export const GUIDE_VERSION = "1.1";
+export const GUIDE_VERSION = "1.2";
 
 export const GUIDE = `# FitLoop plan guide (v${GUIDE_VERSION}, plan format ${PLAN_FORMAT_VERSION})
 
@@ -72,7 +72,8 @@ Workout  = { "id", "title": "≤ ${LIMITS.name}", "time"?: "HH:MM", "duration_mi
              "exercises": [Exercise] (1–${LIMITS.exercises}), "notes"? }
 Exercise = { "id", "name": "≤ ${LIMITS.name}", "sets": 1–${LIMITS.sets}, "reps"?: 10 | "8-10", "duration_sec"?: 45,
              "load"?: "24 kg" | "bodyweight" | "RPE 7" | "zone 2" (≤ 20), "rest_sec": 0–${LIMITS.restMax},
-             "cues"?: [≤ ${LIMITS.cues} × ≤ ${LIMITS.cue} chars], "instructions"?: "longer how-to", "alternative"?: "...", "video_url"?: "https://..." }
+             "cues"?: [≤ ${LIMITS.cues} × ≤ ${LIMITS.cue} chars], "instructions"?: "longer how-to", "alternative"?: "...", "video_url"?: "https://...",
+             "animation"?: { "frames": ["...\\n..."], "fps"?: 1, "description"?: "..." } }
 Meal     = { "id", "name": "≤ ${LIMITS.name}", "time"?: "HH:MM", "items": [{ "name", "amount" }] (name + amount ≤ ${LIMITS.item}),
              "macros"?: { "calories", "protein_g", "carbs_g", "fat_g" }, "prep"?: ["steps"], "notes"? }
 \`\`\`
@@ -80,12 +81,53 @@ Meal     = { "id", "name": "≤ ${LIMITS.name}", "time"?: "HH:MM", "items": [{ "
 Ids are lowercase-kebab-case and unique within a day (workouts and meals share the namespace); keep
 the same id for the same thing across days and versions, so check-ins and progress line up.
 
+## Animated workout instructions (agent responsibility)
+
+It is your responsibility as the coaching agent to provide animated instructions for each exercise in
+the plan. FitLoop provides no exercise advice or graphics of its own; it renders what you specify on
+both the phone and Even G2 glasses.
+
+### Device constraints and how to fit them:
+
+1. **Even G2 glasses display**:
+   - Monochrome green micro-LED waveguide display with a 9-line budget in a bordered frame.
+   - Plain ASCII characters only (\`\\x20\` to \`\\x7e\`): stick figures and motion lines using \`o\`,
+     \`(o)\`, \`/|\\\`, \`/ \\\`, \`--\`, \`__\`. Do not use emoji, unicode symbols or unicode box drawings
+     (the firmware font cannot render them).
+   - Each frame must be ≤ ${LIMITS.animLines} lines tall and ≤ ${LIMITS.animLineLength} characters wide per line so it fits the screen
+     with the exercise name header and navigation hints.
+   - Low Bluetooth bandwidth: keep to 2–${LIMITS.animFrames} keyframes (e.g. starting stance -> lowering / eccentric ->
+     bottom pause -> concentric drive -> lockout) and set \`fps\` to 0.5–1.0 (default ~1 frame per 1.5 s).
+     Faster updates backlog Bluetooth packets and delay glasses display.
+   - The glasses show the animation under the workout menu's "How-to / Demo": cycling automatically at
+     the target fps, with tap / swipe stepping frames and double-tap returning to the workout.
+
+2. **iPhone mobile app**:
+   - The iPhone app renders your ASCII frames in a dedicated animated player card in the workout player,
+     styled with crisp monospaced typography, accent framing, frame indicators (e.g. \`2/4\`), play/pause
+     toggle, and step buttons alongside your written cues and how-to details.
+
+### Example exercise animation (Goblet Squat):
+\`\`\`json
+"animation": {
+  "frames": [
+    "   (o)   stand tall\\n   /|\\\\  bell at chest\\n   / \\\\  feet wide",
+    "   (o)   hips back\\n   /|\\\\  knees bent\\n   / \\\\  chest up",
+    "         hips low\\n   (o)   pause at box\\n  </|>   elbows in",
+    "   (o)   drive up\\n   /|\\\\  through heels\\n   / \\\\  stand tall"
+  ],
+  "fps": 1,
+  "description": "Goblet squat: start tall, sit between hips, pause, drive up through heels"
+}
+\`\`\`
+
 ## Writing for the glasses
 
 During a workout the G2 shows one exercise at a time: name, "set 2/3", the target ("8-10 reps @
 24 kg"), heart rate, and a rest timer of rest_sec that starts when the set is done. Holding the ring
-shows the cues, so make them short commands, not sentences ("Elbows in", "2 s down"). Meals show
-the items with amounts and the macros. Plain words: the glasses' font has no emoji.
+shows the workout menu with How-to / Demo, so make cues short commands, not sentences ("Elbows in",
+"2 s down"). Meals show the items with amounts and the macros. Plain words: the glasses' font has no
+emoji.
 
 ## What the user sends you
 

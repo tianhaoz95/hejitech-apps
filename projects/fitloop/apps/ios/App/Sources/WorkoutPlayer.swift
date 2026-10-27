@@ -26,6 +26,9 @@ struct WorkoutPlayer: View {
                     VStack(alignment: .leading, spacing: 18) {
                         header
                         exerciseCard(now: ctx.date)
+                        if let anim = current.exercise.animation, !anim.frames.isEmpty {
+                            ExerciseAnimationPlayer(animation: anim)
+                        }
                         if let cues = current.exercise.cues, !cues.isEmpty {
                             VStack(alignment: .leading, spacing: 6) {
                                 ForEach(cues, id: \.self) { Label($0, systemImage: "checkmark").font(.callout) }
@@ -207,5 +210,100 @@ struct WorkoutPlayer: View {
     private func close() {
         Task { await model.endWorkout() }
         dismiss()
+    }
+}
+
+/// Plays animated ASCII movement keyframes provided by the user's coaching agent.
+struct ExerciseAnimationPlayer: View {
+    let animation: ExerciseAnimation
+    @State private var currentFrame = 0
+    @State private var isPlaying = true
+
+    private var frames: [String] { animation.frames }
+    private var interval: Double {
+        let fps = animation.fps ?? 1.0
+        return max(0.25, 1.0 / max(fps, 0.1))
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Label("Animated Instructions", systemImage: "figure.walk.motion")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if frames.count > 1 {
+                    Text("\(currentFrame + 1)/\(frames.count)")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(.ultraThinMaterial, in: Capsule())
+                }
+            }
+
+            if !frames.isEmpty {
+                let frameText = frames[min(currentFrame, frames.count - 1)]
+                Text(frameText)
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundStyle(Color.accentColor)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(14)
+                    .background(Color(uiColor: .secondarySystemBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+
+            if let desc = animation.description, !desc.isEmpty {
+                Text(desc)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            if frames.count > 1 {
+                HStack(spacing: 12) {
+                    Button {
+                        currentFrame = (currentFrame - 1 + frames.count) % frames.count
+                    } label: {
+                        Image(systemName: "backward.frame")
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel("Previous frame")
+
+                    Button {
+                        isPlaying.toggle()
+                    } label: {
+                        Label(isPlaying ? "Pause" : "Play", systemImage: isPlaying ? "pause.fill" : "play.fill")
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel(isPlaying ? "Pause animation" : "Play animation")
+
+                    Button {
+                        currentFrame = (currentFrame + 1) % frames.count
+                    } label: {
+                        Image(systemName: "forward.frame")
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel("Next frame")
+
+                    Spacer()
+                }
+                .font(.subheadline)
+            }
+        }
+        .padding()
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
+        .task(id: isPlaying) {
+            guard isPlaying && frames.count > 1 else { return }
+            while !Task.isCancelled && isPlaying {
+                try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+                if !Task.isCancelled && isPlaying {
+                    currentFrame = (currentFrame + 1) % frames.count
+                }
+            }
+        }
+        .onChange(of: animation) {
+            currentFrame = 0
+            isPlaying = true
+        }
     }
 }

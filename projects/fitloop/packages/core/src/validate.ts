@@ -2,7 +2,7 @@
 // advice it gets (warnings). The MCP tools, the Worker's publish path and the tests share it. The
 // limits keep plans readable on the Even G2 (names and cues fit a line).
 import { isDate } from "./plan.ts";
-import { PLAN_FORMAT_VERSION, WEEKDAYS, type DayPlan, type Plan } from "./types.ts";
+import { PLAN_FORMAT_VERSION, WEEKDAYS, type DayPlan, type ExerciseAnimation, type Plan } from "./types.ts";
 
 export interface Issue {
   severity: "error" | "warning";
@@ -22,6 +22,9 @@ export const LIMITS = {
   sets: 20,
   restMax: 900,
   durationMax: 4 * 3600,
+  animFrames: 8,
+  animLines: 6,
+  animLineLength: 28,
 } as const;
 
 const ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -110,6 +113,45 @@ function checkDay(day: DayPlan, path: string, err: (p: string, m: string) => voi
         else e.cues.forEach((c, k) => { if (!str(c) || c.length > LIMITS.cue) err(`${ep}.cues[${k}]`, `1–${LIMITS.cue} characters`); });
       } else warn(`${ep}.cues`, "no cues: the glasses' hold-for-instructions screen will be empty");
       if (e?.video_url !== undefined && !/^https:\/\//.test(e.video_url)) err(`${ep}.video_url`, "an https URL");
+      if (e?.animation !== undefined) {
+        if (typeof e.animation !== "object" || !e.animation) {
+          err(`${ep}.animation`, "must be an object { frames: string[], fps?: number, description?: string }");
+        } else {
+          const a = e.animation as Partial<ExerciseAnimation>;
+          if (!Array.isArray(a.frames) || a.frames.length === 0) {
+            err(`${ep}.animation.frames`, "must provide at least 1 frame (2–8 recommended)");
+          } else if (a.frames.length > LIMITS.animFrames) {
+            err(`${ep}.animation.frames`, `at most ${LIMITS.animFrames} frames`);
+          } else {
+            a.frames.forEach((frame, fi) => {
+              if (typeof frame !== "string") {
+                err(`${ep}.animation.frames[${fi}]`, "must be a string");
+                return;
+              }
+              const lines = frame.split("\n");
+              if (lines.length > LIMITS.animLines) {
+                err(`${ep}.animation.frames[${fi}]`, `exceeds ${LIMITS.animLines} lines (must fit Even G2 glasses)`);
+              }
+              lines.forEach((line, li) => {
+                if (line.length > LIMITS.animLineLength) {
+                  err(`${ep}.animation.frames[${fi}].lines[${li}]`, `line exceeds ${LIMITS.animLineLength} characters`);
+                }
+                if (/[^\x20-\x7e]/.test(line)) {
+                  err(`${ep}.animation.frames[${fi}].lines[${li}]`, "plain ASCII characters only (Even G2 font limit)");
+                }
+              });
+            });
+          }
+          if (a.fps !== undefined && (typeof a.fps !== "number" || a.fps < 0.2 || a.fps > 4)) {
+            err(`${ep}.animation.fps`, "fps must be a number between 0.2 and 4");
+          }
+          if (a.description !== undefined && (typeof a.description !== "string" || a.description.length > 80)) {
+            err(`${ep}.animation.description`, "description up to 80 characters");
+          }
+        }
+      } else {
+        warn(`${ep}.animation`, "no animated instructions: provide ASCII keyframes (2-8 frames) so users see how to do it on phone and glasses");
+      }
     });
     if (w?.exercises?.length && typeof w.duration_min === "number") {
       const est = w.exercises.reduce((n, e) => n + (e.sets ?? 0) * ((e.duration_sec ?? 40) + (e.rest_sec ?? 0)), 0) / 60;
