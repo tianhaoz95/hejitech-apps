@@ -1,0 +1,19 @@
+{
+  "name": "@tether/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Tether's normative tiling pane tree manager, tab model, SSH host metadata, layout presets, keyboard shortcuts, and validation, shared by the Worker, web app, MCP server, and mirrored in Swift and Kotlin.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vitest": "^5.0.3",
+    "@types/node": "^22.20.5"
+  }
+}

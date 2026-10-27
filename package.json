@@ -26,6 +26,12 @@
     "build:fitloop": "npm run build -w @fitloop/web -w @fitloop/glasses",
     "test:fitloop": "npm test -w projects/fitloop/packages -w projects/fitloop/apps --if-present",
     "typecheck:fitloop": "npm run typecheck -w projects/fitloop/packages -w projects/fitloop/apps -w projects/fitloop/services --if-present",
+    "build:tether": "npm run build -w @tether/web",
+    "test:tether": "npm test -w projects/tether/packages -w projects/tether/services --if-present",
+    "typecheck:tether": "npm run typecheck -w projects/tether/packages -w projects/tether/services --if-present",
+    "build:polymath": "npm run build -w @polymath/core -w @polymath/web -w @polymath/desktop",
+    "test:polymath": "npm test -w projects/polymath/packages -w projects/polymath/services --if-present",
+    "typecheck:polymath": "npm run typecheck -w projects/polymath/packages -w projects/polymath/services -w projects/polymath/apps --if-present",
     "pages:dev": "node scripts/pages_sync.mjs && vitepress dev pages",
     "pages:build": "node scripts/pages_sync.mjs && vitepress build pages"
   },

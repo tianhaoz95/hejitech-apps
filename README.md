@@ -17,6 +17,8 @@ one npm workspace and the CI plumbing.
 | G2 Digest | A brief compiled ahead of time into glanceable cards for Even G2 glasses + R1 ring and pre-made audio: web app + brief editor + G2 preview, Even Hub plugin, MCP for the build agent (one Worker, TypeScript) | [`projects/g2digest`](projects/g2digest/README.md) |
 | Headway | Caltrain status on Even G2 glasses + R1 ring and iPhone alerts (delays, cancellations, leave now, before your stop): Even Hub plugin, iPhone app (Swift), site + API + alert cron + MCP Worker (TypeScript) | [`projects/headway`](projects/headway/README.md) |
 | FitLoop | The fitness and nutrition plan your own AI agent writes over MCP, followed and checked in on iPhone + Apple Watch (Swift), the web and Even G2 glasses, with in-the-moment feedback back to the agent (one Worker, TypeScript) | [`projects/fitloop`](projects/fitloop/README.md) |
+| Tether | Phone-to-monitor tiling split-pane desktop workspace with Browser (`web`), SSH-only Terminal (`ssh`), and Local + SFTP Files (`files`) for iOS (Swift/UIKit), Android (Kotlin/Compose), and Web + MCP Worker (TypeScript) | [`projects/tether`](projects/tether/README.md) |
+| Polymath | Agent-native interactive course player & extensible learning runtime: desktop app (Tauri v2), course component SDK, managed agent workspace authoring, and MCP server | [`projects/polymath`](projects/polymath/README.md) |
 
 ## Layout
 ```

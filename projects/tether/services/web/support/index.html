@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- @head -->
+    <title>Shortcuts &amp; Hardware Setup · Tether</title>
+  </head>
+  <body>
+    <!-- @header -->
+    <main>
+      <div class="wrap narrow">
+        <div class="panel stack">
+          <h1>Hardware Setup &amp; Keyboard Shortcuts</h1>
+          <p class="muted">Tether is built for USB-C DisplayPort Alt Mode external monitors (or Lightning-to-HDMI on older iPhones) paired with a Bluetooth or USB keyboard and mouse.</p>
+          <h2>Keyboard Shortcuts (PRD §13)</h2>
+          <table class="shortcuts">
+            <thead>
+              <tr><th>Action</th><th>iOS (Cmd)</th><th>Android (Ctrl)</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>New tab in focused pane (Web / SSH / Files)</td><td><kbd>Cmd + T</kbd> (then W / S / F)</td><td><kbd>Ctrl + T</kbd> (then W / S / F)</td></tr>
+              <tr><td>Close active tab (confirms if live SSH)</td><td><kbd>Cmd + W</kbd></td><td><kbd>Ctrl + Shift + W</kbd></td></tr>
+              <tr><td>Next / Previous tab in focused pane</td><td><kbd>Cmd + Tab</kbd> / <kbd>Cmd + Shift + Tab</kbd></td><td><kbd>Ctrl + Tab</kbd> / <kbd>Ctrl + Shift + Tab</kbd></td></tr>
+              <tr><td>Split focused pane right (horizontal)</td><td><kbd>Cmd + \</kbd> or <kbd>Cmd + Shift + →</kbd></td><td><kbd>Ctrl + \</kbd> or <kbd>Ctrl + Shift + →</kbd></td></tr>
+              <tr><td>Split focused pane down (vertical)</td><td><kbd>Cmd + -</kbd> or <kbd>Cmd + Shift + ↓</kbd></td><td><kbd>Ctrl + Shift + ↓</kbd></td></tr>
+              <tr><td>Focus next / previous pane</td><td><kbd>Cmd + ]</kbd> / <kbd>Cmd + [</kbd></td><td><kbd>Ctrl + ]</kbd> / <kbd>Ctrl + [</kbd></td></tr>
+              <tr><td>Maximise / restore focused pane</td><td><kbd>Cmd + Shift + M</kbd></td><td><kbd>Ctrl + Shift + M</kbd></td></tr>
+              <tr><td>Close focused pane</td><td><kbd>Cmd + Shift + W</kbd></td><td><kbd>Ctrl + Shift + Backspace</kbd></td></tr>
+              <tr><td>Focus address bar / host selector</td><td><kbd>Cmd + L</kbd></td><td><kbd>Ctrl + Shift + L</kbd> (<kbd>Ctrl + L</kbd> in Web)</td></tr>
+              <tr><td>Terminal font size up / down (12–20pt)</td><td><kbd>Cmd + +</kbd> / <kbd>Cmd + -</kbd></td><td><kbd>Ctrl + +</kbd> / <kbd>Ctrl + -</kbd></td></tr>
+            </tbody>
+          </table>
+          <h2>Terminal Shortcut Precedence (PRD §13.2)</h2>
+          <p class="muted small">When an SSH terminal tab is focused, <kbd>Ctrl-C</kbd>, <kbd>Ctrl-D</kbd>, <kbd>Ctrl-Z</kbd>, <kbd>Ctrl-R</kbd>, <kbd>Ctrl-A</kbd>, <kbd>Ctrl-E</kbd>, <kbd>Ctrl-K</kbd>, <kbd>Ctrl-U</kbd>, <kbd>Ctrl-W</kbd>, and <kbd>Ctrl-L</kbd> pass directly to the remote PTY (vim, tmux, shell).</p>
+        </div>
+      </div>
+    </main>
+    <!-- @footer -->
+  </body>
+</html>

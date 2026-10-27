@@ -1,0 +1,11 @@
+# Polymath project gitignore
+node_modules/
+dist/
+target/
+.wrangler/
+.env.local
+.DS_Store
+*.pyc
+__pycache__/
+.pytest_cache/
+.venv/

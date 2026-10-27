@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Polymath — Agent-Native Learning Engine</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2306B6D4'/%3E%3Cpath d='M10 16h12M16 10v12' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0D0F14;
+      --card: #151921;
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #F3F4F6;
+      --muted: #9CA3AF;
+      --cyan: #06B6D4;
+      --purple: #8B5CF6;
+      --green: #10B981;
+      --font-sans: 'Inter', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      padding-bottom: 60px;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 40px;
+      border-bottom: 1px solid var(--border);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      font-size: 18px;
+    }
+    .brand span { color: var(--cyan); }
+    .hero {
+      max-width: 900px;
+      margin: 60px auto 40px;
+      text-align: center;
+      padding: 0 20px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 99px;
+      background: rgba(6, 182, 212, 0.15);
+      color: var(--cyan);
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    h1 { font-size: 42px; font-weight: 900; letter-spacing: -0.02em; margin-bottom: 16px; }
+    p.lead { font-size: 18px; color: var(--muted); margin-bottom: 24px; }
+    .btn-row { display: flex; gap: 12px; justify-content: center; }
+    .btn {
+      padding: 10px 22px;
+      border-radius: 8px;
+      font-weight: 600;
+      text-decoration: none;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .btn.pri { background: var(--cyan); color: #000; }
+    .btn.sec { background: var(--card); color: #fff; border: 1px solid var(--border); }
+    .container { max-width: 1000px; margin: 40px auto; padding: 0 20px; }
+    .preview-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 30px; }
+    .feature {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+    }
+    .feature h3 { font-size: 16px; margin-bottom: 8px; color: var(--cyan); }
+    .feature p { font-size: 13px; color: var(--muted); }
+    .mem-grid { display: grid; grid-template-columns: repeat(16, 1fr); gap: 4px; margin: 12px 0; }
+    .mem-cell { height: 18px; border-radius: 2px; }
+    .mem-cell.alloc { background: var(--cyan); }
+    .mem-cell.shared { background: var(--purple); }
+    .mem-cell.free { background: rgba(255,255,255,0.05); }
+    code { font-family: var(--font-mono); font-size: 12px; background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand"><span>▲</span> Polymath</div>
+    <nav style="display:flex; gap:20px; font-size:14px;">
+      <a href="/mcp" style="color:var(--muted); text-decoration:none;">MCP Server</a>
+      <a href="https://tianhaoz95.github.io/hejitech-apps/polymath/" style="color:var(--muted); text-decoration:none;">Docs</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <span class="badge">Agent-Native Learning Engine</span>
+      <h1>Master Deep Systems with Your Coding Agent</h1>
+      <p class="lead">Polymath packages an extensible interactive course player as a native desktop app. Point any local AI agent at your managed course directory to author progressive, test-driven courses with rich hardware visualizers.</p>
+      <div class="btn-row">
+        <a class="btn pri" href="#preview">Explore Starter Course</a>
+        <a class="btn sec" href="/mcp">Connect MCP Agent</a>
+      </div>
+    </section>
+
+    <section class="container" id="preview">
+      <div class="preview-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:16px;">
+          <div>
+            <h2 style="font-size:20px;">Reference Course: PyTorch for vLLM, SGLang & TensorRT-LLM</h2>
+            <small style="color:var(--muted);">Chapter 03: PagedAttention Block Allocator & Prefix Cache</small>
+          </div>
+          <span style="font-size:11px; font-weight:700; color:var(--green); background:rgba(16,185,129,0.15); padding:3px 8px; border-radius:4px;">12 / 12 Tests Passing</span>
+        </div>
+
+        <p style="font-size:13px; color:var(--muted); margin-bottom:12px;">
+          In traditional autoregressive inference, reserving contiguous memory for max sequence lengths causes up to 80% fragmentation. The <code>&lt;MemoryBlockGrid /&gt;</code> component dynamically models non-contiguous physical page allocation:
+        </p>
+
+        <!-- Live Memory Grid Representation -->
+        <div style="background:#090B0F; padding:16px; border-radius:8px; border:1px solid var(--border);">
+          <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:6px;">
+            <span><b>GPU HBM3 Memory Map</b> (Block Size = 16 tokens)</span>
+            <span style="color:var(--cyan); font-family:var(--font-mono);">76.4% Utilization</span>
+          </div>
+          <div class="mem-grid">
+            <div class="mem-cell alloc"></div><div class="mem-cell alloc"></div><div class="mem-cell shared"></div><div class="mem-cell shared"></div>
+            <div class="mem-cell alloc"></div><div class="mem-cell alloc"></div><div class="mem-cell alloc"></div><div class="mem-cell shared"></div>
+            <div class="mem-cell free"></div><div class="mem-cell free"></div><div class="mem-cell alloc"></div><div class="mem-cell alloc"></div>
+            <div class="mem-cell free"></div><div class="mem-cell free"></div><div class="mem-cell shared"></div><div class="mem-cell alloc"></div>
+          </div>
+          <div style="display:flex; gap:16px; font-size:10px; color:var(--muted); margin-top:8px;">
+            <span><i style="display:inline-block; width:8px; height:8px; background:var(--cyan); border-radius:2px;"></i> Active Allocation</span>
+            <span><i style="display:inline-block; width:8px; height:8px; background:var(--purple); border-radius:2px;"></i> Radix Prefix Shared</span>
+            <span><i style="display:inline-block; width:8px; height:8px; background:rgba(255,255,255,0.1); border-radius:2px;"></i> Free Blocks</span>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="feature">
+            <h3>Agent as Author</h3>
+            <p>Polymath provisions <code>~/heji-courses/&lt;topic&gt;</code> and pre-seeds it with authoring skills and local MCP preview tools so your agent knows how to structure progressive lessons.</p>
+          </div>
+          <div class="feature">
+            <h3>Declarative Widget SDK</h3>
+            <p>Embed rich widgets like <code>&lt;MemoryBlockGrid /&gt;</code>, <code>&lt;CodeExercise /&gt;</code>, and <code>&lt;RooflinePlot /&gt;</code> directly in markdown with full verification.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

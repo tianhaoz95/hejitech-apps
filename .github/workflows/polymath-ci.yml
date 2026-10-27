@@ -1,0 +1,89 @@
+name: Polymath CI
+
+# Checks pushes and PRs touching Polymath or shared monorepo files.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "projects/polymath/**"
+      - "supabase/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - ".github/workflows/polymath-ci.yml"
+  pull_request:
+    paths:
+      - "projects/polymath/**"
+      - "supabase/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - ".github/workflows/polymath-ci.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: polymath-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  node:
+    name: Core, Web & Desktop Frontend (typecheck, tests, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck:polymath
+      - run: npm run test:polymath
+      - run: npm run build:polymath
+        env:
+          WEB_ALLOW_LOCAL: "1"
+
+  desktop-rust:
+    name: Desktop Tauri Backend (Rust check)
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Rust check
+        run: cargo check --manifest-path projects/polymath/apps/desktop/src-tauri/Cargo.toml
+
+  backend:
+    name: Shared Supabase schema + Worker integration (API & MCP smoke test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.121.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: supabase start -x studio,imgproxy,vector,logflare,supavisor,mailpit,edge-runtime
+      - name: Worker against local stack
+        working-directory: projects/polymath/services/web
+        run: |
+          echo "SUPABASE_SERVICE_ROLE_KEY=$(supabase status -o json | jq -r .SERVICE_ROLE_KEY)" > .dev.vars
+          npm run dev:worker > /tmp/worker.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf -o /dev/null http://127.0.0.1:8797/ && break; sleep 1; done
+          curl -sf -o /dev/null http://127.0.0.1:8797/ || { cat /tmp/worker.log; exit 1; }
+      - run: node projects/polymath/scripts/test-api.mjs
+      - if: failure()
+        run: cat /tmp/worker.log || true
+      - if: always()
+        run: supabase stop

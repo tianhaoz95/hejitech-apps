@@ -1,6 +1,6 @@
 # HEJI projects monorepo
 
-Several products live in `projects/<name>/` (`waypack`, `weehours`, `feedbackkit`, `voxbrief`, `meowtrix`, `contempo`, `toddlercam`, `tinytouch`, `g2digest`, `headway`, `fitloop`), sharing one
+Several products live in `projects/<name>/` (`waypack`, `weehours`, `feedbackkit`, `voxbrief`, `meowtrix`, `contempo`, `toddlercam`, `tinytouch`, `g2digest`, `headway`, `fitloop`, `tether`), sharing one
 Supabase project (FeedbackKit keeps its own: `BACKEND=own`; Voxbrief, Meowtrix, ToddlerCam and TinyTouch have none: `BACKEND=none`) (`supabase/`, read `supabase/README.md` before any schema change), npm workspaces and CI
 plumbing. Layout and how to add a project: `README.md`. Keep each project self-contained; put
 something at the root only when it is genuinely shared. Each project has its own `CLAUDE.md`
@@ -102,6 +102,14 @@ in-app What's New describes the version) and publishes `fitloop-v<version>`, whi
 `fitloop-testflight.yml` (iPhone app with its Watch app) and `fitloop-glasses-release.yml` (the Even Hub
 plugin `.ehpk`, same version; upload it to the Even Hub portal by hand). Its Worker (web app, API,
 MCP) deploys on push. See `projects/fitloop/CLAUDE.md`.
+
+For Tether it bumps `MARKETING_VERSION` in `projects/tether/apps/ios/project.yml` (refusing until the
+in-app What's New describes the version) and publishes `tether-v<version>`, which runs
+`tether-testflight.yml`. Its Worker (web workspace, API, MCP) deploys on push. See `projects/tether/CLAUDE.md`.
+
+For Polymath it releases `projects/polymath/apps/desktop/package.json`'s version as `polymath-v<version>`,
+which runs `polymath-mac-release.yml` (signed & notarized Tauri macOS DMGs). Its Worker (site, docs, MCP)
+deploys on push. See `projects/polymath/CLAUDE.md`.
 
 ## Common pitfalls
 

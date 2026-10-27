@@ -1,0 +1,41 @@
+// The Polymath site: Vite-built pages (./dist) plus a Worker for /api, /mcp and its OAuth endpoints
+// (src/worker). Deploy from the repo root with `npm run deploy -w @polymath/web`.
+// Local: `npm run dev:worker -w @polymath/web` serves both on 127.0.0.1:8797.
+{
+  "$schema": "../../../../node_modules/wrangler/config-schema.json",
+  "name": "polymath-dev",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    "html_handling": "auto-trailing-slash",
+    "run_worker_first": ["/mcp", "/mcp/*", "/authorize", "/token", "/register", "/.well-known/*", "/api/*"]
+  },
+  "vars": {
+    "PUBLIC_URL": "http://127.0.0.1:8797",
+    "SUPABASE_URL": "http://127.0.0.1:55421",
+    // The demo anon key every local `supabase start` ships with.
+    "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0"
+  },
+  // Local secrets: .dev.vars (SUPABASE_SERVICE_ROLE_KEY).
+  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "polymath-oauth-local" }],
+  "dev": { "port": 8797, "ip": "127.0.0.1" },
+
+  "env": {
+    "production": {
+      "name": "polymath",
+      "workers_dev": true,
+      "vars": {
+        "PUBLIC_URL": "https://polymath.hejitech.workers.dev",
+        "SUPABASE_URL": "https://jitdzllkxfhlrxxvljhp.supabase.co",
+        "SUPABASE_ANON_KEY": "sb_publishable_lZSe_L4Wd0Sw01h25eixzQ_vLU7FPP8"
+      },
+      // Secret (wrangler secret put --env production): SUPABASE_SERVICE_ROLE_KEY
+      "kv_namespaces": [{ "binding": "OAUTH_KV" }]
+    }
+  }
+}

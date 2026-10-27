@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.wrangler/
+.dev.vars
+apps/ios/Tether.xcodeproj/
+apps/ios/.derived/
+apps/ios/build/
+apps/ios/TetherKit/.build/
+apps/ios/TetherKit/.swiftpm/
+apps/android/.gradle/
+apps/android/build/
+apps/android/*/build/
+apps/android/local.properties
+.DS_Store

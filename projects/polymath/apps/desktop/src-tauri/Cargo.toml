@@ -1,0 +1,21 @@
+[package]
+name = "polymath"
+version = "0.1.0"
+description = "Polymath Desktop — Agent-Native Interactive Course Player"
+authors = ["Tianhao Zhou"]
+license = "MIT"
+edition = "2021"
+
+[lib]
+name = "polymath_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.1.0", features = [] }
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+tauri = { version = "2.2.0", features = ["tray-icon", "image-png"] }
+tauri-plugin-shell = "2.2.0"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "fs", "process"] }

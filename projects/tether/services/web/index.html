@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- @head -->
+    <title>Tether · Pocket Tiling Workstation for iPhone &amp; Android</title>
+    <meta name="description" content="Plug your phone into an external USB-C monitor and work in a tiling desktop shell with Browser, SSH Terminal, and Files side by side." />
+  </head>
+  <body>
+    <!-- @header -->
+    <main>
+      <div class="wrap">
+        <section class="hero">
+          <div class="eyebrow"><span class="dot"></span>USB-C DisplayPort Alt Mode · Tiling Panes · Browser + SSH + Files</div>
+          <h1>Plug in your phone. Get a full tiling workstation.</h1>
+          <p class="lede">Tether is a self-contained desktop app for iOS and Android built for external monitors and Bluetooth keyboards. No fragile Linux container stack or X server to maintain—just tiling split panes of real native Browser tabs, SSH-only terminals, and local/SFTP files.</p>
+          <div class="row" style="margin-top: 16px">
+            <a class="btn primary" href="/login/?next=/settings/" data-signed-out>Sign in to sync workspace</a>
+            <a class="btn primary" href="/settings/" data-signed-in hidden>Manage synced workspace &amp; MCP</a>
+            <a class="btn secondary" href="/support/">Keyboard shortcuts &amp; hardware setup</a>
+          </div>
+        </section>
+
+        <section class="monitor-shell" aria-label="Interactive tiling workspace simulator">
+          <div class="monitor-topbar">
+            <div class="row">
+              <span class="badge accent">LIVE TILING ENGINE (@tether/core)</span>
+              <span class="small muted" id="pane-status">2 panes · Focused: pane-1</span>
+            </div>
+            <div class="row">
+              <button class="btn sm" type="button" data-action="split-h">Split Right (⌘\)</button>
+              <button class="btn sm" type="button" data-action="split-v">Split Down (⌘-)</button>
+              <button class="btn sm" type="button" data-action="maximize">Maximise (⌘⇧M)</button>
+              <button class="btn sm" type="button" data-action="close-pane">Close Pane (⌘⇧W)</button>
+              <select id="preset-select" aria-label="Layout Preset" style="width: auto; height: 28px; font-size: 12px">
+                <option value="">Layout Presets…</option>
+                <option value="single">1 Pane (Full Width)</option>
+                <option value="two_columns">2 Panes (50/50 Side by Side)</option>
+                <option value="three_columns">3 Panes (Equal Columns)</option>
+                <option value="left_main_right_stack">3 Panes (Left 50% + Right Stacked)</option>
+              </select>
+            </div>
+          </div>
+          <div class="monitor-canvas" id="monitor-canvas"></div>
+        </section>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Why Tether?</h2>
+            <span class="badge">PRD v1.0 Architecture</span>
+          </div>
+          <p class="muted">Existing phone-as-Linux-desktop projects stack a Linux userspace, container, and X server on top of the OS. Tether takes the opposite approach: a rock-solid tiling window manager hosting three native tools—<strong>Web</strong> (WKWebView / Android WebView), <strong>SSH Terminal</strong> (SwiftTerm + Citadel / Termux + SSHJ), and <strong>Files</strong> (Local + SFTP)—with mandatory SHA-256 host key verification and hardware-backed Keychain/Keystore security.</p>
+        </div>
+      </div>
+    </main>
+    <!-- @footer -->
+    <script type="module" src="/src/workspace.ts"></script>
+  </body>
+</html>

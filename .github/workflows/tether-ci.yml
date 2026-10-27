@@ -1,0 +1,112 @@
+name: Tether CI
+
+# Checks pushes and PRs that touch Tether or what it shares with other projects (root workspace
+# files, supabase/, CI plumbing). Keep `paths` in sync with CI_PATHS in projects/tether/release.env.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "projects/tether/**"
+      - "supabase/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - ".github/workflows/tether-ci.yml"
+  pull_request:
+    paths:
+      - "projects/tether/**"
+      - "supabase/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - ".github/workflows/tether-ci.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: tether-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  node:
+    name: Core, web + Worker (tests, typecheck, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck:tether
+      - run: npm run test:tether
+      - run: npm run build:tether
+        env:
+          WEB_ALLOW_LOCAL: "1"
+
+  backend:
+    name: Shared Supabase schema + Worker integration (MCP loop, workspace sync, secret rejection, OAuth, RLS)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.121.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: supabase start -x studio,imgproxy,vector,logflare,supavisor,mailpit,edge-runtime
+      - name: Worker against the local stack
+        working-directory: projects/tether/services/web
+        run: |
+          echo "SUPABASE_SERVICE_ROLE_KEY=$(supabase status -o json | jq -r .SERVICE_ROLE_KEY)" > .dev.vars
+          npm run dev:worker > /tmp/worker.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf -o /dev/null http://127.0.0.1:8796/ && break; sleep 1; done
+          curl -sf -o /dev/null http://127.0.0.1:8796/ || { cat /tmp/worker.log; exit 1; }
+      - run: node projects/tether/scripts/test-api.mjs
+      - if: failure()
+        run: cat /tmp/worker.log || true
+      - if: always()
+        run: supabase stop
+
+  ios:
+    name: iOS app (TetherKit tests, simulator build)
+    runs-on: macos-26
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: projects/tether/apps/ios
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "26"
+      - run: brew install xcodegen
+      - name: TetherKit tests
+        working-directory: projects/tether/apps/ios/TetherKit
+        run: swift test
+      - run: xcodegen generate
+      - name: Build for the simulator
+        run: xcodebuild -project Tether.xcodeproj -scheme App -destination 'generic/platform=iOS Simulator' build CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO
+
+  android:
+    name: Android app (:core tests, debug APK)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - name: Run unit tests & assemble debug APK
+        working-directory: projects/tether/apps/android
+        run: ./gradlew :core:test :app:assembleDebug --no-daemon
