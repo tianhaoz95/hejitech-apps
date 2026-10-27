@@ -17,10 +17,32 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.1"
+    static let currentVersion = "0.1.2"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.2", date: "October 2026", items: [
+            WhatsNewItem(
+                icon: "text.cursor",
+                title: "Direct URL Bar Input Focus",
+                description: "Clicking the URL field with the touchpad focuses the address bar and immediately opens the keyboard for seamless typing."
+            ),
+            WhatsNewItem(
+                icon: "menubar.rectangle",
+                title: "Full-Screen Cursor Reach",
+                description: "The mouse cursor now reaches all the way to the top edge to select layout presets (1, 2, 1+2, 2×2), split controls, and settings."
+            ),
+            WhatsNewItem(
+                icon: "arrow.left.and.right",
+                title: "Interactive Boundary Dragging",
+                description: "Resize split panes effortlessly by dragging boundaries with the cursor or using the new Resize toggle on the phone trackpad."
+            ),
+            WhatsNewItem(
+                icon: "macwindow",
+                title: "Native Desktop Dialogs",
+                description: "Alerts, path popups, folder creation, and rename prompts now render natively on the monitor and are fully clickable by the cursor."
+            ),
+        ]),
         ReleaseNotes(version: "0.1.1", date: "October 2026", items: [
             WhatsNewItem(
                 icon: "display.2",

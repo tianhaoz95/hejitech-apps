@@ -440,21 +440,20 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
 
             This is the first time connecting to this host. Verify the fingerprint matches your server before trusting.
             """
-            let alert = UIAlertController(title: "Verify SSH Host Key", message: msg, preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { [weak self] _ in
+            let cancelAction = DesktopAlertAction(title: "Cancel", style: .cancel) { [weak self] _ in
                 guard let self else { return }
                 self.store.sshStates[self.tabItem.id] = .disconnected
                 self.terminalBuffer.feed("Host key verification cancelled. Connection aborted.\r\n")
                 self.renderTerminal()
                 self.refreshToolbarState()
-            })
-            alert.addAction(UIAlertAction(title: "Trust & Save", style: .default) { [weak self] _ in
+            }
+            let trustAction = DesktopAlertAction(title: "Trust & Save", style: .default) { [weak self] _ in
                 guard let self else { return }
                 let entry = KnownHostKey(host: h, port: p, keyType: keyType, sha256Fingerprint: fingerprint)
                 self.store.secureStore.trustHostKey(entry)
                 self.completeHandshake(host: host, keyEntry: entry, firstTimeTrusted: true)
-            })
-            present(alert, animated: true)
+            }
+            showDesktopAlert(title: "Verify SSH Host Key", message: msg, actions: [trustAction, cancelAction])
         case .changedWarning(let existing, let presentedType, let presentedFp):
             presentChangedKeyWarning(
                 host: host,
@@ -482,15 +481,14 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
         Presented (\(presentedType)):
         \(presentedFingerprint)
         """
-        let alert = UIAlertController(title: "⚠️ Host Key Mismatch", message: msg, preferredStyle: .alert)
-        let cancelAction = UIAlertAction(title: "Cancel Connection (Recommended)", style: .cancel) { [weak self] _ in
+        let cancelAction = DesktopAlertAction(title: "Cancel Connection", style: .cancel) { [weak self] _ in
             guard let self else { return }
             self.store.sshStates[self.tabItem.id] = .error("Host key mismatch")
             self.terminalBuffer.feed("\u{1B}[38;5;196;1m[SECURITY] Connection aborted: remote host key did not match known_hosts.\u{1B}[0m\r\n")
             self.renderTerminal()
             self.refreshToolbarState()
         }
-        let replaceAction = UIAlertAction(title: "Replace Stored Key & Connect", style: .destructive) { [weak self] _ in
+        let replaceAction = DesktopAlertAction(title: "Replace Stored Key & Connect", style: .destructive) { [weak self] _ in
             guard let self else { return }
             let updated = KnownHostKey(
                 host: host.host,
@@ -501,10 +499,11 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
             self.store.secureStore.trustHostKey(updated)
             self.completeHandshake(host: host, keyEntry: updated, firstTimeTrusted: true)
         }
-        alert.addAction(cancelAction)
-        alert.addAction(replaceAction)
-        alert.preferredAction = cancelAction
-        present(alert, animated: true)
+        showDesktopAlert(
+            title: "⚠️ Host Key Mismatch",
+            message: msg,
+            actions: [cancelAction, replaceAction]
+        )
     }
 
     private func simulateChangedHostKeyWarning() {
@@ -581,19 +580,18 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
         if PaneTreeOps.isMultiLinePaste(text) {
             let lines = text.components(separatedBy: .newlines)
             let preview = lines.prefix(6).joined(separator: "\n")
-            let alert = UIAlertController(
-                title: "Confirm Multi-Line Paste",
-                message: "You are about to paste \(lines.count) lines into the SSH terminal, which may execute commands immediately:\n\n\(preview)",
-                preferredStyle: .alert
-            )
-            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-            alert.addAction(UIAlertAction(title: "Paste \(lines.count) Lines", style: .destructive) { [weak self] _ in
+            let cancelAction = DesktopAlertAction(title: "Cancel", style: .cancel)
+            let pasteAction = DesktopAlertAction(title: "Paste \(lines.count) Lines", style: .destructive) { [weak self] _ in
                 guard let self else { return }
                 for line in lines where !line.isEmpty {
                     self.executeTerminalLine(line)
                 }
-            })
-            present(alert, animated: true)
+            }
+            showDesktopAlert(
+                title: "Confirm Multi-Line Paste",
+                message: "You are about to paste \(lines.count) lines into the SSH terminal, which may execute commands immediately:\n\n\(preview)",
+                actions: [pasteAction, cancelAction]
+            )
         } else {
             let current = commandField.text ?? ""
             commandField.text = current + text

@@ -304,23 +304,25 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
     @objc private func bookmarkTapped() {
         let currentURL = webView.url?.absoluteString ?? tabItem.url ?? TetherConstants.defaultWebHomeURL
         let currentTitle = webView.title ?? tabItem.title
-        let alert = UIAlertController(title: "Bookmarks", message: currentURL, preferredStyle: .actionSheet)
-        alert.addAction(UIAlertAction(title: "Bookmark This Page", style: .default) { [weak self] _ in
+
+        var actions: [DesktopAlertAction] = []
+        actions.append(DesktopAlertAction(title: "Bookmark This Page", style: .default) { [weak self] _ in
             guard let self else { return }
             let bm = Bookmark(title: currentTitle.isEmpty ? currentURL : currentTitle, url: currentURL)
             self.store.bookmarks.insert(bm, at: 0)
         })
-        for bm in store.bookmarks.prefix(8) {
-            alert.addAction(UIAlertAction(title: "\(bm.title) (\(bm.url))", style: .default) { [weak self] _ in
+        for bm in store.bookmarks.prefix(6) {
+            actions.append(DesktopAlertAction(title: "Open: \(bm.title)", style: .default) { [weak self] _ in
                 self?.loadInput(bm.url)
             })
         }
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        if let pop = alert.popoverPresentationController {
-            pop.sourceView = bookmarkButton
-            pop.sourceRect = bookmarkButton.bounds
-        }
-        present(alert, animated: true)
+        actions.append(DesktopAlertAction(title: "Cancel", style: .cancel))
+
+        showDesktopAlert(
+            title: "Bookmarks",
+            message: currentURL,
+            actions: actions
+        )
     }
 
     public func textFieldShouldReturn(_ textField: UITextField) -> Bool {

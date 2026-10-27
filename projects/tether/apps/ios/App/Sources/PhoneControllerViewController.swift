@@ -36,8 +36,12 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     private let touchpadSurface = UIView()
     private let touchpadHelpLabel = UILabel()
     private let leftClickButton = UIButton(type: .system)
+    private let dragResizeButton = UIButton(type: .system)
     private let rightClickButton = UIButton(type: .system)
     private let switchModeButton = UIButton(type: .system)
+
+    private var isDragModeActive: Bool = false
+    private var isHoldingLeftClick: Bool = false
 
     // Keyboard Mode views
     private let keyboardContainer = UIView()
@@ -234,17 +238,28 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         // Bottom action buttons
         leftClickButton.translatesAutoresizingMaskIntoConstraints = false
         leftClickButton.setTitle("Left Click", for: .normal)
-        leftClickButton.titleLabel?.font = .systemFont(ofSize: 14, weight: .bold)
+        leftClickButton.titleLabel?.font = .systemFont(ofSize: 13, weight: .bold)
         leftClickButton.backgroundColor = UIColor(red: 0.10, green: 0.14, blue: 0.22, alpha: 1.0)
         leftClickButton.setTitleColor(.white, for: .normal)
         leftClickButton.layer.cornerRadius = 8
         leftClickButton.layer.borderWidth = 1
         leftClickButton.layer.borderColor = UIColor(white: 1.0, alpha: 0.15).cgColor
-        leftClickButton.addTarget(self, action: #selector(handleLeftClickTapped), for: .touchUpInside)
+        leftClickButton.addTarget(self, action: #selector(handleLeftClickDown), for: .touchDown)
+        leftClickButton.addTarget(self, action: #selector(handleLeftClickUp), for: [.touchUpInside, .touchUpOutside])
+
+        dragResizeButton.translatesAutoresizingMaskIntoConstraints = false
+        dragResizeButton.setTitle("↔ Resize", for: .normal)
+        dragResizeButton.titleLabel?.font = .systemFont(ofSize: 13, weight: .bold)
+        dragResizeButton.backgroundColor = UIColor(red: 0.12, green: 0.17, blue: 0.28, alpha: 1.0)
+        dragResizeButton.setTitleColor(.white, for: .normal)
+        dragResizeButton.layer.cornerRadius = 8
+        dragResizeButton.layer.borderWidth = 1
+        dragResizeButton.layer.borderColor = UIColor(white: 1.0, alpha: 0.15).cgColor
+        dragResizeButton.addTarget(self, action: #selector(handleDragResizeToggled), for: .touchUpInside)
 
         rightClickButton.translatesAutoresizingMaskIntoConstraints = false
         rightClickButton.setTitle("Right Click", for: .normal)
-        rightClickButton.titleLabel?.font = .systemFont(ofSize: 14, weight: .bold)
+        rightClickButton.titleLabel?.font = .systemFont(ofSize: 13, weight: .bold)
         rightClickButton.backgroundColor = UIColor(red: 0.10, green: 0.14, blue: 0.22, alpha: 1.0)
         rightClickButton.setTitleColor(.white, for: .normal)
         rightClickButton.layer.cornerRadius = 8
@@ -260,11 +275,11 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         switchModeButton.layer.cornerRadius = 8
         switchModeButton.addTarget(self, action: #selector(switchToKeyboardTapped), for: .touchUpInside)
 
-        let clickButtonsStack = UIStackView(arrangedSubviews: [leftClickButton, rightClickButton])
+        let clickButtonsStack = UIStackView(arrangedSubviews: [leftClickButton, dragResizeButton, rightClickButton])
         clickButtonsStack.translatesAutoresizingMaskIntoConstraints = false
         clickButtonsStack.axis = .horizontal
         clickButtonsStack.distribution = .fillEqually
-        clickButtonsStack.spacing = 10
+        clickButtonsStack.spacing = 8
 
         touchpadView.addSubview(touchpadSurface)
         touchpadView.addSubview(clickButtonsStack)
@@ -302,10 +317,11 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
             // 2-finger scroll on monitor
             workspaceVC?.performVirtualScroll(deltaX: -translation.x * 0.8, deltaY: -translation.y * 0.8)
         } else {
-            // 1-finger pointer move
+            // 1-finger pointer move or pane resize drag
             let speed: CGFloat = 1.35
             let delta = CGVector(dx: translation.x * speed, dy: translation.y * speed)
-            workspaceVC?.moveVirtualCursor(delta: delta)
+            let isDragging = isDragModeActive || isHoldingLeftClick
+            workspaceVC?.handleCursorPan(delta: delta, isDragHeld: isDragging)
         }
         gesture.setTranslation(.zero, in: touchpadSurface)
     }
@@ -318,8 +334,28 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         workspaceVC?.routeSpecialKey(.escape)
     }
 
-    @objc private func handleLeftClickTapped() {
+    @objc private func handleLeftClickDown() {
+        isHoldingLeftClick = true
+        leftClickButton.backgroundColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.4)
+    }
+
+    @objc private func handleLeftClickUp() {
+        isHoldingLeftClick = false
+        leftClickButton.backgroundColor = UIColor(red: 0.10, green: 0.14, blue: 0.22, alpha: 1.0)
         workspaceVC?.performVirtualClick()
+    }
+
+    @objc private func handleDragResizeToggled() {
+        isDragModeActive.toggle()
+        if isDragModeActive {
+            dragResizeButton.backgroundColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.9)
+            dragResizeButton.setTitleColor(.black, for: .normal)
+            dragResizeButton.setTitle("✓ Lock", for: .normal)
+        } else {
+            dragResizeButton.backgroundColor = UIColor(red: 0.12, green: 0.17, blue: 0.28, alpha: 1.0)
+            dragResizeButton.setTitleColor(.white, for: .normal)
+            dragResizeButton.setTitle("↔ Resize", for: .normal)
+        }
     }
 
     @objc private func handleRightClickTapped() {
@@ -327,6 +363,11 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     }
 
     @objc private func switchToKeyboardTapped() {
+        showMode(.keyboard)
+    }
+
+    public func switchToKeyboardForInput(placeholder: String) {
+        activePaneLabel.text = "⌨️ Focused: \(placeholder)"
         showMode(.keyboard)
     }
 
@@ -491,6 +532,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
 
     public func textFieldShouldReturn(_ textField: UITextField) -> Bool {
         workspaceVC?.routeKeyInput("\n")
+        showMode(.touchpad)
         return false
     }
 
@@ -687,7 +729,8 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         } else if gesture.state == .changed {
             let dx = (location.x - lastPanLocation.x) * 1.5
             let dy = (location.y - lastPanLocation.y) * 1.5
-            workspaceVC?.moveVirtualCursor(delta: CGVector(dx: dx, dy: dy))
+            let isDragging = isDragModeActive || isHoldingLeftClick
+            workspaceVC?.handleCursorPan(delta: CGVector(dx: dx, dy: dy), isDragHeld: isDragging)
             lastPanLocation = location
         }
     }
