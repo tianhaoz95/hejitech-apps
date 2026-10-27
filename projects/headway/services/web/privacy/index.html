@@ -7,29 +7,33 @@
   <body>
     <!-- @header -->
     <main>
-      <div class="wrap narrow">
-        <h1>Privacy</h1>
-        <p class="muted">Last updated October 24, 2026.</p>
-        <h2>What Headway keeps</h2>
-        <ul>
-          <li><b>Your account</b>: you sign in with Google. Headway receives your email address and an account id from the sign-in, shared with other HEJI apps that use the same sign-in.</li>
-          <li><b>Your commute</b>: the morning and evening stations you save, walking times, the train time you usually take, alert windows, days and which alerts you want.</li>
-          <li><b>Your devices</b>: a token for each paired pair of glasses, and your iPhone's push notification token so alerts reach it. Only a hash of glasses and assistant tokens is stored.</li>
-          <li><b>The train you're tracking</b>, until it arrives, and a short log of the alerts already sent to you (so none is sent twice), kept for 14 days.</li>
-        </ul>
-        <h2>What Headway doesn't do</h2>
-        <ul>
-          <li>No location tracking: Headway never asks where you are. Leave-now reminders use the walking time you enter.</li>
-          <li>No ads, no analytics, no selling or sharing your data.</li>
-        </ul>
-        <h2>Where it goes</h2>
-        <p>Your data is stored with Supabase and processed by a Cloudflare Worker. Alerts are delivered through Apple Push Notification service. Caltrain departure data comes from Caltrain's published timetable and 511.org; nothing about you is sent to them.</p>
-        <h2>The glasses app</h2>
-        <p>The Headway app for Even Realities G2 glasses asks for one permission, network: it talks only to headway.hejitech.workers.dev, our server, and fetches departures and your saved commute, and tells the server which train you track. It stores its pairing token and its last data in the Even app on your phone. It uses no microphone, camera or location.</p>
-        <h2>Who we are</h2>
-        <p>Headway is made by HEJI TECHNOLOGY LLC. The server at headway.hejitech.workers.dev and the database behind it (on Supabase) are operated by us.</p>
-        <h2>Deleting it</h2>
-        <p>In the iPhone app (Settings → Delete my Headway data) or on the web (<a href="/settings/">Settings</a> → Delete my Headway data). This removes everything above at once and disconnects your assistants. Questions: <a href="mailto:info@hejitech.com">info@hejitech.com</a>.</p>
+      <div class="wrap narrow doc">
+        <div class="page-head">
+          <h1>Privacy Policy</h1>
+          <p class="muted small">Last updated October 24, 2026</p>
+        </div>
+        <div class="panel">
+          <h2>What Headway keeps</h2>
+          <ul>
+            <li><b>Your account</b>: you sign in with Google. Headway receives your email address and an account id from the sign-in, shared with other HEJI apps that use the same sign-in.</li>
+            <li><b>Your commute</b>: the morning and evening stations you save, walking times, the train time you usually take, alert windows, days and which alerts you want.</li>
+            <li><b>Your devices</b>: a token for each paired pair of glasses, and your iPhone's push notification token so alerts reach it. Only a hash of glasses and assistant tokens is stored.</li>
+            <li><b>The train you're tracking</b>, until it arrives, and a short log of the alerts already sent to you (so none is sent twice), kept for 14 days.</li>
+          </ul>
+          <h2>What Headway doesn't do</h2>
+          <ul>
+            <li>No location tracking: Headway never asks where you are. Leave-now reminders use the walking time you enter.</li>
+            <li>No ads, no analytics, no selling or sharing your data.</li>
+          </ul>
+          <h2>Where it goes</h2>
+          <p>Your data is stored with Supabase and processed by a Cloudflare Worker. Alerts are delivered through Apple Push Notification service. Caltrain departure data comes from Caltrain's published timetable and 511.org; nothing about you is sent to them.</p>
+          <h2>The glasses app</h2>
+          <p>The Headway app for Even Realities G2 glasses asks for one permission, network: it talks only to headway.hejitech.workers.dev, our server, and fetches departures and your saved commute, and tells the server which train you track. It stores its pairing token and its last data in the Even app on your phone. It uses no microphone, camera or location.</p>
+          <h2>Who we are</h2>
+          <p>Headway is made by HEJI TECHNOLOGY LLC. The server at headway.hejitech.workers.dev and the database behind it (on Supabase) are operated by us.</p>
+          <h2>Deleting it</h2>
+          <p>In the iPhone app (Settings → Delete my Headway data) or on the web (<a href="/settings/">Settings</a> → Delete my Headway data). This removes everything above at once and disconnects your assistants. Questions: <a href="mailto:info@hejitech.com">info@hejitech.com</a>.</p>
+        </div>
       </div>
     </main>
     <!-- @footer -->

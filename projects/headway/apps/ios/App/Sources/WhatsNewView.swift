@@ -20,10 +20,13 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.0"
+    static let currentVersion = "0.1.1"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.1", date: "October 2026", items: [
+            WhatsNewItem(icon: "globe", title: "Refined web commute & board UI", description: "Redesigned web settings with morning/evening toggles, quick route mirroring, interactive weekday pills, structured alert controls, and an upgraded departure board and G2 waveguide preview."),
+        ]),
         ReleaseNotes(version: "0.1.0", date: "October 2026", items: [
             WhatsNewItem(icon: "tram.fill", title: "Your commute, live", description: "Save a morning and an evening pair of stations. Headway opens on the right one for the time of day, with live delays from Caltrain's feed."),
             WhatsNewItem(icon: "eyeglasses", title: "On your Even G2", description: "Pair the Headway plugin with a code. Swipe the R1 ring through the next trains, tap to flip direction, hold to track a train."),

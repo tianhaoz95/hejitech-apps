@@ -12,25 +12,50 @@ let hasCommute = false;
 const nav = new Navigator();
 const world = (): World => ({ board: current, progress: null, hasCommute, custom: true, now: Date.now() });
 
+const KIND_NAMES: Record<BoardTrain["kind"], string> = {
+  LOC: "Local",
+  LTD: "Limited",
+  EXP: "Express",
+  SCC: "South County",
+};
+
 function trainItem(t: BoardTrain, now: number) {
   const cls = t.status === "cancelled" ? "cancelled" : t.status === "late" ? "late" : t.status === "on_time" ? "ok" : "";
   const label = t.status === "cancelled" ? "Cancelled" : t.status === "late" ? `${t.delay_min} min late` : t.status === "early" ? `${-(t.delay_min ?? 0)} min early` : t.status === "on_time" ? "On time" : "Scheduled";
+  const stopsText = t.stops_between ? `${t.stops_between} stop${t.stops_between === 1 ? "" : "s"}` : "Nonstop";
   return el("li", { class: "train" },
-    el("span", { class: "num" }, t.train, el("span", { class: "kind" }, { LOC: "Local", LTD: "Limited", EXP: "Express", SCC: "South County" }[t.kind])),
+    el("span", { class: "num" },
+      `#${t.train}`,
+      el("span", { class: `kind-pill ${t.kind}` }, KIND_NAMES[t.kind])),
     el("span", { class: "times" },
-      el("b", {}, clock(t.pred_dep)), t.pred_dep !== t.dep ? el("s", {}, clock(t.dep)) : null, ` → ${clock(t.pred_arr)}`,
-      el("span", { class: `kind ${cls}` }, label, t.stops_between ? ` · ${t.stops_between} stop${t.stops_between === 1 ? "" : "s"} between` : " · nonstop")),
-    el("span", { class: `in ${cls}` }, t.status === "cancelled" ? "—" : untilText(t.pred_dep, now)));
+      el("span", { class: "time-main" },
+        el("b", {}, clock(t.pred_dep)),
+        t.pred_dep !== t.dep ? el("s", {}, clock(t.dep)) : null,
+        el("span", { class: "arr" }, `→ ${clock(t.pred_arr)}`)),
+      el("span", { class: "meta" },
+        el("span", { class: cls }, label),
+        "·",
+        stopsText)),
+    el("span", { class: `in ${cls}` }, t.status === "cancelled" ? "CXL" : untilText(t.pred_dep, now)));
 }
 
 function render() {
   const now = Date.now();
   const b = current;
-  $("live").textContent = b ? (b.live ? "Live" : "Timetable") : "";
-  $("live").title = b?.live ? "Predictions from Caltrain's live feed (511.org)" : "No fresh live data: scheduled times";
-  $("trains").replaceChildren(...(b?.trains.length ? b.trains.map((t) => trainItem(t, now)) : [el("li", { class: "muted" }, b ? "No more trains today." : "Pick two different stations.")]));
-  $("alerts").replaceChildren(...(b?.alerts ?? []).map((a) => el("div", { class: "alert-box" }, el("b", {}, a.header), a.description && a.description !== a.header ? el("div", { class: "muted small" }, a.description) : null)));
+  const liveBadge = $("live");
+  liveBadge.textContent = b ? (b.live ? "Live · 511.org" : "Timetable") : "Select route";
+  liveBadge.className = b?.live ? "badge live" : "badge";
+  liveBadge.title = b?.live ? "Predictions from Caltrain's live feed (511.org)" : "No fresh live data: scheduled times";
+  $("trains").replaceChildren(...(b?.trains.length
+    ? b.trains.map((t) => trainItem(t, now))
+    : [el("li", { class: "empty-state" }, b ? "No more trains scheduled today for this route." : "Pick two different stations above.")]));
+  $("alerts").replaceChildren(...(b?.alerts ?? []).map((a) =>
+    el("div", { class: "alert-box" },
+      el("b", {}, a.header),
+      a.description && a.description !== a.header ? el("div", { class: "muted small", style: "margin-top: 2px" }, a.description) : null)));
   $("g2").textContent = nav.lines(world()).join("\n");
+  const screenBadge = document.getElementById("g2-screen");
+  if (screenBadge) screenBadge.textContent = nav.screen.toUpperCase().replace("_", " ");
 }
 
 async function load() {
