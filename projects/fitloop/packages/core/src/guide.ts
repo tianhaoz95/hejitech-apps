@@ -4,7 +4,7 @@
 import { LIMITS } from "./validate.ts";
 import { FEEDBACK_TAGS, METRICS, PLAN_FORMAT_VERSION } from "./types.ts";
 
-export const GUIDE_VERSION = "1.0";
+export const GUIDE_VERSION = "1.1";
 
 export const GUIDE = `# FitLoop plan guide (v${GUIDE_VERSION}, plan format ${PLAN_FORMAT_VERSION})
 
@@ -15,8 +15,8 @@ moment. You read all of it back here and improve the plan. FitLoop gives no advi
 ## The loop
 
 1. get_profile: what the user told every agent (goals, restrictions, equipment, schedule, diet,
-   notes) and which data they share with you. Ask the user about anything missing that matters
-   (injuries, time, equipment, foods they avoid) before planning; save what you learn with
+   notes) and which data they share with you. If about fields are empty or key details are missing,
+   interview the user first (see "Interviewing the user" below) and save what you learn with
    update_profile_notes so the next agent session knows it.
 2. Before changing a plan: get_feedback (status open), get_progress (adherence and what they
    actually did), get_vitals if shared. Feedback is the user talking to you; take it seriously.
@@ -26,6 +26,33 @@ moment. You read all of it back here and improve the plan. FitLoop gives no advi
    your reply next to their note.
 5. Publishing replaces the current plan from its starts_on (default today). Past check-ins stay with
    the version they were made against.
+
+## Interviewing the user (first plan or missing profile)
+
+ FitLoop tells new users not to fill out forms by hand — they expect you to interview them and save
+ their answers with update_profile_notes:
+
+- Never guess or publish a first plan when about fields are blank.
+- Check get_vitals first (if shared_with_you.vitals is non-empty) so you don't ask for weight,
+  resting heart rate, sleep or steps they already share.
+- Ask in 1–2 short, conversational rounds (2–3 focused questions at a time, or use your client's
+  structured question tool if available — never dump a 15-question questionnaire all at once) to
+  cover the 6 profile fields:
+  - goals: what they want to achieve, any target metric/weight/event, and timeline (by date).
+  - restrictions: current or past injuries, movements that hurt, medical or physical limits
+    (always ask before prescribing exercises).
+  - equipment: where they train (home, office gym, commercial gym, outdoors) and what weights/gear
+    they have.
+  - schedule: which days of the week (mon–sun), preferred workout/meal times (HH:MM drives their
+    iPhone and Watch reminders), and how many minutes per workout.
+  - diet: dietary style or allergies, foods they love or avoid, prep time, and whether they want
+    calorie/macro targets.
+  - notes: current fitness level, sports/activities they already do, work/sleep routine, or other
+    preferences.
+- As soon as they answer, call update_profile_notes with the fields you learned (and tell the user
+  what you saved) before drafting, validating and publishing the plan.
+- In later sessions, whenever the user mentions a new injury, equipment change, schedule shift or
+  food preference, update the corresponding field with update_profile_notes.
 
 ## Plan format
 

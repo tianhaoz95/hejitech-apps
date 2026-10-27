@@ -20,10 +20,14 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.0"
+    static let currentVersion = "0.1.1"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.1", date: "October 2026", items: [
+            WhatsNewItem(icon: "person.wave.2", title: "Your agent interviews you", description: "No intake forms to fill out first: connect your agent over MCP and it interviews you for your goals, limits, equipment, schedule and diet, saving them to your profile."),
+            WhatsNewItem(icon: "heart.text.square", title: "Clearer health & safety notes", description: "Explicit Apple Health sharing disclosures, Terms and Privacy links, and immediate safety reminders when logging pain."),
+        ]),
         ReleaseNotes(version: "0.1.0", date: "October 2026", items: [
             WhatsNewItem(icon: "sparkles", title: "Your agent writes the plan", description: "Connect Claude or any MCP agent: it builds your workouts and meals around your goals, time and limits, and publishes them here."),
             WhatsNewItem(icon: "figure.strengthtraining.traditional", title: "Follow it set by set", description: "A workout player with rest timers and how-to cues, heart rate from your Apple Watch, and the same on your Even G2."),

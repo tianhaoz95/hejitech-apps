@@ -48,6 +48,8 @@ describe("plan", () => {
   it("the guide states the format and the limits", () => {
     expect(GUIDE).toContain('"format": 1');
     expect(GUIDE).toContain("rest_sec");
+    expect(GUIDE).toContain("## Interviewing the user");
+    expect(GUIDE).toContain("update_profile_notes");
   });
 });
 
