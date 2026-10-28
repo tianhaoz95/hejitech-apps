@@ -715,6 +715,8 @@ pub fn run() {
     tauri::Builder::default()
         .manage(AppPtyState::default())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             provision_course_workspace,
             open_course_terminal,

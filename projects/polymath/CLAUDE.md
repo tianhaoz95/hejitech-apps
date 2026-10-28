@@ -25,3 +25,11 @@ npm run dev:worker -w @polymath/web
 2. **Minimal Backend Footprint**: The shared Supabase project (`schema polymath`) stores only user preferences (theme, font size) and active profile metadata via Google PKCE authentication.
 3. **Bring Your Own Agent (BYOA)**: The managed workspace pre-seeds standard Agent Skills (`.agents/skills/course-author/SKILL.md`) and local MCP servers so any agent running in the terminal understands how to construct a course.
 4. **Declarative Component SDK**: Interactive widgets are declared in standard Markdown as clean JSX tags. No arbitrary JavaScript execution inside course files.
+
+## Releases & Auto-Updates
+
+Releases are triggered via `scripts/cut_release.sh polymath [patch|minor|major]`.
+- Tags are created as `polymath-v<version>`.
+- `.github/workflows/polymath-mac-release.yml` builds, signs with Developer ID Application, notarizes via App Store Connect API, generates signed Tauri updater artifacts, and attaches the DMG and updater files (`latest.json`, `Polymath.app.tar.gz`, `Polymath.app.tar.gz.sig`) to the release.
+- It refreshes the rolling `polymath-latest` prerelease containing `latest.json` which installed desktop apps poll for in-app updates.
+- In-app updater is powered by `@tauri-apps/plugin-updater` and `tauri-plugin-updater` with dedicated minisign Ed25519 keypair.

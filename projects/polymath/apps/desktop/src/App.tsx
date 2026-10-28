@@ -7,6 +7,8 @@ import { ClusterTopology } from "./components/ClusterTopology.js";
 import { SocraticQuiz } from "./components/SocraticQuiz.js";
 import { EmbeddedTerminal, type TestRunInfo } from "./components/EmbeddedTerminal.js";
 import { invokeTauri, isTauri } from "./tauriBridge.js";
+import { checkForUpdate, downloadAndInstallUpdate } from "./updater.js";
+import type { Update } from "@tauri-apps/plugin-updater";
 import type { Course, Chapter } from "@polymath/core";
 
 export interface LocalCourseInfo {
@@ -55,6 +57,59 @@ export const App: React.FC = () => {
   const [activeCourseSlug, setActiveCourseSlug] = useState(course.id);
   const [activeCourseDir, setActiveCourseDir] = useState("~/heji-courses/vllm-sglang-trtllm");
   const [latestTestResult, setLatestTestResult] = useState<TestRunInfo | null>(null);
+
+  // In-app Auto-updater state
+  const [availableUpdate, setAvailableUpdate] = useState<Update | null>(null);
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  useEffect(() => {
+    if (isTauri()) {
+      checkForUpdate()
+        .then((up) => {
+          if (up) setAvailableUpdate(up);
+        })
+        .catch(() => {
+          // Silent failure on startup background check
+        });
+    }
+  }, []);
+
+  const handleManualCheckUpdate = async () => {
+    setIsCheckingUpdate(true);
+    setUpdateStatus("Checking…");
+    try {
+      const up = await checkForUpdate();
+      if (up) {
+        setAvailableUpdate(up);
+        setUpdateStatus(`v${up.version} available`);
+      } else {
+        setAvailableUpdate(null);
+        setUpdateStatus("Up to date");
+        setTimeout(() => setUpdateStatus(null), 3000);
+      }
+    } catch (err: any) {
+      setUpdateStatus("Check failed");
+      setTimeout(() => setUpdateStatus(null), 4000);
+    } finally {
+      setIsCheckingUpdate(false);
+    }
+  };
+
+  const handleInstallUpdate = async () => {
+    if (!availableUpdate) return;
+    setIsUpdating(true);
+    try {
+      await downloadAndInstallUpdate(availableUpdate, (status) => {
+        setUpdateStatus(status);
+      });
+    } catch (err: any) {
+      setIsUpdating(false);
+      setUpdateStatus("Update failed");
+      setTimeout(() => setUpdateStatus(null), 4000);
+    }
+  };
 
   const activeChapter: Chapter = course.chapters[activeChapterIndex] || course.chapters[0];
 
@@ -370,6 +425,54 @@ export const App: React.FC = () => {
             >
               {statusMessage}
             </span>
+          )}
+
+          {/* In-app Auto Updater Button */}
+          {availableUpdate ? (
+            <button
+              onClick={handleInstallUpdate}
+              disabled={isUpdating}
+              style={{
+                background: "linear-gradient(180deg, #10B981, #059669)",
+                color: "#FFFFFF",
+                border: "1px solid #34D399",
+                borderRadius: 6,
+                padding: "4px 10px",
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: isUpdating ? "wait" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                boxShadow: "0 1px 3px rgba(16, 185, 129, 0.4)",
+              }}
+              title={`Install Polymath v${availableUpdate.version} and restart`}
+            >
+              <span>🚀</span>
+              <span>{isUpdating ? (updateStatus || "Updating…") : `Update to v${availableUpdate.version}`}</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleManualCheckUpdate}
+              disabled={isCheckingUpdate}
+              style={{
+                background: isLight ? "#FFFFFF" : "rgba(255, 255, 255, 0.06)",
+                border: `1px solid ${borderColor}`,
+                color: mutColor,
+                padding: "4px 8px",
+                borderRadius: 6,
+                fontSize: 11,
+                fontWeight: 500,
+                cursor: isCheckingUpdate ? "wait" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+              }}
+              title="Check for software updates"
+            >
+              <span style={{ fontSize: 10 }}>🔄</span>
+              <span>{isCheckingUpdate ? "Checking…" : (updateStatus || "Updates")}</span>
+            </button>
           )}
 
           {/* Light / Dark Mode Toggle */}

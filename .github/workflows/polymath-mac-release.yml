@@ -1,0 +1,106 @@
+name: Polymath → Mac DMGs
+
+# On a published GitHub Release tagged polymath-v<version> (other projects' releases are skipped):
+# builds the desktop app, signs it with the team's Developer ID, notarizes, attaches the DMG
+# plus the Tauri updater artifacts (tarball, .sig, latest.json) to the release, and refreshes
+# polymath-latest (latest.json + stable-named DMGs), which installed desktop apps poll.
+# workflow_dispatch re-runs a tag, or (no_upload) only builds, signs and notarizes.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, e.g. polymath-v0.1.0 (blank = newest polymath-v)"
+        required: false
+      no_upload:
+        description: "Build, sign and notarize only; don't attach to a release"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ inputs.no_upload == true && format('polymath-mac-validate-{0}', github.run_id) || 'polymath-mac-release' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    working-directory: projects/polymath
+
+jobs:
+  mac:
+    name: Build, notarize & attach DMGs
+    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'polymath-v')
+    runs-on: macos-15
+    timeout-minutes: 90
+    environment:
+      name: GitHub Releases
+      url: https://github.com/${{ github.repository }}/releases
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag || github.ref }}
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "16"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: projects/polymath/apps/desktop/src-tauri
+
+      - name: Install dependencies
+        run: |
+          cd ../../
+          npm ci
+
+      # The team-wide HEJI Developer ID Application identity (imported, never created by CI) and
+      # the App Store Connect key, which notarizes (apple-signing sets FA_KEY_LOCATION).
+      - uses: ./.github/actions/apple-signing
+        with:
+          p12-base64: ${{ secrets.MAC_SIGNING_P12_BASE64 }}
+          p12-password: ${{ secrets.MAC_SIGNING_P12_PASSWORD }}
+          asc-key-id: ${{ secrets.ASC_KEY_ID }}
+          asc-key-p8-base64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+
+      - name: Build, sign, notarize and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FA_ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          FA_ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          # Polymath's own updater key: installed apps verify updates against its public half.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.POLYMATH_TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.POLYMATH_TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+          NO_UPLOAD: ${{ inputs.no_upload }}
+        run: |
+          ARGS=()
+          [ -n "$TAG" ] && ARGS+=(--tag "$TAG")
+          [ "$NO_UPLOAD" = "true" ] && ARGS+=(--no-upload)
+          ./scripts/release-mac.sh ${ARGS[@]+"${ARGS[@]}"}
+
+      - name: Upload artifacts for pipeline validation
+        if: ${{ inputs.no_upload == true }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: polymath-macos-release-artifacts
+          path: |
+            projects/polymath/build/release-mac/dmg/*.dmg
+            projects/polymath/apps/desktop/src-tauri/target/release/bundle/macos/updater/*
+          if-no-files-found: error
+
+      - name: Clean up signing material
+        if: always()
+        run: |
+          rm -rf "$RUNNER_TEMP/private_keys"
+          [ -n "${SIGNING_KEYCHAIN_PATH:-}" ] && security delete-keychain "$SIGNING_KEYCHAIN_PATH" || true
