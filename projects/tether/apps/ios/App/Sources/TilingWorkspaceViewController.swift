@@ -92,8 +92,8 @@ public final class TilingWorkspaceViewController: UIViewController {
         let preset4 = makeChromeButton("2×2", action: #selector(presetGridTapped))
 
         let paletteBtn = makeChromeButton("⌘K", action: #selector(openCommandPalette))
-        let splitH = makeChromeButton("Split ⫿", action: #selector(splitHorizontalTapped))
-        let splitV = makeChromeButton("Split ⊟", action: #selector(splitVerticalTapped))
+        let splitH = makeChromeIconButton(systemName: "rectangle.split.2x1", title: "Split Vertically", action: #selector(splitHorizontalTapped))
+        let splitV = makeChromeIconButton(systemName: "rectangle.split.1x2", title: "Split Horizontally", action: #selector(splitVerticalTapped))
         let swapBtn = makeChromeButton("Swap", action: #selector(swapPanesTapped))
         let maxBtn = makeChromeButton("Max", action: #selector(maximisePaneTapped))
         let hostsBtn = makeChromeButton("Hosts & Keys", action: #selector(openHostsTapped))
@@ -199,6 +199,21 @@ public final class TilingWorkspaceViewController: UIViewController {
         btn.backgroundColor = UIColor(white: 1.0, alpha: 0.08)
         btn.layer.cornerRadius = 4
         btn.addTarget(self, action: action, for: .touchUpInside)
+        return btn
+    }
+
+    private func makeChromeIconButton(systemName: String, title: String? = nil, action: Selector) -> UIButton {
+        let btn = UIButton(type: .system)
+        let config = UIImage.SymbolConfiguration(pointSize: 12, weight: .semibold)
+        btn.setImage(UIImage(systemName: systemName, withConfiguration: config), for: .normal)
+        btn.tintColor = .white
+        btn.backgroundColor = UIColor(white: 1.0, alpha: 0.08)
+        btn.layer.cornerRadius = 4
+        btn.translatesAutoresizingMaskIntoConstraints = false
+        btn.widthAnchor.constraint(equalToConstant: 28).isActive = true
+        btn.heightAnchor.constraint(equalToConstant: 22).isActive = true
+        btn.addTarget(self, action: action, for: .touchUpInside)
+        btn.accessibilityLabel = title
         return btn
     }
 
@@ -478,7 +493,8 @@ public final class TilingWorkspaceViewController: UIViewController {
         tabHeader.accessibilityIdentifier = pane.id
         tabHeader.addGestureRecognizer(tapFocus)
 
-        let scroll = UIScrollView(frame: CGRect(x: 4, y: 0, width: max(40, container.bounds.width - 130), height: tabBarHeight))
+        let rightControlsWidth: CGFloat = store.panes.count > 1 ? 58 : 30
+        let scroll = UIScrollView(frame: CGRect(x: 4, y: 0, width: max(40, container.bounds.width - rightControlsWidth - 8), height: tabBarHeight))
         scroll.showsHorizontalScrollIndicator = false
 
         var xOffset: CGFloat = 2
@@ -523,25 +539,34 @@ public final class TilingWorkspaceViewController: UIViewController {
         scroll.contentSize = CGSize(width: xOffset + 4, height: tabBarHeight)
         tabHeader.addSubview(scroll)
 
-        // Quick +Web / +SSH / +Files / Close Pane buttons on right side of pane header
+        // Single + button with drop-down menu & Close Pane button on right side of pane header
         let rightControls = UIStackView()
         rightControls.axis = .horizontal
         rightControls.spacing = 3
         rightControls.alignment = .center
-        rightControls.frame = CGRect(x: max(0, container.bounds.width - 124), y: 2, width: 120, height: 28)
+        rightControls.frame = CGRect(x: max(0, container.bounds.width - rightControlsWidth - 4), y: 2, width: rightControlsWidth, height: 28)
 
-        for (label, type) in [("+W", TabType.web), ("+S", TabType.ssh), ("+F", TabType.files)] {
-            let b = UIButton(type: .system)
-            b.setTitle(label, for: .normal)
-            b.titleLabel?.font = .monospacedSystemFont(ofSize: 10, weight: .bold)
-            b.setTitleColor(UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0), for: .normal)
-            b.backgroundColor = UIColor(white: 1.0, alpha: 0.08)
-            b.layer.cornerRadius = 3
-            b.addAction(UIAction { [weak self] _ in
-                self?.store.openTab(type: type, inPaneId: pane.id)
-            }, for: .touchUpInside)
-            rightControls.addArrangedSubview(b)
-        }
+        let addTabBtn = UIButton(type: .system)
+        let plusConfig = UIImage.SymbolConfiguration(pointSize: 11, weight: .bold)
+        addTabBtn.setImage(UIImage(systemName: "plus", withConfiguration: plusConfig), for: .normal)
+        addTabBtn.tintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
+        addTabBtn.backgroundColor = UIColor(white: 1.0, alpha: 0.08)
+        addTabBtn.layer.cornerRadius = 3
+        addTabBtn.showsMenuAsPrimaryAction = true
+        addTabBtn.accessibilityLabel = "New Tab"
+        addTabBtn.menu = UIMenu(title: "New Tab", children: [
+            UIAction(title: "Web Browser", image: UIImage(systemName: "globe")) { [weak self] _ in
+                self?.store.openTab(type: .web, inPaneId: pane.id)
+            },
+            UIAction(title: "SSH Terminal", image: UIImage(systemName: "terminal.fill")) { [weak self] _ in
+                self?.store.openTab(type: .ssh, inPaneId: pane.id)
+            },
+            UIAction(title: "File Explorer", image: UIImage(systemName: "folder.fill")) { [weak self] _ in
+                self?.store.openTab(type: .files, inPaneId: pane.id)
+            }
+        ])
+        addTabBtn.frame = CGRect(x: 0, y: 0, width: 24, height: 22)
+        rightControls.addArrangedSubview(addTabBtn)
 
         if store.panes.count > 1 {
             let closePaneBtn = UIButton(type: .system)
@@ -1056,6 +1081,14 @@ public final class TilingWorkspaceViewController: UIViewController {
             UIKeyCommand(title: "Open Settings", action: #selector(openSettingsTapped), input: ",", modifierFlags: [.control]),
             UIKeyCommand(title: "Open Hosts", action: #selector(openHostsTapped), input: "h", modifierFlags: [.command, .shift]),
             UIKeyCommand(title: "Open Hosts", action: #selector(openHostsTapped), input: "h", modifierFlags: [.control, .shift]),
+
+            // Workspace (Spaces) Cycling & Selection
+            UIKeyCommand(title: "Next Workspace", action: #selector(nextWorkspaceKey), input: UIKeyCommand.inputRightArrow, modifierFlags: [.control]),
+            UIKeyCommand(title: "Previous Workspace", action: #selector(prevWorkspaceKey), input: UIKeyCommand.inputLeftArrow, modifierFlags: [.control]),
+            UIKeyCommand(title: "Next Workspace (Mac)", action: #selector(nextWorkspaceKey), input: UIKeyCommand.inputRightArrow, modifierFlags: [.command, .alternate]),
+            UIKeyCommand(title: "Previous Workspace (Mac)", action: #selector(prevWorkspaceKey), input: UIKeyCommand.inputLeftArrow, modifierFlags: [.command, .alternate]),
+            UIKeyCommand(title: "Next Workspace (Bracket)", action: #selector(nextWorkspaceKey), input: "]", modifierFlags: [.control, .alternate]),
+            UIKeyCommand(title: "Previous Workspace (Bracket)", action: #selector(prevWorkspaceKey), input: "[", modifierFlags: [.control, .alternate]),
         ]
 
         // PRD §13.2: When an SSH terminal tab is focused, Ctrl+C/D/Z/R/A/E/K/U/W/L MUST be sent to the PTY
@@ -1091,6 +1124,8 @@ public final class TilingWorkspaceViewController: UIViewController {
     @objc private func shrinkSplitKey() { store.tree = PaneTreeOps.adjustParentSplitRatio(store.tree, delta: -0.05) }
     @objc private func growSplitKey() { store.tree = PaneTreeOps.adjustParentSplitRatio(store.tree, delta: 0.05) }
     @objc private func newTabKey() { store.openTab(type: .web) }
+    @objc private func nextWorkspaceKey() { store.nextWorkspace() }
+    @objc private func prevWorkspaceKey() { store.prevWorkspace() }
     @objc private func closeActiveTabKey() { store.closeTab() }
     @objc private func nextTabKey() { store.tree = PaneTreeOps.selectNextTab(store.tree, reverse: false) }
     @objc private func prevTabKey() { store.tree = PaneTreeOps.selectNextTab(store.tree, reverse: true) }

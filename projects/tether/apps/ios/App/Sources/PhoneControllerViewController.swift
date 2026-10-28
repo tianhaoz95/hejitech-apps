@@ -15,7 +15,7 @@ import UIKit
 ///
 /// Forced landscape orientation with vertical icon-only sidebar (left or right side configurable).
 @MainActor
-public final class PhoneControllerViewController: UIViewController, UITextFieldDelegate, UIKeyInput {
+public final class PhoneControllerViewController: UIViewController, UITextFieldDelegate, UIKeyInput, UIGestureRecognizerDelegate {
     public enum ControllerMode: Int {
         case touchpad = 0
         case keyboard = 1
@@ -28,6 +28,9 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
 
     private var currentMode: ControllerMode = .touchpad
     private var hasDetectedPhysicalKeyboard: Bool = false
+    private var threeFingerSwipeTriggered: Bool = false
+    private var fourFingerSwipeTriggered: Bool = false
+    private var panGesture: UIPanGestureRecognizer?
 
     // UI Structure
     private let verticalSidebar = UIView()
@@ -281,15 +284,28 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
             self?.toggleOrientation()
         }
 
-        let webBtn = makeSidebarActionButton(systemName: "globe") { [weak self] in
-            self?.store.openTab(type: .web)
-        }
-        let sshBtn = makeSidebarActionButton(systemName: "terminal.fill") { [weak self] in
-            self?.store.openTab(type: .ssh)
-        }
-        let filesBtn = makeSidebarActionButton(systemName: "folder.fill") { [weak self] in
-            self?.store.openTab(type: .files)
-        }
+        let newTabBtn = UIButton(type: .system)
+        newTabBtn.translatesAutoresizingMaskIntoConstraints = false
+        let plusConfig = UIImage.SymbolConfiguration(pointSize: 18, weight: .bold)
+        newTabBtn.setImage(UIImage(systemName: "plus", withConfiguration: plusConfig), for: .normal)
+        newTabBtn.tintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
+        newTabBtn.backgroundColor = UIColor(white: 1.0, alpha: 0.08)
+        newTabBtn.layer.cornerRadius = 8
+        newTabBtn.widthAnchor.constraint(equalToConstant: 38).isActive = true
+        newTabBtn.heightAnchor.constraint(equalToConstant: 38).isActive = true
+        newTabBtn.showsMenuAsPrimaryAction = true
+        newTabBtn.accessibilityLabel = "New Tab"
+        newTabBtn.menu = UIMenu(title: "New Tab", children: [
+            UIAction(title: "Web Browser", image: UIImage(systemName: "globe")) { [weak self] _ in
+                self?.store.openTab(type: .web)
+            },
+            UIAction(title: "SSH Terminal", image: UIImage(systemName: "terminal.fill")) { [weak self] _ in
+                self?.store.openTab(type: .ssh)
+            },
+            UIAction(title: "File Explorer", image: UIImage(systemName: "folder.fill")) { [weak self] _ in
+                self?.store.openTab(type: .files)
+            }
+        ])
 
         let layoutBtn = UIButton(type: .system)
         layoutBtn.translatesAutoresizingMaskIntoConstraints = false
@@ -324,9 +340,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         sidebarStack.addArrangedSubview(divider)
         sidebarStack.addArrangedSubview(paletteBtn)
         sidebarStack.addArrangedSubview(rotateBtn)
-        sidebarStack.addArrangedSubview(webBtn)
-        sidebarStack.addArrangedSubview(sshBtn)
-        sidebarStack.addArrangedSubview(filesBtn)
+        sidebarStack.addArrangedSubview(newTabBtn)
         sidebarStack.addArrangedSubview(layoutBtn)
 
         sidebarScrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -593,47 +607,68 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         touchpadSurface.layer.borderWidth = 1.5
         touchpadSurface.layer.borderColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.25).cgColor
 
+        view.isMultipleTouchEnabled = true
+        containerView.isMultipleTouchEnabled = true
+        touchpadView.isMultipleTouchEnabled = true
+        touchpadSurface.isMultipleTouchEnabled = true
+
         // 1-finger move & 2-finger scroll recognizers on touchpad
-        let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handleTouchpadPan(_:)))
-        panGesture.maximumNumberOfTouches = 2
-        touchpadSurface.addGestureRecognizer(panGesture)
+        let pan = UIPanGestureRecognizer(target: self, action: #selector(handleTouchpadPan(_:)))
+        pan.maximumNumberOfTouches = 2
+        pan.delegate = self
+        self.panGesture = pan
+        touchpadSurface.addGestureRecognizer(pan)
 
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTouchpadTap(_:)))
+        tapGesture.delegate = self
         touchpadSurface.addGestureRecognizer(tapGesture)
 
         let twoFingerTap = UITapGestureRecognizer(target: self, action: #selector(handleTouchpadTwoFingerTap(_:)))
         twoFingerTap.numberOfTouchesRequired = 2
+        twoFingerTap.delegate = self
         touchpadSurface.addGestureRecognizer(twoFingerTap)
         tapGesture.require(toFail: twoFingerTap)
 
-        // 3-finger drag pan gesture
-        let threeFingerPan = UIPanGestureRecognizer(target: self, action: #selector(handleThreeFingerDragPan(_:)))
+        // Dedicated 3-finger pan recognizer (smooth 3-finger swipe or 3-finger drag)
+        let threeFingerPan = UIPanGestureRecognizer(target: self, action: #selector(handleThreeFingerPan(_:)))
         threeFingerPan.minimumNumberOfTouches = 3
         threeFingerPan.maximumNumberOfTouches = 3
+        threeFingerPan.delegate = self
         touchpadSurface.addGestureRecognizer(threeFingerPan)
 
-        // 3-finger swipe to change focus of pane on the direction of swipe
+        // 3-finger swipe to change focus of pane on the direction of swipe (fallback)
         for dir in [UISwipeGestureRecognizer.Direction.left, .right, .up, .down] {
             let swipe = UISwipeGestureRecognizer(target: self, action: #selector(handleThreeFingerSwipe(_:)))
             swipe.numberOfTouchesRequired = 3
             swipe.direction = dir
+            swipe.delegate = self
             touchpadSurface.addGestureRecognizer(swipe)
         }
+
+        // Dedicated 4-finger pan recognizer (fluid 4-finger swipe to cycle spaces)
+        let fourFingerPan = UIPanGestureRecognizer(target: self, action: #selector(handleFourFingerPan(_:)))
+        fourFingerPan.minimumNumberOfTouches = 4
+        fourFingerPan.maximumNumberOfTouches = 4
+        fourFingerPan.delegate = self
+        touchpadSurface.addGestureRecognizer(fourFingerPan)
 
         // 4-finger swipe to switch workspaces (Left = next space, Right = prev space)
         let fourFingerLeft = UISwipeGestureRecognizer(target: self, action: #selector(handleFourFingerSwipe(_:)))
         fourFingerLeft.numberOfTouchesRequired = 4
         fourFingerLeft.direction = .left
+        fourFingerLeft.delegate = self
         touchpadSurface.addGestureRecognizer(fourFingerLeft)
 
         let fourFingerRight = UISwipeGestureRecognizer(target: self, action: #selector(handleFourFingerSwipe(_:)))
         fourFingerRight.numberOfTouchesRequired = 4
         fourFingerRight.direction = .right
+        fourFingerRight.delegate = self
         touchpadSurface.addGestureRecognizer(fourFingerRight)
 
         // Long press for drag without buttons
         let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleTouchpadLongPress(_:)))
         longPress.minimumPressDuration = 0.26
+        longPress.delegate = self
         touchpadSurface.addGestureRecognizer(longPress)
 
         touchpadHelpLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -719,16 +754,81 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         }
     }
 
+    @objc private func handleFourFingerPan(_ gesture: UIPanGestureRecognizer) {
+        switch gesture.state {
+        case .began:
+            fourFingerSwipeTriggered = false
+        case .changed:
+            guard !fourFingerSwipeTriggered else { return }
+            let translation = gesture.translation(in: touchpadSurface)
+            if abs(translation.x) > 30 {
+                fourFingerSwipeTriggered = true
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                if translation.x < 0 {
+                    store.nextWorkspace()
+                } else {
+                    store.prevWorkspace()
+                }
+            }
+        case .ended, .cancelled:
+            fourFingerSwipeTriggered = false
+        default:
+            break
+        }
+    }
+
     @objc private func handleFourFingerSwipe(_ gesture: UISwipeGestureRecognizer) {
+        guard !fourFingerSwipeTriggered else { return }
+        fourFingerSwipeTriggered = true
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         if gesture.direction == .left {
             store.nextWorkspace()
         } else if gesture.direction == .right {
             store.prevWorkspace()
         }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            self?.fourFingerSwipeTriggered = false
+        }
+    }
+
+    @objc private func handleThreeFingerPan(_ gesture: UIPanGestureRecognizer) {
+        if store.settings.touchpadDragGesture == .threeFingerDrag {
+            let translation = gesture.translation(in: touchpadSurface)
+            let speed = CGFloat(store.settings.pointerSensitivity)
+            let delta = CGVector(dx: translation.x * speed, dy: translation.y * speed)
+            let isDragging = (gesture.state == .began || gesture.state == .changed)
+            workspaceVC?.handleCursorPan(delta: delta, isDragHeld: isDragging)
+            gesture.setTranslation(.zero, in: touchpadSurface)
+        } else {
+            switch gesture.state {
+            case .began:
+                threeFingerSwipeTriggered = false
+            case .changed:
+                guard !threeFingerSwipeTriggered else { return }
+                let t = gesture.translation(in: touchpadSurface)
+                if abs(t.x) > 30 || abs(t.y) > 30 {
+                    threeFingerSwipeTriggered = true
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    if abs(t.x) > abs(t.y) {
+                        if t.x < 0 { store.focusDirectional(.right) }
+                        else { store.focusDirectional(.left) }
+                    } else {
+                        if t.y < 0 { store.focusDirectional(.down) }
+                        else { store.focusDirectional(.up) }
+                    }
+                    updateActivePaneIndicator()
+                }
+            case .ended, .cancelled:
+                threeFingerSwipeTriggered = false
+            default:
+                break
+            }
+        }
     }
 
     @objc private func handleThreeFingerSwipe(_ gesture: UISwipeGestureRecognizer) {
+        guard !threeFingerSwipeTriggered else { return }
+        threeFingerSwipeTriggered = true
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         switch gesture.direction {
         case .left:
@@ -743,17 +843,46 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
             break
         }
         updateActivePaneIndicator()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            self?.threeFingerSwipeTriggered = false
+        }
     }
 
-    @objc private func handleThreeFingerDragPan(_ gesture: UIPanGestureRecognizer) {
-        guard store.settings.touchpadDragGesture == .threeFingerDrag else { return }
-        let translation = gesture.translation(in: touchpadSurface)
-        let speed = CGFloat(store.settings.pointerSensitivity)
-        let delta = CGVector(dx: translation.x * speed, dy: translation.y * speed)
-        let isDragging = gesture.state == .began || gesture.state == .changed
-        workspaceVC?.handleCursorPan(delta: delta, isDragHeld: isDragging)
-        gesture.setTranslation(.zero, in: touchpadSurface)
+    // MARK: - UIGestureRecognizerDelegate
+
+    public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        return true
     }
+
+    public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        if gestureRecognizer === panGesture {
+            // Do not start 1-finger / 2-finger pan if user has placed 3 or 4 fingers down
+            if gestureRecognizer.numberOfTouches >= 3 {
+                return false
+            }
+        }
+        return true
+    }
+
+    public override var preferredScreenEdgesDeferringSystemGestures: UIRectEdge {
+        return .all
+    }
+
+    // MARK: - Hardware Keyboard Workspace Shortcuts
+
+    public override var keyCommands: [UIKeyCommand]? {
+        [
+            UIKeyCommand(title: "Next Workspace", action: #selector(nextWorkspaceKey), input: UIKeyCommand.inputRightArrow, modifierFlags: [.control]),
+            UIKeyCommand(title: "Previous Workspace", action: #selector(prevWorkspaceKey), input: UIKeyCommand.inputLeftArrow, modifierFlags: [.control]),
+            UIKeyCommand(title: "Next Workspace (Mac)", action: #selector(nextWorkspaceKey), input: UIKeyCommand.inputRightArrow, modifierFlags: [.command, .alternate]),
+            UIKeyCommand(title: "Previous Workspace (Mac)", action: #selector(prevWorkspaceKey), input: UIKeyCommand.inputLeftArrow, modifierFlags: [.command, .alternate]),
+            UIKeyCommand(title: "Next Workspace (Bracket)", action: #selector(nextWorkspaceKey), input: "]", modifierFlags: [.control, .alternate]),
+            UIKeyCommand(title: "Previous Workspace (Bracket)", action: #selector(prevWorkspaceKey), input: "[", modifierFlags: [.control, .alternate]),
+        ]
+    }
+
+    @objc private func nextWorkspaceKey() { store.nextWorkspace() }
+    @objc private func prevWorkspaceKey() { store.prevWorkspace() }
 
     // MARK: - Edge Continuous Travel (Edge Push)
 

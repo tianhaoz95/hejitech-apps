@@ -51,10 +51,6 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
         terminalBuffer.onWindowChange = { [weak self] cols, rows in
             guard let self else { return }
             self.gridSizeLabel.text = "\(cols)×\(rows)"
-            if self.isTerminalConnected {
-                self.terminalBuffer.feed("\u{1B}[38;5;244m[PTY window-change: \(cols) cols × \(rows) rows (TERM=xterm-256color)]\u{1B}[0m\r\n")
-                self.renderTerminal()
-            }
         }
 
         let host = currentHost

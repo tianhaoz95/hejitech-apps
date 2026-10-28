@@ -17,10 +17,37 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.11"
+    static let currentVersion = "0.1.12"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.12", date: "October 2026", items: [
+            WhatsNewItem(
+                icon: "hand.point.up.left.and.text.fill",
+                title: "Reliable Multi-Finger Swipes",
+                description: "Overhauled 3-finger pane focus navigation and 4-finger workspace switching with multi-touch pan recognition, simultaneous gesture arbitration, and haptic feedback."
+            ),
+            WhatsNewItem(
+                icon: "keyboard.fill",
+                title: "Workspace Cycling Shortcuts",
+                description: "Cycle workspaces from your physical keyboard using ⌃← / ⌃→, ⌘⌥← / ⌘⌥→, or ⌃⌥[ / ⌃⌥]."
+            ),
+            WhatsNewItem(
+                icon: "plus.circle.fill",
+                title: "Unified New Tab Menu",
+                description: "Clean single plus (+) button with a drop-down menu to open Web Browser, SSH Terminal, or File Explorer tabs, saving screen space."
+            ),
+            WhatsNewItem(
+                icon: "rectangle.split.2x1.fill",
+                title: "Compact Split Icon Buttons",
+                description: "Space-saving icon buttons for vertical and horizontal splits in the top desktop chrome."
+            ),
+            WhatsNewItem(
+                icon: "terminal.fill",
+                title: "Silent Terminal Resizing",
+                description: "Removed PTY window-change text chatter when dragging pane dividers or resizing splits."
+            ),
+        ]),
         ReleaseNotes(version: "0.1.11", date: "October 2026", items: [
             WhatsNewItem(
                 icon: "square.split.2x1.fill",
