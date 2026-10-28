@@ -41,7 +41,6 @@ targets:
       - path: App/Sources
       - path: Shared
       - path: App/Resources
-        excludes: ["*.storekit"]
       # On-device models (scripts/fetch-models.sh). Only a README is committed; without the
       # models the app downloads them on first use.
       - path: App/Models
@@ -179,6 +178,5 @@ schemes:
         App: all
     run:
       config: Debug
-      storeKitConfiguration: App/Resources/Subscriptions.storekit
     test:
       config: Debug

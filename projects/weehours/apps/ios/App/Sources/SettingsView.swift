@@ -1,7 +1,6 @@
 import AuthenticationServices
 import CoreImage.CIFilterBuiltins
 import LogCore
-import StoreKit
 import SwiftUI
 import Translation
 
@@ -883,17 +882,6 @@ struct PaywallView: View {
         .navigationTitle("Lifetime Access")
     }
 }
-
-#if DEBUG
-enum DummyStore {
-    struct Item { let plan: Plan; let name: String; let detail: String; let price: String; let days: Int? }
-    static let plans = [
-        Item(plan: .monthly, name: "Monthly", detail: "Voice, watch, glasses, reminders and agents.", price: "$4.99", days: 30),
-        Item(plan: .yearly, name: "Yearly", detail: "Everything in Plus, billed yearly.", price: "$39.99", days: 365),
-        Item(plan: .lifetime, name: "Lifetime", detail: "Everything, forever. One purchase for the household.", price: "$79.99", days: nil),
-    ]
-}
-#endif
 
 /// Moves a local-only household onto an account: a new household made from this one, or the
 /// partner's household if you have an invite code.

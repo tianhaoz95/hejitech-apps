@@ -3,7 +3,6 @@ import BackgroundTasks
 import Foundation
 import LayaRuntime
 import LogCore
-import StoreKit
 import SwiftUI
 import WatchConnectivity
 
@@ -89,7 +88,6 @@ final class AppModel: ObservableObject {
 
     let models = ModelManagerHolder.shared
     let speechModels = SpeechModelHolder.shared
-    let billing = Billing()
     private let recorder = Recorder()
     private let transcriber = WhisperTranscriber()
     private(set) var backend: SupabaseClient
@@ -246,7 +244,6 @@ final class AppModel: ObservableObject {
                 await handle(transcript: demo)
             }
             if !UserDefaults.standard.bool(forKey: "skipPermissions") { await ReminderScheduler.requestPermission() }
-            await billing.load()
             entitlement = localOnly ? localEntitlement : ((try? await backend.fetchEntitlement()) ?? localEntitlement)
             // `-demoPhotos <n>`: n generated pictures on the newest entry (screenshots and checks)
             let demoPhotos = UserDefaults.standard.integer(forKey: "demoPhotos")
@@ -984,52 +981,6 @@ final class AppModel: ObservableObject {
     func delete(_ t: AccessToken) async {
         do { try await backend.deleteAccessToken(t.id) } catch { self.error = error.localizedDescription }
         await loadTokens()
-    }
-
-    // MARK: billing
-
-    func buy(_ product: Product) async {
-        do {
-            if let (plan, expires) = try await billing.purchase(product) {
-                if localOnly {
-                    var e = localEntitlement
-                    e.plan = plan
-                    e.expiresAt = expires
-                    localEntitlement = e
-                    entitlement = e
-                    return
-                }
-                try await backend.recordPurchase(plan: plan, expiresAt: expires)
-                entitlement = try await backend.fetchEntitlement()
-            }
-        } catch { self.error = error.localizedDescription }
-    }
-
-    #if DEBUG
-    func buyDummy(_ plan: Plan) async {
-        let days = DummyStore.plans.first { $0.plan == plan }?.days
-        if localOnly {
-            var e = localEntitlement
-            e.plan = plan
-            e.expiresAt = days.map { Date().addingTimeInterval(Double($0) * 86400) }
-            localEntitlement = e
-            entitlement = e
-            toast = Toast(text: "Purchased \(plan.rawValue) (dummy store)", undo: nil)
-            return
-        }
-        do {
-            try await backend.recordPurchase(plan: plan, expiresAt: days.map { Date().addingTimeInterval(Double($0) * 86400) })
-            entitlement = try await backend.fetchEntitlement()
-            toast = Toast(text: "Purchased \(plan.rawValue) (dummy store)", undo: nil)
-        } catch { self.error = error.localizedDescription }
-    }
-    #endif
-
-    func restorePurchases() async {
-        if let (plan, expires) = await billing.restore() {
-            try? await backend.recordPurchase(plan: plan, expiresAt: expires)
-            entitlement = try? await backend.fetchEntitlement()
-        }
     }
 
     func allows(_ feature: Entitlement.Feature) -> Bool {

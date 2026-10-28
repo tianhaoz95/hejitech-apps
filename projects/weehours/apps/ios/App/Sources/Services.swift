@@ -3,7 +3,6 @@ import Foundation
 import LayaRuntime
 import LogCore
 import Security
-import StoreKit
 import Translation
 import UserNotifications
 import WhisperKit
@@ -534,38 +533,5 @@ enum SessionActivities {
             Task { await a.end(nil, dismissalPolicy: .immediate) }
         }
         #endif
-    }
-}
-
-// MARK: - Billing (StoreKit 2 against the local .storekit configuration)
-
-@MainActor
-final class Billing: ObservableObject {
-    static let productIds = Plan.allCases.map(\.productId)
-    @Published var products: [Product] = []
-    @Published var purchasing = false
-
-    func load() async {
-        products = (try? await Product.products(for: Self.productIds))?.sorted { $0.price < $1.price } ?? []
-    }
-
-    func purchase(_ product: Product) async throws -> (Plan, Date?)? {
-        purchasing = true
-        defer { purchasing = false }
-        let result = try await product.purchase()
-        guard case .success(let verification) = result, case .verified(let tx) = verification else { return nil }
-        await tx.finish()
-        let plan = Plan.allCases.first { $0.productId == tx.productID } ?? .monthly
-        return (plan, tx.expirationDate)
-    }
-
-    func restore() async -> (Plan, Date?)? {
-        try? await AppStore.sync()
-        for await result in Transaction.currentEntitlements {
-            if case .verified(let tx) = result, let plan = Plan.allCases.first(where: { $0.productId == tx.productID }) {
-                return (plan, tx.expirationDate)
-            }
-        }
-        return nil
     }
 }
