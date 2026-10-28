@@ -16,8 +16,11 @@ reports/
 
 - **Make them with the skills.** `heji-candidate-review` scaffolds a review
   (`.claude/skills/heji-candidate-review/new.sh <slug> "<Title>"`) and `heji-build-next` uses it for
-  build rounds. Each report keeps its own port for good: hearts, ratings and notes live in the
-  browser per port, and `new.sh` never reuses one, archived reports included.
+  build rounds. Any other report (a status or release walkthrough, an investigation, a design
+  walkthrough) uses `heji-report` (`.claude/skills/heji-report/new.sh <slug> "<Title>"`): one long page
+  with numbered sections and the same hand-off. Each report keeps its own port for good: hearts,
+  ratings and notes live in the browser per port, and `new.sh` never reuses one, archived reports
+  included.
 - **Archive when done.** Once the owner has decided, move it with `heji-archive-reports`
   (`.claude/skills/heji-archive-reports/reports.py archive <slug>`), never by hand: the script
   rewrites the report's paths and checks it still serves. Only reports awaiting a decision stay at

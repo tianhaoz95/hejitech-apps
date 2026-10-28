@@ -198,12 +198,7 @@ entry beside each build, `<img>` renders of real screenshots/GIFs in `site/media
 
 ## Variant: design walkthrough (no candidates)
 
-For a technical proposal rather than a visual choice (`feedback-kit-monorepo-support`): a single
-long page with a sticky table of contents and numbered sections — overview with "already works" /
-"gaps" cards and a one-line proposal callout, an architecture diagram toggling **Today / Proposed**,
-before/after views of the thing that changes (a prompt, a config), a stepper through a request's
-journey, small interactive simulations (click a folder → what the CLI resolves; toggle commits →
-what the release check says), the data-model diff as code, rollout and compatibility. Don't use
-the template's engine for this; reuse `site.css` tokens and `serve.sh` from the template and write
-the page by hand. `site/js/design.js` works here too (`DESIGN.block({...})` for diagrams and
-charts). Ground every claim in file paths from the repo.
+For a technical proposal rather than a visual choice (`feedback-kit-monorepo-support`), or any other
+report without candidates (status, investigation, release walkthrough), use the `heji-report`
+skill: `.claude/skills/heji-report/new.sh <slug> "<Title>"` scaffolds the long numbered page with a
+table of contents, `design.js` blocks, checklists and its own Copy summary hand-off.

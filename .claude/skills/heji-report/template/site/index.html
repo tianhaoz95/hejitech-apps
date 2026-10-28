@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>__TITLE__</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23C8603A'/%3E%3Crect x='9' y='9' width='14' height='2.5' rx='1.2' fill='%23fff'/%3E%3Crect x='9' y='15' width='14' height='2.5' rx='1.2' fill='%23fff'/%3E%3Crect x='9' y='21' width='9' height='2.5' rx='1.2' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/design.css">
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="#top">
+      <span class="logo"></span>
+      <span><b>__TITLE__</b><small>One line: what this report is and what the reader should do with it</small></span>
+    </a>
+    <div class="seg" role="group" aria-label="Appearance">
+      <button data-mode="light">Light</button>
+      <button data-mode="dark">Dark</button>
+    </div>
+  </header>
+
+  <div class="layout" id="top">
+    <!-- Filled from the sections' <h2>s by report.js; data-toc="Short label" on a section overrides. -->
+    <nav class="toc" aria-label="Sections"></nav>
+
+    <main>
+      <!-- EXAMPLE CONTENT: replace every section. Each <section id> becomes a numbered TOC entry.
+           Building blocks (all styled in css/site.css, all written into the hand-off):
+           .status grid · .cards with .card.good/.warn · .callout · .unknown · .note · table.kv / table.grid
+           pre.cmd (gets a Copy button) · pre.code · ol.do · .shots figures (images in media/)
+           ul.checks (ticks saved per browser) · <div data-block="id"> (design block from js/content.js) -->
+
+      <section id="summary" data-toc="Summary">
+        <p class="kicker">Status report · __DATE__</p>
+        <h1>__TITLE__</h1>
+        <p class="lede">The answer first, in two or three sentences: <b>what is true now</b>, what changed, and what the reader has to decide or do.</p>
+
+        <div class="status">
+          <div><b>Example done</b><span class="ok">Shipped in 1.2.0</span></div>
+          <div><b>Example open</b><span class="todo">Needs your call (§3)</span></div>
+          <div><b>Example broken</b><span class="bad">Failing since abc1234</span></div>
+        </div>
+
+        <div class="cards">
+          <div class="card good">
+            <h3>Verified</h3>
+            <ul><li><b>What was checked</b>, how, and where the proof is (<code>path/to/test</code>).</li></ul>
+          </div>
+          <div class="card warn">
+            <h3>Not verified</h3>
+            <ul><li><b>What wasn't</b>, and why.</li></ul>
+          </div>
+        </div>
+        <div class="callout"><b>Recommendation:</b> the one thing to do, if there is one.</div>
+      </section>
+
+      <section id="how">
+        <h2>How it works</h2>
+        <p>Explain the mechanism with file paths from the repo. A diagram from <code>js/content.js</code>:</p>
+        <div data-block="flow"></div>
+        <div data-block="numbers"></div>
+      </section>
+
+      <section id="details">
+        <h2>Details</h2>
+        <table class="kv">
+          <tr><th>Key</th><td>Value, with <code>code</code> where useful</td></tr>
+          <tr><th>Another</th><td>Value</td></tr>
+        </table>
+        <pre class="cmd">npm test                 <span class="c"># comments after # are left out when copied</span></pre>
+        <div class="unknown"><b>What isn't known:</b> say so plainly rather than guess.</div>
+      </section>
+
+      <section id="todo">
+        <h2>Checklist</h2>
+        <p class="progress" id="progress"></p>
+        <ul class="checks">
+          <li><input type="checkbox" id="c-1"><span><b>First step</b><small>How to tell it worked</small></span></li>
+          <li><input type="checkbox" id="c-2"><span><b>Second step</b></span></li>
+        </ul>
+      </section>
+
+      <section id="handoff" data-toc="Notes &amp; hand-off" data-skip>
+        <div class="handoff">
+          <h2>Your notes</h2>
+          <p>Questions, corrections, decisions. Saved in this browser. <b>Copy summary</b> puts the whole report, your ticks and these notes on the clipboard for any agent, in this session or a new one.</p>
+          <textarea id="notes" placeholder="What should happen next?"></textarea>
+          <button class="btn pri" id="copy">Copy summary</button>
+        </div>
+      </section>
+
+      <p class="foot" data-skip>Report: <code>reports/__SLUG__</code> · serve with <code>script/serve.sh</code></p>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <!-- Order: design blocks → this report's config → the engine. -->
+  <script src="js/design.js"></script>
+  <script src="js/content.js"></script>
+  <script src="js/report.js"></script>
+</body>
+</html>
