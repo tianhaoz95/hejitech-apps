@@ -73,6 +73,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     // Settings Mode views
     private let settingsScrollView = UIScrollView()
     private let settingsStack = UIStackView()
+    private let displayStatusBanner = UILabel()
     private let urlTextField = UITextField()
     private let openUrlButton = UIButton(type: .system)
     private let sidebarPosSegment = UISegmentedControl(items: ["Left Side", "Right Side"])
@@ -178,9 +179,10 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         setupDockMouseListeners()
         setupHardwareKeyboardListeners()
         bindStore()
-        showMode(.touchpad)
+        showMode(workspaceVC != nil ? .touchpad : .settings)
         updateTouchpadButtonsVisibility()
         updatePhoneWorkspaceBar()
+        updateDisplayStatusBanner()
     }
 
     public override func viewWillAppear(_ animated: Bool) {
@@ -456,7 +458,17 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         }
     }
 
-    private func showMode(_ mode: ControllerMode) {
+    public func setWorkspaceVC(_ workspace: TilingWorkspaceViewController?) {
+        self.workspaceVC = workspace
+        if workspace != nil {
+            showMode(.touchpad)
+        } else {
+            showMode(.settings)
+        }
+        updateDisplayStatusBanner()
+    }
+
+    public func showMode(_ mode: ControllerMode) {
         currentMode = mode
         updateTabButtonSelection()
 
@@ -751,6 +763,16 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         } else {
             let mapDesc = store.settings.touchpadMappingMode.displayName
             touchpadHelpLabel.text = "Physical Mouse & AssistiveTouch Active\n(\(mapDesc) • Configured in Settings)"
+        }
+    }
+
+    private func updateDisplayStatusBanner() {
+        if workspaceVC != nil {
+            displayStatusBanner.text = "📺 External Monitor Connected\nFull tiling workspace active on external screen • Tap Touchpad to control cursor"
+            displayStatusBanner.textColor = UIColor(red: 0.20, green: 0.83, blue: 0.60, alpha: 1.0)
+        } else {
+            displayStatusBanner.text = "📺 No Monitor Connected\nConnect an external display via USB-C or AirPlay to launch desktop workspace"
+            displayStatusBanner.textColor = UIColor(white: 1.0, alpha: 0.6)
         }
     }
 
@@ -1281,6 +1303,18 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     }
 
     private func buildSettingsContent() {
+        displayStatusBanner.translatesAutoresizingMaskIntoConstraints = false
+        displayStatusBanner.numberOfLines = 0
+        displayStatusBanner.textAlignment = .center
+        displayStatusBanner.font = .systemFont(ofSize: 12, weight: .medium)
+        displayStatusBanner.backgroundColor = UIColor(white: 1.0, alpha: 0.05)
+        displayStatusBanner.layer.cornerRadius = 8
+        displayStatusBanner.layer.borderWidth = 1
+        displayStatusBanner.layer.borderColor = UIColor(white: 1.0, alpha: 0.1).cgColor
+        displayStatusBanner.layer.masksToBounds = true
+        settingsStack.addArrangedSubview(displayStatusBanner)
+        updateDisplayStatusBanner()
+
         // Section 0: Phone Controller Layout & Options
         let section0Title = makeSectionHeader("📱 Phone Remote Controller")
 

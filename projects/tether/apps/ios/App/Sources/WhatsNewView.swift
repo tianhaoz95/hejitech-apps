@@ -43,6 +43,11 @@ struct WhatsNewView: View {
                 description: "Space-saving icon buttons for vertical and horizontal splits in the top desktop chrome."
             ),
             WhatsNewItem(
+                icon: "display",
+                title: "Pure Remote Phone Controller",
+                description: "Tether never crowds the phone screen with desktop tiling panes. Shows Settings mode when disconnected, and automatically activates Trackpad mode when an external display connects."
+            ),
+            WhatsNewItem(
                 icon: "terminal.fill",
                 title: "Silent Terminal Resizing",
                 description: "Removed PTY window-change text chatter when dragging pane dividers or resizing splits."

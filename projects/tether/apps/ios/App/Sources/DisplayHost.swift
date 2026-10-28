@@ -31,10 +31,13 @@ public final class DisplayHost: NSObject {
         applyTheme(store.settings.theme, to: window)
         refreshExternalDisplayState()
 
-        if externalWindow == nil {
-            let rootVC = TilingWorkspaceViewController(store: store)
-            self.primaryWorkspaceVC = rootVC
-            window.rootViewController = rootVC
+        if phoneControllerVC == nil {
+            let controller = PhoneControllerViewController(store: store, workspaceVC: externalWorkspaceVC)
+            self.phoneControllerVC = controller
+            if externalWorkspaceVC == nil {
+                controller.showMode(.settings)
+            }
+            window.rootViewController = controller
         }
 
         window.makeKeyAndVisible()
@@ -51,9 +54,13 @@ public final class DisplayHost: NSObject {
         self.externalWindow = extWin
         self.externalWorkspaceVC = workspace
 
-        let controller = PhoneControllerViewController(store: store, workspaceVC: workspace)
-        self.phoneControllerVC = controller
-        primaryWindow?.rootViewController = controller
+        if let controller = phoneControllerVC {
+            controller.setWorkspaceVC(workspace)
+        } else {
+            let controller = PhoneControllerViewController(store: store, workspaceVC: workspace)
+            self.phoneControllerVC = controller
+            primaryWindow?.rootViewController = controller
+        }
 
         let bounds = windowScene.screen.nativeBounds
         let desc = "External Display (\(Int(bounds.width))×\(Int(bounds.height)))"
@@ -64,14 +71,20 @@ public final class DisplayHost: NSObject {
         externalWindow?.isHidden = true
         externalWindow = nil
         externalWorkspaceVC = nil
-        phoneControllerVC = nil
 
-        let rootVC = TilingWorkspaceViewController(store: store)
-        self.primaryWorkspaceVC = rootVC
-        primaryWindow?.rootViewController = rootVC
+        // NEVER show workspace content on the phone screen!
+        // When no monitor is connected, phone shows Settings mode.
+        if let controller = phoneControllerVC {
+            controller.setWorkspaceVC(nil)
+        } else {
+            let controller = PhoneControllerViewController(store: store, workspaceVC: nil)
+            controller.showMode(.settings)
+            self.phoneControllerVC = controller
+            primaryWindow?.rootViewController = controller
+        }
 
         let bounds = primaryWindow?.windowScene?.screen.bounds ?? CGRect(x: 0, y: 0, width: 852, height: 393)
-        let desc = "Mirror Ready (\(Int(bounds.width))×\(Int(bounds.height))pt)"
+        let desc = "No Monitor Connected (\(Int(bounds.width))×\(Int(bounds.height))pt)"
         store.handleExternalDisplayChanged(connected: false, description: desc)
     }
 
@@ -177,9 +190,13 @@ public final class DisplayHost: NSObject {
                 self.externalWindow = extWin
                 self.externalWorkspaceVC = workspace
 
-                let controller = PhoneControllerViewController(store: store, workspaceVC: workspace)
-                self.phoneControllerVC = controller
-                primaryWindow?.rootViewController = controller
+                if let controller = phoneControllerVC {
+                    controller.setWorkspaceVC(workspace)
+                } else {
+                    let controller = PhoneControllerViewController(store: store, workspaceVC: workspace)
+                    self.phoneControllerVC = controller
+                    primaryWindow?.rootViewController = controller
+                }
 
                 let bounds = extScreen.nativeBounds
                 let desc = "External Display (\(Int(bounds.width))×\(Int(bounds.height)))"
@@ -189,8 +206,16 @@ public final class DisplayHost: NSObject {
             if externalWindow != nil {
                 detachExternal()
             } else {
+                if let controller = phoneControllerVC {
+                    controller.setWorkspaceVC(nil)
+                } else {
+                    let controller = PhoneControllerViewController(store: store, workspaceVC: nil)
+                    controller.showMode(.settings)
+                    self.phoneControllerVC = controller
+                    primaryWindow?.rootViewController = controller
+                }
                 let bounds = primaryWindow?.windowScene?.screen.bounds ?? CGRect(x: 0, y: 0, width: 852, height: 393)
-                let desc = "Mirror Ready (\(Int(bounds.width))×\(Int(bounds.height))pt)"
+                let desc = "No Monitor Connected (\(Int(bounds.width))×\(Int(bounds.height))pt)"
                 store.handleExternalDisplayChanged(connected: false, description: desc)
             }
         }
