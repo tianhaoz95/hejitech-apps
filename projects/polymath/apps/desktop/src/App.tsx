@@ -273,8 +273,24 @@ export const App: React.FC = () => {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 800, color: accentColor, fontSize: 14 }}>
-            <span>▲</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 800, color: accentColor, fontSize: 14 }}>
+            <svg width="20" height="20" viewBox="0 0 1024 1024" fill="none" style={{ display: "block", borderRadius: 4, flexShrink: 0 }}>
+              <rect width="1024" height="1024" rx="224" fill="#0D1117"/>
+              <polygon points="512,180 820,358 820,714 512,892 204,714 204,358" fill="#0F172A" stroke="#38BDF8" strokeWidth="28" strokeLinejoin="round"/>
+              <line x1="512" y1="180" x2="512" y2="536" stroke="#38BDF8" strokeWidth="24"/>
+              <line x1="820" y1="358" x2="512" y2="536" stroke="#38BDF8" strokeWidth="24"/>
+              <line x1="204" y1="358" x2="512" y2="536" stroke="#38BDF8" strokeWidth="24"/>
+              <polygon points="512,358 666,447 666,625 512,714 358,625 358,447" fill="#1E293B" stroke="#10B981" strokeWidth="22" strokeLinejoin="round"/>
+              <line x1="512" y1="358" x2="512" y2="536" stroke="#10B981" strokeWidth="20"/>
+              <line x1="666" y1="447" x2="512" y2="536" stroke="#10B981" strokeWidth="20"/>
+              <line x1="358" y1="447" x2="512" y2="536" stroke="#10B981" strokeWidth="20"/>
+              <line x1="512" y1="180" x2="512" y2="358" stroke="#F59E0B" strokeWidth="16" strokeDasharray="14 10"/>
+              <line x1="820" y1="358" x2="666" y2="447" stroke="#F59E0B" strokeWidth="16" strokeDasharray="14 10"/>
+              <line x1="820" y1="714" x2="666" y2="625" stroke="#F59E0B" strokeWidth="16" strokeDasharray="14 10"/>
+              <line x1="512" y1="892" x2="512" y2="714" stroke="#F59E0B" strokeWidth="16" strokeDasharray="14 10"/>
+              <line x1="204" y1="714" x2="358" y2="625" stroke="#F59E0B" strokeWidth="16" strokeDasharray="14 10"/>
+              <line x1="204" y1="358" x2="358" y2="447" stroke="#F59E0B" strokeWidth="16" strokeDasharray="14 10"/>
+            </svg>
             <span style={{ color: textColor }}>Polymath</span>
           </div>
 
