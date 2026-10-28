@@ -158,7 +158,7 @@ public final class CommandPaletteView: UIView, UITextFieldDelegate, UITableViewD
             subtitle: "Create a new workspace space",
             category: "Workspaces",
             systemImage: "rectangle.stack.badge.plus",
-            shortcutHint: nil
+            shortcutHint: "⌘⇧N"
         ) { [weak self] in
             self?.store.addWorkspace()
         })
@@ -169,7 +169,7 @@ public final class CommandPaletteView: UIView, UITextFieldDelegate, UITableViewD
             subtitle: "Cycle to the next workspace space",
             category: "Workspaces",
             systemImage: "arrow.right.to.line.compact",
-            shortcutHint: "4-Finger Swipe"
+            shortcutHint: "⌃→ / ⌘⌥→"
         ) { [weak self] in
             self?.store.nextWorkspace()
         })
@@ -180,7 +180,7 @@ public final class CommandPaletteView: UIView, UITextFieldDelegate, UITableViewD
             subtitle: "Cycle to the previous workspace space",
             category: "Workspaces",
             systemImage: "arrow.left.to.line.compact",
-            shortcutHint: nil
+            shortcutHint: "⌃← / ⌘⌥←"
         ) { [weak self] in
             self?.store.prevWorkspace()
         })
@@ -286,6 +286,28 @@ public final class CommandPaletteView: UIView, UITextFieldDelegate, UITableViewD
             shortcutHint: "⌘⇧M"
         ) { [weak self] in
             self?.store.toggleMaximiseFocusedPane()
+        })
+
+        items.append(CommandPaletteItem(
+            id: "cycle-next-pane",
+            title: "Cycle to Next Pane",
+            subtitle: "Move keyboard and input focus to next pane",
+            category: "Layout",
+            systemImage: "rectangle.2.swap",
+            shortcutHint: "⌘⌥] / ⌃`"
+        ) { [weak self] in
+            self?.store.cyclePanes(reverse: false)
+        })
+
+        items.append(CommandPaletteItem(
+            id: "cycle-prev-pane",
+            title: "Cycle to Previous Pane",
+            subtitle: "Move keyboard and input focus to previous pane",
+            category: "Layout",
+            systemImage: "rectangle.2.swap",
+            shortcutHint: "⌘⌥["
+        ) { [weak self] in
+            self?.store.cyclePanes(reverse: true)
         })
 
         // 3. Web & Authentication Actions
@@ -415,6 +437,19 @@ public final class CommandPaletteView: UIView, UITextFieldDelegate, UITableViewD
         })
 
         items.append(CommandPaletteItem(
+            id: "keyboard-shortcuts-cheatsheet",
+            title: "Keyboard Shortcuts Cheat Sheet",
+            subtitle: "View complete keyboard shortcut cheat sheet for mouseless navigation",
+            category: "Help & Input",
+            systemImage: "keyboard",
+            shortcutHint: "⌘/"
+        ) { [weak self] in
+            guard let self else { return }
+            self.dismissPalette()
+            self.workspaceVC?.openKeyboardShortcutsTapped()
+        })
+
+        items.append(CommandPaletteItem(
             id: "assistivetouch-guide",
             title: "Physical Mouse & Trackpad Guide",
             subtitle: "AssistiveTouch setup, button mapping, and speed settings",
@@ -425,6 +460,19 @@ public final class CommandPaletteView: UIView, UITextFieldDelegate, UITableViewD
             guard let self else { return }
             self.dismissPalette()
             self.workspaceVC?.openAssistiveTouchGuide()
+        })
+
+        items.append(CommandPaletteItem(
+            id: "open-hosts-manager",
+            title: "SSH Hosts & Key Pairs",
+            subtitle: "Manage saved SSH hosts, passwords, and private keys",
+            category: "Settings",
+            systemImage: "key.fill",
+            shortcutHint: "⌘⇧H"
+        ) { [weak self] in
+            guard let self else { return }
+            self.dismissPalette()
+            self.workspaceVC?.openHostsTapped()
         })
 
         items.append(CommandPaletteItem(

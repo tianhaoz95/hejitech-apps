@@ -335,6 +335,10 @@ public final class WorkspaceStore: ObservableObject {
         tree = PaneTreeOps.focusDirectional(tree, direction: direction)
     }
 
+    public func cyclePanes(reverse: Bool = false) {
+        tree = PaneTreeOps.focusNextPane(tree, reverse: reverse)
+    }
+
     public func swapFocusedWithNext() {
         tree = PaneTreeOps.swapFocusedWithNext(tree)
     }

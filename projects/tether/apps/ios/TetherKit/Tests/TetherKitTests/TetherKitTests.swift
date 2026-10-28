@@ -44,6 +44,36 @@ final class TetherKitTests: XCTestCase {
         XCTAssertEqual(PaneTreeOps.countPanes(closeLast.root), 1)
     }
 
+    @MainActor
+    func testPaneCyclingAndNavigation() {
+        var tree = PaneTreeOps.createDefaultPaneTree()
+        let panes = PaneTreeOps.collectPanes(tree.root)
+        XCTAssertEqual(panes.count, 2)
+        let p1 = panes[0].id
+        let p2 = panes[1].id
+
+        tree = PaneTreeOps.focusPane(tree, paneId: p1)
+        XCTAssertEqual(tree.focusedPaneId, p1)
+
+        tree = PaneTreeOps.focusNextPane(tree, reverse: false)
+        XCTAssertEqual(tree.focusedPaneId, p2)
+
+        tree = PaneTreeOps.focusNextPane(tree, reverse: false)
+        XCTAssertEqual(tree.focusedPaneId, p1)
+
+        tree = PaneTreeOps.focusNextPane(tree, reverse: true)
+        XCTAssertEqual(tree.focusedPaneId, p2)
+
+        // Store integration test
+        let store = WorkspaceStore(secureStore: SecureStore(service: "com.hejitech.tether.test-cycling", useInMemoryFallback: true))
+        store.applyPreset(.twoColumn)
+        let initialPaneId = store.focusedPane?.id
+        store.cyclePanes(reverse: false)
+        XCTAssertNotEqual(store.focusedPane?.id, initialPaneId)
+        store.cyclePanes(reverse: true)
+        XCTAssertEqual(store.focusedPane?.id, initialPaneId)
+    }
+
     func testSplitRatioClampingAndStepping() {
         XCTAssertEqual(PaneTreeOps.clampSplitRatio(0.05), 0.2)
         XCTAssertEqual(PaneTreeOps.clampSplitRatio(0.95), 0.8)

@@ -97,7 +97,7 @@ public final class VirtualCursorOverlayView: UIView {
             }
         }
 
-        guard let canvas = targetCanvas ?? superview else { return }
+        guard let canvas = self.window ?? targetCanvas ?? superview else { return }
         let hitPoint = canvas.convert(cursorPosition, from: self)
 
         if let hitView = canvas.hitTest(hitPoint, with: nil) {
@@ -113,10 +113,11 @@ public final class VirtualCursorOverlayView: UIView {
             // 2. Buttons
             if let button = findAncestor(of: hitView, matching: { $0 is UIButton }) as? UIButton {
                 button.sendActions(for: .touchUpInside)
+                button.sendActions(for: .primaryActionTriggered)
                 return
             }
 
-            // 3. Segmented Controls & other UIControls
+            // 3. Segmented Controls, Steppers, Switches, & other UIControls
             if let control = findAncestor(of: hitView, matching: { $0 is UIControl }) as? UIControl {
                 if let seg = control as? UISegmentedControl {
                     let segWidth = seg.bounds.width / CGFloat(max(1, seg.numberOfSegments))
@@ -126,7 +127,23 @@ public final class VirtualCursorOverlayView: UIView {
                     seg.sendActions(for: .valueChanged)
                     return
                 }
+                if let sw = control as? UISwitch {
+                    sw.setOn(!sw.isOn, animated: true)
+                    sw.sendActions(for: .valueChanged)
+                    return
+                }
+                if let stepper = control as? UIStepper {
+                    let ptInStepper = stepper.convert(hitPoint, from: canvas)
+                    if ptInStepper.x < stepper.bounds.width / 2 {
+                        stepper.value = max(stepper.minimumValue, stepper.value - stepper.stepValue)
+                    } else {
+                        stepper.value = min(stepper.maximumValue, stepper.value + stepper.stepValue)
+                    }
+                    stepper.sendActions(for: .valueChanged)
+                    return
+                }
                 control.sendActions(for: .primaryActionTriggered)
+                control.sendActions(for: .touchUpInside)
                 return
             }
 

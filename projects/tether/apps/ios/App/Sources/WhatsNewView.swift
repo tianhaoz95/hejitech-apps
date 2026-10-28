@@ -17,10 +17,32 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.12"
+    static let currentVersion = "0.1.13"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.13", date: "October 2026", items: [
+            WhatsNewItem(
+                icon: "cursorarrow.rays",
+                title: "Native Desktop Modals on External Monitor",
+                description: "All dialogs and menus on the external display (Hosts & Keys, Settings, Shortcuts, and Rename) are now fully clickable and operatable by the virtual cursor and physical mouse without getting trapped behind sheets."
+            ),
+            WhatsNewItem(
+                icon: "keyboard.fill",
+                title: "Complete Mouseless Navigation",
+                description: "Operate Tether entirely without a trackpad: cycle panes with ⌘⌥] / ⌘⌥[ or ⌃`, switch workspaces with ⌃← / ⌃→ or ⌃1..4, and create workspaces with ⌘⇧N."
+            ),
+            WhatsNewItem(
+                icon: "keyboard.badge.ellipsis",
+                title: "Shortcuts Cheat Sheet (⌘/)",
+                description: "New top bar keyboard button (⌨️) and ⌘/ shortcut displaying a comprehensive cheat sheet of every keyboard command for fast reference."
+            ),
+            WhatsNewItem(
+                icon: "key.fill",
+                title: "In-Workspace SSH Hosts & Keys",
+                description: "Connect to saved SSH hosts or configure authentication keys directly from the external desktop overlay."
+            ),
+        ]),
         ReleaseNotes(version: "0.1.12", date: "October 2026", items: [
             WhatsNewItem(
                 icon: "hand.point.up.left.and.text.fill",
