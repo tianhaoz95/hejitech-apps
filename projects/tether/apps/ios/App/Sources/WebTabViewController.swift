@@ -16,6 +16,8 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
     private let bookmarkButton = UIButton(type: .system)
     private let progressView = UIProgressView(progressViewStyle: .bar)
     private let statusBanner = UILabel()
+    private let scrollIndicatorBubble = UILabel()
+    private var omnibarDropdown: OmnibarDropdownView?
     private var progressObservation: NSKeyValueObservation?
     private var titleObservation: NSKeyValueObservation?
     private var urlObservation: NSKeyValueObservation?
@@ -47,6 +49,7 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
         addressField.layer.borderColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0).cgColor
         addressField.layer.borderWidth = 1.5
         addressField.becomeFirstResponder()
+        showOmnibarDropdown()
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             self.addressField.selectAll(nil)
@@ -62,7 +65,32 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
         isAddressBarActive = false
         addressField.layer.borderColor = UIColor(white: 1.0, alpha: 0.14).cgColor
         addressField.layer.borderWidth = 1.0
+        hideOmnibarDropdown()
         addressField.resignFirstResponder()
+    }
+
+    private func showOmnibarDropdown() {
+        if omnibarDropdown == nil {
+            let dropdown = OmnibarDropdownView(frame: .zero)
+            dropdown.translatesAutoresizingMaskIntoConstraints = false
+            dropdown.onCommit = { [weak self] url in
+                self?.deactivateAddressBar()
+                self?.loadInput(url)
+            }
+            view.addSubview(dropdown)
+            NSLayoutConstraint.activate([
+                dropdown.topAnchor.constraint(equalTo: addressField.bottomAnchor, constant: 4),
+                dropdown.leadingAnchor.constraint(equalTo: addressField.leadingAnchor),
+                dropdown.trailingAnchor.constraint(equalTo: addressField.trailingAnchor),
+            ])
+            self.omnibarDropdown = dropdown
+        }
+        omnibarDropdown?.update(query: addressField.text ?? "", bookmarks: store.bookmarks)
+    }
+
+    private func hideOmnibarDropdown() {
+        omnibarDropdown?.removeFromSuperview()
+        omnibarDropdown = nil
     }
 
     public func reloadCurrentPage() {
@@ -212,11 +240,18 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
 
         webView.evaluateJavaScript(js) { [weak self] result, _ in
             if let isHandled = result as? Bool, !isHandled {
-                if text == " " {
-                    Task { @MainActor in
-                        guard let self else { return }
-                        let cur = self.webView.scrollView.contentOffset
-                        self.webView.scrollView.setContentOffset(CGPoint(x: cur.x, y: cur.y + 200), animated: true)
+                Task { @MainActor in
+                    guard let self else { return }
+                    let cur = self.webView.scrollView.contentOffset
+                    if text == " " {
+                        self.webView.scrollView.setContentOffset(CGPoint(x: cur.x, y: cur.y + 350), animated: true)
+                        self.showScrollIndicator()
+                    } else if text == "j" {
+                        self.webView.scrollView.setContentOffset(CGPoint(x: cur.x, y: cur.y + 120), animated: true)
+                        self.showScrollIndicator()
+                    } else if text == "k" {
+                        self.webView.scrollView.setContentOffset(CGPoint(x: cur.x, y: max(0, cur.y - 120)), animated: true)
+                        self.showScrollIndicator()
                     }
                 }
             }
@@ -230,8 +265,13 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
                 deactivateAddressBar()
                 addressField.text = (tabItem.url == "about:home") ? "" : (tabItem.url ?? "")
             case .enter:
+                let target = omnibarDropdown?.selectedSuggestionUrl ?? addressField.text ?? ""
                 deactivateAddressBar()
-                loadInput(addressField.text ?? "")
+                loadInput(target)
+            case .up:
+                omnibarDropdown?.selectPrevious()
+            case .down:
+                omnibarDropdown?.selectNext()
             case .backspace:
                 handleKeyInput(text: "\u{7F}")
             default:
@@ -291,8 +331,10 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
                     switch key {
                     case .up:
                         self.webView.scrollView.setContentOffset(CGPoint(x: cur.x, y: max(0, cur.y - 120)), animated: true)
+                        self.showScrollIndicator()
                     case .down:
                         self.webView.scrollView.setContentOffset(CGPoint(x: cur.x, y: cur.y + 120), animated: true)
+                        self.showScrollIndicator()
                     case .left:
                         self.webView.scrollView.setContentOffset(CGPoint(x: max(0, cur.x - 80), y: cur.y), animated: true)
                     case .right:
@@ -304,6 +346,29 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
             }
         default:
             break
+        }
+    }
+
+    @objc private func addressFieldDidChange() {
+        omnibarDropdown?.update(query: addressField.text ?? "", bookmarks: store.bookmarks)
+    }
+
+    public func showScrollIndicator() {
+        let offset = webView.scrollView.contentOffset.y
+        let total = webView.scrollView.contentSize.height - webView.scrollView.bounds.height
+        let pct = total > 0 ? Int((offset / total * 100).rounded()) : 0
+        let clamped = max(0, min(100, pct))
+        scrollIndicatorBubble.text = " ↕ Scroll \(clamped)% "
+        UIView.animate(withDuration: 0.15) {
+            self.scrollIndicatorBubble.alpha = 1.0
+        }
+        NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(hideScrollIndicator), object: nil)
+        perform(#selector(hideScrollIndicator), with: nil, afterDelay: 1.0)
+    }
+
+    @objc private func hideScrollIndicator() {
+        UIView.animate(withDuration: 0.25) {
+            self.scrollIndicatorBubble.alpha = 0.0
         }
     }
 
@@ -345,6 +410,7 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
         addressField.clearButtonMode = .whileEditing
         addressField.placeholder = "Enter URL or search query…"
         addressField.text = (tabItem.url == "about:home") ? "" : (tabItem.url ?? "")
+        addressField.addTarget(self, action: #selector(addressFieldDidChange), for: .editingChanged)
 
         let stack = UIStackView(arrangedSubviews: [backButton, forwardButton, reloadStopButton, addressField, bookmarkButton])
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -414,6 +480,18 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
         view.addSubview(webView)
         view.addSubview(statusBanner)
 
+        scrollIndicatorBubble.translatesAutoresizingMaskIntoConstraints = false
+        scrollIndicatorBubble.backgroundColor = UIColor(red: 0.08, green: 0.12, blue: 0.20, alpha: 0.9)
+        scrollIndicatorBubble.textColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
+        scrollIndicatorBubble.font = .monospacedSystemFont(ofSize: 11, weight: .bold)
+        scrollIndicatorBubble.layer.cornerRadius = 4
+        scrollIndicatorBubble.layer.borderWidth = 1
+        scrollIndicatorBubble.layer.borderColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.5).cgColor
+        scrollIndicatorBubble.layer.masksToBounds = true
+        scrollIndicatorBubble.textAlignment = .center
+        scrollIndicatorBubble.alpha = 0
+        view.addSubview(scrollIndicatorBubble)
+
         NSLayoutConstraint.activate([
             toolbar.topAnchor.constraint(equalTo: view.topAnchor),
             toolbar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -443,6 +521,11 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
             statusBanner.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             statusBanner.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             statusBanner.heightAnchor.constraint(greaterThanOrEqualToConstant: 28),
+
+            scrollIndicatorBubble.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            scrollIndicatorBubble.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -16),
+            scrollIndicatorBubble.heightAnchor.constraint(equalToConstant: 24),
+            scrollIndicatorBubble.widthAnchor.constraint(greaterThanOrEqualToConstant: 80),
         ])
 
         progressObservation = webView.observe(\.estimatedProgress, options: [.new]) { [weak self] wv, _ in
@@ -772,6 +855,7 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
         addressField.layer.borderColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0).cgColor
         addressField.layer.borderWidth = 1.5
         store.focusPane(paneId)
+        showOmnibarDropdown()
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             self.addressField.selectAll(nil)
@@ -786,6 +870,7 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
         isAddressBarActive = false
         addressField.layer.borderColor = UIColor(white: 1.0, alpha: 0.14).cgColor
         addressField.layer.borderWidth = 1.0
+        hideOmnibarDropdown()
     }
 
     public func textFieldShouldReturn(_ textField: UITextField) -> Bool {

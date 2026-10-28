@@ -16,6 +16,10 @@ public final class TilingWorkspaceViewController: UIViewController {
     private let phoneSwitcherStack = UIStackView()
     private var phoneSwitcherHeightConstraint: NSLayoutConstraint!
     private let workspaceCanvas = UIView()
+    private let bottomStatusHud = BottomStatusHudView()
+    public private(set) var currentInteractionMode: DesktopInteractionMode = .normal
+    public private(set) var activeTabSwitcher: TabSwitcherOverlayView?
+    public private(set) var activeResizeHud: ResizeHudOverlayView?
     public private(set) var virtualCursorOverlay: VirtualCursorOverlayView!
     public private(set) var activeDialog: DesktopDialogView?
     public private(set) var activeCommandPalette: CommandPaletteView?
@@ -150,9 +154,12 @@ public final class TilingWorkspaceViewController: UIViewController {
         workspaceCanvas.translatesAutoresizingMaskIntoConstraints = false
         workspaceCanvas.backgroundColor = UIColor(red: 0.02, green: 0.03, blue: 0.06, alpha: 1.0)
 
+        bottomStatusHud.translatesAutoresizingMaskIntoConstraints = false
+
         view.addSubview(topBar)
         view.addSubview(phoneSwitcherBar)
         view.addSubview(workspaceCanvas)
+        view.addSubview(bottomStatusHud)
 
         virtualCursorOverlay = VirtualCursorOverlayView(targetCanvas: view)
         virtualCursorOverlay.translatesAutoresizingMaskIntoConstraints = false
@@ -182,7 +189,12 @@ public final class TilingWorkspaceViewController: UIViewController {
             workspaceCanvas.topAnchor.constraint(equalTo: phoneSwitcherBar.bottomAnchor),
             workspaceCanvas.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             workspaceCanvas.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            workspaceCanvas.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            workspaceCanvas.bottomAnchor.constraint(equalTo: bottomStatusHud.topAnchor),
+
+            bottomStatusHud.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            bottomStatusHud.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            bottomStatusHud.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+            bottomStatusHud.heightAnchor.constraint(equalToConstant: 26),
 
             virtualCursorOverlay.topAnchor.constraint(equalTo: view.topAnchor),
             virtualCursorOverlay.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -236,15 +248,39 @@ public final class TilingWorkspaceViewController: UIViewController {
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
                 self?.updateWorkspaceSwitcher()
+                self?.updateBottomStatusHud()
             }
             .store(in: &cancellables)
 
         store.$activeWorkspaceIndex
             .receive(on: RunLoop.main)
-            .sink { [weak self] _ in
-                self?.updateWorkspaceSwitcher()
+            .sink { [weak self] idx in
+                guard let self else { return }
+                self.updateWorkspaceSwitcher()
+                if self.store.workspaces.indices.contains(idx) {
+                    let name = self.store.workspaces[idx].name
+                    WorkspaceToastBannerView.show(in: self.view, workspaceIndex: idx, workspaceName: name)
+                }
+                self.updateBottomStatusHud()
             }
             .store(in: &cancellables)
+    }
+
+    public func updateBottomStatusHud() {
+        let wsIdx = store.activeWorkspaceIndex
+        let wsName = store.activeWorkspace?.name ?? "Space \(wsIdx + 1)"
+        let allPanes = store.panes
+        let focusedPane = store.focusedPane
+        let paneIdx = allPanes.firstIndex(where: { $0.id == focusedPane?.id }) ?? 0
+        let activeTab = focusedPane?.tabs.first(where: { $0.id == focusedPane?.activeTabId })
+        bottomStatusHud.update(
+            workspaceIndex: wsIdx,
+            workspaceName: wsName,
+            paneIndex: paneIdx,
+            totalPanes: allPanes.count,
+            activeTab: activeTab,
+            mode: currentInteractionMode
+        )
     }
 
     private func updateWorkspaceSwitcher() {
@@ -507,12 +543,33 @@ public final class TilingWorkspaceViewController: UIViewController {
         tabHeader.accessibilityIdentifier = "header-\(pane.id)"
         tabHeader.addGestureRecognizer(tapFocus)
 
+        let allPanes = store.panes
+        let paneIdx = allPanes.firstIndex(where: { $0.id == pane.id }) ?? 0
+
+        // Direct Pane Badge: ⌘1..4
+        let badgeWidth: CGFloat = 36
+        let paneBadgeBtn = UIButton(type: .system)
+        paneBadgeBtn.frame = CGRect(x: 4, y: 4, width: badgeWidth, height: 24)
+        paneBadgeBtn.setTitle(" ⌘\(paneIdx + 1) ", for: .normal)
+        paneBadgeBtn.titleLabel?.font = .monospacedSystemFont(ofSize: 10, weight: .bold)
+        paneBadgeBtn.setTitleColor(isFocused ? UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0) : UIColor(white: 0.75, alpha: 1.0), for: .normal)
+        paneBadgeBtn.backgroundColor = isFocused ? UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.22) : UIColor(white: 1.0, alpha: 0.08)
+        paneBadgeBtn.layer.cornerRadius = 3
+        paneBadgeBtn.layer.borderWidth = 1
+        paneBadgeBtn.layer.borderColor = isFocused ? UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.6).cgColor : UIColor(white: 1.0, alpha: 0.12).cgColor
+        paneBadgeBtn.addAction(UIAction { [weak self] _ in
+            self?.store.focusPane(pane.id)
+        }, for: .touchUpInside)
+        tabHeader.addSubview(paneBadgeBtn)
+
         let rightControlsWidth: CGFloat = store.panes.count > 1 ? 58 : 30
-        let scroll = UIScrollView(frame: CGRect(x: 4, y: 0, width: max(40, container.bounds.width - rightControlsWidth - 8), height: tabBarHeight))
+        let scrollX = badgeWidth + 8
+        let scrollWidth = max(20, container.bounds.width - rightControlsWidth - scrollX - 4)
+        let scroll = UIScrollView(frame: CGRect(x: scrollX, y: 0, width: scrollWidth, height: tabBarHeight))
         scroll.showsHorizontalScrollIndicator = false
 
         var xOffset: CGFloat = 2
-        for tab in pane.tabs {
+        for (tabIdx, tab) in pane.tabs.enumerated() {
             let isActive = (tab.id == pane.activeTabId)
             let pill = UIView()
             pill.backgroundColor = isActive
@@ -521,7 +578,8 @@ public final class TilingWorkspaceViewController: UIViewController {
             pill.layer.cornerRadius = 4
 
             let titleBtn = UIButton(type: .system)
-            titleBtn.setTitle(tab.title, for: .normal)
+            let tabNumBadge = (tabIdx < 9) ? "[\(tabIdx + 1)] " : ""
+            titleBtn.setTitle("\(tabNumBadge)\(tab.title)", for: .normal)
             titleBtn.titleLabel?.font = .monospacedSystemFont(
                 ofSize: 11,
                 weight: (isActive && isFocused) ? .bold : .medium
@@ -540,7 +598,8 @@ public final class TilingWorkspaceViewController: UIViewController {
                 self?.store.closeTab(paneId: pane.id, tabId: tab.id)
             }, for: .touchUpInside)
 
-            let titleW = min(160, max(64, (tab.title as NSString).size(withAttributes: [.font: UIFont.monospacedSystemFont(ofSize: 11, weight: .bold)]).width + 14))
+            let fullTitle = "\(tabNumBadge)\(tab.title)"
+            let titleW = min(170, max(64, (fullTitle as NSString).size(withAttributes: [.font: UIFont.monospacedSystemFont(ofSize: 11, weight: .bold)]).width + 14))
             pill.frame = CGRect(x: xOffset, y: 4, width: titleW + 22, height: 24)
             titleBtn.frame = CGRect(x: 4, y: 0, width: titleW - 4, height: 24)
             closeBtn.frame = CGRect(x: titleW, y: 0, width: 20, height: 24)
@@ -567,8 +626,8 @@ public final class TilingWorkspaceViewController: UIViewController {
         addTabBtn.backgroundColor = UIColor(white: 1.0, alpha: 0.08)
         addTabBtn.layer.cornerRadius = 3
         addTabBtn.showsMenuAsPrimaryAction = true
-        addTabBtn.accessibilityLabel = "New Tab"
-        addTabBtn.menu = UIMenu(title: "New Tab", children: [
+        addTabBtn.accessibilityLabel = "New Tab (⌘T)"
+        addTabBtn.menu = UIMenu(title: "New Tab (⌘T)", children: [
             UIAction(title: "Web Browser", image: UIImage(systemName: "globe")) { [weak self] _ in
                 self?.store.openTab(type: .web, inPaneId: pane.id)
             },
@@ -587,6 +646,7 @@ public final class TilingWorkspaceViewController: UIViewController {
             closePaneBtn.setTitle("✕", for: .normal)
             closePaneBtn.titleLabel?.font = .systemFont(ofSize: 10, weight: .bold)
             closePaneBtn.setTitleColor(.systemRed, for: .normal)
+            closePaneBtn.accessibilityLabel = "Close Pane (⌘⇧W)"
             closePaneBtn.addAction(UIAction { [weak self] _ in
                 self?.store.closePane(pane.id)
             }, for: .touchUpInside)
@@ -596,8 +656,20 @@ public final class TilingWorkspaceViewController: UIViewController {
         tabHeader.addSubview(rightControls)
         container.addSubview(tabHeader)
 
-        // Active Tab Content View
-        if let activeTab = pane.activeTab {
+        // Empty Pane Deck OR Active Tab Content View
+        if pane.tabs.isEmpty {
+            let emptyDeck = PaneEmptyDeckView(frame: CGRect(
+                x: 0,
+                y: tabBarHeight,
+                width: container.bounds.width,
+                height: max(10, container.bounds.height - tabBarHeight)
+            ))
+            emptyDeck.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            emptyDeck.onSelectType = { [weak self] type in
+                self?.store.openTab(type: type, inPaneId: pane.id)
+            }
+            container.addSubview(emptyDeck)
+        } else if let activeTab = pane.activeTab {
             let contentFrame = CGRect(
                 x: 0,
                 y: tabBarHeight,
@@ -608,6 +680,19 @@ public final class TilingWorkspaceViewController: UIViewController {
             childVC.view.frame = contentFrame
             childVC.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
             container.addSubview(childVC.view)
+        }
+
+        // Visual Swap Target Overlay
+        if currentInteractionMode == .swap && !isFocused {
+            let swapOverlay = PaneSwapTargetOverlayView(targetPaneId: pane.id, directionHint: "Pane \(paneIdx + 1)")
+            swapOverlay.frame = container.bounds
+            swapOverlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            swapOverlay.onSelect = { [weak self] targetId in
+                guard let self else { return }
+                self.store.swapPanes(self.store.tree.focusedPaneId, targetId)
+                self.returnToNormalMode()
+            }
+            container.addSubview(swapOverlay)
         }
 
         return container
@@ -977,7 +1062,7 @@ public final class TilingWorkspaceViewController: UIViewController {
             return
         }
         dismissAllModals()
-        let palette = CommandPaletteView(store: store, workspaceVC: self)
+        let palette = CommandPaletteView(store: store, workspaceVC: self, tabSearchOnly: false)
         palette.translatesAutoresizingMaskIntoConstraints = false
         palette.onDismiss = { [weak self] in
             self?.activeCommandPalette = nil
@@ -992,7 +1077,118 @@ public final class TilingWorkspaceViewController: UIViewController {
             palette.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
 
-        // Ensure cursor is always in front of the command palette
+        view.bringSubviewToFront(virtualCursorOverlay)
+    }
+
+    @objc public func openTabPalette() {
+        if let palette = activeCommandPalette {
+            palette.dismissPalette()
+            return
+        }
+        dismissAllModals()
+        let palette = CommandPaletteView(store: store, workspaceVC: self, tabSearchOnly: true)
+        palette.translatesAutoresizingMaskIntoConstraints = false
+        palette.onDismiss = { [weak self] in
+            self?.activeCommandPalette = nil
+        }
+        self.activeCommandPalette = palette
+        view.addSubview(palette)
+
+        NSLayoutConstraint.activate([
+            palette.topAnchor.constraint(equalTo: view.topAnchor),
+            palette.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            palette.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            palette.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        ])
+
+        view.bringSubviewToFront(virtualCursorOverlay)
+    }
+
+    // MARK: - Interactive Mode Handlers (Leader, Resize, Swap, Tab Switcher)
+
+    @objc public func enterResizeMode() {
+        returnToNormalMode()
+        currentInteractionMode = .resize
+        let hud = ResizeHudOverlayView()
+        hud.translatesAutoresizingMaskIntoConstraints = false
+        if let focusedId = store.focusedPane?.id,
+           let split = PaneTreeOps.findParentSplit(store.tree.root, childPaneId: focusedId) {
+            hud.updateRatio(split.ratio)
+        } else {
+            hud.updateRatio(0.5)
+        }
+        view.addSubview(hud)
+        NSLayoutConstraint.activate([
+            hud.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 44),
+            hud.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            hud.heightAnchor.constraint(equalToConstant: 34),
+        ])
+        self.activeResizeHud = hud
+        updateBottomStatusHud()
+        view.bringSubviewToFront(virtualCursorOverlay)
+    }
+
+    public func updateResizeHud() {
+        guard let hud = activeResizeHud else { return }
+        if let focusedId = store.focusedPane?.id,
+           let split = PaneTreeOps.findParentSplit(store.tree.root, childPaneId: focusedId) {
+            hud.updateRatio(split.ratio)
+        }
+        updateBottomStatusHud()
+    }
+
+    @objc public func enterSwapMode() {
+        returnToNormalMode()
+        currentInteractionMode = .swap
+        rebuildWorkspaceLayout()
+        updateBottomStatusHud()
+    }
+
+    public func enterLeaderMode() {
+        returnToNormalMode()
+        currentInteractionMode = .leader
+        updateBottomStatusHud()
+    }
+
+    public func returnToNormalMode() {
+        let prev = currentInteractionMode
+        currentInteractionMode = .normal
+        activeResizeHud?.removeFromSuperview()
+        activeResizeHud = nil
+        activeTabSwitcher?.removeFromSuperview()
+        activeTabSwitcher = nil
+        if prev == .swap {
+            rebuildWorkspaceLayout()
+        }
+        updateBottomStatusHud()
+    }
+
+    public func showTabSwitcher(reverse: Bool = false) {
+        if let existing = activeTabSwitcher {
+            existing.step(reverse: reverse)
+            return
+        }
+        guard let focused = store.focusedPane, !focused.tabs.isEmpty else { return }
+        let currentIdx = focused.tabs.firstIndex(where: { $0.id == focused.activeTabId }) ?? 0
+        let switcher = TabSwitcherOverlayView(tabs: focused.tabs, initialIndex: currentIdx)
+        switcher.translatesAutoresizingMaskIntoConstraints = false
+        switcher.onSelect = { [weak self] idx in
+            guard let self else { return }
+            self.store.selectTabAtIndex(idx)
+            self.activeTabSwitcher = nil
+        }
+        switcher.onDismiss = { [weak self] in
+            self?.activeTabSwitcher = nil
+        }
+        self.activeTabSwitcher = switcher
+        view.addSubview(switcher)
+        NSLayoutConstraint.activate([
+            switcher.topAnchor.constraint(equalTo: view.topAnchor),
+            switcher.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            switcher.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            switcher.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        ])
+        switcher.step(reverse: reverse)
         view.bringSubviewToFront(virtualCursorOverlay)
     }
 
@@ -1125,82 +1321,7 @@ public final class TilingWorkspaceViewController: UIViewController {
     // MARK: - Hardware Keyboard Shortcuts & Terminal Precedence (PRD §13.1, §13.2)
 
     public override var keyCommands: [UIKeyCommand]? {
-        var cmds: [UIKeyCommand] = [
-            // Global Command Palette (Cmd+K / Ctrl+K / Cmd+P)
-            UIKeyCommand(title: "Command Palette", action: #selector(openCommandPalette), input: "k", modifierFlags: [.command]),
-            UIKeyCommand(title: "Command Palette", action: #selector(openCommandPalette), input: "k", modifierFlags: [.control]),
-            UIKeyCommand(title: "Command Palette", action: #selector(openCommandPalette), input: "p", modifierFlags: [.command]),
-            UIKeyCommand(title: "Command Palette", action: #selector(openCommandPalette), input: "p", modifierFlags: [.command, .shift]),
-
-            // Keyboard Shortcuts Cheat Sheet
-            UIKeyCommand(title: "Keyboard Shortcuts", action: #selector(openKeyboardShortcutsTapped), input: "/", modifierFlags: [.command]),
-            UIKeyCommand(title: "Keyboard Shortcuts", action: #selector(openKeyboardShortcutsTapped), input: "?", modifierFlags: [.command]),
-
-            // Cycle Panes (No touchpad needed!)
-            UIKeyCommand(title: "Cycle Next Pane", action: #selector(cycleNextPaneKey), input: "]", modifierFlags: [.command, .alternate]),
-            UIKeyCommand(title: "Cycle Previous Pane", action: #selector(cyclePrevPaneKey), input: "[", modifierFlags: [.command, .alternate]),
-            UIKeyCommand(title: "Cycle Next Pane", action: #selector(cycleNextPaneKey), input: "`", modifierFlags: [.control]),
-            UIKeyCommand(title: "Cycle Previous Pane", action: #selector(cyclePrevPaneKey), input: "~", modifierFlags: [.control]),
-
-            // Dismiss Modals / Overlays
-            UIKeyCommand(title: "Dismiss Overlay", action: #selector(dismissModalKey), input: UIKeyCommand.inputEscape, modifierFlags: []),
-
-            // Pane Management
-            UIKeyCommand(title: "Split Vertically", action: #selector(splitHorizontalTapped), input: "d", modifierFlags: [.command]),
-            UIKeyCommand(title: "Split Horizontally", action: #selector(splitVerticalTapped), input: "d", modifierFlags: [.command, .shift]),
-            UIKeyCommand(title: "Close Focused Pane", action: #selector(closeFocusedPaneKey), input: "w", modifierFlags: [.command, .shift]),
-            UIKeyCommand(title: "Toggle Maximise Pane", action: #selector(maximisePaneTapped), input: "m", modifierFlags: [.command, .shift]),
-
-            // Split Horizontally & Vertically (Ctrl+Alt legacy fallback)
-            UIKeyCommand(title: "Split Horizontally", action: #selector(splitHorizontalTapped), input: "\\", modifierFlags: [.control, .alternate]),
-            UIKeyCommand(title: "Split Vertically", action: #selector(splitVerticalTapped), input: "-", modifierFlags: [.control, .alternate]),
-            UIKeyCommand(title: "Close Focused Pane", action: #selector(closeFocusedPaneKey), input: "w", modifierFlags: [.control, .alternate]),
-            UIKeyCommand(title: "Focus Left Pane", action: #selector(focusLeftKey), input: UIKeyCommand.inputLeftArrow, modifierFlags: [.control, .alternate]),
-            UIKeyCommand(title: "Focus Right Pane", action: #selector(focusRightKey), input: UIKeyCommand.inputRightArrow, modifierFlags: [.control, .alternate]),
-            UIKeyCommand(title: "Focus Up Pane", action: #selector(focusUpKey), input: UIKeyCommand.inputUpArrow, modifierFlags: [.control, .alternate]),
-            UIKeyCommand(title: "Focus Down Pane", action: #selector(focusDownKey), input: UIKeyCommand.inputDownArrow, modifierFlags: [.control, .alternate]),
-            UIKeyCommand(title: "Toggle Maximise Pane", action: #selector(maximisePaneTapped), input: "\r", modifierFlags: [.control, .alternate]),
-            UIKeyCommand(title: "Swap Panes", action: #selector(swapPanesTapped), input: "s", modifierFlags: [.control, .alternate]),
-            UIKeyCommand(title: "Shrink Split", action: #selector(shrinkSplitKey), input: "[", modifierFlags: [.control, .alternate]),
-            UIKeyCommand(title: "Grow Split", action: #selector(growSplitKey), input: "]", modifierFlags: [.control, .alternate]),
-
-            // Layout Presets (Cmd+1..4 and Ctrl+Alt+1..4)
-            UIKeyCommand(title: "Preset 1: Single", action: #selector(presetSingleTapped), input: "1", modifierFlags: [.command]),
-            UIKeyCommand(title: "Preset 2: Two Columns", action: #selector(presetTwoColTapped), input: "2", modifierFlags: [.command]),
-            UIKeyCommand(title: "Preset 3: 1+2 Panes", action: #selector(presetLeftTwoRightTapped), input: "3", modifierFlags: [.command]),
-            UIKeyCommand(title: "Preset 4: 2x2 Grid", action: #selector(presetGridTapped), input: "4", modifierFlags: [.command]),
-            UIKeyCommand(title: "Preset 1", action: #selector(presetSingleTapped), input: "1", modifierFlags: [.control, .alternate]),
-            UIKeyCommand(title: "Preset 2", action: #selector(presetTwoColTapped), input: "2", modifierFlags: [.control, .alternate]),
-            UIKeyCommand(title: "Preset 3", action: #selector(presetLeftTwoRightTapped), input: "3", modifierFlags: [.control, .alternate]),
-            UIKeyCommand(title: "Preset 4", action: #selector(presetGridTapped), input: "4", modifierFlags: [.control, .alternate]),
-
-            // Tab Management
-            UIKeyCommand(title: "New Tab", action: #selector(newTabKey), input: "t", modifierFlags: [.command]),
-            UIKeyCommand(title: "New Tab", action: #selector(newTabKey), input: "t", modifierFlags: [.control]),
-            UIKeyCommand(title: "Next Tab", action: #selector(nextTabKey), input: "\t", modifierFlags: [.control]),
-            UIKeyCommand(title: "Previous Tab", action: #selector(prevTabKey), input: "\t", modifierFlags: [.control, .shift]),
-            UIKeyCommand(title: "Next Tab (Cmd)", action: #selector(nextTabKey), input: "]", modifierFlags: [.command, .shift]),
-            UIKeyCommand(title: "Previous Tab (Cmd)", action: #selector(prevTabKey), input: "[", modifierFlags: [.command, .shift]),
-            UIKeyCommand(title: "Open Settings", action: #selector(openSettingsTapped), input: ",", modifierFlags: [.command]),
-            UIKeyCommand(title: "Open Settings", action: #selector(openSettingsTapped), input: ",", modifierFlags: [.control]),
-            UIKeyCommand(title: "Open Hosts", action: #selector(openHostsTapped), input: "h", modifierFlags: [.command, .shift]),
-            UIKeyCommand(title: "Open Hosts", action: #selector(openHostsTapped), input: "h", modifierFlags: [.control, .shift]),
-
-            // Workspace (Spaces) Cycling & Direct Jump
-            UIKeyCommand(title: "Next Workspace", action: #selector(nextWorkspaceKey), input: UIKeyCommand.inputRightArrow, modifierFlags: [.control]),
-            UIKeyCommand(title: "Previous Workspace", action: #selector(prevWorkspaceKey), input: UIKeyCommand.inputLeftArrow, modifierFlags: [.control]),
-            UIKeyCommand(title: "Next Workspace (Mac)", action: #selector(nextWorkspaceKey), input: UIKeyCommand.inputRightArrow, modifierFlags: [.command, .alternate]),
-            UIKeyCommand(title: "Previous Workspace (Mac)", action: #selector(prevWorkspaceKey), input: UIKeyCommand.inputLeftArrow, modifierFlags: [.command, .alternate]),
-            UIKeyCommand(title: "New Workspace", action: #selector(newWorkspaceKey), input: "n", modifierFlags: [.command, .shift]),
-            UIKeyCommand(title: "Switch to Workspace 1", action: #selector(jumpToWorkspace1), input: "1", modifierFlags: [.control]),
-            UIKeyCommand(title: "Switch to Workspace 2", action: #selector(jumpToWorkspace2), input: "2", modifierFlags: [.control]),
-            UIKeyCommand(title: "Switch to Workspace 3", action: #selector(jumpToWorkspace3), input: "3", modifierFlags: [.control]),
-            UIKeyCommand(title: "Switch to Workspace 4", action: #selector(jumpToWorkspace4), input: "4", modifierFlags: [.control]),
-            UIKeyCommand(title: "Switch to Workspace 1", action: #selector(jumpToWorkspace1), input: "1", modifierFlags: [.command, .shift]),
-            UIKeyCommand(title: "Switch to Workspace 2", action: #selector(jumpToWorkspace2), input: "2", modifierFlags: [.command, .shift]),
-            UIKeyCommand(title: "Switch to Workspace 3", action: #selector(jumpToWorkspace3), input: "3", modifierFlags: [.command, .shift]),
-            UIKeyCommand(title: "Switch to Workspace 4", action: #selector(jumpToWorkspace4), input: "4", modifierFlags: [.command, .shift]),
-        ]
+        var cmds = GlobalShortcutDispatcher.buildKeyCommands(target: self)
 
         // PRD §13.2: When an SSH terminal tab is focused, Ctrl+C/D/Z/R/A/E/K/U/W/L MUST be sent to the PTY
         if let activeTab = store.focusedPane?.activeTab, activeTab.type == .ssh {
@@ -1215,13 +1336,6 @@ public final class TilingWorkspaceViewController: UIViewController {
                 cmd.wantsPriorityOverSystemBehavior = true
                 cmds.append(cmd)
             }
-        } else {
-            cmds.append(UIKeyCommand(title: "Close Tab", action: #selector(closeActiveTabKey), input: "w", modifierFlags: [.command]))
-            cmds.append(UIKeyCommand(title: "Close Tab", action: #selector(closeActiveTabKey), input: "w", modifierFlags: [.control]))
-            cmds.append(UIKeyCommand(title: "Focus Address Bar", action: #selector(focusAddressBarKey), input: "l", modifierFlags: [.command]))
-            cmds.append(UIKeyCommand(title: "Focus Address Bar", action: #selector(focusAddressBarKey), input: "l", modifierFlags: [.control]))
-            cmds.append(UIKeyCommand(title: "Reload Page", action: #selector(reloadWebKey), input: "r", modifierFlags: [.command]))
-            cmds.append(UIKeyCommand(title: "Reload Page", action: #selector(reloadWebKey), input: "r", modifierFlags: [.control]))
         }
 
         return cmds
@@ -1243,10 +1357,28 @@ public final class TilingWorkspaceViewController: UIViewController {
     @objc internal func cycleNextPaneKey() { store.cyclePanes(reverse: false) }
     @objc internal func cyclePrevPaneKey() { store.cyclePanes(reverse: true) }
     @objc private func newWorkspaceKey() { store.addWorkspace() }
-    @objc private func jumpToWorkspace1() { store.switchToWorkspace(at: 0) }
-    @objc private func jumpToWorkspace2() { store.switchToWorkspace(at: 1) }
-    @objc private func jumpToWorkspace3() { store.switchToWorkspace(at: 2) }
-    @objc private func jumpToWorkspace4() { store.switchToWorkspace(at: 3) }
+
+    @objc internal func jumpToWorkspace1() { store.switchToWorkspace(at: 0) }
+    @objc internal func jumpToWorkspace2() { store.switchToWorkspace(at: 1) }
+    @objc internal func jumpToWorkspace3() { store.switchToWorkspace(at: 2) }
+    @objc internal func jumpToWorkspace4() { store.switchToWorkspace(at: 3) }
+
+    @objc internal func jumpToPane1() { store.focusPaneIndex(0) }
+    @objc internal func jumpToPane2() { store.focusPaneIndex(1) }
+    @objc internal func jumpToPane3() { store.focusPaneIndex(2) }
+    @objc internal func jumpToPane4() { store.focusPaneIndex(3) }
+    @objc internal func focusPreviousPaneKey() { store.focusPreviousPane() }
+
+    @objc internal func jumpToTab1() { store.selectTabAtIndex(0) }
+    @objc internal func jumpToTab2() { store.selectTabAtIndex(1) }
+    @objc internal func jumpToTab3() { store.selectTabAtIndex(2) }
+    @objc internal func jumpToTab4() { store.selectTabAtIndex(3) }
+    @objc internal func jumpToTab5() { store.selectTabAtIndex(4) }
+    @objc internal func jumpToTab6() { store.selectTabAtIndex(5) }
+    @objc internal func jumpToTab7() { store.selectTabAtIndex(6) }
+    @objc internal func jumpToTab8() { store.selectTabAtIndex(7) }
+    @objc internal func jumpToTab9() { store.selectTabAtIndex(8) }
+
     @objc private func dismissModalKey() { dismissAllModals() }
 
     @objc internal func focusAddressBarKey() {

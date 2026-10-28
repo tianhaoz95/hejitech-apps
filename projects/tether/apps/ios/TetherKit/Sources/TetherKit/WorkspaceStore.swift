@@ -146,6 +146,9 @@ public final class WorkspaceStore: ObservableObject {
     @Published public var isExternalDisplayConnected: Bool = false
     @Published public var externalDisplayDescription: String = "Built-in Screen (Mirror Ready)"
 
+    /// Most recently focused pane prior to the current one (for instant MRU flip jump-back).
+    public private(set) var previousFocusedPaneId: String?
+
     public let secureStore: SecureStore
     public let backend: Backend
     private let storageURL: URL
@@ -328,19 +331,58 @@ public final class WorkspaceStore: ObservableObject {
     }
 
     public func focusPane(_ paneId: String) {
+        if tree.focusedPaneId != paneId {
+            previousFocusedPaneId = tree.focusedPaneId
+        }
         tree = PaneTreeOps.focusPane(tree, paneId: paneId)
     }
 
+    public func focusPreviousPane() {
+        guard let prevId = previousFocusedPaneId,
+              panes.contains(where: { $0.id == prevId }) else {
+            cyclePanes(reverse: true)
+            return
+        }
+        focusPane(prevId)
+    }
+
+    public func focusPaneIndex(_ index: Int) {
+        let allPanes = panes
+        guard allPanes.indices.contains(index) else { return }
+        focusPane(allPanes[index].id)
+    }
+
+    public func selectTabAtIndex(_ index: Int, inPaneId: String? = nil) {
+        let targetPaneId = inPaneId ?? tree.focusedPaneId
+        tree = PaneTreeOps.selectTabAtIndex(tree, paneId: targetPaneId, index: index)
+    }
+
     public func focusDirectional(_ direction: FocusDirection) {
+        let old = tree.focusedPaneId
         tree = PaneTreeOps.focusDirectional(tree, direction: direction)
+        if tree.focusedPaneId != old {
+            previousFocusedPaneId = old
+        }
     }
 
     public func cyclePanes(reverse: Bool = false) {
+        let old = tree.focusedPaneId
         tree = PaneTreeOps.focusNextPane(tree, reverse: reverse)
+        if tree.focusedPaneId != old {
+            previousFocusedPaneId = old
+        }
     }
 
     public func swapFocusedWithNext() {
         tree = PaneTreeOps.swapFocusedWithNext(tree)
+    }
+
+    public func swapDirectional(_ direction: FocusDirection) {
+        tree = PaneTreeOps.swapDirectional(tree, direction: direction)
+    }
+
+    public func swapPanes(_ paneIdA: String, _ paneIdB: String) {
+        tree = PaneTreeOps.swapPanes(tree, paneIdA: paneIdA, paneIdB: paneIdB)
     }
 
     public func toggleMaximiseFocusedPane() {

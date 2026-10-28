@@ -17,10 +17,42 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.15"
+    static let currentVersion = "0.1.16"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.16", date: "October 2026", items: [
+            WhatsNewItem(
+                icon: "menubar.dock.rectangle",
+                title: "Bottom Status & Context Ribbon",
+                description: "Persistent 26pt status bar at the bottom edge of external displays showing Workspace, Pane number, active tool, interaction mode, and dynamic contextual shortcut hints."
+            ),
+            WhatsNewItem(
+                icon: "square.grid.2x2.fill",
+                title: "Direct Pane Jump (⌘1..4) & Non-Colliding Keys",
+                description: "Jump straight to any pane with ⌘1..4. Modifiers are strictly separated: ⌃1..4 for spaces, ⌘1..4 for panes, ⌘⌥1..9 for tabs, and ⌃⌥1..4 for layout presets."
+            ),
+            WhatsNewItem(
+                icon: "arrow.triangle.swap",
+                title: "Focus History Jump-Back (⌘⌥O / Alt+Tab)",
+                description: "Toggle instantly between your two most recently used panes with ⌘⌥O (MRU flip)."
+            ),
+            WhatsNewItem(
+                icon: "macwindow.on.rectangle",
+                title: "Tab Switcher HUD (⌃Tab) & Tab Search (⌘P)",
+                description: "Step through pane tabs with an interactive card deck overlay on Ctrl+Tab, or fuzzy-search tabs across all workspaces with ⌘P."
+            ),
+            WhatsNewItem(
+                icon: "arrow.up.and.down.and.arrow.left.and.right",
+                title: "Modal Resize (⌘⌥R) & Swap (⌘⌥S)",
+                description: "Adjust split ratios with arrow keys and live percentage badges in Resize Mode (⌘⌥R), or swap adjacent panes visually in Swap Mode (⌘⌥S)."
+            ),
+            WhatsNewItem(
+                icon: "sparkles",
+                title: "Leader Key Ribbon & Smart Omnibar",
+                description: "Tmux-style leader actions with Ctrl+Space or Ctrl+B, and instant search engines, bookmarks, and dev ports in the ⌘L address bar dropdown."
+            ),
+        ]),
         ReleaseNotes(version: "0.1.15", date: "October 2026", items: [
             WhatsNewItem(
                 icon: "globe",

@@ -38,6 +38,7 @@ public struct CommandPaletteItem {
 public final class CommandPaletteView: UIView, UITextFieldDelegate, UITableViewDelegate, UITableViewDataSource {
     private let store: WorkspaceStore
     private weak var workspaceVC: TilingWorkspaceViewController?
+    public let tabSearchOnly: Bool
 
     private var allItems: [CommandPaletteItem] = []
     private var filteredItems: [CommandPaletteItem] = []
@@ -53,9 +54,10 @@ public final class CommandPaletteView: UIView, UITextFieldDelegate, UITableViewD
 
     public var onDismiss: (() -> Void)?
 
-    public init(store: WorkspaceStore, workspaceVC: TilingWorkspaceViewController?) {
+    public init(store: WorkspaceStore, workspaceVC: TilingWorkspaceViewController?, tabSearchOnly: Bool = false) {
         self.store = store
         self.workspaceVC = workspaceVC
+        self.tabSearchOnly = tabSearchOnly
         super.init(frame: .zero)
         buildAllItems()
         setupUI()
@@ -69,6 +71,36 @@ public final class CommandPaletteView: UIView, UITextFieldDelegate, UITableViewD
 
     private func buildAllItems() {
         var items: [CommandPaletteItem] = []
+
+        if tabSearchOnly {
+            // Dedicated Tab-Only Search across all workspaces (c07-tab-palette)
+            for (wsIdx, ws) in store.workspaces.enumerated() {
+                let panes = PaneTreeOps.collectPanes(ws.tree.root)
+                for (paneIdx, pane) in panes.enumerated() {
+                    for tab in pane.tabs {
+                        let isCurrentTab = (wsIdx == store.activeWorkspaceIndex && pane.id == store.tree.focusedPaneId && tab.id == pane.activeTabId)
+                        items.append(CommandPaletteItem(
+                            id: "tab-\(ws.id)-\(tab.id)",
+                            title: tab.title,
+                            subtitle: "\(ws.name) (⌃\(wsIdx + 1)) · Pane \(paneIdx + 1) · \(tab.type.displayName)\(isCurrentTab ? " · [Active]" : "")",
+                            category: "Tabs",
+                            systemImage: tab.type.systemImage,
+                            shortcutHint: "↵ Jump"
+                        ) { [weak self] in
+                            guard let self else { return }
+                            self.dismissPalette()
+                            if self.store.activeWorkspaceIndex != wsIdx {
+                                self.store.switchToWorkspace(at: wsIdx)
+                            }
+                            self.store.tree = PaneTreeOps.focusPane(self.store.tree, paneId: pane.id)
+                            self.store.tree = PaneTreeOps.selectTab(self.store.tree, paneId: pane.id, tabId: tab.id)
+                        })
+                    }
+                }
+            }
+            self.allItems = items
+            return
+        }
 
         // 1. Tab & Pane Operations
         items.append(CommandPaletteItem(
@@ -524,7 +556,9 @@ public final class CommandPaletteView: UIView, UITextFieldDelegate, UITableViewD
 
         searchField.translatesAutoresizingMaskIntoConstraints = false
         searchField.delegate = self
-        searchField.placeholder = "Search commands, tabs, hosts, layouts… (Esc to close)"
+        searchField.placeholder = tabSearchOnly
+            ? "Search all open tabs across workspaces… (⌘P)"
+            : "Search commands, tabs, hosts, layouts… (Esc to close)"
         searchField.font = .systemFont(ofSize: 15, weight: .medium)
         searchField.textColor = .white
         searchField.tintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)

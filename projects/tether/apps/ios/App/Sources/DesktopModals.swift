@@ -563,18 +563,74 @@ public final class DesktopSettingsModalView: UIView {
 // MARK: - Desktop Keyboard Shortcuts Cheat Sheet Modal View (PRD §4, §12)
 
 @MainActor
-public final class DesktopShortcutsModalView: UIView {
+public final class DesktopShortcutsModalView: UIView, UITextFieldDelegate {
     private let backdrop = UIView()
     private let card = UIView()
     private let titleLabel = UILabel()
+    private let searchField = UITextField()
     private let closeButton = UIButton(type: .system)
     private let scrollView = UIScrollView()
     private let stack = UIStackView()
 
     public var onDismiss: (() -> Void)?
+    public var onExecute: ((String) -> Void)?
 
-    public init(onDismiss: (() -> Void)? = nil) {
+    private struct ShortcutItem {
+        let action: String
+        let key: String
+        let commandId: String
+    }
+
+    private let allCategories: [(title: String, items: [ShortcutItem])] = [
+        ("🌌 Workspaces (Spaces)", [
+            ShortcutItem(action: "Direct Jump to Space 1..4", key: "⌃1  ..  ⌃4", commandId: "jump_workspace"),
+            ShortcutItem(action: "Cycle to Next Workspace", key: "⌃→  or  ⌘⌥→  or  ⌃⌥]", commandId: "next_workspace"),
+            ShortcutItem(action: "Cycle to Previous Workspace", key: "⌃←  or  ⌘⌥←  or  ⌃⌥[", commandId: "prev_workspace"),
+            ShortcutItem(action: "New Workspace", key: "⌘⇧N", commandId: "new_workspace"),
+        ]),
+        ("🪟 Panes & Direct Jump (⌘1..4)", [
+            ShortcutItem(action: "Direct Jump to Pane 1..4", key: "⌘1  ..  ⌘4", commandId: "jump_pane"),
+            ShortcutItem(action: "Focus History Jump-Back (MRU Flip)", key: "⌘⌥O", commandId: "focus_mru"),
+            ShortcutItem(action: "Leader Key Ribbon", key: "Ctrl+Space  or  Ctrl+B", commandId: "leader_mode"),
+            ShortcutItem(action: "Keyboard Split Resizer HUD", key: "⌘⌥R", commandId: "resize_mode"),
+            ShortcutItem(action: "Visual Pane Swap Selector", key: "⌘⌥S", commandId: "swap_mode"),
+            ShortcutItem(action: "Cycle Next Pane", key: "⌘⌥]  or  ⌃`  or  F6", commandId: "cycle_next_pane"),
+            ShortcutItem(action: "Cycle Previous Pane", key: "⌘⌥[  or  ⌃⇧~", commandId: "cycle_prev_pane"),
+            ShortcutItem(action: "Move Focus Directional", key: "⌃⌥ + Arrows  or  ⌘⌥ + Arrows", commandId: "focus_dir"),
+            ShortcutItem(action: "Split Vertically (Columns)", key: "⌘D", commandId: "split_vert"),
+            ShortcutItem(action: "Split Horizontally (Rows)", key: "⌘⇧D", commandId: "split_horiz"),
+            ShortcutItem(action: "Close Focused Pane", key: "⌘⇧W", commandId: "close_pane"),
+            ShortcutItem(action: "Toggle Maximise Pane", key: "⌘⇧M", commandId: "toggle_max"),
+        ]),
+        ("📑 Tabs & Tab Switcher (⌘⌥1..9)", [
+            ShortcutItem(action: "Direct Select Tab 1..9 in Pane", key: "⌘⌥1  ..  ⌘⌥9", commandId: "select_tab"),
+            ShortcutItem(action: "Interactive Tab Switcher HUD", key: "Ctrl+Tab  /  Ctrl+Shift+Tab", commandId: "tab_switcher"),
+            ShortcutItem(action: "Global Fuzzy Tab Search", key: "⌘P", commandId: "tab_search"),
+            ShortcutItem(action: "New Tab (Browser)", key: "⌘T", commandId: "new_tab"),
+            ShortcutItem(action: "Close Active Tab", key: "⌘W", commandId: "close_tab"),
+        ]),
+        ("📐 Layout Presets (⌃⌥1..4)", [
+            ShortcutItem(action: "Preset 1: Single Pane", key: "⌃⌥1", commandId: "preset_1"),
+            ShortcutItem(action: "Preset 2: Two Columns (50/50)", key: "⌃⌥2", commandId: "preset_2"),
+            ShortcutItem(action: "Preset 3: 1 Left + 2 Stacked Right", key: "⌃⌥3", commandId: "preset_3"),
+            ShortcutItem(action: "Preset 4: 2×2 Grid", key: "⌃⌥4", commandId: "preset_4"),
+        ]),
+        ("⚡ Navigation & System", [
+            ShortcutItem(action: "Command Palette", key: "⌘K", commandId: "command_palette"),
+            ShortcutItem(action: "Global Tab Palette", key: "⌘P", commandId: "tab_palette"),
+            ShortcutItem(action: "Focus URL Bar & Omnibar", key: "⌘L", commandId: "focus_url"),
+            ShortcutItem(action: "Reload Web Page", key: "⌘R", commandId: "reload_page"),
+            ShortcutItem(action: "Precision Page Scroll (Web)", key: "Space  /  ⇧Space", commandId: "page_scroll"),
+            ShortcutItem(action: "SSH Hosts & Keys", key: "⌘⇧H", commandId: "hosts_keys"),
+            ShortcutItem(action: "Workspace Settings", key: "⌘,", commandId: "settings"),
+            ShortcutItem(action: "Keyboard Shortcuts Cheat Sheet", key: "⌘/  or  ⌘?", commandId: "shortcuts"),
+            ShortcutItem(action: "Dismiss Overlay / Dialog", key: "Escape", commandId: "dismiss"),
+        ]),
+    ]
+
+    public init(onDismiss: (() -> Void)? = nil, onExecute: ((String) -> Void)? = nil) {
         self.onDismiss = onDismiss
+        self.onExecute = onExecute
         super.init(frame: .zero)
         setupUI()
     }
@@ -602,11 +658,25 @@ public final class DesktopShortcutsModalView: UIView {
         card.translatesAutoresizingMaskIntoConstraints = false
         addSubview(card)
 
-        titleLabel.text = "⌨️ Keyboard Shortcuts Cheat Sheet"
-        titleLabel.font = .monospacedSystemFont(ofSize: 16, weight: .bold)
+        titleLabel.text = "⌨️ Keyboard Shortcuts (Search & Execute)"
+        titleLabel.font = .monospacedSystemFont(ofSize: 15, weight: .bold)
         titleLabel.textColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(titleLabel)
+
+        searchField.translatesAutoresizingMaskIntoConstraints = false
+        searchField.placeholder = "Filter shortcuts (e.g. split, pane, tab, space)..."
+        searchField.font = .systemFont(ofSize: 13, weight: .medium)
+        searchField.textColor = .white
+        searchField.backgroundColor = UIColor(white: 1.0, alpha: 0.07)
+        searchField.layer.cornerRadius = 6
+        searchField.layer.borderWidth = 1
+        searchField.layer.borderColor = UIColor(white: 1.0, alpha: 0.12).cgColor
+        searchField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 8, height: 28))
+        searchField.leftViewMode = .always
+        searchField.delegate = self
+        searchField.addTarget(self, action: #selector(handleSearchChanged), for: .editingChanged)
+        card.addSubview(searchField)
 
         let xConfig = UIImage.SymbolConfiguration(pointSize: 14, weight: .bold)
         closeButton.setImage(UIImage(systemName: "xmark", withConfiguration: xConfig), for: .normal)
@@ -635,7 +705,7 @@ public final class DesktopShortcutsModalView: UIView {
             card.centerXAnchor.constraint(equalTo: centerXAnchor),
             card.centerYAnchor.constraint(equalTo: centerYAnchor),
             card.widthAnchor.constraint(equalToConstant: min(680, UIScreen.main.bounds.width - 40)),
-            card.heightAnchor.constraint(equalToConstant: min(540, UIScreen.main.bounds.height - 60)),
+            card.heightAnchor.constraint(equalToConstant: min(560, UIScreen.main.bounds.height - 60)),
 
             titleLabel.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
             titleLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 20),
@@ -645,7 +715,12 @@ public final class DesktopShortcutsModalView: UIView {
             closeButton.widthAnchor.constraint(equalToConstant: 28),
             closeButton.heightAnchor.constraint(equalToConstant: 28),
 
-            scrollView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 16),
+            searchField.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 12),
+            searchField.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 20),
+            searchField.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -20),
+            searchField.heightAnchor.constraint(equalToConstant: 32),
+
+            scrollView.topAnchor.constraint(equalTo: searchField.bottomAnchor, constant: 12),
             scrollView.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 20),
             scrollView.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -20),
             scrollView.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -16),
@@ -657,74 +732,82 @@ public final class DesktopShortcutsModalView: UIView {
             stack.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
         ])
 
-        buildShortcutsContent()
+        buildShortcutsContent(filter: "")
     }
 
-    private func buildShortcutsContent() {
-        addCategory("🌌 Workspaces (Spaces)", items: [
-            ("Cycle to Next Workspace", "⌃→  or  ⌘⌥→  or  ⌃⌥]"),
-            ("Cycle to Previous Workspace", "⌃←  or  ⌘⌥←  or  ⌃⌥["),
-            ("Direct Jump to Space 1..4", "⌃1  ..  ⌃4"),
-            ("New Workspace", "⌘⇧N"),
-        ])
-
-        addCategory("🪟 Panes & Focus Navigation", items: [
-            ("Cycle Next Pane", "⌘⌥]  or  ⌃Tab  or  ⌃`  or  F6"),
-            ("Cycle Previous Pane", "⌘⌥[  or  ⌃⇧Tab"),
-            ("Move Focus Directional", "⌃⌥ + Arrow Keys"),
-            ("Split Vertically (Columns)", "⌘D  or  ⌃⌥\\"),
-            ("Split Horizontally (Rows)", "⌘⇧D  or  ⌃⌥-"),
-            ("Close Focused Pane", "⌘⇧W  or  ⌃⌥W"),
-            ("Toggle Maximise Pane", "⌘⇧M  or  ⌃⌥Enter"),
-            ("Swap Focused Pane", "⌃⌥S"),
-            ("Adjust Split Ratio", "⌃⌥[  /  ⌃⌥]"),
-        ])
-
-        addCategory("📑 Tabs", items: [
-            ("New Tab", "⌘T  or  ⌃T"),
-            ("Close Active Tab", "⌘W"),
-            ("Cycle Next Tab", "⌘]  or  ⌃Tab"),
-            ("Cycle Previous Tab", "⌘[  or  ⌃⇧Tab"),
-        ])
-
-        addCategory("⚡ Navigation & System", items: [
-            ("Command Palette", "⌘K  or  ⌘P"),
-            ("SSH Hosts & Keys", "⌘⇧H"),
-            ("Workspace Settings", "⌘,"),
-            ("Keyboard Shortcuts Cheat Sheet", "⌘/  or  ⌘?"),
-            ("Dismiss Dialog / Modal", "Escape"),
-        ])
+    @objc private func handleSearchChanged() {
+        buildShortcutsContent(filter: searchField.text ?? "")
     }
 
-    private func addCategory(_ title: String, items: [(String, String)]) {
-        let header = UILabel()
-        header.text = title
-        header.font = .monospacedSystemFont(ofSize: 13, weight: .bold)
-        header.textColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
-        stack.addArrangedSubview(header)
+    private func buildShortcutsContent(filter: String) {
+        stack.arrangedSubviews.forEach {
+            stack.removeArrangedSubview($0)
+            $0.removeFromSuperview()
+        }
 
-        for (action, key) in items {
-            let row = UIStackView()
-            row.axis = .horizontal
-            row.distribution = .equalSpacing
-            row.alignment = .center
+        let query = filter.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
 
-            let actionLbl = UILabel()
-            actionLbl.text = action
-            actionLbl.font = .systemFont(ofSize: 12, weight: .regular)
-            actionLbl.textColor = UIColor(white: 0.9, alpha: 1.0)
+        for category in allCategories {
+            let matchingItems = category.items.filter { item in
+                if query.isEmpty { return true }
+                return item.action.lowercased().contains(query) ||
+                       item.key.lowercased().contains(query) ||
+                       category.title.lowercased().contains(query)
+            }
+            guard !matchingItems.isEmpty else { continue }
 
-            let keyBadge = UILabel()
-            keyBadge.text = " \(key) "
-            keyBadge.font = .monospacedSystemFont(ofSize: 11, weight: .bold)
-            keyBadge.textColor = UIColor(red: 0.20, green: 0.83, blue: 0.60, alpha: 1.0)
-            keyBadge.backgroundColor = UIColor(white: 1.0, alpha: 0.08)
-            keyBadge.layer.cornerRadius = 4
-            keyBadge.layer.masksToBounds = true
+            let header = UILabel()
+            header.text = category.title
+            header.font = .monospacedSystemFont(ofSize: 13, weight: .bold)
+            header.textColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
+            stack.addArrangedSubview(header)
 
-            row.addArrangedSubview(actionLbl)
-            row.addArrangedSubview(keyBadge)
-            stack.addArrangedSubview(row)
+            for item in matchingItems {
+                let row = UIButton(type: .system)
+                row.backgroundColor = UIColor(white: 1.0, alpha: 0.03)
+                row.layer.cornerRadius = 4
+                row.contentEdgeInsets = UIEdgeInsets(top: 4, left: 6, bottom: 4, right: 6)
+
+                let rowStack = UIStackView()
+                rowStack.isUserInteractionEnabled = false
+                rowStack.axis = .horizontal
+                rowStack.distribution = .equalSpacing
+                rowStack.alignment = .center
+                rowStack.translatesAutoresizingMaskIntoConstraints = false
+                row.addSubview(rowStack)
+
+                let actionLbl = UILabel()
+                actionLbl.text = item.action
+                actionLbl.font = .systemFont(ofSize: 12, weight: .medium)
+                actionLbl.textColor = UIColor(white: 0.9, alpha: 1.0)
+
+                let keyBadge = UILabel()
+                keyBadge.text = " \(item.key) "
+                keyBadge.font = .monospacedSystemFont(ofSize: 11, weight: .bold)
+                keyBadge.textColor = UIColor(red: 0.20, green: 0.83, blue: 0.60, alpha: 1.0)
+                keyBadge.backgroundColor = UIColor(white: 1.0, alpha: 0.08)
+                keyBadge.layer.cornerRadius = 4
+                keyBadge.layer.masksToBounds = true
+
+                rowStack.addArrangedSubview(actionLbl)
+                rowStack.addArrangedSubview(keyBadge)
+
+                NSLayoutConstraint.activate([
+                    rowStack.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 6),
+                    rowStack.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -6),
+                    rowStack.topAnchor.constraint(equalTo: row.topAnchor, constant: 4),
+                    rowStack.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -4),
+                    row.heightAnchor.constraint(greaterThanOrEqualToConstant: 28),
+                ])
+
+                row.addAction(UIAction { [weak self] _ in
+                    guard let self else { return }
+                    self.dismissModal()
+                    self.onExecute?(item.commandId)
+                }, for: .touchUpInside)
+
+                stack.addArrangedSubview(row)
+            }
         }
     }
 

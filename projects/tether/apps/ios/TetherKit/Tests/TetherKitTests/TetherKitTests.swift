@@ -72,6 +72,36 @@ final class TetherKitTests: XCTestCase {
         XCTAssertNotEqual(store.focusedPane?.id, initialPaneId)
         store.cyclePanes(reverse: true)
         XCTAssertEqual(store.focusedPane?.id, initialPaneId)
+
+        // MRU Flip (Focus History)
+        let pA = store.panes[0].id
+        let pB = store.panes[1].id
+        store.focusPane(pA)
+        store.focusPane(pB)
+        XCTAssertEqual(store.previousFocusedPaneId, pA)
+        store.focusPreviousPane()
+        XCTAssertEqual(store.focusedPane?.id, pA)
+        store.focusPreviousPane()
+        XCTAssertEqual(store.focusedPane?.id, pB)
+
+        // Direct Pane Jump by Index
+        store.focusPaneIndex(0)
+        XCTAssertEqual(store.focusedPane?.id, pA)
+        store.focusPaneIndex(1)
+        XCTAssertEqual(store.focusedPane?.id, pB)
+
+        // Select Tab by Index
+        store.openTab(type: .web)
+        XCTAssertEqual(store.focusedPane?.tabs.count, 2)
+        store.selectTabAtIndex(0)
+        XCTAssertEqual(store.focusedPane?.activeTabId, store.focusedPane?.tabs[0].id)
+        store.selectTabAtIndex(1)
+        XCTAssertEqual(store.focusedPane?.activeTabId, store.focusedPane?.tabs[1].id)
+
+        // Swap Panes
+        store.swapPanes(pA, pB)
+        XCTAssertEqual(store.panes[0].id, pB)
+        XCTAssertEqual(store.panes[1].id, pA)
     }
 
     func testSplitRatioClampingAndStepping() {

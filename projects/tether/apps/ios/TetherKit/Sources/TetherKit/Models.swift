@@ -786,13 +786,41 @@ public enum PaneTreeOps {
         return focusNextPane(tree, reverse: direction == .left || direction == .up)
     }
 
-    public static func swapFocusedWithNext(_ tree: PaneTree) -> PaneTree {
+    public static func findAdjacentPane(_ tree: PaneTree, fromPaneId: String, direction: FocusDirection) -> String? {
+        var rects: [String: NormalizedRect] = [:]
+        computeRects(tree.root, rect: NormalizedRect(x: 0, y: 0, w: 1, h: 1), into: &rects)
+        guard let current = rects[fromPaneId] else { return nil }
+
+        var bestId: String?
+        var bestScore = Double.infinity
+
+        for (id, rect) in rects where id != fromPaneId {
+            let dx = rect.cx - current.cx
+            let dy = rect.cy - current.cy
+            let isCandidate: Bool
+            switch direction {
+            case .left: isCandidate = dx < -0.001
+            case .right: isCandidate = dx > 0.001
+            case .up: isCandidate = dy < -0.001
+            case .down: isCandidate = dy > 0.001
+            }
+            guard isCandidate else { continue }
+            let primary = (direction == .left || direction == .right) ? abs(dx) : abs(dy)
+            let secondary = (direction == .left || direction == .right) ? abs(dy) : abs(dx)
+            let score = primary + secondary * 2.0
+            if score < bestScore {
+                bestScore = score
+                bestId = id
+            }
+        }
+        return bestId
+    }
+
+    public static func swapPanes(_ tree: PaneTree, paneIdA: String, paneIdB: String) -> PaneTree {
+        guard paneIdA != paneIdB else { return tree }
         let panes = collectPanes(tree.root)
-        guard panes.count > 1 else { return tree }
-        let idx = panes.firstIndex(where: { $0.id == tree.focusedPaneId }) ?? 0
-        let nextIdx = (idx + 1) % panes.count
-        let paneA = panes[idx]
-        let paneB = panes[nextIdx]
+        guard let paneA = panes.first(where: { $0.id == paneIdA }),
+              let paneB = panes.first(where: { $0.id == paneIdB }) else { return tree }
 
         func swapNodes(_ node: TreeNode) -> TreeNode {
             switch node {
@@ -810,6 +838,28 @@ public enum PaneTreeOps {
         var copy = tree
         copy.root = swapNodes(tree.root)
         return copy
+    }
+
+    public static func swapDirectional(_ tree: PaneTree, direction: FocusDirection) -> PaneTree {
+        guard let targetId = findAdjacentPane(tree, fromPaneId: tree.focusedPaneId, direction: direction) else {
+            return swapFocusedWithNext(tree)
+        }
+        return swapPanes(tree, paneIdA: tree.focusedPaneId, paneIdB: targetId)
+    }
+
+    public static func selectTabAtIndex(_ tree: PaneTree, paneId: String, index: Int) -> PaneTree {
+        guard let pane = findPane(tree.root, paneId: paneId),
+              pane.tabs.indices.contains(index) else { return tree }
+        let targetTabId = pane.tabs[index].id
+        return selectTab(tree, paneId: paneId, tabId: targetTabId)
+    }
+
+    public static func swapFocusedWithNext(_ tree: PaneTree) -> PaneTree {
+        let panes = collectPanes(tree.root)
+        guard panes.count > 1 else { return tree }
+        let idx = panes.firstIndex(where: { $0.id == tree.focusedPaneId }) ?? 0
+        let nextIdx = (idx + 1) % panes.count
+        return swapPanes(tree, paneIdA: panes[idx].id, paneIdB: panes[nextIdx].id)
     }
 
     public static func toggleMaximiseFocusedPane(_ tree: PaneTree) -> PaneTree {
@@ -840,6 +890,28 @@ public enum PaneTreeOps {
         var copy = tree
         copy.root = update(tree.root)
         return copy
+    }
+
+    public static func findParentSplit(_ node: TreeNode, childPaneId: String) -> SplitNode? {
+        switch node {
+        case .pane:
+            return nil
+        case .split(let s):
+            func containsPane(_ n: TreeNode) -> Bool {
+                switch n {
+                case .pane(let p): return p.id == childPaneId
+                case .split(let childS): return containsPane(childS.first) || containsPane(childS.second)
+                }
+            }
+            if containsPane(s.first) || containsPane(s.second) {
+                if case .pane(let p1) = s.first, p1.id == childPaneId { return s }
+                if case .pane(let p2) = s.second, p2.id == childPaneId { return s }
+                if let deeper = findParentSplit(s.first, childPaneId: childPaneId) { return deeper }
+                if let deeper = findParentSplit(s.second, childPaneId: childPaneId) { return deeper }
+                return s
+            }
+            return nil
+        }
     }
 
     public static func adjustParentSplitRatio(_ tree: PaneTree, delta: Double) -> PaneTree {
