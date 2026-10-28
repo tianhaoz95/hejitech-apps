@@ -362,6 +362,30 @@ public enum ControllerOrientation: String, Codable, Hashable, Sendable, CaseIter
     }
 }
 
+public enum TouchpadInputMode: String, Codable, Hashable, Sendable, CaseIterable {
+    case phoneTrackpad = "phone_trackpad"
+    case assistiveTouch = "assistive_touch"
+
+    public var displayName: String {
+        switch self {
+        case .phoneTrackpad: return "Phone as Trackpad"
+        case .assistiveTouch: return "Physical Mouse / AssistiveTouch"
+        }
+    }
+}
+
+public enum TouchpadDragGesture: String, Codable, Hashable, Sendable, CaseIterable {
+    case doubleTapDrag = "double_tap_drag"
+    case threeFingerDrag = "three_finger_drag"
+
+    public var displayName: String {
+        switch self {
+        case .doubleTapDrag: return "Double-Tap Drag"
+        case .threeFingerDrag: return "3-Finger Drag"
+        }
+    }
+}
+
 public enum TouchpadMappingMode: String, Codable, Hashable, Sendable, CaseIterable {
     case fullDisplay = "full_display"
     case relative = "relative"
@@ -383,6 +407,8 @@ public struct TetherSettings: Codable, Hashable, Sendable {
     public var controllerSidebarPosition: ControllerSidebarPosition = .left
     public var controllerOrientation: ControllerOrientation = .landscape
     public var showTouchpadButtons: Bool = false
+    public var touchpadInputMode: TouchpadInputMode = .phoneTrackpad
+    public var touchpadDragGesture: TouchpadDragGesture = .doubleTapDrag
     public var touchpadMappingMode: TouchpadMappingMode = .fullDisplay
     public var pointerSensitivity: Double = 2.5
     public var edgeContinuousPush: Bool = true
@@ -396,6 +422,8 @@ public struct TetherSettings: Codable, Hashable, Sendable {
         controllerSidebarPosition: ControllerSidebarPosition = .left,
         controllerOrientation: ControllerOrientation = .landscape,
         showTouchpadButtons: Bool = false,
+        touchpadInputMode: TouchpadInputMode = .phoneTrackpad,
+        touchpadDragGesture: TouchpadDragGesture = .doubleTapDrag,
         touchpadMappingMode: TouchpadMappingMode = .fullDisplay,
         pointerSensitivity: Double = 2.5,
         edgeContinuousPush: Bool = true
@@ -411,6 +439,8 @@ public struct TetherSettings: Codable, Hashable, Sendable {
         self.controllerSidebarPosition = controllerSidebarPosition
         self.controllerOrientation = controllerOrientation
         self.showTouchpadButtons = showTouchpadButtons
+        self.touchpadInputMode = touchpadInputMode
+        self.touchpadDragGesture = touchpadDragGesture
         self.touchpadMappingMode = touchpadMappingMode
         self.pointerSensitivity = pointerSensitivity
         self.edgeContinuousPush = edgeContinuousPush
@@ -427,6 +457,8 @@ public struct TetherSettings: Codable, Hashable, Sendable {
         controllerSidebarPosition = try container.decodeIfPresent(ControllerSidebarPosition.self, forKey: .controllerSidebarPosition) ?? .left
         controllerOrientation = try container.decodeIfPresent(ControllerOrientation.self, forKey: .controllerOrientation) ?? .landscape
         showTouchpadButtons = try container.decodeIfPresent(Bool.self, forKey: .showTouchpadButtons) ?? false
+        touchpadInputMode = try container.decodeIfPresent(TouchpadInputMode.self, forKey: .touchpadInputMode) ?? .phoneTrackpad
+        touchpadDragGesture = try container.decodeIfPresent(TouchpadDragGesture.self, forKey: .touchpadDragGesture) ?? .doubleTapDrag
         touchpadMappingMode = try container.decodeIfPresent(TouchpadMappingMode.self, forKey: .touchpadMappingMode) ?? .fullDisplay
         pointerSensitivity = try container.decodeIfPresent(Double.self, forKey: .pointerSensitivity) ?? 2.5
         edgeContinuousPush = try container.decodeIfPresent(Bool.self, forKey: .edgeContinuousPush) ?? true

@@ -240,6 +240,10 @@
         `,
         views: [
           {
+            name: "External Monitor Desktop (1280×792)",
+            frame: "browser",
+          },
+          {
             name: "Phone Controller (Current)",
             frame: "phone",
             render: () => renderPhoneController("touchpad", { title: "Trackpad Surface", sub: "1-finger tap click · 2-finger scroll" }),
@@ -305,6 +309,10 @@
           </div>
         `,
         views: [
+          {
+            name: "External Monitor Desktop (1280×792)",
+            frame: "browser",
+          },
           {
             name: "Phone Controller (Nordic Glass)",
             frame: "phone",
@@ -416,6 +424,10 @@
         `,
         views: [
           {
+            name: "External Monitor Desktop (1280×792)",
+            frame: "browser",
+          },
+          {
             name: "Phone Controller (Macro Stream Deck)",
             frame: "phone",
             render: () => renderPhoneController("macros", { title: "Macro Stream Deck", sub: "1-tap commands sent directly to active terminal" }),
@@ -488,6 +500,10 @@
         `,
         views: [
           {
+            name: "External Monitor Desktop (1280×792)",
+            frame: "browser",
+          },
+          {
             name: "Phone Controller (Zen Canvas)",
             frame: "phone",
             render: () => renderPhoneController("touchpad", { title: "Full-Bleed Gesture Canvas", sub: "Long-press anywhere to summon radial hotkey wheel" }),
@@ -545,6 +561,10 @@
           </div>
         `,
         views: [
+          {
+            name: "External Monitor Desktop (1280×792)",
+            frame: "browser",
+          },
           {
             name: "Phone Controller (Spatial Mini-Map)",
             frame: "phone",
@@ -679,6 +699,10 @@
         `,
         views: [
           {
+            name: "External Monitor Desktop (1280×792)",
+            frame: "browser",
+          },
+          {
             name: "Phone Controller (Fleet Biometric Vault)",
             frame: "phone",
             render: () => `
@@ -776,6 +800,10 @@
         `,
         views: [
           {
+            name: "External Monitor Desktop (1280×792)",
+            frame: "browser",
+          },
+          {
             name: "Phone Controller (Reading Scroll Wheel)",
             frame: "phone",
             render: () => `
@@ -856,6 +884,10 @@
           </div>
         `,
         views: [
+          {
+            name: "External Monitor Desktop (1280×792)",
+            frame: "browser",
+          },
           {
             name: "Phone Controller (Liquid Touchpad)",
             frame: "phone",
@@ -977,6 +1009,10 @@
         `,
         views: [
           {
+            name: "External Monitor Desktop (1280×792)",
+            frame: "browser",
+          },
+          {
             name: "Phone Controller (Spotlight Input)",
             frame: "phone",
             render: () => `
@@ -1043,6 +1079,10 @@
           </div>
         `,
         views: [
+          {
+            name: "External Monitor Desktop (1280×792)",
+            frame: "browser",
+          },
           {
             name: "Phone Companion (Terminal Keypad Mode)",
             frame: "phone",
@@ -1175,6 +1215,10 @@
           </div>
         `,
         views: [
+          {
+            name: "External Monitor Desktop (1280×792)",
+            frame: "browser",
+          },
           {
             name: "Phone Controller (Ergonomic Large Targets)",
             frame: "phone",

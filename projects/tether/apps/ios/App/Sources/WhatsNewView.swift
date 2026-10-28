@@ -23,19 +23,24 @@ struct WhatsNewView: View {
     static let releases: [ReleaseNotes] = [
         ReleaseNotes(version: "0.1.10", date: "October 2026", items: [
             WhatsNewItem(
+                icon: "hand.draw.fill",
+                title: "Configurable Dragging Gestures",
+                description: "Choose between Double-Tap Drag and 3-Finger Drag in Settings to fluidly drag split dividers and windows on your external display."
+            ),
+            WhatsNewItem(
+                icon: "hand.point.up.left.and.text.fill",
+                title: "3-Finger Swipe Pane Navigation",
+                description: "Swipe anywhere with 3 fingers in any direction (left, right, up, down) to instantly shift focus across workspace panes."
+            ),
+            WhatsNewItem(
+                icon: "gearshape.2.fill",
+                title: "Trackpad & AssistiveTouch Settings",
+                description: "Clean, distraction-free trackpad UI with dedicated mode configuration in Settings: choose between Phone as Trackpad and Physical Mouse."
+            ),
+            WhatsNewItem(
                 icon: "aspectratio.fill",
                 title: "Full Monitor 1:1 Absolute Mapping",
-                description: "Overcomes the iOS AssistiveTouch phone boundary limit: maps 100% of the phone controller directly to 100% of the external monitor so every corner and edge is effortlessly reachable."
-            ),
-            WhatsNewItem(
-                icon: "arrow.forward.to.line.circle.fill",
-                title: "Edge Continuous Travel (Edge Push)",
-                description: "In relative trackpad mode, pushing your mouse or finger against the phone screen edge continuously glides the cursor across ultrawide and 4K displays."
-            ),
-            WhatsNewItem(
-                icon: "lock.shield.fill",
-                title: "Hardware Mouse Pointer Locking",
-                description: "Native pointer locking with GameController integration for raw hardware mouse movement deltas across Bluetooth and USB-C docks."
+                description: "Overcomes iOS AssistiveTouch bounds: maps 100% of the phone controller directly to 100% of the external monitor so every edge and corner is reachable."
             ),
         ]),
         ReleaseNotes(version: "0.1.9", date: "October 2026", items: [

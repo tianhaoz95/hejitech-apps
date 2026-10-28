@@ -412,25 +412,41 @@ public struct SettingsSheetView: View {
 
                     Toggle("Show Touchpad Buttons", isOn: $store.settings.showTouchpadButtons)
 
-                    Picker("Touchpad Mapping", selection: $store.settings.touchpadMappingMode) {
-                        Text("Full Monitor (1:1 Absolute)").tag(TouchpadMappingMode.fullDisplay)
-                        Text("Relative Trackpad").tag(TouchpadMappingMode.relative)
+                    Picker("Touchpad Mode", selection: $store.settings.touchpadInputMode) {
+                        Text("Phone as Trackpad").tag(TouchpadInputMode.phoneTrackpad)
+                        Text("Physical Mouse / AssistiveTouch").tag(TouchpadInputMode.assistiveTouch)
                     }
 
-                    if store.settings.touchpadMappingMode == .relative {
-                        Toggle("Edge Continuous Travel", isOn: $store.settings.edgeContinuousPush)
-                        HStack {
-                            Text("Pointer Speed")
-                            Spacer()
-                            Text(String(format: "%.1fx", store.settings.pointerSensitivity))
-                                .foregroundStyle(.secondary)
+                    if store.settings.touchpadInputMode == .phoneTrackpad {
+                        Picker("Dragging Gesture", selection: $store.settings.touchpadDragGesture) {
+                            Text("Double-Tap Drag").tag(TouchpadDragGesture.doubleTapDrag)
+                            Text("3-Finger Drag").tag(TouchpadDragGesture.threeFingerDrag)
                         }
-                        Slider(value: $store.settings.pointerSensitivity, in: 1.0...5.0, step: 0.5)
-                    }
 
-                    Text("Full Monitor (1:1 Absolute) mode maps the phone screen directly to 100% of your external monitor, ensuring all edges and corners are reachable even when iOS AssistiveTouch bounds mouse movement to the phone. Relative mode provides traditional pointer movement with continuous edge travel.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        Text("• Dragging: Resize split dividers & drag items on screen.\n• 3-Finger Swipe: Swipe anywhere on the trackpad to change pane focus in that direction.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Picker("Pointer Mapping", selection: $store.settings.touchpadMappingMode) {
+                            Text("Full Monitor (1:1 Absolute)").tag(TouchpadMappingMode.fullDisplay)
+                            Text("Relative Trackpad").tag(TouchpadMappingMode.relative)
+                        }
+
+                        if store.settings.touchpadMappingMode == .relative {
+                            Toggle("Edge Continuous Travel", isOn: $store.settings.edgeContinuousPush)
+                            HStack {
+                                Text("Pointer Speed")
+                                Spacer()
+                                Text(String(format: "%.1fx", store.settings.pointerSensitivity))
+                                    .foregroundStyle(.secondary)
+                            }
+                            Slider(value: $store.settings.pointerSensitivity, in: 1.0...5.0, step: 0.5)
+                        }
+
+                        Text("Full Monitor (1:1 Absolute) mode maps the phone screen directly to 100% of your external monitor, ensuring all edges and corners are reachable even when iOS AssistiveTouch bounds mouse movement to the phone.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 Section {
