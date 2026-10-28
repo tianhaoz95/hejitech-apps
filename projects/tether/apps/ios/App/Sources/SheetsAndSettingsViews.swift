@@ -352,6 +352,7 @@ public struct SettingsSheetView: View {
     @State private var showingAddHost = false
     @State private var editingHost: SshHost?
     @State private var showingHostManager = false
+    @State private var showingAssistiveTouchGuide = false
 
     public init(store: WorkspaceStore) {
         self.store = store
@@ -414,6 +415,24 @@ public struct SettingsSheetView: View {
                     Text("When buttons are hidden, use pure gestures: 1-finger tap to click, tap-and-hold to drag, 2-finger scroll, and 2-finger tap for escape / back.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                }
+
+                Section {
+                    Button {
+                        showingAssistiveTouchGuide = true
+                    } label: {
+                        HStack {
+                            Label("Physical Mouse & Trackpad Setup", systemImage: "computermouse.fill")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                } header: {
+                    Text("Physical Mouse & Trackpad (AssistiveTouch)")
+                } footer: {
+                    Text("iPhone requires iOS AssistiveTouch to receive input from Bluetooth, USB-C, or dock mice and touchpads. Tap above for quick 3-step setup and speed tuning.")
                 }
 
                 Section {
@@ -643,6 +662,9 @@ public struct SettingsSheetView: View {
             }
             .sheet(isPresented: $showingHostManager) {
                 HostManagerView(store: store)
+            }
+            .sheet(isPresented: $showingAssistiveTouchGuide) {
+                AssistiveTouchGuideView()
             }
             .alert("Delete Cloud Account?", isPresented: $showingDeleteAccountAlert) {
                 Button("Cancel", role: .cancel) {}

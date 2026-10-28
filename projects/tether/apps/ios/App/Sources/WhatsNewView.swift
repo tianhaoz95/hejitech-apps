@@ -17,10 +17,27 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.8"
+    static let currentVersion = "0.1.9"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.9", date: "October 2026", items: [
+            WhatsNewItem(
+                icon: "computermouse.fill",
+                title: "Physical Mouse & Trackpad Support",
+                description: "Full support for Bluetooth and USB-C mice and trackpads connected to your iPhone or dock, with smooth dynamic pointer acceleration and scroll wheel control."
+            ),
+            WhatsNewItem(
+                icon: "hand.point.up.left.fill",
+                title: "AssistiveTouch Setup Guide",
+                description: "Built-in interactive guide with 3-step setup and pro tips on hiding the menu button, tuning pointer speed, and mapping mouse buttons."
+            ),
+            WhatsNewItem(
+                icon: "display",
+                title: "Direct External Monitor Mouse Routing",
+                description: "Support for direct pointer hover, clicks, and scrolling on external monitors and extended iPad displays."
+            ),
+        ]),
         ReleaseNotes(version: "0.1.8", date: "October 2026", items: [
             WhatsNewItem(
                 icon: "server.rack",

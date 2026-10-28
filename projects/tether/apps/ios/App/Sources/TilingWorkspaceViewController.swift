@@ -55,6 +55,7 @@ public final class TilingWorkspaceViewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = UIColor(red: 0.03, green: 0.05, blue: 0.09, alpha: 1.0)
         setupChrome()
+        setupExternalMouseListeners()
         bindStore()
         rebuildWorkspaceLayout()
     }
@@ -596,11 +597,20 @@ public final class TilingWorkspaceViewController: UIViewController {
             }
         } else {
             activeDragSplit = nil
-            if let hover = renderedDividers.first(where: { $0.frame.insetBy(dx: -15, dy: -15).contains(cursorPt) }) {
-                overlay.setResizeCursor(direction: hover.direction)
-            } else {
-                overlay.resetDefaultCursor()
-            }
+            updateDividerHoverState(at: cursorPt)
+        }
+    }
+
+    private func updateDividerHoverState(at cursorPt: CGPoint) {
+        guard let overlay = virtualCursorOverlay else { return }
+        if activeCommandPalette != nil || activeDialog != nil {
+            overlay.resetDefaultCursor()
+            return
+        }
+        if let hover = renderedDividers.first(where: { $0.frame.insetBy(dx: -15, dy: -15).contains(cursorPt) }) {
+            overlay.setResizeCursor(direction: hover.direction)
+        } else {
+            overlay.resetDefaultCursor()
         }
     }
 
@@ -806,6 +816,45 @@ public final class TilingWorkspaceViewController: UIViewController {
         let settingsView = SettingsSheetView(store: store)
         let hc = UIHostingController(rootView: settingsView)
         present(hc, animated: true)
+    }
+
+    @objc public func openAssistiveTouchGuide() {
+        let guideView = AssistiveTouchGuideView()
+        let hc = UIHostingController(rootView: guideView)
+        present(hc, animated: true)
+    }
+
+    // MARK: - Direct External Display Mouse & Trackpad Listeners
+
+    private func setupExternalMouseListeners() {
+        let hover = UIHoverGestureRecognizer(target: self, action: #selector(handleExternalHover(_:)))
+        view.addGestureRecognizer(hover)
+
+        let pan = UIPanGestureRecognizer(target: self, action: #selector(handleExternalPan(_:)))
+        pan.allowedScrollTypesMask = [.continuous]
+        view.addGestureRecognizer(pan)
+
+        let tap = UITapGestureRecognizer(target: self, action: #selector(handleExternalTap(_:)))
+        tap.cancelsTouchesInView = false
+        view.addGestureRecognizer(tap)
+    }
+
+    @objc private func handleExternalHover(_ gesture: UIHoverGestureRecognizer) {
+        let pt = gesture.location(in: view)
+        virtualCursorOverlay?.setCursorPosition(pt)
+        updateDividerHoverState(at: pt)
+    }
+
+    @objc private func handleExternalPan(_ gesture: UIPanGestureRecognizer) {
+        let translation = gesture.translation(in: view)
+        performVirtualScroll(deltaX: -translation.x * 0.8, deltaY: -translation.y * 0.8)
+        gesture.setTranslation(.zero, in: view)
+    }
+
+    @objc private func handleExternalTap(_ gesture: UITapGestureRecognizer) {
+        let pt = gesture.location(in: view)
+        virtualCursorOverlay?.setCursorPosition(pt)
+        virtualCursorOverlay?.performClick()
     }
 
     // MARK: - Hardware Keyboard Shortcuts & Terminal Precedence (PRD §13.1, §13.2)

@@ -367,6 +367,19 @@ public final class CommandPaletteView: UIView, UITextFieldDelegate, UITableViewD
         })
 
         items.append(CommandPaletteItem(
+            id: "assistivetouch-guide",
+            title: "Physical Mouse & Trackpad Guide",
+            subtitle: "AssistiveTouch setup, button mapping, and speed settings",
+            category: "Help & Input",
+            systemImage: "computermouse.fill",
+            shortcutHint: nil
+        ) { [weak self] in
+            guard let self else { return }
+            self.dismissPalette()
+            self.workspaceVC?.openAssistiveTouchGuide()
+        })
+
+        items.append(CommandPaletteItem(
             id: "open-settings",
             title: "Open Settings",
             subtitle: "Themes, layouts, search engines, and cloud sync",

@@ -46,6 +46,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     private let touchpadView = UIView()
     private let touchpadSurface = UIView()
     private let touchpadHelpLabel = UILabel()
+    private let assistiveTouchButton = UIButton(type: .system)
     private let clickButtonsStack = UIStackView()
     private let leftClickButton = UIButton(type: .system)
     private let dragResizeButton = UIButton(type: .system)
@@ -458,6 +459,21 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         touchpadHelpLabel.font = .systemFont(ofSize: 12, weight: .medium)
         touchpadSurface.addSubview(touchpadHelpLabel)
 
+        assistiveTouchButton.translatesAutoresizingMaskIntoConstraints = false
+        var btnConfig = UIButton.Configuration.plain()
+        btnConfig.image = UIImage(systemName: "computermouse.fill")
+        btnConfig.title = "Physical Mouse & Trackpad Setup"
+        btnConfig.imagePadding = 6
+        btnConfig.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 12)
+        btnConfig.baseForegroundColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
+        assistiveTouchButton.configuration = btnConfig
+        assistiveTouchButton.backgroundColor = UIColor(white: 1.0, alpha: 0.08)
+        assistiveTouchButton.layer.cornerRadius = 14
+        assistiveTouchButton.layer.borderWidth = 1
+        assistiveTouchButton.layer.borderColor = UIColor(white: 1.0, alpha: 0.12).cgColor
+        assistiveTouchButton.addTarget(self, action: #selector(openAssistiveTouchGuideModal), for: .touchUpInside)
+        touchpadSurface.addSubview(assistiveTouchButton)
+
         // Optional bottom action buttons (controlled by settings.showTouchpadButtons)
         leftClickButton.translatesAutoresizingMaskIntoConstraints = false
         leftClickButton.setTitle("Left Click", for: .normal)
@@ -512,7 +528,11 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
             touchpadSurface.trailingAnchor.constraint(equalTo: touchpadView.trailingAnchor, constant: -12),
 
             touchpadHelpLabel.centerXAnchor.constraint(equalTo: touchpadSurface.centerXAnchor),
-            touchpadHelpLabel.centerYAnchor.constraint(equalTo: touchpadSurface.centerYAnchor),
+            touchpadHelpLabel.centerYAnchor.constraint(equalTo: touchpadSurface.centerYAnchor, constant: -16),
+
+            assistiveTouchButton.centerXAnchor.constraint(equalTo: touchpadSurface.centerXAnchor),
+            assistiveTouchButton.topAnchor.constraint(equalTo: touchpadHelpLabel.bottomAnchor, constant: 12),
+            assistiveTouchButton.heightAnchor.constraint(equalToConstant: 28),
         ])
 
         updateTouchpadButtonsVisibility()
@@ -1027,6 +1047,12 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         present(hc, animated: true)
     }
 
+    @objc public func openAssistiveTouchGuideModal() {
+        let guideView = AssistiveTouchGuideView()
+        let hc = UIHostingController(rootView: guideView)
+        present(hc, animated: true)
+    }
+
     private func makeSectionHeader(_ title: String) -> UILabel {
         let label = UILabel()
         label.text = title
@@ -1090,8 +1116,12 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         if gesture.state == .began {
             lastPanLocation = location
         } else if gesture.state == .changed {
-            let dx = (location.x - lastPanLocation.x) * 1.5
-            let dy = (location.y - lastPanLocation.y) * 1.5
+            let rawDx = location.x - lastPanLocation.x
+            let rawDy = location.y - lastPanLocation.y
+            let dist = hypot(rawDx, rawDy)
+            let accel: CGFloat = dist > 12 ? 1.75 : 1.35
+            let dx = rawDx * accel
+            let dy = rawDy * accel
             let isDragging = isDragModeActive || isHoldingLeftClick
             workspaceVC?.handleCursorPan(delta: CGVector(dx: dx, dy: dy), isDragHeld: isDragging)
             lastPanLocation = location
