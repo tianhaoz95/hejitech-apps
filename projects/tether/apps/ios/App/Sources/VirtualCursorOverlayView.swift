@@ -107,9 +107,8 @@ public final class VirtualCursorOverlayView: UIView {
                 return
             }
 
-            // 1b. Text View (e.g. Terminal): focus without text selection
-            if let textView = findAncestor(of: hitView, matching: { $0 is UITextView }) as? UITextView {
-                textView.becomeFirstResponder()
+            // 1b. Text View (e.g. Terminal): do not trigger UIKit text selection or auto-scrolling
+            if let _ = findAncestor(of: hitView, matching: { $0 is UITextView }) as? UITextView {
                 return
             }
 

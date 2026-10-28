@@ -37,6 +37,7 @@ public final class TilingWorkspaceViewController: UIViewController {
 
     /// Active split drag metadata.
     private var activeSplitDrags: [UIPanGestureRecognizer: (splitId: String, direction: SplitDirection, containerBounds: CGRect)] = [:]
+    private var lastRenderedTree: PaneTree?
 
     public init(store: WorkspaceStore) {
         self.store = store
@@ -331,6 +332,18 @@ public final class TilingWorkspaceViewController: UIViewController {
 
     private func rebuildWorkspaceLayout() {
         guard workspaceCanvas.bounds.width > 10, workspaceCanvas.bounds.height > 10 else { return }
+
+        // If only the focused pane changed within an identical split/tab structure,
+        // update the borders and headers in place WITHOUT recreating views or resetting scroll!
+        if let last = lastRenderedTree,
+           last.root == store.tree.root,
+           last.maximisedPaneId == store.tree.maximisedPaneId,
+           !workspaceCanvas.subviews.isEmpty {
+            lastRenderedTree = store.tree
+            updatePaneFocusVisuals()
+            return
+        }
+        lastRenderedTree = store.tree
 
         // Prune controllers for closed tabs
         let allOpenTabIds = Set(store.panes.flatMap(\.tabs).map(\.id))

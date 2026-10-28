@@ -313,12 +313,26 @@ public final class TerminalEmulatorBuffer: @unchecked Sendable {
 
     /// Renders the scrollback + active screen lines into plain text for display / inspection.
     public func renderedLines(includeScrollback: Bool = true) -> [String] {
-        let activeLines = activeGrid.map { row in
+        var activeLines = activeGrid.map { row in
             String(row.map(\.char)).replacingOccurrences(
                 of: #"\s+$"#,
                 with: "",
                 options: .regularExpression
             )
+        }
+        if !isAlternateScreen {
+            // In standard streaming shell mode, trim unused trailing blank rows so the shell prompt
+            // and content sit naturally right below each other rather than being padded with 20+ empty lines.
+            while activeLines.count > (cursorRow + 1) && activeLines.last?.isEmpty == true {
+                activeLines.removeLast()
+            }
+            while activeLines.last?.isEmpty == true && activeLines.count > 1 {
+                activeLines.removeLast()
+            }
+            if includeScrollback {
+                return scrollback + activeLines
+            }
+            return activeLines
         }
         if includeScrollback && !isAlternateScreen {
             return scrollback + activeLines

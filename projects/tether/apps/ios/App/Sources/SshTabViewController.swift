@@ -430,7 +430,7 @@ public final class SshTabViewController: UIViewController {
         }
     }
 
-    private func renderTerminal() {
+    private func renderTerminal(scrollToBottom: Bool = false) {
         let lines = terminalBuffer.renderedLines(includeScrollback: true)
         var text = lines.joined(separator: "\n")
         if isTerminalConnected {
@@ -441,10 +441,14 @@ public final class SshTabViewController: UIViewController {
             }
             text += "\(shellPromptString)\(activeInputLine)\(cursorChar)"
         }
+        let oldOffset = terminalTextView.contentOffset
         terminalTextView.text = text
-        if !terminalTextView.text.isEmpty {
-            let bottom = NSRange(location: max(0, terminalTextView.text.count - 1), length: 1)
-            terminalTextView.scrollRangeToVisible(bottom)
+        let maxOffsetY = max(0, terminalTextView.contentSize.height - terminalTextView.bounds.height + terminalTextView.adjustedContentInset.bottom)
+        if scrollToBottom {
+            terminalTextView.setContentOffset(CGPoint(x: 0, y: maxOffsetY), animated: false)
+        } else {
+            let clampedY = min(max(0, oldOffset.y), maxOffsetY)
+            terminalTextView.setContentOffset(CGPoint(x: oldOffset.x, y: clampedY), animated: false)
         }
     }
 
@@ -661,7 +665,7 @@ public final class SshTabViewController: UIViewController {
         terminalBuffer.feed(" * Management:     https://landscape.canonical.com\r\n\r\n")
         terminalBuffer.feed("Connected to \(host.connectionString).\r\n")
         activeInputLine = ""
-        renderTerminal()
+        renderTerminal(scrollToBottom: true)
         refreshToolbarState()
     }
 
@@ -669,7 +673,7 @@ public final class SshTabViewController: UIViewController {
         store.sshStates[tabItem.id] = .disconnected
         terminalBuffer.feed("\r\n\u{1B}[38;5;214m[\(reason)] Connection to \(currentHost?.connectionString ?? "host") closed.\u{1B}[0m\r\n")
         activeInputLine = ""
-        renderTerminal()
+        renderTerminal(scrollToBottom: true)
         refreshToolbarState()
     }
 
@@ -690,7 +694,7 @@ public final class SshTabViewController: UIViewController {
     @objc private func clearScrollbackTapped() {
         terminalBuffer.clearScrollback()
         activeInputLine = ""
-        renderTerminal()
+        renderTerminal(scrollToBottom: true)
     }
 
     @objc private func pasteFromClipboardTapped() {
@@ -784,7 +788,7 @@ public final class SshTabViewController: UIViewController {
         switch command {
         case "clear":
             terminalBuffer.clearScrollback()
-            renderTerminal()
+            renderTerminal(scrollToBottom: true)
             return
 
         case "exit", "logout":
@@ -965,7 +969,7 @@ public final class SshTabViewController: UIViewController {
             terminalBuffer.feed("bash: \(command): command not found\r\n")
         }
 
-        renderTerminal()
+        renderTerminal(scrollToBottom: true)
     }
 
     private func executeLs(args: [String], isDetailed: Bool) {
