@@ -151,7 +151,55 @@ public final class CommandPaletteView: UIView, UITextFieldDelegate, UITableViewD
             self.store.tree = PaneTreeOps.duplicateTab(self.store.tree, paneId: pane.id, tabId: active.id)
         })
 
-        // 2. Layout Presets & Splitting
+        // 2. Workspaces
+        items.append(CommandPaletteItem(
+            id: "workspace-new",
+            title: "New Workspace",
+            subtitle: "Create a new workspace space",
+            category: "Workspaces",
+            systemImage: "rectangle.stack.badge.plus",
+            shortcutHint: nil
+        ) { [weak self] in
+            self?.store.addWorkspace()
+        })
+
+        items.append(CommandPaletteItem(
+            id: "workspace-next",
+            title: "Next Workspace",
+            subtitle: "Cycle to the next workspace space",
+            category: "Workspaces",
+            systemImage: "arrow.right.to.line.compact",
+            shortcutHint: "4-Finger Swipe"
+        ) { [weak self] in
+            self?.store.nextWorkspace()
+        })
+
+        items.append(CommandPaletteItem(
+            id: "workspace-prev",
+            title: "Previous Workspace",
+            subtitle: "Cycle to the previous workspace space",
+            category: "Workspaces",
+            systemImage: "arrow.left.to.line.compact",
+            shortcutHint: nil
+        ) { [weak self] in
+            self?.store.prevWorkspace()
+        })
+
+        for (idx, ws) in store.workspaces.enumerated() {
+            let isActive = idx == store.activeWorkspaceIndex
+            items.append(CommandPaletteItem(
+                id: "workspace-switch-\(ws.id)",
+                title: "Workspace: \(ws.name)",
+                subtitle: isActive ? "Currently active" : "Switch to this workspace",
+                category: "Workspaces",
+                systemImage: isActive ? "checkmark.circle.fill" : "square.split.2x1",
+                shortcutHint: "Space \(idx + 1)"
+            ) { [weak self] in
+                self?.store.switchToWorkspace(at: idx)
+            })
+        }
+
+        // 3. Layout Presets & Splitting
         items.append(CommandPaletteItem(
             id: "preset-single",
             title: "Layout: Single Pane",

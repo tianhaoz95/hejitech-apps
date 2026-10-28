@@ -254,5 +254,53 @@ final class TetherKitTests: XCTestCase {
         store.deleteHostPassword(forHostId: autoHost.id)
         XCTAssertNil(store.loadHostPassword(forHostId: autoHost.id))
     }
+
+    func testMultiWorkspaceManagementAndCycling() async {
+        let store = await MainActor.run {
+            WorkspaceStore()
+        }
+
+        await MainActor.run {
+            XCTAssertEqual(store.workspaces.count, 1)
+            XCTAssertEqual(store.activeWorkspaceIndex, 0)
+            XCTAssertEqual(store.workspaces[0].name, "Space 1")
+
+            // Add Space 2
+            store.addWorkspace(preset: .single)
+            XCTAssertEqual(store.workspaces.count, 2)
+            XCTAssertEqual(store.activeWorkspaceIndex, 1)
+            XCTAssertEqual(store.workspaces[1].name, "Space 2")
+            XCTAssertEqual(PaneTreeOps.countPanes(store.tree.root), 1)
+
+            // Switch back to Space 1
+            store.switchToWorkspace(at: 0)
+            XCTAssertEqual(store.activeWorkspaceIndex, 0)
+            XCTAssertEqual(store.workspaces[0].name, "Space 1")
+            XCTAssertEqual(PaneTreeOps.countPanes(store.tree.root), 2) // default is 2 panes
+
+            // Next & Previous workspace cycling
+            store.nextWorkspace()
+            XCTAssertEqual(store.activeWorkspaceIndex, 1)
+
+            store.nextWorkspace() // wraps to 0
+            XCTAssertEqual(store.activeWorkspaceIndex, 0)
+
+            store.prevWorkspace() // wraps to 1
+            XCTAssertEqual(store.activeWorkspaceIndex, 1)
+
+            // Rename Space 2
+            store.renameWorkspace(at: 1, newName: "Dev Space")
+            XCTAssertEqual(store.workspaces[1].name, "Dev Space")
+
+            // Remove workspace
+            store.removeWorkspace(at: 1)
+            XCTAssertEqual(store.workspaces.count, 1)
+            XCTAssertEqual(store.activeWorkspaceIndex, 0)
+
+            // Cannot remove the only workspace
+            store.removeWorkspace(at: 0)
+            XCTAssertEqual(store.workspaces.count, 1)
+        }
+    }
 }
 

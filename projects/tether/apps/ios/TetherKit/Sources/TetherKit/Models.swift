@@ -465,24 +465,46 @@ public struct TetherSettings: Codable, Hashable, Sendable {
     }
 }
 
+public struct Workspace: Codable, Hashable, Sendable, Identifiable {
+    public var id: String
+    public var name: String
+    public var tree: PaneTree
+
+    public init(
+        id: String = "ws-\(UUID().uuidString.lowercased().prefix(8))",
+        name: String,
+        tree: PaneTree
+    ) {
+        self.id = id
+        self.name = name
+        self.tree = tree
+    }
+}
+
 public struct WorkspaceSnapshot: Codable, Hashable, Sendable {
     public var tree: PaneTree
     public var settings: TetherSettings
     public var hosts: [SshHost]
     public var bookmarks: [Bookmark]
     public var updatedAt: String
+    public var workspaces: [Workspace]?
+    public var activeWorkspaceIndex: Int?
 
     public init(
         tree: PaneTree,
         settings: TetherSettings,
         hosts: [SshHost],
         bookmarks: [Bookmark],
+        workspaces: [Workspace]? = nil,
+        activeWorkspaceIndex: Int? = nil,
         updatedAt: String = ISO8601DateFormatter().string(from: Date())
     ) {
         self.tree = tree
         self.settings = settings
         self.hosts = hosts
         self.bookmarks = bookmarks
+        self.workspaces = workspaces
+        self.activeWorkspaceIndex = activeWorkspaceIndex
         self.updatedAt = updatedAt
     }
 }

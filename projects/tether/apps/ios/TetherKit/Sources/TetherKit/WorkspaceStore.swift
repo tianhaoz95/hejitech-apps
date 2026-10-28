@@ -109,8 +109,19 @@ public struct TransferProgress: Equatable, Sendable {
 
 @MainActor
 public final class WorkspaceStore: ObservableObject {
-    @Published public var tree: PaneTree {
+    @Published public var workspaces: [Workspace] = [] {
         didSet { scheduleSave() }
+    }
+    @Published public var activeWorkspaceIndex: Int = 0 {
+        didSet { scheduleSave() }
+    }
+    @Published public var tree: PaneTree {
+        didSet {
+            if workspaces.indices.contains(activeWorkspaceIndex) {
+                workspaces[activeWorkspaceIndex].tree = tree
+            }
+            scheduleSave()
+        }
     }
     @Published public var settings: TetherSettings {
         didSet { scheduleSave() }
@@ -173,12 +184,25 @@ public final class WorkspaceStore: ObservableObject {
 
         if let data = try? Data(contentsOf: self.storageURL),
            let decoded = try? JSONDecoder().decode(WorkspaceSnapshot.self, from: data) {
-            self.tree = decoded.tree
+            let initialWorkspaces: [Workspace]
+            if let decodedWs = decoded.workspaces, !decodedWs.isEmpty {
+                initialWorkspaces = decodedWs
+            } else {
+                initialWorkspaces = [Workspace(id: "ws-1", name: "Space 1", tree: decoded.tree)]
+            }
+            let initialIndex = min(max(0, decoded.activeWorkspaceIndex ?? 0), initialWorkspaces.count - 1)
+            self.workspaces = initialWorkspaces
+            self.activeWorkspaceIndex = initialIndex
+            self.tree = initialWorkspaces[initialIndex].tree
             self.settings = decoded.settings
             self.hosts = decoded.hosts
             self.bookmarks = decoded.bookmarks
         } else {
-            self.tree = PaneTreeOps.createDefaultPaneTree()
+            let defaultTree = PaneTreeOps.createDefaultPaneTree()
+            let defaultWs = Workspace(id: "ws-1", name: "Space 1", tree: defaultTree)
+            self.workspaces = [defaultWs]
+            self.activeWorkspaceIndex = 0
+            self.tree = defaultTree
             self.settings = TetherSettings()
             self.hosts = [
                 SshHost(
@@ -200,11 +224,16 @@ public final class WorkspaceStore: ObservableObject {
     }
 
     public func saveImmediately() {
+        if workspaces.indices.contains(activeWorkspaceIndex) {
+            workspaces[activeWorkspaceIndex].tree = tree
+        }
         let snapshot = WorkspaceSnapshot(
             tree: tree,
             settings: settings,
             hosts: hosts,
-            bookmarks: bookmarks
+            bookmarks: bookmarks,
+            workspaces: workspaces,
+            activeWorkspaceIndex: activeWorkspaceIndex
         )
         guard let data = try? JSONEncoder().encode(snapshot) else { return }
         if let jsonObj = try? JSONSerialization.jsonObject(with: data),
@@ -222,6 +251,61 @@ public final class WorkspaceStore: ObservableObject {
             guard !Task.isCancelled else { return }
             self?.saveImmediately()
         }
+    }
+
+    // MARK: - Workspaces Management
+
+    public var activeWorkspace: Workspace? {
+        guard workspaces.indices.contains(activeWorkspaceIndex) else { return nil }
+        return workspaces[activeWorkspaceIndex]
+    }
+
+    public func switchToWorkspace(at index: Int) {
+        guard workspaces.indices.contains(index), index != activeWorkspaceIndex else { return }
+        if workspaces.indices.contains(activeWorkspaceIndex) {
+            workspaces[activeWorkspaceIndex].tree = tree
+        }
+        activeWorkspaceIndex = index
+        self.tree = workspaces[index].tree
+    }
+
+    public func addWorkspace(name: String? = nil, preset: LayoutPresetId = .twoColumn) {
+        if workspaces.indices.contains(activeWorkspaceIndex) {
+            workspaces[activeWorkspaceIndex].tree = tree
+        }
+        let wsName = name ?? "Space \(workspaces.count + 1)"
+        let newTree = PaneTreeOps.applyLayoutPreset(PaneTreeOps.createDefaultPaneTree(), preset: preset, hosts: hosts)
+        let ws = Workspace(name: wsName, tree: newTree)
+        workspaces.append(ws)
+        activeWorkspaceIndex = workspaces.count - 1
+        self.tree = ws.tree
+    }
+
+    public func removeWorkspace(at index: Int) {
+        guard workspaces.count > 1, workspaces.indices.contains(index) else { return }
+        workspaces.remove(at: index)
+        let nextIndex = min(activeWorkspaceIndex, workspaces.count - 1)
+        activeWorkspaceIndex = nextIndex
+        self.tree = workspaces[nextIndex].tree
+    }
+
+    public func renameWorkspace(at index: Int, newName: String) {
+        guard workspaces.indices.contains(index) else { return }
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        workspaces[index].name = trimmed
+    }
+
+    public func nextWorkspace() {
+        guard workspaces.count > 1 else { return }
+        let next = (activeWorkspaceIndex + 1) % workspaces.count
+        switchToWorkspace(at: next)
+    }
+
+    public func prevWorkspace() {
+        guard workspaces.count > 1 else { return }
+        let prev = (activeWorkspaceIndex - 1 + workspaces.count) % workspaces.count
+        switchToWorkspace(at: prev)
     }
 
     // MARK: - Normative Actions

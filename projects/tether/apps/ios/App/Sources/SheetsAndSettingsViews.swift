@@ -361,6 +361,41 @@ public struct SettingsSheetView: View {
     public var body: some View {
         NavigationStack {
             Form {
+                Section("Workspaces (\(store.workspaces.count))") {
+                    ForEach(Array(store.workspaces.enumerated()), id: \.element.id) { index, ws in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(ws.name)
+                                    .font(.body.weight(index == store.activeWorkspaceIndex ? .bold : .regular))
+                                Text(index == store.activeWorkspaceIndex ? "Active Space" : "Tap to switch")
+                                    .font(.caption2)
+                                    .foregroundStyle(index == store.activeWorkspaceIndex ? Color.cyan : Color.secondary)
+                            }
+                            Spacer()
+                            if index == store.activeWorkspaceIndex {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(Color.cyan)
+                            } else {
+                                Button("Switch") {
+                                    store.switchToWorkspace(at: index)
+                                }
+                                .buttonStyle(.bordered)
+                                .font(.caption)
+                            }
+                        }
+                    }
+
+                    Button {
+                        store.addWorkspace()
+                    } label: {
+                        Label("Add New Workspace", systemImage: "plus.rectangle.on.rectangle")
+                    }
+
+                    Text("Tip: Switch workspaces using the top bar buttons on your phone or monitor, or swipe with 4 fingers on the phone trackpad.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+
                 Section("Workspace & Appearance") {
                     Picker("Theme", selection: $store.settings.theme) {
                         Text("System").tag(ThemeMode.system)

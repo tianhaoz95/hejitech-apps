@@ -17,10 +17,32 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.10"
+    static let currentVersion = "0.1.11"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.11", date: "October 2026", items: [
+            WhatsNewItem(
+                icon: "square.split.2x1.fill",
+                title: "Multiple Workspaces (Spaces)",
+                description: "Create and organize distinct workspace spaces each with their own independent split pane layout, terminal sessions, and browser tabs."
+            ),
+            WhatsNewItem(
+                icon: "hand.point.up.left.and.text.fill",
+                title: "4-Finger Swipe Workspace Switch",
+                description: "Effortlessly swipe left or right with 4 fingers on your phone trackpad to cycle through workspaces with subtle haptic feedback."
+            ),
+            WhatsNewItem(
+                icon: "rectangle.topthird.inset.filled",
+                title: "Top Workspace Switcher Bar",
+                description: "Dedicated workspace bar on both the external desktop top chrome and the phone remote controller for one-tap switching, adding spaces (+), and renaming."
+            ),
+            WhatsNewItem(
+                icon: "command.square.fill",
+                title: "Command Palette & Settings Integration",
+                description: "Switch, create, and manage workspaces directly from ⌘K Command Palette or the Workspaces section in Settings."
+            ),
+        ]),
         ReleaseNotes(version: "0.1.10", date: "October 2026", items: [
             WhatsNewItem(
                 icon: "hand.draw.fill",

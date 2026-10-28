@@ -10,6 +10,8 @@ public final class TilingWorkspaceViewController: UIViewController {
 
     private let topBar = UIView()
     private let displayBadgeLabel = UILabel()
+    private let workspaceSwitcherScrollView = UIScrollView()
+    private let workspaceSwitcherStack = UIStackView()
     private let phoneSwitcherBar = UIScrollView()
     private let phoneSwitcherStack = UIStackView()
     private var phoneSwitcherHeightConstraint: NSLayoutConstraint!
@@ -97,9 +99,30 @@ public final class TilingWorkspaceViewController: UIViewController {
         let hostsBtn = makeChromeButton("Hosts & Keys", action: #selector(openHostsTapped))
         let settingsBtn = makeChromeButton("⚙︎", action: #selector(openSettingsTapped))
 
+        workspaceSwitcherScrollView.translatesAutoresizingMaskIntoConstraints = false
+        workspaceSwitcherScrollView.showsHorizontalScrollIndicator = false
+        workspaceSwitcherScrollView.showsVerticalScrollIndicator = false
+        workspaceSwitcherScrollView.heightAnchor.constraint(equalToConstant: 26).isActive = true
+
+        workspaceSwitcherStack.translatesAutoresizingMaskIntoConstraints = false
+        workspaceSwitcherStack.axis = .horizontal
+        workspaceSwitcherStack.spacing = 4
+        workspaceSwitcherStack.alignment = .center
+        workspaceSwitcherScrollView.addSubview(workspaceSwitcherStack)
+
+        NSLayoutConstraint.activate([
+            workspaceSwitcherStack.topAnchor.constraint(equalTo: workspaceSwitcherScrollView.topAnchor),
+            workspaceSwitcherStack.bottomAnchor.constraint(equalTo: workspaceSwitcherScrollView.bottomAnchor),
+            workspaceSwitcherStack.leadingAnchor.constraint(equalTo: workspaceSwitcherScrollView.leadingAnchor),
+            workspaceSwitcherStack.trailingAnchor.constraint(equalTo: workspaceSwitcherScrollView.trailingAnchor),
+            workspaceSwitcherStack.heightAnchor.constraint(equalTo: workspaceSwitcherScrollView.heightAnchor),
+        ])
+
         let spacer = UIView()
         let barStack = UIStackView(arrangedSubviews: [
-            brandLabel, displayBadgeLabel, spacer,
+            brandLabel, displayBadgeLabel,
+            workspaceSwitcherScrollView,
+            spacer,
             paletteBtn,
             preset1, preset2, preset3, preset4,
             splitH, splitV, swapBtn, maxBtn, hostsBtn, settingsBtn
@@ -193,6 +216,99 @@ public final class TilingWorkspaceViewController: UIViewController {
                 self?.displayBadgeLabel.text = desc
             }
             .store(in: &cancellables)
+
+        store.$workspaces
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.updateWorkspaceSwitcher()
+            }
+            .store(in: &cancellables)
+
+        store.$activeWorkspaceIndex
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.updateWorkspaceSwitcher()
+            }
+            .store(in: &cancellables)
+    }
+
+    private func updateWorkspaceSwitcher() {
+        workspaceSwitcherStack.arrangedSubviews.forEach {
+            workspaceSwitcherStack.removeArrangedSubview($0)
+            $0.removeFromSuperview()
+        }
+
+        for (idx, ws) in store.workspaces.enumerated() {
+            let isCurrent = (idx == store.activeWorkspaceIndex)
+            let btn = UIButton(type: .system)
+            btn.translatesAutoresizingMaskIntoConstraints = false
+
+            var config = UIButton.Configuration.plain()
+            config.title = ws.name
+            config.contentInsets = NSDirectionalEdgeInsets(top: 2, leading: 8, bottom: 2, trailing: 8)
+            config.baseForegroundColor = isCurrent ? UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0) : UIColor(white: 0.85, alpha: 1.0)
+            btn.configuration = config
+            btn.titleLabel?.font = .systemFont(ofSize: 11, weight: isCurrent ? .bold : .medium)
+
+            btn.backgroundColor = isCurrent ? UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.22) : UIColor(white: 1.0, alpha: 0.08)
+            btn.layer.cornerRadius = 6
+            btn.layer.borderWidth = 1
+            btn.layer.borderColor = isCurrent ? UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.6).cgColor : UIColor(white: 1.0, alpha: 0.12).cgColor
+
+            btn.addAction(UIAction { [weak self] _ in
+                self?.store.switchToWorkspace(at: idx)
+            }, for: .touchUpInside)
+
+            var menuElements: [UIMenuElement] = [
+                UIAction(title: "Rename Space…", image: UIImage(systemName: "pencil")) { [weak self] _ in
+                    self?.promptRenameWorkspace(at: idx)
+                }
+            ]
+            if store.workspaces.count > 1 {
+                menuElements.append(
+                    UIAction(title: "Close Space", image: UIImage(systemName: "trash"), attributes: .destructive) { [weak self] _ in
+                        self?.store.removeWorkspace(at: idx)
+                    }
+                )
+            }
+            btn.menu = UIMenu(title: ws.name, children: menuElements)
+            btn.showsMenuAsPrimaryAction = false
+
+            workspaceSwitcherStack.addArrangedSubview(btn)
+        }
+
+        // Add Space (+) button
+        let addBtn = UIButton(type: .system)
+        addBtn.translatesAutoresizingMaskIntoConstraints = false
+        var addConfig = UIButton.Configuration.plain()
+        addConfig.image = UIImage(systemName: "plus")
+        addConfig.contentInsets = NSDirectionalEdgeInsets(top: 2, leading: 6, bottom: 2, trailing: 6)
+        addConfig.baseForegroundColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
+        addBtn.configuration = addConfig
+        addBtn.backgroundColor = UIColor(white: 1.0, alpha: 0.08)
+        addBtn.layer.cornerRadius = 6
+        addBtn.layer.borderWidth = 1
+        addBtn.layer.borderColor = UIColor(white: 1.0, alpha: 0.12).cgColor
+        addBtn.addAction(UIAction { [weak self] _ in
+            self?.store.addWorkspace()
+        }, for: .touchUpInside)
+        workspaceSwitcherStack.addArrangedSubview(addBtn)
+    }
+
+    private func promptRenameWorkspace(at index: Int) {
+        guard store.workspaces.indices.contains(index) else { return }
+        let current = store.workspaces[index].name
+        let alert = UIAlertController(title: "Rename Space", message: nil, preferredStyle: .alert)
+        alert.addTextField { tf in
+            tf.text = current
+            tf.autocapitalizationType = .words
+        }
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Save", style: .default) { [weak self, weak alert] _ in
+            guard let name = alert?.textFields?.first?.text else { return }
+            self?.store.renameWorkspace(at: index, newName: name)
+        })
+        present(alert, animated: true)
     }
 
     // MARK: - Recursive Binary Split-Pane Renderer (PRD §7)

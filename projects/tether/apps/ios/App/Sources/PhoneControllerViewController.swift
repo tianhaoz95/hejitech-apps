@@ -42,6 +42,10 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     private var activeSidebarConstraints: [NSLayoutConstraint] = []
     private var activeTouchpadConstraints: [NSLayoutConstraint] = []
 
+    // Top Workspace Switcher Bar
+    private let phoneWorkspaceBar = UIScrollView()
+    private let phoneWorkspaceStack = UIStackView()
+
     // Touchpad Mode views
     private let touchpadView = UIView()
     private let touchpadSurface = UIView()
@@ -164,6 +168,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         view.backgroundColor = UIColor(red: 0.04, green: 0.06, blue: 0.10, alpha: 1.0)
 
         setupVerticalSidebar()
+        setupPhoneWorkspaceBar()
         setupTouchpadView()
         setupKeyboardMode()
         setupSettingsMode()
@@ -172,6 +177,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         bindStore()
         showMode(.touchpad)
         updateTouchpadButtonsVisibility()
+        updatePhoneWorkspaceBar()
     }
 
     public override func viewWillAppear(_ animated: Bool) {
@@ -205,6 +211,22 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
                 self?.applySidebarLayoutConstraints()
                 self?.updateTouchpadButtonsVisibility()
                 self?.syncSettingsControls()
+            }
+            .store(in: &cancellables)
+
+        store.$workspaces
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.updatePhoneWorkspaceBar()
+                self?.updateTouchpadHelpText()
+            }
+            .store(in: &cancellables)
+
+        store.$activeWorkspaceIndex
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.updatePhoneWorkspaceBar()
+                self?.updateTouchpadHelpText()
             }
             .store(in: &cancellables)
     }
@@ -445,6 +467,120 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         }
     }
 
+    // MARK: - Workspaces Top Switcher Bar
+
+    private func setupPhoneWorkspaceBar() {
+        phoneWorkspaceBar.translatesAutoresizingMaskIntoConstraints = false
+        phoneWorkspaceBar.showsHorizontalScrollIndicator = false
+        phoneWorkspaceBar.showsVerticalScrollIndicator = false
+        phoneWorkspaceBar.backgroundColor = UIColor(red: 0.05, green: 0.07, blue: 0.12, alpha: 1.0)
+        phoneWorkspaceBar.layer.cornerRadius = 8
+        phoneWorkspaceBar.layer.borderWidth = 1
+        phoneWorkspaceBar.layer.borderColor = UIColor(white: 1.0, alpha: 0.08).cgColor
+
+        phoneWorkspaceStack.translatesAutoresizingMaskIntoConstraints = false
+        phoneWorkspaceStack.axis = .horizontal
+        phoneWorkspaceStack.spacing = 6
+        phoneWorkspaceStack.alignment = .center
+        phoneWorkspaceBar.addSubview(phoneWorkspaceStack)
+
+        containerView.addSubview(phoneWorkspaceBar)
+
+        NSLayoutConstraint.activate([
+            phoneWorkspaceBar.topAnchor.constraint(equalTo: containerView.safeAreaLayoutGuide.topAnchor, constant: 6),
+            phoneWorkspaceBar.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 10),
+            phoneWorkspaceBar.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -10),
+            phoneWorkspaceBar.heightAnchor.constraint(equalToConstant: 34),
+
+            phoneWorkspaceStack.topAnchor.constraint(equalTo: phoneWorkspaceBar.topAnchor),
+            phoneWorkspaceStack.bottomAnchor.constraint(equalTo: phoneWorkspaceBar.bottomAnchor),
+            phoneWorkspaceStack.leadingAnchor.constraint(equalTo: phoneWorkspaceBar.leadingAnchor, constant: 6),
+            phoneWorkspaceStack.trailingAnchor.constraint(equalTo: phoneWorkspaceBar.trailingAnchor, constant: -6),
+            phoneWorkspaceStack.heightAnchor.constraint(equalTo: phoneWorkspaceBar.heightAnchor),
+        ])
+    }
+
+    private func updatePhoneWorkspaceBar() {
+        phoneWorkspaceStack.arrangedSubviews.forEach {
+            phoneWorkspaceStack.removeArrangedSubview($0)
+            $0.removeFromSuperview()
+        }
+
+        for (idx, ws) in store.workspaces.enumerated() {
+            let isCurrent = (idx == store.activeWorkspaceIndex)
+            let btn = UIButton(type: .system)
+            btn.translatesAutoresizingMaskIntoConstraints = false
+
+            var config = UIButton.Configuration.plain()
+            config.title = ws.name
+            config.contentInsets = NSDirectionalEdgeInsets(top: 3, leading: 10, bottom: 3, trailing: 10)
+            config.baseForegroundColor = isCurrent ? UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0) : UIColor(white: 0.85, alpha: 1.0)
+            btn.configuration = config
+            btn.titleLabel?.font = .systemFont(ofSize: 12, weight: isCurrent ? .bold : .medium)
+
+            btn.backgroundColor = isCurrent ? UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.25) : UIColor(white: 1.0, alpha: 0.08)
+            btn.layer.cornerRadius = 6
+            btn.layer.borderWidth = 1
+            btn.layer.borderColor = isCurrent ? UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.6).cgColor : UIColor(white: 1.0, alpha: 0.12).cgColor
+
+            btn.addAction(UIAction { [weak self] _ in
+                UISelectionFeedbackGenerator().selectionChanged()
+                self?.store.switchToWorkspace(at: idx)
+            }, for: .touchUpInside)
+
+            var menuElements: [UIMenuElement] = [
+                UIAction(title: "Rename Space…", image: UIImage(systemName: "pencil")) { [weak self] _ in
+                    self?.promptRenameWorkspace(at: idx)
+                }
+            ]
+            if store.workspaces.count > 1 {
+                menuElements.append(
+                    UIAction(title: "Close Space", image: UIImage(systemName: "trash"), attributes: .destructive) { [weak self] _ in
+                        self?.store.removeWorkspace(at: idx)
+                    }
+                )
+            }
+            btn.menu = UIMenu(title: ws.name, children: menuElements)
+            btn.showsMenuAsPrimaryAction = false
+
+            phoneWorkspaceStack.addArrangedSubview(btn)
+        }
+
+        // Add Space (+) button
+        let addBtn = UIButton(type: .system)
+        addBtn.translatesAutoresizingMaskIntoConstraints = false
+        var addConfig = UIButton.Configuration.plain()
+        addConfig.image = UIImage(systemName: "plus")
+        addConfig.contentInsets = NSDirectionalEdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 8)
+        addConfig.baseForegroundColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
+        addBtn.configuration = addConfig
+        addBtn.backgroundColor = UIColor(white: 1.0, alpha: 0.08)
+        addBtn.layer.cornerRadius = 6
+        addBtn.layer.borderWidth = 1
+        addBtn.layer.borderColor = UIColor(white: 1.0, alpha: 0.12).cgColor
+        addBtn.addAction(UIAction { [weak self] _ in
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            self?.store.addWorkspace()
+        }, for: .touchUpInside)
+        phoneWorkspaceStack.addArrangedSubview(addBtn)
+    }
+
+    private func promptRenameWorkspace(at index: Int) {
+        guard store.workspaces.indices.contains(index) else { return }
+        let current = store.workspaces[index].name
+        let alert = UIAlertController(title: "Rename Space", message: nil, preferredStyle: .alert)
+        alert.addTextField { tf in
+            tf.text = current
+            tf.autocapitalizationType = .words
+        }
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Save", style: .default) { [weak self, weak alert] _ in
+            guard let name = alert?.textFields?.first?.text else { return }
+            self?.store.renameWorkspace(at: index, newName: name)
+        })
+        present(alert, animated: true)
+    }
+
     // MARK: - Mode 1: Glass Touchpad
 
     private func setupTouchpadView() {
@@ -483,6 +619,17 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
             swipe.direction = dir
             touchpadSurface.addGestureRecognizer(swipe)
         }
+
+        // 4-finger swipe to switch workspaces (Left = next space, Right = prev space)
+        let fourFingerLeft = UISwipeGestureRecognizer(target: self, action: #selector(handleFourFingerSwipe(_:)))
+        fourFingerLeft.numberOfTouchesRequired = 4
+        fourFingerLeft.direction = .left
+        touchpadSurface.addGestureRecognizer(fourFingerLeft)
+
+        let fourFingerRight = UISwipeGestureRecognizer(target: self, action: #selector(handleFourFingerSwipe(_:)))
+        fourFingerRight.numberOfTouchesRequired = 4
+        fourFingerRight.direction = .right
+        touchpadSurface.addGestureRecognizer(fourFingerRight)
 
         // Long press for drag without buttons
         let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleTouchpadLongPress(_:)))
@@ -540,12 +687,12 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         touchpadView.addSubview(clickButtonsStack)
 
         NSLayoutConstraint.activate([
-            touchpadView.topAnchor.constraint(equalTo: containerView.topAnchor),
+            touchpadView.topAnchor.constraint(equalTo: phoneWorkspaceBar.bottomAnchor, constant: 4),
             touchpadView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
             touchpadView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
             touchpadView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
 
-            touchpadSurface.topAnchor.constraint(equalTo: touchpadView.topAnchor, constant: 10),
+            touchpadSurface.topAnchor.constraint(equalTo: touchpadView.topAnchor, constant: 8),
             touchpadSurface.leadingAnchor.constraint(equalTo: touchpadView.leadingAnchor, constant: 12),
             touchpadSurface.trailingAnchor.constraint(equalTo: touchpadView.trailingAnchor, constant: -12),
 
@@ -562,10 +709,22 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     private func updateTouchpadHelpText() {
         if store.settings.touchpadInputMode == .phoneTrackpad {
             let dragDesc = (store.settings.touchpadDragGesture == .doubleTapDrag) ? "Double-Tap Drag" : "3-Finger Drag"
-            touchpadHelpLabel.text = "1-Finger: Move & Tap • 2-Finger: Scroll\n\(dragDesc): Resize • 3-Finger Swipe: Change Pane Focus"
+            let wsCount = store.workspaces.count
+            let wsIdx = store.activeWorkspaceIndex + 1
+            let wsName = store.workspaces.indices.contains(store.activeWorkspaceIndex) ? store.workspaces[store.activeWorkspaceIndex].name : "Space \(wsIdx)"
+            touchpadHelpLabel.text = "[\(wsName) • \(wsIdx)/\(wsCount)] 1F: Tap • 2F: Scroll\n\(dragDesc): Resize • 3F: Panes • 4F Swipe: Spaces"
         } else {
             let mapDesc = store.settings.touchpadMappingMode.displayName
             touchpadHelpLabel.text = "Physical Mouse & AssistiveTouch Active\n(\(mapDesc) • Configured in Settings)"
+        }
+    }
+
+    @objc private func handleFourFingerSwipe(_ gesture: UISwipeGestureRecognizer) {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        if gesture.direction == .left {
+            store.nextWorkspace()
+        } else if gesture.direction == .right {
+            store.prevWorkspace()
         }
     }
 
@@ -851,7 +1010,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         keyboardContainer.addSubview(switchToTouchpadBtn)
 
         NSLayoutConstraint.activate([
-            keyboardContainer.topAnchor.constraint(equalTo: containerView.topAnchor),
+            keyboardContainer.topAnchor.constraint(equalTo: phoneWorkspaceBar.bottomAnchor, constant: 4),
             keyboardContainer.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
             keyboardContainer.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
             keyboardContainer.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
@@ -977,7 +1136,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         settingsScrollView.addSubview(settingsStack)
 
         NSLayoutConstraint.activate([
-            settingsScrollView.topAnchor.constraint(equalTo: containerView.topAnchor),
+            settingsScrollView.topAnchor.constraint(equalTo: phoneWorkspaceBar.bottomAnchor, constant: 4),
             settingsScrollView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
             settingsScrollView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
             settingsScrollView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
