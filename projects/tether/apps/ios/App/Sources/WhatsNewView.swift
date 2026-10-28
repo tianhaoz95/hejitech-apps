@@ -17,10 +17,22 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.14"
+    static let currentVersion = "0.1.15"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.15", date: "October 2026", items: [
+            WhatsNewItem(
+                icon: "terminal.fill",
+                title: "Terminal Output & Prompt Alignment",
+                description: "The shell prompt now sits naturally directly below previous command output lines instead of being pushed down by trailing blank rows."
+            ),
+            WhatsNewItem(
+                icon: "hand.tap.fill",
+                title: "Stable Terminal View on Click",
+                description: "Fixed unexpected scrolling and jumping when clicking the terminal tab or switching focus, preserving your exact scroll position."
+            ),
+        ]),
         ReleaseNotes(version: "0.1.14", date: "October 2026", items: [
             WhatsNewItem(
                 icon: "terminal.fill",

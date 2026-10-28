@@ -504,7 +504,7 @@ public final class TilingWorkspaceViewController: UIViewController {
         tabHeader.backgroundColor = isFocused
             ? UIColor(red: 0.07, green: 0.12, blue: 0.22, alpha: 1.0)
             : UIColor(red: 0.04, green: 0.07, blue: 0.12, alpha: 1.0)
-        tabHeader.accessibilityIdentifier = pane.id
+        tabHeader.accessibilityIdentifier = "header-\(pane.id)"
         tabHeader.addGestureRecognizer(tapFocus)
 
         let rightControlsWidth: CGFloat = store.panes.count > 1 ? 58 : 30
@@ -644,8 +644,46 @@ public final class TilingWorkspaceViewController: UIViewController {
     }
 
     @objc private func handlePaneHeaderTap(_ gesture: UITapGestureRecognizer) {
-        if let paneId = gesture.view?.accessibilityIdentifier {
-            store.focusPane(paneId)
+        if let hId = gesture.view?.accessibilityIdentifier {
+            let pId = hId.replacingOccurrences(of: "header-", with: "")
+            store.focusPane(pId)
+        }
+    }
+
+    private func updatePaneFocusVisuals() {
+        let focusedId = store.tree.focusedPaneId
+        func updateContainerRecursively(_ v: UIView) {
+            if let pId = v.accessibilityIdentifier, !pId.hasPrefix("header-") {
+                let isFocused = (pId == focusedId)
+                v.layer.borderWidth = isFocused ? 2.0 : 1.0
+                v.layer.borderColor = isFocused
+                    ? UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0).cgColor
+                    : UIColor(white: 1.0, alpha: 0.12).cgColor
+            }
+            if let hId = v.accessibilityIdentifier, hId.hasPrefix("header-") {
+                let pId = String(hId.dropFirst("header-".count))
+                let isFocused = (pId == focusedId)
+                v.backgroundColor = isFocused
+                    ? UIColor(red: 0.07, green: 0.12, blue: 0.22, alpha: 1.0)
+                    : UIColor(red: 0.04, green: 0.07, blue: 0.12, alpha: 1.0)
+            }
+            for sub in v.subviews {
+                updateContainerRecursively(sub)
+            }
+        }
+        updateContainerRecursively(workspaceCanvas)
+
+        for (idx, v) in phoneSwitcherStack.arrangedSubviews.enumerated() {
+            if let btn = v as? UIButton, idx < store.panes.count {
+                let isFocused = (store.panes[idx].id == focusedId)
+                btn.backgroundColor = isFocused
+                    ? UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.35)
+                    : UIColor(white: 1.0, alpha: 0.07)
+                btn.titleLabel?.font = .monospacedSystemFont(
+                    ofSize: 11,
+                    weight: isFocused ? .bold : .regular
+                )
+            }
         }
     }
 
