@@ -78,7 +78,7 @@ targets:
         NSPhotoLibraryAddUsageDescription: Save the photos you take in Wee Hours to your Photos library too.
         NSSupportsLiveActivities: true
         NSUserActivityTypes: []
-        UIBackgroundModes: [fetch, processing, remote-notification, audio]
+        UIBackgroundModes: [fetch]
         BGTaskSchedulerPermittedIdentifiers: [com.hejitech.weehours.sync]
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
@@ -126,6 +126,7 @@ targets:
     sources:
       - path: Watch
       - path: WatchShared
+      - path: Shared/PrivacyInfo.xcprivacy
     dependencies:
       - package: LogCore
       - target: WatchWidgets
@@ -157,6 +158,7 @@ targets:
     sources:
       - path: WatchWidgets
       - path: WatchShared
+      - path: Shared/PrivacyInfo.xcprivacy
     settings:
       base:
         PRODUCT_NAME: WatchWidgets

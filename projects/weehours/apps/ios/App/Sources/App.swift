@@ -202,10 +202,17 @@ struct SignInView: View {
                 .accessibilityIdentifier("localOnly")
                 Text("Everything stays on this iPhone: logging, voice, reminders, widgets and the watch. Sign in later to sync with your partner; your log comes with you.")
                     .font(.footnote).foregroundStyle(.secondary)
+                HStack(spacing: 16) {
+                    Link("Privacy Policy", destination: URL(string: "https://weehours.hejitech.workers.dev/privacy/")!)
+                    Link("Terms of Use", destination: URL(string: "https://weehours.hejitech.workers.dev/terms/")!)
+                }
+                .font(.footnote)
+                #if DEBUG
                 DisclosureGroup("Server", isExpanded: $showServer) {
                     TextField("Supabase URL", text: $model.backendURL).textFieldStyle(.roundedBorder).textInputAutocapitalization(.never)
                 }
                 .font(.footnote)
+                #endif
             }
             .padding(24)
         }

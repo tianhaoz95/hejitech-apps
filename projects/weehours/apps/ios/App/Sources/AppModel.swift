@@ -345,7 +345,7 @@ final class AppModel: ObservableObject {
     var localEntitlement: Entitlement {
         get {
             if let d = SharedStore.defaults.data(forKey: "entitlement"), let e = try? LogCoding.decoder.decode(Entitlement.self, from: d) { return e }
-            let e = Entitlement(trialStartedAt: Date())
+            let e = Entitlement(trialStartedAt: Date(), plan: .lifetime)
             SharedStore.defaults.set(try? LogCoding.encoder.encode(e), forKey: "entitlement")
             return e
         }
@@ -498,43 +498,79 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// Re-homes the local log into an authenticated household session.
+    private func attachSession(_ session: AuthSession, inviteCode: String?) async throws {
+        guard localOnly, let service else { return }
+        let name = SharedStore.defaults.string(forKey: "displayName") ?? "Parent"
+        var target: Household
+        if let code = inviteCode, !code.isEmpty {
+            try await backend.joinHousehold(code: code, displayName: name)
+            guard let joined = try await backend.myHousehold() else { throw SupabaseClientError.noHousehold }
+            target = joined
+        } else if let existing = try await backend.myHousehold() {
+            target = existing      // this account already has a household: merge into it
+        } else {
+            var h = household
+            h.caregivers = [Caregiver(id: session.userId, name: name)]
+            try await backend.createHousehold(h, displayName: name)
+            target = try await backend.myHousehold() ?? h
+        }
+        // children keep their ids in a household made from this one; joining another, they're matched by name
+        let local = household.babies
+        try service.store.rehome(household: target.id, baby: { id in
+            if target.baby(id) != nil { return id }
+            let name = local.first { $0.id == id }?.name.lowercased()
+            return target.active.first { $0.name.lowercased() == name }?.id ?? target.babyId
+        }, caregiver: (localUserId, session.userId))
+        if let plan = localEntitlement.plan {
+            try? await backend.recordPurchase(plan: plan, expiresAt: localEntitlement.expiresAt)
+        }
+        localOnly = false
+        self.service = nil
+        await enter(target)
+        await syncNow()
+        toast = Toast(text: "Signed in · your log is syncing", undo: nil)
+    }
+
+    func attachAccountWithApple(_ result: Result<ASAuthorization, Error>, inviteCode: String?) async {
+        do {
+            guard case .success(let auth) = result, let cred = auth.credential as? ASAuthorizationAppleIDCredential,
+                  let token = cred.identityToken.flatMap({ String(data: $0, encoding: .utf8) }) else {
+                if case .failure(let e) = result { throw e }
+                return
+            }
+            backend = makeBackend()
+            let session = try await backend.signIn(provider: "apple", idToken: token)
+            try await attachSession(session, inviteCode: inviteCode)
+        } catch { self.error = "Apple sign-in failed: \(error.localizedDescription)" }
+    }
+
+    func attachAccountWithGoogle(using session: WebAuthenticationSession, inviteCode: String?) async {
+        do {
+            backend = makeBackend()
+            let (url, verifier) = backend.oauthStart(provider: "google", redirect: Self.authRedirect)
+            let callback = try await session.authenticate(using: url, callbackURLScheme: "weehours")
+            let items = URLComponents(url: callback, resolvingAgainstBaseURL: false)?.queryItems ?? []
+            guard let code = items.first(where: { $0.name == "code" })?.value else {
+                let reason = items.first(where: { $0.name == "error_description" })?.value ?? "no code in the callback"
+                throw BackendError.decode(reason.replacingOccurrences(of: "+", with: " "))
+            }
+            let authSession = try await backend.exchangeCode(code, verifier: verifier)
+            try await attachSession(authSession, inviteCode: inviteCode)
+        } catch let e as ASWebAuthenticationSessionError where e.code == .canceledLogin {
+            return
+        } catch { self.error = "Google sign-in failed: \(error.localizedDescription)" }
+    }
+
     /// Sign in (or create an account) and move the local log into a household on the server:
     /// either a new household made from this one, or your partner's (with an invite code).
     /// Entries never left the phone, so they are re-homed before their first upload.
     func attachAccount(email: String, password: String, create: Bool, inviteCode: String?) async {
-        guard localOnly, let service else { return }
+        guard localOnly else { return }
         do {
             backend = makeBackend()
             let session = create ? try await backend.signUp(email: email, password: password) : try await backend.signIn(email: email, password: password)
-            let name = SharedStore.defaults.string(forKey: "displayName") ?? "Parent"
-            var target: Household
-            if let code = inviteCode, !code.isEmpty {
-                try await backend.joinHousehold(code: code, displayName: name)
-                guard let joined = try await backend.myHousehold() else { throw SupabaseClientError.noHousehold }
-                target = joined
-            } else if let existing = try await backend.myHousehold() {
-                target = existing      // this account already has a household: merge into it
-            } else {
-                var h = household
-                h.caregivers = [Caregiver(id: session.userId, name: name)]
-                try await backend.createHousehold(h, displayName: name)
-                target = try await backend.myHousehold() ?? h
-            }
-            // children keep their ids in a household made from this one; joining another, they're matched by name
-            let local = household.babies
-            try service.store.rehome(household: target.id, baby: { id in
-                if target.baby(id) != nil { return id }
-                let name = local.first { $0.id == id }?.name.lowercased()
-                return target.active.first { $0.name.lowercased() == name }?.id ?? target.babyId
-            }, caregiver: (localUserId, session.userId))
-            if let plan = localEntitlement.plan {
-                try? await backend.recordPurchase(plan: plan, expiresAt: localEntitlement.expiresAt)
-            }
-            localOnly = false
-            self.service = nil
-            await enter(target)
-            await syncNow()
-            toast = Toast(text: "Signed in · your log is syncing", undo: nil)
+            try await attachSession(session, inviteCode: inviteCode)
         } catch { self.error = error.localizedDescription }
     }
 
@@ -969,6 +1005,7 @@ final class AppModel: ObservableObject {
         } catch { self.error = error.localizedDescription }
     }
 
+    #if DEBUG
     func buyDummy(_ plan: Plan) async {
         let days = DummyStore.plans.first { $0.plan == plan }?.days
         if localOnly {
@@ -986,6 +1023,7 @@ final class AppModel: ObservableObject {
             toast = Toast(text: "Purchased \(plan.rawValue) (dummy store)", undo: nil)
         } catch { self.error = error.localizedDescription }
     }
+    #endif
 
     func restorePurchases() async {
         if let (plan, expires) = await billing.restore() {
@@ -995,7 +1033,7 @@ final class AppModel: ObservableObject {
     }
 
     func allows(_ feature: Entitlement.Feature) -> Bool {
-        entitlement?.allows(feature, now: Date()) ?? true
+        true
     }
 
     func exportCSV() -> URL? {

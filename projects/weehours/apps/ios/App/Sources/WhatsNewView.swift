@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.13.2"
+    static let currentVersion = "0.13.3"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,47 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "0.13.3",
+            date: "October 2026",
+            tagline: "Lifetime Access & App Store Readiness",
+            features: [
+                WhatsNewItem(
+                    icon: "checkmark.seal.fill",
+                    tint: Theme.accent,
+                    title: "One-time lifetime access",
+                    description: "All features — voice logging, Apple Watch, Even G2 glasses, reminders and AI assistants — are now fully included for your household with no in-app purchases."
+                ),
+                WhatsNewItem(
+                    icon: "apple.logo",
+                    tint: Theme.accent,
+                    title: "Sign in with Apple & Google",
+                    description: "Moving from an on-device local log to cloud sync now supports Sign in with Apple and Google."
+                ),
+                WhatsNewItem(
+                    icon: "archivebox.fill",
+                    tint: Theme.feed,
+                    title: "Inactive data archival notice",
+                    description: "Baby data inactive for more than a year may be archived in the future, with options to download your complete archive and re-import anytime."
+                ),
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "hand.raised.fill",
+                    tint: Theme.diaper,
+                    title: "Privacy and account deletion",
+                    description: "Direct in-app account deletion under Settings, plus immediate access to Privacy Policy and Terms of Use.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "battery.100.bolt",
+                    tint: Theme.sleep,
+                    title: "Efficient background sync",
+                    description: "Optimized background execution to standard background refresh.",
+                    kind: .improvement
+                ),
+            ]
+        ),
         ReleaseHistoryItem(
             version: "0.13.2",
             date: "October 2026",

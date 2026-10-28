@@ -1,3 +1,4 @@
+import AuthenticationServices
 import CoreImage.CIFilterBuiltins
 import LogCore
 import StoreKit
@@ -40,39 +41,8 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    NavigationLink { PaywallView() } label: {
-                        HStack {
-                            Label("Subscription", systemImage: "star.circle.fill")
-                            Spacer()
-                            Text(Self.describe(model.entitlement?.access(now: Date()))).foregroundStyle(.secondary)
-                        }
-                    }
-                }
-                Section {
-                    ForEach(draft.babies) { b in
-                        Button { editingChild = b.id } label: {
-                            HStack(spacing: 10) {
-                                Circle().fill(Theme.color(for: b, in: draft)).frame(width: 12, height: 12)
-                                Text(b.name.isEmpty ? "New child" : b.name).foregroundStyle(.primary)
-                                Spacer()
-                                if b.archived {
-                                    Text("Archived").foregroundStyle(.secondary)
-                                } else if model.hidden.contains(b.id) {
-                                    Text("Hidden here").foregroundStyle(.secondary)
-                                }
-                                Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
-                            }
-                        }
-                        .tint(.primary)
-                        .accessibilityIdentifier("settings-child-\(b.name)")
-                    }
-                    Button {
-                        newChild = Baby(name: "", birthDate: draft.babies.last?.birthDate, position: (draft.babies.map(\.position).max() ?? 0) + 1)
-                    } label: { Label("Add a child", systemImage: "plus") }
-                } header: { Text("Children") } footer: {
-                    Text("A child you add is shared with everyone in the household. Hiding a child only changes this iPhone.")
-                }
+                accessSection
+                childrenSection
                 Section("Tracking") {
                     categoryToggles(group: nil)
                     if draft.categories.contains("pumping") {
@@ -245,6 +215,7 @@ struct SettingsView: View {
                     if voiceLanguage.translates { SpeechModelRow() }
                     Toggle("Quick capture", isOn: $quickCapture).accessibilityIdentifier("quickCapture")
                     Toggle("Auto-log when you stop speaking", isOn: $autoStopVoice).accessibilityIdentifier("autoStopVoice")
+                    #if DEBUG
                     Picker("Decision model", selection: Binding(get: { model.decisionBackend }, set: { model.decisionBackend = $0 })) {
                         ForEach(DecisionBackend.allCases) { Text($0.rawValue).tag($0) }
                     }
@@ -252,6 +223,7 @@ struct SettingsView: View {
                     if model.decisionBackend == .devServer {
                         TextField("llama-server URL", text: $model.devServer).textInputAutocapitalization(.never)
                     }
+                    #endif
                 } header: { Text("Voice") } footer: {
                     Text("Speak in English, Spanish or Chinese: for Spanish and Chinese, this iPhone translates what you say into English before logging it, and dictated notes stay in the language you spoke. Quick capture logs the most likely entry instead of asking when Wee Hours isn't sure. Auto-log stops listening automatically after a brief pause in speech.")
                 }
@@ -274,25 +246,10 @@ struct SettingsView: View {
                 Section("About") {
                     Button { showingWhatsNew = true } label: { Label("What's New in Wee Hours", systemImage: "sparkles") }
                     LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? WhatsNewView.currentVersion)
+                    Link("Privacy Policy", destination: URL(string: "https://weehours.hejitech.workers.dev/privacy/")!)
+                    Link("Terms of Use", destination: URL(string: "https://weehours.hejitech.workers.dev/terms/")!)
                 }
-                if model.localOnly {
-                    Section {
-                        LabeledContent("Account", value: "This iPhone only")
-                        NavigationLink { AttachAccountView() } label: { Label("Sign in to sync and share", systemImage: "person.crop.circle.badge.plus") }
-                        Button("Erase this phone's log", role: .destructive) { confirmDelete = true }
-                    } header: { Text("Account") } footer: {
-                        Text("Your partner's phone, the glasses and AI agents need an account. Signing in uploads everything logged here.")
-                    }
-                } else {
-                Section("Account") {
-                    if let email = model.email { LabeledContent("Signed in", value: email) }
-                    if let last = model.lastSync { LabeledContent("Last sync", value: last.formatted(date: .omitted, time: .standard)) }
-                    if let e = model.syncError { Text("Offline: \(e)").font(.caption).foregroundStyle(.orange) }
-                    Button("Sync now") { Task { await model.syncNow() } }
-                    Button("Sign out") { model.signOut() }
-                    Button("Delete all household data", role: .destructive) { confirmDelete = true }
-                }
-                }
+                accountSection
             }
             .navigationTitle("Settings")
             // a child's edits save when you go back, as adding one does
@@ -318,8 +275,8 @@ struct SettingsView: View {
             .translationTask(translationRequest) { session in try? await session.prepareTranslation() }
             .onAppear { if !loaded { draft = model.household; loaded = true } }
             .onChange(of: model.household) { _, h in draft = h }
-            .confirmationDialog("Delete every entry, capture and token for this household? This cannot be undone.", isPresented: $confirmDelete, titleVisibility: .visible) {
-                Button("Delete everything", role: .destructive) { Task { await model.deleteAllData() } }
+            .confirmationDialog("Delete your account and all household data? This permanently removes every entry, photo, capture and access token. This cannot be undone.", isPresented: $confirmDelete, titleVisibility: .visible) {
+                Button("Delete account & data", role: .destructive) { Task { await model.deleteAllData() } }
             }
         }
     }
@@ -333,6 +290,71 @@ struct SettingsView: View {
             let status = await LanguageAvailability().status(from: language.translationLanguage, to: VoiceTranslator.english)
             guard status == .supported else { return }
             translationRequest = TranslationSession.Configuration(source: language.translationLanguage, target: VoiceTranslator.english)
+        }
+    }
+
+    @ViewBuilder private var accessSection: some View {
+        Section {
+            NavigationLink { PaywallView() } label: {
+                HStack {
+                    Label("Lifetime Access", systemImage: "checkmark.seal.fill")
+                    Spacer()
+                    Text("All features included").foregroundStyle(.secondary)
+                }
+            }
+            .accessibilityIdentifier("settings-plus")
+        }
+    }
+
+    @ViewBuilder private var childrenSection: some View {
+        Section {
+            ForEach(draft.babies) { b in
+                Button { editingChild = b.id } label: {
+                    HStack(spacing: 10) {
+                        Circle().fill(Theme.color(for: b, in: draft)).frame(width: 12, height: 12)
+                        Text(b.name.isEmpty ? "New child" : b.name).foregroundStyle(.primary)
+                        Spacer()
+                        if b.archived {
+                            Text("Archived").foregroundStyle(.secondary)
+                        } else if model.hidden.contains(b.id) {
+                            Text("Hidden here").foregroundStyle(.secondary)
+                        }
+                        Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
+                    }
+                }
+                .tint(.primary)
+                .accessibilityIdentifier("settings-child-\(b.name)")
+            }
+            Button {
+                newChild = Baby(name: "", birthDate: draft.babies.last?.birthDate, position: (draft.babies.map(\.position).max() ?? 0) + 1)
+            } label: { Label("Add a child", systemImage: "plus") }
+        } header: { Text("Children") } footer: {
+            Text("A child you add is shared with everyone in the household. Hiding a child only changes this iPhone.")
+        }
+    }
+
+    @ViewBuilder private var accountSection: some View {
+        if model.localOnly {
+            Section {
+                LabeledContent("Account", value: "This iPhone only")
+                NavigationLink { AttachAccountView() } label: { Label("Sign in to sync and share", systemImage: "person.crop.circle.badge.plus") }
+                Button("Erase this phone's log", role: .destructive) { confirmDelete = true }
+            } header: { Text("Account") } footer: {
+                Text("Your partner's phone, the glasses and AI agents need an account. Signing in uploads everything logged here.")
+            }
+        } else {
+            Section {
+                if let email = model.email { LabeledContent("Signed in", value: email) }
+                if let last = model.lastSync { LabeledContent("Last sync", value: last.formatted(date: .omitted, time: .standard)) }
+                if let e = model.syncError { Text("Offline: \(e)").font(.caption).foregroundStyle(.orange) }
+                Button("Sync now") { Task { await model.syncNow() } }
+                Button("Sign out") { model.signOut() }
+                Button("Delete account & data", role: .destructive) { confirmDelete = true }
+            } header: {
+                Text("Account")
+            } footer: {
+                Text("In the future, baby data that is inactive for more than a year might be archived. If that happens, we will provide a way to download and re-import your data.")
+            }
         }
     }
 
@@ -799,70 +821,70 @@ struct AgentsView: View {
     }
 }
 
-// MARK: - Paywall (StoreKit 2, local .storekit configuration in development)
+// MARK: - Lifetime Access & Data Policy
 
 struct PaywallView: View {
     @EnvironmentObject var model: AppModel
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Wee Hours Plus").font(.largeTitle.bold())
-                Text(SettingsView.describe(model.entitlement?.access(now: Date()))).foregroundStyle(.secondary)
-                VStack(alignment: .leading, spacing: 8) {
-                    Label("Voice logging with the on-device model", systemImage: "mic.fill")
-                    Label("Apple Watch and Even G2 glasses + ring", systemImage: "applewatch")
-                    Label("Reminders for whoever is on duty", systemImage: "bell.fill")
-                    Label("Your AI assistant over MCP", systemImage: "sparkles")
-                    Label("One purchase covers both parents", systemImage: "person.2.fill")
+            VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.title2)
+                            .foregroundStyle(Theme.accent)
+                        Text("Wee Hours Lifetime")
+                            .font(.largeTitle.bold())
+                    }
+                    Text("One-time purchase · Lifetime use for your newborn")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Included Features").font(.headline)
+                    Label("Voice logging with the on-device AI model", systemImage: "mic.fill")
+                    Label("Apple Watch app, complications and Action Button", systemImage: "applewatch")
+                    Label("Even G2 glasses and R1 ring companion support", systemImage: "eyeglasses")
+                    Label("Smart reminders for whoever is on duty", systemImage: "bell.fill")
+                    Label("AI assistant connectivity via MCP", systemImage: "sparkles")
+                    Label("One purchase covers both parents and caregivers", systemImage: "person.2.fill")
                 }
                 .font(.subheadline)
-                Text("Tap logging is always free, so you never lose access to your log.").font(.footnote).foregroundStyle(.secondary)
-                ForEach(model.billing.products, id: \.id) { p in
-                    Button { Task { await model.buy(p) } } label: {
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text(p.displayName).font(.headline)
-                                Text(p.description).font(.caption).foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Text(p.displayPrice).font(.headline)
-                        }
-                        .padding()
-                        .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
+
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "archivebox.fill").foregroundStyle(.orange)
+                        Text("Data Retention Notice").font(.headline)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("buy-\(p.id)")
+                    Text("In the future, baby data that is inactive for more than a year might be archived. If that happens, we will provide a way to download your complete archive and re-import it anytime.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
-                if model.billing.products.isEmpty {
-                    // Dummy store: used when StoreKit has no products (simulator launched outside
-                    // Xcode, CI). Same entitlement path as a real purchase.
-                    ForEach(DummyStore.plans, id: \.plan) { item in
-                        Button { Task { await model.buyDummy(item.plan) } } label: {
-                            HStack {
-                                VStack(alignment: .leading) {
-                                    Text(item.name).font(.headline)
-                                    Text(item.detail).font(.caption).foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                Text(item.price).font(.headline)
-                            }
-                            .padding()
-                            .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("buy-\(item.plan.rawValue)")
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Legal & Privacy").font(.caption.bold()).foregroundStyle(.secondary)
+                    HStack(spacing: 16) {
+                        Link("Privacy Policy", destination: URL(string: "https://weehours.hejitech.workers.dev/privacy/")!)
+                        Link("Terms of Use", destination: URL(string: "https://weehours.hejitech.workers.dev/terms/")!)
                     }
-                    Text("Dummy store · no money moves. Run from Xcode to use the StoreKit test configuration.").font(.caption).foregroundStyle(.secondary)
+                    .font(.footnote)
                 }
-                Button("Restore purchases") { Task { await model.restorePurchases() } }
             }
             .padding()
         }
-        .task { await model.billing.load() }
+        .navigationTitle("Lifetime Access")
     }
 }
 
+#if DEBUG
 enum DummyStore {
     struct Item { let plan: Plan; let name: String; let detail: String; let price: String; let days: Int? }
     static let plans = [
@@ -871,11 +893,13 @@ enum DummyStore {
         Item(plan: .lifetime, name: "Lifetime", detail: "Everything, forever. One purchase for the household.", price: "$79.99", days: nil),
     ]
 }
+#endif
 
 /// Moves a local-only household onto an account: a new household made from this one, or the
 /// partner's household if you have an invite code.
 struct AttachAccountView: View {
     @EnvironmentObject var model: AppModel
+    @Environment(\.webAuthenticationSession) private var webAuthenticationSession
     @State private var email = ""
     @State private var password = ""
     @State private var create = true
@@ -885,6 +909,38 @@ struct AttachAccountView: View {
     var body: some View {
         Form {
             Section {
+                TextField("Partner's invite code (optional)", text: $code).textInputAutocapitalization(.characters)
+            } footer: {
+                Text("With a code, this phone's entries join your partner's log. Without one, your household is created on the server as it is now.")
+            }
+
+            Section {
+                SignInWithAppleButton(.signIn) { req in req.requestedScopes = [.email] } onCompletion: { r in
+                    working = true
+                    Task {
+                        await model.attachAccountWithApple(r, inviteCode: code.trimmingCharacters(in: .whitespaces))
+                        working = false
+                    }
+                }
+                .frame(height: 48)
+                .signInWithAppleButtonStyle(.whiteOutline)
+
+                Button {
+                    working = true
+                    Task {
+                        await model.attachAccountWithGoogle(using: webAuthenticationSession, inviteCode: code.trimmingCharacters(in: .whitespaces))
+                        working = false
+                    }
+                } label: {
+                    Label("Continue with Google", systemImage: "g.circle.fill").frame(maxWidth: .infinity, minHeight: 40)
+                }
+                .buttonStyle(.bordered)
+            } header: {
+                Text("Sign in to sync")
+            }
+
+            #if DEBUG
+            Section("Email (local development)") {
                 Picker("", selection: $create) {
                     Text("New account").tag(true)
                     Text("I have one").tag(false)
@@ -892,13 +948,6 @@ struct AttachAccountView: View {
                 .pickerStyle(.segmented)
                 TextField("Email", text: $email).textContentType(.emailAddress).keyboardType(.emailAddress).textInputAutocapitalization(.never)
                 SecureField("Password", text: $password)
-            }
-            Section {
-                TextField("Partner's invite code (optional)", text: $code).textInputAutocapitalization(.characters)
-            } footer: {
-                Text("With a code, this phone's entries join your partner's log. Without one, your household is created on the server as it is now.")
-            }
-            Section {
                 Button {
                     working = true
                     Task {
@@ -910,6 +959,7 @@ struct AttachAccountView: View {
                 }
                 .disabled(email.isEmpty || password.count < 6 || working)
             }
+            #endif
         }
         .navigationTitle("Sync and share")
     }
