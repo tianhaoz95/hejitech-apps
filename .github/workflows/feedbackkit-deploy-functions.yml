@@ -27,7 +27,8 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # pinned: "latest" asks the GitHub API, which rate-limits shared runners
+          version: 2.121.0
 
       - name: Deploy Edge Functions
         run: |
