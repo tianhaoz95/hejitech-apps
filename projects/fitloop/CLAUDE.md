@@ -51,6 +51,17 @@ local stack), `-screen today|plan|progress|feedback|settings`, `-date YYYY-MM-DD
 - **Watch** (`apps/ios/Watch`): runs the `HKWorkoutSession` when the phone opens a workout
   (`startWatchApp`), sends heart rate every 4 s and "set done", shows the set and rest timer.
 
+## Exercise demonstration media & procedural rigging
+
+FitLoop hosts and serves exercise demonstration GIFs at `/api/exercises/<slug>.gif` with CORS headers (`Access-Control-Allow-Origin: *`) and long-lived cache headers (`Cache-Control: public, max-age=31536000, immutable`), consumed by iOS, the web app, and Even G2 glasses.
+
+- **Storage & On-Demand Caching**: Cached in Supabase Storage (`fitloop` bucket) under `exercises/<slug>.gif`. When an exercise GIF is requested that is not yet cached, the Worker automatically resolves it from the 1,300+ item exercise catalog or procedural rigging presets, uploads it to Supabase Storage, and streams it back.
+- **Open-source upstream datasets**:
+  - `hasaneyldrm/exercises-dataset` (MIT License): 1,324 exercises mapped by slug and ID.
+  - `omercotkd/exercises-gifs` (MIT / Open Dataset backup): 4-digit ID mapped GIF assets.
+- **Procedural Rigging Engine** (`@fitloop/core`): Pure TypeScript parametric 2D skeletal animation engine using `omggif`. Renders rounded capsule limbs with depth layering and smooth sinusoidal motion cycles. Presets include `cat-cow`, `bird-dog`, `childs-pose`, `kneeling-hip-flexor`, and `basketball`.
+- **MCP tools**: `upload_exercise_gif` (upload custom or auto-cache) and `render_exercise_animation` (procedural generation).
+
 ## Pitfalls
 
 - Dates are the client's local `YYYY-MM-DD` (`/api/today?date=`); the agent's "today" comes from

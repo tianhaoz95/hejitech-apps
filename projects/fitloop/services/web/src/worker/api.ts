@@ -12,7 +12,7 @@ import {
   admin, bearer, BUCKET, checkinsBetween, feedbackList, json, LIVE_MAX_AGE_MS, loadSettings, pairingCode, PAIRING_CODE_TTL_MS, PHOTO_URL_TTL_SEC, planOn, planSpans,
   planVersions, PREFIX, published, randomToken, resolveDevice, saveSettings, sha256, supabaseUser, today, type Db, type Env,
 } from "./store.ts";
-import { normalizeExerciseSlug, uploadExerciseGif, type UploadGifOptions } from "./exercise_media.ts";
+import { getOrResolveExerciseGif, normalizeExerciseSlug, uploadExerciseGif, type UploadGifOptions } from "./exercise_media.ts";
 
 const PAIR_FAILURES_PER_WINDOW = 10;
 const PAIR_WINDOW_SEC = 600;
@@ -71,10 +71,17 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
   const exMatch = path.match(/^\/api\/exercises\/([a-zA-Z0-9_-]+)(?:\.gif)?$/);
   if (exMatch && (req.method === "GET" || req.method === "HEAD")) {
     const slug = normalizeExerciseSlug(exMatch[1]);
-    const key = `exercises/${slug}.gif`;
-    const { data, error } = await db.storage.from(BUCKET).download(key);
-    if (error || !data) return reply({ error: "exercise GIF not found" }, 404);
-    return new Response(req.method === "HEAD" ? null : data, {
+    const bytes = await getOrResolveExerciseGif(db, slug);
+    if (!bytes) {
+      return reply(
+        {
+          error:
+            "exercise GIF not found. Choose from 1,300+ catalog exercises, procedural presets (cat-cow, bird-dog, childs-pose, kneeling-hip-flexor, basketball), or use upload_exercise_gif.",
+        },
+        404,
+      );
+    }
+    return new Response(req.method === "HEAD" ? null : bytes, {
       status: 200,
       headers: {
         "Content-Type": "image/gif",

@@ -4,7 +4,7 @@
 import { LIMITS } from "./validate.ts";
 import { FEEDBACK_TAGS, METRICS, PLAN_FORMAT_VERSION } from "./types.ts";
 
-export const GUIDE_VERSION = "1.3";
+export const GUIDE_VERSION = "1.4";
 
 export const GUIDE = `# FitLoop plan guide (v${GUIDE_VERSION}, plan format ${PLAN_FORMAT_VERSION})
 
@@ -86,18 +86,36 @@ the same id for the same thing across days and versions, so check-ins and progre
 It is your responsibility as the coaching agent to provide animated instructions and form cues for
 each exercise in the plan:
 
-1. **FitLoop hosts your GIFs via \`upload_exercise_gif\`**:
+1. **Built-in 1,300+ Exercise Library & On-Demand Caching**:
+   - FitLoop includes full on-demand caching for over 1,300 standard gym, bodyweight, machine, and stretching exercises.
+   - You can directly link to \`https://fitloop.hejitech.workers.dev/api/exercises/<slug>.gif\` in your plan without uploading beforehand.
+   - On first request, FitLoop's Worker fetches the asset from verified open fitness datasets, validates the GIF format and headers, archives it permanently in Supabase Storage (\`fitloop\` bucket), and serves it with edge caching and CORS headers (\`*\`) for Even G2 glasses and iOS.
+   - **Open-source upstream datasets**:
+     - \`hasaneyldrm/exercises-dataset\` (MIT License): 1,324 exercises with GIF animations and multi-language instructions.
+     - \`omercotkd/exercises-gifs\` (MIT / Open Dataset backup): 4-digit ID mapped GIF assets.
+
+2. **Procedural Rigging Engine for Mobility & Custom Movements**:
+   - For exercises missing from gym video datasets (such as mobility flows, yoga postures, or agility sessions), FitLoop provides an anatomical 2D skeletal rigging engine.
+   - Instead of crude stick figures, the procedural engine renders rounded limb capsules, depth-layered limbs, and sinusoidal keyframe motion cycles.
+   - Built-in presets available immediately:
+     - \`cat-cow\`: smooth spinal flexion (arched cat) to extension (dipped cow) cycle.
+     - \`bird-dog\`: quadruped core stability reaching opposite arm and leg horizontally.
+     - \`childs-pose\`: balasana kneeling pose folding back onto heels with extended arms.
+     - \`kneeling-hip-flexor\`: half-kneeling 90/90 stance shifting smoothly into rear hip extension.
+     - \`basketball\`: athletic defensive/crossover dribble drill.
+   - Access directly via \`https://fitloop.hejitech.workers.dev/api/exercises/<preset>.gif\` or generate via the \`render_exercise_animation\` MCP tool.
+
+3. **FitLoop hosts your custom GIFs via \`upload_exercise_gif\`**:
    - Use the \`upload_exercise_gif\` MCP tool to upload demonstration GIFs directly to FitLoop's storage.
      You can provide a \`source_url\` from any public fitness CDN, or raw base64 data.
    - FitLoop validates, permanently stores, and hosts the GIF under \`https://fitloop.hejitech.workers.dev/api/exercises/<slug>.gif\`.
    - Hosted GIFs have CORS headers enabled for Even G2 glasses display and are cached at the edge.
 
-2. **\`gifUrl\` is optional**:
-   - If an exercise does not have an animated demonstration (e.g. basketball, child's pose, outdoor jog),
-     omit \`gifUrl\` and provide \`steps\`. Even G2 glasses and the web app will cleanly show your paced
-     movement steps without displaying broken images.
+4. **\`gifUrl\` is optional**:
+   - If an exercise does not have an animated demonstration, omit \`gifUrl\` and provide \`steps\`.
+     Even G2 glasses and the web app will cleanly show your paced movement steps without displaying broken images.
 
-3. **Step formatting**:
+5. **Step formatting**:
    - Write step cues without leading numbers (the web app and Even G2 glasses number steps automatically).
    - Plain ASCII characters only (\`\\x20\` to \`\\x7e\`), each step ≤ ${LIMITS.animStepLength} characters, at most ${LIMITS.animSteps} steps.
 

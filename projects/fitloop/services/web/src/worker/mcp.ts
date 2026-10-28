@@ -50,17 +50,32 @@ export const TOOLS = [
   {
     name: "upload_exercise_gif",
     title: "Upload exercise demonstration GIF",
-    description: "Upload an exercise animation GIF to FitLoop's permanent hosted storage. Provide the exercise name or slug and either a public source URL (which FitLoop downloads and stores) or base64-encoded GIF data. Returns the permanent hosted gifUrl on FitLoop (https://fitloop.hejitech.workers.dev/api/exercises/<slug>.gif) to place in your plan's animation object.",
+    description: "Upload or auto-cache an exercise animation GIF to FitLoop's permanent hosted storage. Provide the exercise name or slug and optional source URL, base64 data, or procedural preset. If no source is provided, FitLoop automatically resolves from its built-in 1,300+ catalog or procedural rigging presets. Returns the permanent hosted gifUrl on FitLoop (https://fitloop.hejitech.workers.dev/api/exercises/<slug>.gif) to place in your plan's animation object.",
     inputSchema: {
       type: "object",
       required: ["exercise"],
       properties: {
-        exercise: { type: "string", description: "Exercise name or slug (e.g. 'cat-cow', 'goblet-squat', 'bird-dog')" },
+        exercise: { type: "string", description: "Exercise name or slug (e.g. 'cat-cow', 'goblet-squat', 'bird-dog', 'dead-bug')" },
         source_url: { type: "string", description: "Public HTTPS URL to fetch the GIF from (FitLoop downloads and stores it)" },
         data_base64: { type: "string", description: "Base64-encoded GIF data (if you generated or have the raw bytes)" },
+        preset: { type: "string", description: "Optional procedural preset: 'cat-cow', 'bird-dog', 'childs-pose', 'kneeling-hip-flexor', 'basketball'" },
       },
     },
     annotations: rw("Upload exercise demonstration GIF"),
+  },
+  {
+    name: "render_exercise_animation",
+    title: "Render procedural exercise animation",
+    description: "Generate a clean, anatomically-rigged skeletal demonstration animation GIF using FitLoop's procedural rigging engine and save it to hosted storage. Ideal for mobility exercises (cat-cow, bird-dog, child's pose, kneeling hip flexor stretch) or custom workouts lacking online GIF assets.",
+    inputSchema: {
+      type: "object",
+      required: ["exercise"],
+      properties: {
+        exercise: { type: "string", description: "Target exercise name or slug (e.g. 'cat-cow', 'bird-dog', 'childs-pose', 'kneeling-hip-flexor', 'basketball')" },
+        preset: { type: "string", description: "Optional preset name if different from exercise slug ('cat-cow', 'bird-dog', 'childs-pose', 'kneeling-hip-flexor', 'basketball')" },
+      },
+    },
+    annotations: rw("Render procedural exercise animation"),
   },
 ];
 
@@ -200,7 +215,13 @@ async function callTool(name: string, args: Record<string, unknown>, caller: Cal
       const exercise = String(args.exercise ?? "");
       const sourceUrl = typeof args.source_url === "string" ? args.source_url : undefined;
       const dataBase64 = typeof args.data_base64 === "string" ? args.data_base64 : undefined;
-      return uploadExerciseGif(db, publicUrl, exercise, { sourceUrl, dataBase64 });
+      const preset = typeof args.preset === "string" ? args.preset : undefined;
+      return uploadExerciseGif(db, publicUrl, exercise, { sourceUrl, dataBase64, preset });
+    }
+    case "render_exercise_animation": {
+      const exercise = String(args.exercise ?? "");
+      const preset = typeof args.preset === "string" ? args.preset : exercise;
+      return uploadExerciseGif(db, publicUrl, exercise, { preset });
     }
   }
   throw new Error(`unknown tool ${name}`);

@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   adherence, checkCheckin, checkFeedback, checkPlan, checkSettings, checkVital, dayPlan, dayState, defaultSettings, errorsOf, GUIDE,
-  LINE_PX, MAX_LINES, Navigator, normalizeSettings, textPx, setTarget, weekdayOf, type Checkin, type Command, type Plan, type World,
+  LINE_PX, MAX_LINES, Navigator, normalizeSettings, textPx, setTarget, weekdayOf,
+  findCatalogExercise, renderProceduralPresetGif, type Checkin, type Command, type Plan, type World,
 } from "../src/index.ts";
 
 const plan = (): Plan => JSON.parse(readFileSync(new URL("../fixtures/example-plan.json", import.meta.url), "utf8"));
@@ -318,4 +319,55 @@ describe("glasses", () => {
     nav.input("double_tap", customWorld);
     expect(nav.screen).toBe("workout");
   });
+
+  describe("exercise catalog and procedural animation", () => {
+    it("resolves catalog exercises and aliases", () => {
+      const deadBug = findCatalogExercise("dead-bug");
+      expect(deadBug).not.toBeNull();
+      expect(deadBug?.type).toBe("dataset");
+      if (deadBug?.type === "dataset") {
+        expect(deadBug.id).toBe("0276");
+        expect(deadBug.primaryUrl).toContain("videos/0276");
+        expect(deadBug.fallbackUrl).toContain("assets/0276.gif");
+      }
+
+      // Alias resolution
+      const goblet = findCatalogExercise("goblet-squat");
+      expect(goblet).not.toBeNull();
+      expect(goblet?.type).toBe("dataset");
+      if (goblet?.type === "dataset") {
+        expect(goblet.id).toBe("1760");
+      }
+
+      // Procedural preset resolution
+      const catCow = findCatalogExercise("cat-cow");
+      expect(catCow).not.toBeNull();
+      expect(catCow?.type).toBe("procedural");
+      if (catCow?.type === "procedural") {
+        expect(catCow.preset).toBe("cat-cow");
+      }
+
+      const birdDog = findCatalogExercise("bird-dog");
+      expect(birdDog?.type).toBe("procedural");
+
+      const childsPose = findCatalogExercise("childs-pose");
+      expect(childsPose?.type).toBe("procedural");
+
+      const hipFlexor = findCatalogExercise("hip-flexor-stretch");
+      expect(hipFlexor?.type).toBe("procedural");
+    });
+
+    it("generates valid animated GIFs for all procedural presets", () => {
+      const presets = ["cat-cow", "bird-dog", "childs-pose", "kneeling-hip-flexor", "basketball"];
+      for (const p of presets) {
+        const gif = renderProceduralPresetGif(p);
+        expect(gif).not.toBeNull();
+        expect(gif?.length).toBeGreaterThan(5000);
+        // Valid GIF89a header
+        const header = String.fromCharCode(...gif!.subarray(0, 6));
+        expect(header).toBe("GIF89a");
+      }
+    });
+  });
 });
+

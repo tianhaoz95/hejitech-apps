@@ -1,3 +1,4 @@
+import { findCatalogExercise, renderProceduralPresetGif } from "@fitloop/core";
 import { BUCKET, type Db } from "./store.ts";
 
 export const MAX_GIF_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -23,6 +24,7 @@ export interface UploadGifOptions {
   sourceUrl?: string;
   dataBase64?: string;
   rawBytes?: Uint8Array;
+  preset?: string;
 }
 
 export interface UploadGifResult {
@@ -32,6 +34,63 @@ export interface UploadGifResult {
   size_bytes: number;
 }
 
+/**
+ * On-demand cache resolver:
+ * 1. Checks Supabase Storage for cached `exercises/<slug>.gif`.
+ * 2. If not found, resolves via procedural rigging presets or the 1,300+ item open exercise dataset.
+ * 3. Persists fetched/rendered GIF in Supabase Storage.
+ * 4. Returns GIF bytes.
+ */
+export async function getOrResolveExerciseGif(db: Db, exercise: string): Promise<Uint8Array | null> {
+  const slug = normalizeExerciseSlug(exercise);
+  const key = `exercises/${slug}.gif`;
+
+  // 1. Check if already cached in Supabase Storage
+  const { data, error } = await db.storage.from(BUCKET).download(key);
+  if (!error && data) {
+    const buf = await data.arrayBuffer();
+    return new Uint8Array(buf);
+  }
+
+  // 2. Resolve via catalog or procedural rigging
+  const resolved = findCatalogExercise(slug);
+  if (!resolved) return null;
+
+  let bytes: Uint8Array | null = null;
+  if (resolved.type === "procedural") {
+    bytes = renderProceduralPresetGif(resolved.preset);
+  } else if (resolved.type === "dataset") {
+    try {
+      let res = await fetch(resolved.primaryUrl);
+      if (!res.ok) {
+        res = await fetch(resolved.fallbackUrl);
+      }
+      if (res.ok) {
+        const buf = await res.arrayBuffer();
+        bytes = new Uint8Array(buf);
+      }
+    } catch {
+      bytes = null;
+    }
+  }
+
+  if (!bytes || !bytes.length || !isGif(bytes)) {
+    return null;
+  }
+
+  // 3. Cache to Supabase Storage for subsequent instant edge serving
+  try {
+    await db.storage.from(BUCKET).upload(key, bytes, {
+      contentType: "image/gif",
+      upsert: true,
+    });
+  } catch {
+    // Non-fatal if cache upload fails; return bytes to client anyway
+  }
+
+  return bytes;
+}
+
 export async function uploadExerciseGif(
   db: Db,
   publicUrl: string,
@@ -39,7 +98,7 @@ export async function uploadExerciseGif(
   opts: UploadGifOptions,
 ): Promise<UploadGifResult> {
   const slug = normalizeExerciseSlug(exercise);
-  let bytes: Uint8Array;
+  let bytes: Uint8Array | null = null;
 
   if (opts.rawBytes && opts.rawBytes.length > 0) {
     bytes = opts.rawBytes;
@@ -58,11 +117,22 @@ export async function uploadExerciseGif(
     }
     const buf = await res.arrayBuffer();
     bytes = new Uint8Array(buf);
+  } else if (opts.preset) {
+    bytes = renderProceduralPresetGif(opts.preset);
+    if (!bytes) {
+      throw new Error(`unknown procedural preset "${opts.preset}"`);
+    }
   } else {
-    throw new Error("must provide either source_url, data_base64, or raw GIF bytes");
+    // Auto-resolve from catalog or procedural rigging if no custom data provided
+    bytes = await getOrResolveExerciseGif(db, slug);
+    if (!bytes) {
+      throw new Error(
+        "must provide either source_url, data_base64, raw GIF bytes, or a known catalog exercise/preset name",
+      );
+    }
   }
 
-  if (!bytes.length) {
+  if (!bytes || !bytes.length) {
     throw new Error("empty GIF data");
   }
   if (bytes.length > MAX_GIF_BYTES) {
