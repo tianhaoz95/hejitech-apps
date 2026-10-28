@@ -106,6 +106,29 @@ public struct AssistiveTouchGuideView: View {
                     )
                 }
 
+                Section("Reaching Every Pixel of Your External Monitor") {
+                    SettingTipRow(
+                        icon: "aspectratio.fill",
+                        title: "Full Monitor 1:1 Absolute Mode (Default)",
+                        settingPath: "Tether → Settings / Touchpad → Full Monitor 1:1",
+                        instruction: "Solves the iOS sub-domain boundary limit: 100% of the phone screen maps proportionally to 100% of your external monitor. Moving your mouse to any edge or corner of the phone immediately reaches that corner on your display."
+                    )
+
+                    SettingTipRow(
+                        icon: "arrow.forward.to.line.circle.fill",
+                        title: "Edge Continuous Travel (Relative Mode)",
+                        settingPath: "Tether → Settings → Edge Continuous Travel",
+                        instruction: "When using Relative Trackpad mode, pushing your cursor against any phone screen border continuously glides the monitor cursor in that direction so you never get trapped."
+                    )
+
+                    SettingTipRow(
+                        icon: "lock.shield.fill",
+                        title: "Direct Hardware Mouse Pointer Lock",
+                        settingPath: "Hardware: Bluetooth or USB-C Mouse",
+                        instruction: "When a physical mouse is connected via Bluetooth or dock USB, Tether engages native pointer lock to capture raw displacement deltas with infinite travel."
+                    )
+                }
+
                 Section("Mouse Controls & Shortcuts in Tether") {
                     MouseShortcutRow(keys: "Left Click", desc: "Focus web inputs, click buttons, select tabs, activate terminal")
                     MouseShortcutRow(keys: "Click + Drag", desc: "Drag pane split borders to resize windows in real time")

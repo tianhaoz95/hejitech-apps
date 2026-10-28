@@ -17,10 +17,27 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.9"
+    static let currentVersion = "0.1.10"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.10", date: "October 2026", items: [
+            WhatsNewItem(
+                icon: "aspectratio.fill",
+                title: "Full Monitor 1:1 Absolute Mapping",
+                description: "Overcomes the iOS AssistiveTouch phone boundary limit: maps 100% of the phone controller directly to 100% of the external monitor so every corner and edge is effortlessly reachable."
+            ),
+            WhatsNewItem(
+                icon: "arrow.forward.to.line.circle.fill",
+                title: "Edge Continuous Travel (Edge Push)",
+                description: "In relative trackpad mode, pushing your mouse or finger against the phone screen edge continuously glides the cursor across ultrawide and 4K displays."
+            ),
+            WhatsNewItem(
+                icon: "lock.shield.fill",
+                title: "Hardware Mouse Pointer Locking",
+                description: "Native pointer locking with GameController integration for raw hardware mouse movement deltas across Bluetooth and USB-C docks."
+            ),
+        ]),
         ReleaseNotes(version: "0.1.9", date: "October 2026", items: [
             WhatsNewItem(
                 icon: "computermouse.fill",

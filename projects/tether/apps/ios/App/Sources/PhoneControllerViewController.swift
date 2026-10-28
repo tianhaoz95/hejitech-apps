@@ -46,6 +46,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     private let touchpadView = UIView()
     private let touchpadSurface = UIView()
     private let touchpadHelpLabel = UILabel()
+    private let mappingModeSegment = UISegmentedControl(items: ["Full Monitor 1:1", "Relative Trackpad"])
     private let assistiveTouchButton = UIButton(type: .system)
     private let clickButtonsStack = UIStackView()
     private let leftClickButton = UIButton(type: .system)
@@ -54,6 +55,9 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
 
     private var isDragModeActive: Bool = false
     private var isHoldingLeftClick: Bool = false
+    private var edgePushTimer: CADisplayLink?
+    private var edgePushDirection: CGVector = .zero
+    private var registeredMice: Set<GCMouse> = []
 
     // Keyboard Mode views
     private let keyboardContainer = UIView()
@@ -69,6 +73,10 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     private let sidebarPosSegment = UISegmentedControl(items: ["Left Side", "Right Side"])
     private let orientationSegment = UISegmentedControl(items: ["Landscape", "Portrait", "Flipped"])
     private let showButtonsSwitch = UISwitch()
+    private let settingsMappingModeSegment = UISegmentedControl(items: ["Full Monitor 1:1", "Relative"])
+    private let edgePushSwitch = UISwitch()
+    private let sensitivitySlider = UISlider()
+    private let sensitivityValueLabel = UILabel()
 
     // Touchpad gesture tracking
     private var lastPanLocation: CGPoint = .zero
@@ -86,6 +94,10 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
 
     public override var canBecomeFirstResponder: Bool {
         true
+    }
+
+    public override var prefersPointerLocked: Bool {
+        currentMode == .touchpad
     }
 
     // MARK: - Orientation Lock & Toggling (PRD §4, §12)
@@ -410,13 +422,19 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         keyboardContainer.isHidden = (mode != .keyboard)
         settingsScrollView.isHidden = (mode != .settings)
 
+        if #available(iOS 14.0, *) {
+            setNeedsUpdateOfPrefersPointerLocked()
+        }
+
         switch mode {
         case .touchpad:
             hiddenInputTextField.resignFirstResponder()
             becomeFirstResponder()
         case .keyboard:
+            stopEdgePush()
             hiddenInputTextField.becomeFirstResponder()
         case .settings:
+            stopEdgePush()
             hiddenInputTextField.resignFirstResponder()
         }
     }
@@ -452,17 +470,25 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         touchpadSurface.addGestureRecognizer(longPress)
 
         touchpadHelpLabel.translatesAutoresizingMaskIntoConstraints = false
-        touchpadHelpLabel.text = "1-Finger: Move & Tap to Click • Press & Hold: Drag\n2-Finger: Scroll • 2-Finger Tap: Escape / Back"
         touchpadHelpLabel.numberOfLines = 2
         touchpadHelpLabel.textAlignment = .center
-        touchpadHelpLabel.textColor = UIColor(white: 1.0, alpha: 0.35)
+        touchpadHelpLabel.textColor = UIColor(white: 1.0, alpha: 0.45)
         touchpadHelpLabel.font = .systemFont(ofSize: 12, weight: .medium)
         touchpadSurface.addSubview(touchpadHelpLabel)
+
+        mappingModeSegment.translatesAutoresizingMaskIntoConstraints = false
+        mappingModeSegment.selectedSegmentIndex = store.settings.touchpadMappingMode == .fullDisplay ? 0 : 1
+        mappingModeSegment.backgroundColor = UIColor(white: 1.0, alpha: 0.08)
+        mappingModeSegment.selectedSegmentTintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.35)
+        mappingModeSegment.setTitleTextAttributes([.foregroundColor: UIColor.white, .font: UIFont.systemFont(ofSize: 11, weight: .semibold)], for: .normal)
+        mappingModeSegment.setTitleTextAttributes([.foregroundColor: UIColor.white, .font: UIFont.systemFont(ofSize: 11, weight: .bold)], for: .selected)
+        mappingModeSegment.addTarget(self, action: #selector(handleMappingModeChanged(_:)), for: .valueChanged)
+        touchpadSurface.addSubview(mappingModeSegment)
 
         assistiveTouchButton.translatesAutoresizingMaskIntoConstraints = false
         var btnConfig = UIButton.Configuration.plain()
         btnConfig.image = UIImage(systemName: "computermouse.fill")
-        btnConfig.title = "Physical Mouse & Trackpad Setup"
+        btnConfig.title = "Physical Mouse & AssistiveTouch Guide"
         btnConfig.imagePadding = 6
         btnConfig.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 12)
         btnConfig.baseForegroundColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
@@ -528,14 +554,96 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
             touchpadSurface.trailingAnchor.constraint(equalTo: touchpadView.trailingAnchor, constant: -12),
 
             touchpadHelpLabel.centerXAnchor.constraint(equalTo: touchpadSurface.centerXAnchor),
-            touchpadHelpLabel.centerYAnchor.constraint(equalTo: touchpadSurface.centerYAnchor, constant: -16),
+            touchpadHelpLabel.centerYAnchor.constraint(equalTo: touchpadSurface.centerYAnchor, constant: -32),
+            touchpadHelpLabel.leadingAnchor.constraint(greaterThanOrEqualTo: touchpadSurface.leadingAnchor, constant: 16),
+            touchpadHelpLabel.trailingAnchor.constraint(lessThanOrEqualTo: touchpadSurface.trailingAnchor, constant: -16),
+
+            mappingModeSegment.centerXAnchor.constraint(equalTo: touchpadSurface.centerXAnchor),
+            mappingModeSegment.topAnchor.constraint(equalTo: touchpadHelpLabel.bottomAnchor, constant: 12),
+            mappingModeSegment.heightAnchor.constraint(equalToConstant: 28),
 
             assistiveTouchButton.centerXAnchor.constraint(equalTo: touchpadSurface.centerXAnchor),
-            assistiveTouchButton.topAnchor.constraint(equalTo: touchpadHelpLabel.bottomAnchor, constant: 12),
+            assistiveTouchButton.topAnchor.constraint(equalTo: mappingModeSegment.bottomAnchor, constant: 10),
             assistiveTouchButton.heightAnchor.constraint(equalToConstant: 28),
         ])
 
+        updateTouchpadHelpText()
         updateTouchpadButtonsVisibility()
+    }
+
+    private func updateTouchpadHelpText() {
+        if store.settings.touchpadMappingMode == .fullDisplay {
+            touchpadHelpLabel.text = "🎯 Full Monitor 1:1: Entire phone maps directly to external monitor\nTap: Click • Press & Hold: Drag • 2-Finger: Scroll"
+        } else {
+            touchpadHelpLabel.text = "🖱️ Relative Trackpad: Touch edges for continuous travel\nTap: Click • Press & Hold: Drag • 2-Finger: Scroll"
+        }
+    }
+
+    @objc private func handleMappingModeChanged(_ sender: UISegmentedControl) {
+        let mode: TouchpadMappingMode = sender.selectedSegmentIndex == 0 ? .fullDisplay : .relative
+        store.settings.touchpadMappingMode = mode
+        settingsMappingModeSegment.selectedSegmentIndex = sender.selectedSegmentIndex
+        updateTouchpadHelpText()
+        stopEdgePush()
+    }
+
+    // MARK: - Edge Continuous Travel (Edge Push)
+
+    private func checkEdgeContinuousPush(at point: CGPoint, in bounds: CGRect) {
+        guard store.settings.edgeContinuousPush, store.settings.touchpadMappingMode == .relative else {
+            stopEdgePush()
+            return
+        }
+
+        let margin: CGFloat = 28.0
+        var dx: CGFloat = 0
+        var dy: CGFloat = 0
+
+        if point.x <= margin {
+            dx = -1.0 * (1.0 - max(0, point.x) / margin)
+        } else if point.x >= bounds.width - margin {
+            dx = 1.0 * (1.0 - max(0, bounds.width - point.x) / margin)
+        }
+
+        if point.y <= margin {
+            dy = -1.0 * (1.0 - max(0, point.y) / margin)
+        } else if point.y >= bounds.height - margin {
+            dy = 1.0 * (1.0 - max(0, bounds.height - point.y) / margin)
+        }
+
+        if abs(dx) > 0.05 || abs(dy) > 0.05 {
+            startEdgePush(direction: CGVector(dx: dx, dy: dy))
+        } else {
+            stopEdgePush()
+        }
+    }
+
+    private func startEdgePush(direction: CGVector) {
+        edgePushDirection = direction
+        guard edgePushTimer == nil else { return }
+        let link = CADisplayLink(target: self, selector: #selector(handleEdgePushTick))
+        link.add(to: .main, forMode: .common)
+        edgePushTimer = link
+    }
+
+    private func stopEdgePush() {
+        edgePushTimer?.invalidate()
+        edgePushTimer = nil
+        edgePushDirection = .zero
+    }
+
+    @objc private func handleEdgePushTick() {
+        guard edgePushDirection != .zero else {
+            stopEdgePush()
+            return
+        }
+        let baseSpeed: CGFloat = 16.0 * CGFloat(store.settings.pointerSensitivity)
+        let delta = CGVector(
+            dx: edgePushDirection.dx * baseSpeed,
+            dy: edgePushDirection.dy * baseSpeed
+        )
+        let isDragging = isDragModeActive || isHoldingLeftClick
+        workspaceVC?.handleCursorPan(delta: delta, isDragHeld: isDragging)
     }
 
     private func updateTouchpadButtonsVisibility() {
@@ -563,21 +671,52 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     }
 
     @objc private func handleTouchpadPan(_ gesture: UIPanGestureRecognizer) {
-        let translation = gesture.translation(in: touchpadSurface)
+        let surfaceBounds = touchpadSurface.bounds
+        guard surfaceBounds.width > 0, surfaceBounds.height > 0 else { return }
+
         if gesture.numberOfTouches == 2 {
-            // 2-finger scroll on monitor
+            stopEdgePush()
+            let translation = gesture.translation(in: touchpadSurface)
             workspaceVC?.performVirtualScroll(deltaX: -translation.x * 0.8, deltaY: -translation.y * 0.8)
-        } else {
-            // 1-finger pointer move or pane resize drag
-            let speed: CGFloat = 1.35
-            let delta = CGVector(dx: translation.x * speed, dy: translation.y * speed)
-            let isDragging = isDragModeActive || isHoldingLeftClick
-            workspaceVC?.handleCursorPan(delta: delta, isDragHeld: isDragging)
+            gesture.setTranslation(.zero, in: touchpadSurface)
+            return
         }
-        gesture.setTranslation(.zero, in: touchpadSurface)
+
+        let isDragging = isDragModeActive || isHoldingLeftClick
+
+        if store.settings.touchpadMappingMode == .fullDisplay {
+            stopEdgePush()
+            let loc = gesture.location(in: touchpadSurface)
+            let normX = max(0.0, min(1.0, loc.x / surfaceBounds.width))
+            let normY = max(0.0, min(1.0, loc.y / surfaceBounds.height))
+            workspaceVC?.setCursorNormalizedPosition(x: normX, y: normY, isDragHeld: isDragging)
+        } else {
+            let translation = gesture.translation(in: touchpadSurface)
+            let speed = CGFloat(store.settings.pointerSensitivity)
+            let delta = CGVector(dx: translation.x * speed, dy: translation.y * speed)
+            workspaceVC?.handleCursorPan(delta: delta, isDragHeld: isDragging)
+            gesture.setTranslation(.zero, in: touchpadSurface)
+
+            let loc = gesture.location(in: touchpadSurface)
+            if gesture.state == .ended || gesture.state == .cancelled || gesture.state == .failed {
+                stopEdgePush()
+            } else {
+                checkEdgeContinuousPush(at: loc, in: surfaceBounds)
+            }
+        }
     }
 
     @objc private func handleTouchpadTap(_ gesture: UITapGestureRecognizer) {
+        stopEdgePush()
+        if store.settings.touchpadMappingMode == .fullDisplay {
+            let surfaceBounds = touchpadSurface.bounds
+            if surfaceBounds.width > 0 && surfaceBounds.height > 0 {
+                let loc = gesture.location(in: touchpadSurface)
+                let normX = max(0.0, min(1.0, loc.x / surfaceBounds.width))
+                let normY = max(0.0, min(1.0, loc.y / surfaceBounds.height))
+                workspaceVC?.setCursorNormalizedPosition(x: normX, y: normY, isDragHeld: false)
+            }
+        }
         workspaceVC?.performVirtualClick()
     }
 
@@ -880,7 +1019,62 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         orientRow.alignment = .center
         orientRow.distribution = .equalSpacing
 
-        let controllerOptionsCard = UIStackView(arrangedSubviews: [sidebarRow, orientRow, buttonsRow])
+        let mappingLabel = UILabel()
+        mappingLabel.text = "Touchpad Mapping"
+        mappingLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        mappingLabel.textColor = UIColor(white: 0.8, alpha: 1.0)
+
+        settingsMappingModeSegment.translatesAutoresizingMaskIntoConstraints = false
+        settingsMappingModeSegment.selectedSegmentIndex = store.settings.touchpadMappingMode == .fullDisplay ? 0 : 1
+        settingsMappingModeSegment.backgroundColor = UIColor(white: 1.0, alpha: 0.08)
+        settingsMappingModeSegment.selectedSegmentTintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.35)
+        settingsMappingModeSegment.setTitleTextAttributes([.foregroundColor: UIColor.white, .font: UIFont.systemFont(ofSize: 11, weight: .semibold)], for: .normal)
+        settingsMappingModeSegment.setTitleTextAttributes([.foregroundColor: UIColor.white, .font: UIFont.systemFont(ofSize: 11, weight: .bold)], for: .selected)
+        settingsMappingModeSegment.addTarget(self, action: #selector(handleSettingsMappingModeChanged), for: .valueChanged)
+
+        let mappingRow = UIStackView(arrangedSubviews: [mappingLabel, settingsMappingModeSegment])
+        mappingRow.axis = .horizontal
+        mappingRow.alignment = .center
+        mappingRow.distribution = .equalSpacing
+
+        let edgePushLabel = UILabel()
+        edgePushLabel.text = "Edge Continuous Travel"
+        edgePushLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        edgePushLabel.textColor = UIColor(white: 0.8, alpha: 1.0)
+
+        edgePushSwitch.isOn = store.settings.edgeContinuousPush
+        edgePushSwitch.onTintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
+        edgePushSwitch.addTarget(self, action: #selector(handleEdgePushToggled), for: .valueChanged)
+
+        let edgePushRow = UIStackView(arrangedSubviews: [edgePushLabel, edgePushSwitch])
+        edgePushRow.axis = .horizontal
+        edgePushRow.alignment = .center
+        edgePushRow.distribution = .equalSpacing
+
+        let sensLabel = UILabel()
+        sensLabel.text = "Pointer Speed"
+        sensLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        sensLabel.textColor = UIColor(white: 0.8, alpha: 1.0)
+
+        sensitivityValueLabel.text = String(format: "%.1fx", store.settings.pointerSensitivity)
+        sensitivityValueLabel.font = .monospacedSystemFont(ofSize: 12, weight: .semibold)
+        sensitivityValueLabel.textColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
+
+        sensitivitySlider.minimumValue = 1.0
+        sensitivitySlider.maximumValue = 5.0
+        sensitivitySlider.value = Float(store.settings.pointerSensitivity)
+        sensitivitySlider.tintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
+        sensitivitySlider.addTarget(self, action: #selector(handleSensitivitySliderChanged), for: .valueChanged)
+
+        let sensHeaderRow = UIStackView(arrangedSubviews: [sensLabel, sensitivityValueLabel])
+        sensHeaderRow.axis = .horizontal
+        sensHeaderRow.distribution = .equalSpacing
+
+        let sensStack = UIStackView(arrangedSubviews: [sensHeaderRow, sensitivitySlider])
+        sensStack.axis = .vertical
+        sensStack.spacing = 4
+
+        let controllerOptionsCard = UIStackView(arrangedSubviews: [sidebarRow, orientRow, buttonsRow, mappingRow, edgePushRow, sensStack])
         controllerOptionsCard.axis = .vertical
         controllerOptionsCard.spacing = 10
         controllerOptionsCard.backgroundColor = UIColor(red: 0.08, green: 0.11, blue: 0.18, alpha: 1.0)
@@ -1003,6 +1197,27 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         updateTouchpadButtonsVisibility()
     }
 
+    @objc private func handleSettingsMappingModeChanged() {
+        let mode: TouchpadMappingMode = settingsMappingModeSegment.selectedSegmentIndex == 0 ? .fullDisplay : .relative
+        store.settings.touchpadMappingMode = mode
+        mappingModeSegment.selectedSegmentIndex = settingsMappingModeSegment.selectedSegmentIndex
+        updateTouchpadHelpText()
+        stopEdgePush()
+    }
+
+    @objc private func handleEdgePushToggled() {
+        store.settings.edgeContinuousPush = edgePushSwitch.isOn
+        if !edgePushSwitch.isOn {
+            stopEdgePush()
+        }
+    }
+
+    @objc private func handleSensitivitySliderChanged() {
+        let val = Double(round(sensitivitySlider.value * 2) / 2)
+        store.settings.pointerSensitivity = val
+        sensitivityValueLabel.text = String(format: "%.1fx", val)
+    }
+
     private func handleOpenUrlTapped() {
         let raw = (urlTextField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         guard !raw.isEmpty else { return }
@@ -1086,6 +1301,79 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         let scrollGesture = UIPanGestureRecognizer(target: self, action: #selector(handleDockMouseScroll(_:)))
         scrollGesture.allowedScrollTypesMask = [.continuous]
         view.addGestureRecognizer(scrollGesture)
+
+        NotificationCenter.default.addObserver(
+            forName: .GCMouseDidConnect,
+            object: nil,
+            queue: .main
+        ) { [weak self] note in
+            guard let mouse = note.object as? GCMouse else { return }
+            Task { @MainActor [weak self] in
+                self?.configureGCMouse(mouse)
+            }
+        }
+
+        NotificationCenter.default.addObserver(
+            forName: .GCMouseDidDisconnect,
+            object: nil,
+            queue: .main
+        ) { [weak self] note in
+            guard let mouse = note.object as? GCMouse else { return }
+            Task { @MainActor [weak self] in
+                self?.registeredMice.remove(mouse)
+            }
+        }
+
+        for mouse in GCMouse.mice() {
+            configureGCMouse(mouse)
+        }
+    }
+
+    private func configureGCMouse(_ mouse: GCMouse) {
+        registeredMice.insert(mouse)
+        mouse.mouseInput?.mouseMovedHandler = { [weak self] (_, deltaX, deltaY) in
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
+                let sens = CGFloat(self.store.settings.pointerSensitivity)
+                let isDragging = self.isDragModeActive || self.isHoldingLeftClick
+                let dx = CGFloat(deltaX) * sens
+                let dy = -CGFloat(deltaY) * sens
+                self.workspaceVC?.handleCursorPan(delta: CGVector(dx: dx, dy: dy), isDragHeld: isDragging)
+            }
+        }
+
+        mouse.mouseInput?.leftButton.pressedChangedHandler = { [weak self] (_, _, pressed) in
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
+                self.isHoldingLeftClick = pressed
+                if !pressed {
+                    self.workspaceVC?.performVirtualClick()
+                }
+            }
+        }
+
+        mouse.mouseInput?.rightButton?.pressedChangedHandler = { [weak self] (_, _, pressed) in
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
+                if pressed {
+                    self.workspaceVC?.routeSpecialKey(.escape)
+                }
+            }
+        }
+
+        mouse.mouseInput?.scroll.yAxis.valueChangedHandler = { [weak self] (_, value) in
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
+                self.workspaceVC?.performVirtualScroll(deltaX: 0, deltaY: CGFloat(value) * -14.0)
+            }
+        }
+
+        mouse.mouseInput?.scroll.xAxis.valueChangedHandler = { [weak self] (_, value) in
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
+                self.workspaceVC?.performVirtualScroll(deltaX: CGFloat(value) * -14.0, deltaY: 0)
+            }
+        }
     }
 
     private func setupHardwareKeyboardListeners() {
@@ -1112,19 +1400,35 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     }
 
     @objc private func handleDockMouseHover(_ gesture: UIHoverGestureRecognizer) {
-        let location = gesture.location(in: view)
-        if gesture.state == .began {
-            lastPanLocation = location
-        } else if gesture.state == .changed {
-            let rawDx = location.x - lastPanLocation.x
-            let rawDy = location.y - lastPanLocation.y
-            let dist = hypot(rawDx, rawDy)
-            let accel: CGFloat = dist > 12 ? 1.75 : 1.35
-            let dx = rawDx * accel
-            let dy = rawDy * accel
-            let isDragging = isDragModeActive || isHoldingLeftClick
-            workspaceVC?.handleCursorPan(delta: CGVector(dx: dx, dy: dy), isDragHeld: isDragging)
-            lastPanLocation = location
+        let locInView = gesture.location(in: view)
+        let isDragging = isDragModeActive || isHoldingLeftClick
+
+        if store.settings.touchpadMappingMode == .fullDisplay {
+            stopEdgePush()
+            let viewBounds = view.bounds
+            guard viewBounds.width > 0, viewBounds.height > 0 else { return }
+            let normX = max(0.0, min(1.0, locInView.x / viewBounds.width))
+            let normY = max(0.0, min(1.0, locInView.y / viewBounds.height))
+            workspaceVC?.setCursorNormalizedPosition(x: normX, y: normY, isDragHeld: isDragging)
+        } else {
+            if gesture.state == .began {
+                lastPanLocation = locInView
+                stopEdgePush()
+            } else if gesture.state == .changed {
+                let rawDx = locInView.x - lastPanLocation.x
+                let rawDy = locInView.y - lastPanLocation.y
+                let dist = hypot(rawDx, rawDy)
+                let accelMultiplier: CGFloat = dist > 12 ? 1.4 : 1.0
+                let speed = CGFloat(store.settings.pointerSensitivity) * accelMultiplier
+                let dx = rawDx * speed
+                let dy = rawDy * speed
+                workspaceVC?.handleCursorPan(delta: CGVector(dx: dx, dy: dy), isDragHeld: isDragging)
+                lastPanLocation = locInView
+
+                checkEdgeContinuousPush(at: locInView, in: view.bounds)
+            } else if gesture.state == .ended || gesture.state == .cancelled {
+                stopEdgePush()
+            }
         }
     }
 

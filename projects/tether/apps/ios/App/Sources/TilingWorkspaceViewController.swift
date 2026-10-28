@@ -569,6 +569,39 @@ public final class TilingWorkspaceViewController: UIViewController {
         virtualCursorOverlay?.performScroll(deltaX: deltaX, deltaY: deltaY)
     }
 
+    public func setCursorNormalizedPosition(x: CGFloat, y: CGFloat, isDragHeld: Bool = false) {
+        let monWidth = max(1, view.bounds.width)
+        let monHeight = max(1, view.bounds.height)
+        let targetPt = CGPoint(x: x * monWidth, y: y * monHeight)
+        virtualCursorOverlay?.setCursorPosition(targetPt)
+
+        guard let overlay = virtualCursorOverlay else { return }
+        if activeCommandPalette != nil || activeDialog != nil {
+            overlay.resetDefaultCursor()
+            return
+        }
+
+        if isDragHeld {
+            if let drag = activeDragSplit {
+                let rawRatio: Double
+                if drag.direction == .horizontal {
+                    rawRatio = Double((targetPt.x - drag.containerBounds.minX) / max(1, drag.containerBounds.width))
+                } else {
+                    rawRatio = Double((targetPt.y - drag.containerBounds.minY) / max(1, drag.containerBounds.height))
+                }
+                store.tree = PaneTreeOps.updateSplitRatio(store.tree, splitId: drag.splitId, ratio: rawRatio)
+            } else {
+                if let hit = renderedDividers.first(where: { $0.frame.insetBy(dx: -15, dy: -15).contains(targetPt) }) {
+                    activeDragSplit = hit
+                    overlay.setResizeCursor(direction: hit.direction)
+                }
+            }
+        } else {
+            activeDragSplit = nil
+            updateDividerHoverState(at: targetPt)
+        }
+    }
+
     public func handleCursorPan(delta: CGVector, isDragHeld: Bool) {
         virtualCursorOverlay?.move(by: delta)
         guard let overlay = virtualCursorOverlay else { return }
