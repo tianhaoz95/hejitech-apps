@@ -102,8 +102,14 @@ public final class VirtualCursorOverlayView: UIView {
             // 1. Text Field: focus, select all, send editing begin event without stealing focus
             if let textField = findAncestor(of: hitView, matching: { $0 is UITextField }) as? UITextField {
                 textField.becomeFirstResponder()
-                textField.selectAll(nil)
                 textField.sendActions(for: .editingDidBegin)
+                DispatchQueue.main.async {
+                    textField.selectAll(nil)
+                    if let start = textField.beginningOfDocument as UITextPosition?,
+                       let end = textField.endOfDocument as UITextPosition? {
+                        textField.selectedTextRange = textField.textRange(from: start, to: end)
+                    }
+                }
                 return
             }
 

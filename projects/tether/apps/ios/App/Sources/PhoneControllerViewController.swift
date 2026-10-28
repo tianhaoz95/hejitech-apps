@@ -900,11 +900,44 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
             UIKeyCommand(title: "Previous Workspace (Mac)", action: #selector(prevWorkspaceKey), input: UIKeyCommand.inputLeftArrow, modifierFlags: [.command, .alternate]),
             UIKeyCommand(title: "Next Workspace (Bracket)", action: #selector(nextWorkspaceKey), input: "]", modifierFlags: [.control, .alternate]),
             UIKeyCommand(title: "Previous Workspace (Bracket)", action: #selector(prevWorkspaceKey), input: "[", modifierFlags: [.control, .alternate]),
+            UIKeyCommand(title: "Cycle Next Pane", action: #selector(cycleNextPaneKey), input: "]", modifierFlags: [.command, .alternate]),
+            UIKeyCommand(title: "Cycle Previous Pane", action: #selector(cyclePrevPaneKey), input: "[", modifierFlags: [.command, .alternate]),
+            UIKeyCommand(title: "Command Palette", action: #selector(openCommandPaletteKey), input: "k", modifierFlags: [.command]),
+            UIKeyCommand(title: "Command Palette", action: #selector(openCommandPaletteKey), input: "p", modifierFlags: [.command]),
+            UIKeyCommand(title: "Keyboard Shortcuts", action: #selector(openShortcutsKey), input: "/", modifierFlags: [.command]),
+            UIKeyCommand(title: "Split Vertically", action: #selector(splitVertKey), input: "d", modifierFlags: [.command]),
+            UIKeyCommand(title: "Split Horizontally", action: #selector(splitHorizKey), input: "d", modifierFlags: [.command, .shift]),
+            UIKeyCommand(title: "Close Focused Pane", action: #selector(closePaneKey), input: "w", modifierFlags: [.command, .shift]),
+            UIKeyCommand(title: "Toggle Maximise", action: #selector(maximiseKey), input: "m", modifierFlags: [.command, .shift]),
+            UIKeyCommand(title: "New Tab", action: #selector(newTabKey), input: "t", modifierFlags: [.command]),
+            UIKeyCommand(title: "Close Tab", action: #selector(closeTabKey), input: "w", modifierFlags: [.command]),
+            UIKeyCommand(title: "Focus Address Bar", action: #selector(focusAddressBarKey), input: "l", modifierFlags: [.command]),
+            UIKeyCommand(title: "Preset 1", action: #selector(preset1Key), input: "1", modifierFlags: [.command]),
+            UIKeyCommand(title: "Preset 2", action: #selector(preset2Key), input: "2", modifierFlags: [.command]),
+            UIKeyCommand(title: "Preset 3", action: #selector(preset3Key), input: "3", modifierFlags: [.command]),
+            UIKeyCommand(title: "Preset 4", action: #selector(preset4Key), input: "4", modifierFlags: [.command]),
+            UIKeyCommand(title: "Open Settings", action: #selector(openSettingsKey), input: ",", modifierFlags: [.command]),
         ]
     }
 
     @objc private func nextWorkspaceKey() { store.nextWorkspace() }
     @objc private func prevWorkspaceKey() { store.prevWorkspace() }
+    @objc private func cycleNextPaneKey() { store.cyclePanes(reverse: false) }
+    @objc private func cyclePrevPaneKey() { store.cyclePanes(reverse: true) }
+    @objc private func openCommandPaletteKey() { workspaceVC?.openCommandPalette() }
+    @objc private func openShortcutsKey() { workspaceVC?.openKeyboardShortcutsTapped() }
+    @objc private func splitVertKey() { store.splitFocusedPane(.horizontal) }
+    @objc private func splitHorizKey() { store.splitFocusedPane(.vertical) }
+    @objc private func closePaneKey() { store.closePane() }
+    @objc private func maximiseKey() { store.toggleMaximiseFocusedPane() }
+    @objc private func newTabKey() { store.openTab(type: .web) }
+    @objc private func closeTabKey() { store.closeTab() }
+    @objc private func focusAddressBarKey() { workspaceVC?.activeWebTabController()?.focusAddressBar() }
+    @objc private func preset1Key() { store.applyPreset(.single) }
+    @objc private func preset2Key() { store.applyPreset(.twoColumn) }
+    @objc private func preset3Key() { store.applyPreset(.leftPlusTwoRight) }
+    @objc private func preset4Key() { store.applyPreset(.twoByTwo) }
+    @objc private func openSettingsKey() { workspaceVC?.openSettingsTapped() }
 
     // MARK: - Edge Continuous Travel (Edge Push)
 
@@ -1886,6 +1919,12 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
 
     public override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
         hasDetectedPhysicalKeyboard = true
+        for press in presses {
+            if GlobalShortcutDispatcher.handlePress(press: press, store: store, workspaceVC: workspaceVC) {
+                return
+            }
+        }
+
         var handled = false
         for press in presses {
             guard let key = press.key else { continue }
@@ -1915,54 +1954,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
                 workspaceVC?.routeSpecialKey(.right)
                 handled = true
             default:
-                if key.modifierFlags.contains(.command) || key.modifierFlags.contains(.control) {
-                    let char = key.charactersIgnoringModifiers.uppercased()
-                    switch char {
-                    case "K", "P":
-                        workspaceVC?.openCommandPalette()
-                        handled = true
-                    case "T":
-                        store.openTab(type: .web)
-                        handled = true
-                    case "W":
-                        if workspaceVC?.activeCommandPalette != nil {
-                            workspaceVC?.activeCommandPalette?.dismissPalette()
-                        } else {
-                            store.closeTab()
-                        }
-                        handled = true
-                    case "1":
-                        store.applyPreset(.single)
-                        handled = true
-                    case "2":
-                        store.applyPreset(.twoColumn)
-                        handled = true
-                    case "3":
-                        store.applyPreset(.leftPlusTwoRight)
-                        handled = true
-                    case "4":
-                        store.applyPreset(.twoByTwo)
-                        handled = true
-                    case "C":
-                        workspaceVC?.routeSpecialKey(.ctrlC)
-                        handled = true
-                    case "D":
-                        workspaceVC?.routeSpecialKey(.ctrlD)
-                        handled = true
-                    case "L":
-                        workspaceVC?.routeSpecialKey(.ctrlL)
-                        handled = true
-                    case "Z":
-                        workspaceVC?.routeSpecialKey(.ctrlZ)
-                        handled = true
-                    case ",":
-                        openSettingsModal()
-                        handled = true
-                    default:
-                        workspaceVC?.routeKeyInput(key.characters)
-                        handled = true
-                    }
-                } else if !key.characters.isEmpty {
+                if !key.characters.isEmpty {
                     workspaceVC?.routeKeyInput(key.characters)
                     handled = true
                 }

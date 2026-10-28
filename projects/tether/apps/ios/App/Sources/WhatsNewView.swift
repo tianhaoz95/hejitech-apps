@@ -23,6 +23,16 @@ struct WhatsNewView: View {
     static let releases: [ReleaseNotes] = [
         ReleaseNotes(version: "0.1.15", date: "October 2026", items: [
             WhatsNewItem(
+                icon: "globe",
+                title: "Reliable URL Bar Selection & Input",
+                description: "Clicking the browser URL bar now reliably selects all text and keeps the address bar active for typing, preventing iOS from immediately unselecting it."
+            ),
+            WhatsNewItem(
+                icon: "keyboard.fill",
+                title: "Physical Keyboard Shortcut Support",
+                description: "All global keyboard shortcuts (⌘K palette, ⌘/ shortcuts cheat sheet, ⌘⌥] pane cycling, ⌃→ workspaces, ⌘D split, ⌘T tab, ⌘L url bar, ⌘1..4 presets) now trigger reliably from physical hardware keyboards."
+            ),
+            WhatsNewItem(
                 icon: "terminal.fill",
                 title: "Terminal Output & Prompt Alignment",
                 description: "The shell prompt now sits naturally directly below previous command output lines instead of being pushed down by trailing blank rows."

@@ -880,14 +880,14 @@ public final class TilingWorkspaceViewController: UIViewController {
 
     // MARK: - Top Bar Actions
 
-    @objc private func presetSingleTapped() { store.applyPreset(.single) }
-    @objc private func presetTwoColTapped() { store.applyPreset(.twoColumn) }
-    @objc private func presetLeftTwoRightTapped() { store.applyPreset(.leftPlusTwoRight) }
-    @objc private func presetGridTapped() { store.applyPreset(.twoByTwo) }
-    @objc private func splitHorizontalTapped() { store.splitFocusedPane(.horizontal) }
-    @objc private func splitVerticalTapped() { store.splitFocusedPane(.vertical) }
-    @objc private func swapPanesTapped() { store.swapFocusedWithNext() }
-    @objc private func maximisePaneTapped() { store.toggleMaximiseFocusedPane() }
+    @objc internal func presetSingleTapped() { store.applyPreset(.single) }
+    @objc internal func presetTwoColTapped() { store.applyPreset(.twoColumn) }
+    @objc internal func presetLeftTwoRightTapped() { store.applyPreset(.leftPlusTwoRight) }
+    @objc internal func presetGridTapped() { store.applyPreset(.twoByTwo) }
+    @objc internal func splitHorizontalTapped() { store.splitFocusedPane(.horizontal) }
+    @objc internal func splitVerticalTapped() { store.splitFocusedPane(.vertical) }
+    @objc internal func swapPanesTapped() { store.swapFocusedWithNext() }
+    @objc internal func maximisePaneTapped() { store.toggleMaximiseFocusedPane() }
 
     public func dismissAllModals() {
         activeHostsModal?.dismissModal()
@@ -998,12 +998,8 @@ public final class TilingWorkspaceViewController: UIViewController {
 
     public override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
         for press in presses {
-            guard let key = press.key else { continue }
-            if key.keyCode == .keyboardEscape {
-                if activeHostsModal != nil || activeSettingsModal != nil || activeShortcutsModal != nil || activeCommandPalette != nil || activeDialog != nil {
-                    dismissAllModals()
-                    return
-                }
+            if GlobalShortcutDispatcher.handlePress(press: press, store: store, workspaceVC: self) {
+                return
             }
         }
 
@@ -1033,17 +1029,6 @@ public final class TilingWorkspaceViewController: UIViewController {
                     }
                 }
             }
-            return
-        }
-
-        // If any global modifier (Command, Control, or Alternate/Option) is active:
-        // Forward directly to super so UIKit's responder chain processes keyCommands!
-        let hasGlobalModifier = presses.contains { press in
-            guard let flags = press.key?.modifierFlags else { return false }
-            return flags.contains(.command) || flags.contains(.control) || flags.contains(.alternate)
-        }
-        if hasGlobalModifier {
-            super.pressesBegan(presses, with: event)
             return
         }
 
@@ -1093,6 +1078,11 @@ public final class TilingWorkspaceViewController: UIViewController {
     public func activeWebTabController() -> WebTabViewController? {
         guard let active = store.focusedPane?.activeTab else { return nil }
         return tabControllers[active.id] as? WebTabViewController
+    }
+
+    public func activeSshTabController() -> SshTabViewController? {
+        guard let active = store.focusedPane?.activeTab else { return nil }
+        return tabControllers[active.id] as? SshTabViewController
     }
 
     @objc public func openAssistiveTouchGuide() {
@@ -1237,21 +1227,21 @@ public final class TilingWorkspaceViewController: UIViewController {
         return cmds
     }
 
-    @objc private func closeFocusedPaneKey() { store.closePane() }
+    @objc internal func closeFocusedPaneKey() { store.closePane() }
     @objc private func focusLeftKey() { store.focusDirectional(.left) }
     @objc private func focusRightKey() { store.focusDirectional(.right) }
     @objc private func focusUpKey() { store.focusDirectional(.up) }
     @objc private func focusDownKey() { store.focusDirectional(.down) }
     @objc private func shrinkSplitKey() { store.tree = PaneTreeOps.adjustParentSplitRatio(store.tree, delta: -0.05) }
     @objc private func growSplitKey() { store.tree = PaneTreeOps.adjustParentSplitRatio(store.tree, delta: 0.05) }
-    @objc private func newTabKey() { store.openTab(type: .web) }
-    @objc private func nextWorkspaceKey() { store.nextWorkspace() }
-    @objc private func prevWorkspaceKey() { store.prevWorkspace() }
-    @objc private func closeActiveTabKey() { store.closeTab() }
+    @objc internal func newTabKey() { store.openTab(type: .web) }
+    @objc internal func nextWorkspaceKey() { store.nextWorkspace() }
+    @objc internal func prevWorkspaceKey() { store.prevWorkspace() }
+    @objc internal func closeActiveTabKey() { store.closeTab() }
     @objc private func nextTabKey() { store.tree = PaneTreeOps.selectNextTab(store.tree, reverse: false) }
     @objc private func prevTabKey() { store.tree = PaneTreeOps.selectNextTab(store.tree, reverse: true) }
-    @objc private func cycleNextPaneKey() { store.cyclePanes(reverse: false) }
-    @objc private func cyclePrevPaneKey() { store.cyclePanes(reverse: true) }
+    @objc internal func cycleNextPaneKey() { store.cyclePanes(reverse: false) }
+    @objc internal func cyclePrevPaneKey() { store.cyclePanes(reverse: true) }
     @objc private func newWorkspaceKey() { store.addWorkspace() }
     @objc private func jumpToWorkspace1() { store.switchToWorkspace(at: 0) }
     @objc private func jumpToWorkspace2() { store.switchToWorkspace(at: 1) }
@@ -1259,14 +1249,14 @@ public final class TilingWorkspaceViewController: UIViewController {
     @objc private func jumpToWorkspace4() { store.switchToWorkspace(at: 3) }
     @objc private func dismissModalKey() { dismissAllModals() }
 
-    @objc private func focusAddressBarKey() {
+    @objc internal func focusAddressBarKey() {
         if let active = store.focusedPane?.activeTab,
            let webVC = tabControllers[active.id] as? WebTabViewController {
             webVC.focusAddressBar()
         }
     }
 
-    @objc private func reloadWebKey() {
+    @objc internal func reloadWebKey() {
         if let active = store.focusedPane?.activeTab,
            let webVC = tabControllers[active.id] as? WebTabViewController {
             webVC.reloadCurrentPage()

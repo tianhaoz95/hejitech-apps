@@ -40,9 +40,29 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
         loadInput(initialURLString)
     }
 
+    public private(set) var isAddressBarActive: Bool = false
+
     public func focusAddressBar() {
+        isAddressBarActive = true
+        addressField.layer.borderColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0).cgColor
+        addressField.layer.borderWidth = 1.5
         addressField.becomeFirstResponder()
-        addressField.selectAll(nil)
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.addressField.selectAll(nil)
+            if let start = self.addressField.beginningOfDocument as UITextPosition?,
+               let end = self.addressField.endOfDocument as UITextPosition? {
+                self.addressField.selectedTextRange = self.addressField.textRange(from: start, to: end)
+            }
+        }
+    }
+
+    public func deactivateAddressBar() {
+        guard isAddressBarActive || addressField.isFirstResponder else { return }
+        isAddressBarActive = false
+        addressField.layer.borderColor = UIColor(white: 1.0, alpha: 0.14).cgColor
+        addressField.layer.borderWidth = 1.0
+        addressField.resignFirstResponder()
     }
 
     public func reloadCurrentPage() {
@@ -77,17 +97,29 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
     }
 
     public func handleKeyInput(text: String) {
-        if addressField.isFirstResponder {
+        if isAddressBarActive || addressField.isFirstResponder {
             if text == "\r" || text == "\n" {
-                _ = textFieldShouldReturn(addressField)
+                deactivateAddressBar()
+                loadInput(addressField.text ?? "")
             } else if text == "\u{7F}" || text == "\u{08}" {
-                var cur = addressField.text ?? ""
-                if !cur.isEmpty {
-                    cur.removeLast()
-                    addressField.text = cur
+                if let range = addressField.selectedTextRange,
+                   range == addressField.textRange(from: addressField.beginningOfDocument, to: addressField.endOfDocument) {
+                    addressField.text = ""
+                } else {
+                    var cur = addressField.text ?? ""
+                    if !cur.isEmpty {
+                        cur.removeLast()
+                        addressField.text = cur
+                    }
                 }
             } else {
-                addressField.text = (addressField.text ?? "") + text
+                if let range = addressField.selectedTextRange,
+                   range == addressField.textRange(from: addressField.beginningOfDocument, to: addressField.endOfDocument) {
+                    addressField.text = text
+                    addressField.selectedTextRange = addressField.textRange(from: addressField.endOfDocument, to: addressField.endOfDocument)
+                } else {
+                    addressField.text = (addressField.text ?? "") + text
+                }
             }
             return
         }
@@ -192,12 +224,14 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
     }
 
     public func handleSpecialKey(_ key: SpecialKey) {
-        if addressField.isFirstResponder {
+        if isAddressBarActive || addressField.isFirstResponder {
             switch key {
             case .escape:
-                addressField.resignFirstResponder()
+                deactivateAddressBar()
+                addressField.text = (tabItem.url == "about:home") ? "" : (tabItem.url ?? "")
             case .enter:
-                _ = textFieldShouldReturn(addressField)
+                deactivateAddressBar()
+                loadInput(addressField.text ?? "")
             case .backspace:
                 handleKeyInput(text: "\u{7F}")
             default:
@@ -734,12 +768,28 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
     }
 
     public func textFieldDidBeginEditing(_ textField: UITextField) {
+        isAddressBarActive = true
+        addressField.layer.borderColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0).cgColor
+        addressField.layer.borderWidth = 1.5
         store.focusPane(paneId)
-        textField.selectAll(nil)
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.addressField.selectAll(nil)
+            if let start = self.addressField.beginningOfDocument as UITextPosition?,
+               let end = self.addressField.endOfDocument as UITextPosition? {
+                self.addressField.selectedTextRange = self.addressField.textRange(from: start, to: end)
+            }
+        }
+    }
+
+    public func textFieldDidEndEditing(_ textField: UITextField) {
+        isAddressBarActive = false
+        addressField.layer.borderColor = UIColor(white: 1.0, alpha: 0.14).cgColor
+        addressField.layer.borderWidth = 1.0
     }
 
     public func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-        textField.resignFirstResponder()
+        deactivateAddressBar()
         loadInput(textField.text ?? "")
         return true
     }
