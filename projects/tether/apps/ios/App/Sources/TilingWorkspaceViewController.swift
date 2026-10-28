@@ -155,11 +155,6 @@ public final class TilingWorkspaceViewController: UIViewController {
 
         virtualCursorOverlay = VirtualCursorOverlayView(targetCanvas: view)
         virtualCursorOverlay.translatesAutoresizingMaskIntoConstraints = false
-        virtualCursorOverlay.onTextInputFocused = { textField in
-            DisplayHost.shared.phoneControllerVC?.switchToKeyboardForInput(
-                placeholder: textField.placeholder ?? "Text input"
-            )
-        }
         view.addSubview(virtualCursorOverlay)
 
         phoneSwitcherHeightConstraint = phoneSwitcherBar.heightAnchor.constraint(equalToConstant: 0)
@@ -990,6 +985,17 @@ public final class TilingWorkspaceViewController: UIViewController {
             return
         }
 
+        // If any global modifier (Command, Control, or Alternate/Option) is active:
+        // Forward directly to super so UIKit's responder chain processes keyCommands!
+        let hasGlobalModifier = presses.contains { press in
+            guard let flags = press.key?.modifierFlags else { return false }
+            return flags.contains(.command) || flags.contains(.control) || flags.contains(.alternate)
+        }
+        if hasGlobalModifier {
+            super.pressesBegan(presses, with: event)
+            return
+        }
+
         var handled = false
         for press in presses {
             guard let key = press.key else { continue }
@@ -1022,49 +1028,7 @@ public final class TilingWorkspaceViewController: UIViewController {
                 routeSpecialKey(.right)
                 handled = true
             default:
-                if key.modifierFlags.contains(.command) || key.modifierFlags.contains(.control) {
-                    let char = key.charactersIgnoringModifiers.uppercased()
-                    switch char {
-                    case "K", "P":
-                        openCommandPalette()
-                        handled = true
-                    case "T":
-                        store.openTab(type: .web)
-                        handled = true
-                    case "W":
-                        store.closeTab()
-                        handled = true
-                    case "1":
-                        store.applyPreset(.single)
-                        handled = true
-                    case "2":
-                        store.applyPreset(.twoColumn)
-                        handled = true
-                    case "3":
-                        store.applyPreset(.leftPlusTwoRight)
-                        handled = true
-                    case "4":
-                        store.applyPreset(.twoByTwo)
-                        handled = true
-                    case "C":
-                        routeSpecialKey(.ctrlC)
-                        handled = true
-                    case "D":
-                        routeSpecialKey(.ctrlD)
-                        handled = true
-                    case "L":
-                        routeSpecialKey(.ctrlL)
-                        handled = true
-                    case "Z":
-                        routeSpecialKey(.ctrlZ)
-                        handled = true
-                    default:
-                        if !key.characters.isEmpty {
-                            routeKeyInput(key.characters)
-                            handled = true
-                        }
-                    }
-                } else if !key.characters.isEmpty {
+                if !key.characters.isEmpty {
                     routeKeyInput(key.characters)
                     handled = true
                 }

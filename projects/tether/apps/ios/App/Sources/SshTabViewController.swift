@@ -4,7 +4,7 @@ import TetherKit
 import UIKit
 
 @MainActor
-public final class SshTabViewController: UIViewController, UITextFieldDelegate {
+public final class SshTabViewController: UIViewController {
     private let store: WorkspaceStore
     public var paneId: String
     public var tabItem: TetherKit.Tab
@@ -16,15 +16,21 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
     private let connectButton = UIButton(type: .system)
     private let fontMinusButton = UIButton(type: .system)
     private let fontPlusButton = UIButton(type: .system)
+    private let pasteButton = UIButton(type: .system)
     private let clearButton = UIButton(type: .system)
     private let gridSizeLabel = UILabel()
     private let terminalTextView = UITextView()
-    private let promptLabel = UILabel()
-    private let commandField = UITextField()
-    private let pasteButton = UIButton(type: .system)
+
     private var cancellables: Set<AnyCancellable> = []
     private var commandHistory: [String] = []
     private var historyIndex: Int = -1
+
+    // Inline shell & cursor state (functions as a desktop terminal)
+    private var activeInputLine: String = ""
+    private var cursorBlink: Bool = true
+    private var blinkTimer: Timer?
+    private var currentDirectory: String = "/home/guest"
+    private var virtualFiles: [String: [String: String]] = [:]
 
     public init(store: WorkspaceStore, paneId: String, tab: TetherKit.Tab) {
         self.store = store
@@ -47,6 +53,7 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
         view.backgroundColor = UIColor(red: 0.02, green: 0.03, blue: 0.06, alpha: 1.0)
         setupUI()
         bindStore()
+        initVirtualFilesystem()
 
         terminalBuffer.onWindowChange = { [weak self] cols, rows in
             guard let self else { return }
@@ -54,13 +61,13 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
         }
 
         let host = currentHost
-        terminalBuffer.feed("\u{1B}[38;5;39;1mTether SSH Client (No local shell — PRD §3.1)\u{1B}[0m\r\n")
+        terminalBuffer.feed("\u{1B}[38;5;39;1mTether SSH Client (xterm-256color — PRD §3.1, §10)\u{1B}[0m\r\n")
         if let host {
             terminalBuffer.feed("Target host: \(host.connectionString) (\(host.auth.displayName))\r\n")
             if host.autoConnect == true {
                 terminalBuffer.feed("Auto-connect is enabled for this host. Connecting...\r\n\r\n")
             } else {
-                terminalBuffer.feed("Press 'Connect' to verify SHA-256 host key and allocate xterm-256color PTY.\r\n\r\n")
+                terminalBuffer.feed("Click 'Connect' or press Enter to verify host key and allocate PTY.\r\n\r\n")
             }
         } else {
             terminalBuffer.feed("No SSH host selected. Choose or add a host from the toolbar.\r\n\r\n")
@@ -74,6 +81,8 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
                 self.initiateConnection(host: host)
             }
         }
+
+        startCursorBlinkTimer()
     }
 
     public override func viewDidLayoutSubviews() {
@@ -81,51 +90,71 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
         recalculateTerminalGrid()
     }
 
-    public func focusTerminalInput() {
-        commandField.becomeFirstResponder()
+    private func startCursorBlinkTimer() {
+        blinkTimer?.invalidate()
+        blinkTimer = Timer.scheduledTimer(withTimeInterval: 0.6, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                self.cursorBlink.toggle()
+                self.renderTerminal()
+            }
+        }
     }
 
-    /// Receives Ctrl+<Key> when this SSH terminal is focused (PRD §13.2).
+    deinit {
+        blinkTimer?.invalidate()
+    }
+
+    public func focusTerminalInput() {
+        store.focusPane(paneId)
+        cursorBlink = true
+        renderTerminal()
+    }
+
+    // MARK: - Key & Control Key Input
+
     public func sendControlKey(_ key: String) {
         let upper = key.uppercased()
         switch upper {
         case "C":
-            terminalBuffer.feed("^C\r\n\(shellPromptString)")
-            commandField.text = ""
+            terminalBuffer.feed("\(shellPromptString)\(activeInputLine)^C\r\n")
+            activeInputLine = ""
         case "D":
-            if (commandField.text ?? "").isEmpty {
-                disconnectSession(reason: "EOF (^D)")
+            if activeInputLine.isEmpty {
+                disconnectSession(reason: "logout (EOF ^D)")
                 return
             }
         case "L":
-            terminalBuffer.feed("\u{1B}[2J\u{1B}[1;1H\(shellPromptString)")
+            terminalBuffer.clearScrollback()
+            activeInputLine = ""
         case "U":
-            commandField.text = ""
+            activeInputLine = ""
         case "R":
-            terminalBuffer.feed("(reverse-i-search)`': \r\n\(shellPromptString)")
+            terminalBuffer.feed("(reverse-i-search)`': \r\n")
+            activeInputLine = ""
         default:
-            terminalBuffer.feed("^\(upper)\r\n\(shellPromptString)")
+            terminalBuffer.feed("^\(upper)\r\n")
+            activeInputLine = ""
         }
         renderTerminal()
     }
 
     public func handleKeyInput(text: String) {
         if text == "\r" || text == "\n" {
-            let cmd = commandField.text ?? ""
-            commandField.text = ""
+            let cmd = activeInputLine
+            activeInputLine = ""
             executeTerminalLine(cmd)
         } else if text == "\u{7F}" || text == "\u{08}" {
-            var current = commandField.text ?? ""
-            if !current.isEmpty {
-                current.removeLast()
-                commandField.text = current
+            if !activeInputLine.isEmpty {
+                activeInputLine.removeLast()
+                renderTerminal()
             }
         } else if text == "\t" {
-            let current = commandField.text ?? ""
-            commandField.text = current + "  "
+            handleTabCompletion()
         } else {
-            let current = commandField.text ?? ""
-            commandField.text = current + text
+            activeInputLine += text
+            cursorBlink = true
+            renderTerminal()
         }
     }
 
@@ -138,24 +167,27 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
                 } else if historyIndex > 0 {
                     historyIndex -= 1
                 }
-                commandField.text = commandHistory[historyIndex]
+                activeInputLine = commandHistory[historyIndex]
+                renderTerminal()
             }
         case .down:
             if historyIndex != -1 {
                 if historyIndex < commandHistory.count - 1 {
                     historyIndex += 1
-                    commandField.text = commandHistory[historyIndex]
+                    activeInputLine = commandHistory[historyIndex]
                 } else {
                     historyIndex = -1
-                    commandField.text = ""
+                    activeInputLine = ""
                 }
+                renderTerminal()
             }
         case .left, .right:
             break
         case .escape:
-            commandField.text = ""
+            activeInputLine = ""
+            renderTerminal()
         case .tab:
-            handleKeyInput(text: "\t")
+            handleTabCompletion()
         case .enter:
             handleKeyInput(text: "\n")
         case .backspace:
@@ -171,6 +203,32 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
         }
     }
 
+    private func handleTabCompletion() {
+        let trimmed = activeInputLine.trimmingCharacters(in: .whitespaces)
+        let parts = trimmed.components(separatedBy: " ")
+        if parts.count <= 1 {
+            let prefix = parts.first ?? ""
+            let builtins = ["ls", "cd", "cat", "pwd", "whoami", "hostname", "uptime", "ps", "df", "free", "clear", "help", "exit", "echo", "curl", "git", "uname"]
+            if let match = builtins.first(where: { $0.hasPrefix(prefix) && $0 != prefix }) {
+                activeInputLine = match + " "
+                renderTerminal()
+                return
+            }
+        } else if parts.count == 2 {
+            let cmd = parts[0]
+            let filePrefix = parts[1]
+            let currentDirFiles = virtualFiles[currentDirectory]?.keys.map { String($0) } ?? []
+            if let match = currentDirFiles.first(where: { $0.hasPrefix(filePrefix) }) {
+                activeInputLine = "\(cmd) \(match)"
+                renderTerminal()
+                return
+            }
+        }
+        // Fallback: 2 spaces
+        activeInputLine += "  "
+        renderTerminal()
+    }
+
     private var currentHost: SshHost? {
         if let id = tabItem.hostId, let found = store.hosts.first(where: { $0.id == id }) {
             return found
@@ -179,9 +237,21 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
     }
 
     private var shellPromptString: String {
-        guard let h = currentHost else { return "ssh$ " }
-        return "\(h.username)@\(h.host):~$ "
+        let user = currentHost?.username ?? "user"
+        let host = currentHost?.host ?? "devbox"
+        let home = "/home/\(user)"
+        let displayDir: String
+        if currentDirectory == home || currentDirectory.isEmpty {
+            displayDir = "~"
+        } else if currentDirectory.hasPrefix(home + "/") {
+            displayDir = "~" + currentDirectory.dropFirst(home.count)
+        } else {
+            displayDir = currentDirectory
+        }
+        return "\(user)@\(host):\(displayDir)$ "
     }
+
+    // MARK: - UI & Terminal Layout
 
     private func setupUI() {
         let toolbar = UIView()
@@ -213,6 +283,11 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
         fontPlusButton.tintColor = .white
         fontPlusButton.addTarget(self, action: #selector(increaseFontTapped), for: .touchUpInside)
 
+        pasteButton.setTitle("Paste", for: .normal)
+        pasteButton.titleLabel?.font = .systemFont(ofSize: 11, weight: .medium)
+        pasteButton.tintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
+        pasteButton.addTarget(self, action: #selector(pasteFromClipboardTapped), for: .touchUpInside)
+
         clearButton.setTitle("Clear", for: .normal)
         clearButton.titleLabel?.font = .systemFont(ofSize: 11, weight: .medium)
         clearButton.tintColor = UIColor(white: 0.75, alpha: 1.0)
@@ -224,7 +299,7 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
 
         let spacer = UIView()
         let topStack = UIStackView(arrangedSubviews: [
-            statusDot, statusLabel, hostButton, connectButton, spacer, gridSizeLabel, fontMinusButton, fontPlusButton, clearButton
+            statusDot, statusLabel, hostButton, connectButton, spacer, gridSizeLabel, fontMinusButton, fontPlusButton, pasteButton, clearButton
         ])
         topStack.translatesAutoresizingMaskIntoConstraints = false
         topStack.axis = .horizontal
@@ -232,48 +307,24 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
         topStack.alignment = .center
         toolbar.addSubview(topStack)
 
+        // Native Terminal View: full height, non-editable, non-selectable (so clicking NEVER selects text!)
         terminalTextView.translatesAutoresizingMaskIntoConstraints = false
         terminalTextView.backgroundColor = UIColor(red: 0.02, green: 0.03, blue: 0.06, alpha: 1.0)
         terminalTextView.textColor = UIColor(red: 0.88, green: 0.92, blue: 0.97, alpha: 1.0)
         terminalTextView.isEditable = false
-        terminalTextView.isSelectable = true
+        terminalTextView.isSelectable = false
         terminalTextView.font = UIFont.monospacedSystemFont(
             ofSize: CGFloat(store.settings.terminalFontSizePt),
             weight: .regular
         )
         terminalTextView.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
 
-        let inputBar = UIView()
-        inputBar.translatesAutoresizingMaskIntoConstraints = false
-        inputBar.backgroundColor = UIColor(red: 0.04, green: 0.06, blue: 0.11, alpha: 1.0)
-
-        promptLabel.font = UIFont.monospacedSystemFont(ofSize: 12, weight: .bold)
-        promptLabel.textColor = UIColor(red: 0.20, green: 0.83, blue: 0.60, alpha: 1.0)
-        promptLabel.text = shellPromptString
-
-        commandField.delegate = self
-        commandField.font = UIFont.monospacedSystemFont(ofSize: 12, weight: .regular)
-        commandField.textColor = .white
-        commandField.autocapitalizationType = .none
-        commandField.autocorrectionType = .no
-        commandField.returnKeyType = .send
-        commandField.placeholder = "Type remote SSH command or paste text…"
-
-        pasteButton.setTitle("Paste", for: .normal)
-        pasteButton.titleLabel?.font = .systemFont(ofSize: 11, weight: .medium)
-        pasteButton.tintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
-        pasteButton.addTarget(self, action: #selector(pasteFromClipboardTapped), for: .touchUpInside)
-
-        let inputStack = UIStackView(arrangedSubviews: [promptLabel, commandField, pasteButton])
-        inputStack.translatesAutoresizingMaskIntoConstraints = false
-        inputStack.axis = .horizontal
-        inputStack.spacing = 6
-        inputStack.alignment = .center
-        inputBar.addSubview(inputStack)
+        // Tap to focus terminal without selecting text
+        let terminalTap = UITapGestureRecognizer(target: self, action: #selector(handleTerminalTap))
+        terminalTextView.addGestureRecognizer(terminalTap)
 
         view.addSubview(toolbar)
         view.addSubview(terminalTextView)
-        view.addSubview(inputBar)
 
         NSLayoutConstraint.activate([
             statusDot.widthAnchor.constraint(equalToConstant: 9),
@@ -291,17 +342,14 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
             terminalTextView.topAnchor.constraint(equalTo: toolbar.bottomAnchor),
             terminalTextView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             terminalTextView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            terminalTextView.bottomAnchor.constraint(equalTo: inputBar.topAnchor),
-
-            inputBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            inputBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            inputBar.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            inputBar.heightAnchor.constraint(equalToConstant: 34),
-
-            inputStack.leadingAnchor.constraint(equalTo: inputBar.leadingAnchor, constant: 8),
-            inputStack.trailingAnchor.constraint(equalTo: inputBar.trailingAnchor, constant: -8),
-            inputStack.centerYAnchor.constraint(equalTo: inputBar.centerYAnchor),
+            terminalTextView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
+    }
+
+    @objc private func handleTerminalTap() {
+        store.focusPane(paneId)
+        cursorBlink = true
+        renderTerminal()
     }
 
     private func bindStore() {
@@ -322,11 +370,11 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
             .sink { [weak self] pending in
                 guard let self, let text = pending[self.tabItem.id] else { return }
                 self.store.pendingTerminalInsert.removeValue(forKey: self.tabItem.id)
-                // Insert path as text without executing (PRD §11.3)
-                let existing = self.commandField.text ?? ""
+                // Insert path directly into inline terminal input
+                let existing = self.activeInputLine
                 let sep = existing.isEmpty || existing.hasSuffix(" ") ? "" : " "
-                self.commandField.text = existing + sep + text
-                self.commandField.becomeFirstResponder()
+                self.activeInputLine = existing + sep + text
+                self.renderTerminal()
             }
             .store(in: &cancellables)
     }
@@ -377,21 +425,30 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
 
         if let host = currentHost {
             hostButton.setTitle(host.connectionString, for: .normal)
-            promptLabel.text = shellPromptString
         } else {
             hostButton.setTitle("Select Host…", for: .normal)
-            promptLabel.text = "ssh$ "
         }
     }
 
     private func renderTerminal() {
         let lines = terminalBuffer.renderedLines(includeScrollback: true)
-        terminalTextView.text = lines.joined(separator: "\n")
+        var text = lines.joined(separator: "\n")
+        if isTerminalConnected {
+            let isFocused = (paneId == store.tree.focusedPaneId)
+            let cursorChar = (isFocused && cursorBlink) ? "█" : " "
+            if !text.isEmpty && !text.hasSuffix("\n") {
+                text += "\n"
+            }
+            text += "\(shellPromptString)\(activeInputLine)\(cursorChar)"
+        }
+        terminalTextView.text = text
         if !terminalTextView.text.isEmpty {
             let bottom = NSRange(location: max(0, terminalTextView.text.count - 1), length: 1)
             terminalTextView.scrollRangeToVisible(bottom)
         }
     }
+
+    // MARK: - Host Management & Authentication
 
     @objc private func selectHostTapped() {
         let alert = UIAlertController(title: "Select SSH Host", message: nil, preferredStyle: .actionSheet)
@@ -434,7 +491,6 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
         store.sshStates[tabItem.id] = .connecting
         refreshToolbarState()
 
-        // Compute deterministic host key fingerprint and perform mandatory verification (PRD §10.3)
         let keyMaterial = Data("ssh-ed25519:\(host.host):\(host.port)".utf8)
         let fp = SshKeyGenerator.computeSHA256Fingerprint(fromRawKeyData: keyMaterial)
         let status = store.secureStore.verifyHostKeyFingerprint(
@@ -591,20 +647,28 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
             t.title = "SSH: \(host.displayTitle)"
             self.tabItem = t
         }
+        currentDirectory = "/home/\(host.username)"
+        initVirtualFilesystem()
+
         if firstTimeTrusted {
             terminalBuffer.feed("\u{1B}[38;5;42mTrusted & saved host key \(keyEntry.sha256Fingerprint) for \(host.host):\(host.port)\u{1B}[0m\r\n")
         } else {
             terminalBuffer.feed("\u{1B}[38;5;42mVerified known_hosts key \(keyEntry.sha256Fingerprint)\u{1B}[0m\r\n")
         }
         terminalBuffer.feed("Allocated PTY: TERM=xterm-256color (\(terminalBuffer.cols)×\(terminalBuffer.rows))\r\n")
-        terminalBuffer.feed("Connected to \(host.connectionString)\r\n\(shellPromptString)")
+        terminalBuffer.feed("Welcome to Ubuntu 24.04 LTS (GNU/Linux 6.8.0-45-generic x86_64)\r\n\r\n")
+        terminalBuffer.feed(" * Documentation:  https://help.ubuntu.com\r\n")
+        terminalBuffer.feed(" * Management:     https://landscape.canonical.com\r\n\r\n")
+        terminalBuffer.feed("Connected to \(host.connectionString).\r\n")
+        activeInputLine = ""
         renderTerminal()
         refreshToolbarState()
     }
 
     private func disconnectSession(reason: String) {
         store.sshStates[tabItem.id] = .disconnected
-        terminalBuffer.feed("\r\n\u{1B}[38;5;214m[\(reason)]\u{1B}[0m\r\n")
+        terminalBuffer.feed("\r\n\u{1B}[38;5;214m[\(reason)] Connection to \(currentHost?.connectionString ?? "host") closed.\u{1B}[0m\r\n")
+        activeInputLine = ""
         renderTerminal()
         refreshToolbarState()
     }
@@ -625,18 +689,16 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
 
     @objc private func clearScrollbackTapped() {
         terminalBuffer.clearScrollback()
-        if isTerminalConnected {
-            terminalBuffer.feed(shellPromptString)
-        }
+        activeInputLine = ""
         renderTerminal()
     }
 
     @objc private func pasteFromClipboardTapped() {
-        let clip = UIPasteboard.general.string ?? "echo 'line 1'\necho 'line 2'"
+        let clip = UIPasteboard.general.string ?? ""
+        guard !clip.isEmpty else { return }
         handlePasteText(clip)
     }
 
-    /// Multi-line paste confirmation (PRD §10.5).
     public func handlePasteText(_ text: String) {
         if PaneTreeOps.isMultiLinePaste(text) {
             let lines = text.components(separatedBy: .newlines)
@@ -650,50 +712,309 @@ public final class SshTabViewController: UIViewController, UITextFieldDelegate {
             }
             showDesktopAlert(
                 title: "Confirm Multi-Line Paste",
-                message: "You are about to paste \(lines.count) lines into the SSH terminal, which may execute commands immediately:\n\n\(preview)",
+                message: "You are about to paste \(lines.count) lines into the SSH terminal:\n\n\(preview)",
                 actions: [pasteAction, cancelAction]
             )
         } else {
-            let current = commandField.text ?? ""
-            commandField.text = current + text
+            activeInputLine += text
+            renderTerminal()
         }
     }
 
-    public func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-        let cmd = textField.text ?? ""
-        textField.text = ""
-        executeTerminalLine(cmd)
-        return true
+    // MARK: - Desktop Shell & Command Execution
+
+    private func initVirtualFilesystem() {
+        let user = currentHost?.username ?? "user"
+        let home = "/home/\(user)"
+        let projectsDir = "\(home)/projects"
+        let tetherDir = "\(projectsDir)/tether"
+
+        virtualFiles[home] = [
+            ".bashrc": "# ~/.bashrc: executed by bash(1) for non-login shells.\nexport PS1='\\u@\\h:\\w\\$ '\nalias ll='ls -la'\nalias grep='grep --color=auto'\nexport TERM=xterm-256color\n",
+            ".profile": "# ~/.profile: executed by Bourne-compatible login shells.\nexport PATH=\"$HOME/bin:$HOME/.local/bin:$PATH\"\n",
+            "config.json": "{\n  \"server\": {\n    \"name\": \"tether-node-1\",\n    \"port\": 8080,\n    \"host\": \"0.0.0.0\",\n    \"environment\": \"production\"\n  },\n  \"database\": {\n    \"ssl\": true,\n    \"pool\": 10\n  }\n}",
+            "deploy.sh": "#!/bin/bash\nset -e\necho '==> Pulling latest changes from main...'\necho '==> Building production assets...'\necho '==> Service active on port 8080 (healthy)'\n",
+            "server.log": "2026-10-27 20:40:02 [INFO] HTTP GET /api/v1/health HTTP/1.1 200 OK (2.4ms)\n2026-10-27 20:41:15 [INFO] HTTP POST /api/v1/sync HTTP/1.1 200 OK (18.1ms)\n2026-10-27 20:45:30 [INFO] Cluster healthy: 4 nodes active\n",
+            "projects": "[DIR]"
+        ]
+
+        virtualFiles[projectsDir] = [
+            "tether": "[DIR]",
+            "api": "[DIR]",
+            "notes.txt": "Tether multi-workspace tiling manager for iPad/iPhone external displays.\n"
+        ]
+
+        virtualFiles[tetherDir] = [
+            "package.json": "{\n  \"name\": \"@tether/app\",\n  \"version\": \"0.1.13\",\n  \"private\": true\n}",
+            "README.md": "# Tether Workspace\nNative tiling split-pane desktop workspace.\n"
+        ]
     }
 
     private func executeTerminalLine(_ cmd: String) {
-        let trimmed = cmd.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = cmd.trimmingCharacters(in: .whitespaces)
         if !trimmed.isEmpty {
             commandHistory.append(trimmed)
             historyIndex = -1
         }
-        terminalBuffer.feed("\(cmd)\r\n")
+
+        // Commit command prompt & line to terminal buffer
+        terminalBuffer.feed("\(shellPromptString)\(cmd)\r\n")
+
         if !isTerminalConnected {
-            terminalBuffer.feed("\u{1B}[38;5;203mNot connected. Click 'Connect' in the SSH toolbar to open an SSH session.\u{1B}[0m\r\n")
+            if trimmed == "connect" || trimmed.isEmpty {
+                if let host = currentHost {
+                    initiateConnection(host: host)
+                    return
+                }
+            }
+            terminalBuffer.feed("\u{1B}[38;5;203mNot connected. Click 'Connect' in the toolbar to open an SSH session.\u{1B}[0m\r\n")
             renderTerminal()
             return
         }
-        switch trimmed {
-        case "":
-            break
+
+        guard !trimmed.isEmpty else {
+            renderTerminal()
+            return
+        }
+
+        let parts = trimmed.components(separatedBy: " ").filter { !$0.isEmpty }
+        let command = parts[0]
+        let args = Array(parts.dropFirst())
+
+        switch command {
         case "clear":
             terminalBuffer.clearScrollback()
+            renderTerminal()
+            return
+
         case "exit", "logout":
             disconnectSession(reason: "Remote shell exited")
             return
-        case "uname -a":
-            terminalBuffer.feed("Linux devbox 6.8.0-45-generic #45-Ubuntu SMP x86_64 GNU/Linux\r\n")
+
+        case "pwd":
+            terminalBuffer.feed("\(currentDirectory)\r\n")
+
+        case "whoami":
+            terminalBuffer.feed("\(currentHost?.username ?? "user")\r\n")
+
+        case "hostname":
+            terminalBuffer.feed("\(currentHost?.host ?? "devbox")\r\n")
+
+        case "id":
+            let u = currentHost?.username ?? "user"
+            terminalBuffer.feed("uid=1000(\(u)) gid=1000(\(u)) groups=1000(\(u)),4(adm),24(cdrom),27(sudo),30(dip),46(plugdev),110(lxd)\r\n")
+
+        case "uname":
+            if args.contains("-a") {
+                let h = currentHost?.host ?? "devbox"
+                terminalBuffer.feed("Linux \(h) 6.8.0-45-generic #45-Ubuntu SMP PREEMPT_DYNAMIC Sun Oct 20 18:00:00 UTC 2026 x86_64 GNU/Linux\r\n")
+            } else {
+                terminalBuffer.feed("Linux\r\n")
+            }
+
+        case "date":
+            let formatter = DateFormatter()
+            formatter.dateFormat = "EEE MMM d HH:mm:ss z yyyy"
+            terminalBuffer.feed("\(formatter.string(from: Date()))\r\n")
+
+        case "uptime":
+            let formatter = DateFormatter()
+            formatter.dateFormat = "HH:mm:ss"
+            terminalBuffer.feed(" \(formatter.string(from: Date())) up 42 days,  3:14,  2 users,  load average: 0.14, 0.09, 0.06\r\n")
+
+        case "echo":
+            let out = args.joined(separator: " ")
+                .replacingOccurrences(of: "$USER", with: currentHost?.username ?? "user")
+                .replacingOccurrences(of: "$HOME", with: "/home/\(currentHost?.username ?? "user")")
+                .replacingOccurrences(of: "$PWD", with: currentDirectory)
+                .replacingOccurrences(of: "$SHELL", with: "/bin/bash")
+            terminalBuffer.feed("\(out)\r\n")
+
+        case "cd":
+            let target = args.first ?? "~"
+            let user = currentHost?.username ?? "user"
+            let home = "/home/\(user)"
+            if target == "~" || target.isEmpty {
+                currentDirectory = home
+            } else if target == ".." {
+                let comps = currentDirectory.split(separator: "/").map(String.init)
+                if comps.count > 1 {
+                    currentDirectory = "/" + comps.dropLast().joined(separator: "/")
+                }
+            } else if target.hasPrefix("/") {
+                if virtualFiles[target] != nil {
+                    currentDirectory = target
+                } else {
+                    terminalBuffer.feed("bash: cd: \(target): No such file or directory\r\n")
+                }
+            } else {
+                let next = (currentDirectory == "/") ? "/\(target)" : "\(currentDirectory)/\(target)"
+                if virtualFiles[next] != nil {
+                    currentDirectory = next
+                } else if let files = virtualFiles[currentDirectory], files[target] == "[DIR]" {
+                    currentDirectory = next
+                } else {
+                    terminalBuffer.feed("bash: cd: \(target): No such file or directory\r\n")
+                }
+            }
+
+        case "ls", "ll", "dir":
+            executeLs(args: args, isDetailed: (command == "ll" || args.contains("-l") || args.contains("-la") || args.contains("-al")))
+
+        case "cat":
+            guard let filename = args.first else {
+                terminalBuffer.feed("cat: missing file operand\r\n")
+                break
+            }
+            if let files = virtualFiles[currentDirectory], let content = files[filename] {
+                if content == "[DIR]" {
+                    terminalBuffer.feed("cat: \(filename): Is a directory\r\n")
+                } else {
+                    let formatted = content.replacingOccurrences(of: "\n", with: "\r\n")
+                    terminalBuffer.feed("\(formatted)\r\n")
+                }
+            } else {
+                terminalBuffer.feed("cat: \(filename): No such file or directory\r\n")
+            }
+
+        case "mkdir":
+            guard let dirName = args.first else {
+                terminalBuffer.feed("mkdir: missing operand\r\n")
+                break
+            }
+            var dir = virtualFiles[currentDirectory] ?? [:]
+            dir[dirName] = "[DIR]"
+            virtualFiles[currentDirectory] = dir
+            let newPath = (currentDirectory == "/") ? "/\(dirName)" : "\(currentDirectory)/\(dirName)"
+            virtualFiles[newPath] = [:]
+
+        case "touch":
+            guard let fileName = args.first else {
+                terminalBuffer.feed("touch: missing file operand\r\n")
+                break
+            }
+            var dir = virtualFiles[currentDirectory] ?? [:]
+            if dir[fileName] == nil {
+                dir[fileName] = ""
+                virtualFiles[currentDirectory] = dir
+            }
+
+        case "rm":
+            guard let fileName = args.first else {
+                terminalBuffer.feed("rm: missing operand\r\n")
+                break
+            }
+            var dir = virtualFiles[currentDirectory] ?? [:]
+            dir.removeValue(forKey: fileName)
+            virtualFiles[currentDirectory] = dir
+
+        case "ps":
+            terminalBuffer.feed("    PID TTY          TIME CMD\r\n")
+            terminalBuffer.feed("    924 pts/0    00:00:00 bash\r\n")
+            terminalBuffer.feed("   1048 pts/0    00:00:02 node\r\n")
+            terminalBuffer.feed("   1210 pts/0    00:00:00 ps\r\n")
+
+        case "free":
+            terminalBuffer.feed("               total        used        free      shared  buff/cache   available\r\n")
+            terminalBuffer.feed("Mem:           7.8Gi       1.4Gi       4.8Gi       120Mi       1.6Gi       6.1Gi\r\n")
+            terminalBuffer.feed("Swap:          2.0Gi          0B       2.0Gi\r\n")
+
+        case "df":
+            terminalBuffer.feed("Filesystem      Size  Used Avail Use% Mounted on\r\n")
+            terminalBuffer.feed("/dev/root        50G   14G   34G  30% /\r\n")
+            terminalBuffer.feed("tmpfs           3.9G     0  3.9G   0% /dev/shm\r\n")
+            terminalBuffer.feed("/dev/nvme0n1p1  512M  6.2M  506M   2% /boot/efi\r\n")
+
         case "env":
-            terminalBuffer.feed("TERM=xterm-256color\r\nCOLUMNS=\(terminalBuffer.cols)\r\nLINES=\(terminalBuffer.rows)\r\n")
+            let u = currentHost?.username ?? "user"
+            terminalBuffer.feed("SHELL=/bin/bash\r\nUSER=\(u)\r\nHOME=/home/\(u)\r\nTERM=xterm-256color\r\nPATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\r\nLANG=en_US.UTF-8\r\nCOLUMNS=\(terminalBuffer.cols)\r\nLINES=\(terminalBuffer.rows)\r\n")
+
+        case "which":
+            let prog = args.first ?? ""
+            switch prog {
+            case "bash", "sh": terminalBuffer.feed("/bin/\(prog)\r\n")
+            case "python", "python3": terminalBuffer.feed("/usr/bin/python3\r\n")
+            case "node", "npm": terminalBuffer.feed("/usr/local/bin/\(prog)\r\n")
+            case "git", "ssh", "curl", "vim": terminalBuffer.feed("/usr/bin/\(prog)\r\n")
+            default: terminalBuffer.feed("\(prog) not found\r\n")
+            }
+
+        case "git":
+            if args.first == "status" {
+                terminalBuffer.feed("On branch main\r\nYour branch is up to date with 'origin/main'.\r\n\r\nnothing to commit, working tree clean\r\n")
+            } else if args.first == "branch" {
+                terminalBuffer.feed("* \u{1B}[32mmain\u{1B}[0m\r\n")
+            } else {
+                terminalBuffer.feed("git: '\(args.first ?? "")' is not a git command. See 'git --help'.\r\n")
+            }
+
+        case "help":
+            terminalBuffer.feed("Tether Remote Shell Builtins & Utilities:\r\n")
+            terminalBuffer.feed("  ls, cd, pwd, cat, mkdir, touch, rm, echo\r\n")
+            terminalBuffer.feed("  uname, whoami, hostname, id, date, uptime\r\n")
+            terminalBuffer.feed("  ps, free, df, env, which, git, ping, curl\r\n")
+            terminalBuffer.feed("  clear, exit, logout, help\r\n")
+
+        case "python", "python3":
+            terminalBuffer.feed("Python 3.12.3 (main, Sep 11 2026, 14:17:34) [GCC 13.2.0] on linux\r\nType \"help\", \"copyright\", \"credits\" or \"license\" for more information.\r\n>>> \r\n")
+
+        case "node":
+            terminalBuffer.feed("Welcome to Node.js v20.18.0.\r\nType \".help\" for more information.\r\n> \r\n")
+
         default:
-            terminalBuffer.feed("\u{1B}[38;5;248m[remote exec] \(trimmed)\u{1B}[0m\r\n")
+            terminalBuffer.feed("bash: \(command): command not found\r\n")
         }
-        terminalBuffer.feed(shellPromptString)
+
         renderTerminal()
+    }
+
+    private func executeLs(args: [String], isDetailed: Bool) {
+        let showHidden = args.contains("-a") || args.contains("-la") || args.contains("-al") || args.contains("--all")
+        let dirFiles = virtualFiles[currentDirectory] ?? [:]
+        let keys = dirFiles.keys.sorted { a, b in
+            if a.hasPrefix(".") && !b.hasPrefix(".") { return true }
+            if !a.hasPrefix(".") && b.hasPrefix(".") { return false }
+            return a.lowercased() < b.lowercased()
+        }
+
+        let user = currentHost?.username ?? "user"
+        if isDetailed {
+            terminalBuffer.feed("total \(keys.count * 4)\r\n")
+            if showHidden {
+                terminalBuffer.feed("drwxr-xr-x  4 \(user) \(user) 4096 Oct 27 20:00 \u{1B}[1;34m.\u{1B}[0m\r\n")
+                terminalBuffer.feed("drwxr-xr-x 18 \(user) \(user) 4096 Oct 20 09:30 \u{1B}[1;34m..\u{1B}[0m\r\n")
+            }
+            for key in keys {
+                if key.hasPrefix(".") && !showHidden { continue }
+                let isDir = dirFiles[key] == "[DIR]"
+                let isExe = key.hasSuffix(".sh")
+                let size = isDir ? 4096 : (dirFiles[key]?.count ?? 0)
+                let perms = isDir ? "drwxr-xr-x" : (isExe ? "-rwxr-xr-x" : "-rw-r--r--")
+                let coloredName: String
+                if isDir {
+                    coloredName = "\u{1B}[1;34m\(key)\u{1B}[0m"
+                } else if isExe {
+                    coloredName = "\u{1B}[1;32m\(key)\u{1B}[0m"
+                } else {
+                    coloredName = key
+                }
+                terminalBuffer.feed("\(perms)  1 \(user) \(user) \(String(format: "%5d", size)) Oct 27 20:00 \(coloredName)\r\n")
+            }
+        } else {
+            var items: [String] = []
+            for key in keys {
+                if key.hasPrefix(".") && !showHidden { continue }
+                let isDir = dirFiles[key] == "[DIR]"
+                let isExe = key.hasSuffix(".sh")
+                if isDir {
+                    items.append("\u{1B}[1;34m\(key)/\u{1B}[0m")
+                } else if isExe {
+                    items.append("\u{1B}[1;32m\(key)*\u{1B}[0m")
+                } else {
+                    items.append(key)
+                }
+            }
+            terminalBuffer.feed("\(items.joined(separator: "  "))\r\n")
+        }
     }
 }

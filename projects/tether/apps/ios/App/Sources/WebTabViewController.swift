@@ -733,6 +733,11 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
         )
     }
 
+    public func textFieldDidBeginEditing(_ textField: UITextField) {
+        store.focusPane(paneId)
+        textField.selectAll(nil)
+    }
+
     public func textFieldShouldReturn(_ textField: UITextField) -> Bool {
         textField.resignFirstResponder()
         loadInput(textField.text ?? "")

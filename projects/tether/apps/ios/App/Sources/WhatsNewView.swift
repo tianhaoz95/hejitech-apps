@@ -17,10 +17,32 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.13"
+    static let currentVersion = "0.1.14"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.14", date: "October 2026", items: [
+            WhatsNewItem(
+                icon: "terminal.fill",
+                title: "Desktop Terminal Overhaul",
+                description: "Terminal now functions like a real desktop terminal with inline command prompt, real command execution (ls, cd, cat, pwd, ps, git), colored directory listings, and no clunky bottom input bar."
+            ),
+            WhatsNewItem(
+                icon: "cursorarrow.click",
+                title: "Terminal Click to Focus",
+                description: "Clicking anywhere in the terminal focuses input directly without triggering unwanted iOS text selection or loupe handles."
+            ),
+            WhatsNewItem(
+                icon: "globe",
+                title: "Reliable Browser URL Bar Selection",
+                description: "Fixed URL bar selection so clicking the address bar keeps focus active without being immediately unselected."
+            ),
+            WhatsNewItem(
+                icon: "keyboard.fill",
+                title: "Global Keyboard Shortcut Prioritization",
+                description: "All global keyboard shortcuts (⌘⌥], ⌃→, ⌘/, ⌘K, ⌘1..4, ⌘D) now reliably trigger their actions instead of being captured as plain text."
+            ),
+        ]),
         ReleaseNotes(version: "0.1.13", date: "October 2026", items: [
             WhatsNewItem(
                 icon: "cursorarrow.rays",

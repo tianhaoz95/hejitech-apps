@@ -13,8 +13,6 @@ public final class VirtualCursorOverlayView: UIView {
     private let cursorImageView = UIImageView()
     public weak var targetCanvas: UIView?
 
-    public var onTextInputFocused: ((UITextField) -> Void)?
-
     public init(targetCanvas: UIView) {
         self.targetCanvas = targetCanvas
         super.init(frame: .zero)
@@ -101,12 +99,17 @@ public final class VirtualCursorOverlayView: UIView {
         let hitPoint = canvas.convert(cursorPosition, from: self)
 
         if let hitView = canvas.hitTest(hitPoint, with: nil) {
-            // 1. Text Field: focus, select all, send editing begin event, and notify phone
+            // 1. Text Field: focus, select all, send editing begin event without stealing focus
             if let textField = findAncestor(of: hitView, matching: { $0 is UITextField }) as? UITextField {
                 textField.becomeFirstResponder()
                 textField.selectAll(nil)
                 textField.sendActions(for: .editingDidBegin)
-                onTextInputFocused?(textField)
+                return
+            }
+
+            // 1b. Text View (e.g. Terminal): focus without text selection
+            if let textView = findAncestor(of: hitView, matching: { $0 is UITextView }) as? UITextView {
+                textView.becomeFirstResponder()
                 return
             }
 
