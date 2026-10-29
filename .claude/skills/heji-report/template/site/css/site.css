@@ -136,3 +136,14 @@ ol.do { padding-left: 22px; } ol.do li { margin: 6px 0; }
   h1 { font-size: 28px; }
   table.kv th { width: 34%; }
 }
+
+/* copyable fields (.fields > .field: label, Copy button, optional character count) and download buttons */
+.fields { display: grid; gap: 10px; margin: 12px 0 18px; }
+.field { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-width: 0; }
+.field > b { font-size: 13px; color: var(--mut); font-weight: 600; }
+.field .meta { float: right; display: inline-flex; gap: 8px; align-items: center; font: 12px "JetBrains Mono", ui-monospace, monospace; color: var(--mut); }
+.field.over .meta { color: var(--bad); font-weight: 600; }
+.field .meta button { font: 600 12px Inter, sans-serif; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); padding: 4px 10px; cursor: pointer; }
+.field pre { margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.55 Inter, sans-serif; color: var(--ink); max-height: 22em; overflow-y: auto; }
+a.dl { display: inline-flex; align-items: center; gap: 6px; font: 600 13px Inter, sans-serif; text-decoration: none; border-radius: 10px; padding: 7px 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); margin: 4px 6px 4px 0; }
+a.dl::before { content: "↓"; color: var(--acc); }

@@ -67,6 +67,10 @@ Rules that make these reports useful:
   Block kinds and fields: the header comment of `site/js/design.js`. Hand-drawn SVG goes in
   `<figure class="diagram">` with an `aria-label`.
 - **Plain, short sentences**, the reader's words, no filler. Headings say what the section answers.
+- **Values the reader pastes somewhere else** (form fields, store listings, settings) go in
+  `.fields > .field` (label in `<b>`, value in `<pre>`, `data-max` for a length limit): each gets a
+  Copy button that copies the value exactly and a character count. Files to download (`media/`) get
+  `<a class="dl" href="media/…" download>`.
 - **Checklist ids are unique and stable** (`id="c-upload"`): ticks are saved by id.
 - **Fill in `REPORT`** (`project`, `context`, `brief`): the hand-off leaves out anything still a
   placeholder. `nextSteps` is what an agent should do with the reader's notes.

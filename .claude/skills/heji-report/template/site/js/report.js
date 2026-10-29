@@ -54,6 +54,20 @@
     setTimeout(() => (btn.textContent = "Copy"), 1500);
   });
 
+  // ── copyable fields: <div class="fields"><div class="field" data-max="170"><b>Label</b><pre>value</pre></div></div>
+  //    get a Copy button that copies the value exactly and, with data-max, a character count.
+  $$(".field").forEach((f) => {
+    const n = [...$("pre", f).textContent].length, max = Number(f.dataset.max || 0);
+    f.classList.toggle("over", Boolean(max) && n > max);
+    $("b", f).insertAdjacentHTML("afterend", `<span class="meta">${max ? `${n} / ${max}` : ""}<button data-copy-field>Copy</button></span>`);
+  });
+  document.addEventListener("click", async (e) => {
+    const btn = e.target.closest("[data-copy-field]");
+    if (!btn) return;
+    try { await navigator.clipboard.writeText($("pre", btn.closest(".field")).textContent); btn.textContent = "Copied"; } catch { btn.textContent = "Select and copy"; }
+    setTimeout(() => (btn.textContent = "Copy"), 1500);
+  });
+
   // ── checklists: <ul class="checks"><li><input type="checkbox" id="unique"><span><b>…</b><small>…</small></span></li>
   const ticks = load("ticks", {});
   const boxes = $$(".checks input[type=checkbox]");
@@ -115,6 +129,13 @@
         if (c.querySelector("img")) $$("img", c).forEach((img) => out.push(`- Image \`site/${img.getAttribute("src")}\`: ${img.alt}`));
         const cap = $("figcaption", c); if (cap) out.push(`  ${inline(cap).trim()}`);
         if ($("svg", c) && !c.querySelector("img")) out.push(`(diagram: ${$("svg", c).getAttribute("aria-label") || "see the page"})`);
+        out.push("");
+      }
+      else if (c.matches(".fields")) {
+        $$(".field", c).forEach((f) => {
+          const label = inline($("b", f)).trim(), v = $("pre", f).textContent.trim();
+          out.push(v.includes("\n") ? `- **${label}**:\n\n\`\`\`\n${v}\n\`\`\`\n` : `- **${label}**: ${v}`);
+        });
         out.push("");
       }
       else if (c.matches(".status")) { $$(":scope > div", c).forEach((d) => out.push(`- ${inline($("b", d)).trim()}: ${inline($("span", d) || d).trim()}`)); out.push(""); }
