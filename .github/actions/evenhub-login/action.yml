@@ -1,0 +1,30 @@
+name: Even Hub login
+description: >
+  Logs the Even Hub CLI in with the account's email and password (secrets EVENHUB_EMAIL and
+  EVENHUB_PASSWORD) and points later steps at the fresh credentials (XDG_CONFIG_HOME). Even Hub
+  has no API tokens, and a saved credentials file stops working within a week: its refresh token
+  lasts 7 days and the CLI saves refreshed tokens only on the runner. `evenhub login` asks for the
+  password only at an interactive prompt, so login.py answers it in a pseudo-terminal.
+inputs:
+  email: { description: Even Hub account email, required: true }
+  password: { description: Even Hub account password, required: true }
+  cli: { description: "The CLI package to run (pinned, e.g. @evenrealities/evenhub-cli@0.2.0)", required: true }
+runs:
+  using: composite
+  steps:
+    - name: Log in to Even Hub
+      shell: bash
+      env:
+        EVENHUB_EMAIL: ${{ inputs.email }}
+        EVENHUB_PASSWORD: ${{ inputs.password }}
+        EVENHUB_CLI: ${{ inputs.cli }}
+      run: |
+        [ -n "$EVENHUB_EMAIL" ] && [ -n "$EVENHUB_PASSWORD" ] || { echo "::error::EVENHUB_EMAIL / EVENHUB_PASSWORD aren't set: gh secret set EVENHUB_EMAIL; gh secret set EVENHUB_PASSWORD"; exit 1; }
+        export XDG_CONFIG_HOME="$RUNNER_TEMP/evenhub-config"
+        mkdir -p "$XDG_CONFIG_HOME"
+        echo "XDG_CONFIG_HOME=$XDG_CONFIG_HOME" >> "$GITHUB_ENV"
+        python3 "$GITHUB_ACTION_PATH/login.py" npx -y -p "$EVENHUB_CLI" evenhub > "$RUNNER_TEMP/evenhub-login.log" 2>&1 || {
+          code=$?; cat "$RUNNER_TEMP/evenhub-login.log"
+          echo "::error::Even Hub refused the login (exit $code): check the EVENHUB_EMAIL / EVENHUB_PASSWORD secrets"; exit $code; }
+        npx -y -p "$EVENHUB_CLI" evenhub self-check > /dev/null || { echo "::error::evenhub self-check failed after login"; exit 1; }
+        echo "Logged in to Even Hub"

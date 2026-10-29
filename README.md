@@ -33,7 +33,7 @@ scripts/check_isolation.mjs, graduation_check.sh   each project can leave for it
 pages/                  the GitHub Pages site for every app (npm run pages:dev); project docs come from projects/<name>/docs
 .claude/skills/         agent skills: heji-new-project, heji-migrate-project, heji-candidate-review, heji-fix-ci, heji-new-skill, heji-archive-reports, heji-build-next, heji-even-hub-submit, heji-update-toolchain, heji-report, heji-review-account (.agents/skills/ links them for Codex, Antigravity, Gemini CLI, Cursor…)
 .github/workflows/      <name>-*.yml per project
-.github/actions/        apple-signing (shared), <name>-toolchain
+.github/actions/        apple-signing, evenhub-login (shared), <name>-toolchain
 package.json            npm workspaces: projects/*/packages/*, projects/*/services/*, projects/*/apps/*
 tsconfig.base.json      shared TypeScript settings
 ```

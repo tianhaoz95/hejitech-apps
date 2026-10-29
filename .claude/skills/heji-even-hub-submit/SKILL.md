@@ -162,16 +162,16 @@ Even Hub has no public API, webhooks, API tokens or GitHub Action, but the `even
 (docs: `/docs/cli/scripting`, `/docs/cli/auth`). Upload and promote to Beta can be automated;
 **review submission and publishing are portal-only** (`promote --to public` is refused locally).
 
-- Auth: `evenhub login` needs an interactive terminal (no password flag or token env var). Log in
-  once on a Mac, store `~/.config/evenhub/credentials.yaml` (access + refresh token, auto-refreshed)
-  as a CI file secret, and in the job set `XDG_CONFIG_HOME` to a job-owned dir and restore it to
-  `$XDG_CONFIG_HOME/evenhub/credentials.yaml` (mode 600). Never `evenhub logout` in CI: it revokes
-  the refresh token in the secret. When both tokens expire, commands exit 2: log in again and
-  replace the secret.
+- Auth: `evenhub login` needs an interactive terminal (no password flag or token env var), and a
+  saved `credentials.yaml` doesn't last: the refresh token expires after 7 days and CI never saves
+  the refreshed one. So CI logs in on every run: `.github/actions/evenhub-login` answers the
+  password prompt in a pseudo-terminal from the repo secrets `EVENHUB_EMAIL` / `EVENHUB_PASSWORD`
+  (locally in `~/Credentials/evenhub.env`) and sets `XDG_CONFIG_HOME` for the later steps. Put it
+  right before the upload step.
 - Steps: `evenhub upload <file>.ehpk -m "<changelog ≤ 500 chars>" --json` (new builds start Private;
   an existing version exits 4), `evenhub promote <version> --to beta --json` (one beta slot: replaces
   what's there), then `evenhub ls <package_id> --json` to check.
-- Working example: `.github/workflows/g2digest-plugin-release.yml` (secret `EVENHUB_CREDENTIALS`,
+- Working example: `.github/workflows/g2digest-plugin-release.yml` (`evenhub-login` action,
   CLI pinned to 0.2.0 in the step, upload → promote → verify with `ls`, exit 4/5 treated as already
   done so re-runs are safe). The npm package is `@evenrealities/evenhub-cli` (bins `evenhub`, `eh`):
   `npx evenhub` only works where it's installed, elsewhere `npx -p @evenrealities/evenhub-cli evenhub`.

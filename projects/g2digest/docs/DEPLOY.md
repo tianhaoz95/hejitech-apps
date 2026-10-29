@@ -54,10 +54,8 @@ a token (401 with `resource_metadata`).
   `g2digest-v<version>`, and `g2digest-plugin-release.yml` attaches the `.ehpk`, uploads it to Even
   Hub (`evenhub upload`, changelog = the release notes) and promotes it to Beta, so it installs from
   Me → Beta tester. Submitting for review and publishing stay in the portal (no API for them).
-  Secret `EVENHUB_CREDENTIALS` = `~/.config/evenhub/credentials.yaml` after
-  `npx -p @evenrealities/evenhub-cli evenhub login`; refused (exit 2) → log in again and
-  `gh secret set EVENHUB_CREDENTIALS < ~/.config/evenhub/credentials.yaml`. Logging out anywhere
-  revokes it. Repository variable `G2DIGEST_EVENHUB_BETA=off` uploads without promoting.
+  Even Hub login: repo secrets `EVENHUB_EMAIL` / `EVENHUB_PASSWORD` (shared action
+  `.github/actions/evenhub-login` logs in on every run). Repository variable `G2DIGEST_EVENHUB_BETA=off` uploads without promoting.
 
 ### Even Hub submission
 

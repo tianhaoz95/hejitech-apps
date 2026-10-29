@@ -4,10 +4,9 @@ name: G2 Digest plugin release
 # it to Even Hub and promotes it to Beta (testers install it from Me → Beta tester). Submitting for
 # review and publishing stay in the portal: Even Hub has no API for them.
 #
-# Even Hub auth: the EVENHUB_CREDENTIALS secret is ~/.config/evenhub/credentials.yaml from an
-# interactive `evenhub login` (no API tokens exist); the CLI refreshes it. When it's refused (exit 2),
-# log in again and `gh secret set EVENHUB_CREDENTIALS < ~/.config/evenhub/credentials.yaml`. Never run
-# `evenhub logout` here: it revokes the token in the secret. Repository variable
+# Even Hub auth: .github/actions/evenhub-login logs the CLI in with the EVENHUB_EMAIL and
+# EVENHUB_PASSWORD secrets on every run (no API tokens exist; a saved login expires in 7 days).
+# Repository variable
 # G2DIGEST_EVENHUB_BETA=off uploads without promoting (the build stays Private).
 on:
   release:
@@ -48,21 +47,20 @@ jobs:
         run: |
           cp projects/g2digest/apps/glasses/build/g2digest.ehpk "g2digest-${TAG#g2digest-v}.ehpk"
           gh release upload "$TAG" "g2digest-${TAG#g2digest-v}.ehpk" --clobber
+      - uses: ./.github/actions/evenhub-login
+        with:
+          email: ${{ secrets.EVENHUB_EMAIL }}
+          password: ${{ secrets.EVENHUB_PASSWORD }}
+          cli: "@evenrealities/evenhub-cli@0.2.0"
       - name: Upload to Even Hub and promote to Beta
         env:
           GH_TOKEN: ${{ github.token }}
-          EVENHUB_CREDENTIALS: ${{ secrets.EVENHUB_CREDENTIALS }}
           BETA: ${{ vars.G2DIGEST_EVENHUB_BETA || 'on' }}
           PACKAGE_ID: com.hejitech.g2digest.glasses
           # Pinned here, not taken from the tag's lockfile, so re-running an older release still has upload/promote.
           EVENHUB_CLI: "@evenrealities/evenhub-cli@0.2.0"
         working-directory: projects/g2digest/apps/glasses
         run: |
-          [ -n "$EVENHUB_CREDENTIALS" ] || { echo "::error::EVENHUB_CREDENTIALS isn't set: evenhub login, then gh secret set EVENHUB_CREDENTIALS < ~/.config/evenhub/credentials.yaml"; exit 1; }
-          export XDG_CONFIG_HOME="$RUNNER_TEMP/evenhub-config"
-          mkdir -p "$XDG_CONFIG_HOME/evenhub"
-          trap 'rm -rf "$XDG_CONFIG_HOME"' EXIT
-          (umask 077; printf '%s\n' "$EVENHUB_CREDENTIALS" > "$XDG_CONFIG_HOME/evenhub/credentials.yaml")
           v="${TAG#g2digest-v}"
           # The changelog is the release notes cut_release.sh was given (before GitHub's generated list), ≤ 500 characters.
           notes=$(gh release view "$TAG" --json body -q .body | sed '/^## What.s Changed/,$d; /Full Changelog/d' | sed '/^[[:space:]]*$/d' | head -c 480)
@@ -75,7 +73,7 @@ jobs:
           case $code in
             0) echo "uploaded $v (Private)";;
             4) echo "$v was already uploaded: keeping that build";;
-            2) echo "::error::Even Hub refused the login: evenhub login, then gh secret set EVENHUB_CREDENTIALS < ~/.config/evenhub/credentials.yaml"; exit 2;;
+            2) echo "::error::Even Hub refused the login: check the EVENHUB_EMAIL / EVENHUB_PASSWORD secrets"; exit 2;;
             *) echo "::error::evenhub upload failed (exit $code)"; exit $code;;
           esac
           if [ "$BETA" = on ]; then
