@@ -25,7 +25,7 @@ struct WhatsNewView: View {
 
     static let releases: [ReleaseNotes] = [
         ReleaseNotes(version: "0.2.9", date: "October 2026", items: [
-            WhatsNewItem(icon: "arrow.clockwise", title: "Sign in with email for issued accounts", description: "Headway Loading right after you sign in is also more reliable."),
+            WhatsNewItem(icon: "arrow.clockwise", title: "Sign in with email for issued accounts", description: "Accounts Headway hands out can now sign in with email, and loading right after you sign in is more reliable."),
         ]),
         ReleaseNotes(version: "0.2.8", date: "October 2026", items: [
             WhatsNewItem(icon: "location.fill", title: "Leave-by times from where you are", description: "Turn on Location in Settings and Headway estimates your walk or drive to the station from where you are, then shows when to leave and how many minutes you'll have to spare. Choose walk or drive for each commute leg. Your location is never stored."),

@@ -25,7 +25,7 @@ struct WhatsNewView: View {
 
     static let releases: [ReleaseNotes] = [
         ReleaseNotes(version: "0.1.8", date: "October 2026", items: [
-            WhatsNewItem(icon: "arrow.clockwise", title: "Sign in with email for issued accounts", description: "FitLoop Loading right after you sign in is also more reliable."),
+            WhatsNewItem(icon: "arrow.clockwise", title: "Sign in with email for issued accounts", description: "Accounts FitLoop hands out can now sign in with email, and loading right after you sign in is more reliable."),
         ]),
         ReleaseNotes(version: "0.1.7", date: "October 2026", items: [
             WhatsNewItem(icon: "applewatch.watchface", title: "Today's progress on your watch face", description: "Add the FitLoop complication to see how much of today's plan you've done, with workouts and meals checked off. Tap it to open FitLoop on your watch."),
