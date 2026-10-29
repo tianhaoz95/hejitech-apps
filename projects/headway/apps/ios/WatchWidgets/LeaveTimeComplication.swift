@@ -212,7 +212,7 @@ public struct LeaveTimeComplicationView: View {
                     HStack(spacing: 4) {
                         Text("Departs in")
                             .font(.subheadline)
-                        Text(depDate, style: .relative)
+                        Text("\(minutesUntil(depDate, from: entry.date)) min")
                             .font(.headline.bold())
                             .foregroundStyle(accentEmerald)
                     }
@@ -244,45 +244,33 @@ public struct LeaveTimeComplicationView: View {
     }
 
     // MARK: - Circular (Infograph / Metropolitan)
+    // Minutes only, no icon: the circle is small and longer text gets clipped.
     private var circularView: some View {
         ZStack {
             AccessoryWidgetBackground()
-            VStack(spacing: 0) {
-                if let _ = entry.train, let leaveDate = entry.leaveByDate {
-                    Image(systemName: entry.isUrgent ? "figure.run" : "figure.walk")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(entry.isUrgent ? .orange : accentEmerald)
-
+            VStack(spacing: -2) {
+                if entry.train != nil, let leaveDate = entry.leaveByDate {
                     if entry.isUrgent {
-                        Text("NOW")
-                            .font(.system(size: 10, weight: .heavy, design: .rounded))
+                        Text("GO")
+                            .font(.system(size: 18, weight: .heavy, design: .rounded))
                             .foregroundStyle(.orange)
                     } else {
                         Text("\(minutesUntil(leaveDate, from: entry.date))")
-                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
                             .monospacedDigit()
-                            .minimumScaleFactor(0.6)
-                        Text("min")
-                            .font(.system(size: 9, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.secondary)
+                            .minimumScaleFactor(0.5)
+                            .foregroundStyle(accentEmerald)
                     }
-                } else if let train = entry.train {
-                    let depDate = Date(timeIntervalSince1970: train.predDep / 1000)
-                    Image(systemName: "tram.fill")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(accentEmerald)
-                    Text(depDate, style: .relative)
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .monospacedDigit()
+                    Text(entry.isUrgent ? "leave" : "min")
+                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.secondary)
                 } else {
-                    Image(systemName: "figure.walk")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(accentEmerald)
-                    Text("--m")
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                    Text("--")
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
                         .foregroundStyle(.secondary)
                 }
             }
+            .lineLimit(1)
         }
         .widgetURL(URL(string: "headway://board"))
     }
@@ -291,7 +279,6 @@ public struct LeaveTimeComplicationView: View {
     private var inlineView: some View {
         HStack(spacing: 4) {
             if let train = entry.train {
-                Image(systemName: entry.isUrgent ? "figure.run" : "figure.walk")
                 if entry.isUrgent {
                     Text("Leave now · #\(train.train)")
                 } else if let leaveByDate = entry.leaveByDate {
@@ -300,7 +287,6 @@ public struct LeaveTimeComplicationView: View {
                     Text("#\(train.train) to \(entry.destinationShort)")
                 }
             } else {
-                Image(systemName: "figure.walk")
                 Text(entry.statusMessage ?? "Headway")
             }
         }
@@ -309,23 +295,18 @@ public struct LeaveTimeComplicationView: View {
 
     // MARK: - Corner (Infograph Corners)
     private var cornerView: some View {
-        VStack {
-            Image(systemName: entry.isUrgent ? "figure.run" : "figure.walk")
-                .font(.title3.bold())
-                .foregroundStyle(entry.isUrgent ? .orange : accentEmerald)
+        Group {
             if entry.isUrgent {
-                Text("NOW")
-                    .font(.caption2.bold())
-                    .foregroundStyle(.orange)
+                Text("GO").foregroundStyle(.orange)
             } else if let leaveByDate = entry.leaveByDate {
-                Text("\(minutesUntil(leaveByDate, from: entry.date))m")
-                    .font(.caption2.bold())
-                    .monospacedDigit()
+                Text("\(minutesUntil(leaveByDate, from: entry.date))m").foregroundStyle(accentEmerald)
             } else {
-                Text("--m")
-                    .font(.caption2.bold())
+                Text("--")
             }
         }
+        .font(.system(size: 18, weight: .bold, design: .rounded))
+        .monospacedDigit()
+        .minimumScaleFactor(0.5)
         .widgetURL(URL(string: "headway://board"))
     }
 }

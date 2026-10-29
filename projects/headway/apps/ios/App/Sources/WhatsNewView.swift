@@ -27,7 +27,7 @@ struct WhatsNewView: View {
         ReleaseNotes(version: "0.2.7", date: "October 2026", items: [
             WhatsNewItem(icon: "square.grid.2x2.fill", title: "Home Screen & Lock Screen widgets", description: "Add the Next trains widget to see live departures and countdowns at a glance. Pick your stations, and it flips to the trip back in the afternoon."),
             WhatsNewItem(icon: "pin.fill", title: "Pin trains to your Lock Screen", description: "On the Trains tab, choose Pin to Lock Screen to keep the next three trains, with live countdowns and delays, on your Lock Screen and in the Dynamic Island."),
-            WhatsNewItem(icon: "figure.walk", title: "Leave-in minutes on your watch face", description: "Watch face complications now count down the minutes until you need to leave for the nearest train you can still catch, instead of showing NOW."),
+            WhatsNewItem(icon: "figure.walk", title: "Leave-in minutes on your watch face", description: "Watch face complications now count down whole minutes until you need to leave for the nearest train you can still catch, sized to fit without icons or seconds."),
         ]),
         ReleaseNotes(version: "0.2.6", date: "October 2026", items: [
             WhatsNewItem(icon: "figure.walk", title: "Live leave countdown on watch face", description: "Fixed live departure tracking on Apple Watch complications so your watch face always shows live countdown minutes to walk out the door."),
