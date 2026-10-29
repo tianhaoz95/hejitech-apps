@@ -39,25 +39,26 @@ public struct LeaveTimeProvider: TimelineProvider {
     public init() {}
 
     public func placeholder(in context: Context) -> LeaveTimeEntry {
+        let now = Date()
         let sampleTrain = BoardTrain(
             train: "512",
             kind: "EXP",
             dir: "NB",
             serviceDate: "2026-10-28",
-            dep: Date().addingTimeInterval(22 * 60).timeIntervalSince1970 * 1000,
-            arr: Date().addingTimeInterval(52 * 60).timeIntervalSince1970 * 1000,
-            predDep: Date().addingTimeInterval(22 * 60).timeIntervalSince1970 * 1000,
-            predArr: Date().addingTimeInterval(52 * 60).timeIntervalSince1970 * 1000,
+            dep: now.addingTimeInterval(22 * 60).timeIntervalSince1970 * 1000,
+            arr: now.addingTimeInterval(52 * 60).timeIntervalSince1970 * 1000,
+            predDep: now.addingTimeInterval(22 * 60).timeIntervalSince1970 * 1000,
+            predArr: now.addingTimeInterval(52 * 60).timeIntervalSince1970 * 1000,
             delayMin: 0,
             status: .onTime,
             stopsBetween: 4,
-            leaveBy: Date().addingTimeInterval(12 * 60).timeIntervalSince1970 * 1000,
+            leaveBy: now.addingTimeInterval(12 * 60).timeIntervalSince1970 * 1000,
             catchState: "walk"
         )
         return LeaveTimeEntry(
-            date: Date(),
+            date: now,
             train: sampleTrain,
-            leaveByDate: Date().addingTimeInterval(12 * 60),
+            leaveByDate: now.addingTimeInterval(12 * 60),
             isUrgent: false,
             destinationShort: "SF",
             walkMinutes: 10
@@ -65,12 +66,15 @@ public struct LeaveTimeProvider: TimelineProvider {
     }
 
     public func getSnapshot(in context: Context, completion: @escaping (LeaveTimeEntry) -> Void) {
+        let now = Date()
         if let state = WatchStore.loadCachedState(), let b = state.board {
-            let now = Date()
-            let upcoming = b.trains.filter { $0.predDep > now.timeIntervalSince1970 * 1000 }
+            let nowMs = now.timeIntervalSince1970 * 1000
+            let upcoming = b.trains.filter { $0.predDep > nowMs }
             if let first = upcoming.first {
-                let leaveDate = first.leaveBy.map { Date(timeIntervalSince1970: $0 / 1000) }
-                let isUrgent = leaveDate.map { now >= $0 } ?? false
+                let depDate = Date(timeIntervalSince1970: first.predDep / 1000)
+                let walkMin = first.leaveBy.map { max(1, Int(round((first.predDep - $0) / 60_000))) } ?? b.walkMinutes ?? 10
+                let leaveDate = first.leaveBy.map { Date(timeIntervalSince1970: $0 / 1000) } ?? depDate.addingTimeInterval(-Double(walkMin * 60))
+                let isUrgent = now >= leaveDate
                 completion(LeaveTimeEntry(
                     date: now,
                     train: first,
@@ -78,7 +82,7 @@ public struct LeaveTimeProvider: TimelineProvider {
                     leaveByDate: leaveDate,
                     isUrgent: isUrgent,
                     destinationShort: b.to.short,
-                    walkMinutes: calculateWalkMinutes(for: first)
+                    walkMinutes: walkMin
                 ))
                 return
             }
@@ -90,26 +94,45 @@ public struct LeaveTimeProvider: TimelineProvider {
         Task {
             let now = Date()
             var board: Board? = nil
+            let state = WatchStore.loadCachedState()
+            board = state?.board
 
-            // 1. Try to read from shared/local watch cache
-            if let state = WatchStore.loadCachedState() {
-                board = state.board
-            }
+            let fromStation = board?.from.id ?? "san_francisco"
+            let toStation = board?.to.id ?? "sj_diridon"
+            let expressPref = state?.expressPreference ?? .all
 
-            // 2. If no board or stale, attempt direct fetch from backend
-            if board == nil {
+            let nowMs = now.timeIntervalSince1970 * 1000
+            let hasUpcoming = board?.trains.contains(where: { $0.predDep > nowMs }) ?? false
+
+            // Fetch live board if cached board is missing or has no upcoming departures
+            if !hasUpcoming {
                 do {
-                    let backend = Backend(config: .production)
-                    board = try await backend.board(from: "70011", to: "70261")
+                    let backend = Backend(config: .production, session: state?.session)
+                    if state?.session != nil {
+                        let my = try await backend.myBoard(from: fromStation, to: toStation, express: expressPref)
+                        board = my.board
+                    } else {
+                        board = try await backend.board(from: fromStation, to: toStation, express: expressPref)
+                    }
                 } catch {
-                    // Offline fallback
+                    // Retain existing board if fetch fails
                 }
             }
 
             guard let b = board else {
+                let fallback = placeholder(in: context)
+                let timeline = Timeline(entries: [fallback], policy: .after(now.addingTimeInterval(10 * 60)))
+                completion(timeline)
+                return
+            }
+
+            let upcoming = b.trains.filter { $0.predDep > nowMs }
+            if upcoming.isEmpty {
                 let fallback = LeaveTimeEntry(
                     date: now,
-                    statusMessage: "Set commute in app"
+                    board: b,
+                    destinationShort: b.to.short,
+                    statusMessage: "No trains tonight"
                 )
                 let timeline = Timeline(entries: [fallback], policy: .after(now.addingTimeInterval(15 * 60)))
                 completion(timeline)
@@ -117,93 +140,62 @@ public struct LeaveTimeProvider: TimelineProvider {
             }
 
             var entries: [LeaveTimeEntry] = []
-            let nowMs = now.timeIntervalSince1970 * 1000
-            let upcoming = b.trains.filter { $0.predDep > nowMs }
-
-            if upcoming.isEmpty {
-                entries.append(LeaveTimeEntry(
-                    date: now,
-                    board: b,
-                    destinationShort: b.to.short,
-                    statusMessage: "No more trains today"
-                ))
-                let timeline = Timeline(entries: entries, policy: .after(now.addingTimeInterval(20 * 60)))
-                completion(timeline)
-                return
-            }
-
-            // Generate timeline for upcoming trains
-            for (idx, train) in upcoming.prefix(3).enumerated() {
+            for (idx, train) in upcoming.prefix(4).enumerated() {
                 let depDate = Date(timeIntervalSince1970: train.predDep / 1000)
-                let leaveDate = train.leaveBy.map { Date(timeIntervalSince1970: $0 / 1000) }
-                let walkMin = calculateWalkMinutes(for: train)
+                let walkMin = train.leaveBy.map { max(1, Int(round((train.predDep - $0) / 60_000))) } ?? b.walkMinutes ?? 10
+                let leaveDate = train.leaveBy.map { Date(timeIntervalSince1970: $0 / 1000) } ?? depDate.addingTimeInterval(-Double(walkMin * 60))
 
                 if idx == 0 {
-                    // Current active train
-                    if let lDate = leaveDate {
-                        if now < lDate {
-                            // Stage 1: Counting down to leaveBy
-                            entries.append(LeaveTimeEntry(
-                                date: now,
-                                train: train,
-                                board: b,
-                                leaveByDate: lDate,
-                                isUrgent: false,
-                                destinationShort: b.to.short,
-                                walkMinutes: walkMin
-                            ))
-                            // Stage 2: From leaveBy until departure ("Leave now!")
-                            entries.append(LeaveTimeEntry(
-                                date: lDate,
-                                train: train,
-                                board: b,
-                                leaveByDate: lDate,
-                                isUrgent: true,
-                                destinationShort: b.to.short,
-                                walkMinutes: walkMin
-                            ))
-                        } else {
-                            // Currently in walk window or urgent
-                            entries.append(LeaveTimeEntry(
-                                date: now,
-                                train: train,
-                                board: b,
-                                leaveByDate: lDate,
-                                isUrgent: true,
-                                destinationShort: b.to.short,
-                                walkMinutes: walkMin
-                            ))
-                        }
-                    } else {
-                        // Train without leaveBy
+                    if now < leaveDate {
+                        // Counting down to leave time
                         entries.append(LeaveTimeEntry(
                             date: now,
                             train: train,
                             board: b,
-                            leaveByDate: nil,
+                            leaveByDate: leaveDate,
                             isUrgent: false,
+                            destinationShort: b.to.short,
+                            walkMinutes: walkMin
+                        ))
+                        // Triggers "Leave now!" once leave time is reached
+                        entries.append(LeaveTimeEntry(
+                            date: leaveDate,
+                            train: train,
+                            board: b,
+                            leaveByDate: leaveDate,
+                            isUrgent: true,
+                            destinationShort: b.to.short,
+                            walkMinutes: walkMin
+                        ))
+                    } else {
+                        // Already inside walk window or urgent
+                        entries.append(LeaveTimeEntry(
+                            date: now,
+                            train: train,
+                            board: b,
+                            leaveByDate: leaveDate,
+                            isUrgent: true,
                             destinationShort: b.to.short,
                             walkMinutes: walkMin
                         ))
                     }
                 } else {
-                    // Subsequent trains roll over at the previous train's departure
                     let prevDep = Date(timeIntervalSince1970: upcoming[idx - 1].predDep / 1000)
-                    if let lDate = leaveDate, lDate > prevDep {
+                    if leaveDate > prevDep {
                         entries.append(LeaveTimeEntry(
                             date: prevDep,
                             train: train,
                             board: b,
-                            leaveByDate: lDate,
+                            leaveByDate: leaveDate,
                             isUrgent: false,
                             destinationShort: b.to.short,
                             walkMinutes: walkMin
                         ))
                         entries.append(LeaveTimeEntry(
-                            date: lDate,
+                            date: leaveDate,
                             train: train,
                             board: b,
-                            leaveByDate: lDate,
+                            leaveByDate: leaveDate,
                             isUrgent: true,
                             destinationShort: b.to.short,
                             walkMinutes: walkMin
@@ -214,7 +206,7 @@ public struct LeaveTimeProvider: TimelineProvider {
                             train: train,
                             board: b,
                             leaveByDate: leaveDate,
-                            isUrgent: leaveDate.map { prevDep >= $0 } ?? false,
+                            isUrgent: true,
                             destinationShort: b.to.short,
                             walkMinutes: walkMin
                         ))
@@ -222,16 +214,10 @@ public struct LeaveTimeProvider: TimelineProvider {
                 }
             }
 
-            let nextRefresh = entries.last?.date.addingTimeInterval(15 * 60) ?? now.addingTimeInterval(15 * 60)
+            let nextRefresh = min(now.addingTimeInterval(15 * 60), entries.last?.date ?? now.addingTimeInterval(15 * 60))
             let timeline = Timeline(entries: entries, policy: .after(nextRefresh))
             completion(timeline)
         }
-    }
-
-    private func calculateWalkMinutes(for train: BoardTrain) -> Int {
-        guard let leaveBy = train.leaveBy else { return 10 }
-        let diffMs = train.predDep - leaveBy
-        return max(1, Int(round(diffMs / 60_000)))
     }
 }
 
@@ -337,7 +323,7 @@ public struct LeaveTimeComplicationView: View {
         ZStack {
             AccessoryWidgetBackground()
             VStack(spacing: 0) {
-                if entry.train != nil {
+                if let _ = entry.train, let leaveDate = entry.leaveByDate {
                     Image(systemName: entry.isUrgent ? "figure.run" : "figure.walk")
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(entry.isUrgent ? .orange : accentEmerald)
@@ -346,21 +332,27 @@ public struct LeaveTimeComplicationView: View {
                         Text("NOW")
                             .font(.system(size: 10, weight: .heavy, design: .rounded))
                             .foregroundStyle(.orange)
-                    } else if let leaveByDate = entry.leaveByDate {
-                        Text(leaveByDate, style: .relative)
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .monospacedDigit()
-                            .minimumScaleFactor(0.65)
                     } else {
-                        Text("LEAVE")
-                            .font(.system(size: 8, weight: .bold))
+                        Text(leaveDate, style: .relative)
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .monospacedDigit()
+                            .minimumScaleFactor(0.6)
                     }
-                } else {
+                } else if let train = entry.train {
+                    let depDate = Date(timeIntervalSince1970: train.predDep / 1000)
                     Image(systemName: "tram.fill")
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(accentEmerald)
-                    Text("CAL")
-                        .font(.system(size: 8, weight: .bold))
+                    Text(depDate, style: .relative)
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                } else {
+                    Image(systemName: "figure.walk")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(accentEmerald)
+                    Text("--m")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundStyle(.secondary)
                 }
             }
         }
@@ -382,7 +374,7 @@ public struct LeaveTimeComplicationView: View {
                     Text("#\(train.train) to \(entry.destinationShort)")
                 }
             } else {
-                Image(systemName: "tram.fill")
+                Image(systemName: "figure.walk")
                 Text(entry.statusMessage ?? "Headway")
             }
         }
@@ -403,6 +395,9 @@ public struct LeaveTimeComplicationView: View {
                 Text(leaveByDate, style: .relative)
                     .font(.caption2.bold())
                     .monospacedDigit()
+            } else {
+                Text("--m")
+                    .font(.caption2.bold())
             }
         }
         .widgetURL(URL(string: "headway://board"))

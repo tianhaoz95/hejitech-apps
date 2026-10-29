@@ -66,6 +66,8 @@ targets:
         com.apple.developer.applesignin: [Default]
         aps-environment: development
         com.apple.developer.usernotifications.time-sensitive: true
+        com.apple.security.application-groups:
+          - group.com.hejitech.headway
 
   Widgets:
     type: app-extension
@@ -123,6 +125,9 @@ targets:
         ITSAppUsesNonExemptEncryption: false
     entitlements:
       path: Watch/Watch.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.hejitech.headway
 
   WatchWidgets:
     type: app-extension
@@ -151,6 +156,11 @@ targets:
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         ITSAppUsesNonExemptEncryption: false
+    entitlements:
+      path: WatchWidgets/WatchWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.hejitech.headway
 
 schemes:
   App:
