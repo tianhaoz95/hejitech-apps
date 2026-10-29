@@ -17,10 +17,17 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.18"
+    static let currentVersion = "0.1.19"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.19", date: "October 2026", items: [
+            WhatsNewItem(
+                icon: "shield.lefthalf.filled",
+                title: "Launch Stability Fix",
+                description: "Resolved an AutoLayout lifecycle exception that occurred during initial launch before controller subviews completed loading."
+            ),
+        ]),
         ReleaseNotes(version: "0.1.18", date: "October 2026", items: [
             WhatsNewItem(
                 icon: "rectangle.split.2x1.fill",

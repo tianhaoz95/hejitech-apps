@@ -92,6 +92,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     private let phoneTrackpadOptionsStack = UIStackView()
 
     // Touchpad gesture tracking
+    private var isSetupComplete = false
     private var lastObservedSize: CGSize = .zero
     private var lastPanLocation: CGPoint = .zero
     private var lastTapTime: TimeInterval = 0
@@ -219,6 +220,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
 
     public override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        guard isSetupComplete else { return }
         if view.bounds.size != lastObservedSize && view.bounds.width > 0 && view.bounds.height > 0 {
             lastObservedSize = view.bounds.size
             updateTouchpadLayout()
@@ -259,10 +261,15 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         setupDockMouseListeners()
         setupHardwareKeyboardListeners()
         bindStore()
+
+        isSetupComplete = true
+
         showMode(workspaceVC != nil ? .touchpad : .settings)
         updateTouchpadButtonsVisibility()
         updatePhoneWorkspaceBar()
         updateDisplayStatusBanner()
+        updateActivePaneIndicator()
+        updateStatusDot()
     }
 
     public override func viewWillAppear(_ animated: Bool) {
@@ -279,39 +286,44 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         store.$externalDisplayDescription
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
-                self?.updateStatusDot()
+                guard let self, self.isSetupComplete else { return }
+                self.updateStatusDot()
             }
             .store(in: &cancellables)
 
         store.$tree
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
-                self?.updateActivePaneIndicator()
+                guard let self, self.isSetupComplete else { return }
+                self.updateActivePaneIndicator()
             }
             .store(in: &cancellables)
 
         store.$settings
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
-                self?.applySidebarLayoutConstraints()
-                self?.updateTouchpadButtonsVisibility()
-                self?.syncSettingsControls()
+                guard let self, self.isSetupComplete else { return }
+                self.applySidebarLayoutConstraints()
+                self.updateTouchpadButtonsVisibility()
+                self.syncSettingsControls()
             }
             .store(in: &cancellables)
 
         store.$workspaces
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
-                self?.updatePhoneWorkspaceBar()
-                self?.updateTouchpadHelpText()
+                guard let self, self.isSetupComplete else { return }
+                self.updatePhoneWorkspaceBar()
+                self.updateTouchpadHelpText()
             }
             .store(in: &cancellables)
 
         store.$activeWorkspaceIndex
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
-                self?.updatePhoneWorkspaceBar()
-                self?.updateTouchpadHelpText()
+                guard let self, self.isSetupComplete else { return }
+                self.updatePhoneWorkspaceBar()
+                self.updateTouchpadHelpText()
             }
             .store(in: &cancellables)
     }
@@ -529,7 +541,9 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
             ]
         }
         NSLayoutConstraint.activate(activeSidebarConstraints)
-        view.layoutIfNeeded()
+        if isSetupComplete {
+            view.layoutIfNeeded()
+        }
     }
 
     private func updateTabButtonSelection() {
@@ -1080,6 +1094,14 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     @objc private func openSettingsKey() { workspaceVC?.openSettingsTapped() }
 
     private func updateTouchpadLayout() {
+        guard isSetupComplete,
+              trackpadLayoutSegment.superview != nil,
+              touchpadSurface.superview != nil,
+              splitVirtualKeyboard.superview != nil,
+              touchpadView.superview != nil else {
+            return
+        }
+
         let isSplit = (store.settings.trackpadSurfaceLayout == .splitWithKeyboard)
         let showButtons = store.settings.showTouchpadButtons
         let isLandscape = (view.bounds.width > view.bounds.height)
