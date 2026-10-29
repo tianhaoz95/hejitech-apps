@@ -55,8 +55,13 @@ export async function reviewSignIn(env: ReviewEnv, req: Request, reset: (userId:
     res = await link();
   }
   if (!res.ok) return { status: 502, body: { error: `couldn't sign in the review account: ${await res.text()}` } };
-  const generated = (await res.json()) as { id?: string; hashed_token?: string; properties?: { hashed_token?: string } };
+  const generated = (await res.json()) as {
+    id?: string; hashed_token?: string; verification_type?: string;
+    properties?: { hashed_token?: string; verification_type?: string };
+  };
   const tokenHash = generated.hashed_token ?? generated.properties?.hashed_token;
+  // A user made by this link gets a "signup" token, an existing one "magiclink".
+  const type = generated.verification_type ?? generated.properties?.verification_type ?? "magiclink";
   if (!generated.id || !tokenHash) return { status: 502, body: { error: "unexpected generate_link response" } };
 
   await reset(generated.id);
@@ -64,7 +69,7 @@ export async function reviewSignIn(env: ReviewEnv, req: Request, reset: (userId:
   const session = await auth("verify", {
     method: "POST",
     headers: { apikey: env.SUPABASE_ANON_KEY, "Content-Type": "application/json" },
-    body: JSON.stringify({ type: "magiclink", token_hash: tokenHash }),
+    body: JSON.stringify({ type, token_hash: tokenHash }),
   });
   if (!session.ok) return { status: 502, body: { error: `couldn't sign in the review account: ${await session.text()}` } };
   return { status: 200, body: await session.json() };
