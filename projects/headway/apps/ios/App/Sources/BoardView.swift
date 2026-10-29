@@ -351,35 +351,58 @@ struct TrainRow: View {
                 .font(.caption)
 
                 if train.status != .cancelled && (train.firstIn == true || train.shortest == true || train.overtakenByTrain != nil || (train.rideMin ?? 0) > 0) {
-                    HStack(spacing: 5) {
+                    VStack(alignment: .leading, spacing: 3) {
                         if train.firstIn == true {
-                            Text("First to \(destinationShort ?? "SF")")
-                                .font(.system(size: 10, weight: .semibold))
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 1.5)
-                                .background(Color.blue.opacity(0.15), in: Capsule())
-                                .foregroundStyle(.blue)
+                            HStack(spacing: 5) {
+                                Text("First to \(destinationShort ?? "SF")")
+                                    .lineLimit(1)
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Color.blue.opacity(0.15), in: Capsule())
+                                    .foregroundStyle(.blue)
+                                if train.shortest != true, let r = train.rideMin, r > 0 {
+                                    Text("\(r)m ride")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
                         }
                         if train.shortest == true {
-                            Text("Shortest ride")
-                                .font(.system(size: 10, weight: .semibold))
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 1.5)
-                                .background(Color.green.opacity(0.18), in: Capsule())
-                                .foregroundStyle(.green)
-                        }
-                        if let overtaker = train.overtakenByTrain {
-                            Text("Overtaken by \(overtaker)")
-                                .font(.system(size: 10, weight: .medium))
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 1.5)
-                                .background(Color.secondary.opacity(0.15), in: Capsule())
-                                .foregroundStyle(.secondary)
-                        }
-                        if let r = train.rideMin, r > 0 {
+                            HStack(spacing: 5) {
+                                Text("Shortest ride")
+                                    .lineLimit(1)
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Color.green.opacity(0.18), in: Capsule())
+                                    .foregroundStyle(.green)
+                                if let r = train.rideMin, r > 0 {
+                                    Text("\(r)m ride")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        } else if train.firstIn != true, train.overtakenByTrain == nil, let r = train.rideMin, r > 0 {
                             Text("\(r)m ride")
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
+                        }
+                        if let overtaker = train.overtakenByTrain {
+                            HStack(spacing: 5) {
+                                Text("Overtaken by \(overtaker)")
+                                    .lineLimit(1)
+                                    .font(.system(size: 10, weight: .medium))
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Color.secondary.opacity(0.15), in: Capsule())
+                                    .foregroundStyle(.secondary)
+                                if train.firstIn != true, train.shortest != true, let r = train.rideMin, r > 0 {
+                                    Text("\(r)m ride")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
                         }
                     }
                     .padding(.top, 1)
