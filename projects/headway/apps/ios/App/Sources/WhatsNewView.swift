@@ -20,10 +20,13 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.2.8"
+    static let currentVersion = "0.2.9"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.2.9", date: "October 2026", items: [
+            WhatsNewItem(icon: "arrow.clockwise", title: "Sign in with email for issued accounts", description: "Headway Loading right after you sign in is also more reliable."),
+        ]),
         ReleaseNotes(version: "0.2.8", date: "October 2026", items: [
             WhatsNewItem(icon: "location.fill", title: "Leave-by times from where you are", description: "Turn on Location in Settings and Headway estimates your walk or drive to the station from where you are, then shows when to leave and how many minutes you'll have to spare. Choose walk or drive for each commute leg. Your location is never stored."),
             WhatsNewItem(icon: "eyeglasses", title: "Trip estimate on your glasses", description: "Allow location for the glasses app and its leave hint uses the same walk or drive estimate."),
