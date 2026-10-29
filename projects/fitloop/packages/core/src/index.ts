@@ -8,3 +8,4 @@ export * from "./font.ts";
 export * from "./exercise_catalog.ts";
 export * from "./procedural_rigging.ts";
 
+export * from "./demo.ts";

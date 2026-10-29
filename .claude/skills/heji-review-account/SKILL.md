@@ -9,7 +9,7 @@ App Review needs to sign in. Our apps offer only Sign in with Apple and Google, 
 Supabase project has its **Email provider off** (`GET /auth/v1/settings` → `"email": false`), so a
 password account can't sign in through Supabase, and nobody should be able to sign up with email.
 This skill adds a sign-in path that only the project's own demo account can use, and wires it into
-App Store Connect. Headway is the reference: `projects/headway/services/web/src/worker/review.ts`,
+App Store Connect. Headway is the reference (FitLoop the second: a demo plan from core): `projects/headway/services/web/src/worker/review.ts`,
 `apps/ios/App/Sources/SignInView.swift` (`EmailSignInSheet`), `review.env`, the
 "review sign-in" step of `scripts/test-api.mjs`.
 
@@ -125,6 +125,12 @@ flow and report which of these it does; don't change it silently, since deleting
 signs the person out of every HEJI app (an owner decision).
 
 ## Pitfalls
+
+- `-reviewSignIn` runs from the sign-in screen's `.task`, which SwiftUI cancels when the signed-in
+  screen replaces it: a refresh still running then fails with "cancelled". Make the model's
+  `refresh()` run its work in its own `Task { … }.value` (Headway and FitLoop do).
+- Demo data that depends on dates (a plan's `starts_on`, a commute's times) must be computed at
+  reset time, not stored: FitLoop starts its demo plan on the Monday before the current week.
 
 - The endpoint must be reachable before any auth check, and listed wherever the Worker routes
   `/api/*` first (`run_worker_first`).

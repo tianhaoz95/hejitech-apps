@@ -19,7 +19,10 @@
     "PUBLIC_URL": "http://127.0.0.1:8794",
     "SUPABASE_URL": "http://127.0.0.1:55421",
     // The demo anon key every local `supabase start` ships with.
-    "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0"
+    "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0",
+    // The local App Review demo account (review.ts): review@example.com / fitloop-review-dev.
+    "REVIEW_EMAIL": "review@example.com",
+    "REVIEW_PASSWORD_SHA256": "5dadb16c6d38ff475f3c80fbbbd2932719d2403769d293a31ea4576c110c2bc0"
   },
   // Local secrets: .dev.vars (SUPABASE_SERVICE_ROLE_KEY; scripts/test-api.mjs expects the local demo key).
   "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "fitloop-oauth-local" }],
@@ -34,7 +37,8 @@
         "SUPABASE_URL": "https://jitdzllkxfhlrxxvljhp.supabase.co",
         "SUPABASE_ANON_KEY": "sb_publishable_lZSe_L4Wd0Sw01h25eixzQ_vLU7FPP8"
       },
-      // Secret: SUPABASE_SERVICE_ROLE_KEY (wrangler secret put --env production).
+      // Secrets (wrangler secret put --env production): SUPABASE_SERVICE_ROLE_KEY, and
+      // REVIEW_EMAIL + REVIEW_PASSWORD_SHA256 (scripts/review_account.sh fitloop).
       "kv_namespaces": [{ "binding": "OAUTH_KV" }]
     }
   }

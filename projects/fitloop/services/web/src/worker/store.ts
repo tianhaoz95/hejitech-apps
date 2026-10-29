@@ -13,6 +13,9 @@ export interface Env {
   SUPABASE_ANON_KEY: string;
   /** Secret. Server-side only; bypasses RLS for every project in the shared Supabase project. */
   SUPABASE_SERVICE_ROLE_KEY: string;
+  /** Secrets for the App Review demo account (review.ts): its email and SHA-256 of its password. */
+  REVIEW_EMAIL?: string;
+  REVIEW_PASSWORD_SHA256?: string;
 }
 
 export const SCHEMA = "fitloop";

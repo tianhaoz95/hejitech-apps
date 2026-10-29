@@ -25,8 +25,10 @@ xcodebuild -project FitLoop.xcodeproj -scheme App -destination 'generic/platform
 ```
 
 Local tokens from the seed: glasses `fld_dev_local_device`, agent `fla_dev_local_token` (MCP at
-`http://127.0.0.1:8794/mcp`). iPhone launch arguments (Debug): `-autoSignIn` (seed athlete on the
-local stack), `-screen today|plan|progress|feedback|settings`, `-date YYYY-MM-DD`, `-openWorkout`
+`http://127.0.0.1:8794/mcp`). App Review demo account: locally `review@example.com` /
+`fitloop-review-dev` (wrangler.jsonc vars); production via `scripts/review_account.sh fitloop`
+(`review.env`, skill heji-review-account). iPhone launch arguments (Debug): `-autoSignIn` (seed athlete on the
+local stack), `-reviewSignIn` (the App Review sign-in path), `-screen today|plan|progress|feedback|settings`, `-date YYYY-MM-DD`, `-openWorkout`
 (the day's first workout in the player), `-noHealth` (no Health sheet), `-production`.
 
 ## Architecture
@@ -38,7 +40,8 @@ local stack), `-screen today|plan|progress|feedback|settings`, `-date YYYY-MM-DD
   `get_plan_guide` serves; bump `GUIDE_VERSION` with a rule change), `glasses.ts` (screens laid out
   in pixels by `font.ts`, 9 lines in a bordered frame, and the R1 `Navigator`). Change behaviour there, with a test.
 - **Worker** (`services/web/src/worker`): `api.ts` (session / glasses token / pairing; every write
-  checked with core), `mcp.ts` (13 tools, each with annotations; `agent_access` switches enforced
+  checked with core), `review.ts` (App Review's demo account: `/api/review-sign-in` resets it to
+  core's `demoPlan` / `demoSettings` and mints a Supabase session), `mcp.ts` (13 tools, each with annotations; `agent_access` switches enforced
   here), `store.ts` (db, tokens, plan versions, `today()`), `index.ts` (OAuth provider). Service key
   only here; clients read their own rows through RLS.
 - **Plugin** (`apps/glasses/src`): `app.ts` (FitLoopApp: today from the Worker with a cached copy,

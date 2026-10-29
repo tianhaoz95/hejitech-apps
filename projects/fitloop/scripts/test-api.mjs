@@ -325,4 +325,25 @@ await step("pages", async () => {
   assert.equal((await fetch(`${site}/nope`)).status, 404);
 });
 
+// ---------------------------------------------------------------- App Review demo account
+await step("review sign-in: wrong password refused, right one gets a session with the demo plan, reset each time", async () => {
+  // review@example.com / fitloop-review-dev: the local values in wrangler.jsonc.
+  const sign = (password) => call("/api/review-sign-in", { method: "POST", body: { email: "Review@Example.com", password } });
+  assert.equal((await sign("nope")).status, 401);
+  const first = await sign("fitloop-review-dev");
+  assert.equal(first.status, 200, first.text);
+  const token = first.body.access_token;
+  const plan = await call("/api/plan", { auth: token });
+  assert.ok(plan.body.current, "demo plan published");
+  const day = await call(`/api/today?date=${today}`, { auth: token });
+  assert.equal(day.status, 200);
+  assert.ok(day.body.state.meals.length > 0, "today has meals");
+  // Feedback written during review is gone after the next review sign-in.
+  assert.equal((await call("/api/feedback", { method: "POST", auth: token, body: { date: today, text: "reviewer note", tags: [] } })).status < 300, true);
+  const again = await sign("fitloop-review-dev");
+  assert.equal(again.body.user.id, first.body.user.id);
+  const fb = await call("/api/feedback", { auth: again.body.access_token });
+  assert.equal((fb.body.feedback ?? fb.body).length, 0);
+});
+
 console.log(`FitLoop integration: ${steps.length} checks passed`);

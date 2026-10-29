@@ -132,6 +132,18 @@ final class AppModel {
         } catch { self.error = error.localizedDescription }
     }
 
+    /// Email sign-in for accounts FitLoop hands out (App Review's demo account); no sign-up.
+    func signInWithEmailAccount(_ email: String, _ password: String) async -> Bool {
+        do {
+            try await backend.reviewSignIn(email: email.trimmingCharacters(in: .whitespaces), password: password)
+            await route()
+            return true
+        } catch {
+            self.error = (error as? BackendError).flatMap { if case .http(401, _) = $0 { return "Wrong email or password." }; return nil } ?? error.localizedDescription
+            return false
+        }
+    }
+
     func signOut() {
         backend.signOut()
         today = nil
@@ -150,7 +162,13 @@ final class AppModel {
 
     // MARK: data
 
+    /// Runs in its own task: a view's `.task` ending (sign-in swapping screens) or a released
+    /// pull-to-refresh must not cancel a refresh halfway.
     func refresh() async {
+        await Task { await self.refreshNow() }.value
+    }
+
+    private func refreshNow() async {
         guard phase == .ready else { return }
         loading = true
         defer { loading = false }

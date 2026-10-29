@@ -6,13 +6,35 @@
 //   Supabase session (web, iPhone) plans, history, settings, vitals, live HR upload, photos, pairing,
 //                                devices, agent tokens, deleting FitLoop's data
 import {
-  adherence, checkCheckin, checkFeedback, checkSettings, checkVital, isDate, METRICS, normalizeSettings, type Checkin, type Settings, type VitalEntry,
+  adherence, checkCheckin, checkFeedback, demoPlan, demoSettings, checkSettings, checkVital, isDate, METRICS, normalizeSettings, type Checkin, type Settings, type VitalEntry,
 } from "@fitloop/core";
 import {
   admin, bearer, BUCKET, checkinsBetween, feedbackList, json, LIVE_MAX_AGE_MS, loadSettings, pairingCode, PAIRING_CODE_TTL_MS, PHOTO_URL_TTL_SEC, planOn, planSpans,
   planVersions, PREFIX, published, randomToken, resolveDevice, saveSettings, sha256, supabaseUser, today, type Db, type Env,
 } from "./store.ts";
+import { reviewSignIn } from "./review.ts";
 import { getOrResolveExerciseGif, normalizeExerciseSlug, uploadExerciseGif, type UploadGifOptions } from "./exercise_media.ts";
+
+/** Every table holding a user's FitLoop rows (DELETE /api/account, the review account's reset). */
+const USER_TABLES = ["profiles", "plans", "checkins", "feedback", "vitals", "photos", "live", "pairing_codes", "device_tokens", "access_tokens"] as const;
+
+/** Removes everything FitLoop keeps about a user: photos in storage, then their rows. */
+async function deleteUserData(db: Db, userId: string): Promise<string | null> {
+  const { data: files } = await db.storage.from(BUCKET).list(`${userId}/photos`, { limit: 1000 });
+  if (files?.length) await db.storage.from(BUCKET).remove(files.map((f) => `${userId}/photos/${f.name}`));
+  for (const t of USER_TABLES) {
+    const { error } = await db.from(t).delete().eq("user_id", userId);
+    if (error) return `couldn't delete ${t}: ${error.message}`;
+  }
+  return null;
+}
+
+/** Monday of the week before `now` (UTC date), so the demo plan already has a history. */
+function demoStart(now: number): string {
+  const d = new Date(now);
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7) - 7);
+  return d.toISOString().slice(0, 10);
+}
 
 const PAIR_FAILURES_PER_WINDOW = 10;
 const PAIR_WINDOW_SEC = 600;
@@ -48,6 +70,19 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
   const path = url.pathname;
 
   // ------------------------------------------------------------ pairing (no auth)
+  if (path === "/api/review-sign-in" && req.method === "POST") {
+    // App Review's demo account: a fresh demo plan every time it signs in (review.ts).
+    const r = await reviewSignIn(env, req, async (userId) => {
+      await deleteUserData(db, userId);
+      await saveSettings(db, userId, demoSettings());
+      const startsOn = demoStart(Date.now());
+      await db.rpc("publish_plan", {
+        p_user: userId, p_plan: demoPlan(startsOn), p_starts_on: startsOn, p_by: "agent",
+        p_change_note: "Demo plan: three strength days around a sore knee, two short cardio days, vegetarian weekdays.",
+      });
+    });
+    return reply(r.body, r.status);
+  }
   if (path === "/api/pair" && req.method === "POST") {
     const ip = req.headers.get("CF-Connecting-IP") ?? "local";
     const key = `pairfail:${ip}`;
@@ -313,13 +348,8 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
 
   // ------------------------------------------------------------ delete everything FitLoop keeps
   if (path === "/api/account" && req.method === "DELETE") {
-    const { data: files } = await db.storage.from(BUCKET).list(`${userId}/photos`, { limit: 1000 });
-    if (files?.length) await db.storage.from(BUCKET).remove(files.map((f) => `${userId}/photos/${f.name}`));
-    for (const t of ["profiles", "plans", "checkins", "feedback", "vitals", "photos", "live", "pairing_codes", "device_tokens", "access_tokens"]) {
-      const { error } = await db.from(t).delete().eq("user_id", userId);
-      if (error) return reply({ error: `couldn't delete ${t}: ${error.message}` }, 500);
-    }
-    return reply({ ok: true });
+    const failed = await deleteUserData(db, userId);
+    return failed ? reply({ error: failed }, 500) : reply({ ok: true });
   }
 
   return reply({ error: "not found" }, 404);

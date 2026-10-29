@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
-  adherence, checkCheckin, checkFeedback, checkPlan, checkSettings, checkVital, dayPlan, dayState, defaultSettings, errorsOf, GUIDE,
+  adherence, checkCheckin, demoPlan, demoSettings, checkFeedback, checkPlan, checkSettings, checkVital, dayPlan, dayState, defaultSettings, errorsOf, GUIDE,
   LINE_PX, MAX_LINES, Navigator, normalizeSettings, textPx, setTarget, weekdayOf,
   findCatalogExercise, renderProceduralPresetGif, type Checkin, type Command, type Plan, type World,
 } from "../src/index.ts";
@@ -371,3 +371,13 @@ describe("glasses", () => {
   });
 });
 
+
+describe("App Review demo account", () => {
+  it("has a valid weekly plan from any start date, and valid settings", () => {
+    const p = demoPlan(MON);
+    expect(errorsOf(checkPlan(p))).toEqual([]);
+    expect(p.starts_on).toBe(MON);
+    expect(dayPlan(p, "2026-10-28")?.meals.length).toBeGreaterThan(0);
+    expect(checkSettings(demoSettings())).toEqual([]);
+  });
+});
