@@ -61,6 +61,15 @@ struct SignInScreen: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(palette.paper)
         .sheet(isPresented: $emailSheet) { EmailSignInSheet(viewModel: viewModel) }
+        .task {
+            #if DEBUG
+            // `-reviewSignIn <email> <password>` signs in through the App Review path (checks without typing).
+            let args = ProcessInfo.processInfo.arguments
+            if let i = args.firstIndex(of: "-reviewSignIn"), i + 2 < args.count {
+                _ = await viewModel.signIn(email: args[i + 1], password: args[i + 2])
+            }
+            #endif
+        }
     }
 }
 
