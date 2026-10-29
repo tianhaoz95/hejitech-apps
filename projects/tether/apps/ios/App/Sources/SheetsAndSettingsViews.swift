@@ -352,155 +352,137 @@ public struct SettingsSheetView: View {
     @State private var showingAddHost = false
     @State private var editingHost: SshHost?
     @State private var showingHostManager = false
-    @State private var showingAssistiveTouchGuide = false
 
     public init(store: WorkspaceStore) {
         self.store = store
     }
 
+    @ViewBuilder
+    private var workspacesSection: some View {
+        Section("Workspaces (\(store.workspaces.count))") {
+            ForEach(Array(store.workspaces.enumerated()), id: \.element.id) { index, ws in
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(ws.name)
+                            .font(.body.weight(index == store.activeWorkspaceIndex ? .bold : .regular))
+                        Text(index == store.activeWorkspaceIndex ? "Active Space" : "Tap to switch")
+                            .font(.caption2)
+                            .foregroundStyle(index == store.activeWorkspaceIndex ? Color.cyan : Color.secondary)
+                    }
+                    Spacer()
+                    if index == store.activeWorkspaceIndex {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(Color.cyan)
+                    } else {
+                        Button("Switch") {
+                            store.switchToWorkspace(at: index)
+                        }
+                        .buttonStyle(.bordered)
+                        .font(.caption)
+                    }
+                }
+            }
+
+            Button {
+                store.addWorkspace()
+            } label: {
+                Label("Add New Workspace", systemImage: "plus.rectangle.on.rectangle")
+            }
+
+            Text("Tip: Switch workspaces using the top bar buttons on your phone or monitor, or swipe with 4 fingers on the phone trackpad.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private var appearanceSection: some View {
+        Section("Workspace & Appearance") {
+            Picker("Theme", selection: $store.settings.theme) {
+                Text("System").tag(ThemeMode.system)
+                Text("Light").tag(ThemeMode.light)
+                Text("Dark").tag(ThemeMode.dark)
+            }
+            .onChange(of: store.settings.theme) { _, newValue in
+                DisplayHost.shared.applyTheme(newValue)
+            }
+
+            Picker("Default Layout Preset", selection: $store.settings.defaultLayoutPreset) {
+                ForEach(LayoutPresetId.allCases, id: \.self) { preset in
+                    Text(preset.displayName).tag(preset)
+                }
+            }
+
+            Stepper(
+                "Terminal Font Size: \(store.settings.terminalFontSizePt) pt",
+                value: $store.settings.terminalFontSizePt,
+                in: TetherConstants.minTerminalFontSize...TetherConstants.maxTerminalFontSize
+            )
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Default Search Engine URL (%s = query)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextField("https://duckduckgo.com/?q=%s", text: $store.settings.defaultSearchEngineUrl)
+                    .font(.caption.monospaced())
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var phoneControllerSection: some View {
+        Section("Phone Remote Controller") {
+            Picker("Sidebar Position", selection: $store.settings.controllerSidebarPosition) {
+                Text("Left Side").tag(ControllerSidebarPosition.left)
+                Text("Right Side").tag(ControllerSidebarPosition.right)
+            }
+
+            Picker("Phone Orientation", selection: $store.settings.controllerOrientation) {
+                Text("Landscape (Default)").tag(ControllerOrientation.landscape)
+                Text("Portrait (Up/Down)").tag(ControllerOrientation.portrait)
+                Text("Landscape (Flipped)").tag(ControllerOrientation.landscapeFlipped)
+                Text("Auto-Rotate").tag(ControllerOrientation.auto)
+            }
+            .onChange(of: store.settings.controllerOrientation) { _, newOrient in
+                DisplayHost.shared.phoneControllerVC?.applyOrientationChange(newOrient)
+            }
+
+            Picker("Trackpad Layout", selection: $store.settings.trackpadSurfaceLayout) {
+                Text("Full Trackpad").tag(TrackpadSurfaceLayout.full)
+                Text("Split: Pad + Keyboard").tag(TrackpadSurfaceLayout.splitWithKeyboard)
+            }
+
+            Toggle("Show Touchpad Buttons", isOn: $store.settings.showTouchpadButtons)
+
+            Picker("Dragging Gesture", selection: $store.settings.touchpadDragGesture) {
+                Text("Double-Tap Drag").tag(TouchpadDragGesture.doubleTapDrag)
+                Text("3-Finger Drag").tag(TouchpadDragGesture.threeFingerDrag)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("Cursor Speed")
+                    Spacer()
+                    Text(String(format: "%.1fx", store.settings.pointerSensitivity))
+                        .foregroundStyle(.secondary)
+                }
+                Slider(value: $store.settings.pointerSensitivity, in: 1.0...5.0, step: 0.5)
+            }
+
+            Text("• Dragging: Resize split dividers & drag items on screen.\n• 3-Finger Swipe: Swipe anywhere on the trackpad to change pane focus in that direction.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
     public var body: some View {
         NavigationStack {
             Form {
-                Section("Workspaces (\(store.workspaces.count))") {
-                    ForEach(Array(store.workspaces.enumerated()), id: \.element.id) { index, ws in
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(ws.name)
-                                    .font(.body.weight(index == store.activeWorkspaceIndex ? .bold : .regular))
-                                Text(index == store.activeWorkspaceIndex ? "Active Space" : "Tap to switch")
-                                    .font(.caption2)
-                                    .foregroundStyle(index == store.activeWorkspaceIndex ? Color.cyan : Color.secondary)
-                            }
-                            Spacer()
-                            if index == store.activeWorkspaceIndex {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(Color.cyan)
-                            } else {
-                                Button("Switch") {
-                                    store.switchToWorkspace(at: index)
-                                }
-                                .buttonStyle(.bordered)
-                                .font(.caption)
-                            }
-                        }
-                    }
-
-                    Button {
-                        store.addWorkspace()
-                    } label: {
-                        Label("Add New Workspace", systemImage: "plus.rectangle.on.rectangle")
-                    }
-
-                    Text("Tip: Switch workspaces using the top bar buttons on your phone or monitor, or swipe with 4 fingers on the phone trackpad.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-
-                Section("Workspace & Appearance") {
-                    Picker("Theme", selection: $store.settings.theme) {
-                        Text("System").tag(ThemeMode.system)
-                        Text("Light").tag(ThemeMode.light)
-                        Text("Dark").tag(ThemeMode.dark)
-                    }
-                    .onChange(of: store.settings.theme) { _, newValue in
-                        DisplayHost.shared.applyTheme(newValue)
-                    }
-
-                    Picker("Default Layout Preset", selection: $store.settings.defaultLayoutPreset) {
-                        ForEach(LayoutPresetId.allCases, id: \.self) { preset in
-                            Text(preset.displayName).tag(preset)
-                        }
-                    }
-
-                    Stepper(
-                        "Terminal Font Size: \(store.settings.terminalFontSizePt) pt",
-                        value: $store.settings.terminalFontSizePt,
-                        in: TetherConstants.minTerminalFontSize...TetherConstants.maxTerminalFontSize
-                    )
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Default Search Engine URL (%s = query)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        TextField("https://duckduckgo.com/?q=%s", text: $store.settings.defaultSearchEngineUrl)
-                            .font(.caption.monospaced())
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                    }
-                }
-
-                Section("Phone Remote Controller") {
-                    Picker("Sidebar Position", selection: $store.settings.controllerSidebarPosition) {
-                        Text("Left Side").tag(ControllerSidebarPosition.left)
-                        Text("Right Side").tag(ControllerSidebarPosition.right)
-                    }
-
-                    Picker("Phone Orientation", selection: $store.settings.controllerOrientation) {
-                        Text("Landscape (Default)").tag(ControllerOrientation.landscape)
-                        Text("Portrait (Up/Down)").tag(ControllerOrientation.portrait)
-                        Text("Landscape (Flipped)").tag(ControllerOrientation.landscapeFlipped)
-                        Text("Auto-Rotate").tag(ControllerOrientation.auto)
-                    }
-                    .onChange(of: store.settings.controllerOrientation) { _, newOrient in
-                        DisplayHost.shared.phoneControllerVC?.applyOrientationChange(newOrient)
-                    }
-
-                    Toggle("Show Touchpad Buttons", isOn: $store.settings.showTouchpadButtons)
-
-                    Picker("Touchpad Mode", selection: $store.settings.touchpadInputMode) {
-                        Text("Phone as Trackpad").tag(TouchpadInputMode.phoneTrackpad)
-                        Text("Physical Mouse / AssistiveTouch").tag(TouchpadInputMode.assistiveTouch)
-                    }
-
-                    if store.settings.touchpadInputMode == .phoneTrackpad {
-                        Picker("Dragging Gesture", selection: $store.settings.touchpadDragGesture) {
-                            Text("Double-Tap Drag").tag(TouchpadDragGesture.doubleTapDrag)
-                            Text("3-Finger Drag").tag(TouchpadDragGesture.threeFingerDrag)
-                        }
-
-                        Text("• Dragging: Resize split dividers & drag items on screen.\n• 3-Finger Swipe: Swipe anywhere on the trackpad to change pane focus in that direction.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        Picker("Pointer Mapping", selection: $store.settings.touchpadMappingMode) {
-                            Text("Full Monitor (1:1 Absolute)").tag(TouchpadMappingMode.fullDisplay)
-                            Text("Relative Trackpad").tag(TouchpadMappingMode.relative)
-                        }
-
-                        if store.settings.touchpadMappingMode == .relative {
-                            Toggle("Edge Continuous Travel", isOn: $store.settings.edgeContinuousPush)
-                            HStack {
-                                Text("Pointer Speed")
-                                Spacer()
-                                Text(String(format: "%.1fx", store.settings.pointerSensitivity))
-                                    .foregroundStyle(.secondary)
-                            }
-                            Slider(value: $store.settings.pointerSensitivity, in: 1.0...5.0, step: 0.5)
-                        }
-
-                        Text("Full Monitor (1:1 Absolute) mode maps the phone screen directly to 100% of your external monitor, ensuring all edges and corners are reachable even when iOS AssistiveTouch bounds mouse movement to the phone.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Section {
-                    Button {
-                        showingAssistiveTouchGuide = true
-                    } label: {
-                        HStack {
-                            Label("Physical Mouse & Trackpad Setup", systemImage: "computermouse.fill")
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                } header: {
-                    Text("Physical Mouse & Trackpad (AssistiveTouch)")
-                } footer: {
-                    Text("iPhone requires iOS AssistiveTouch to receive input from Bluetooth, USB-C, or dock mice and touchpads. Tap above for quick 3-step setup and speed tuning.")
-                }
+                workspacesSection
+                appearanceSection
+                phoneControllerSection
 
                 Section {
                     if store.hosts.isEmpty {
@@ -729,9 +711,6 @@ public struct SettingsSheetView: View {
             }
             .sheet(isPresented: $showingHostManager) {
                 HostManagerView(store: store)
-            }
-            .sheet(isPresented: $showingAssistiveTouchGuide) {
-                AssistiveTouchGuideView()
             }
             .alert("Delete Cloud Account?", isPresented: $showingDeleteAccountAlert) {
                 Button("Cancel", role: .cancel) {}

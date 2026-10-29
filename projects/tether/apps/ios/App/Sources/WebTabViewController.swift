@@ -46,6 +46,9 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
 
     public func focusAddressBar() {
         isAddressBarActive = true
+        if tabItem.url == "about:home" || addressField.text == "about:home" {
+            addressField.text = ""
+        }
         addressField.layer.borderColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0).cgColor
         addressField.layer.borderWidth = 1.5
         addressField.becomeFirstResponder()
@@ -102,22 +105,40 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
         webView.becomeFirstResponder()
         let script = """
         (function() {
-            var el = document.elementFromPoint(\(ptInWeb.x), \(ptInWeb.y));
-            if (el) {
+            var x = \(ptInWeb.x);
+            var y = \(ptInWeb.y);
+            var el = document.elementFromPoint(x, y);
+            if (!el) return;
+
+            var a = el.closest('a');
+            if (a && a.href && !a.href.startsWith('javascript:')) {
+                if (a.target === '_blank') {
+                    window.open(a.href, '_blank');
+                } else {
+                    window.location.href = a.href;
+                }
+                return;
+            }
+
+            var btn = el.closest('button, [role="button"], input[type="submit"], input[type="button"], input[type="checkbox"], input[type="radio"], select');
+            if (btn) {
+                btn.focus();
+                btn.click();
+            } else {
                 el.focus();
                 el.click();
-                var evt = new MouseEvent('click', {
-                    bubbles: true,
-                    cancelable: true,
-                    view: window,
-                    clientX: \(ptInWeb.x),
-                    clientY: \(ptInWeb.y)
-                });
-                el.dispatchEvent(evt);
-                if (el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA') {
-                    var inner = el.querySelector('input, textarea');
-                    if (inner) inner.focus();
-                }
+            }
+
+            var opts = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
+            el.dispatchEvent(new PointerEvent('pointerdown', opts));
+            el.dispatchEvent(new MouseEvent('mousedown', opts));
+            el.dispatchEvent(new PointerEvent('pointerup', opts));
+            el.dispatchEvent(new MouseEvent('mouseup', opts));
+            el.dispatchEvent(new MouseEvent('click', opts));
+
+            var input = el.closest('input, textarea, [contenteditable="true"]');
+            if (input) {
+                input.focus();
             }
         })();
         """
@@ -127,8 +148,9 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
     public func handleKeyInput(text: String) {
         if isAddressBarActive || addressField.isFirstResponder {
             if text == "\r" || text == "\n" {
+                let target = omnibarDropdown?.selectedSuggestionUrl ?? addressField.text ?? ""
                 deactivateAddressBar()
-                loadInput(addressField.text ?? "")
+                loadInput(target)
             } else if text == "\u{7F}" || text == "\u{08}" {
                 if let range = addressField.selectedTextRange,
                    range == addressField.textRange(from: addressField.beginningOfDocument, to: addressField.endOfDocument) {
@@ -140,6 +162,7 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
                         addressField.text = cur
                     }
                 }
+                omnibarDropdown?.update(query: addressField.text ?? "", bookmarks: store.bookmarks)
             } else {
                 if let range = addressField.selectedTextRange,
                    range == addressField.textRange(from: addressField.beginningOfDocument, to: addressField.endOfDocument) {
@@ -148,6 +171,7 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
                 } else {
                     addressField.text = (addressField.text ?? "") + text
                 }
+                omnibarDropdown?.update(query: addressField.text ?? "", bookmarks: store.bookmarks)
             }
             return
         }
@@ -874,8 +898,9 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
     }
 
     public func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        let target = omnibarDropdown?.selectedSuggestionUrl ?? textField.text ?? ""
         deactivateAddressBar()
-        loadInput(textField.text ?? "")
+        loadInput(target)
         return true
     }
 

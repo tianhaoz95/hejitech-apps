@@ -291,20 +291,25 @@ public final class TilingWorkspaceViewController: UIViewController {
 
         for (idx, ws) in store.workspaces.enumerated() {
             let isCurrent = (idx == store.activeWorkspaceIndex)
+            let pillStack = UIStackView()
+            pillStack.translatesAutoresizingMaskIntoConstraints = false
+            pillStack.axis = .horizontal
+            pillStack.spacing = 2
+            pillStack.alignment = .center
+            pillStack.backgroundColor = isCurrent ? UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.22) : UIColor(white: 1.0, alpha: 0.08)
+            pillStack.layer.cornerRadius = 6
+            pillStack.layer.borderWidth = 1
+            pillStack.layer.borderColor = isCurrent ? UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.6).cgColor : UIColor(white: 1.0, alpha: 0.12).cgColor
+
             let btn = UIButton(type: .system)
             btn.translatesAutoresizingMaskIntoConstraints = false
 
             var config = UIButton.Configuration.plain()
             config.title = ws.name
-            config.contentInsets = NSDirectionalEdgeInsets(top: 2, leading: 8, bottom: 2, trailing: 8)
+            config.contentInsets = NSDirectionalEdgeInsets(top: 2, leading: 8, bottom: 2, trailing: (store.workspaces.count > 1 ? 4 : 8))
             config.baseForegroundColor = isCurrent ? UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0) : UIColor(white: 0.85, alpha: 1.0)
             btn.configuration = config
             btn.titleLabel?.font = .systemFont(ofSize: 11, weight: isCurrent ? .bold : .medium)
-
-            btn.backgroundColor = isCurrent ? UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.22) : UIColor(white: 1.0, alpha: 0.08)
-            btn.layer.cornerRadius = 6
-            btn.layer.borderWidth = 1
-            btn.layer.borderColor = isCurrent ? UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.6).cgColor : UIColor(white: 1.0, alpha: 0.12).cgColor
 
             btn.addAction(UIAction { [weak self] _ in
                 self?.store.switchToWorkspace(at: idx)
@@ -324,8 +329,24 @@ public final class TilingWorkspaceViewController: UIViewController {
             }
             btn.menu = UIMenu(title: ws.name, children: menuElements)
             btn.showsMenuAsPrimaryAction = false
+            pillStack.addArrangedSubview(btn)
 
-            workspaceSwitcherStack.addArrangedSubview(btn)
+            if store.workspaces.count > 1 {
+                let closeBtn = UIButton(type: .system)
+                closeBtn.translatesAutoresizingMaskIntoConstraints = false
+                var closeCfg = UIButton.Configuration.plain()
+                let imgCfg = UIImage.SymbolConfiguration(pointSize: 9, weight: .bold)
+                closeCfg.image = UIImage(systemName: "xmark", withConfiguration: imgCfg)
+                closeCfg.contentInsets = NSDirectionalEdgeInsets(top: 2, leading: 2, bottom: 2, trailing: 6)
+                closeCfg.baseForegroundColor = isCurrent ? UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.8) : UIColor(white: 0.6, alpha: 1.0)
+                closeBtn.configuration = closeCfg
+                closeBtn.addAction(UIAction { [weak self] _ in
+                    self?.store.removeWorkspace(at: idx)
+                }, for: .touchUpInside)
+                pillStack.addArrangedSubview(closeBtn)
+            }
+
+            workspaceSwitcherStack.addArrangedSubview(pillStack)
         }
 
         // Add Space (+) button
@@ -1281,10 +1302,6 @@ public final class TilingWorkspaceViewController: UIViewController {
         return tabControllers[active.id] as? SshTabViewController
     }
 
-    @objc public func openAssistiveTouchGuide() {
-        openKeyboardShortcutsTapped()
-    }
-
     // MARK: - Direct External Display Mouse & Trackpad Listeners
 
     private func setupExternalMouseListeners() {
@@ -1356,7 +1373,11 @@ public final class TilingWorkspaceViewController: UIViewController {
     @objc private func prevTabKey() { store.tree = PaneTreeOps.selectNextTab(store.tree, reverse: true) }
     @objc internal func cycleNextPaneKey() { store.cyclePanes(reverse: false) }
     @objc internal func cyclePrevPaneKey() { store.cyclePanes(reverse: true) }
-    @objc private func newWorkspaceKey() { store.addWorkspace() }
+    @objc internal func newWorkspaceKey() { store.addWorkspace() }
+    @objc internal func closeActiveWorkspaceKey() {
+        guard store.workspaces.count > 1 else { return }
+        store.removeWorkspace(at: store.activeWorkspaceIndex)
+    }
 
     @objc internal func jumpToWorkspace1() { store.switchToWorkspace(at: 0) }
     @objc internal func jumpToWorkspace2() { store.switchToWorkspace(at: 1) }

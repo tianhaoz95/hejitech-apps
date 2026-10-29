@@ -21,6 +21,7 @@ public final class VirtualKeyboardView: UIView {
     private var isAltLatched: Bool = false
 
     private let mainStack = UIStackView()
+    private let devRowScrollView = UIScrollView()
     private let devRowStack = UIStackView()
     private let keyRowsStack = UIStackView()
 
@@ -57,7 +58,7 @@ public final class VirtualKeyboardView: UIView {
         ])
 
         setupDevRow()
-        mainStack.addArrangedSubview(devRowStack)
+        mainStack.addArrangedSubview(devRowScrollView)
 
         keyRowsStack.axis = .vertical
         keyRowsStack.spacing = 4
@@ -70,9 +71,24 @@ public final class VirtualKeyboardView: UIView {
     // MARK: - Developer Row
 
     private func setupDevRow() {
+        devRowScrollView.showsHorizontalScrollIndicator = false
+        devRowScrollView.alwaysBounceHorizontal = false
+        devRowScrollView.translatesAutoresizingMaskIntoConstraints = false
+        devRowScrollView.heightAnchor.constraint(equalToConstant: 28).isActive = true
+
+        devRowStack.translatesAutoresizingMaskIntoConstraints = false
         devRowStack.axis = .horizontal
         devRowStack.spacing = 4
-        devRowStack.distribution = .fillEqually
+        devRowStack.distribution = .fillProportionally
+        devRowScrollView.addSubview(devRowStack)
+
+        NSLayoutConstraint.activate([
+            devRowStack.topAnchor.constraint(equalTo: devRowScrollView.contentLayoutGuide.topAnchor),
+            devRowStack.bottomAnchor.constraint(equalTo: devRowScrollView.contentLayoutGuide.bottomAnchor),
+            devRowStack.leadingAnchor.constraint(equalTo: devRowScrollView.contentLayoutGuide.leadingAnchor),
+            devRowStack.trailingAnchor.constraint(equalTo: devRowScrollView.contentLayoutGuide.trailingAnchor),
+            devRowStack.heightAnchor.constraint(equalTo: devRowScrollView.frameLayoutGuide.heightAnchor),
+        ])
 
         let devKeys: [(String, () -> Void)] = [
             ("Esc", { [weak self] in self?.onSpecialKey?(.escape) }),
@@ -91,6 +107,7 @@ public final class VirtualKeyboardView: UIView {
 
         for (title, action) in devKeys {
             let btn = UIButton(type: .system)
+            btn.translatesAutoresizingMaskIntoConstraints = false
             btn.setTitle(title, for: .normal)
             btn.titleLabel?.font = .monospacedSystemFont(ofSize: 11, weight: .bold)
             btn.setTitleColor(UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0), for: .normal)
@@ -98,6 +115,10 @@ public final class VirtualKeyboardView: UIView {
             btn.layer.cornerRadius = 5
             btn.layer.borderWidth = 1
             btn.layer.borderColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.20).cgColor
+            btn.widthAnchor.constraint(greaterThanOrEqualToConstant: 34).isActive = true
+            var cfg = UIButton.Configuration.plain()
+            cfg.contentInsets = NSDirectionalEdgeInsets(top: 2, leading: 6, bottom: 2, trailing: 6)
+            btn.configuration = cfg
             btn.addAction(UIAction { _ in
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 action()

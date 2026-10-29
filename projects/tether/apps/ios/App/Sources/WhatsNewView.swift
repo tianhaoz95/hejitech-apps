@@ -17,10 +17,32 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.17"
+    static let currentVersion = "0.1.18"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.18", date: "October 2026", items: [
+            WhatsNewItem(
+                icon: "rectangle.split.2x1.fill",
+                title: "Landscape Two-Column Trackpad + Keyboard",
+                description: "In landscape, split mode arranges into a convenient 2-column layout: left half is your trackpad surface, right half is the developer virtual keyboard."
+            ),
+            WhatsNewItem(
+                icon: "xmark.circle.fill",
+                title: "1-Tap Workspace Closing & ⌘⌥W",
+                description: "Close workspaces directly with visible × buttons on external monitor and phone screen pills, or with the ⌘⌥W keyboard shortcut."
+            ),
+            WhatsNewItem(
+                icon: "link.circle.fill",
+                title: "Reliable Web Link & Button Clicking",
+                description: "Virtual cursor clicks now cleanly navigate web links, invoke buttons, and focus input fields across all desktop web pages."
+            ),
+            WhatsNewItem(
+                icon: "gauge.with.needle.fill",
+                title: "Cursor Speed Slider & Zero Scroll Jerk",
+                description: "Adjust pointer sensitivity (1.0x - 5.0x) directly in Settings and phone remote options. Removed background gesture interferences for rock-solid cursor steering."
+            ),
+        ]),
         ReleaseNotes(version: "0.1.17", date: "October 2026", items: [
             WhatsNewItem(
                 icon: "rectangle.split.2x1.fill",

@@ -691,7 +691,10 @@ public final class OmnibarDropdownView: UIView {
         ])
     }
 
+    public private(set) var hasUserSelectedSuggestion: Bool = false
+
     public func update(query: String, bookmarks: [Bookmark]) {
+        hasUserSelectedSuggestion = false
         var list: [OmnibarSuggestion] = []
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -815,18 +818,20 @@ public final class OmnibarDropdownView: UIView {
 
     public func selectNext() {
         guard !suggestions.isEmpty else { return }
+        hasUserSelectedSuggestion = true
         selectedIndex = (selectedIndex + 1) % suggestions.count
         renderRows()
     }
 
     public func selectPrevious() {
         guard !suggestions.isEmpty else { return }
+        hasUserSelectedSuggestion = true
         selectedIndex = (selectedIndex - 1 + suggestions.count) % suggestions.count
         renderRows()
     }
 
     public var selectedSuggestionUrl: String? {
-        guard suggestions.indices.contains(selectedIndex) else { return nil }
+        guard hasUserSelectedSuggestion, suggestions.indices.contains(selectedIndex) else { return nil }
         return suggestions[selectedIndex].url
     }
 }

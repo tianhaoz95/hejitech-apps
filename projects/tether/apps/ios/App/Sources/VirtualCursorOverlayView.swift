@@ -203,22 +203,40 @@ public final class VirtualCursorOverlayView: UIView {
     private func simulateWebClick(in webView: WKWebView, at point: CGPoint) {
         let js = """
         (function() {
-            var el = document.elementFromPoint(\(point.x), \(point.y));
-            if (el) {
+            var x = \(point.x);
+            var y = \(point.y);
+            var el = document.elementFromPoint(x, y);
+            if (!el) return;
+
+            var a = el.closest('a');
+            if (a && a.href && !a.href.startsWith('javascript:')) {
+                if (a.target === '_blank') {
+                    window.open(a.href, '_blank');
+                } else {
+                    window.location.href = a.href;
+                }
+                return;
+            }
+
+            var btn = el.closest('button, [role="button"], input[type="submit"], input[type="button"], input[type="checkbox"], input[type="radio"], select');
+            if (btn) {
+                btn.focus();
+                btn.click();
+            } else {
                 el.focus();
                 el.click();
-                var evt = new MouseEvent('click', {
-                    bubbles: true,
-                    cancelable: true,
-                    view: window,
-                    clientX: \(point.x),
-                    clientY: \(point.y)
-                });
-                el.dispatchEvent(evt);
-                if (el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA') {
-                    var inner = el.querySelector('input, textarea');
-                    if (inner) inner.focus();
-                }
+            }
+
+            var opts = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
+            el.dispatchEvent(new PointerEvent('pointerdown', opts));
+            el.dispatchEvent(new MouseEvent('mousedown', opts));
+            el.dispatchEvent(new PointerEvent('pointerup', opts));
+            el.dispatchEvent(new MouseEvent('mouseup', opts));
+            el.dispatchEvent(new MouseEvent('click', opts));
+
+            var input = el.closest('input, textarea, [contenteditable="true"]');
+            if (input) {
+                input.focus();
             }
         })();
         """

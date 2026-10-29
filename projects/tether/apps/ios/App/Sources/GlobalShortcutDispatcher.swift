@@ -465,9 +465,10 @@ public enum GlobalShortcutDispatcher {
             UIKeyCommand(title: "Close Focused Pane", action: #selector(TilingWorkspaceViewController.closeFocusedPaneKey), input: "w", modifierFlags: [.command, .shift]),
             UIKeyCommand(title: "Toggle Maximise Pane", action: #selector(TilingWorkspaceViewController.maximisePaneTapped), input: "m", modifierFlags: [.command, .shift]),
 
-            // Tab actions
+            // Tab & Workspace actions
             UIKeyCommand(title: "New Tab", action: #selector(TilingWorkspaceViewController.newTabKey), input: "t", modifierFlags: [.command]),
             UIKeyCommand(title: "Close Tab", action: #selector(TilingWorkspaceViewController.closeActiveTabKey), input: "w", modifierFlags: [.command]),
+            UIKeyCommand(title: "Close Space", action: #selector(TilingWorkspaceViewController.closeActiveWorkspaceKey), input: "w", modifierFlags: [.command, .alternate]),
             UIKeyCommand(title: "Focus Address Bar", action: #selector(TilingWorkspaceViewController.focusAddressBarKey), input: "l", modifierFlags: [.command]),
             UIKeyCommand(title: "Reload Page", action: #selector(TilingWorkspaceViewController.reloadWebKey), input: "r", modifierFlags: [.command]),
 

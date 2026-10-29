@@ -482,16 +482,16 @@ public final class CommandPaletteView: UIView, UITextFieldDelegate, UITableViewD
         })
 
         items.append(CommandPaletteItem(
-            id: "assistivetouch-guide",
-            title: "Physical Mouse & Trackpad Guide",
-            subtitle: "AssistiveTouch setup, button mapping, and speed settings",
-            category: "Help & Input",
-            systemImage: "computermouse.fill",
-            shortcutHint: nil
+            id: "close-active-workspace",
+            title: "Close Space",
+            subtitle: "Close the currently active workspace space",
+            category: "Workspaces",
+            systemImage: "xmark.square",
+            shortcutHint: "⌘⌥W"
         ) { [weak self] in
             guard let self else { return }
             self.dismissPalette()
-            self.workspaceVC?.openAssistiveTouchGuide()
+            self.workspaceVC?.closeActiveWorkspaceKey()
         })
 
         items.append(CommandPaletteItem(
