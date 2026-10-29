@@ -6,6 +6,7 @@ import { clearSessionCookie, makeSessionCookie, readSession } from "./auth/sessi
 import { availablePlans, createCheckout, createPortal, handleStripeWebhook, stripe, StripeError, type Plan } from "./lib/stripe.js";
 import { createApiToken, resolveApiToken } from "./auth/tokens.js";
 import { verifySignedPath } from "./lib/crypto.js";
+import { reviewSignIn } from "./auth/review.js";
 import { Db, eq } from "./lib/db.js";
 import { LIMITS, type Manifest } from "@waypack/bundle-schema";
 import { onlineTilesUrl } from "./lib/planet.js";
@@ -102,6 +103,10 @@ export async function handleApp(req: Request, env: Env): Promise<Response> {
 
   if ((path === "/settings" || path === "/settings/") && (req.method === "GET" || req.method === "HEAD")) {
     return Response.redirect(new URL("/account", req.url).toString(), 302);
+  }
+  if (path === "/api/review-sign-in" && req.method === "POST") {
+    const r = await reviewSignIn(env, req, (userId) => resetReviewAccount(new Db(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY), userId));
+    return Response.json(r.body, { status: r.status, headers: { "Cache-Control": "no-store" } });
   }
   if (path.startsWith("/api/auth/")) return handlePortalAuth(req, env, path);
   if (path.startsWith("/api/")) return handleApi(req, env, url);
@@ -335,15 +340,37 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
         cursor = list.truncated ? list.cursor : undefined;
       } while (cursor);
     }
-    const res = await fetch(`${env.SUPABASE_URL}/auth/v1/admin/users/${user.userId}`, {
-      method: "DELETE",
-      headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
-    });
-    if (!res.ok) return jsonErr(500, "could not delete account; contact support");
+    // The sign-in itself is the shared HEJI login, which other HEJI apps use too: Waypack deletes
+    // only its own rows (trips first: their children cascade) and connected assistants, never the
+    // auth user.
+    try {
+      await db.delete("trips", `user_id=${eq(user.userId)}`);
+      for (const t of USER_TABLES) await db.delete(t, `user_id=${eq(user.userId)}`);
+      await db.delete("profiles", `id=${eq(user.userId)}`);
+    } catch {
+      return jsonErr(500, "could not delete account; contact support");
+    }
+    const grants = await env.OAUTH_PROVIDER?.listUserGrants(user.userId).catch(() => null);
+    await Promise.all((grants?.items ?? []).map((g) => env.OAUTH_PROVIDER.revokeGrant(g.id, user.userId).catch(() => undefined)));
     return Response.json({ ok: true }, { headers: user.via === "cookie" ? { "Set-Cookie": clearSessionCookie() } : {} });
   }
 
   return jsonErr(404, "not found");
+}
+
+/** Waypack's rows keyed by user_id besides `trips` (billing_events stays: the payment record). */
+const USER_TABLES = ["uploads", "trip_previews", "trip_templates", "trip_shares", "place_price_snapshots", "place_bookings", "trip_members", "api_tokens", "entitlements"] as const;
+
+/**
+ * App Review's demo account (#71): Pro, so offline maps download. Unlike other projects' demo
+ * accounts its trips are kept between sign-ins: the Sequoia example (uploaded once by
+ * `scripts/seed-dev.mjs --review`) is a whole bundle the Worker can't rebuild here.
+ */
+async function resetReviewAccount(db: Db, userId: string): Promise<void> {
+  await db.insert("entitlements", {
+    user_id: userId, tier: "annual", active: true, source: "manual",
+    expires_at: new Date(Date.now() + 365 * 86400000).toISOString(),
+  }, { upsert: true, onConflict: "user_id" });
 }
 
 async function downloadInfo(env: Env, db: Db, userId: string, tripId: string): Promise<Response> {

@@ -8,6 +8,12 @@ class DevFlags {
   /// Show the dev-only sign-in (works only against a local development server).
   static const devSignIn = bool.fromEnvironment('DEV_SIGN_IN');
 
+  /// Sign in through the App Review path at launch: `email password` (screenshots and checks).
+  static const reviewSignIn = String.fromEnvironment('REVIEW_SIGN_IN');
+
+  /// Open the "Sign in with email" sheet at launch (screenshots).
+  static const emailSheet = bool.fromEnvironment('EMAIL_SHEET');
+
   /// Pretend it's this moment (ISO 8601 with offset), e.g. 2026-12-25T10:05:00-08:00.
   static const fakeNow = String.fromEnvironment('FAKE_NOW');
 

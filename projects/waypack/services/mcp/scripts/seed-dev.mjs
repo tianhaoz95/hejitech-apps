@@ -1,6 +1,10 @@
 // Seeds a local dev account with a published trip (and Pro entitlement), for app testing.
 //   node scripts/seed-dev.mjs [email] [--free] [--bundle ../../examples/sequoia-winter]
 // Prints the trip id. Requires the local stack (supabase start, wrangler dev, tiler).
+//
+// App Review's demo account (#71), local or production: signs in through /api/review-sign-in (which
+// also makes it Pro) and uploads the example trip unless the account already has a trip.
+//   WAYPACK_URL=https://waypack.hejitech.workers.dev node scripts/seed-dev.mjs <email> --review <password>
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
@@ -10,21 +14,29 @@ const args = process.argv.slice(2);
 const email = args.find((a) => a.includes("@")) ?? "dev@waypack.test";
 const free = args.includes("--free");
 const bundleDir = args.includes("--bundle") ? args[args.indexOf("--bundle") + 1] : new URL("../../../examples/sequoia-winter", import.meta.url).pathname;
-const env = Object.fromEntries(readFileSync(new URL("../.dev.vars", import.meta.url), "utf8").split("\n").filter((l) => l.includes("=")).map((l) => [l.slice(0, l.indexOf("=")), l.slice(l.indexOf("=") + 1)]));
-const svc = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, "Content-Type": "application/json", "Accept-Profile": "waypack", "Content-Profile": "waypack" };
+const review = args.includes("--review") ? args[args.indexOf("--review") + 1] : null;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const signin = await fetch(`${BASE}/api/auth/dev`, { method: "POST", headers: { "Content-Type": "application/json", "X-Waypack": "1" }, body: JSON.stringify({ email }) });
-if (!signin.ok) throw new Error(`dev sign-in failed (${signin.status}) — is wrangler dev running with ENVIRONMENT=development?`);
-const sess = await signin.json();
-sess.user = { id: sess.userId };
-const uid = sess.user.id;
-// Upsert: entitlement rows are created on first need (no sign-up trigger in the shared project).
-await fetch(`${SUPA}/rest/v1/entitlements?on_conflict=user_id`, {
-  method: "POST",
-  headers: { ...svc, Prefer: "resolution=merge-duplicates,return=minimal" },
-  body: JSON.stringify({ user_id: uid, ...(free ? { tier: "free", expires_at: null } : { tier: "annual", active: true, expires_at: new Date(Date.now() + 365 * 86400000).toISOString(), source: "manual" }) }),
-});
+let sess;
+if (review) {
+  const signin = await fetch(`${BASE}/api/review-sign-in`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: review }) });
+  if (!signin.ok) throw new Error(`review sign-in failed (${signin.status}): ${await signin.text()}`);
+  sess = await signin.json();
+  sess.userId = sess.user.id;
+} else {
+  const env = Object.fromEntries(readFileSync(new URL("../.dev.vars", import.meta.url), "utf8").split("\n").filter((l) => l.includes("=")).map((l) => [l.slice(0, l.indexOf("=")), l.slice(l.indexOf("=") + 1)]));
+  const svc = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, "Content-Type": "application/json", "Accept-Profile": "waypack", "Content-Profile": "waypack" };
+  const signin = await fetch(`${BASE}/api/auth/dev`, { method: "POST", headers: { "Content-Type": "application/json", "X-Waypack": "1" }, body: JSON.stringify({ email }) });
+  if (!signin.ok) throw new Error(`dev sign-in failed (${signin.status}) — is wrangler dev running with ENVIRONMENT=development?`);
+  sess = await signin.json();
+  // Upsert: entitlement rows are created on first need (no sign-up trigger in the shared project).
+  await fetch(`${SUPA}/rest/v1/entitlements?on_conflict=user_id`, {
+    method: "POST",
+    headers: { ...svc, Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify({ user_id: sess.userId, ...(free ? { tier: "free", expires_at: null } : { tier: "annual", active: true, expires_at: new Date(Date.now() + 365 * 86400000).toISOString(), source: "manual" }) }),
+  });
+}
+const uid = sess.userId;
 // One "seed" token at a time: revoke earlier runs' tokens so the portal's list doesn't grow.
 const auth = { Authorization: `Bearer ${sess.access_token}` };
 for (const t of (await (await fetch(`${BASE}/api/tokens`, { headers: auth })).json()).tokens ?? []) {
@@ -35,8 +47,13 @@ const call = async (name, a) => {
   const r = await (await fetch(`${BASE}/mcp`, { method: "POST", headers: { Authorization: `Bearer ${pat.token}`, "Content-Type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: a } }) })).json();
   return r.result;
 };
-// Start clean: delete this user's existing trips.
-for (const t of (await call("list_trips", {})).structuredContent.trips) await call("delete_trip", { trip_id: t.trip_id, confirm: true });
+// Start clean: delete this user's existing trips. The review account keeps the trip it has.
+const existing = (await call("list_trips", {})).structuredContent.trips;
+if (review && existing.length) {
+  console.log(JSON.stringify({ email, user_id: uid, trip_id: existing[0].trip_id, kept: true }));
+  process.exit(0);
+}
+for (const t of existing) await call("delete_trip", { trip_id: t.trip_id, confirm: true });
 const walk = (d) => readdirSync(d).flatMap((n) => (statSync(join(d, n)).isDirectory() ? walk(join(d, n)) : [join(d, n)]));
 const files = walk(bundleDir).map((p) => ({ path: relative(bundleDir, p), content: readFileSync(p, "utf8") }));
 const up = await call("upload_bundle_inline", { files });

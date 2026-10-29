@@ -50,6 +50,9 @@ export interface Env {
   R2_ACCOUNT_ID?: string;
   R2_ACCESS_KEY_ID?: string;
   R2_SECRET_ACCESS_KEY?: string;
+  /** App Review's demo account (auth/review.ts, #71): its email and the SHA-256 of its password. */
+  REVIEW_EMAIL?: string;
+  REVIEW_PASSWORD_SHA256?: string;
 }
 
 export interface TileJob { extract_id: string }

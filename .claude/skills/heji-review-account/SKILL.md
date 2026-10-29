@@ -27,8 +27,8 @@ Where the projects stand (2026-10-29):
 |---|---|
 | Headway | done: demo commute; App Store Connect 1.0 filled |
 | FitLoop | done: core's `demoPlan` from the Monday before; App Store Connect 1.0 filled |
-| Contempo | done: two properties, five entries; Worker deploys by hand (`npm run deploy -w @contempo/web`); App Store Connect 1.0 filled. Google-only sign-in (no Sign in with Apple, guideline 4.8) is open. |
-| Waypack | **not added**: owner decisions #29 (Google or Apple only, no email/password anywhere) and "offline maps are Pro-only, no per-account exceptions" (`projects/waypack/CLAUDE.md`). Needs the owner first; then: keep trips between sign-ins (the example trip is a full bundle), make sure of a Pro entitlement, seed the trip once. |
+| Contempo | done: two properties, five entries; Worker deploys by hand (`npm run deploy -w @contempo/web`); App Store Connect 1.0 filled. Sign in with Apple added 2026-10-29 (guideline 4.8). |
+| Waypack | done (owner decision #71, 2026-10-29): Pro on every sign-in; trips kept between sign-ins (the example trip is a whole bundle), seeded once with `seed-dev.mjs <email> --review <password>` |
 | Tether | not needed: works fully offline; sign-in (Apple) only adds sync |
 | Wee Hours | not needed: "Use without an account"; Sign in with Apple for partner sync |
 | FeedbackKit Portal | not needed: TestFlight only, GitHub sign-in on its own backend, and a manual token sign-in |
@@ -130,11 +130,11 @@ app "Sign in with email" ──POST /api/review-sign-in {email,password}──�
 ## Also check: account deletion (guideline 5.1.1(v))
 
 Reviewers check that an app that creates accounts can delete the account **in the app**. Our users
-are shared across HEJI apps (`auth.users`), so most apps delete only their own data ("Delete my
-<App> data"). Wee Hours deletes the shared login through its Worker (`POST /api/account/delete`)
-and revokes the Sign in with Apple token. When adding the review account, look at the app's delete
-flow and report which of these it does; don't change it silently, since deleting the shared login
-signs the person out of every HEJI app (an owner decision).
+are shared across HEJI apps (`auth.users`), and **no app may affect another** (owner decision
+2026-10-29): "Delete account" deletes the app's own rows and files (its `USER_TABLES`, its bucket
+folder, its assistant grants) and never the auth user, which other HEJI apps may still use. Wee
+Hours also revokes its own Sign in with Apple token (that revocation is per app). Check the app's
+delete flow does this, and that its confirm text doesn't claim to end other apps' accounts.
 
 ## Pitfalls
 

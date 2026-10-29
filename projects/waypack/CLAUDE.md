@@ -8,7 +8,7 @@ Waypack turns an AI agent into a travel planner whose output works fully offline
 the Waypack skill and MCP server) publishes a **trip bundle** (a self-contained mobile web app plus
 `manifest.json`), the backend or the phone cuts an offline vector map of the trip area, and the
 Flutter app downloads both. `docs/design.md` is the design, `docs/DECISIONS.md` records every
-deviation and owner decision (#1–#70): read it before proposing architectural changes and don't
+deviation and owner decision (#1–#71): read it before proposing architectural changes and don't
 reopen decided options (see "Decided" below). `docs/DEPLOY.md` is setup, secrets and recovery.
 
 ## Commands
@@ -34,7 +34,11 @@ scripts/db_migration.sh waypack <what>        # repo root, after editing supabas
 ```
 
 Local sign-in: the dev sign-in (any email) on the portal and the agent sign-in page, local servers
-only; the app needs `--dart-define=DEV_SIGN_IN=true`.
+only; the app needs `--dart-define=DEV_SIGN_IN=true`. App Review's demo account (#71): locally
+`review@example.com` / `waypack-review-dev` (wrangler.jsonc vars; `seed-dev.mjs review@example.com
+--review waypack-review-dev` gives it the example trip); production via `scripts/review_account.sh
+waypack` (`review.env`, skill heji-review-account). App flags: `--dart-define=REVIEW_SIGN_IN="<email>
+<password>"` signs in through it at launch, `--dart-define=EMAIL_SHEET=true` opens its sheet.
 
 ## Architecture
 
@@ -66,10 +70,11 @@ Generated, never edit by hand: `services/mcp/src/generated/guide.ts` (from `skil
 
 ## Decided (owner decisions; don't reopen without the owner)
 
-- Sign-in is **Google or Apple only**: no email/password or codes anywhere (#29); dev sign-in only on
-  local servers (#30).
+- Sign-in is **Google or Apple only**: no email/password or codes for people (#29); dev sign-in only on
+  local servers (#30). The one exception is App Review's demo account (#71): "Sign in with email"
+  works only for accounts Waypack hands out, and that account is Pro.
 - **Billing is on the web with Stripe; the apps are free viewers** with no purchase UI or calls to
-  action (App Store 3.1.3(f), #25). Offline maps are Pro-only, with no per-account exceptions.
+  action (App Store 3.1.3(f), #25). Offline maps are Pro-only, with no per-account exceptions besides the review account (#71).
 - **No paid Cloudflare Containers until there are paying users**: device maps in production (#54).
 - Files in Supabase Storage, not R2 (#56). Mac DMGs are GitHub release assets (#57) and the Mac app
   updates with Sparkle from `releases/latest` (#65), so **Waypack is the only project with

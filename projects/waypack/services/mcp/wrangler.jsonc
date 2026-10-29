@@ -36,7 +36,10 @@
     "MAP_EXTRACTS": "server",
     // Optional online basemap for free-tier users / previews (TileJSON or .pmtiles URL). Empty = none.
     "ONLINE_TILES_URL": "",
-    "ENVIRONMENT": "development"
+    "ENVIRONMENT": "development",
+    // App Review's demo account, local only (password waypack-review-dev; production uses secrets).
+    "REVIEW_EMAIL": "review@example.com",
+    "REVIEW_PASSWORD_SHA256": "7cff3bd096eb7ab3da295da04c10cd1020bb541831c62a0ffeff4d2a417deef3"
   },
 
   "kv_namespaces": [
@@ -65,7 +68,7 @@
   // Free plan: device maps, no tiler container or queue, files in Supabase Storage, previews off.
   // KV namespaces have no ids: wrangler creates them on the first deploy and reuses them after.
   // Secrets (wrangler secret put … --env production): SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY, SIGNING_SECRET,
-  // STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET.
+  // STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, REVIEW_EMAIL + REVIEW_PASSWORD_SHA256 (scripts/review_account.sh).
   "env": {
     "production": {
       "name": "waypack",

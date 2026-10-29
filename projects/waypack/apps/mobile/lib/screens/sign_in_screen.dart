@@ -15,7 +15,8 @@ import '../dev_flags.dart';
 import '../widgets/scrapbook.dart';
 
 /// One tap: Sign in with Apple (native sheet on iPhone) or Google (system sign-in pop-up).
-/// No email or codes.
+/// "Sign in with email" is only for accounts Waypack hands out (App Review's demo account, #71):
+/// the Worker checks them (`/api/review-sign-in`); there is no email sign-up or reset.
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
 
@@ -28,6 +29,49 @@ class _SignInScreenState extends State<SignInScreen> {
   String? _error;
 
   SupabaseClient get _sb => Supabase.instance.client;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final parts = DevFlags.reviewSignIn.split(' ');
+      if (parts.length == 2) _emailSignIn(parts[0], parts[1]);
+      if (DevFlags.emailSheet) _openEmailSheet();
+    });
+  }
+
+  /// Accounts Waypack hands out: the Worker returns a normal Supabase session. Null when signed in,
+  /// else the message to show.
+  Future<String?> _emailSignIn(String email, String password) async {
+    try {
+      final res = await http.post(
+        Uri.parse('${Config.apiUrl}/api/review-sign-in'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email.trim(), 'password': password}),
+      );
+      switch (res.statusCode) {
+        case 200:
+          break;
+        case 401:
+          return 'Wrong email or password.';
+        case 429:
+          return 'Too many attempts. Try again in ten minutes.';
+        default:
+          return 'Sign-in failed (${res.statusCode}). Please try again.';
+      }
+      await _sb.auth.setSession(
+        (jsonDecode(res.body) as Map)['refresh_token'] as String,
+      );
+      return null;
+    } catch (e) {
+      return 'Sign-in failed. Please try again.\n($e)';
+    }
+  }
+
+  void _openEmailSheet() => showPaperSheet<void>(
+    context,
+    builder: (_) => _EmailSignInSheet(onSubmit: _emailSignIn),
+  );
 
   Future<void> _run(Future<void> Function() fn) async {
     setState(() {
@@ -178,6 +222,20 @@ class _SignInScreenState extends State<SignInScreen> {
                     ),
                     const SizedBox(height: 12),
                     _GoogleButton(onPressed: _busy ? null : _google),
+                    const SizedBox(height: 6),
+                    TextButton(
+                      key: const Key('email-sign-in'),
+                      onPressed: _busy ? null : _openEmailSheet,
+                      style: TextButton.styleFrom(
+                        foregroundColor: p.muted,
+                        minimumSize: const Size.fromHeight(40),
+                        textStyle: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      child: const Text('Sign in with email'),
+                    ),
                     if (_busy)
                       const Padding(
                         padding: EdgeInsets.only(top: 20),
@@ -315,6 +373,128 @@ class _PhotoPile extends StatelessWidget {
 }
 
 class _Cancelled implements Exception {}
+
+/// Email sign-in for accounts Waypack hands out, such as App Review's demo account.
+class _EmailSignInSheet extends StatefulWidget {
+  const _EmailSignInSheet({required this.onSubmit});
+  final Future<String?> Function(String email, String password) onSubmit;
+  @override
+  State<_EmailSignInSheet> createState() => _EmailSignInSheetState();
+}
+
+class _EmailSignInSheetState extends State<_EmailSignInSheet> {
+  final _email = TextEditingController();
+  final _password = TextEditingController();
+  final _passwordFocus = FocusNode();
+  bool _busy = false;
+  String? _error;
+
+  bool get _canSubmit =>
+      !_busy && _email.text.trim().isNotEmpty && _password.text.isNotEmpty;
+
+  Future<void> _submit() async {
+    if (!_canSubmit) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final error = await widget.onSubmit(_email.text, _password.text);
+    if (!mounted) return;
+    if (error == null) {
+      Navigator.of(context).pop();
+    } else {
+      setState(() {
+        _busy = false;
+        _error = error;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _email.dispose();
+    _password.dispose();
+    _passwordFocus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = Paper.of(context);
+    InputDecoration field(String hint) => InputDecoration(
+      hintText: hint,
+      border: InputBorder.none,
+      filled: false,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+    );
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        6,
+        0,
+        6,
+        MediaQuery.viewInsetsOf(context).bottom,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            child: Text('Sign in with email', style: hand(34, p.ink)),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 2, 18, 16),
+            child: Text(
+              'For accounts Waypack gave you. New here? Continue with Apple or Google.',
+              style: TextStyle(fontSize: 14, height: 1.4, color: p.muted),
+            ),
+          ),
+          PaperCard(
+            children: [
+              TextField(
+                key: const Key('review-email'),
+                controller: _email,
+                autofocus: true,
+                keyboardType: TextInputType.emailAddress,
+                autocorrect: false,
+                textInputAction: TextInputAction.next,
+                autofillHints: const [AutofillHints.username],
+                onChanged: (_) => setState(() {}),
+                onSubmitted: (_) => _passwordFocus.requestFocus(),
+                decoration: field('Email'),
+              ),
+              TextField(
+                key: const Key('review-password'),
+                controller: _password,
+                focusNode: _passwordFocus,
+                obscureText: true,
+                textInputAction: TextInputAction.go,
+                autofillHints: const [AutofillHints.password],
+                onChanged: (_) => setState(() {}),
+                onSubmitted: (_) => _submit(),
+                decoration: field('Password'),
+              ),
+            ],
+          ),
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+              child: StickyNote(color: Paper.stickyPink, child: Text(_error!)),
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 8),
+            child: PaperButton(
+              key: const Key('review-submit'),
+              label: _busy ? 'Signing in…' : 'Sign in',
+              expand: true,
+              onPressed: _canSubmit ? _submit : null,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 /// Google-branded button (white, "G" logo) per Google's sign-in branding guidelines.
 class _GoogleButton extends StatelessWidget {
