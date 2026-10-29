@@ -42,7 +42,7 @@ test("another project's schema or bucket in Supabase calls fails", () => {
 });
 
 test("workflows use only their own CI names or the Apple team / Even Hub ones", () => {
-  assert.deepEqual(checkWorkflow("${{ secrets.FOO_TOKEN }} ${{ vars.FOO_SUPABASE_URL }} ${{ secrets.ASC_KEY_ID }} ${{ secrets.GITHUB_TOKEN }} ${{ secrets.EVENHUB_CREDENTIALS }}", "foo"), []);
+  assert.deepEqual(checkWorkflow("${{ secrets.FOO_TOKEN }} ${{ vars.FOO_SUPABASE_URL }} ${{ secrets.ASC_KEY_ID }} ${{ secrets.GITHUB_TOKEN }} ${{ secrets.EVENHUB_EMAIL }}", "foo"), []);
   assert.equal(checkWorkflow("${{ vars.SUPABASE_URL }}", "foo").length, 1);
   assert.equal(checkWorkflow("${{ secrets.WEEHOURS_TOKEN }}", "foo").length, 1);
   assert.deepEqual(checkWorkflow("${{ secrets.SPARKLE_PRIVATE_KEY }}", "waypack"), [], "grandfathered");

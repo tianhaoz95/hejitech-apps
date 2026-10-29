@@ -24,7 +24,7 @@ export const SHARED_CI_NAMES = new Set([
   "GITHUB_TOKEN", "APPLE_TEAM_ID", "ASC_KEY_ID", "ASC_ISSUER_ID", "ASC_KEY_P8_BASE64",
   "SIGNING_P12_BASE64", "SIGNING_P12_PASSWORD", "DEV_SIGNING_P12_BASE64", "DEV_SIGNING_P12_PASSWORD",
   "MAC_SIGNING_P12_BASE64", "MAC_SIGNING_P12_PASSWORD",
-  "EVENHUB_CREDENTIALS",
+  "EVENHUB_EMAIL", "EVENHUB_PASSWORD",
 ]);
 /** Unprefixed names from before this rule, not backend-related. Don't add to this list. */
 export const LEGACY_CI_NAMES = { waypack: ["SPARKLE_PRIVATE_KEY"] };
