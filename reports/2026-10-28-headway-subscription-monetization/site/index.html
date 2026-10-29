@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Headway Paid Subscription Strategy &amp; Monetization Blueprint</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23C8603A'/%3E%3Crect x='9' y='9' width='14' height='2.5' rx='1.2' fill='%23fff'/%3E%3Crect x='9' y='15' width='14' height='2.5' rx='1.2' fill='%23fff'/%3E%3Crect x='9' y='21' width='9' height='2.5' rx='1.2' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/design.css">
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="#top">
+      <span class="logo"></span>
+      <span><b>Headway Monetization Blueprint</b><small>Paid subscription strategy: feature boundaries, cross-platform architecture, pricing &amp; competitive analysis</small></span>
+    </a>
+    <div class="seg" role="group" aria-label="Appearance">
+      <button data-mode="light">Light</button>
+      <button data-mode="dark">Dark</button>
+    </div>
+  </header>
+
+  <div class="layout" id="top">
+    <nav class="toc" aria-label="Sections"></nav>
+
+    <main>
+      <section id="summary" data-toc="Summary">
+        <p class="kicker">Strategic Blueprint &middot; 2026-10-28</p>
+        <h1>Headway Paid Subscription Strategy &amp; Monetization Blueprint</h1>
+        <p class="lede">Headway currently runs as a completely free, highly performant Caltrain intelligence engine across <b>iOS, Apple Watch, Android, Wear OS, Even G2 smart glasses, and an MCP server</b>. Transitioning to a paid model requires balancing <b>commuter trust with high perceived value</b>: keep the basic departure board and static timetable 100% free so riders rely on it daily, and paywall <b>continuous autonomous automation (APNs alerts, Live Activities/Dynamic Island, watch complications, and smart glasses heads-up display)</b>. Cross-platform access is managed by validating native StoreKit 2 and Google Play Billing receipts through <b>RevenueCat</b> into a single authoritative <code>headway.subscriptions</code> table in Supabase, instantly unlocking paired smart glasses and watches without separate store transactions. The optimal pricing sweet spot for Silicon Valley Peninsula rail commuters is <b>$19.99/year</b> ($1.66/month) with a <b>14-day free trial</b>, backed by a <b>$2.99/month</b> flexible tier and a <b>$49.99 lifetime</b> option.</p>
+
+        <div class="status">
+          <div><b>Caltrain Demographics</b><span class="ok">High willingness-to-pay ($96–$288/mo transit spend)</span></div>
+          <div><b>Core Timetable &amp; Board</b><span class="ok">Kept 100% Free (preserves acquisition &amp; App Store rating)</span></div>
+          <div><b>Glasses HUD &amp; Live Activities</b><span class="ok">Pro Exclusive (the flagship conversion hooks)</span></div>
+          <div><b>Cross-Platform Entitlements</b><span class="ok">Single Supabase source of truth unlocks all hardware</span></div>
+          <div><b>Recommended Pricing</b><span class="ok">$19.99/yr (Hero) &middot; $2.99/mo &middot; $49.99 Lifetime</span></div>
+          <div><b>Billing Infrastructure</b><span class="todo">RevenueCat SDK integration on iOS &amp; Android (&sect;4)</span></div>
+          <div><b>Database Migration</b><span class="todo">Create headway.subscriptions table in Supabase (&sect;5)</span></div>
+        </div>
+
+        <div class="cards">
+          <div class="card good">
+            <h3>Verified in Monorepo &amp; Market</h3>
+            <ul>
+              <li><b>Market Benchmarks</b>: Transit Royale charges <b>$24.99/year ($4.99/mo)</b>; Caltrain Companion charges <b>$4.00/year</b> for basic notifications; Flighty charges <b>$49.99/year</b> for premium travel live activities.</li>
+              <li><b>Hardware Readiness</b>: Headway already possesses native codebases for iPhone (<code>apps/ios</code>), Apple Watch (<code>apps/ios/Watch</code>), Android &amp; Wear OS (<code>apps/android</code>), Even G2 glasses (<code>apps/glasses</code>), and Worker MCP (<code>services/web</code>).</li>
+              <li><b>Zero Marginal API Cost</b>: Timetables are compiled directly into <code>@headway/core</code>, and 511.org GTFS-RT is polled once per minute centrally by Cloudflare Worker cron &mdash; rider scaling adds virtually $0 in vendor feed costs.</li>
+            </ul>
+          </div>
+          <div class="card warn">
+            <h3>Key Trade-Offs &amp; Boundaries</h3>
+            <ul>
+              <li><b>Even Hub Inability to Transact</b>: Even Hub does not have an in-app purchase SDK. Glasses must unlock by reading the user's paired <code>device_token</code> linked to the phone's paid account in Supabase.</li>
+              <li><b>App Store Guideline 3.1.3(b)</b>: Cross-platform unlocking is legally permissible as a "Multiplatform Service", provided that StoreKit 2 subscription is also offered natively on iOS.</li>
+              <li><b>Do Not Over-Restrict Free Boards</b>: If free users cannot see the next train at their nearest station, retention collapses before they can experience real-time alert value.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="callout">
+          <b>Executive Recommendation:</b> Launch <b>Headway Pro</b> with a <b>14-day free trial at $19.99/year</b> (or $2.99/month, $49.99 lifetime) with <b>Family Sharing enabled</b>. Keep basic manual boards free; put <b>push alerts, lock screen Live Activities, watch complications, and Even G2 glasses head-up mode</b> behind Pro. Use RevenueCat with a Supabase webhook to synchronize entitlements across iOS, Android, wearables, and glasses in real time.
+        </div>
+      </section>
+
+      <section id="competition" data-toc="Competitive Landscape">
+        <h2>The Competitive Landscape</h2>
+        <p>The Caltrain commuter app ecosystem consists of two distinct segments: <b>dated, single-developer Caltrain utilities</b> that suffer from obsolete UX, and <b>massive multi-modal transit aggregators</b> that lack focused hardware glanceability.</p>
+
+        <div data-block="pricing_comp"></div>
+
+        <h3>Direct &amp; Indirect Competitor Deep Dive</h3>
+        <table class="grid">
+          <thead>
+            <tr>
+              <th>Competitor</th>
+              <th>Price Point</th>
+              <th>Monetization Strategy</th>
+              <th>Strengths</th>
+              <th>Fatal Weaknesses for Caltrain Riders</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>Caltrain Companion</b><br><small>(iOS / watchOS)</small></td>
+              <td><b>$4.00 / year</b><br><small>(1-week trial)</small></td>
+              <td>"My Conductor" subscription unlocks delay tracking, next stop alerts, and Apple Watch complications.</td>
+              <td>Dedicated to Caltrain; includes basic Apple Watch and widget support.</td>
+              <td>Extremely dated UI; no Android or Wear OS app; no smart glasses; no Live Activities/Dynamic Island; low price point starves ongoing maintenance.</td>
+            </tr>
+            <tr>
+              <td><b>Transit App</b><br><small>(Transit Royale)</small></td>
+              <td><b>$4.99 / month</b><br><b>$24.99 / year</b></td>
+              <td>Paywalls transit lines beyond immediate proximity, schedule lookaheads past 1 hour, custom themes, and full offline maps.</td>
+              <td>Massive network effects; polished crowdsourced GO navigation; agency partnership model.</td>
+              <td>Cluttered with buses, subways, and micro-mobility; lacks Caltrain express/bullet filtering; generic transit alerts rather than corridor intelligence; no glasses HUD.</td>
+            </tr>
+            <tr>
+              <td><b>Citymapper</b><br><small>(Citymapper Club)</small></td>
+              <td><b>$1.49 / month</b><br><b>$9.99 / year</b></td>
+              <td>Originally paywalled advanced routing and Live Activities; walked back paywall to make all features free, keeping Club as ad-free + tip jar.</td>
+              <td>Best-in-class multi-modal transit routing in metro areas; turn-by-turn guidance.</td>
+              <td>Overkill for regular train commuters who already know their station and train schedule; lacks specialized hardware accessories.</td>
+            </tr>
+            <tr>
+              <td><b>Flighty</b><br><small>(Industry Benchmark)</small></td>
+              <td><b>$5.99 / month</b><br><b>$49.99 / year</b><br>$249 lifetime</td>
+              <td>Gold standard freemium travel tracking: locks delay prediction algorithms, automated Live Activities, and push alerts.</td>
+              <td>Incredible Apple platform craft; users gladly pay $50/yr for anxiety reduction before boarding.</td>
+              <td>Aviation only &mdash; proves tech workers enthusiastically pay a high recurring price for glanceable travel certainty.</td>
+            </tr>
+            <tr>
+              <td><b>Official Caltrain Mobile</b></td>
+              <td><b>Free</b></td>
+              <td>Ticketing &amp; fare processing only (powered by Moovel/Fare Payments).</td>
+              <td>Official ticket wallet for conductor inspection.</td>
+              <td>Arrivals are an embedded web view; notoriously clunky; no proactive notifications or wearables.</td>
+            </tr>
+            <tr>
+              <td><b>Caltrain Live (caltrainlive.com)</b></td>
+              <td><b>Free</b></td>
+              <td>Open-source community web application.</td>
+              <td>Clean real-time GPS visual map and speed telemetry.</td>
+              <td>Web-only; no push notifications; no native mobile widgets; no wearable or glasses integration.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div data-block="competitor_matrix"></div>
+
+        <div class="note">
+          <b>Headway's Strategic Moat:</b> Headway is not competing to be a multi-modal transit map for tourists. It is the <b>glanceable copilot for regular Silicon Valley commuters</b>. By integrating with <b>Even G2 smart glasses and the R1 ring</b>, alongside <b>Apple Watch, Wear OS, and Lock Screen Live Activities</b>, Headway delivers zero-friction awareness while walking to the station, riding a bike, or sitting on the train with a laptop open. That hardware moat commands a much higher price than generic schedule viewers.
+        </div>
+      </section>
+
+      <section id="paywall" data-toc="What to Keep Behind the Paywall">
+        <h2>What to Keep Behind the Paywall (Free vs. Pro)</h2>
+        <p>A fatal mistake in transit apps is paywalling basic static timetable lookup. When users open an app at the station and find the departure board completely locked, they delete the app and leave a 1-star review. The free tier must establish daily habit and trust.</p>
+
+        <p>The guiding rule for Headway is simple: <b>Manual pull is Free; Autonomous push &amp; wearable glanceability is Pro.</b></p>
+
+        <div data-block="tier_matrix"></div>
+
+        <h3>Detailed Tier Breakdown</h3>
+
+        <h4>1. Free Tier ("Headway Core") &mdash; The Habit Builder</h4>
+        <ul class="checks">
+          <li class="checked"><b>Live Departure Board</b>: View upcoming departures for the nearest station, complete with real-time delay minutes from 511.org GTFS-RT.</li>
+          <li class="checked"><b>Full Offline Timetable</b>: Complete weekday, weekend, and holiday schedules (compiled directly in <code>@headway/core</code>).</li>
+          <li class="checked"><b>Station Selector &amp; Direction Flip</b>: Quickly browse any station between San Francisco (4th &amp; King) and Tamien / Gilroy.</li>
+          <li class="checked"><b>Single Commute Route</b>: Save 1 primary commute leg (e.g. Mountain View &rarr; San Francisco) for quick access.</li>
+          <li class="checked"><b>Public Web Viewer</b>: Clean, fast web boards at <code>headway.hejitech.workers.dev</code>.</li>
+        </ul>
+
+        <h4>2. Headway Pro &mdash; The Premium Commuter Experience</h4>
+        <ul class="checks">
+          <li class="checked"><b>Autonomous Proactive Commute Alerts (Worker Cron)</b>:
+            <br>Background monitoring via Cloudflare Worker <code>cron.ts</code>. Pushes APNs notifications when your specific scheduled train is delayed by &gt;3 min, canceled, or experiencing single-tracking bottlenecks. Alerts you when it is time to leave your desk to catch the express.</li>
+          <li class="checked"><b>Lock Screen Live Activities &amp; Dynamic Island (iOS)</b>:
+            <br>Persistent, real-time trip countdown right on the Lock Screen and Dynamic Island. Automatically updates stops remaining, delay minutes, and platform arrival times without opening the app.</li>
+          <li class="checked"><b>Wearable Ecosystem (Apple Watch &amp; Wear OS)</b>:
+            <br>Watch Face Complications displaying countdown to the next train directly on your wrist. Wear OS Tile for instant one-swipe boarding status. Direct independent background sync when away from the phone.</li>
+          <li class="checked"><b>Even G2 Smart Glasses HUD &amp; R1 Ring Navigation</b>:
+            <br>The ultimate flagship feature. Live Caltrain HUD projected onto the glasses display. Scroll trains and inspect live delays using the R1 ring rotary controller &mdash; zero phone pulling in cold or crowded stations.</li>
+          <li class="checked"><b>Unlimited Saved Commute Legs &amp; Reverse Commute</b>:
+            <br>Auto-switches between Morning commute, Evening return leg, and weekend trips based on time of day and station proximity.</li>
+          <li class="checked"><b>Live ETA Sharing (<code>headway.eta_shares</code>)</b>:
+            <br>One-tap shareable link allowing partners, rideshare drivers, or colleagues to track your train's live arrival time on a private web page.</li>
+          <li class="checked"><b>Model Context Protocol (MCP) &amp; AI Integration</b>:
+            <br>Personal assistant access tokens for Claude Desktop, Antigravity, and AI agents to query your commute, check train delays, and schedule calendar travel blocks automatically.</li>
+        </ul>
+      </section>
+
+      <section id="architecture-flow" data-toc="Cross-Platform Architecture">
+        <h2>Cross-Platform Paywall Architecture</h2>
+        <p>Headway operates across a diverse fleet of platforms: <b>iOS (SwiftUI), watchOS (SwiftUI), Android (Jetpack Compose), Wear OS (Wear Compose), Even G2 Glasses (.ehpk on QuickJS/Flutter bridge), Cloudflare Worker, and Supabase</b>.</p>
+
+        <p>A subscriber must be able to purchase on an iPhone or Android phone and have that entitlement immediately unlock their <b>Apple Watch, Wear OS watch, Even G2 smart glasses, and AI assistant</b> without friction or duplicate billing.</p>
+
+        <div data-block="architecture"></div>
+
+        <h3>How Each Surface Handles Entitlements</h3>
+
+        <h4>1. iOS &amp; watchOS (Apple App Store)</h4>
+        <p>Implemented using <b>StoreKit 2</b> (via RevenueCat Swift SDK). Purchases support <b>Family Sharing</b>. Entitlements are saved locally in Keychain and mirrored to Supabase. The companion Apple Watch app receives the entitlement immediately via <code>WatchConnectivity</code> (in <code>WatchSyncState</code>), while also maintaining the ability to verify directly against the Worker API when running standalone on cellular or Wi-Fi.</p>
+
+        <h4>2. Android &amp; Wear OS (Google Play Billing)</h4>
+        <p>Implemented using <b>Google Play Billing Library 7+</b> (via RevenueCat Android SDK). When purchased on Android, the entitlement updates the user's Supabase account. The Wear OS companion watch syncs state instantly via the Google Play Services <b>Wearable Data Layer</b> (path <code>/headway/sync_state</code>).</p>
+
+        <h4>3. Even G2 Smart Glasses (Even Hub .ehpk)</h4>
+        <p>The Even Hub ecosystem currently has <b>no in-app purchase or developer payment API</b>. The glasses plugin runs in an isolated QuickJS container communicating via Bluetooth with the Even app on the user's phone.</p>
+        <p>Headway already solves this cleanly through its <b>pairing code architecture</b>:
+          <br>&bull; Free users can pair their glasses and use a 1-day demo / basic departure glance.
+          <br>&bull; In the Cloudflare Worker <code>api.ts</code>, when the glasses app calls <code>GET /api/board</code> with its <code>device_token</code>, the Worker joins against <code>headway.subscriptions</code> using the token's <code>user_id</code>.
+          <br>&bull; If the account is Pro, the Worker returns full live HUD telemetry and R1 tracking. If inactive, the glasses display a clean, concise message: <i>"Headway Pro required for smart glasses HUD. Upgrade in the phone app."</i></p>
+
+        <h4>4. Web App &amp; Model Context Protocol (MCP)</h4>
+        <p>The Web App and MCP server (at <code>/mcp</code>) authenticate via Supabase Auth session tokens or assistant access tokens (<code>headway.access_tokens</code>). The Worker enforces entitlement checks directly before executing pro tools such as <code>register_smart_alert</code> or <code>create_live_eta_share</code>.</p>
+
+        <div data-block="journey"></div>
+
+        <h3>Billing Provider Decision: RevenueCat vs. Custom Webhooks</h3>
+        <table class="grid">
+          <thead>
+            <tr>
+              <th>Dimension</th>
+              <th>Option A: RevenueCat (Recommended)</th>
+              <th>Option B: Custom StoreKit 2 + Play Developer API</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>Implementation Effort</b></td>
+              <td><b>Low (1-2 days)</b>: Drop-in Swift and Kotlin SDKs; single unified webhook.</td>
+              <td><b>High (2-3 weeks)</b>: Must write cryptographic JWS receipt parsers, Google Pub/Sub listeners, and retry queues.</td>
+            </tr>
+            <tr>
+              <td><b>Maintenance Overhead</b></td>
+              <td><b>Zero</b>: RevenueCat automatically handles App Store Server Notifications v2, grace periods, billing retries, price localization, and currency changes.</td>
+              <td><b>High</b>: Any Apple or Google API deprecation or webhook retry failure risks dropping paying users.</td>
+            </tr>
+            <tr>
+              <td><b>Cost</b></td>
+              <td><b>Free</b> up to $2,500/month tracked revenue (MTR). More than enough for Headway's launch and early growth.</td>
+              <td>$0 direct fees, but ongoing developer maintenance and Cloudflare Worker CPU execution.</td>
+            </tr>
+            <tr>
+              <td><b>Cross-Platform Sync</b></td>
+              <td>Built-in unified <code>app_user_id</code> mapping to Supabase <code>auth.users.id</code>.</td>
+              <td>Must build custom reconciliation and receipt storage tables.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="pricing" data-toc="Pricing Strategy &amp; Demographics">
+        <h2>Pricing Strategy, Unit Economics &amp; Willingness to Pay</h2>
+
+        <h3>Target Audience Demographics (The Peninsula Rail Corridor)</h3>
+        <p>Caltrain riders are among the highest-income transit commuters in North America:</p>
+        <ul>
+          <li><b>Route Geography</b>: Connects San Francisco (tech hubs, financial district), Silicon Valley (Palo Alto, Mountain View, Sunnyvale, Santa Clara), and San Jose.</li>
+          <li><b>Passenger Profile</b>: Software engineers, product managers, venture capitalists, corporate executives, biotechnology researchers, and Stanford students/faculty.</li>
+          <li><b>Existing Transit Expenditure</b>: Caltrain fares are substantial. A single one-way ticket ranges from <b>$3.75 to $15.75</b>. A monthly Caltrain pass costs between <b>$96.00 and $288.00 per month</b> ($1,152 &ndash; $3,456/year).</li>
+          <li><b>Value of Time</b>: A missed express "Baby Bullet" train due to unexpected delays or arriving 30 seconds late costs <b>30 to 45 minutes of wasted time</b>. A service that reliably prevents missed trains and provides glanceable peace of mind is worth many times its subscription cost.</li>
+        </ul>
+
+        <h3>Recommended Three-Tier Pricing Structure</h3>
+        <table class="grid">
+          <thead>
+            <tr>
+              <th>Tier</th>
+              <th>Price</th>
+              <th>Positioning &amp; Target Rider</th>
+              <th>Expected Conversion Share</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>Annual Subscription (Hero)</b><br><small>Includes 14-Day Free Trial</small></td>
+              <td><b>$19.99 / year</b><br><small>($1.66 / month)</small></td>
+              <td><b>The Default Choice for Daily Commuters.</b><br>Less than the price of two Caltrain one-way tickets per year. The 14-day free trial removes all signup hesitation, activating riders during their regular commute routine.</td>
+              <td><b>65%</b> of paid users</td>
+            </tr>
+            <tr>
+              <td><b>Monthly Subscription</b></td>
+              <td><b>$2.99 / month</b><br><small>($35.88 / year annualized)</small></td>
+              <td><b>Hybrid &amp; Seasonal Commuters.</b><br>Appeals to workers commuting into the office only 2&ndash;3 days per week, summer tech interns, or riders testing the service before committing.</td>
+              <td><b>20%</b> of paid users</td>
+            </tr>
+            <tr>
+              <td><b>Lifetime Access</b><br><small>One-Time Purchase</small></td>
+              <td><b>$49.99 one-time</b></td>
+              <td><b>Enthusiast &amp; Wearable Adopters.</b><br>Tech workers who hate recurring subscriptions and own Even G2 glasses or Apple Watch Ultra. Delivers immediate cash flow and strong word-of-mouth advocacy.</td>
+              <td><b>15%</b> of paid users</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout">
+          <b>Why Not $3.99/year like Caltrain Companion?</b><br>
+          Caltrain Companion's $4.00/year price is an artifact of an indie hobbyist model that depresses perceived value. At $4/year, users assume the app is unmaintained or abandoned. At <b>$19.99/year ($1.66/month)</b>, Headway is priced fairly for professional software while remaining an absolute impulse buy for someone spending $200+/month on Caltrain tickets.
+        </div>
+
+        <h3>Revenue &amp; Unit Economics Projection</h3>
+        <p>Caltrain weekday ridership averages approximately <b>25,000 to 30,000 daily passengers</b> (growing post-electrification). With zero marketing spend, targeting conservative penetration along the corridor yields:</p>
+        <ul>
+          <li><b>Target 1: 500 Active Pro Subscribers</b> &rarr; <b>$10,000 ARR</b> (covers all server, Apple developer, and domain costs 10x over).</li>
+          <li><b>Target 2: 2,000 Active Pro Subscribers</b> (under 7% of daily Caltrain riders) &rarr; <b>$40,000 ARR</b> of steady, recurring indie cash flow.</li>
+          <li><b>Infrastructure Cost</b>: Cloudflare Workers ($5/mo), Supabase shared monorepo ($0 additional), Apple Developer Program ($99/yr), 511.org GTFS-RT API ($0 free government tier). Total gross margin exceeds <b>90%</b> (after Apple/Google 15% small business fee).</li>
+        </ul>
+      </section>
+
+      <section id="technical-blueprint" data-toc="Technical Implementation Blueprint">
+        <h2>Technical Implementation Blueprint</h2>
+        <p>To implement this model cleanly while adhering to the monorepo's strict graduation and isolation rules (<code>supabase/GRADUATION.md</code>), all billing state is encapsulated within the <code>headway</code> PostgreSQL schema.</p>
+
+        <div data-block="schema"></div>
+
+        <h3>Worker Webhook Handler Implementation</h3>
+        <p>The Cloudflare Worker exposes a secured webhook endpoint <code>POST /api/webhooks/revenuecat</code>. When an event fires (e.g. <code>INITIAL_PURCHASE</code>, <code>RENEWAL</code>, <code>CANCELLATION</code>, <code>EXPIRATION</code>), the Worker updates Supabase:</p>
+
+        <pre class="code">// services/web/src/worker/billing.ts
+export async function handleRevenueCatWebhook(env: Env, req: Request): Promise&lt;Response&gt; {
+  const authHeader = req.headers.get("Authorization");
+  if (authHeader !== `Bearer ${env.REVENUECAT_WEBHOOK_SECRET}`) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  const payload = await req.json&lt;RevenueCatEvent&gt;();
+  const event = payload.event;
+  const userId = event.app_user_id;
+
+  const db = admin(env);
+  const status = mapRevenueCatStatus(event.type);
+  const expiresAt = event.expiration_at_ms ? new Date(event.expiration_at_ms).toISOString() : null;
+
+  await db.from("subscriptions").upsert({
+    user_id: userId,
+    status: status,
+    tier: "pro",
+    platform: event.store.toLowerCase(),
+    original_transaction_id: event.original_transaction_id,
+    product_id: event.product_id,
+    expires_at: expiresAt,
+    updated_at: new Date().toISOString()
+  });
+
+  return new Response(JSON.stringify({ ok: true }), { status: 200 });
+}</pre>
+
+        <h3>App Store &amp; Google Play Store Review Compliance</h3>
+        <div class="note">
+          <b>Key Compliance Rules:</b>
+          <ul>
+            <li><b>Apple App Store Guideline 3.1.2 (Subscriptions)</b>: The subscription paywall screen must clearly disclose the price, billing duration, payment charged to iTunes account at confirmation, and that auto-renew can be managed in Account Settings.</li>
+            <li><b>Apple App Store Guideline 5.1.1(v) (Account Deletion)</b>: Headway already supports deleting user accounts and revoking tokens. Ensure that deleting an account provides explicit disclosure on how active App Store subscriptions must be canceled via Apple Settings.</li>
+            <li><b>Family Sharing Support</b>: Configure the IAP product IDs in App Store Connect with Family Sharing enabled. Silicon Valley couples commuting together value this heavily.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="action-plan" data-toc="Action Plan &amp; Checklist">
+        <h2>Action Plan &amp; Implementation Checklist</h2>
+        <p>The migration to a paid subscription can be executed smoothly across three ordered phases:</p>
+
+        <ol class="do">
+          <li><b>Phase 1: Database &amp; Webhook Plumbing</b> &mdash; Run the Supabase migration to create <code>headway.subscriptions</code>, add the RevenueCat webhook endpoint in Cloudflare Worker, and wire up service-level entitlement checks.</li>
+          <li><b>Phase 2: App Store &amp; Google Play Setup</b> &mdash; Register the IAP products in App Store Connect and Google Play Console (<code>headway_pro_annual_1999</code>, <code>headway_pro_monthly_299</code>, <code>headway_pro_lifetime_4999</code>). Configure the RevenueCat project and API keys.</li>
+          <li><b>Phase 3: Client Paywall &amp; Wearable Gate</b> &mdash; Build the native Paywall UI in SwiftUI and Jetpack Compose. Implement entitlement gating on the Live Activities manager, APNs notification scheduler, watch complications, and Even G2 smart glasses departure board.</li>
+        </ol>
+
+        <ul class="checks">
+          <li id="c-db"><b>Database Schema</b>: Apply <code>headway_add_subscriptions.sql</code> to local and production Supabase.</li>
+          <li id="c-rc"><b>RevenueCat Project</b>: Set up Headway project in RevenueCat, connect App Store Connect API and Google Play Service Account.</li>
+          <li id="c-webhook"><b>Worker Webhook</b>: Deploy <code>POST /api/webhooks/revenuecat</code> on Cloudflare Worker to sync entitlements automatically.</li>
+          <li id="c-ios-iap"><b>iOS StoreKit Integration</b>: Add RevenueCat Swift package to <code>apps/ios/HeadwayKit</code>; create <code>PaywallView.swift</code> with 14-day trial hero card.</li>
+          <li id="c-android-iap"><b>Android Play Billing</b>: Add Purchases Android SDK to <code>apps/android/app</code>; create Compose Paywall screen.</li>
+          <li id="c-watch-gate"><b>Watch &amp; Wear OS Gating</b>: Enable complications and background sync only for accounts with <code>is_pro == true</code>.</li>
+          <li id="c-glasses-gate"><b>Glasses HUD Gating</b>: In <code>services/web/src/worker/api.ts</code>, require active subscription for continuous real-time G2 HUD streaming.</li>
+          <li id="c-terms"><b>Terms &amp; Privacy Update</b>: Add standard subscription terms, refund policy, and auto-renewal disclosures to <code>docs/</code> and the website.</li>
+        </ul>
+      </section>
+
+      <section id="notes" data-toc="Your notes">
+        <h2>Your notes</h2>
+        <p>Type notes or adjustments here (e.g. if you prefer $14.99/yr over $19.99/yr, or want to keep Live Activities free). They are saved in your browser and will be included in the hand-off summary when you click <b>Copy summary</b>.</p>
+        <textarea id="notes-input" placeholder="e.g. I want to proceed with $19.99/yr with a 14-day trial, and keep 1 basic watch complication free..."></textarea>
+      </section>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <div class="actions">
+      <button class="btn primary" id="copy">Copy summary</button>
+    </div>
+  </footer>
+
+  <script src="js/design.js"></script>
+  <script src="js/content.js"></script>
+  <script src="js/report.js"></script>
+</body>
+</html>
