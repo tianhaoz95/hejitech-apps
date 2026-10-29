@@ -592,6 +592,171 @@ async fn run_exercise_tests(
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct RawChapterData {
+    pub id: String,
+    pub slug: String,
+    pub title: String,
+    pub order: usize,
+    pub raw_markdown: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct RawCourseData {
+    pub id: String,
+    pub title: String,
+    pub description: String,
+    pub domain: String,
+    pub chapters: Vec<RawChapterData>,
+}
+
+fn extract_yaml_val(line: &str, prefix: &str) -> Option<String> {
+    if line.starts_with(prefix) {
+        Some(
+            line.trim_start_matches(prefix)
+                .trim()
+                .trim_matches('"')
+                .trim_matches('\'')
+                .to_string(),
+        )
+    } else {
+        None
+    }
+}
+
+fn parse_course_yaml_chapters(content: &str, base_dir: &Path) -> Vec<RawChapterData> {
+    let mut chapters = Vec::new();
+    let mut in_chapters = false;
+    let mut current_id = String::new();
+    let mut current_slug = String::new();
+    let mut current_title = String::new();
+    let mut current_file = String::new();
+
+    let flush_chapter = |chapters: &mut Vec<RawChapterData>,
+                         id: &mut String,
+                         slug: &mut String,
+                         title: &mut String,
+                         file: &mut String,
+                         base: &Path| {
+        if !id.is_empty() || !title.is_empty() || !file.is_empty() {
+            let ch_slug = if !slug.is_empty() {
+                slug.clone()
+            } else if !id.is_empty() {
+                id.clone()
+            } else {
+                format!("ch-{:02}", chapters.len() + 1)
+            };
+            let ch_id = if !id.is_empty() { id.clone() } else { ch_slug.clone() };
+            let ch_title = if !title.is_empty() { title.clone() } else { ch_slug.clone() };
+
+            let file_path = if !file.is_empty() {
+                base.join(&file)
+            } else {
+                base.join("chapters").join(format!("{}.md", ch_slug))
+            };
+
+            let raw_markdown = fs::read_to_string(&file_path).unwrap_or_else(|_| {
+                format!("# {}\n\nChapter content coming soon.", ch_title)
+            });
+
+            chapters.push(RawChapterData {
+                id: ch_id,
+                slug: ch_slug,
+                title: ch_title,
+                order: chapters.len() + 1,
+                raw_markdown,
+            });
+
+            id.clear();
+            slug.clear();
+            title.clear();
+            file.clear();
+        }
+    };
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if !line.starts_with(' ') && !line.starts_with('\t') {
+            if line.starts_with("chapters:") {
+                in_chapters = true;
+                continue;
+            } else if in_chapters {
+                in_chapters = false;
+                flush_chapter(&mut chapters, &mut current_id, &mut current_slug, &mut current_title, &mut current_file, base_dir);
+            }
+        }
+
+        if in_chapters {
+            if trimmed.starts_with("- ") {
+                flush_chapter(&mut chapters, &mut current_id, &mut current_slug, &mut current_title, &mut current_file, base_dir);
+                let rest = trimmed.trim_start_matches("- ").trim();
+                if let Some(val) = extract_yaml_val(rest, "id:") {
+                    current_id = val;
+                } else if let Some(val) = extract_yaml_val(rest, "slug:") {
+                    current_slug = val;
+                } else if let Some(val) = extract_yaml_val(rest, "title:") {
+                    current_title = val;
+                } else if let Some(val) = extract_yaml_val(rest, "file:") {
+                    current_file = val;
+                }
+            } else if let Some(val) = extract_yaml_val(trimmed, "id:") {
+                current_id = val;
+            } else if let Some(val) = extract_yaml_val(trimmed, "slug:") {
+                current_slug = val;
+            } else if let Some(val) = extract_yaml_val(trimmed, "title:") {
+                current_title = val;
+            } else if let Some(val) = extract_yaml_val(trimmed, "file:") {
+                current_file = val;
+            }
+        }
+    }
+
+    if in_chapters {
+        flush_chapter(&mut chapters, &mut current_id, &mut current_slug, &mut current_title, &mut current_file, base_dir);
+    }
+
+    chapters
+}
+
+fn parse_course_yaml_metadata(content: &str, default_title: &str, default_description: &str) -> (String, String, usize) {
+    let mut title = default_title.to_string();
+    let mut description = default_description.to_string();
+    let mut yaml_chapter_count = 0;
+    let mut in_chapters = false;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("- id:") || trimmed.starts_with("- slug:") {
+            yaml_chapter_count += 1;
+        }
+
+        // Only parse root-level YAML keys (no leading indentation)
+        if !line.starts_with(' ') && !line.starts_with('\t') {
+            if line.starts_with("chapters:") {
+                in_chapters = true;
+            } else if !in_chapters {
+                if line.starts_with("title:") {
+                    title = line
+                        .trim_start_matches("title:")
+                        .trim()
+                        .trim_matches('"')
+                        .trim_matches('\'')
+                        .to_string();
+                } else if line.starts_with("description:") {
+                    description = line
+                        .trim_start_matches("description:")
+                        .trim()
+                        .trim_matches('"')
+                        .trim_matches('\'')
+                        .to_string();
+                }
+            }
+        }
+    }
+
+    (title, description, yaml_chapter_count)
+}
+
 #[tauri::command]
 fn list_local_courses(active_dir: Option<String>) -> Result<Vec<LocalCourseInfo>, String> {
     let home = std::env::var("HOME").map_err(|e| e.to_string())?;
@@ -619,7 +784,7 @@ fn list_local_courses(active_dir: Option<String>) -> Result<Vec<LocalCourseInfo>
         let agents_skill = path.join(".agents/skills/course-author/SKILL.md");
         let claude_skill = path.join(".claude/skills/course-author/SKILL.md");
 
-        let chapter_count = if chapters_dir.is_dir() {
+        let mut chapter_count = if chapters_dir.is_dir() {
             fs::read_dir(&chapters_dir)
                 .map(|it| {
                     it.flatten()
@@ -633,27 +798,14 @@ fn list_local_courses(active_dir: Option<String>) -> Result<Vec<LocalCourseInfo>
 
         let mut title = dir_name.replace('-', " ");
         let mut description = format!("Interactive course in {}", path.display());
+        let mut yaml_chapter_count = 0;
 
         if course_yaml.exists() {
             if let Ok(content) = fs::read_to_string(&course_yaml) {
-                for line in content.lines() {
-                    let trimmed = line.trim();
-                    if trimmed.starts_with("title:") {
-                        title = trimmed
-                            .trim_start_matches("title:")
-                            .trim()
-                            .trim_matches('"')
-                            .trim_matches('\'')
-                            .to_string();
-                    } else if trimmed.starts_with("description:") {
-                        description = trimmed
-                            .trim_start_matches("description:")
-                            .trim()
-                            .trim_matches('"')
-                            .trim_matches('\'')
-                            .to_string();
-                    }
-                }
+                let (t, d, count) = parse_course_yaml_metadata(&content, &title, &description);
+                title = t;
+                description = d;
+                yaml_chapter_count = count;
             }
         } else if course_json.exists() {
             if let Ok(content) = fs::read_to_string(&course_json) {
@@ -664,8 +816,15 @@ fn list_local_courses(active_dir: Option<String>) -> Result<Vec<LocalCourseInfo>
                     if let Some(d) = val.get("description").and_then(|v| v.as_str()) {
                         description = d.to_string();
                     }
+                    if let Some(chs) = val.get("chapters").and_then(|v| v.as_array()) {
+                        yaml_chapter_count = chs.len();
+                    }
                 }
             }
+        }
+
+        if chapter_count == 0 && yaml_chapter_count > 0 {
+            chapter_count = yaml_chapter_count;
         }
 
         let has_agent_skill = agents_skill.exists() || claude_skill.exists();
@@ -737,6 +896,118 @@ fn delete_local_course(slug: String) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn load_local_course(slug: String) -> Result<RawCourseData, String> {
+    if slug.is_empty() || slug == "." || slug == ".." || slug.contains('/') || slug.contains('\\') {
+        return Err("Invalid course slug".to_string());
+    }
+
+    let home = std::env::var("HOME").map_err(|e| e.to_string())?;
+    let courses_root = PathBuf::from(&home).join("heji-courses");
+    let base_dir = courses_root.join(&slug);
+
+    if !base_dir.exists() {
+        return Err(format!("Course directory does not exist: {}", base_dir.display()));
+    }
+
+    let course_yaml = base_dir.join("course.yaml");
+    let course_json = base_dir.join("course.json");
+
+    let mut title = slug.replace('-', " ");
+    let mut description = format!("Interactive course in {}", base_dir.display());
+    let mut domain = "ai-inference".to_string();
+    let mut chapters = Vec::new();
+
+    if course_yaml.exists() {
+        if let Ok(content) = fs::read_to_string(&course_yaml) {
+            let (t, d, _) = parse_course_yaml_metadata(&content, &title, &description);
+            title = t;
+            description = d;
+            chapters = parse_course_yaml_chapters(&content, &base_dir);
+        }
+    } else if course_json.exists() {
+        if let Ok(content) = fs::read_to_string(&course_json) {
+            if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
+                if let Some(t) = val.get("title").and_then(|v| v.as_str()) {
+                    title = t.to_string();
+                }
+                if let Some(d) = val.get("description").and_then(|v| v.as_str()) {
+                    description = d.to_string();
+                }
+                if let Some(dm) = val.get("domain").and_then(|v| v.as_str()) {
+                    domain = dm.to_string();
+                }
+                if let Some(chs) = val.get("chapters").and_then(|v| v.as_array()) {
+                    for (idx, ch) in chs.iter().enumerate() {
+                        let ch_id = ch.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                        let ch_slug = ch.get("slug").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                        let ch_title = ch.get("title").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                        let file = ch.get("file").and_then(|v| v.as_str()).unwrap_or("");
+                        let file_path = if !file.is_empty() {
+                            base_dir.join(file)
+                        } else {
+                            base_dir.join("chapters").join(format!("{}.md", ch_slug))
+                        };
+                        let raw_markdown = fs::read_to_string(&file_path).unwrap_or_else(|_| {
+                            format!("# {}\n\nChapter content coming soon.", ch_title)
+                        });
+                        chapters.push(RawChapterData {
+                            id: if !ch_id.is_empty() { ch_id } else { format!("ch-{:02}", idx + 1) },
+                            slug: if !ch_slug.is_empty() { ch_slug } else { format!("ch-{:02}", idx + 1) },
+                            title: if !ch_title.is_empty() { ch_title } else { format!("Chapter {}", idx + 1) },
+                            order: idx + 1,
+                            raw_markdown,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    // Fallback: if no chapters list in yaml/json, scan chapters/ directory
+    if chapters.is_empty() {
+        let chapters_dir = base_dir.join("chapters");
+        if chapters_dir.is_dir() {
+            if let Ok(entries) = fs::read_dir(&chapters_dir) {
+                let mut md_paths: Vec<PathBuf> = entries
+                    .flatten()
+                    .map(|e| e.path())
+                    .filter(|p| p.extension().map_or(false, |ext| ext == "md"))
+                    .collect();
+                md_paths.sort();
+
+                for (idx, p) in md_paths.into_iter().enumerate() {
+                    let stem = p.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_else(|| format!("ch-{}", idx + 1));
+                    let content = fs::read_to_string(&p).unwrap_or_default();
+                    let mut ch_title = stem.replace('-', " ");
+                    for l in content.lines() {
+                        let l_trimmed = l.trim();
+                        if l_trimmed.starts_with("# ") {
+                            ch_title = l_trimmed.trim_start_matches("# ").trim().to_string();
+                            break;
+                        }
+                    }
+                    chapters.push(RawChapterData {
+                        id: format!("ch-{:02}", idx + 1),
+                        slug: stem,
+                        title: ch_title,
+                        order: idx + 1,
+                        raw_markdown: content,
+                    });
+                }
+            }
+        }
+    }
+
+    Ok(RawCourseData {
+        id: slug,
+        title,
+        description,
+        domain,
+        chapters,
+    })
+}
+
 pub fn run() {
     tauri::Builder::default()
         .manage(AppPtyState::default())
@@ -752,8 +1023,63 @@ pub fn run() {
             run_exercise_tests,
             list_local_courses,
             reveal_in_finder,
-            delete_local_course
+            delete_local_course,
+            load_local_course
         ])
         .run(tauri::generate_context!())
         .expect("error while running polymath desktop");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_course_yaml_metadata_ignores_chapter_titles() {
+        let yaml = r#"
+id: "pyTorch-for-trt-llm"
+title: "PyTorch for TRT-LLM Developers & Researchers"
+description: "Master foundational PyTorch systems architecture."
+domain: "ai-inference"
+version: "1.0.0"
+chapters:
+  - id: "ch-01"
+    slug: "01-weight-conversion"
+    title: "1. Tensor Layouts & TRT-LLM Weight Conversions"
+    file: "chapters/01-weight-conversion.md"
+  - id: "ch-05"
+    slug: "05-tensor-parallelism"
+    title: "5. Distributed Tensor Parallelism & NVLink"
+    file: "chapters/05-tensor-parallelism.md"
+"#;
+        let (title, description, count) = parse_course_yaml_metadata(yaml, "fallback", "fallback");
+        assert_eq!(title, "PyTorch for TRT-LLM Developers & Researchers");
+        assert_eq!(description, "Master foundational PyTorch systems architecture.");
+        assert_eq!(count, 2);
+    }
+
+    #[test]
+    fn test_parse_course_yaml_chapters() {
+        let yaml = r#"
+id: "pyTorch-for-trt-llm"
+title: "PyTorch for TRT-LLM"
+chapters:
+  - id: "ch-01"
+    slug: "01-weight-conversion"
+    title: "1. Tensor Layouts & TRT-LLM Weight Conversions"
+    file: "chapters/01-weight-conversion.md"
+  - id: "ch-02"
+    slug: "02-rope-attention"
+    title: "2. RoPE Positional Embeddings"
+    file: "chapters/02-rope-attention.md"
+"#;
+        let chapters = parse_course_yaml_chapters(yaml, Path::new("/dummy/dir"));
+        assert_eq!(chapters.len(), 2);
+        assert_eq!(chapters[0].id, "ch-01");
+        assert_eq!(chapters[0].slug, "01-weight-conversion");
+        assert_eq!(chapters[0].title, "1. Tensor Layouts & TRT-LLM Weight Conversions");
+        assert_eq!(chapters[1].id, "ch-02");
+        assert_eq!(chapters[1].slug, "02-rope-attention");
+        assert_eq!(chapters[1].title, "2. RoPE Positional Embeddings");
+    }
 }

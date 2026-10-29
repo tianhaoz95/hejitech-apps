@@ -9,7 +9,23 @@ import { EmbeddedTerminal, type TestRunInfo } from "./components/EmbeddedTermina
 import { invokeTauri, isTauri } from "./tauriBridge.js";
 import { checkForUpdate, downloadAndInstallUpdate } from "./updater.js";
 import type { Update } from "@tauri-apps/plugin-updater";
-import type { Course, Chapter } from "@polymath/core";
+import { parseChapter, type Course, type Chapter, type DomainCategory } from "@polymath/core";
+
+export interface RawChapterData {
+  id: string;
+  slug: string;
+  title: string;
+  order: number;
+  raw_markdown: string;
+}
+
+export interface RawCourseData {
+  id: string;
+  title: string;
+  description: string;
+  domain: string;
+  chapters: RawChapterData[];
+}
 
 export interface LocalCourseInfo {
   slug: string;
@@ -160,9 +176,40 @@ export const App: React.FC = () => {
     fetchLocalCourses();
   }, []);
 
-  const handleSelectCourse = (c: LocalCourseInfo) => {
+  const handleSelectCourse = async (c: LocalCourseInfo) => {
     setActiveCourseSlug(c.slug);
     setActiveCourseDir(c.path);
+
+    if (isTauri()) {
+      try {
+        const raw = await invokeTauri<RawCourseData>("load_local_course", { slug: c.slug });
+        if (raw && raw.chapters && raw.chapters.length > 0) {
+          const parsedChapters: Chapter[] = raw.chapters.map((ch) =>
+            parseChapter(ch.id, ch.slug, ch.title, ch.order, ch.raw_markdown)
+          );
+          setCourse({
+            id: raw.id,
+            title: raw.title,
+            description: raw.description,
+            domain: (raw.domain as DomainCategory) || "ai-inference",
+            author: "Polymath Learner",
+            version: "1.0.0",
+            tags: [c.slug],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            chapters: parsedChapters,
+          });
+          setActiveChapterIndex(0);
+          setIsCourseListOpen(false);
+          setStatusMessage(`Loaded course: ${raw.title} (${parsedChapters.length} chapters)`);
+          setTimeout(() => setStatusMessage(null), 3500);
+          return;
+        }
+      } catch (err: any) {
+        console.error("Failed to load course from disk, falling back to starter:", err);
+      }
+    }
+
     if (c.slug === "vllm-sglang-trtllm" || c.slug === STARTER_VLLM_COURSE.id) {
       setCourse(STARTER_VLLM_COURSE);
       setActiveChapterIndex(1);
@@ -272,6 +319,15 @@ export const App: React.FC = () => {
         setIsTerminalOpen(true);
         setStatusMessage(`Workspace created at ${res.path}!`);
         await fetchLocalCourses();
+        await handleSelectCourse({
+          slug: newSlug,
+          title: newTitle,
+          description: `Interactive course on ${newTopic || newTitle}`,
+          path: res.path,
+          chapter_count: 1,
+          has_agent_skill: true,
+          is_active: true,
+        });
       } else {
         setActiveCourseSlug(newSlug);
         setActiveCourseDir(`~/heji-courses/${newSlug}`);
@@ -1409,25 +1465,29 @@ export const App: React.FC = () => {
                           </p>
                         </div>
 
-                        {/* Switch / Select Button */}
+                        {/* Switch / Select / Reload Button */}
                         <button
                           onClick={() => handleSelectCourse(c)}
-                          disabled={isActive}
                           style={{
                             background: isActive
-                              ? "transparent"
+                              ? isLight
+                                ? "rgba(9, 105, 218, 0.08)"
+                                : "rgba(88, 166, 255, 0.12)"
                               : "linear-gradient(180deg, #2563EB, #1D4ED8)",
-                            color: isActive ? mutColor : "#FFFFFF",
-                            border: isActive ? `1px solid ${borderColor}` : "1px solid #3B82F6",
+                            color: isActive ? accentColor : "#FFFFFF",
+                            border: isActive
+                              ? `1px solid ${isLight ? "rgba(9, 105, 218, 0.3)" : "rgba(88, 166, 255, 0.3)"}`
+                              : "1px solid #3B82F6",
                             borderRadius: 6,
                             padding: "6px 14px",
                             fontSize: 11,
                             fontWeight: 700,
-                            cursor: isActive ? "default" : "pointer",
+                            cursor: "pointer",
                             flexShrink: 0,
                           }}
+                          title={isActive ? "Reload chapters from disk" : "Open Course"}
                         >
-                          {isActive ? "Currently Loaded" : "Open Course →"}
+                          {isActive ? "↻ Reload Course" : "Open Course →"}
                         </button>
                       </div>
 
