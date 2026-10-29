@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>App Store release: Wee Hours, Headway, FitLoop</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23C8603A'/%3E%3Crect x='9' y='9' width='14' height='2.5' rx='1.2' fill='%23fff'/%3E%3Crect x='9' y='15' width='14' height='2.5' rx='1.2' fill='%23fff'/%3E%3Crect x='9' y='21' width='9' height='2.5' rx='1.2' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/design.css">
+  <style>td.bad { color: var(--bad); font-weight: 600; } .field b small { font-weight: 400; } .shots figure { max-width: 300px; } .shots figcaption { font-size: 13px; color: var(--mut); margin-top: 6px; }</style>
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="#top">
+      <span class="logo"></span>
+      <span><b>App Store release: Wee Hours, Headway, FitLoop</b><small>What's ready, what I filled in, and your steps to submit each app, with every value to copy</small></span>
+    </a>
+    <div class="seg" role="group" aria-label="Appearance">
+      <button data-mode="light">Light</button>
+      <button data-mode="dark">Dark</button>
+    </div>
+  </header>
+
+  <div class="layout" id="top">
+    <!-- Filled from the sections' <h2>s by report.js; data-toc="Short label" on a section overrides. -->
+    <nav class="toc" aria-label="Sections"></nav>
+
+    <main>
+      <section id="summary" data-toc="Summary">
+        <p class="kicker">Release walkthrough · 2026-10-29</p>
+        <h1>Releasing Wee Hours, Headway and FitLoop to the App Store</h1>
+        <p class="lede">All three apps are close. The code meets the App Store's rules for <b>privacy manifests, purpose strings, account deletion, Sign in with Apple, export compliance and icons</b>. Headway and FitLoop now have a <b>complete App Store Connect listing</b> (text, URLs, categories, age rating 4+, free price, availability, version 1.0.0). All three now have <b>6.9" iPhone screenshots</b> to download, and Headway and FitLoop have watch screenshots too. What's left needs your accounts or your judgment: <b>the App Privacy forms, your review contact, the Wee Hours price, a Sign in with Apple key, and cutting the 1.0.0 builds.</b> Each app's section lists its steps in order, with every value ready to copy.</p>
+
+        <div class="status">
+          <div><b>Wee Hours</b><span class="todo">Price, Sign in with Apple key, privacy form, contact, watch screenshot, build 1.0.0</span></div>
+          <div><b>Headway</b><span class="todo">Privacy form, contact, screenshots upload, build 1.0.0</span></div>
+          <div><b>FitLoop</b><span class="todo">Privacy form, contact, screenshots upload, build 1.0.0</span></div>
+          <div><b>Repo changes from this pass</b><span class="todo">Uncommitted: commit and push first (§1)</span></div>
+        </div>
+
+        <div class="cards">
+          <div class="card good">
+            <h3>Verified</h3>
+            <ul>
+              <li><b>App Store Connect</b>: every write returned 200/201 and was read back. Headway and FitLoop show version 1.0.0, the text and URLs, age rating <code>FOUR_PLUS</code>, a free USA price, and availability (Headway: US only; FitLoop: every territory but China mainland).</li>
+              <li><b>Tests</b>: <code>npm run test:headway</code> (62 + 9), <code>typecheck:headway</code> and <code>build:headway</code> pass. The <code>HeadwayKit</code> (9) and <code>FitLoopKit</code> (8) Swift tests pass.</li>
+              <li><b>Builds</b>: all three iPhone apps and the Headway and FitLoop watch apps build for the simulator. The Headway widget and watch bundles now contain <code>PrivacyInfo.xcprivacy</code>.</li>
+              <li><b>Screenshots</b> come from those builds on the iPhone 17 Pro Max simulator (1320 × 2868), against the local backend with demo data.</li>
+              <li><b>Live sites</b>: every app's <code>/</code>, <code>/privacy/</code>, <code>/support/</code> and <code>/terms/</code> answer 200.</li>
+            </ul>
+          </div>
+          <div class="card warn">
+            <h3>Not verified</h3>
+            <ul>
+              <li><b>A physical iPhone</b> wasn't used. The store needs 6.9" shots, which only the simulator can make here.</li>
+              <li><b>The Headway Worker change</b> (request logs off) deploys when you push. Wrangler parsed the config in a dry run; it isn't live yet.</li>
+              <li><b>Review notes</b> for all three are corrected here but not in App Store Connect: Apple refuses to update them until the review contact is filled in (§2, §3, §4).</li>
+              <li><b>Agreements, tax and banking</b> aren't visible to the API.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout"><b>Order:</b> commit and push (§1), then do each app's App Store Connect steps (any order, same day), then cut the three 1.0.0 builds (§5) and submit. Headway and FitLoop can go first. Wee Hours waits on your price decision.</div>
+      </section>
+
+      <section id="fixed" data-toc="What I fixed">
+        <h2>What I fixed, and what you need to do with it</h2>
+        <p>These changes are in your working tree, not committed. Pushing deploys the Headway site and Worker. The app changes ship with the 1.0.0 builds.</p>
+        <table class="grid">
+          <thead><tr><th>App</th><th>Gap</th><th>Fix</th><th>Where</th></tr></thead>
+          <tbody>
+            <tr><td>Headway</td><td>The widget, watch app and watch widget use <code>UserDefaults</code> but had no privacy manifest. Apple flags missing required-reason declarations (ITMS-91053).</td><td>All three bundles now include the app's <code>PrivacyInfo.xcprivacy</code> (reason CA92.1).</td><td><code>projects/headway/apps/ios/project.yml</code></td></tr>
+            <tr><td>Headway</td><td>The privacy policy says location is "never stored or logged". But Workers request logs record every URL, and board URLs carry <code>?lat=&amp;lon=</code>.</td><td>Request (invocation) logs are off. The Worker's own logs never print URLs.</td><td><code>projects/headway/services/web/wrangler.jsonc</code></td></tr>
+            <tr><td>Headway</td><td>The privacy policy and Help page say "sign in with Google". The app also offers Sign in with Apple.</td><td>"Apple or Google"; the policy is dated October 29.</td><td><code>services/web/privacy/index.html</code>, <code>support/index.html</code></td></tr>
+            <tr><td>Headway</td><td>On the Trains board, "· 7 stops · Faster" wrapped onto two lines in the 6.9" screenshot.</td><td>The line stays on one row and drops "Faster" when it doesn't fit (the Express badge already says it).</td><td><code>apps/ios/App/Sources/BoardView.swift</code></td></tr>
+            <tr><td>FitLoop</td><td>The review notes said Health access is "off by default". The app actually asks for it once after sign-in, since the daily summary is on by default.</td><td>The notes now say what happens and that declining is fine.</td><td><code>projects/fitloop/review.env</code></td></tr>
+            <tr><td>FitLoop</td><td>Progress → Vitals showed "Wei…t (kg)".</td><td>The measure's full name.</td><td><code>apps/ios/App/Sources/PlanViews.swift</code></td></tr>
+            <tr><td>Headway, FitLoop</td><td><code>cut_release.sh</code> refuses a version that What's New doesn't describe. The App Store version needs 1.0.0.</td><td>What's New 1.0.0 entries, including the two fixes above.</td><td><code>apps/ios/App/Sources/WhatsNewView.swift</code></td></tr>
+            <tr><td>Headway, FitLoop</td><td>The review notes didn't say where account deletion is. Reviewers check this under guideline 5.1.1(v).</td><td>A paragraph on Settings → Delete my … data.</td><td><code>review.env</code></td></tr>
+            <tr><td>Wee Hours</td><td>The review notes in App Store Connect say deletion removes "the sign-in". Since 5dd2e58f it keeps the shared HEJI login.</td><td>Corrected notes in §2, ready to paste.</td><td>App Store Connect</td></tr>
+            <tr><td>Headway, FitLoop</td><td>App Store Connect had only a name: no subtitle, description, keywords, URLs, category, age rating, copyright, price or availability. The version was "1.0", which doesn't match a 1.0.0 build.</td><td>All of them filled in by API, and the version renamed to 1.0.0.</td><td>App Store Connect</td></tr>
+          </tbody>
+        </table>
+        <ol class="do">
+          <li>Look over the diff and commit it, or say <b>"commit and push"</b> in your notes. <code>cut_release.sh</code> refuses a dirty or unpushed <code>main</code>.
+            <pre class="cmd">git diff --stat
+git add -A projects/headway projects/fitloop reports/2026-10-29-app-store-release .claude/skills/heji-report
+git commit -m "Headway, FitLoop: App Store 1.0.0 readiness"
+git push</pre></li>
+          <li>After the push, check that Headway's Worker deployed (Cloudflare Workers Builds) and the policy shows the new date:
+            <pre class="cmd">curl -s https://headway.hejitech.workers.dev/privacy/ | grep -o "Last updated [A-Za-z0-9 ,]*"</pre></li>
+        </ol>
+      </section>
+
+      <section id="weehours" data-toc="Wee Hours">
+        <h2>Wee Hours: your steps</h2>
+        <p>App Store Connect app <code>6823293298</code>, version page <b>1.0.0</b> (Prepare for Submission). The text, category, age rating (4+) and URLs were filled in on October 28 and still match the app. The build attached right now is an old 0.x upload (<code>202610151828</code>); replace it with the 1.0.0 build in step 7.</p>
+        <ol class="do">
+          <li><b>Decide the price.</b> The landing page, Terms, Support and the Lifetime screen all say "one-time purchase" and "Family Sharing", but no price is set. In <b>Business</b>, make sure the Paid Apps agreement is Active and tax and banking are filled in. Then <b>Pricing and Availability</b>: pick the price, keep all countries or choose some, and turn on <b>Family Sharing</b> (it can't be turned off later, which suits a one-time purchase). Also update the Billing row in <code>projects/weehours/docs/decisions.md</code>; it still describes the old subscription.</li>
+          <li><b>Sign in with Apple key</b>, so deletion can revoke the Apple token. Apple asks for revocation, and the privacy policy promises it. In the developer portal: <b>Keys → +</b>, tick Sign in with Apple, Configure → primary App ID <code>com.hejitech.weehours</code>, then download the <code>.p8</code> (you can only download it once). Then:
+            <pre class="cmd">cd projects/weehours/services/web
+npx wrangler secret put APPLE_SIWA_KEY_ID --env production
+npx wrangler secret put APPLE_SIWA_PRIVATE_KEY --env production &lt; AuthKey_XXXXXXXXXX.p8</pre></li>
+          <li><b>App Privacy</b>: enter the table below and Publish.</li>
+          <li><b>App Review Information</b> (version page): fill in your first name, last name, phone and email, then replace the Notes with the corrected text below. "Sign-in required" stays <b>off</b>.</li>
+          <li><b>Screenshots</b>: drag the four PNGs into <b>iPhone 6.9" Display</b>.</li>
+          <li><b>Watch screenshot</b> (required because the app ships a watch app). The simulator can't sync the watch without signing, so take it on your watch. On the iPhone, open the Watch app → General → turn on <b>Enable Screenshots</b>. Open Wee Hours on the watch with the iPhone app running, press the <b>side button and Digital Crown</b> together, then AirDrop the image from Photos into <b>Apple Watch</b> on the version page.</li>
+          <li><b>Build</b>: cut 1.0.0 (§5). Once it's processed, choose it under <b>Build</b> on the version page in place of the old one.</li>
+          <li><b>Add for Review → Submit</b>. Release type is already "automatically after approval".</li>
+        </ol>
+        <h3>Values to paste</h3>
+        <div class="fields"><div class="field" data-max="30"><b>Name</b><pre>Wee Hours: Hands-Free Baby Log</pre></div><div class="field" data-max="30"><b>Subtitle</b><pre>Voice baby tracker &amp; feed log</pre></div><div class="field" data-max="170"><b>Promotional text</b><pre>Log a feed, diaper or nap by voice, a tap, your watch or Even G2 glasses. Everyone in the household sees the same log, even at 3 a.m. Speech is understood on your iPhone.</pre></div><div class="field" data-max="4000"><b>Description</b><pre>Wee Hours is a baby log you can use with your hands full.
+
+Say &quot;finished the bottle, about 90 ml&quot; or &quot;dirty diaper&quot; and it&#x27;s logged. Speech is transcribed and understood on your iPhone, works offline, and the audio never leaves your phone.
+
+LOG ANY WAY
+• Voice, from the app, the Speak widget, Control Center or Siri
+• One tap on the Now screen
+• Your watch: buttons, or tilt mode with just the watch arm
+• Even Realities G2 glasses and R1 ring
+
+ONE LOG FOR THE WHOLE HOUSEHOLD
+• Partners and caregivers see every entry within seconds
+• &quot;Fed 2h40m ago · left side next&quot; at a glance
+• Who&#x27;s on duty, shift notes and gentle reminders
+• Twins and siblings, and the weeks before birth (kick counts)
+
+TRACK WHAT YOU NEED
+Feeds (bottle, breast, pumping, solids), diapers, sleep, growth, and optional care, health and activity entries like baths, medication, temperature and tummy time. Turn on only what you use.
+
+YOURS
+• Use it without an account, or sign in to sync
+• Photos on entries, CSV export
+• Connect your own AI assistant over MCP to ask about the log
+• No ads, no tracking
+
+Wee Hours records what happened. It doesn&#x27;t give medical advice.</pre></div><div class="field" data-max="100"><b>Keywords</b><pre>newborn,baby tracker,feeding,diaper,sleep,breastfeeding,bottle,nursing,pumping,twins,voice,growth</pre></div><div class="field"><b>Support URL</b><pre>https://weehours.hejitech.workers.dev/support/</pre></div><div class="field"><b>Marketing URL</b><pre>https://weehours.hejitech.workers.dev/</pre></div><div class="field"><b>Privacy Policy URL</b><pre>https://weehours.hejitech.workers.dev/privacy/</pre></div><div class="field"><b>Copyright</b><pre>2026 HEJI TECHNOLOGY LLC</pre></div><div class="field"><b>Primary category</b><pre>Health &amp; Fitness</pre></div><div class="field"><b>Secondary category</b><pre>Lifestyle</pre></div><div class="field" data-max="4000"><b>App Review notes<small> · corrected here; paste after adding your contact</small></b><pre>No sign-in is needed: tap &quot;Use without an account&quot; on the first screen to try every logging feature (voice, tap, timeline, the watch app). Sign in with Apple creates an account for household sync.
+
+Voice: tap the microphone and say e.g. &quot;bottle, 90 ml&quot;. Speech recognition and the decision model run on the device; no audio is uploaded from the iPhone.
+
+The Even G2 glasses and R1 ring screens in Settings are optional companion hardware; the app works fully without them.
+
+There are no in-app purchases. Account deletion: Settings → Delete account &amp; data (signed in) deletes the user&#x27;s Wee Hours account: the household&#x27;s log and photos, memberships, invites and assistant access. With Sign in with Apple it first confirms with Apple so the token can be revoked. The same sign-in also opens our other apps, so their data isn&#x27;t touched. Without an account the same place reads &quot;Erase this phone&#x27;s log&quot;.</pre></div></div>
+        <h3>App Privacy answers</h3>
+        <p>App Store Connect → the app → <b>App Privacy</b> → Get Started. "Do you or your third-party partners collect data from this app?" → <b>Yes</b>. Tick exactly these types; for each one: purpose <b>App Functionality</b> only, linked as the table says, <b>not used for tracking</b>. Then <b>Publish</b>. The API can't write this form.</p><table class="grid"><thead><tr><th>Data type (as the form names it)</th><th>Why it's collected</th><th>Linked to the user</th><th>Tracking</th></tr></thead><tbody><tr><td>Contact Info → Email Address</td><td>account (Apple / Google sign-in)</td><td>Yes</td><td>No</td></tr><tr><td>Contact Info → Name</td><td>caregiver display name, the baby&#x27;s name</td><td>Yes</td><td>No</td></tr><tr><td>Identifiers → User ID</td><td>account, household membership</td><td>Yes</td><td>No</td></tr><tr><td>Health &amp; Fitness → Health</td><td>feeds, sleep, growth, medication, temperature entries</td><td>Yes</td><td>No</td></tr><tr><td>User Content → Photos or Videos</td><td>photos attached to entries</td><td>Yes</td><td>No</td></tr><tr><td>User Content → Audio Data</td><td>glasses hold-to-speak captures, deleted once a phone processes them</td><td>Yes</td><td>No</td></tr><tr><td>User Content → Other User Content</td><td>log entries, notes, transcripts</td><td>Yes</td><td>No</td></tr><tr><td>Diagnostics → Other Diagnostic Data</td><td>shake-to-report problem reports, only when the user sends one</td><td>No</td><td>No</td></tr></tbody></table>
+        <h3>Screenshots</h3>
+        <div class="shots"><figure><a href="media/weehours/iphone-1-now.png" download><img src="media/weehours/iphone-1-now.png" alt="Wee Hours Now screen: today vs yesterday timeline, the status line &#x27;Fed 2m ago, left next&#x27;, a possible-duplicate card and log buttons" loading="lazy"></a><figcaption>iphone-1-now.png · 1320×2868 <a class="dl" href="media/weehours/iphone-1-now.png" download>PNG</a></figcaption></figure><figure><a href="media/weehours/iphone-2-timeline.png" download><img src="media/weehours/iphone-2-timeline.png" alt="Wee Hours Timeline for today: a day chart and entries for bottle, sleep, diaper and nursing" loading="lazy"></a><figcaption>iphone-2-timeline.png · 1320×2868 <a class="dl" href="media/weehours/iphone-2-timeline.png" download>PNG</a></figcaption></figure><figure><a href="media/weehours/iphone-3-settings.png" download><img src="media/weehours/iphone-3-settings.png" alt="Wee Hours Settings: Lifetime Access, children, tracking switches" loading="lazy"></a><figcaption>iphone-3-settings.png · 1320×2868 <a class="dl" href="media/weehours/iphone-3-settings.png" download>PNG</a></figcaption></figure><figure><a href="media/weehours/iphone-4-lifetime.png" download><img src="media/weehours/iphone-4-lifetime.png" alt="Wee Hours Lifetime Access screen listing the included features and Family Sharing" loading="lazy"></a><figcaption>iphone-4-lifetime.png · 1320×2868 <a class="dl" href="media/weehours/iphone-4-lifetime.png" download>PNG</a></figcaption></figure></div><p><a class="dl" href="media/weehours-screenshots.zip" download>All weehours screenshots (.zip)</a></p>
+      </section>
+
+      <section id="headway" data-toc="Headway">
+        <h2>Headway: your steps</h2>
+        <p>App Store Connect app <code>6827422048</code>, version page <b>1.0.0</b>. I filled in all of the text below, the category (Navigation / Travel), age rating 4+, copyright, a <b>free</b> price, and availability in the <b>United States only</b> (Caltrain is Bay Area only). The demo account is set. I set content rights to <b>"uses third-party content"</b> because the app shows 511.org and Caltrain timetable data, published as open data. Confirm under App Information that you have the rights to show it.</p>
+        <ol class="do">
+          <li><b>App Privacy</b>: enter the table below and Publish.</li>
+          <li><b>App Review Information</b>: fill in your name, phone and email. Then write the corrected notes, either by pasting them below or with:
+            <pre class="cmd">scripts/review_account.sh headway --asc-only    # rewrites the demo account + notes from review.env</pre></li>
+          <li><b>Screenshots</b>: the two iPhone PNGs into <b>iPhone 6.9" Display</b>, and the watch PNG into <b>Apple Watch</b> (Ultra 3, 422 × 514). The board says TIMETABLE because the local backend has no live feed. If you'd rather show LIVE, shoot the Release build on a 6.9" simulator signed in to production.</li>
+          <li><b>Build</b>: cut 1.0.0 (§5) and choose the build on the version page. The build attached now (<code>202610270629</code>) is a 0.2.x upload; replace it.</li>
+          <li><b>Add for Review → Submit.</b></li>
+        </ol>
+        <h3>Values to paste</h3>
+        <div class="fields"><div class="field" data-max="30"><b>Name</b><pre>Headway: Heads-Up Transit</pre></div><div class="field" data-max="30"><b>Subtitle</b><pre>Live Caltrain times &amp; alerts</pre></div><div class="field" data-max="170"><b>Promotional text</b><pre>Live Caltrain departures, delay alerts and leave-by times on your iPhone, Lock Screen, watch and Even G2 glasses.</pre></div><div class="field" data-max="4000"><b>Description</b><pre>Headway puts your next Caltrain where you&#x27;ll see it: on your iPhone, your Lock Screen, your watch and Even Realities G2 glasses.
+
+YOUR COMMUTE, ALREADY OPEN
+• Save a morning and an evening pair of stations. Headway opens on the right one for the time of day
+• Live departures with delays, express and local trains, and how many minutes you have before you need to leave
+• Leave-by times from the walk or drive you set, or estimated from where you are (optional)
+
+ALERTS THAT MATTER
+• Your train is running late past your threshold, or is cancelled
+• Caltrain service alerts for your stations
+• A leave-now reminder for your usual train
+• A heads-up a few minutes before your stop
+• When a later express gets you there sooner
+
+AT A GLANCE
+• Track the train you&#x27;re on with a Live Activity on the Lock Screen and in the Dynamic Island
+• Pin the next trains to your Lock Screen
+• Next trains widget for the Home Screen and Lock Screen
+• A watch app and watch face complications that count down to when you need to leave
+• Share a live ETA link with family. It stops when you arrive
+
+HEADS-UP ON EVEN G2
+Pair Even Realities G2 glasses with a 6-digit code and swipe through the next trains with the R1 ring. Glasses are optional.
+
+ASK YOUR ASSISTANT
+Connect Claude or another AI assistant over MCP and ask &quot;when&#x27;s my next train?&quot;
+
+PRIVATE BY DESIGN
+No ads, no analytics, no tracking. Location is optional, used for one estimate at a time and never stored.
+
+Caltrain times come from Caltrain&#x27;s published timetable and 511.org live data. Headway is not affiliated with Caltrain.</pre></div><div class="field" data-max="100"><b>Keywords</b><pre>train,commute,bay area,schedule,departures,delay,san francisco,san jose,palo alto,widget,rail</pre></div><div class="field"><b>Support URL</b><pre>https://headway.hejitech.workers.dev/support/</pre></div><div class="field"><b>Marketing URL</b><pre>https://headway.hejitech.workers.dev/</pre></div><div class="field"><b>Privacy Policy URL</b><pre>https://headway.hejitech.workers.dev/privacy/</pre></div><div class="field"><b>Copyright</b><pre>2026 HEJI TECHNOLOGY LLC</pre></div><div class="field"><b>Primary category</b><pre>Navigation</pre></div><div class="field"><b>Secondary category</b><pre>Travel</pre></div><div class="field" data-max="4000"><b>App Review notes<small> · corrected here; paste after adding your contact</small></b><pre>Sign in: on the first screen tap &quot;Sign in with email&quot; (below Continue with Google) and use the demo account above. People create accounts with Sign in with Apple or Google; email sign-in is only for accounts we hand out, such as this one. Each sign-in with it starts from a demo commute (Mountain View to San Francisco in the morning, back in the evening).
+
+What to try: Trains shows live Caltrain departures with leave-by times; swipe a train to track it (Live Activity on the Lock Screen). The ... menu pins the next trains to the Lock Screen. Home Screen widget: Next trains. Commute sets the legs and alerts. Location (Settings) is optional and only estimates the walk or drive to the station; it&#x27;s never stored.
+
+The Glasses tab pairs Even Realities G2 smart glasses with a 6-digit code; it needs the glasses and isn&#x27;t required to use the app. The Apple Watch app shows the same board.
+
+Account deletion: Settings &gt; Delete my Headway data deletes the account and everything Headway keeps about it (commute, devices, assistant access, history) and signs out. The same sign-in also opens our other apps, so their data isn&#x27;t touched.</pre></div><div class="field"><b>Demo account: user name<small> · password: ~/Credentials/review-accounts.env on your Mac</small></b><pre>appreview+headway@hejitech.com</pre></div></div>
+        <h3>App Privacy answers</h3>
+        <p>App Store Connect → the app → <b>App Privacy</b> → Get Started. "Do you or your third-party partners collect data from this app?" → <b>Yes</b>. Tick exactly these types; for each one: purpose <b>App Functionality</b> only, linked as the table says, <b>not used for tracking</b>. Then <b>Publish</b>. The API can't write this form. Location is <b>not</b> collected: it's sent with a board request, used for that answer and not stored (request logs are off since this change).</p><table class="grid"><thead><tr><th>Data type (as the form names it)</th><th>Why it's collected</th><th>Linked to the user</th><th>Tracking</th></tr></thead><tbody><tr><td>Contact Info → Email Address</td><td>account (Apple / Google sign-in)</td><td>Yes</td><td>No</td></tr><tr><td>Identifiers → User ID</td><td>account</td><td>Yes</td><td>No</td></tr><tr><td>Other Data → Other Data Types</td><td>saved commute stations, alert settings, the train being tracked</td><td>Yes</td><td>No</td></tr></tbody></table>
+        <h3>Screenshots</h3>
+        <div class="shots"><figure><a href="media/headway/iphone-1-trains.png" download><img src="media/headway/iphone-1-trains.png" alt="Headway Trains tab: San Francisco to Mountain View, leave in 18 minutes, the next trains with express badges and leave-by times" loading="lazy"></a><figcaption>iphone-1-trains.png · 1320×2868 <a class="dl" href="media/headway/iphone-1-trains.png" download>PNG</a></figcaption></figure><figure><a href="media/headway/iphone-2-commute.png" download><img src="media/headway/iphone-2-commute.png" alt="Headway Commute tab: morning legs, train preference, usual train, walk time and alert window" loading="lazy"></a><figcaption>iphone-2-commute.png · 1320×2868 <a class="dl" href="media/headway/iphone-2-commute.png" download>PNG</a></figcaption></figure><figure><a href="media/headway/watch-1-board.png" download><img src="media/headway/watch-1-board.png" alt="Headway watch app: evening board SF to Mountain View with the next three trains and minutes to leave" loading="lazy"></a><figcaption>watch-1-board.png · 422×514 (Ultra 3) <a class="dl" href="media/headway/watch-1-board.png" download>PNG</a></figcaption></figure></div><p><a class="dl" href="media/headway-screenshots.zip" download>All headway screenshots (.zip)</a></p>
+      </section>
+
+      <section id="fitloop" data-toc="FitLoop">
+        <h2>FitLoop: your steps</h2>
+        <p>App Store Connect app <code>6827423160</code>, version page <b>1.0.0</b>. I filled in all of the text below, the category (Health &amp; Fitness / Lifestyle), age rating 4+ ("health or wellness topics: yes", no medical information), copyright, a <b>free</b> price, and availability in <b>every territory except China mainland</b> (China needs an ICP filing). The demo account is set.</p>
+        <ol class="do">
+          <li><b>App Privacy</b>: enter the table below and Publish. Health data is linked to the user and never used for tracking or ads, which the privacy policy also says.</li>
+          <li><b>App Review Information</b>: fill in your name, phone and email, then write the corrected notes, by pasting them or with:
+            <pre class="cmd">scripts/review_account.sh fitloop --asc-only</pre></li>
+          <li><b>Screenshots</b>: the three iPhone PNGs into <b>iPhone 6.9" Display</b>, the watch PNG into <b>Apple Watch</b>.</li>
+          <li><b>Build</b>: cut 1.0.0 (§5) and choose it. The build attached now (<code>202610270625</code>) is a 0.1.x upload.</li>
+          <li><b>Add for Review → Submit.</b></li>
+        </ol>
+        <h3>Values to paste</h3>
+        <div class="fields"><div class="field" data-max="30"><b>Name</b><pre>FitLoop: Workout Companion</pre></div><div class="field" data-max="30"><b>Subtitle</b><pre>Workouts your AI agent plans</pre></div><div class="field" data-max="170"><b>Promotional text</b><pre>Your AI agent writes your workouts and meals. FitLoop helps you follow them on iPhone, your watch and Even G2 glasses, and tells your agent how it went.</pre></div><div class="field" data-max="4000"><b>Description</b><pre>FitLoop turns the plan your AI agent writes into something you can follow, set by set and meal by meal.
+
+BRING YOUR OWN COACH
+FitLoop has no coach of its own. Connect Claude or another AI assistant over MCP: it interviews you about your goals, limits, equipment, schedule and diet, then writes your workouts and meals and publishes them to FitLoop.
+
+FOLLOW IT
+• Today: the day&#x27;s workout and meals
+• A workout player with sets, targets, rest timers, how-to cues and demos
+• Heart rate from your watch during workouts
+• Plan: the whole week ahead
+• Progress: what you&#x27;ve done and how it&#x27;s trending
+
+TELL YOUR AGENT, RIGHT THEN
+Too hard, knee hurt, still hungry: check in or leave a note on any workout or meal. Your agent reads it, replies and improves the next plan. You adjust a day (skip, swap, change a portion); your agent writes the plan.
+
+ON YOUR WRIST AND IN VIEW
+• A watch app with the current exercise and your heart rate, and a watch face complication for today&#x27;s progress
+• Even Realities G2 glasses and R1 ring: the exercise, the set and a rest timer that starts itself, and meals that check off with a tap. Glasses are optional
+
+YOUR DATA, YOUR SWITCHES
+Live heart rate, a daily Apple Health summary, manual entries and progress photos are each a switch in Settings, and so is what your agent may see. Health data is never used for advertising. No ads, no tracking.
+
+FitLoop shows the plan your own agent writes. It isn&#x27;t medical advice: talk to a doctor before starting a new exercise or diet program.</pre></div><div class="field" data-max="100"><b>Keywords</b><pre>workout,fitness,meal plan,diet,ai coach,gym,strength,training,nutrition,mcp,personal trainer</pre></div><div class="field"><b>Support URL</b><pre>https://fitloop.hejitech.workers.dev/support/</pre></div><div class="field"><b>Marketing URL</b><pre>https://fitloop.hejitech.workers.dev/</pre></div><div class="field"><b>Privacy Policy URL</b><pre>https://fitloop.hejitech.workers.dev/privacy/</pre></div><div class="field"><b>Copyright</b><pre>2026 HEJI TECHNOLOGY LLC</pre></div><div class="field"><b>Primary category</b><pre>Health &amp; Fitness</pre></div><div class="field"><b>Secondary category</b><pre>Lifestyle</pre></div><div class="field" data-max="4000"><b>App Review notes<small> · corrected here; paste after adding your contact</small></b><pre>Sign in: on the first screen tap &quot;Sign in with email&quot; (below Continue with Google) and use the demo account above. People create accounts with Sign in with Apple or Google; email sign-in is only for accounts we hand out, such as this one.
+
+FitLoop shows a fitness and nutrition plan that the user&#x27;s own AI assistant writes (it connects over MCP from Settings &gt; Agents). So you don&#x27;t need an assistant, every sign-in with this account starts with a sample plan already published: today&#x27;s workout and meals on Today, the full week on Plan. Try: open a workout and step through its sets, check off a meal, leave a note on Feedback, look at Progress.
+
+Apple Health is optional: after sign-in FitLoop asks once to read Health data for a daily summary (Settings &gt; Daily Apple Health summary). Declining is fine and every screen still works. Health data is never used for ads and goes to an AI agent only if the user connects one and allows it in Settings &gt; What your agent may see. The Apple Watch app shows the workout and heart rate while a workout is open on the iPhone. The Even Realities G2 glasses (Settings &gt; Glasses) need the glasses and aren&#x27;t required. FitLoop gives no medical advice.
+
+Account deletion: Settings &gt; Delete my FitLoop data deletes the account and everything FitLoop keeps about it (plans, check-ins, notes, vitals, photos, devices, agent access) and signs out. The same sign-in also opens our other apps, so their data isn&#x27;t touched.</pre></div><div class="field"><b>Demo account: user name<small> · password: ~/Credentials/review-accounts.env on your Mac</small></b><pre>appreview+fitloop@hejitech.com</pre></div></div>
+        <h3>App Privacy answers</h3>
+        <p>App Store Connect → the app → <b>App Privacy</b> → Get Started. "Do you or your third-party partners collect data from this app?" → <b>Yes</b>. Tick exactly these types; for each one: purpose <b>App Functionality</b> only, linked as the table says, <b>not used for tracking</b>. Then <b>Publish</b>. The API can't write this form.</p><table class="grid"><thead><tr><th>Data type (as the form names it)</th><th>Why it's collected</th><th>Linked to the user</th><th>Tracking</th></tr></thead><tbody><tr><td>Contact Info → Email Address</td><td>account (Apple / Google sign-in)</td><td>Yes</td><td>No</td></tr><tr><td>Identifiers → User ID</td><td>account</td><td>Yes</td><td>No</td></tr><tr><td>Health &amp; Fitness → Health</td><td>daily Apple Health summary and manual entries (weight, resting HR, HRV, sleep), only if switched on</td><td>Yes</td><td>No</td></tr><tr><td>Health &amp; Fitness → Fitness</td><td>workouts, check-ins, steps, active energy, workout heart rate</td><td>Yes</td><td>No</td></tr><tr><td>User Content → Photos or Videos</td><td>progress photos, off by default</td><td>Yes</td><td>No</td></tr><tr><td>User Content → Other User Content</td><td>notes for the agent, the &quot;About you&quot; profile, plans</td><td>Yes</td><td>No</td></tr></tbody></table>
+        <h3>Screenshots</h3>
+        <div class="shots"><figure><a href="media/fitloop/iphone-1-today.png" download><img src="media/fitloop/iphone-1-today.png" alt="FitLoop Today: the day&#x27;s workout and meals with Ate it / Other buttons" loading="lazy"></a><figcaption>iphone-1-today.png · 1320×2868 <a class="dl" href="media/fitloop/iphone-1-today.png" download>PNG</a></figcaption></figure><figure><a href="media/fitloop/iphone-2-workout.png" download><img src="media/fitloop/iphone-2-workout.png" alt="FitLoop workout player: bike warm-up set 1 of 1, Start 5 min, the workout&#x27;s exercises" loading="lazy"></a><figcaption>iphone-2-workout.png · 1320×2868 <a class="dl" href="media/fitloop/iphone-2-workout.png" download>PNG</a></figcaption></figure><figure><a href="media/fitloop/iphone-3-plan.png" download><img src="media/fitloop/iphone-3-plan.png" alt="FitLoop Plan: the agent&#x27;s plan summary, goals and what it&#x27;s planned around" loading="lazy"></a><figcaption>iphone-3-plan.png · 1320×2868 <a class="dl" href="media/fitloop/iphone-3-plan.png" download>PNG</a></figcaption></figure><figure><a href="media/fitloop/watch-1-workout.png" download><img src="media/fitloop/watch-1-workout.png" alt="FitLoop watch app during a workout: Bike warm-up, Set done and End" loading="lazy"></a><figcaption>watch-1-workout.png · 422×514 (Ultra 3) <a class="dl" href="media/fitloop/watch-1-workout.png" download>PNG</a></figcaption></figure></div><p><a class="dl" href="media/fitloop-screenshots.zip" download>All fitloop screenshots (.zip)</a></p>
+      </section>
+
+      <section id="cut" data-toc="Cut 1.0.0">
+        <h2>Cutting the 1.0.0 builds</h2>
+        <p>What's New already describes 1.0.0 in all three apps, so <code>release_check</code> lets the version through. Run these from the repo root on a clean, pushed, CI-green <code>main</code>. Each one publishes <code>&lt;app&gt;-v1.0.0</code>, which runs the TestFlight workflow (and, for Headway and FitLoop, uploads the glasses plugin to Even Hub as Beta). Check each first with <code>--dry-run</code>.</p>
+        <pre class="cmd">scripts/cut_release.sh headway 1.0.0 --dry-run
+scripts/cut_release.sh headway 1.0.0 --watch
+scripts/cut_release.sh fitloop 1.0.0 --dry-run
+scripts/cut_release.sh fitloop 1.0.0 --watch
+scripts/cut_release.sh weehours 1.0.0 --dry-run
+scripts/cut_release.sh weehours 1.0.0 --watch</pre>
+        <p>A green TestFlight run isn't proof the build is in App Store Connect (root <code>CLAUDE.md</code>). The Wee Hours script waits for Apple's verdict. For Headway and FitLoop, check that the build shows in TestFlight as "Ready to Submit" before you choose it. Export compliance needs no answer: every target sets <code>ITSAppUsesNonExemptEncryption = NO</code>, and the last uploads show <code>usesNonExemptEncryption: false</code>.</p>
+      </section>
+
+      <section id="scan" data-toc="What the scan checked">
+        <h2>What the scan checked</h2>
+        <table class="grid">
+          <thead><tr><th>Requirement</th><th>Wee Hours</th><th>Headway</th><th>FitLoop</th></tr></thead>
+          <tbody>
+            <tr><td>Privacy manifest in every bundle that needs one</td><td>Yes (shared file in all four targets)</td><td>Fixed (widget and watch targets)</td><td>Yes (app; the watch targets use no required-reason APIs)</td></tr>
+            <tr><td>Purpose strings for each permission</td><td>Microphone, camera, saving photos</td><td>Location (when in use)</td><td>Health read and write, photo library</td></tr>
+            <tr><td>Export compliance key</td><td colspan="3">Set to NO in every target</td></tr>
+            <tr><td>Sign in with Apple next to Google (4.8)</td><td colspan="3">Yes</td></tr>
+            <tr><td>Account deletion in the app (5.1.1(v))</td><td>Settings → Delete account &amp; data</td><td>Settings → Delete my Headway data</td><td>Settings → Delete my FitLoop data</td></tr>
+            <tr><td>Revoking the Apple token on deletion</td><td>Code ready; needs your key (§2 step 2)</td><td class="bad">Not built (§7)</td><td class="bad">Not built (§7)</td></tr>
+            <tr><td>Demo access for App Review</td><td>No sign-in needed (local mode)</td><td>Demo account, live</td><td>Demo account, live</td></tr>
+            <tr><td>Privacy policy, support and terms pages</td><td colspan="3">200 on the live site; linked in the app's Settings</td></tr>
+            <tr><td>Icon: 1024 px, no alpha</td><td colspan="3">Yes (iPhone and watch)</td></tr>
+            <tr><td>Works without the glasses (2.1, 4.2)</td><td colspan="3">Yes; the notes say the glasses are optional</td></tr>
+            <tr><td>Medical claims</td><td>None ("doesn't give medical advice")</td><td>n/a</td><td>None ("isn't medical advice")</td></tr>
+            <tr><td>Data shared with third-party AI (5.1.2(i))</td><td>Only through the user's own MCP connection, after OAuth consent</td><td>Same</td><td>Same; the consent screen lists the health data, and Settings has a switch for each kind</td></tr>
+            <tr><td>"Apple" in App Intent strings (ITMS-90626)</td><td colspan="3">None</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="risks" data-toc="Risks">
+        <h2>Risks and open questions</h2>
+        <table class="grid">
+          <thead><tr><th>Risk</th><th>Why</th><th>What to do</th></tr></thead>
+          <tbody>
+            <tr><td>A reviewer says deletion doesn't delete the account (5.1.1(v))</td><td>By your rule, deleting removes only the app's own data and keeps the shared HEJI login. Apple usually accepts this when the app's account and data are gone and the user is signed out.</td><td>The review notes now explain it. If Apple rejects, the reply is that sign-in is shared across apps by the same developer, so each app deletes its own account. Changing the behaviour is your call.</td></tr>
+            <tr><td>No Apple token revocation in Headway and FitLoop</td><td>Apple asks apps using Sign in with Apple to revoke tokens when an account is deleted. Wee Hours has the code (<code>src/worker/account.ts</code> + <code>AppleReauthorization.swift</code>); Headway and FitLoop don't.</td><td>Reviewers rarely test it, so it isn't a blocker. Write "port Apple revocation" in your notes and I'll copy Wee Hours' code into each project (no cross-project imports). Each app then needs its own key, as in Wee Hours step 2.</td></tr>
+            <tr><td>"Caltrain" in Headway's subtitle (5.2)</td><td>It names the agency the app serves (Headway isn't affiliated, which the description says). Transit apps commonly do this.</td><td>If Apple objects, change the subtitle to "Live train times &amp; alerts".</td></tr>
+            <tr><td>FitLoop shares vitals with the agent by default</td><td>"What your agent may see → Vitals" defaults to on. Nothing is shared until the user connects an agent and approves a consent screen that lists the data, which meets 5.1.2(i)'s explicit permission.</td><td>For a stricter stance, default it to off (<code>packages/core/src/settings.ts</code>). Say so in your notes.</td></tr>
+            <tr><td>Wee Hours watch screenshot</td><td>It can only come from your real watch (§2 step 6).</td><td>Without one, App Store Connect won't let you submit while a watch app ships.</td></tr>
+          </tbody>
+        </table>
+
+      </section>
+
+      <section id="todo" data-toc="Checklist">
+        <h2>Checklist</h2>
+        <p class="progress" id="progress"></p>
+        <ul class="checks">
+          <li><input type="checkbox" id="c-push"><span><b>Commit and push this pass's changes</b><small>Headway Worker redeployed; privacy page dated October 29</small></span></li>
+          <li><input type="checkbox" id="c-wh-price"><span><b>Wee Hours: Paid Apps agreement, price, Family Sharing on</b></span></li>
+          <li><input type="checkbox" id="c-wh-siwa"><span><b>Wee Hours: Sign in with Apple key into the Worker</b></span></li>
+          <li><input type="checkbox" id="c-wh-privacy"><span><b>Wee Hours: App Privacy published</b></span></li>
+          <li><input type="checkbox" id="c-wh-review"><span><b>Wee Hours: review contact and corrected notes</b></span></li>
+          <li><input type="checkbox" id="c-wh-shots"><span><b>Wee Hours: 4 iPhone screenshots + 1 watch screenshot</b></span></li>
+          <li><input type="checkbox" id="c-hw-privacy"><span><b>Headway: App Privacy published</b></span></li>
+          <li><input type="checkbox" id="c-hw-review"><span><b>Headway: review contact, then notes</b></span></li>
+          <li><input type="checkbox" id="c-hw-shots"><span><b>Headway: 2 iPhone + 1 watch screenshots</b></span></li>
+          <li><input type="checkbox" id="c-hw-rights"><span><b>Headway: content rights confirmed</b></span></li>
+          <li><input type="checkbox" id="c-fl-privacy"><span><b>FitLoop: App Privacy published</b></span></li>
+          <li><input type="checkbox" id="c-fl-review"><span><b>FitLoop: review contact, then notes</b></span></li>
+          <li><input type="checkbox" id="c-fl-shots"><span><b>FitLoop: 3 iPhone + 1 watch screenshots</b></span></li>
+          <li><input type="checkbox" id="c-cut"><span><b>Cut 1.0.0 for each app and choose the build</b><small>Build shows "Ready to Submit" in TestFlight</small></span></li>
+          <li><input type="checkbox" id="c-submit"><span><b>Submit all three for review</b></span></li>
+        </ul>
+      </section>
+
+      <section id="handoff" data-toc="Notes &amp; hand-off" data-skip>
+        <div class="handoff">
+          <h2>Your notes</h2>
+          <p>Decisions (the Wee Hours price, porting Apple revocation, the agent default), corrections, questions. Saved in this browser. <b>Copy summary</b> puts the whole report, your ticks and these notes on the clipboard for any agent.</p>
+          <textarea id="notes" placeholder="e.g. commit and push · Wee Hours $9.99 · port Apple revocation"></textarea>
+          <button class="btn pri" id="copy">Copy summary</button>
+        </div>
+      </section>
+
+      <p class="foot" data-skip>Report: <code>reports/2026-10-29-app-store-release</code> · serve with <code>script/serve.sh</code></p>
+
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <!-- Order: design blocks → this report's config → the engine. -->
+  <script src="js/design.js"></script>
+  <script src="js/content.js"></script>
+  <script src="js/report.js"></script>
+</body>
+</html>
