@@ -711,6 +711,32 @@ fn reveal_in_finder(path: String) -> Result<(), String> {
     }
 }
 
+#[tauri::command]
+fn delete_local_course(slug: String) -> Result<(), String> {
+    if slug.is_empty() || slug == "." || slug == ".." || slug.contains('/') || slug.contains('\\') {
+        return Err("Invalid course slug".to_string());
+    }
+
+    let home = std::env::var("HOME").map_err(|e| e.to_string())?;
+    let courses_root = PathBuf::from(&home).join("heji-courses");
+    let target_dir = courses_root.join(&slug);
+
+    if !target_dir.exists() {
+        return Err(format!("Course directory does not exist: {}", target_dir.display()));
+    }
+
+    if let (Ok(canon_root), Ok(canon_target)) = (courses_root.canonicalize(), target_dir.canonicalize()) {
+        if !canon_target.starts_with(&canon_root) || canon_target == canon_root {
+            return Err("Target path is outside ~/heji-courses".to_string());
+        }
+    }
+
+    fs::remove_dir_all(&target_dir)
+        .map_err(|e| format!("Failed to delete course directory: {}", e))?;
+
+    Ok(())
+}
+
 pub fn run() {
     tauri::Builder::default()
         .manage(AppPtyState::default())
@@ -725,7 +751,8 @@ pub fn run() {
             resize_pty_session,
             run_exercise_tests,
             list_local_courses,
-            reveal_in_finder
+            reveal_in_finder,
+            delete_local_course
         ])
         .run(tauri::generate_context!())
         .expect("error while running polymath desktop");

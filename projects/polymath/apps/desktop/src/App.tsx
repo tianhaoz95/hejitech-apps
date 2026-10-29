@@ -28,6 +28,8 @@ export const App: React.FC = () => {
   const [isCourseListOpen, setIsCourseListOpen] = useState(false);
   const [localCourses, setLocalCourses] = useState<LocalCourseInfo[]>([]);
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);
+  const [deletingCourseSlug, setDeletingCourseSlug] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newSlug, setNewSlug] = useState("");
   const [newTopic, setNewTopic] = useState("");
@@ -282,6 +284,42 @@ export const App: React.FC = () => {
       setStatusMessage(`Provisioning error: ${err?.message || err}`);
     }
     setTimeout(() => setStatusMessage(null), 5000);
+  };
+
+  const handleDeleteCourse = async (courseToDelete: LocalCourseInfo) => {
+    setIsDeleting(true);
+    try {
+      if (isTauri()) {
+        await invokeTauri("delete_local_course", { slug: courseToDelete.slug });
+      }
+
+      setStatusMessage(`Deleted course: ${courseToDelete.title}`);
+
+      // If the deleted course was currently active, reset to default starter course
+      if (
+        courseToDelete.slug === activeCourseSlug ||
+        courseToDelete.path === activeCourseDir ||
+        activeCourseDir?.endsWith(`/${courseToDelete.slug}`)
+      ) {
+        setCourse(STARTER_VLLM_COURSE);
+        setActiveChapterIndex(1);
+        setActiveCourseSlug(STARTER_VLLM_COURSE.id);
+        setActiveCourseDir("~/heji-courses/vllm-sglang-trtllm");
+      }
+
+      setDeletingCourseSlug(null);
+      if (isTauri()) {
+        await fetchLocalCourses();
+      } else {
+        setLocalCourses((prev) => prev.filter((c) => c.slug !== courseToDelete.slug));
+      }
+    } catch (err: any) {
+      console.error("Failed to delete course:", err);
+      setStatusMessage(`Delete failed: ${err?.message || err}`);
+    } finally {
+      setIsDeleting(false);
+      setTimeout(() => setStatusMessage(null), 4000);
+    }
   };
 
   const isLight = theme === "light";
@@ -1226,6 +1264,7 @@ export const App: React.FC = () => {
                 <button
                   onClick={() => {
                     setIsCourseListOpen(false);
+                    setDeletingCourseSlug(null);
                     setIsModalOpen(true);
                   }}
                   style={{
@@ -1243,7 +1282,10 @@ export const App: React.FC = () => {
                   + New Course
                 </button>
                 <button
-                  onClick={() => setIsCourseListOpen(false)}
+                  onClick={() => {
+                    setIsCourseListOpen(false);
+                    setDeletingCourseSlug(null);
+                  }}
                   style={{
                     background: isLight ? "#F0F2F5" : "rgba(255, 255, 255, 0.08)",
                     border: "none",
@@ -1455,8 +1497,108 @@ export const App: React.FC = () => {
                           >
                             &gt;_ Terminal
                           </button>
+                          <button
+                            onClick={() => setDeletingCourseSlug(deletingCourseSlug === c.slug ? null : c.slug)}
+                            style={{
+                              background:
+                                deletingCourseSlug === c.slug
+                                  ? isLight
+                                    ? "rgba(220, 38, 38, 0.1)"
+                                    : "rgba(239, 68, 68, 0.15)"
+                                  : "none",
+                              border: `1px solid ${
+                                deletingCourseSlug === c.slug
+                                  ? isLight
+                                    ? "rgba(220, 38, 38, 0.4)"
+                                    : "rgba(239, 68, 68, 0.4)"
+                                  : borderColor
+                              }`,
+                              borderRadius: 4,
+                              color: deletingCourseSlug === c.slug ? (isLight ? "#DC2626" : "#F87171") : mutColor,
+                              padding: "2px 8px",
+                              fontSize: 10,
+                              fontWeight: deletingCourseSlug === c.slug ? 700 : 500,
+                              cursor: "pointer",
+                              transition: "all 0.12s ease",
+                            }}
+                            title="Delete this course workspace"
+                          >
+                            🗑 Delete
+                          </button>
                         </div>
                       </div>
+
+                      {/* Inline Delete Confirmation Banner */}
+                      {deletingCourseSlug === c.slug && (
+                        <div
+                          style={{
+                            marginTop: 4,
+                            padding: "10px 14px",
+                            background: isLight ? "#FEF2F2" : "rgba(239, 68, 68, 0.08)",
+                            border: `1px solid ${isLight ? "#FECACA" : "rgba(239, 68, 68, 0.25)"}`,
+                            borderRadius: 8,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 12,
+                          }}
+                        >
+                          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                            <span
+                              style={{
+                                fontSize: 11,
+                                fontWeight: 700,
+                                color: isLight ? "#991B1B" : "#FCA5A5",
+                              }}
+                            >
+                              Delete &ldquo;{c.title}&rdquo;?
+                            </span>
+                            <span
+                              style={{
+                                fontSize: 10,
+                                color: isLight ? "#B91C1C" : "#F87171",
+                              }}
+                            >
+                              This permanently removes <code style={{ fontFamily: "JetBrains Mono, monospace" }}>~/heji-courses/{c.slug}</code> from disk.
+                            </span>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                            <button
+                              onClick={() => setDeletingCourseSlug(null)}
+                              disabled={isDeleting}
+                              style={{
+                                background: isLight ? "#FFFFFF" : "rgba(255, 255, 255, 0.08)",
+                                border: `1px solid ${borderColor}`,
+                                borderRadius: 4,
+                                color: textColor,
+                                padding: "4px 10px",
+                                fontSize: 11,
+                                fontWeight: 600,
+                                cursor: isDeleting ? "default" : "pointer",
+                              }}
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCourse(c)}
+                              disabled={isDeleting}
+                              style={{
+                                background: "linear-gradient(180deg, #DC2626, #B91C1C)",
+                                border: "1px solid #DC2626",
+                                borderRadius: 4,
+                                color: "#FFFFFF",
+                                padding: "4px 10px",
+                                fontSize: 11,
+                                fontWeight: 700,
+                                cursor: isDeleting ? "default" : "pointer",
+                                boxShadow: "0 1px 2px rgba(0, 0, 0, 0.2)",
+                              }}
+                            >
+                              {isDeleting ? "Deleting…" : "Delete Forever"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })
