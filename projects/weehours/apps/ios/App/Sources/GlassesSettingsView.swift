@@ -21,12 +21,6 @@ struct GlassesSettingsView: View {
                 } footer: {
                     Text("The glasses log into your household's shared log, so they need an account. Signing in uploads everything logged on this iPhone.")
                 }
-            } else if !model.allows(.glasses) {
-                Section {
-                    NavigationLink { PaywallView() } label: { Label("See plans", systemImage: "star.circle") }
-                } footer: {
-                    Text("Your free trial has ended. Glasses are part of every plan; logging on this iPhone keeps working either way.")
-                }
             } else {
                 pairSection
             }

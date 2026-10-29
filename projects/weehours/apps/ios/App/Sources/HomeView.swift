@@ -25,12 +25,13 @@ struct MainView: View {
             HomeView().fabClearance().tabItem { Label("Now", systemImage: "moon.stars.fill") }.tag("home")
             TimelineView().fabClearance().tabItem { Label("Timeline", systemImage: "list.bullet.rectangle") }.tag("timeline")
             SettingsView().fabClearance().tabItem { Label("Settings", systemImage: "gearshape.fill") }.tag("settings")
-            if ["paywall", "agents", "watch", "glasses"].contains(model.screen) {
+            if ["paywall", "agents", "watch", "glasses", "acknowledgements"].contains(model.screen) {
                 NavigationStack {
                     switch model.screen {
                     case "paywall": PaywallView()
                     case "watch": WatchSettingsView()
                     case "glasses": GlassesSettingsView()
+                    case "acknowledgements": AcknowledgementsView()
                     default: AgentsView()
                     }
                 }

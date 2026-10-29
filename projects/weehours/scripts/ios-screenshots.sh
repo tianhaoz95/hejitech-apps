@@ -2,9 +2,12 @@
 # Builds the app, runs it in the iOS simulator against the local backend and captures the
 # screens used by the report. Optional: LAYA_MODEL=/path/Laya-Q8_0.gguf copies the model into
 # the app container so the on-device decision model runs in the simulator (CPU).
+# App Store shots (6.9-inch, 1320 x 2868):
+#   xcrun simctl create "iPhone 17 Pro Max" com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro-Max
+#   DEVICE="iPhone 17 Pro Max" OUT=/some/folder scripts/ios-screenshots.sh
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OUT="$ROOT/report/v0/site/screenshots"
+OUT="${OUT:-$ROOT/report/v0/site/screenshots}"
 DD="${DERIVED_DATA:-$ROOT/apps/ios/.derived}"
 DEVICE="${DEVICE:-iPhone 17}"
 mkdir -p "$OUT"
@@ -15,7 +18,7 @@ xcodebuild -project WeeHours.xcodeproj -scheme App -destination "platform=iOS Si
   build CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO -quiet
 SIM=$(xcrun simctl list devices available | grep "$DEVICE (" | head -1 | sed -E 's/.*\(([0-9A-F-]{36})\).*/\1/')
 xcrun simctl boot "$SIM" 2>/dev/null || true
-xcrun simctl status_bar "$SIM" override --time "3:12" --batteryLevel 64 --wifiBars 3 2>/dev/null || true
+xcrun simctl status_bar "$SIM" override --time "3:12" --batteryState discharging --batteryLevel 64 --wifiBars 3 2>/dev/null || true
 xcrun simctl uninstall "$SIM" com.hejitech.weehours 2>/dev/null || true
 xcrun simctl install "$SIM" "$DD/Build/Products/Debug-iphonesimulator/WeeHours.app"
 
@@ -27,10 +30,13 @@ if [[ -n "${LAYA_MODEL:-}" ]]; then
   BACKEND="On-device Laya"
 fi
 
+# What's New would cover every screen after a version bump
+SEEN=$(sed -nE 's/.*static let currentVersion = "([^"]+)".*/\1/p' "$ROOT/apps/ios/App/Sources/WhatsNewView.swift")
+
 shot() {  # name, extra launch args…
   local name=$1; shift
   xcrun simctl launch --terminate-running-process "$SIM" com.hejitech.weehours \
-    -autoSignIn parent1@example.com -skipPermissions YES -decisionBackend "$BACKEND" "$@" >/dev/null
+    -autoSignIn parent1@example.com -skipPermissions YES -decisionBackend "$BACKEND" -last_seen_whats_new_version "$SEEN" "$@" >/dev/null
   sleep "${WAIT:-12}"
   # simctl may not write outside temp locations, so capture there and move
   local tmp; tmp="$(mktemp -d)/shot.png"

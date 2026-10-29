@@ -244,7 +244,7 @@ final class AppModel: ObservableObject {
                 await handle(transcript: demo)
             }
             if !UserDefaults.standard.bool(forKey: "skipPermissions") { await ReminderScheduler.requestPermission() }
-            entitlement = localOnly ? localEntitlement : ((try? await backend.fetchEntitlement()) ?? localEntitlement)
+            entitlement = localEntitlement   // every feature is included (no in-app purchases)
             // `-demoPhotos <n>`: n generated pictures on the newest entry (screenshots and checks)
             let demoPhotos = UserDefaults.standard.integer(forKey: "demoPhotos")
             if demoPhotos > 0, let newest = log.effective.last {
@@ -519,9 +519,6 @@ final class AppModel: ObservableObject {
             let name = local.first { $0.id == id }?.name.lowercased()
             return target.active.first { $0.name.lowercased() == name }?.id ?? target.babyId
         }, caregiver: (localUserId, session.userId))
-        if let plan = localEntitlement.plan {
-            try? await backend.recordPurchase(plan: plan, expiresAt: localEntitlement.expiresAt)
-        }
         localOnly = false
         self.service = nil
         await enter(target)
@@ -576,6 +573,9 @@ final class AppModel: ObservableObject {
         var errorDescription: String? { "That invite didn't lead to a household." }
     }
 
+    /// Settings → Delete account & data: the household (files, then rows) and then the login,
+    /// which only the Worker can delete (`services/web/src/worker/account.ts`). An Apple account
+    /// first confirms with Apple, so the Worker can revoke the app's Sign in with Apple token.
     func deleteAllData() async {
         if localOnly {
             try? FileManager.default.removeItem(at: PhotoFiles.directory)
@@ -588,10 +588,45 @@ final class AppModel: ObservableObject {
             return
         }
         do {
+            let appleCode = signedInWithApple ? await AppleReauthorization().authorizationCode() : nil
             try await backend.deleteHouseholdData()
+            try await deleteLogin(appleCode: appleCode)
             try service?.store.deleteAll()
             signOut()
         } catch { self.error = error.localizedDescription }
+    }
+
+    /// The session's provider is in the access token's `app_metadata` (a Supabase JWT).
+    var signedInWithApple: Bool {
+        guard let token = backend.session?.accessToken else { return false }
+        let parts = token.split(separator: ".")
+        guard parts.count == 3 else { return false }
+        var b64 = parts[1].replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        b64 += String(repeating: "=", count: (4 - b64.count % 4) % 4)
+        guard let data = Data(base64Encoded: b64),
+              let claims = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let meta = claims["app_metadata"] as? [String: Any] else { return false }
+        return meta["provider"] as? String == "apple" || (meta["providers"] as? [String])?.contains("apple") == true
+    }
+
+    private func deleteLogin(appleCode: String?) async throws {
+        let jwt = try await backend.sessionToken()
+        var req = URLRequest(url: URL(string: "\(passBaseURL)/api/account/delete")!)
+        req.httpMethod = "POST"
+        req.timeoutInterval = 30
+        req.setValue("Bearer \(jwt)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONSerialization.data(withJSONObject: appleCode.map { ["apple_authorization_code": $0] } ?? [:])
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        guard (resp as? HTTPURLResponse)?.statusCode == 200 else {
+            let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+            throw DeleteLoginError(message: obj?["error"] as? String ?? "Your data was deleted, but your sign-in wasn't. Try again.")
+        }
+    }
+
+    struct DeleteLoginError: LocalizedError {
+        let message: String
+        var errorDescription: String? { message }
     }
 
     // MARK: reading

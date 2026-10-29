@@ -45,12 +45,6 @@ interface Token {
   revoked_at: string | null;
 }
 
-interface Entitlement {
-  trial_started_at: string;
-  plan: "monthly" | "yearly" | "lifetime" | null;
-  expires_at: string | null;
-}
-
 const root = document.getElementById("app")!;
 const DAY = 86_400_000;
 
@@ -68,21 +62,6 @@ function relative(iso: string) {
   if (mins < 60) return `${mins} min ago`;
   if (mins < 1440) return `${Math.round(mins / 60)} h ago`;
   return fmtDate(iso);
-}
-
-/** Mirrors Entitlement.access(now:) in LogCore. */
-function access(e: Entitlement | null): { label: string; active: boolean } {
-  if (!e) return { label: "Free", active: false };
-  if (e.plan === "lifetime") return { label: "Plus · lifetime", active: true };
-  if (e.plan && e.expires_at && Date.parse(e.expires_at) > Date.now()) {
-    return { label: `Plus · ${e.plan}, renews or ends ${fmtDate(e.expires_at)}`, active: true };
-  }
-  const trialEnd = Date.parse(e.trial_started_at) + 14 * DAY;
-  if (trialEnd > Date.now()) {
-    const days = Math.ceil((trialEnd - Date.now()) / DAY);
-    return { label: `Plus trial · ${days} day${days === 1 ? "" : "s"} left`, active: true };
-  }
-  return { label: "Free · trial ended", active: false };
 }
 
 async function rpc<T>(fn: string, args: Record<string, unknown> = {}): Promise<T> {
@@ -103,8 +82,7 @@ async function allEvents(householdId: string): Promise<LogEvent[]> {
 
 // ------------------------------------------------------------------ panels
 
-function householdPanel(h: Household, ent: Entitlement | null, lines: { child: Child; line: string }[]) {
-  const plan = access(ent);
+function householdPanel(h: Household, lines: { child: Child; line: string }[]) {
   const one = lines.length === 1;
   const sub = [one ? ageText(lines[0].child.birth_date) : "", h.caregivers.map((c) => (c.role ? `${c.name} (${c.role})` : c.name)).join(", ")].filter(Boolean).join(" · ");
   return el(
@@ -112,7 +90,6 @@ function householdPanel(h: Household, ent: Entitlement | null, lines: { child: C
     { class: "panel" },
     el("div", { class: "head" },
       el("div", {}, el("h2", {}, one ? lines[0].child.name : h.name), el("div", { class: "muted small" }, sub)),
-      el("span", { class: plan.active ? "pill write" : "pill" }, plan.label),
     ),
     ...(one
       ? [el("div", { class: "status-line" }, lines[0].line)]
@@ -120,11 +97,7 @@ function householdPanel(h: Household, ent: Entitlement | null, lines: { child: C
           el("div", { style: "margin-top: 14px" },
             el("div", { class: "small" }, el("b", {}, child.name), el("span", { class: "muted" }, ageText(child.birth_date) ? ` · ${ageText(child.birth_date)}` : "")),
             el("div", { class: "status-line", style: "margin-top: 4px" }, line)))),
-    el("p", { class: "muted small", style: "margin: 12px 0 0" },
-      "Logging happens in the app. Subscriptions are managed in the App Store: ",
-      el("a", { href: "https://apps.apple.com/account/subscriptions", target: "_blank", rel: "noopener" }, "manage subscription"),
-      ".",
-    ),
+    el("p", { class: "muted small", style: "margin: 12px 0 0" }, "Logging happens in the app."),
   );
 }
 
@@ -267,13 +240,9 @@ function csv(events: LogEvent[], h: Household): string {
   return lines.join("\n") + "\n";
 }
 
-function dataPanel(h: Household, ent: Entitlement | null) {
+function dataPanel(h: Household) {
   const exportBtn = el("button", { class: "btn secondary", type: "button" }, "Export CSV");
   const exportNote = el("p", { class: "muted small", style: "margin: 8px 0 0" }, "Every active entry, in the same format as the app's export.");
-  if (!access(ent).active) {
-    exportBtn.disabled = true;
-    exportNote.textContent = "CSV export is part of Plus.";
-  }
   exportBtn.addEventListener("click", async () => {
     exportBtn.disabled = true;
     try {
@@ -290,18 +259,28 @@ function dataPanel(h: Household, ent: Entitlement | null) {
 
   const word = confirmWord(h);
   const confirmInput = el("input", { type: "text", placeholder: `Type ${word}`, "aria-label": `Type ${word} to confirm`, autocomplete: "off" });
-  const del = el("button", { class: "btn danger", type: "button", disabled: true }, "Delete all household data");
+  const del = el("button", { class: "btn danger", type: "button", disabled: true }, "Delete account & data");
   confirmInput.addEventListener("input", () => (del.disabled = confirmInput.value.trim() !== word));
   del.addEventListener("click", async () => {
     del.disabled = true;
     try {
-      // Storage only deletes through its API: remove the capture audio first, then the rows.
-      const audio = supabase.storage.from("weehours");
-      const { data: files } = await audio.list(h.id, { limit: 1000 });
-      if (files?.length) await audio.remove(files.map((f) => `${h.id}/${f.name}`));
+      // Storage only deletes through its API: remove the capture audio and photos first, then the rows.
+      const bucket = supabase.storage.from("weehours");
+      for (const folder of [h.id, `${h.id}/photos`]) {
+        for (;;) {
+          const { data: files } = await bucket.list(folder, { limit: 1000 });
+          const names = (files ?? []).filter((f) => f.id).map((f) => `${folder}/${f.name}`);
+          if (!names.length) break;
+          await bucket.remove(names);
+        }
+      }
       await rpc("delete_household");
+      // then the login itself (the Worker holds the key that can delete it)
+      const session = await currentSession();
+      const res = await fetch("/api/account/delete", { method: "POST", headers: { Authorization: `Bearer ${session?.access_token ?? ""}` }, body: "{}" });
+      if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Couldn't delete your sign-in.");
       await supabase.auth.signOut();
-      show(el("div", { class: "panel signin" }, el("h1", { style: "font-size: 28px" }, "Deleted"), el("p", { class: "muted" }, "Your household's log, voice captures and access tokens have been deleted from our servers. Entries still on a phone stay there until you delete the app or its data.")));
+      show(el("div", { class: "panel signin" }, el("h1", { style: "font-size: 28px" }, "Deleted"), el("p", { class: "muted" }, "Your account, your household's log, photos, voice captures and access tokens have been deleted from our servers. Entries still on a phone stay there until you delete the app or its data.")));
     } catch (e) {
       alert((e as Error).message);
       del.disabled = false;
@@ -313,8 +292,8 @@ function dataPanel(h: Household, ent: Entitlement | null) {
     el(
       "div",
       { class: "panel danger-zone" },
-      el("h2", {}, "Delete household data"),
-      el("p", { class: "muted small" }, `This permanently deletes ${children(h).length > 1 ? "every child's" : `${h.baby_name}'s`} log, voice captures, invites and access tokens for everyone in the household. It can't be undone. Type `, el("b", {}, word), " to confirm."),
+      el("h2", {}, "Delete account & data"),
+      el("p", { class: "muted small" }, `This permanently deletes ${children(h).length > 1 ? "every child's" : `${h.baby_name}'s`} log, photos, voice captures, invites and access tokens for everyone in the household, and then your sign-in. Your sign-in is shared by HEJI apps, so it also ends your account in any other HEJI app you use. It can't be undone. Type `, el("b", {}, word), " to confirm."),
       el("div", { class: "row" }, el("div", { style: "flex: 1; min-width: 200px" }, confirmInput), del),
     ),
   ];
@@ -349,8 +328,7 @@ async function render() {
       return;
     }
     const since = new Date(Date.now() - 3 * DAY).toISOString();
-    const [ent, recent, pending, picks, tokens] = await Promise.all([
-      rpc<Entitlement | null>("my_entitlement"),
+    const [recent, pending, picks, tokens] = await Promise.all([
       supabase.from("events").select("*").eq("household_id", h.id).or(`occurred_at.gte.${since},logged_at.gte.${since}`).order("seq").limit(2000),
       supabase.from("captures").select("id", { count: "exact", head: true }).eq("household_id", h.id).eq("status", "pending"),
       supabase.from("captures").select("id", { count: "exact", head: true }).eq("household_id", h.id).eq("status", "needs_review"),
@@ -360,7 +338,7 @@ async function render() {
     const counts = kids.length === 1 ? { pendingCaptures: pending.count ?? 0, pendingPicks: picks.count ?? 0 } : {};
     const lines = kids.map((child) => ({ child, line: statusLine(status(derive((recent.data ?? []) as LogEvent[], child.id), counts), Date.now()) }));
     const grants = await grantsPanel(render).catch(() => null);
-    show(header, householdPanel(h, ent, lines), tokensPanel(tokens, render), ...(grants ? [grants] : []), ...dataPanel(h, ent));
+    show(header, householdPanel(h, lines), tokensPanel(tokens, render), ...(grants ? [grants] : []), ...dataPanel(h));
   } catch (e) {
     show(header, el("div", { class: "panel" }, el("p", { class: "error", style: "margin: 0" }, `Couldn't load your account: ${(e as Error).message}`)));
   }

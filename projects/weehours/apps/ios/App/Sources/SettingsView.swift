@@ -242,11 +242,17 @@ struct SettingsView: View {
                 } footer: {
                     Text("Shake your iPhone to send the developer a screenshot and a note.")
                 }
-                Section("About") {
+                Section {
                     Button { showingWhatsNew = true } label: { Label("What's New in Wee Hours", systemImage: "sparkles") }
                     LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? WhatsNewView.currentVersion)
                     Link("Privacy Policy", destination: URL(string: "https://weehours.hejitech.workers.dev/privacy/")!)
                     Link("Terms of Use", destination: URL(string: "https://weehours.hejitech.workers.dev/terms/")!)
+                    Link("Support", destination: URL(string: "https://weehours.hejitech.workers.dev/support/")!)
+                    NavigationLink("Acknowledgements") { AcknowledgementsView() }
+                } header: {
+                    Text("About")
+                } footer: {
+                    Text("Wee Hours records what happened. It doesn't give medical advice; ask your pediatrician about your baby's health.")
                 }
                 accountSection
             }
@@ -274,8 +280,11 @@ struct SettingsView: View {
             .translationTask(translationRequest) { session in try? await session.prepareTranslation() }
             .onAppear { if !loaded { draft = model.household; loaded = true } }
             .onChange(of: model.household) { _, h in draft = h }
-            .confirmationDialog("Delete your account and all household data? This permanently removes every entry, photo, capture and access token. This cannot be undone.", isPresented: $confirmDelete, titleVisibility: .visible) {
-                Button("Delete account & data", role: .destructive) { Task { await model.deleteAllData() } }
+            .confirmationDialog(model.localOnly
+                                ? "Erase this phone's log? This permanently removes every entry and photo on this iPhone. This cannot be undone."
+                                : "Delete your account and all household data? This permanently removes every entry, photo, capture and access token for everyone in the household, then deletes your sign-in. Your sign-in is shared by HEJI apps, so it also ends your account in any other HEJI app you use. This cannot be undone.",
+                                isPresented: $confirmDelete, titleVisibility: .visible) {
+                Button(model.localOnly ? "Erase this phone's log" : "Delete account & data", role: .destructive) { Task { await model.deleteAllData() } }
             }
         }
     }
@@ -848,7 +857,7 @@ struct PaywallView: View {
                     Label("Even G2 glasses and R1 ring companion support", systemImage: "eyeglasses")
                     Label("Smart reminders for whoever is on duty", systemImage: "bell.fill")
                     Label("AI assistant connectivity via MCP", systemImage: "sparkles")
-                    Label("One purchase covers both parents and caregivers", systemImage: "person.2.fill")
+                    Label("Family Sharing: one purchase covers your Apple family group", systemImage: "person.2.fill")
                 }
                 .font(.subheadline)
                 .padding()

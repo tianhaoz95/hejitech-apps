@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.13.3"
+    static let currentVersion = "1.0.0"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -46,6 +46,31 @@ struct WhatsNewView: View {
 
     static let releases: [ReleaseHistoryItem] = [
         ReleaseHistoryItem(
+            version: "1.0.0",
+            date: "October 2026",
+            tagline: "Welcome to Wee Hours on the App Store",
+            features: [
+                WhatsNewItem(
+                    icon: "party.popper.fill",
+                    tint: Theme.accent,
+                    title: "Wee Hours 1.0",
+                    description: "The first App Store release. Log feeds, diapers and sleep by voice, a tap, your watch or Even G2 glasses, and share one log with everyone in your household."
+                ),
+                WhatsNewItem(
+                    icon: "person.crop.circle.badge.xmark",
+                    tint: Theme.diaper,
+                    title: "Delete your account in the app",
+                    description: "Settings → Delete account & data now deletes your sign-in too, not only your household's log."
+                ),
+                WhatsNewItem(
+                    icon: "doc.text.fill",
+                    tint: Theme.sleep,
+                    title: "Acknowledgements",
+                    description: "Settings → About lists the open-source software and models Wee Hours is built on."
+                ),
+            ]
+        ),
+        ReleaseHistoryItem(
             version: "0.13.3",
             date: "October 2026",
             tagline: "Lifetime Access & App Store Readiness",
@@ -57,7 +82,7 @@ struct WhatsNewView: View {
                     description: "All features — voice logging, Apple Watch, Even G2 glasses, reminders and AI assistants — are now fully included for your household with no in-app purchases."
                 ),
                 WhatsNewItem(
-                    icon: "apple.logo",
+                    icon: "person.badge.key.fill",
                     tint: Theme.accent,
                     title: "Sign in with Apple & Google",
                     description: "Moving from an on-device local log to cloud sync now supports Sign in with Apple and Google."
@@ -356,7 +381,7 @@ struct WhatsNewView: View {
                     icon: "shippingbox.fill",
                     tint: Theme.accent,
                     title: "Everything From 0.8.2 to 0.8.4",
-                    description: "Those updates didn't make it to TestFlight; this one brings all of them: the voice and tilt shortcuts on Apple Watch, the sync fix, your own words in Spanish and Chinese entries, the press-and-hold dock and the night screen from the moon on Now.",
+                    description: "Those updates never reached your iPhone; this one brings all of them: the voice and tilt shortcuts on Apple Watch, the sync fix, your own words in Spanish and Chinese entries, the press-and-hold dock and the night screen from the moon on Now.",
                     kind: .improvement
                 ),
             ]

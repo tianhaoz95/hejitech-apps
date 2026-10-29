@@ -8,12 +8,14 @@
 //   GET  /authorize          starts consent, then redirects to the consent page /oauth/consent/
 //   POST /authorize          the consent page approves or denies, with the user's Supabase session
 //   GET/DELETE /api/grants   the account page lists and revokes connected assistants
+//   POST /api/account/delete deletes the signed-in user's login after the client deleted the household (account.ts)
 //   /api/glasses/…           the Even G2 glasses: pairing codes, device tokens, state, events, captures (glasses.ts)
 //   everything else          static assets
 
 import { AuthorizationError, OAuthProvider, type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import { createClient } from "@supabase/supabase-js";
 import { derive, status, statusLine, validate, type LogEvent } from "@weehours/core";
+import { handleAccountDelete } from "./account.ts";
 import { handleGlasses } from "./glasses.ts";
 import { handleMcp, type Caller, type Db } from "./mcp.ts";
 
@@ -28,6 +30,12 @@ export interface Env {
   SUPABASE_ANON_KEY: string;
   /** Secret. Server-side only; bypasses RLS for every project in the shared Supabase project. */
   SUPABASE_SERVICE_ROLE_KEY: string;
+  /** Apple developer team; with the two secrets below, account deletion revokes Sign in with Apple tokens. */
+  APPLE_TEAM_ID?: string;
+  /** Secret: a Sign in with Apple key's id (developer portal → Keys). */
+  APPLE_SIWA_KEY_ID?: string;
+  /** Secret: that key's .p8 contents. */
+  APPLE_SIWA_PRIVATE_KEY?: string;
 }
 
 /** Stored on each OAuth grant. The household is looked up per request: a user can switch households. */
@@ -278,6 +286,20 @@ const app = {
     if (url.pathname.startsWith("/api/glasses/")) {
       const deps = { db: admin(env), kv: env.OAUTH_KV, supabaseUrl: env.SUPABASE_URL, serviceKey: env.SUPABASE_SERVICE_ROLE_KEY, sessionUser: (r: Request) => supabaseUser(env, r) };
       return handleGlasses(req, url, deps, ctx);
+    }
+    if (url.pathname === "/api/account/delete") {
+      const apple = env.APPLE_TEAM_ID && env.APPLE_SIWA_KEY_ID && env.APPLE_SIWA_PRIVATE_KEY
+        ? { teamId: env.APPLE_TEAM_ID, keyId: env.APPLE_SIWA_KEY_ID, privateKey: env.APPLE_SIWA_PRIVATE_KEY, clientId: "com.hejitech.weehours" }
+        : undefined;
+      return handleAccountDelete(req, {
+        sessionUser: (r) => supabaseUser(env, r),
+        deleteUser: (id) => admin(env).auth.admin.deleteUser(id),
+        revokeGrants: async (id) => {
+          const { items } = await env.OAUTH_PROVIDER.listUserGrants(id);
+          await Promise.all(items.map((g) => env.OAUTH_PROVIDER.revokeGrant(g.id, id)));
+        },
+        apple,
+      });
     }
     if (url.pathname === "/api/grants" || url.pathname.startsWith("/api/grants/")) return grants(req, env, url);
     if (url.pathname.startsWith("/pass/")) return caregiverPass(req, env, url);

@@ -37,6 +37,13 @@ The `weehours` Worker (`services/web/wrangler.jsonc`, `env.production`):
 
 - Secret: `wrangler secret put SUPABASE_SERVICE_ROLE_KEY --env production` (the shared project's
   secret key; it bypasses RLS for every project, so it stays in Worker secrets).
+- Secrets for Sign in with Apple token revocation on account deletion (App Store guideline
+  5.1.1(v); `src/worker/account.ts`): in the developer portal → Keys, create a key with Sign in with
+  Apple enabled (primary App ID `com.hejitech.weehours`), then
+  `wrangler secret put APPLE_SIWA_KEY_ID --env production` (the key's id) and
+  `wrangler secret put APPLE_SIWA_PRIVATE_KEY --env production` (the .p8 file's contents).
+  `APPLE_TEAM_ID` is a var in `wrangler.jsonc`. Without them, deletion still deletes the login but
+  skips the revocation.
 - KV `OAUTH_KV` holds OAuth clients and grants (provisioned by the first deploy).
 - **Workers Builds** (dashboard → Workers → `weehours` → Settings → Build): connect
   `tianhaoz95/hejitech-apps`, branch `main`, root directory = repo root, build command `npm ci`,
