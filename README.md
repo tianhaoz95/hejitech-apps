@@ -24,12 +24,14 @@ one npm workspace and the CI plumbing.
 ```
 projects/<name>/        everything one product owns (apps, services, packages, site, docs)
   release.env           how scripts/cut_release.sh releases it
+  review.env            its App Review demo account (scripts/review_account.sh, skill heji-review-account)
 supabase/               the shared Supabase project: config, schemas/<name>/, one migrations/ history
 scripts/cut_release.sh  releases one project: scripts/cut_release.sh <name> [patch|minor|major|x.y.z]
+scripts/review_account.sh <name>   App Review demo account: Worker secrets, live check, App Store Connect (asc_review_details.mjs)
 scripts/db_migration.sh new migration for one project; check_supabase.mjs keeps projects apart
 scripts/check_isolation.mjs, graduation_check.sh   each project can leave for its own Supabase (supabase/GRADUATION.md)
 pages/                  the GitHub Pages site for every app (npm run pages:dev); project docs come from projects/<name>/docs
-.claude/skills/         agent skills: heji-new-project, heji-migrate-project, heji-candidate-review, heji-fix-ci, heji-new-skill, heji-archive-reports, heji-build-next, heji-even-hub-submit, heji-update-toolchain, heji-report (.agents/skills/ links them for Codex, Antigravity, Gemini CLI, Cursor…)
+.claude/skills/         agent skills: heji-new-project, heji-migrate-project, heji-candidate-review, heji-fix-ci, heji-new-skill, heji-archive-reports, heji-build-next, heji-even-hub-submit, heji-update-toolchain, heji-report, heji-review-account (.agents/skills/ links them for Codex, Antigravity, Gemini CLI, Cursor…)
 .github/workflows/      <name>-*.yml per project
 .github/actions/        apple-signing (shared), <name>-toolchain
 package.json            npm workspaces: projects/*/packages/*, projects/*/services/*, projects/*/apps/*

@@ -109,6 +109,11 @@ projects/<name>/
    metadata, register/authorize/deny.
 3. App Store Connect record for the bundle id (the user), then
    `scripts/cut_release.sh <name> --dry-run` and the real release.
+   An iOS app that needs signing in also gets an App Review demo account before its first App
+   Store submission: plan it with the app (a seedable demo state for every screen) and build it with
+   the skill **heji-review-account** (Worker `/api/review-sign-in`, the "Sign in with email" sheet,
+   `review.env`, `scripts/review_account.sh <name>`). Offer Sign in with Apple whenever Google
+   sign-in is offered (guideline 4.8), and an in-app way to delete the account (5.1.1(v)).
 4. FeedbackKit CI token as `<NAME>_FEEDBACKKIT_RELEASE_TOKEN`; allowed web origins for the docs site.
 
 ## 8. Verify like a user

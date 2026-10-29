@@ -120,6 +120,10 @@ are ancestors of HEAD). Then restructure in follow-up commits with `git mv`.
   `project.yml` (`MARKETING_VERSION`); extend it for a new format. Old releases stay in the old repo.
 - The first release from here: `scripts/cut_release.sh <name> patch` (so it's newer than what
   TestFlight already has), `--dry-run` first.
+- An iOS app that needs signing in gets an App Review demo account (skill **heji-review-account**)
+  once it runs on the shared project: any demo account from the old backend is gone, and our Email
+  provider is off. Note whether it offers Sign in with Apple next to Google (4.8) and how it deletes
+  accounts (5.1.1(v)).
 
 ## 6. Cloudflare
 
