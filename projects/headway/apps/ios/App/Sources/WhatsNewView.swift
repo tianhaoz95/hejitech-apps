@@ -20,10 +20,13 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.2.1"
+    static let currentVersion = "0.2.2"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.2.2", date: "October 2026", items: [
+            WhatsNewItem(icon: "slider.horizontal.3", title: "Trains tab polish", description: "Aligned filter controls, edge-to-edge status cards matching schedule width, and fully rounded departures card corners."),
+        ]),
         ReleaseNotes(version: "0.2.1", date: "October 2026", items: [
             WhatsNewItem(icon: "eyeglasses", title: "Even G2 glasses HUD labels & ETA", description: "Clear column headers (TRN, TYPE, DEP, ETA, STAT, IN), explicit Express (EXP) / Limited (LTD) / Local (LOC) service types, and destination arrival ETAs on your Even G2 glasses."),
         ]),

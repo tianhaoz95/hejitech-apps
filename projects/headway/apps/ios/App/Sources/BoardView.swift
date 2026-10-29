@@ -40,7 +40,7 @@ struct BoardView: View {
                         Section {
                             InsightBanner(tip: tip)
                         }
-                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                        .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                         .listRowBackground(Color.clear)
                     }
 
@@ -48,28 +48,11 @@ struct BoardView: View {
                         Section {
                             CatchCard(board: b, walkMinutes: walk, now: now)
                         }
-                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                        .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                         .listRowBackground(Color.clear)
                     }
 
                     Section {
-                        HStack(spacing: 8) {
-                            Picker("Sort", selection: $sort) {
-                                ForEach(BoardSort.allCases) { s in Text(s.rawValue).tag(s) }
-                            }
-                            .pickerStyle(.segmented)
-
-                            Picker("Train filter", selection: Binding(get: { model.expressPreference }, set: { pref in Task { await model.setExpressPreference(pref) } })) {
-                                ForEach(ExpressPreference.allCases, id: \.self) { pref in
-                                    Text(pref.title).tag(pref)
-                                }
-                            }
-                            .pickerStyle(.menu)
-                            .buttonStyle(.bordered)
-                        }
-                        .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: 2, leading: 0, bottom: 6, trailing: 0))
-
                         ForEach(displayedTrains(b.trains)) { train in
                             TrainRow(train: train, destinationShort: b.to.short, now: now, tracked: model.tracked?.tripId == train.tripId)
                                 .swipeActions(edge: .trailing) {
@@ -96,7 +79,26 @@ struct BoardView: View {
                             .padding(.vertical, 8)
                         }
                     } header: {
-                        BoardHeader(board: b)
+                        VStack(alignment: .leading, spacing: 8) {
+                            BoardHeader(board: b)
+                            HStack(spacing: 8) {
+                                Picker("Sort", selection: $sort) {
+                                    ForEach(BoardSort.allCases) { s in Text(s.rawValue).tag(s) }
+                                }
+                                .pickerStyle(.segmented)
+
+                                Picker("", selection: Binding(get: { model.expressPreference }, set: { pref in Task { await model.setExpressPreference(pref) } })) {
+                                    ForEach(ExpressPreference.allCases, id: \.self) { pref in
+                                        Text(pref.title).tag(pref)
+                                    }
+                                }
+                                .labelsHidden()
+                                .pickerStyle(.menu)
+                                .buttonStyle(.bordered)
+                            }
+                            .padding(.top, 2)
+                        }
+                        .textCase(nil)
                     } footer: {
                         Text(b.live ? "Ride times and leave-by use live Caltrain feeds. A train is overtaken when a later departure reaches your destination first." : "No fresh live data: these are timetable times.")
                     }
@@ -273,6 +275,7 @@ struct CatchCard: View {
                 }
             }
             .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
     }
