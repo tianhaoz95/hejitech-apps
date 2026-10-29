@@ -22,4 +22,16 @@ final class SignInViewModel {
             }
         }
     }
+
+    /// The "Sign in with email" sheet (accounts Contempo hands out, such as App Review's).
+    func signIn(email: String, password: String) async -> Bool {
+        errorMessage = nil
+        do {
+            try await authManager.signIn(email: email.trimmingCharacters(in: .whitespaces), password: password)
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
 }

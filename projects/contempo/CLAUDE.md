@@ -60,7 +60,10 @@ lists the only files allowed to hold the project's URL/key. Rules for schema cha
   don't contain Play asset packs (Whisper's included), so sideloaded Android builds parse with
   the rule-based fallback; Play installs get the model.
 - **Worker API** (`services/web/src/worker/index.ts`, bearer = Supabase access token):
-  `flag-risk`, `account/delete`, `watch/pair`,
+  `flag-risk`, `account/delete`, `watch/pair`, `review-sign-in` (App Review's demo account,
+  `review.ts`: reset to two properties and five entries, then a session; locally
+  `review@example.com` / `contempo-review-dev`, test `services/web/scripts/test-review.mjs`;
+  production `scripts/review_account.sh contempo`, skill heji-review-account),
   `billing/checkout` / `billing/portal` / `stripe/webhook` / `admin/coupons/*` (Stripe over
   fetch; needs `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`), and `feedback` (anonymous, forwarded
   to FeedbackKit's ingest API).

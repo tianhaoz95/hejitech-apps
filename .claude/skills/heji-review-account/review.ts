@@ -1,16 +1,17 @@
 // Sign-in for App Review only (template: the skill heji-review-account). The app offers no email
-// sign-in to people (Sign in with Apple and Google only, and the shared Supabase project has its
-// Email provider off), but App Review needs a demo account. POST /api/review-sign-in { email, password } checks them against this Worker's
-// own secrets (REVIEW_EMAIL, REVIEW_PASSWORD_SHA256), resets that one account to the demo state
-// and mints it a normal Supabase session (admin magic link → verify; nothing is emailed). Without
-// the secrets the endpoint doesn't exist. Set up and rotate: scripts/review_account.sh (repo root).
+// sign-in to people, and the shared Supabase project has its Email provider off, but App Review
+// needs a demo account. POST /api/review-sign-in { email, password } checks them against this
+// Worker's own secrets (REVIEW_EMAIL, REVIEW_PASSWORD_SHA256), resets that one account to the demo
+// state and mints it a normal Supabase session (admin magic link → verify; nothing is emailed).
+// Without the secrets the endpoint doesn't exist. Set up and rotate: scripts/review_account.sh.
 async function sha256(s: string): Promise<string> {
   const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
   return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 export interface ReviewEnv {
-  OAUTH_KV: KVNamespace;
+  /** Throttles wrong passwords per IP when the Worker has a KV namespace (any binding named so). */
+  OAUTH_KV?: KVNamespace;
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
@@ -33,7 +34,7 @@ export async function reviewSignIn(env: ReviewEnv, req: Request, reset: (userId:
   if (!env.REVIEW_EMAIL || !env.REVIEW_PASSWORD_SHA256) return { status: 404, body: { error: "not found" } };
   const ip = req.headers.get("CF-Connecting-IP") ?? "local";
   const key = `reviewfail:${ip}`;
-  const failures = Number((await env.OAUTH_KV.get(key)) ?? 0);
+  const failures = Number((await env.OAUTH_KV?.get(key)) ?? 0);
   if (failures >= FAILURES_PER_WINDOW) return { status: 429, body: { error: "too many attempts: wait ten minutes" } };
 
   const body = (await req.json().catch(() => ({}))) as { email?: unknown; password?: unknown };
@@ -42,7 +43,7 @@ export async function reviewSignIn(env: ReviewEnv, req: Request, reset: (userId:
   const want = new TextEncoder().encode(env.REVIEW_PASSWORD_SHA256.toLowerCase());
   const ok = email === env.REVIEW_EMAIL.toLowerCase() && given.byteLength === want.byteLength && crypto.subtle.timingSafeEqual(given, want);
   if (!ok) {
-    await env.OAUTH_KV.put(key, String(failures + 1), { expirationTtl: WINDOW_SEC });
+    await env.OAUTH_KV?.put(key, String(failures + 1), { expirationTtl: WINDOW_SEC });
     return { status: 401, body: { error: "wrong email or password" } };
   }
 

@@ -11,8 +11,9 @@
  *   POST /api/admin/coupons/*    coupon management for the admin site (was adminListCoupons, …)
  *   POST /api/stripe/webhook     subscription sync into contempo.subscriptions (was stripeWebhook)
  *   POST /api/feedback           the login-free feedback form, forwarded to FeedbackKit
+ *   POST /api/review-sign-in     App Review's demo account: reset to demo data + a session (review.ts)
  *
- * Every /api call except the webhook and /api/feedback needs `Authorization: Bearer <Supabase access token>`.
+ * Every /api call except the webhook, /api/feedback and /api/review-sign-in needs `Authorization: Bearer <Supabase access token>`.
  * Data lives in the shared Supabase project, schema `contempo` (projects/contempo/backend.env);
  * clients read and write their own rows directly (RLS), the Worker only does what needs the
  * service role or a secret.
@@ -20,6 +21,7 @@
  * No AI runs here: Contempo's parsing and chat are on-device only (product decision 2026-10-16).
  */
 import { createClient, type User } from "@supabase/supabase-js";
+import { reviewSignIn } from "./review.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = ReturnType<typeof createClient<any, "contempo">>;
@@ -32,6 +34,9 @@ export interface Env {
   SUPABASE_SERVICE_ROLE_KEY: string;
   STRIPE_SECRET_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
+  /** Secrets for the App Review demo account (review.ts): its email and SHA-256 of its password. */
+  REVIEW_EMAIL?: string;
+  REVIEW_PASSWORD_SHA256?: string;
 }
 
 const BUCKET = "contempo";
@@ -72,6 +77,11 @@ async function api(request: Request, env: Env, route: string): Promise<Response>
   if (request.method !== "POST") throw new HttpError(405, "POST only.");
   if (route === "stripe/webhook") return stripeWebhook(request, env);
   if (route === "feedback") return publicFeedback(request);
+  if (route === "review-sign-in") {
+    const admin = serviceClient(env);
+    const r = await reviewSignIn(env, request, (userId) => resetReviewAccount(admin, userId));
+    return json(r.body, r.status);
+  }
 
   const user = await authenticate(request, env);
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
@@ -202,8 +212,15 @@ async function publicFeedback(request: Request): Promise<Response> {
 
 async function deleteAccount(admin: SupabaseClient, user: User): Promise<void> {
   // Storage first (rows go with the user via on delete cascade; files don't).
+  await deleteFiles(admin, user.id);
+  const { error } = await admin.auth.admin.deleteUser(user.id);
+  if (error) throw error;
+}
+
+/** Every file under the user's folder in the bucket. */
+async function deleteFiles(admin: SupabaseClient, userId: string): Promise<void> {
   const storage = admin.storage.from(BUCKET);
-  const stack = [user.id];
+  const stack = [userId];
   const files: string[] = [];
   while (stack.length) {
     const prefix = stack.pop()!;
@@ -222,8 +239,44 @@ async function deleteAccount(admin: SupabaseClient, user: User): Promise<void> {
     const { error } = await storage.remove(files.slice(i, i + 500));
     if (error) throw error;
   }
-  const { error } = await admin.auth.admin.deleteUser(user.id);
+}
+
+/** The user's tables, children first (deleting the review account's data without deleting the account). */
+const USER_TABLES = ["corrections", "attachments", "audio_captures", "text_captures", "token_usage", "entries", "categories", "roles", "properties"] as const;
+
+/**
+ * App Review's demo account: everything wiped, then two rental properties and a few confirmed
+ * entries from the last days, so every screen (entries, reports, properties) has something to show.
+ */
+async function resetReviewAccount(admin: SupabaseClient, userId: string): Promise<void> {
+  await deleteFiles(admin, userId);
+  for (const t of USER_TABLES) {
+    const { error } = await admin.from(t).delete().eq("user_id", userId);
+    if (error) throw error;
+  }
+  const { data: props, error } = await admin.from("properties")
+    .insert([{ user_id: userId, name: "Lakeview Cabin" }, { user_id: userId, name: "Downtown Loft" }])
+    .select("id, name");
   if (error) throw error;
+  const [cabin, loft] = props as { id: string; name: string }[];
+  const day = (n: number, h: number) => {
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() - n);
+    d.setUTCHours(h, 0, 0, 0);
+    return d.toISOString();
+  };
+  const entry = (p: { id: string; name: string }, task: string, minutes: number, category: string, n: number, h: number) => ({
+    user_id: userId, property_id: p.id, property_name: p.name, task, duration_minutes: minutes, category,
+    status: "confirmed", source: "manual", activity_date: day(n, h), logged_at: day(n, h + 1), confirmed_at: day(n, h + 1),
+  });
+  const { error: e2 } = await admin.from("entries").insert([
+    entry(cabin, "Turnover after checkout: linens, bathrooms, restocked coffee", 150, "turnover", 0, 17),
+    entry(cabin, "Fixed the leaking kitchen faucet, replaced the cartridge", 45, "maintenance", 1, 18),
+    entry(loft, "Answered guest questions about parking and early check-in", 20, "guest_communication", 1, 21),
+    entry(loft, "Supply run: paper towels, dish soap, light bulbs", 60, "supply_run", 2, 19),
+    entry(cabin, "Reviewed bookings and updated the cleaning calendar", 30, "admin", 3, 16),
+  ]);
+  if (e2) throw e2;
 }
 
 /**

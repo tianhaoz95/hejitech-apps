@@ -7,7 +7,8 @@
 import { sha256 } from "./store.ts";
 
 export interface ReviewEnv {
-  OAUTH_KV: KVNamespace;
+  /** Throttles wrong passwords per IP when the Worker has a KV namespace (any binding named so). */
+  OAUTH_KV?: KVNamespace;
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
@@ -30,7 +31,7 @@ export async function reviewSignIn(env: ReviewEnv, req: Request, reset: (userId:
   if (!env.REVIEW_EMAIL || !env.REVIEW_PASSWORD_SHA256) return { status: 404, body: { error: "not found" } };
   const ip = req.headers.get("CF-Connecting-IP") ?? "local";
   const key = `reviewfail:${ip}`;
-  const failures = Number((await env.OAUTH_KV.get(key)) ?? 0);
+  const failures = Number((await env.OAUTH_KV?.get(key)) ?? 0);
   if (failures >= FAILURES_PER_WINDOW) return { status: 429, body: { error: "too many attempts: wait ten minutes" } };
 
   const body = (await req.json().catch(() => ({}))) as { email?: unknown; password?: unknown };
@@ -39,7 +40,7 @@ export async function reviewSignIn(env: ReviewEnv, req: Request, reset: (userId:
   const want = new TextEncoder().encode(env.REVIEW_PASSWORD_SHA256.toLowerCase());
   const ok = email === env.REVIEW_EMAIL.toLowerCase() && given.byteLength === want.byteLength && crypto.subtle.timingSafeEqual(given, want);
   if (!ok) {
-    await env.OAUTH_KV.put(key, String(failures + 1), { expirationTtl: WINDOW_SEC });
+    await env.OAUTH_KV?.put(key, String(failures + 1), { expirationTtl: WINDOW_SEC });
     return { status: 401, body: { error: "wrong email or password" } };
   }
 

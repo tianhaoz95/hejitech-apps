@@ -15,7 +15,11 @@
   "vars": {
     "PUBLIC_URL": "http://127.0.0.1:8789",
     "SUPABASE_URL": "http://127.0.0.1:55421",
-    "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0"
+    "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0",
+    // The local App Review demo account (src/worker/review.ts): review@example.com / contempo-review-dev.
+    // Production: secrets REVIEW_EMAIL + REVIEW_PASSWORD_SHA256 (scripts/review_account.sh contempo).
+    "REVIEW_EMAIL": "review@example.com",
+    "REVIEW_PASSWORD_SHA256": "3198ddd08fe633e8714cea57d44dfec9b905a7449d46ff7281a64aad7213319a"
   },
   "dev": { "port": 8789, "ip": "127.0.0.1" },
 

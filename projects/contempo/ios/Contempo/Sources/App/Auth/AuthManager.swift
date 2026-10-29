@@ -12,6 +12,23 @@ final class AuthManager {
         try await ContempoBackend.client.auth.signInWithOAuth(provider: .google, redirectTo: ContempoBackend.redirectURL)
     }
 
+    /// Email and password for accounts Contempo hands out (App Review's demo account): checked by the
+    /// Worker (`/api/review-sign-in`), which returns a normal Supabase session. Not a sign-up.
+    func signIn(email: String, password: String) async throws {
+        var request = URLRequest(url: ContempoBackend.workerURL.appendingPathComponent("api/review-sign-in"))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["email": email, "password": password])
+        let (data, response) = try await URLSession.shared.data(for: request)
+        let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200,
+              let access = json["access_token"] as? String, let refresh = json["refresh_token"] as? String else {
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            throw ContempoBackendError.api(status == 401 ? "Wrong email or password." : (json["error"] as? String) ?? "Sign-in failed.")
+        }
+        try await ContempoBackend.client.auth.setSession(accessToken: access, refreshToken: refresh)
+    }
+
     func signOut() throws {
         Task { try? await ContempoBackend.client.auth.signOut() }
     }
