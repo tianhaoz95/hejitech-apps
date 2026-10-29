@@ -13,13 +13,22 @@ const fits = (lines: string[]) => {
 };
 
 describe("board screen", () => {
-  it("shows the commute with a cursor and fits the glasses", () => {
+  it("shows the commute with a cursor, header row with type/dep/eta and fits the glasses", () => {
     const nav = new Navigator();
     const lines = nav.lines(world());
     fits(lines);
     expect(lines[0]).toMatch(/^MTN VIEW > SF/);
     expect(lines[0]).toContain("SCHED");
-    expect(lines[2].startsWith(">")).toBe(true);
+    expect(lines[1]).toContain("TRN");
+    expect(lines[1]).toContain("TYPE");
+    expect(lines[1]).toContain("DEP");
+    expect(lines[1]).toContain("ETA");
+    expect(lines[1]).toContain("STAT");
+    expect(lines[1]).toContain("IN");
+    expect(lines[3].startsWith(">")).toBe(true);
+    expect(lines[3]).toContain("LOC");
+    expect(lines[3]).toContain("8:16");
+    expect(lines[3]).toContain("9:16");
     expect(lines.at(-2)).toBe("Leave in 11m for 113 (walk 10)");
     expect(lines.at(-1)).toBe("tap: flip  hold: menu  2x: exit");
   });
@@ -27,8 +36,8 @@ describe("board screen", () => {
     const nav = new Navigator();
     const lines = nav.lines(world());
     fits(lines);
-    expect(lines[1]).toContain("RUN");
-    expect(lines[2]).toMatch(/go \d+m/);
+    expect(lines[2]).toContain("RUN");
+    expect(lines[3]).toMatch(/go \d+m/);
   });
   it("shows timetable note when no commute leg walk is set", () => {
     const nav = new Navigator();
@@ -42,25 +51,27 @@ describe("board screen", () => {
     const snap = snapshot(now, { [t113.trip_id]: { stops: { [station("mountain_view")!.nb!]: { delay: 480 } } } });
     const lines = new Navigator().lines(world({ board: commuteBoard(commuter(), now, snap) }));
     fits(lines);
-    expect(lines.at(-2)).toBe("Wait for 511: beats 113 by 2m");
+    expect(lines.at(-2)).toBe("Wait for 511 (EXP): beats 113 by 2m");
   });
   it("shows live delays and the first alert", () => {
     const t = firstTrain(WEEKDAY, "07:55");
     const snap = snapshot(now, { [t.trip_id]: { stops: { [station("mountain_view")!.nb!]: { delay: 240 } } } }, [{ id: "a", header: "Delays near Mountain View", description: "", stations: ["mountain_view"], routes: [] }]);
     const lines = new Navigator().lines(world({ board: commuteBoard(commuter(), now, snap) }));
     fits(lines);
-    expect(lines[1]).toContain("+4");
+    expect(lines[2]).toContain("+4");
     expect(lines.at(-2)).toBe("! Delays near Mountain View");
   });
   it("swipes move the cursor; tap flips; hold opens the menu whose first item tracks", () => {
     const nav = new Navigator(), w = world();
     nav.input("down", w);
-    expect(nav.lines(w)[2].startsWith(">")).toBe(true);
+    expect(nav.lines(w)[3].startsWith(">")).toBe(true);
     nav.input("long_press", w);
     expect(nav.screen).toBe("menu");
     const lines = nav.lines(w);
     fits(lines);
     expect(lines[1]).toMatch(/^> Track \d+/);
+    expect(lines[1]).toContain("Dep");
+    expect(lines[1]).toContain("ETA");
     const [track] = nav.input("tap", w);
     expect(track.kind).toBe("track");
     expect(nav.screen).toBe("track");

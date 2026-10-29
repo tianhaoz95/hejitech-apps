@@ -17,8 +17,8 @@ import { STATIONS, stationIndex } from "./schedule.ts";
 import { clock, clockAmPm, minutesUntil } from "./time.ts";
 import type { Board, BoardTrain, TrainProgress } from "./types.ts";
 
-/** Trains visible on the board at once (header and footer take two lines; the rest scroll). */
-export const VISIBLE_TRAINS = MAX_LINES - 2;
+/** Trains visible on the board at once (header, column row and footer take lines; the rest scroll). */
+export const VISIBLE_TRAINS = MAX_LINES - 3;
 export const FLASH_MS = 2500;
 
 export type Input = "up" | "down" | "tap" | "double_tap" | "long_press";
@@ -70,12 +70,30 @@ export function untilText(t: number, now: number): string {
   return `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}`;
 }
 
-/** Column widths of a train row, in pixels: cursor, number, kind, time, status. */
-const COLS = [16, 48, 46, 62, 44] as const;
+/** Column widths of a train row, in pixels: cursor, number, type, dep, eta, status. */
+export const COLS = [16, 52, 58, 66, 66, 54] as const;
 
-/** One train row: `> 152  LTD  8:14  +3 … 12m` (or `go 12m` / `RUN`), columns aligned in pixels. */
+/** Header row for the board screen: `  TRN   TYPE  DEP      ETA      STAT ... IN` */
+export function boardHeaderRow(): string {
+  const left = padPx("", COLS[0]) +
+    padPx("TRN", COLS[1]) +
+    padPx("TYPE", COLS[2]) +
+    padPx("DEP", COLS[3]) +
+    padPx("ETA", COLS[4]) +
+    padPx("STAT", COLS[5]);
+  return spreadPx(left.trimEnd(), "IN");
+}
+
+/** One train row: `> 113   LOC   8:16     9:05     ok … go 11m` (or `RUN`), columns aligned in pixels. */
 export function trainRow(t: BoardTrain, now: number, selected: boolean, walkMinutes?: number | null): string {
-  const cells = [selected ? ">" : "", t.train, t.kind, clock(t.pred_dep), statusText(t)];
+  const cells = [
+    selected ? ">" : "",
+    t.train,
+    t.kind,
+    clock(t.pred_dep),
+    clock(t.pred_arr),
+    statusText(t),
+  ];
   const left = cells.map((c, i) => padPx(c, COLS[i])).join("");
   let right = "";
   if (t.status !== "cancelled") {
@@ -106,7 +124,7 @@ export function boardLines(world: World, cursor: number): string[] {
         ? `Leave now for ${leaveTrain.train} (walk ${b.walk_minutes})`
         : `Leave in ${untilText(leaveTrain.leave_by, world.now)} for ${leaveTrain.train} (walk ${b.walk_minutes})`)
     : null;
-  const tipHint = b.tip ? `Wait for ${b.tip.wait_for}: beats ${b.tip.instead_of} by ${b.tip.saves_min}m` : null;
+  const tipHint = b.tip ? `Wait for ${b.tip.wait_for} (${b.tip.wait_for_kind}): beats ${b.tip.instead_of} by ${b.tip.saves_min}m` : null;
 
   // The footer: an alert, an overtaking tip, a leave-by hint, or a note (offline, pair, timetable only) above the gesture hint,
   // which always shows (a first-time user, or a reviewer, learns the ring from it).
@@ -114,11 +132,18 @@ export function boardLines(world: World, cursor: number): string[] {
     b.alerts.length ? fitPx(`! ${b.alerts[0].header}`) : tipHint ?? leaveHint ?? world.note ?? (!b.live ? "Timetable only, no live data" : null),
     "tap: flip  hold: menu  2x: exit"
   ].filter((l): l is string => Boolean(l));
-  const rows = MAX_LINES - 1 - footer.length;
-  if (!b.trains.length) lines.push("", b.express_preference === "express_only" ? "No express trains today." : "No more trains today.");
+
+  if (!b.trains.length) {
+    lines.push("", b.express_preference === "express_only" ? "No express trains today." : "No more trains today.");
+    while (lines.length < MAX_LINES - footer.length) lines.push("");
+    return [...lines, ...footer].slice(0, MAX_LINES);
+  }
+
+  lines.push(boardHeaderRow());
+  const rows = MAX_LINES - 2 - footer.length;
   const first = Math.max(0, Math.min(cursor - 1, b.trains.length - rows));
   b.trains.slice(first, first + rows).forEach((t, i) => lines.push(trainRow(t, world.now, first + i === cursor, b.walk_minutes)));
-  while (lines.length < 1 + rows) lines.push("");
+  while (lines.length < 2 + rows) lines.push("");
   return [...lines, ...footer].slice(0, MAX_LINES);
 }
 
@@ -128,7 +153,7 @@ export function trackLines(p: TrainProgress | null, now: number): string[] {
   if (p.arrived) return [head, "", `Arrived at ${p.to.short}.`, "", "hold: stop  2x tap: back"];
   const lines = [head, ""];
   if (p.next && p.next.id !== p.to.id) lines.push(spreadPx(`Next: ${p.next.short}`, clock(p.next.pred)));
-  lines.push(spreadPx(`Arrive ${p.to.short} ${clock(p.pred_arr)}`, `in ${untilText(p.pred_arr, now)}`));
+  lines.push(spreadPx(`ETA ${p.to.short} ${clock(p.pred_arr)}`, `in ${untilText(p.pred_arr, now)}`));
   lines.push(p.stops_left <= 1 ? "Your stop is next" : `${p.stops_left - 1} stops to go`);
   lines.push("", "hold: stop  2x tap: back");
   return lines.slice(0, MAX_LINES);
@@ -151,7 +176,7 @@ export class Navigator {
     const t = b?.trains[this.cursor];
     if (b && t && t.status !== "cancelled") {
       items.push({
-        label: `Track ${t.train} (${clock(t.pred_dep)})`,
+        label: `Track ${t.train} ${t.kind} (Dep ${clock(t.pred_dep)}, ETA ${clock(t.pred_arr)})`,
         run: () => {
           this.screen = "track";
           this.say(`Tracking ${t.train} to ${b.to.short}`, world.now);

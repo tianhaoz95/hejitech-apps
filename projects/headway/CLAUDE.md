@@ -83,4 +83,4 @@ stack), `-screen trains|commute|glasses|settings`, `-production` (Debug build ag
 sets `currentVersion`; `release.env`'s `release_check` refuses a version it doesn't describe.
 `scripts/cut_release.sh headway --dry-run`, then for real: it bumps `MARKETING_VERSION`, pushes
 (Cloudflare deploys the Worker) and publishes `headway-v<version>` → `headway-testflight.yml`
-(iPhone) and `headway-glasses-release.yml` (the `.ehpk`; upload it to the Even Hub portal by hand).
+(iPhone) and `headway-glasses-release.yml` (the `.ehpk`, attached to the release, uploaded to Even Hub and promoted to Beta).
