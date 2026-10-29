@@ -1,14 +1,14 @@
-// POST /api/account/delete: deletes the signed-in user's login (App Store guideline 5.1.1(v)).
-// The app and the account page delete the household first (files, then `delete_household`); this
-// revokes the user's assistant grants, revokes their Sign in with Apple token when the app sends a
-// fresh authorization code and the Apple key is configured, and deletes the auth user, which
-// cascades to every weehours row that points at it. The login is the shared HEJI account, so the
-// confirm texts say it ends sign-in to other HEJI apps too.
+// POST /api/account/delete: deletes the signed-in user's Wee Hours account (App Store guideline
+// 5.1.1(v)). The app and the account page delete the household first (files, then
+// `delete_household`); this revokes the user's assistant grants, revokes their Sign in with Apple
+// token for Wee Hours when the app sends a fresh authorization code and the Apple key is
+// configured, and deletes every weehours row left that points at the user. The login itself is the
+// shared HEJI account other HEJI apps use, so it stays: no app deletes another app's account.
 
 export interface AccountDeps {
   sessionUser: (req: Request) => Promise<{ id: string } | null>;
-  /** Deletes the auth user with the secret key. */
-  deleteUser: (id: string) => Promise<{ error: unknown }>;
+  /** Deletes the user's remaining weehours rows (memberships, invites, access tokens) with the secret key. */
+  deleteUserRows: (id: string) => Promise<{ error: unknown }>;
   revokeGrants: (userId: string) => Promise<void>;
   apple?: AppleKey;
   fetch?: typeof fetch;
@@ -37,8 +37,8 @@ export async function handleAccountDelete(req: Request, deps: AccountDeps): Prom
   const code = String(body.apple_authorization_code ?? "");
   if (code && deps.apple) appleRevoked = await revokeApple(deps.apple, code, deps.fetch ?? fetch).catch(() => false);
 
-  const { error } = await deps.deleteUser(user.id);
-  if (error) return json({ error: "Couldn't delete your sign-in. Try again, or email support." }, 502);
+  const { error } = await deps.deleteUserRows(user.id);
+  if (error) return json({ error: "Couldn't delete your account. Try again, or email support." }, 502);
   return json({ ok: true, apple_revoked: appleRevoked });
 }
 

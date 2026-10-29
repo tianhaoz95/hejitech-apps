@@ -573,8 +573,9 @@ final class AppModel: ObservableObject {
         var errorDescription: String? { "That invite didn't lead to a household." }
     }
 
-    /// Settings → Delete account & data: the household (files, then rows) and then the login,
-    /// which only the Worker can delete (`services/web/src/worker/account.ts`). An Apple account
+    /// Settings → Delete account & data: the household (files, then rows) and then the rest of the
+    /// user's Wee Hours rows, which the Worker deletes (`services/web/src/worker/account.ts`); the
+    /// shared HEJI login stays for other apps. An Apple account
     /// first confirms with Apple, so the Worker can revoke the app's Sign in with Apple token.
     func deleteAllData() async {
         if localOnly {

@@ -42,7 +42,7 @@ The `weehours` Worker (`services/web/wrangler.jsonc`, `env.production`):
   Apple enabled (primary App ID `com.hejitech.weehours`), then
   `wrangler secret put APPLE_SIWA_KEY_ID --env production` (the key's id) and
   `wrangler secret put APPLE_SIWA_PRIVATE_KEY --env production` (the .p8 file's contents).
-  `APPLE_TEAM_ID` is a var in `wrangler.jsonc`. Without them, deletion still deletes the login but
+  `APPLE_TEAM_ID` is a var in `wrangler.jsonc`. Without them, deletion still deletes the Wee Hours account but
   skips the revocation.
 - KV `OAUTH_KV` holds OAuth clients and grants (provisioned by the first deploy).
 - **Workers Builds** (dashboard → Workers → `weehours` → Settings → Build): connect

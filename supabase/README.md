@@ -60,6 +60,8 @@ SQL text, so it catches mistakes rather than proving isolation.
   is the same user id everywhere. Don't add triggers on `auth.users` that assume a user belongs to
   your project; create per-project rows when the user first uses that project. (Waypack's
   `on_auth_user_created` trigger did; `*_waypack_lazy_user_rows.sql` dropped it.)
+  Likewise **no project deletes an auth user**: "Delete account" in an app deletes that
+  project's rows and files only, so it never signs anyone out of another HEJI app.
 - **Auth settings are project-wide**: site URL, redirect allow-list and providers. Add a new
   project's callback URLs to the allow-list; Apple's client IDs field takes a comma-separated list
   (add each iOS bundle id for the native Sign in with Apple sheet). Supabase's built-in OAuth

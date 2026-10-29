@@ -282,7 +282,7 @@ struct SettingsView: View {
             .onChange(of: model.household) { _, h in draft = h }
             .confirmationDialog(model.localOnly
                                 ? "Erase this phone's log? This permanently removes every entry and photo on this iPhone. This cannot be undone."
-                                : "Delete your account and all household data? This permanently removes every entry, photo, capture and access token for everyone in the household, then deletes your sign-in. Your sign-in is shared by HEJI apps, so it also ends your account in any other HEJI app you use. This cannot be undone.",
+                                : "Delete your account and all household data? This permanently removes every entry, photo, capture and access token for everyone in the household, then deletes your Wee Hours account. Other HEJI apps you sign in to with the same account aren't affected. This cannot be undone.",
                                 isPresented: $confirmDelete, titleVisibility: .visible) {
                 Button(model.localOnly ? "Erase this phone's log" : "Delete account & data", role: .destructive) { Task { await model.deleteAllData() } }
             }

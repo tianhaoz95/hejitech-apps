@@ -4,7 +4,7 @@
  * Functions (projects/contempo/backend/ before 2026-10-16):
  *
  *   POST /api/flag-risk          contemporaneity/vagueness heuristics, no LLM (was flagRisk)
- *   POST /api/account/delete     wipe the user's files and account (was deleteAccount)
+ *   POST /api/account/delete     wipe the user's Contempo files and rows (the shared login stays)
  *   POST /api/watch/pair         one-time code that signs a watch in as the phone's user (was mintWatchAuthToken)
  *   POST /api/billing/checkout   Stripe Checkout (was createCheckoutSession)
  *   POST /api/billing/portal     Stripe customer portal (was createPortalLink)
@@ -211,10 +211,13 @@ async function publicFeedback(request: Request): Promise<Response> {
 // ---------------------------------------------------------------------------------- account
 
 async function deleteAccount(admin: SupabaseClient, user: User): Promise<void> {
-  // Storage first (rows go with the user via on delete cascade; files don't).
+  // Contempo's files and rows only. The sign-in is the shared HEJI login that other HEJI apps use
+  // too, so the auth user stays.
   await deleteFiles(admin, user.id);
-  const { error } = await admin.auth.admin.deleteUser(user.id);
-  if (error) throw error;
+  for (const t of [...USER_TABLES, "subscriptions", "stripe_customers"]) {
+    const { error } = await admin.from(t).delete().eq("user_id", user.id);
+    if (error) throw error;
+  }
 }
 
 /** Every file under the user's folder in the bucket. */

@@ -278,9 +278,9 @@ function dataPanel(h: Household) {
       // then the login itself (the Worker holds the key that can delete it)
       const session = await currentSession();
       const res = await fetch("/api/account/delete", { method: "POST", headers: { Authorization: `Bearer ${session?.access_token ?? ""}` }, body: "{}" });
-      if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Couldn't delete your sign-in.");
+      if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Couldn't delete your account.");
       await supabase.auth.signOut();
-      show(el("div", { class: "panel signin" }, el("h1", { style: "font-size: 28px" }, "Deleted"), el("p", { class: "muted" }, "Your account, your household's log, photos, voice captures and access tokens have been deleted from our servers. Entries still on a phone stay there until you delete the app or its data.")));
+      show(el("div", { class: "panel signin" }, el("h1", { style: "font-size: 28px" }, "Deleted"), el("p", { class: "muted" }, "Your Wee Hours account, your household's log, photos, voice captures and access tokens have been deleted from our servers. Entries still on a phone stay there until you delete the app or its data.")));
     } catch (e) {
       alert((e as Error).message);
       del.disabled = false;
@@ -293,7 +293,7 @@ function dataPanel(h: Household) {
       "div",
       { class: "panel danger-zone" },
       el("h2", {}, "Delete account & data"),
-      el("p", { class: "muted small" }, `This permanently deletes ${children(h).length > 1 ? "every child's" : `${h.baby_name}'s`} log, photos, voice captures, invites and access tokens for everyone in the household, and then your sign-in. Your sign-in is shared by HEJI apps, so it also ends your account in any other HEJI app you use. It can't be undone. Type `, el("b", {}, word), " to confirm."),
+      el("p", { class: "muted small" }, `This permanently deletes ${children(h).length > 1 ? "every child's" : `${h.baby_name}'s`} log, photos, voice captures, invites and access tokens for everyone in the household, and then your Wee Hours account. Other HEJI apps you sign in to with the same account aren't affected. It can't be undone. Type `, el("b", {}, word), " to confirm."),
       el("div", { class: "row" }, el("div", { style: "flex: 1; min-width: 200px" }, confirmInput), del),
     ),
   ];

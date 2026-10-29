@@ -8,7 +8,7 @@
 //   GET  /authorize          starts consent, then redirects to the consent page /oauth/consent/
 //   POST /authorize          the consent page approves or denies, with the user's Supabase session
 //   GET/DELETE /api/grants   the account page lists and revokes connected assistants
-//   POST /api/account/delete deletes the signed-in user's login after the client deleted the household (account.ts)
+//   POST /api/account/delete deletes the user's remaining Wee Hours rows after the client deleted the household (account.ts)
 //   /api/glasses/…           the Even G2 glasses: pairing codes, device tokens, state, events, captures (glasses.ts)
 //   everything else          static assets
 
@@ -293,7 +293,14 @@ const app = {
         : undefined;
       return handleAccountDelete(req, {
         sessionUser: (r) => supabaseUser(env, r),
-        deleteUser: (id) => admin(env).auth.admin.deleteUser(id),
+        deleteUserRows: async (id) => {
+          const db = admin(env);
+          for (const [table, column] of [["members", "user_id"], ["invites", "created_by"], ["access_tokens", "user_id"]] as const) {
+            const { error } = await db.from(table).delete().eq(column, id);
+            if (error) return { error };
+          }
+          return { error: null };
+        },
         revokeGrants: async (id) => {
           const { items } = await env.OAUTH_PROVIDER.listUserGrants(id);
           await Promise.all(items.map((g) => env.OAUTH_PROVIDER.revokeGrant(g.id, id)));

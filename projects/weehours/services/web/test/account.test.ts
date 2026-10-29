@@ -18,7 +18,7 @@ function deps(over: Partial<AccountDeps> = {}): AccountDeps & { deleted: string[
     deleted,
     revoked,
     sessionUser: async (r) => (r.headers.get("Authorization") === "Bearer good" ? { id: "u1" } : null),
-    deleteUser: async (id) => (deleted.push(id), { error: null }),
+    deleteUserRows: async (id) => (deleted.push(id), { error: null }),
     revokeGrants: async (id) => void revoked.push(id),
     ...over,
   };
@@ -34,7 +34,7 @@ describe("account deletion", () => {
     expect(d.deleted).toEqual([]);
   });
 
-  it("revokes grants and deletes the login", async () => {
+  it("revokes grants and deletes the user's rows", async () => {
     const d = deps();
     const res = await handleAccountDelete(post(), d);
     expect(res.status).toBe(200);
@@ -44,7 +44,7 @@ describe("account deletion", () => {
   });
 
   it("reports a failed delete", async () => {
-    const d = deps({ deleteUser: async () => ({ error: new Error("db") }) });
+    const d = deps({ deleteUserRows: async () => ({ error: new Error("db") }) });
     expect((await handleAccountDelete(post(), d)).status).toBe(502);
   });
 
@@ -65,7 +65,7 @@ describe("account deletion", () => {
     expect(d.deleted).toEqual(["u1"]);
   });
 
-  it("still deletes the login when Apple refuses the code", async () => {
+  it("still deletes the rows when Apple refuses the code", async () => {
     const { key } = await appleKey();
     const fake = (async () => new Response("invalid_grant", { status: 400 })) as unknown as typeof fetch;
     const d = deps({ apple: key, fetch: fake });
