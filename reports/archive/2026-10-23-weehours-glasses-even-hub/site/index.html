@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Glasses to Even Hub</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%238B6FD8'/%3E%3Ccircle cx='11' cy='17' r='5' fill='none' stroke='%23fff' stroke-width='2.5'/%3E%3Ccircle cx='21' cy='17' r='5' fill='none' stroke='%23fff' stroke-width='2.5'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <style>
+    .status { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 16px 0; }
+    .status div { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+    .status b { display: block; font-size: 13px; color: var(--mut); font-weight: 600; margin-bottom: 4px; }
+    .status span { overflow-wrap: anywhere; }
+    .status .ok { color: var(--good); font-weight: 600; }
+    .status .todo { color: var(--acc); font-weight: 600; }
+    .flowfig { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; overflow-x: auto; }
+    .flowfig svg { display: block; min-width: 640px; width: 100%; height: auto; }
+    .flowfig text { font: 13px Inter, system-ui, sans-serif; fill: var(--ink); }
+    .flowfig .sub { font-size: 11px; fill: var(--mut); }
+    .flowfig .box { fill: var(--bg); stroke: var(--line); stroke-width: 1.5; }
+    .flowfig .new { stroke: var(--good); stroke-width: 2; }
+    .flowfig .edge { stroke: var(--mut); stroke-width: 1.5; fill: none; marker-end: url(#arr); }
+    .flowfig .edge.hot { stroke: var(--good); }
+    .flowfig .elabel { font-size: 11px; fill: var(--mut); }
+    pre.cmd { position: relative; background: #15110e; color: #f3e9de; border-radius: 12px; padding: 14px 16px; overflow-x: auto; font: 13px/1.6 "JetBrains Mono", ui-monospace, monospace; margin: 10px 0; }
+    pre.cmd .c { color: #a8998b; }
+    pre.cmd button { position: absolute; top: 8px; right: 8px; font: 600 12px Inter, sans-serif; border-radius: 8px; border: 1px solid #3a2e26; background: #221c17; color: #f3e9de; padding: 4px 9px; cursor: pointer; }
+    .shots { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-start; margin: 12px 0; }
+    .shots figure { margin: 0; flex: 1 1 220px; max-width: 320px; }
+    .shots img { width: 100%; border-radius: 14px; border: 1px solid var(--line); display: block; background: #000; }
+    .shots figcaption { font-size: 13px; color: var(--mut); margin-top: 6px; }
+    .shots.hud figure { max-width: 420px; flex-basis: 300px; }
+    ol.do { padding-left: 22px; } ol.do li { margin: 6px 0; }
+    .checks { list-style: none; padding: 0; margin: 10px 0; }
+    .checks li { display: flex; gap: 10px; align-items: flex-start; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); margin-bottom: 6px; }
+    .checks input { margin-top: 4px; width: 18px; height: 18px; accent-color: var(--good); flex: none; }
+    .checks li.done { opacity: .6; }
+    .checks li.done span b { text-decoration: line-through; }
+    .checks small { display: block; color: var(--mut); }
+    .progress { font-size: 13px; color: var(--mut); }
+    table.kv { width: 100%; border-collapse: collapse; font-size: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+    table.kv td, table.kv th { padding: 9px 12px; border-top: 1px solid var(--line); text-align: left; vertical-align: top; }
+    table.kv tr:first-child td, table.kv tr:first-child th { border-top: 0; }
+    table.kv th { color: var(--mut); font-weight: 600; width: 190px; }
+    main p code, main li code, table.kv td code, .caption code, .foot code { overflow-wrap: anywhere; }
+    table.kv { table-layout: fixed; } table.kv td { overflow-wrap: anywhere; }
+    pre.cmd { max-width: 100%; }
+    @media (max-width: 640px) {
+      .bar .brand small { display: none; }
+      .bar .brand b { white-space: normal; }
+      .bar .brand { min-width: 0; }
+      .layout { padding-left: 16px; padding-right: 16px; }
+      table.kv th { white-space: normal; width: 34%; }
+    }
+    .unknown { border-left: 3px solid var(--hi); padding: 10px 14px; background: var(--panel); border-radius: 0 10px 10px 0; margin: 12px 0; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="#top">
+      <span class="logo"></span>
+      <span><b>Wee Hours glasses · Even Hub</b><small>Shipping the Even G2 plugin from release 0.13.0: try it on your glasses, upload it, check it</small></span>
+    </a>
+    <div class="seg" role="group" aria-label="Appearance">
+      <button data-mode="light">Light</button>
+      <button data-mode="dark">Dark</button>
+    </div>
+  </header>
+
+  <div class="layout" id="top">
+    <nav class="toc" aria-label="Sections">
+      <a href="#overview">1 · Where things stand</a>
+      <a href="#how">2 · How it fits together</a>
+      <a href="#package">3 · Get the package</a>
+      <a href="#iphone">4 · Get 0.13.0 on your iPhone</a>
+      <a href="#sideload">5 · Try it on your glasses</a>
+      <a href="#pair">6 · Pair</a>
+      <a href="#check">7 · Hardware checklist</a>
+      <a href="#upload">8 · Upload to the Even Hub</a>
+      <a href="#after">9 · After it's live</a>
+      <a href="#trouble">10 · If something's off</a>
+    </nav>
+
+    <main>
+      <section id="overview">
+        <p class="kicker">Release walkthrough · 2026-10-23</p>
+        <h1>Putting the Wee Hours glasses app on the Even Hub</h1>
+        <p class="lede">Wee Hours 0.13.0 is the first release with a glasses app people can actually install. You pair it with a six-digit code from the iPhone, and it talks only to the Wee Hours Worker. The release has been cut; what's left is yours: check it on real glasses, then upload the package in the Even Hub developer portal, since the portal has no upload API. Tick the steps as you go; the ticks are kept in this browser.</p>
+
+        <div class="status">
+          <div><b>GitHub release</b><span class="ok">weehours-v0.13.0 published</span></div>
+          <div><b>Plugin package</b><span class="ok">weehours-glasses-0.13.0.ehpk attached (46 KB)</span></div>
+          <div><b>Glasses API</b><span class="ok">Live on weehours.hejitech.workers.dev</span></div>
+          <div><b>iPhone build</b><span class="ok">0.13.0 (202610240514) processed, on TestFlight</span></div>
+          <div><b>Real glasses</b><span class="todo">Not tested yet (§5–7)</span></div>
+          <div><b>Even Hub listing</b><span class="todo">Upload by hand (§8)</span></div>
+        </div>
+
+        <div class="cards two">
+          <div class="card good">
+            <h3>Already verified</h3>
+            <ul>
+              <li><b>55 TypeScript tests</b>, typecheck, builds and the isolation check, all green in CI on <code>6167209</code>.</li>
+              <li><b>16 integration checks</b> of the glasses API against the local stack (<code>projects/weehours/scripts/test-glasses-api.mjs</code>, also in CI): codes, single use, throttling, events, voice upload, unpairing.</li>
+              <li><b>Even Hub simulator, end to end</b> (<code>scripts/glasses-sim.sh --e2e</code>): it pairs, then press, double press and hold-to-speak land in the database.</li>
+              <li><b>Production is serving the new endpoints</b>: a CORS preflight to <code>/api/glasses/state</code> answers 204.</li>
+            </ul>
+          </div>
+          <div class="card warn">
+            <h3>Not verified yet</h3>
+            <ol>
+              <li><b>Real G2 glasses and the R1 ring</b>: BLE lag, font metrics, the real microphone. The simulator fakes all three.</li>
+              <li><b>A Release iPhone build against production</b>: tapping <i>Get pairing code</i> for real. The scripts tested the same request.</li>
+              <li><b>The portal itself</b>: neither the repo nor the CLI documents its screens. §8 says what the package declares and what to look for.</li>
+            </ol>
+          </div>
+        </div>
+        <div class="callout"><b>Order that keeps you safe:</b> TestFlight 0.13.0 on your phone → load the built plugin on your glasses with a QR code → pair and run the checklist → only then upload to the Even Hub. A bad upload is public; a bad sideload isn't.</div>
+      </section>
+
+      <section id="how">
+        <h2><span>2</span>How it fits together</h2>
+        <p>The glasses never see your Supabase sign-in or project. The phone asks the Worker for a code, the glasses trade the code for their own token, and from then on every read and write goes through the Worker, which checks it and stores it with the service key. Green marks what 0.13.0 added.</p>
+        <figure class="flowfig">
+          <svg viewBox="0 0 760 300" role="img" aria-label="iPhone, glasses and Worker">
+            <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10z" fill="currentColor" style="color: var(--mut)"/></marker></defs>
+            <rect class="box" x="20" y="30" width="190" height="78" rx="12"/>
+            <text x="36" y="58">iPhone · Wee Hours 0.13.0</text>
+            <text class="sub" x="36" y="78">Settings → Even G2 glasses</text>
+            <text class="sub" x="36" y="94">turns voice captures into entries</text>
+
+            <rect class="box new" x="20" y="190" width="190" height="78" rx="12"/>
+            <text x="36" y="218">G2 glasses + R1 ring</text>
+            <text class="sub" x="36" y="238">plugin in the Even app</text>
+            <text class="sub" x="36" y="254">token + offline outbox</text>
+
+            <rect class="box new" x="300" y="105" width="200" height="90" rx="12"/>
+            <text x="316" y="133">Wee Hours Worker</text>
+            <text class="sub" x="316" y="153">/api/glasses/* (glasses.ts)</text>
+            <text class="sub" x="316" y="169">checks every entry, service key</text>
+
+            <rect class="box" x="540" y="105" width="205" height="90" rx="12"/>
+            <text x="556" y="133">Supabase</text>
+            <text class="sub" x="556" y="153">schema + bucket weehours</text>
+            <text class="sub" x="556" y="169">access_tokens, events, captures</text>
+
+            <path class="edge hot" d="M210 62 C 260 62, 270 120, 300 130"/>
+            <text class="elabel" x="222" y="104">1 · pairing code</text>
+            <path class="edge hot" d="M210 240 C 260 240, 270 185, 300 175"/>
+            <text class="elabel" x="222" y="262">2 · code → token, then</text>
+            <text class="elabel" x="222" y="276">state, events, voice</text>
+            <path class="edge" d="M500 150 L 540 150"/>
+            <text class="elabel" x="494" y="100">service key</text>
+            <path class="edge" d="M115 30 C 115 6, 640 6, 640 105"/>
+            <text class="elabel" x="250" y="50">the phone syncs with Supabase directly, as before</text>
+          </svg>
+        </figure>
+        <p class="caption">Code: <code>projects/weehours/services/web/src/worker/glasses.ts</code> (API), <code>projects/weehours/apps/glasses/src/</code> (plugin), <code>projects/weehours/apps/ios/App/Sources/GlassesSettingsView.swift</code> (pairing screen). Decision: <code>projects/weehours/docs/decisions.md</code>, "Glasses release".</p>
+      </section>
+
+      <section id="package">
+        <h2><span>3</span>Get the package</h2>
+        <p>The release workflow packed the plugin from the tagged commit and attached it. Download it into a folder of its own:</p>
+        <pre class="cmd"><button data-copy>Copy</button>mkdir -p ~/Downloads/weehours-glasses && cd ~/Downloads/weehours-glasses
+gh release download weehours-v0.13.0 --repo tianhaoz95/hejitech-apps --pattern '*.ehpk'</pre>
+        <p>You get <code>weehours-glasses-0.13.0.ehpk</code>. It's also on the release page under Assets. To rebuild the same package locally (from the repo root, on the release commit):</p>
+        <pre class="cmd"><button data-copy>Copy</button>npm run package -w @weehours/glasses   <span class="c"># → projects/weehours/apps/glasses/build/weehours.ehpk</span></pre>
+        <table class="kv">
+          <tr><th>Package ID</th><td><code>com.hejitech.weehours.glasses</code></td></tr>
+          <tr><th>Name</th><td>Wee Hours</td></tr>
+          <tr><th>Version</th><td>0.13.0, the iPhone app's version, stamped in by <code>apps/glasses/scripts/pack.mjs</code></td></tr>
+          <tr><th>Minimums</th><td>Even app 2.2.10 · SDK 0.0.16</td></tr>
+          <tr><th>Permissions</th><td><b>network</b>, whitelist <code>https://weehours.hejitech.workers.dev</code> only ("Send your log entries and voice captures to your household")<br><b>g2-microphone</b> ("Hold to speak a log entry; your phone turns it into an entry")</td></tr>
+          <tr><th>Languages</th><td>English</td></tr>
+        </table>
+        <ul class="checks" data-group="package">
+          <li><input type="checkbox" id="c-dl"><span><b>Downloaded weehours-glasses-0.13.0.ehpk</b></span></li>
+        </ul>
+      </section>
+
+      <section id="iphone">
+        <h2><span>4</span>Get 0.13.0 on your iPhone</h2>
+        <p>Pairing needs the new Settings screen, which ships in 0.13.0. The release started <code>weehours-testflight.yml</code>, which uploads the build and then waits for App Store Connect's verdict (an accepted upload can still be rejected while it's processed).</p>
+        <ol class="do">
+          <li>Check the run: <code>gh run list --workflow weehours-testflight.yml --limit 1</code>. It must end green, which means Apple processed the build, not just accepted the upload.</li>
+          <li>Install 0.13.0 from TestFlight and sign in to your household.</li>
+          <li>Open <b>Settings → Even G2 glasses</b>. You should see <i>Get pairing code</i>.</li>
+        </ol>
+        <div class="shots">
+          <figure><img src="media/iphone-settings.png" alt="The Even G2 glasses screen in Settings with a Get pairing code button and numbered instructions" loading="lazy"><figcaption>Settings → Even G2 glasses (simulator, local stack; cropped above a notification prompt)</figcaption></figure>
+        </div>
+        <ul class="checks" data-group="iphone">
+          <li><input type="checkbox" id="c-tf"><span><b>TestFlight run green</b><small>Processed by Apple, not just uploaded</small></span></li>
+          <li><input type="checkbox" id="c-inst"><span><b>0.13.0 installed and the glasses screen opens</b></span></li>
+        </ul>
+      </section>
+
+      <section id="sideload">
+        <h2><span>5</span>Try it on your glasses before uploading</h2>
+        <p>The CLI's <code>qr</code> command makes a QR code the Even app scans to load a plugin from a URL, so you can run the release build on your glasses without publishing anything. A production build (not <code>npm run dev</code>) talks to the live Worker, the same as the store version will.</p>
+        <pre class="cmd"><button data-copy>Copy</button>cd projects/weehours/apps/glasses
+npm run build
+npx vite preview --host 0.0.0.0 --port 5173 &amp;
+npx evenhub qr --port 5173        <span class="c"># add --ip &lt;your Mac's Wi-Fi address&gt; if it guesses wrong</span></pre>
+        <ol class="do">
+          <li>Your iPhone and Mac must be on the same Wi-Fi; the Even app loads the page from your Mac.</li>
+          <li>In the Even Realities app, scan the QR code. The glasses show <i>Wee Hours · not paired</i> and the phone shows the pairing page (§6).</li>
+          <li>When you're done, stop the preview server (<code>kill %1</code>).</li>
+        </ol>
+        <div class="note">Whether the Even app keeps a sideload's storage when the store version replaces it isn't known. If the store install says "not paired", pair again and unpair the sideload's entry on the iPhone, so it doesn't linger in the list.</div>
+        <ul class="checks" data-group="sideload">
+          <li><input type="checkbox" id="c-qr"><span><b>Plugin loaded on the glasses from the QR code</b><small>HUD reads "Wee Hours · not paired"</small></span></li>
+        </ul>
+      </section>
+
+      <section id="pair">
+        <h2><span>6</span>Pair</h2>
+        <ol class="do">
+          <li>On the iPhone: <b>Settings → Even G2 glasses → Get pairing code</b>. A six-digit code shows, with a countdown from ten minutes.</li>
+          <li>On the Wee Hours page in the Even app, type the six digits and tap <b>Pair</b>.</li>
+          <li>Within a few seconds the iPhone shows <i>"Even G2 paired"</i> and the glasses appear under <b>Paired glasses</b>. The glasses show your status line.</li>
+        </ol>
+        <div class="shots">
+          <figure><img src="media/page-unpaired.png" alt="Plugin page before pairing: HUD preview saying not paired, three steps, and a six-digit code field" loading="lazy"><figcaption>The plugin's page before pairing</figcaption></figure>
+          <figure><img src="media/page-paired.png" alt="Plugin page after pairing: status line, household and children, gestures table and an unpair button" loading="lazy"><figcaption>After pairing (local seed household)</figcaption></figure>
+        </div>
+        <ul class="checks" data-group="pair">
+          <li><input type="checkbox" id="c-code"><span><b>Got a code on the iPhone</b></span></li>
+          <li><input type="checkbox" id="c-paired"><span><b>Glasses paired; the iPhone lists them</b></span></li>
+        </ul>
+      </section>
+
+      <section id="check">
+        <h2><span>7</span>Hardware checklist</h2>
+        <p>Do each on the ring and once on the temple touchpad. The entry should show on the iPhone within a second or two while Wee Hours is open (the Worker pings open phones after every write).</p>
+        <div class="shots hud">
+          <figure><img src="media/hud-status.png" alt="HUD: status line and the gesture hint" loading="lazy"><figcaption>HUD: status, then the hint (simulator)</figcaption></figure>
+          <figure><img src="media/hud-diaper.png" alt="HUD: diaper picker with dirty selected" loading="lazy"><figcaption>Double press opens the diaper picker</figcaption></figure>
+        </div>
+        <p class="progress" id="progress"></p>
+        <ul class="checks" data-group="hardware">
+          <li><input type="checkbox" id="h-feed"><span><b>Press → bottle started; press again → finished</b><small>Breastfeeding households: starts nursing on the suggested side</small></span></li>
+          <li><input type="checkbox" id="h-diaper"><span><b>Double press → swipe to <i>dirty</i> → press</b><small>A dirty diaper on the iPhone, logged under your name</small></span></li>
+          <li><input type="checkbox" id="h-menu"><span><b>Swipe → menu: Fell asleep / Woke up, On duty, Undo last, Back</b><small>With two children: "Switch to &lt;name&gt;" and the name on the HUD's first line</small></span></li>
+          <li><input type="checkbox" id="h-voice"><span><b>Hold, say "drank 90", release</b><small>"Captured ✓"; the iPhone asks or logs it when Wee Hours opens. A tap shorter than 0.3 s says "Too short"</small></span></li>
+          <li><input type="checkbox" id="h-attach"><span><b>Finish a bottle, then hold and say "drank half" within two minutes</b><small>One entry with the amount, not two</small></span></li>
+          <li><input type="checkbox" id="h-offline"><span><b>Phone in airplane mode → log a diaper → back online</b><small>HUD shows "· 1 offline", then it sends on the next refresh (15 s)</small></span></li>
+          <li><input type="checkbox" id="h-hud"><span><b>HUD text fits and reads well</b><small>The simulator doesn't match the glasses' fonts or the container limits</small></span></li>
+          <li><input type="checkbox" id="h-unpair"><span><b>Unpair on the iPhone → the glasses say "not paired" within 15 s</b><small>Then pair again for daily use</small></span></li>
+        </ul>
+      </section>
+
+      <section id="upload">
+        <h2><span>8</span>Upload to the Even Hub</h2>
+        <div class="unknown"><b>What isn't known:</b> the portal's screens aren't documented in this repo, and the CLI has no upload command (it has <code>login</code>, <code>init</code>, <code>pack</code> and <code>qr</code>). The steps below are the outline; follow the portal's own labels where they differ, and tell an agent what you saw so it can go into <code>docs/DEPLOY.md</code> §4.</div>
+        <ol class="do">
+          <li>Sign in to the Even Hub developer portal with your developer account (the one <code>npx evenhub login</code> uses).</li>
+          <li>Create the app, or open it if it already exists, for package ID <code>com.hejitech.weehours.glasses</code>.</li>
+          <li>Upload <code>weehours-glasses-0.13.0.ehpk</code> as version 0.13.0. The portal should read the name, version, minimums and permissions from the package (§3 table); check they match.</li>
+          <li>Fill in the listing with what the package doesn't carry (suggested text below), then submit for review.</li>
+        </ol>
+        <table class="kv">
+          <tr><th>Short description</th><td>Log feeds, diapers and sleep from your glasses and ring, without picking up your phone.</td></tr>
+          <tr><th>Description</th><td>Press the ring or temple to start and finish a feed, double press for a diaper, swipe for sleep, duty and undo, and hold to speak an entry. The glasses show the same one-line status as the Wee Hours iPhone app. Pair with a six-digit code from Wee Hours → Settings → Even G2 glasses. What you say is turned into an entry on your phone, never on a server. Needs Wee Hours for iPhone and an account.</td></tr>
+          <tr><th>Screenshots</th><td><code>scripts/glasses-sim.sh --e2e</code> writes HUD screenshots to <code>projects/weehours/report/v0/site/screenshots/</code>. They're RGBA with the text in alpha, so composite them on black (the HUD images above were made that way). Restore the committed ones afterwards with <code>git checkout</code>.</td></tr>
+          <tr><th>Privacy policy</th><td><code>https://weehours.hejitech.workers.dev/privacy/</code></td></tr>
+          <tr><th>Support</th><td><code>https://weehours.hejitech.workers.dev/support/</code></td></tr>
+          <tr><th>Category</th><td>Whatever is closest to health, lifestyle or productivity</td></tr>
+        </table>
+        <ul class="checks" data-group="upload">
+          <li><input type="checkbox" id="u-up"><span><b>Package uploaded; name, version and permissions match</b></span></li>
+          <li><input type="checkbox" id="u-list"><span><b>Listing filled in and submitted</b></span></li>
+          <li><input type="checkbox" id="u-live"><span><b>Approved and installable from the Even Hub</b></span></li>
+        </ul>
+      </section>
+
+      <section id="after">
+        <h2><span>9</span>After it's live</h2>
+        <ol class="do">
+          <li>Install from the Even Hub (replacing the sideload), check it's still paired or pair again, and log one entry.</li>
+          <li>Tell an agent what the portal asked for, so the exact steps go into <code>projects/weehours/docs/DEPLOY.md</code> §4 and the next upload is a checklist.</li>
+          <li>From now on it's the same every time: <code>scripts/cut_release.sh weehours</code> attaches <code>weehours-glasses-&lt;version&gt;.ehpk</code> to the release, and you upload it. The Worker side deploys on push. The plugin only needs a new upload when <code>apps/glasses</code> changed. Releases that only touch the iPhone app still get a package, and you can skip uploading it.</li>
+          <li>Archive this report once it's done: <code>.claude/skills/heji-archive-reports/reports.py archive 2026-10-23-weehours-glasses-even-hub</code>.</li>
+        </ol>
+      </section>
+
+      <section id="trouble">
+        <h2><span>10</span>If something's off</h2>
+        <table class="kv">
+          <tr><th>"That code didn't work"</th><td>Codes last ten minutes and work once, and asking for a new one cancels the old one. Get a fresh code.</td></tr>
+          <tr><th>"Too many wrong codes"</th><td>Ten wrong codes from one network lock pairing for ten minutes. Wait, then use a fresh code.</td></tr>
+          <tr><th>"These glasses aren't paired any more"</th><td>The token was unpaired on a phone, or that account left the household. Pair again.</td></tr>
+          <tr><th>Gestures show "offline"</th><td>The phone running the Even app has no connection, or the Worker is down. Entries wait in the glasses' outbox and send on the next refresh.</td></tr>
+          <tr><th>A voice entry never appears</th><td>A household phone has to open Wee Hours to process it (it shows in Needs review if unsure). The HUD's "N pending" counts the ones waiting.</td></tr>
+          <tr><th>"Logging opens once your baby arrives"</th><td>Every child in the household is expected (no birth date). The glasses don't log movements.</td></tr>
+          <tr><th>Pack fails locally</th><td>The packer refuses an <code>app.json</code> that whitelists <code>127.0.0.1</code> or <code>localhost</code>, and the microphone permission must be <code>g2-microphone</code>.</td></tr>
+          <tr><th>Settings says the trial ended</th><td>Pairing needs a plan or the trial, like the watch. Glasses that are already paired keep logging.</td></tr>
+        </table>
+      </section>
+
+      <p class="foot">Report: <code>reports/archive/2026-10-23-weehours-glasses-even-hub</code> · serve with <code>script/serve.sh</code> · release <code>weehours-v0.13.0</code></p>
+    </main>
+  </div>
+
+  <script>
+    (() => {
+      const KEY = "wh-glasses-evenhub";
+      const root = document.documentElement;
+      const setMode = (m) => {
+        if (m) root.dataset.theme = m; else delete root.dataset.theme;
+        const cur = m || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        document.querySelectorAll("[data-mode]").forEach((b) => b.classList.toggle("on", b.dataset.mode === cur));
+        try { m ? localStorage.setItem(KEY + "-theme", m) : localStorage.removeItem(KEY + "-theme"); } catch {}
+      };
+      let saved = null; try { saved = localStorage.getItem(KEY + "-theme"); } catch {}
+      setMode(saved);
+      document.querySelectorAll("[data-mode]").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
+
+      let ticks = {}; try { ticks = JSON.parse(localStorage.getItem(KEY + "-ticks") || "{}"); } catch {}
+      const boxes = [...document.querySelectorAll(".checks input")];
+      const progress = () => {
+        const hw = boxes.filter((b) => b.closest("[data-group=hardware]"));
+        document.getElementById("progress").textContent = `${hw.filter((b) => b.checked).length} of ${hw.length} hardware checks done · ${boxes.filter((b) => b.checked).length} of ${boxes.length} steps overall`;
+      };
+      boxes.forEach((b) => {
+        b.checked = Boolean(ticks[b.id]);
+        b.closest("li").classList.toggle("done", b.checked);
+        b.addEventListener("change", () => {
+          ticks[b.id] = b.checked;
+          b.closest("li").classList.toggle("done", b.checked);
+          try { localStorage.setItem(KEY + "-ticks", JSON.stringify(ticks)); } catch {}
+          progress();
+        });
+      });
+      progress();
+
+      document.querySelectorAll("[data-copy]").forEach((btn) => btn.addEventListener("click", async () => {
+        const text = [...btn.parentElement.childNodes].filter((n) => n !== btn).map((n) => n.textContent).join("")
+          .split("\n").map((l) => l.replace(/\s+#.*$/, "")).join("\n").trim();
+        try { await navigator.clipboard.writeText(text); btn.textContent = "Copied"; } catch { btn.textContent = "Select and copy"; }
+        setTimeout(() => (btn.textContent = "Copy"), 1500);
+      }));
+    })();
+  </script>
+</body>
+</html>

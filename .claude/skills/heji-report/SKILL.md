@@ -15,7 +15,7 @@ Pick the kind first:
 - **The owner chooses between options** (designs, logos, features, build proposals) → not this
   skill: `heji-candidate-review` (and `heji-build-next` for build rounds).
 - **Anything else** (where things stand, what we found, how something works, what to do and in
-  what order) → this skill. The models are `reports/2026-10-23-weehours-glasses-even-hub` (release
+  what order) → this skill. The models are `reports/archive/2026-10-23-weehours-glasses-even-hub` (release
   walkthrough: status, diagram, steps with checklists, troubleshooting) and
   `reports/archive/feedback-kit-monorepo-support` (design walkthrough: today/gaps, proposal,
   architecture, rollout).

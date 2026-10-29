@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Releasing Wee Hours to the App Store</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23C8603A'/%3E%3Crect x='9' y='9' width='14' height='2.5' rx='1.2' fill='%23fff'/%3E%3Crect x='9' y='15' width='14' height='2.5' rx='1.2' fill='%23fff'/%3E%3Crect x='9' y='21' width='9' height='2.5' rx='1.2' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/design.css">
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="#top">
+      <span class="logo"></span>
+      <span><b>Releasing Wee Hours to the App Store</b><small>The repo fixes are done and the listing is filled in. What's left is yours, in order</small></span>
+    </a>
+    <div class="seg" role="group" aria-label="Appearance">
+      <button data-mode="light">Light</button>
+      <button data-mode="dark">Dark</button>
+    </div>
+  </header>
+
+  <div class="layout" id="top">
+    <nav class="toc" aria-label="Sections"></nav>
+
+    <main>
+      <section id="summary" data-toc="Summary">
+        <p class="kicker">Release walkthrough · 2026-10-28</p>
+        <h1>Releasing Wee Hours to the App Store</h1>
+        <p class="lede">An earlier scan found <b>7 blockers, 5 should-fixes and 6 smaller items</b>. Everything that could be fixed without you is fixed: <b>account deletion now deletes the login</b>, the Support, Privacy and Terms pages match a one-time purchase with <b>Family Sharing</b>, the privacy manifest is valid, the app has Acknowledgements and What's New has 1.0.0. App Store Connect's draft is now <b>1.0.0 with its text, category, age rating (4+) and review notes filled in</b>. What's left needs your accounts, your money or your judgment. It's <b>12 steps in §3</b>, and the order matters.</p>
+
+        <div class="status">
+          <div><b>Repo fixes</b><span class="ok">Committed on main locally, not pushed</span></div>
+          <div><b>Account deletion</b><span class="ok">Deletes the login (tested on the local stack)</span></div>
+          <div><b>Apple token revocation</b><span class="todo">Code ready; needs your Sign in with Apple key (§3 step 3)</span></div>
+          <div><b>Listing text, category, age rating</b><span class="ok">Filled in by API: review it</span></div>
+          <div><b>Version page</b><span class="ok">Renamed 1.0 → 1.0.0</span></div>
+          <div><b>Price, Family Sharing, agreements</b><span class="todo">Yours (§3 steps 1, 4, 5)</span></div>
+          <div><b>App Privacy form</b><span class="todo">Yours: not in the API (§4)</span></div>
+          <div><b>Screenshots</b><span class="todo">Yours: iPhone 6.9" and Apple Watch</span></div>
+          <div><b>Build 1.0.0</b><span class="todo">Cut after you push (§3 step 9)</span></div>
+        </div>
+
+        <div class="cards">
+          <div class="card good">
+            <h3>Verified</h3>
+            <ul>
+              <li><b>Tests</b>: <code>npm run test:weehours</code> (62 tests, including 6 new ones for deletion and the Apple client secret), the web typecheck and build, and an iOS simulator build all pass.</li>
+              <li><b>Deletion end to end</b> against the local Supabase: the endpoint answered <code>ok</code>, the old session got 403, the user row was gone from <code>auth.users</code>, and a bad token got 401.</li>
+              <li><b>In the app</b> (iPhone 17 Pro Max simulator): What's New 1.0.0, the Family Sharing line, Acknowledgements, and the glasses screen without the trial message (screenshots in §1).</li>
+              <li><b>App Store Connect</b>: every write returned 200/201; the age rating computed as <code>FOUR_PLUS</code>.</li>
+            </ul>
+          </div>
+          <div class="card warn">
+            <h3>Not verified</h3>
+            <ul>
+              <li><b>A physical iPhone</b>: it was <i>unavailable</i> to <code>devicectl</code>, so nothing ran on hardware. Deleting from the app with a real Sign in with Apple account wasn't tried; do it with a <b>test</b> account in step 10.</li>
+              <li><b>Apple revocation against Apple</b>: tested with a stubbed Apple and a generated key, not with Apple's servers (it needs your key).</li>
+              <li><b>Paid Apps agreement, tax and banking</b>: not visible to the API.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout"><b>The one thing to know first:</b> the wording I changed assumes <b>a paid app with Family Sharing on</b>, the recommendation from the scan. If you'd rather make it free, or keep Family Sharing off, say so in your notes before you push. The Support page, Terms, landing page and the app's Lifetime Access screen would change with it.</div>
+      </section>
+
+      <section id="fixed" data-toc="What I fixed">
+        <h2>What I fixed</h2>
+        <p>One local commit on <code>main</code> (not pushed). Pushing it deploys the site and Worker; the app changes ship with the 1.0.0 build.</p>
+        <div data-block="fixed"></div>
+
+        <h3>How "Delete account &amp; data" works now</h3>
+        <p>The household goes first, as before: files, then <code>delete_household</code>. Then the app calls the Worker's new <code>POST /api/account/delete</code> with its session. The Worker revokes the user's assistant grants, revokes the Sign in with Apple token when it can, and deletes the auth user; every Wee Hours row that points at the user cascades with it. The account page on the site does the same, minus the Apple step.</p>
+        <div data-block="deletion"></div>
+        <div class="unknown"><b>A trade-off you should know about:</b> the login is the shared HEJI account, so deleting it also ends the user's sign-in to any other HEJI app (Waypack today), and that app's rows tied to the user go with it. Both confirm texts, the app's and the account page's, say so. This was option A in the scan. If you'd rather keep the login, the alternative is to rename the button "Delete household data", which risks a 5.1.1(v) rejection.</div>
+
+        <div class="shots">
+          <figure><img src="media/acknowledgements.png" alt="New Acknowledgements screen: llama.cpp (MIT, The ggml authors), WhisperKit / Argmax OSS (MIT), swift-transformers (Apache 2.0, Hugging Face), Whisper models (MIT), and further down Laya (Apache 2.0) with the license texts."><figcaption>Settings → About → Acknowledgements</figcaption></figure>
+          <figure><img src="media/paywall-family-sharing.png" alt="Lifetime Access screen in the app: the last included feature now reads Family Sharing: one purchase covers your Apple family group."><figcaption>Lifetime Access: Family Sharing line</figcaption></figure>
+          <figure><img src="media/glasses-no-trial.png" alt="Even G2 glasses settings for a signed-in user: the pairing section shows directly, with no free-trial-ended message."><figcaption>Glasses: no trial message</figcaption></figure>
+        </div>
+      </section>
+
+      <section id="asc" data-toc="App Store Connect now">
+        <h2>What App Store Connect has now</h2>
+        <p>Written with the team's App Store Connect API key on 2026-10-28. All of it is draft data on an unsubmitted version: read it on the version page and change anything you like.</p>
+        <div data-block="asc"></div>
+        <details>
+          <summary>The description that's in there now</summary>
+          <pre class="code">Wee Hours is a baby log you can use with your hands full.
+
+Say "finished the bottle, about 90 ml" or "dirty diaper" and it's logged. Speech is transcribed and understood on your iPhone, works offline, and the audio never leaves your phone.
+
+LOG ANY WAY
+• Voice, from the app, the Speak widget, Control Center or Siri
+• One tap on the Now screen
+• Your watch: buttons, or tilt mode with just the watch arm
+• Even Realities G2 glasses and R1 ring
+
+ONE LOG FOR THE WHOLE HOUSEHOLD
+• Partners and caregivers see every entry within seconds
+• "Fed 2h40m ago · left side next" at a glance
+• Who's on duty, shift notes and gentle reminders
+• Twins and siblings, and the weeks before birth (kick counts)
+
+TRACK WHAT YOU NEED
+Feeds (bottle, breast, pumping, solids), diapers, sleep, growth, and optional care, health and activity entries like baths, medication, temperature and tummy time. Turn on only what you use.
+
+YOURS
+• Use it without an account, or sign in to sync
+• Photos on entries, CSV export
+• Connect your own AI assistant over MCP to ask about the log
+• No ads, no tracking
+
+Wee Hours records what happened. It doesn't give medical advice.</pre>
+        </details>
+        <p class="note">Age rating answers: every content question "None", every yes/no "No", except <b>health or wellness topics: Yes</b> (the app logs medication, temperature and symptoms). <b>Medical or treatment information: None</b>, since the app gives no advice. Apple computed 4+. The answers are your attestation, so look them over in App Information → Age Rating.</p>
+      </section>
+
+      <section id="steps" data-toc="Your steps">
+        <h2>Your steps, in order</h2>
+        <p>Steps 1–8 can happen in any order on the same day; 9 needs 2; 11 needs all the rest.</p>
+        <ol class="do">
+          <li><b>Confirm the price model.</b> Paid with Family Sharing is what the text now says. Pick the price tier (the old site had $79.99 for lifetime; nothing in the repo decides the new one) and write it in the Billing row of <code>projects/weehours/docs/decisions.md</code>. That row still describes the old subscription.</li>
+          <li><b>Look over the commit and push it.</b> Pushing deploys the Support, Privacy, Terms and account pages and the Worker's deletion endpoint (Cloudflare Workers Builds). Wait for <code>weehours-ci.yml</code> to go green: <code>cut_release.sh</code> refuses a red or unpushed main.
+            <pre class="cmd">git show --stat HEAD
+git push</pre>
+            The root <code>CLAUDE.md</code> has an uncommitted change from other work that isn't part of this commit; commit or stash it, because <code>cut_release.sh</code> refuses a dirty tree.</li>
+          <li><b>Create a Sign in with Apple key and give it to the Worker</b>, so deletion can revoke Apple tokens (Apple asks for this under 5.1.1(v)). In the developer portal, <i>Certificates, IDs &amp; Profiles → Keys</i>: <b>+</b>, name it "Wee Hours SIWA", tick <b>Sign in with Apple</b>, Configure → primary App ID <code>com.hejitech.weehours</code>, register, and download the <code>.p8</code> (it downloads only once). Then, from <code>projects/weehours/services/web</code>:
+            <pre class="cmd">npx wrangler secret put APPLE_SIWA_KEY_ID --env production
+npx wrangler secret put APPLE_SIWA_PRIVATE_KEY --env production &lt; AuthKey_XXXXXXXXXX.p8</pre>
+            Without it, deletion still deletes the login and just skips the revocation. The privacy policy now says the app asks Apple to revoke access, so do this step before launch. Store the <code>.p8</code> with your other keys, not in the repo.</li>
+          <li><b>Business</b> (App Store Connect → Business): the <b>Paid Apps</b> agreement is <i>Active</i>, and tax forms and a bank account are filled in. A price can't be set until it is.</li>
+          <li><b>Pricing and Availability</b> (the app → Pricing and Availability): set the price, keep all countries or pick some, and turn on <b>Family Sharing</b>. It can't be turned off again for this app, which is fine for a one-time purchase.</li>
+          <li><b>App Privacy</b> (the app → App Privacy): enter the answers in §4 and press <b>Publish</b>. The API can't write this form.</li>
+          <li><b>App Review contact</b> (version page → App Review Information): your first and last name, phone and email. I left these empty; they're personal and Apple uses them to call. Notes are filled in, and "Sign-in required" is off.</li>
+          <li><b>Screenshots.</b> The version page needs <b>6.9" iPhone</b> (1320 × 2868) and, because the app has a watch app, <b>Apple Watch</b> shots. The script now shoots at 6.9" and skips What's New. It ran, but the local test household's log is thin (one feed, an old diaper), so the shots aren't good enough for the store. Your iPhone 13 is 6.1", a size the store doesn't take, so shoot on the <b>iPhone 17 Pro Max simulator</b> (created for this; 1320 × 2868) with a Release build signed in to your own account, so the log is real:
+            <pre class="cmd">cd projects/weehours/apps/ios &amp;&amp; xcodegen generate
+xcodebuild -project WeeHours.xcodeproj -scheme App -configuration Release -destination "platform=iOS Simulator,name=iPhone 17 Pro Max" -derivedDataPath .derived build CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO
+xcrun simctl boot "iPhone 17 Pro Max"; open -a Simulator
+xcrun simctl install "iPhone 17 Pro Max" .derived/Build/Products/Release-iphonesimulator/WeeHours.app</pre>
+            Sign in (Google works in the simulator; Apple needs an Apple Account signed in to the simulator), then <b>⌘S</b> in Simulator saves each screen. Or write in your notes "seed a realistic demo week and re-run the screenshot script", and an agent can do it on the local stack.
+            Watch: open the watch app on a watch, then press the side button and Digital Crown together, or use <code>xcrun simctl io &lt;watch udid&gt; screenshot</code> on a Series 11/12 46 mm simulator.</li>
+          <li><b>Cut 1.0.0</b>, once CI is green after step 2:
+            <pre class="cmd">scripts/cut_release.sh weehours 1.0.0 --dry-run   <span class="c"># look first</span>
+scripts/cut_release.sh weehours 1.0.0 --watch</pre>
+            The TestFlight run waits for Apple's verdict and fails if the build is rejected. The release also attaches <code>weehours-glasses-1.0.0.ehpk</code> for Even Hub (separate, by hand).</li>
+          <li><b>Try 1.0.0 from TestFlight on your iPhone.</b> Sign in with Apple, log by voice and tap, check the watch, open Settings → About → Acknowledgements. Then <b>sign in with a second, test Apple Account</b> (not your own; deleting it also ends its Waypack sign-in) and use Delete account &amp; data. You should see the Apple sheet, then the sign-in screen. On the web, <code>/account/</code> with that account should no longer sign in to the old data.</li>
+          <li><b>Choose the build and submit.</b> On the 1.0.0 version page: Build → replace <code>202610151828</code> with the 1.0.0 build, upload the screenshots, check the text, then <b>Add for Review → Submit</b>.</li>
+          <li><b>After approval</b>: release it (the version is set to release automatically after approval; switch to manual first if you want to pick the day). Then put the store link on the site: <code>VITE_APP_STORE_URL=https://apps.apple.com/app/id6823293298</code> in <code>projects/weehours/services/web/.env.production</code>, and push.</li>
+        </ol>
+      </section>
+
+      <section id="privacy" data-toc="App Privacy">
+        <h2>App Privacy answers</h2>
+        <p>These now match the manifest (<code>apps/ios/Shared/PrivacyInfo.xcprivacy</code>, fixed in this commit) and the privacy policy. For every row: purpose <b>App Functionality</b> only, <b>not used for tracking</b>. First question: "Do you or your third-party partners collect data from this app?" → <b>Yes</b>.</p>
+        <div data-block="privacy"></div>
+      </section>
+
+      <section id="how">
+        <h2>How a build gets to the App Store</h2>
+        <p>The pipeline doesn't change; the right half is the browser work above.</p>
+        <div data-block="pipeline"></div>
+        <p class="note">The Wednesday TestFlight run keeps uploading builds of the same version. A build already attached to the submitted version stays attached.</p>
+      </section>
+
+      <section id="later" data-toc="Left for later">
+        <h2>Left for later, on purpose</h2>
+        <table class="grid">
+          <tr><th>Item</th><th>Why I didn't change it</th><th>When</th></tr>
+          <tr><td><b>759 MB download</b></td><td>The 216 MB multilingual Whisper is bundled on purpose (commit 74597af8: Spanish and Chinese work offline right after install). Leaving it out would bring the download near 540 MB; <code>SpeechModelManager</code> already downloads it when it's missing.</td><td>Your call; not a review issue</td></tr>
+          <tr><td><b>Billing functions in the database</b> (<code>my_entitlement</code>, <code>record_purchase</code>, <code>entitlements</code>)</td><td>The iPhone app and account page no longer call them, but the Android app (<code>apps/android/core/…/Sync.kt</code>) still does, and dropping them needs a production <code>supabase db push</code>.</td><td>When Android drops billing too</td></tr>
+          <tr><td><b>Local networking in Release</b> (<code>NSAllowsLocalNetworking</code>)</td><td>Only reaches the local network; reviewers don't flag it.</td><td>Any time</td></tr>
+          <tr><td><b>ITMS-91053</b> (undeclared required-reason API)</td><td>I added the file-timestamp reason (C617.1) WhisperKit needs to the manifest, so new uploads should be clean. Old emails, if any, only exist in your inbox.</td><td>Glance at your inbox</td></tr>
+          <tr><td><b>Support address</b></td><td>The site now shows <code>info@hejitech.com</code>, the HEJI address G2 Digest and ToddlerCam use, instead of Waypack's. A Wee Hours address needs a domain.</td><td>When Wee Hours gets a domain</td></tr>
+        </table>
+      </section>
+
+      <section id="todo">
+        <h2>Checklist</h2>
+        <p class="progress" id="progress"></p>
+        <ul class="checks">
+          <li><input type="checkbox" id="o-price"><span><b>Price model confirmed (paid + Family Sharing) and tier picked</b><small>decisions.md Billing row updated</small></span></li>
+          <li><input type="checkbox" id="o-push"><span><b>Commit reviewed and pushed; weehours CI green</b></span></li>
+          <li><input type="checkbox" id="o-siwa"><span><b>Sign in with Apple key created; both Worker secrets set</b></span></li>
+          <li><input type="checkbox" id="o-business"><span><b>Paid Apps agreement active, tax and banking done</b></span></li>
+          <li><input type="checkbox" id="o-pricing"><span><b>Price, availability, Family Sharing on</b></span></li>
+          <li><input type="checkbox" id="o-privacy"><span><b>App Privacy answers entered and published</b><small>§4</small></span></li>
+          <li><input type="checkbox" id="o-contact"><span><b>App Review contact name, phone, email</b></span></li>
+          <li><input type="checkbox" id="o-review-text"><span><b>Listing text, category and age rating looked over</b><small>§2</small></span></li>
+          <li><input type="checkbox" id="o-shots"><span><b>Screenshots uploaded: 6.9" iPhone and Apple Watch</b></span></li>
+          <li><input type="checkbox" id="o-cut"><span><b>1.0.0 cut; TestFlight run green</b></span></li>
+          <li><input type="checkbox" id="o-device"><span><b>Tried on the iPhone, incl. deleting a test Apple Account</b></span></li>
+          <li><input type="checkbox" id="o-submit"><span><b>1.0.0 build chosen; submitted for review</b></span></li>
+          <li><input type="checkbox" id="o-live"><span><b>Approved and released; store link on the site</b></span></li>
+        </ul>
+      </section>
+
+      <section id="trouble" data-toc="If something goes wrong">
+        <h2>If something goes wrong</h2>
+        <table class="grid">
+          <tr><th>What you see</th><th>Likely cause</th><th>What to do</th></tr>
+          <tr><td><code>cut_release.sh</code> refuses</td><td>Unpushed commit, or CI still running/red</td><td>Push, wait for <code>weehours-ci.yml</code>; red CI: the <code>heji-fix-ci</code> skill</td></tr>
+          <tr><td>The 1.0.0 build isn't offered on the version page</td><td>Still processing</td><td>The TestFlight run waits for <code>VALID</code>; refresh after it's green</td></tr>
+          <tr><td>Upload accepted, build never appears</td><td>Rejected while processing (e.g. ITMS-90626)</td><td><code>release_testflight.sh</code> fails the run with Apple's reason; fix and cut 1.0.1</td></tr>
+          <tr><td>"Delete account &amp; data" says "Your data was deleted, but your sign-in wasn't"</td><td>The Worker wasn't deployed yet, or the service key secret is missing</td><td>Check the Workers Builds deploy of the push; tap Delete again (it's safe to repeat)</td></tr>
+          <tr><td>Deletion works but Apple still lists Wee Hours under "Sign in with Apple" apps</td><td>The Worker has no Apple key yet, or the key isn't tied to <code>com.hejitech.weehours</code></td><td>Step 3; the endpoint's reply says <code>apple_revoked: false</code> when it couldn't revoke</td></tr>
+          <tr><td>Can't set a price</td><td>Paid Apps agreement or banking not active</td><td>Business page</td></tr>
+          <tr><td>Rejection 2.3 / 3.1.1</td><td>Family Sharing promised but off, or "Lifetime" on a free app</td><td>Make Pricing match the text (or ask an agent to change the text)</td></tr>
+          <tr><td>Rejection 2.1 (needs hardware)</td><td>Reviewer can't test glasses or ring</td><td>Review notes already say they're optional; offer a short video in the Resolution Center</td></tr>
+          <tr><td>Rejection 5.1.2 / privacy mismatch</td><td>App Privacy form differs from the manifest</td><td>Use §4 exactly</td></tr>
+        </table>
+      </section>
+
+      <section id="handoff" data-toc="Notes &amp; hand-off" data-skip>
+        <div class="handoff">
+          <h2>Your notes</h2>
+          <p>Questions, corrections, decisions (for example a different price model). Saved in this browser. <b>Copy summary</b> puts the whole report, your ticks and these notes on the clipboard for any agent.</p>
+          <textarea id="notes" placeholder="What should happen next?"></textarea>
+          <button class="btn pri" id="copy">Copy summary</button>
+        </div>
+      </section>
+
+      <p class="foot" data-skip>Report: <code>reports/archive/2026-10-28-weehours-app-store-release</code> · serve with <code>script/serve.sh</code></p>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="js/design.js"></script>
+  <script src="js/content.js"></script>
+  <script src="js/report.js"></script>
+</body>
+</html>
