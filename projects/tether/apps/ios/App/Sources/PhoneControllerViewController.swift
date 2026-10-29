@@ -53,7 +53,10 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
 
     // Touchpad Mode views
     private let touchpadView = UIView()
+    private let trackpadTopBarStack = UIStackView()
     private let trackpadLayoutSegment = UISegmentedControl(items: ["🖱️ Full Pad", "⌨️ Pad + Keys"])
+    private let swapSplitPositionButton = UIButton(type: .system)
+    private let splitRatioSegment = UISegmentedControl(items: ["40%", "50%", "60%"])
     private let touchpadSurface = UIView()
     private let touchpadHelpLabel = UILabel()
     private let splitVirtualKeyboard = VirtualKeyboardView()
@@ -90,6 +93,10 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     private let sensitivitySlider = UISlider()
     private let sensitivityValueLabel = UILabel()
     private let phoneTrackpadOptionsStack = UIStackView()
+    private let splitOptionsStack = UIStackView()
+    private let splitSwapSwitch = UISwitch()
+    private let splitRatioSlider = UISlider()
+    private let splitRatioValueLabel = UILabel()
 
     // Touchpad gesture tracking
     private var isSetupComplete = false
@@ -738,21 +745,72 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         touchpadView.translatesAutoresizingMaskIntoConstraints = false
         containerView.addSubview(touchpadView)
 
-        // Top toggle: Full Trackpad vs Trackpad + Virtual Keyboard
+        // Top controls: Trackpad layout, Swap position button, and Split ratio segments
+        trackpadTopBarStack.translatesAutoresizingMaskIntoConstraints = false
+        trackpadTopBarStack.axis = .horizontal
+        trackpadTopBarStack.spacing = 6
+        trackpadTopBarStack.alignment = .center
+        trackpadTopBarStack.distribution = .fill
+
         trackpadLayoutSegment.translatesAutoresizingMaskIntoConstraints = false
         trackpadLayoutSegment.backgroundColor = UIColor(white: 1.0, alpha: 0.08)
         trackpadLayoutSegment.selectedSegmentTintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.35)
         trackpadLayoutSegment.setTitleTextAttributes([.foregroundColor: UIColor.white, .font: UIFont.systemFont(ofSize: 11, weight: .semibold)], for: .normal)
         trackpadLayoutSegment.setTitleTextAttributes([.foregroundColor: UIColor.white, .font: UIFont.systemFont(ofSize: 11, weight: .bold)], for: .selected)
         trackpadLayoutSegment.selectedSegmentIndex = (store.settings.trackpadSurfaceLayout == .splitWithKeyboard) ? 1 : 0
+        trackpadLayoutSegment.setContentHuggingPriority(.defaultLow, for: .horizontal)
         trackpadLayoutSegment.addAction(UIAction { [weak self] _ in
             guard let self else { return }
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             let isSplit = (self.trackpadLayoutSegment.selectedSegmentIndex == 1)
             self.store.settings.trackpadSurfaceLayout = isSplit ? .splitWithKeyboard : .full
+            self.splitOptionsStack.isHidden = !isSplit
             self.updateTouchpadLayout()
         }, for: .valueChanged)
-        touchpadView.addSubview(trackpadLayoutSegment)
+
+        swapSplitPositionButton.translatesAutoresizingMaskIntoConstraints = false
+        swapSplitPositionButton.setTitle("⇄ Swap", for: .normal)
+        swapSplitPositionButton.titleLabel?.font = .systemFont(ofSize: 11, weight: .bold)
+        swapSplitPositionButton.setTitleColor(UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0), for: .normal)
+        swapSplitPositionButton.backgroundColor = UIColor(white: 1.0, alpha: 0.08)
+        swapSplitPositionButton.layer.cornerRadius = 6
+        swapSplitPositionButton.layer.borderWidth = 1
+        swapSplitPositionButton.layer.borderColor = UIColor(white: 1.0, alpha: 0.12).cgColor
+        var swapCfg = UIButton.Configuration.plain()
+        swapCfg.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8)
+        swapSplitPositionButton.configuration = swapCfg
+        swapSplitPositionButton.setContentHuggingPriority(.required, for: .horizontal)
+        swapSplitPositionButton.addAction(UIAction { [weak self] _ in
+            guard let self else { return }
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            self.store.settings.splitSwapPosition.toggle()
+            self.splitSwapSwitch.isOn = self.store.settings.splitSwapPosition
+            self.updateTouchpadLayout()
+        }, for: .touchUpInside)
+
+        splitRatioSegment.translatesAutoresizingMaskIntoConstraints = false
+        splitRatioSegment.backgroundColor = UIColor(white: 1.0, alpha: 0.08)
+        splitRatioSegment.selectedSegmentTintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.35)
+        splitRatioSegment.setTitleTextAttributes([.foregroundColor: UIColor.white, .font: UIFont.systemFont(ofSize: 10, weight: .semibold)], for: .normal)
+        splitRatioSegment.setTitleTextAttributes([.foregroundColor: UIColor.white, .font: UIFont.systemFont(ofSize: 10, weight: .bold)], for: .selected)
+        splitRatioSegment.setContentHuggingPriority(.required, for: .horizontal)
+        splitRatioSegment.addAction(UIAction { [weak self] _ in
+            guard let self else { return }
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            let ratios = [0.40, 0.50, 0.60]
+            let idx = self.splitRatioSegment.selectedSegmentIndex
+            if idx >= 0 && idx < ratios.count {
+                self.store.settings.splitRatio = ratios[idx]
+                self.splitRatioSlider.value = Float(ratios[idx])
+                self.splitRatioValueLabel.text = "\(Int(round(ratios[idx] * 100)))%"
+                self.updateTouchpadLayout()
+            }
+        }, for: .valueChanged)
+
+        trackpadTopBarStack.addArrangedSubview(trackpadLayoutSegment)
+        trackpadTopBarStack.addArrangedSubview(swapSplitPositionButton)
+        trackpadTopBarStack.addArrangedSubview(splitRatioSegment)
+        touchpadView.addSubview(trackpadTopBarStack)
 
         touchpadSurface.translatesAutoresizingMaskIntoConstraints = false
         touchpadSurface.backgroundColor = UIColor(red: 0.06, green: 0.08, blue: 0.13, alpha: 1.0)
@@ -1095,7 +1153,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
 
     private func updateTouchpadLayout() {
         guard isSetupComplete,
-              trackpadLayoutSegment.superview != nil,
+              trackpadTopBarStack.superview != nil,
               touchpadSurface.superview != nil,
               splitVirtualKeyboard.superview != nil,
               touchpadView.superview != nil else {
@@ -1105,52 +1163,100 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         let isSplit = (store.settings.trackpadSurfaceLayout == .splitWithKeyboard)
         let showButtons = store.settings.showTouchpadButtons
         let isLandscape = (view.bounds.width > view.bounds.height)
+        let isSwapped = store.settings.splitSwapPosition
+        let padRatio = CGFloat(min(0.75, max(0.25, store.settings.splitRatio)))
+        let kbRatio = 1.0 - padRatio
 
         trackpadLayoutSegment.selectedSegmentIndex = isSplit ? 1 : 0
         splitVirtualKeyboard.isHidden = !isSplit
+        swapSplitPositionButton.isHidden = !isSplit
+        splitRatioSegment.isHidden = !isSplit
+
+        let swapTitle = isLandscape
+            ? (isSwapped ? "⇄ Keys | Pad" : "⇄ Pad | Keys")
+            : (isSwapped ? "⇅ Keys | Pad" : "⇅ Pad | Keys")
+        swapSplitPositionButton.setTitle(swapTitle, for: .normal)
+
+        if abs(store.settings.splitRatio - 0.40) < 0.04 {
+            splitRatioSegment.selectedSegmentIndex = 0
+        } else if abs(store.settings.splitRatio - 0.60) < 0.04 {
+            splitRatioSegment.selectedSegmentIndex = 2
+        } else {
+            splitRatioSegment.selectedSegmentIndex = 1
+        }
 
         NSLayoutConstraint.deactivate(activeTouchpadConstraints)
         activeTouchpadConstraints.removeAll()
 
         var constraints: [NSLayoutConstraint] = [
-            trackpadLayoutSegment.topAnchor.constraint(equalTo: touchpadView.topAnchor, constant: 4),
-            trackpadLayoutSegment.leadingAnchor.constraint(equalTo: touchpadView.leadingAnchor, constant: 12),
-            trackpadLayoutSegment.trailingAnchor.constraint(equalTo: touchpadView.trailingAnchor, constant: -12),
-            trackpadLayoutSegment.heightAnchor.constraint(equalToConstant: 28),
+            trackpadTopBarStack.topAnchor.constraint(equalTo: touchpadView.topAnchor, constant: 4),
+            trackpadTopBarStack.leadingAnchor.constraint(equalTo: touchpadView.leadingAnchor, constant: 12),
+            trackpadTopBarStack.trailingAnchor.constraint(equalTo: touchpadView.trailingAnchor, constant: -12),
+            trackpadTopBarStack.heightAnchor.constraint(equalToConstant: 28),
         ]
 
         if isSplit {
             if isLandscape {
-                // 2-column view in landscape: left is touchpad, right is virtual keyboard
-                constraints.append(contentsOf: [
-                    touchpadSurface.topAnchor.constraint(equalTo: trackpadLayoutSegment.bottomAnchor, constant: 6),
-                    touchpadSurface.leadingAnchor.constraint(equalTo: touchpadView.leadingAnchor, constant: 12),
-                    touchpadSurface.bottomAnchor.constraint(equalTo: touchpadView.safeAreaLayoutGuide.bottomAnchor, constant: -6),
-                    touchpadSurface.trailingAnchor.constraint(equalTo: splitVirtualKeyboard.leadingAnchor, constant: -8),
-                    touchpadSurface.widthAnchor.constraint(equalTo: splitVirtualKeyboard.widthAnchor),
+                if !isSwapped {
+                    // Left: Touchpad, Right: Virtual Keyboard
+                    constraints.append(contentsOf: [
+                        touchpadSurface.topAnchor.constraint(equalTo: trackpadTopBarStack.bottomAnchor, constant: 6),
+                        touchpadSurface.leadingAnchor.constraint(equalTo: touchpadView.leadingAnchor, constant: 12),
+                        touchpadSurface.bottomAnchor.constraint(equalTo: touchpadView.safeAreaLayoutGuide.bottomAnchor, constant: -6),
+                        touchpadSurface.widthAnchor.constraint(equalTo: touchpadView.widthAnchor, multiplier: padRatio, constant: -16),
 
-                    splitVirtualKeyboard.topAnchor.constraint(equalTo: trackpadLayoutSegment.bottomAnchor, constant: 6),
-                    splitVirtualKeyboard.trailingAnchor.constraint(equalTo: touchpadView.trailingAnchor, constant: -12),
-                    splitVirtualKeyboard.bottomAnchor.constraint(equalTo: touchpadView.safeAreaLayoutGuide.bottomAnchor, constant: -6),
-                ])
+                        splitVirtualKeyboard.topAnchor.constraint(equalTo: trackpadTopBarStack.bottomAnchor, constant: 6),
+                        splitVirtualKeyboard.leadingAnchor.constraint(equalTo: touchpadSurface.trailingAnchor, constant: 8),
+                        splitVirtualKeyboard.trailingAnchor.constraint(equalTo: touchpadView.trailingAnchor, constant: -12),
+                        splitVirtualKeyboard.bottomAnchor.constraint(equalTo: touchpadView.safeAreaLayoutGuide.bottomAnchor, constant: -6),
+                    ])
+                } else {
+                    // Left: Virtual Keyboard, Right: Touchpad
+                    constraints.append(contentsOf: [
+                        splitVirtualKeyboard.topAnchor.constraint(equalTo: trackpadTopBarStack.bottomAnchor, constant: 6),
+                        splitVirtualKeyboard.leadingAnchor.constraint(equalTo: touchpadView.leadingAnchor, constant: 12),
+                        splitVirtualKeyboard.bottomAnchor.constraint(equalTo: touchpadView.safeAreaLayoutGuide.bottomAnchor, constant: -6),
+                        splitVirtualKeyboard.widthAnchor.constraint(equalTo: touchpadView.widthAnchor, multiplier: kbRatio, constant: -16),
+
+                        touchpadSurface.topAnchor.constraint(equalTo: trackpadTopBarStack.bottomAnchor, constant: 6),
+                        touchpadSurface.leadingAnchor.constraint(equalTo: splitVirtualKeyboard.trailingAnchor, constant: 8),
+                        touchpadSurface.trailingAnchor.constraint(equalTo: touchpadView.trailingAnchor, constant: -12),
+                        touchpadSurface.bottomAnchor.constraint(equalTo: touchpadView.safeAreaLayoutGuide.bottomAnchor, constant: -6),
+                    ])
+                }
             } else {
-                // Stacked top/bottom in portrait
-                constraints.append(contentsOf: [
-                    touchpadSurface.topAnchor.constraint(equalTo: trackpadLayoutSegment.bottomAnchor, constant: 6),
-                    touchpadSurface.leadingAnchor.constraint(equalTo: touchpadView.leadingAnchor, constant: 12),
-                    touchpadSurface.trailingAnchor.constraint(equalTo: touchpadView.trailingAnchor, constant: -12),
-                    touchpadSurface.heightAnchor.constraint(equalTo: touchpadView.heightAnchor, multiplier: 0.44),
+                if !isSwapped {
+                    // Top: Touchpad, Bottom: Virtual Keyboard
+                    constraints.append(contentsOf: [
+                        touchpadSurface.topAnchor.constraint(equalTo: trackpadTopBarStack.bottomAnchor, constant: 6),
+                        touchpadSurface.leadingAnchor.constraint(equalTo: touchpadView.leadingAnchor, constant: 12),
+                        touchpadSurface.trailingAnchor.constraint(equalTo: touchpadView.trailingAnchor, constant: -12),
+                        touchpadSurface.heightAnchor.constraint(equalTo: touchpadView.heightAnchor, multiplier: padRatio),
 
-                    splitVirtualKeyboard.topAnchor.constraint(equalTo: touchpadSurface.bottomAnchor, constant: 6),
-                    splitVirtualKeyboard.leadingAnchor.constraint(equalTo: touchpadView.leadingAnchor, constant: 8),
-                    splitVirtualKeyboard.trailingAnchor.constraint(equalTo: touchpadView.trailingAnchor, constant: -8),
-                    splitVirtualKeyboard.bottomAnchor.constraint(equalTo: touchpadView.safeAreaLayoutGuide.bottomAnchor, constant: -6),
-                ])
+                        splitVirtualKeyboard.topAnchor.constraint(equalTo: touchpadSurface.bottomAnchor, constant: 6),
+                        splitVirtualKeyboard.leadingAnchor.constraint(equalTo: touchpadView.leadingAnchor, constant: 8),
+                        splitVirtualKeyboard.trailingAnchor.constraint(equalTo: touchpadView.trailingAnchor, constant: -8),
+                        splitVirtualKeyboard.bottomAnchor.constraint(equalTo: touchpadView.safeAreaLayoutGuide.bottomAnchor, constant: -6),
+                    ])
+                } else {
+                    // Top: Virtual Keyboard, Bottom: Touchpad
+                    constraints.append(contentsOf: [
+                        splitVirtualKeyboard.topAnchor.constraint(equalTo: trackpadTopBarStack.bottomAnchor, constant: 6),
+                        splitVirtualKeyboard.leadingAnchor.constraint(equalTo: touchpadView.leadingAnchor, constant: 8),
+                        splitVirtualKeyboard.trailingAnchor.constraint(equalTo: touchpadView.trailingAnchor, constant: -8),
+                        splitVirtualKeyboard.heightAnchor.constraint(equalTo: touchpadView.heightAnchor, multiplier: kbRatio),
+
+                        touchpadSurface.topAnchor.constraint(equalTo: splitVirtualKeyboard.bottomAnchor, constant: 6),
+                        touchpadSurface.leadingAnchor.constraint(equalTo: touchpadView.leadingAnchor, constant: 12),
+                        touchpadSurface.trailingAnchor.constraint(equalTo: touchpadView.trailingAnchor, constant: -12),
+                        touchpadSurface.bottomAnchor.constraint(equalTo: touchpadView.safeAreaLayoutGuide.bottomAnchor, constant: -6),
+                    ])
+                }
             }
             clickButtonsStack.isHidden = true
         } else {
             constraints.append(contentsOf: [
-                touchpadSurface.topAnchor.constraint(equalTo: trackpadLayoutSegment.bottomAnchor, constant: 6),
+                touchpadSurface.topAnchor.constraint(equalTo: trackpadTopBarStack.bottomAnchor, constant: 6),
                 touchpadSurface.leadingAnchor.constraint(equalTo: touchpadView.leadingAnchor, constant: 12),
                 touchpadSurface.trailingAnchor.constraint(equalTo: touchpadView.trailingAnchor, constant: -12),
             ])
@@ -1485,6 +1591,50 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         trackpadLayoutRow.alignment = .center
         trackpadLayoutRow.distribution = .equalSpacing
 
+        // Split options inside settings card
+        let splitSwapLabel = UILabel()
+        splitSwapLabel.text = "Swap Pad & Keys Location"
+        splitSwapLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        splitSwapLabel.textColor = UIColor(white: 0.8, alpha: 1.0)
+
+        splitSwapSwitch.isOn = store.settings.splitSwapPosition
+        splitSwapSwitch.onTintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
+        splitSwapSwitch.addTarget(self, action: #selector(handleSplitSwapToggled), for: .valueChanged)
+
+        let splitSwapRow = UIStackView(arrangedSubviews: [splitSwapLabel, splitSwapSwitch])
+        splitSwapRow.axis = .horizontal
+        splitSwapRow.alignment = .center
+        splitSwapRow.distribution = .equalSpacing
+
+        let splitRatioLabel = UILabel()
+        splitRatioLabel.text = "Trackpad Split Size"
+        splitRatioLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        splitRatioLabel.textColor = UIColor(white: 0.8, alpha: 1.0)
+
+        splitRatioValueLabel.text = "\(Int(round(store.settings.splitRatio * 100)))%"
+        splitRatioValueLabel.font = .monospacedSystemFont(ofSize: 12, weight: .semibold)
+        splitRatioValueLabel.textColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
+
+        splitRatioSlider.minimumValue = 0.25
+        splitRatioSlider.maximumValue = 0.75
+        splitRatioSlider.value = Float(store.settings.splitRatio)
+        splitRatioSlider.tintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
+        splitRatioSlider.addTarget(self, action: #selector(handleSplitRatioSliderChanged), for: .valueChanged)
+
+        let splitRatioHeaderRow = UIStackView(arrangedSubviews: [splitRatioLabel, splitRatioValueLabel])
+        splitRatioHeaderRow.axis = .horizontal
+        splitRatioHeaderRow.distribution = .equalSpacing
+
+        let splitRatioSliderStack = UIStackView(arrangedSubviews: [splitRatioHeaderRow, splitRatioSlider])
+        splitRatioSliderStack.axis = .vertical
+        splitRatioSliderStack.spacing = 4
+
+        splitOptionsStack.axis = .vertical
+        splitOptionsStack.spacing = 8
+        splitOptionsStack.addArrangedSubview(splitSwapRow)
+        splitOptionsStack.addArrangedSubview(splitRatioSliderStack)
+        splitOptionsStack.isHidden = (store.settings.trackpadSurfaceLayout != .splitWithKeyboard)
+
         let orientLabel = UILabel()
         orientLabel.text = "Orientation"
         orientLabel.font = .systemFont(ofSize: 12, weight: .medium)
@@ -1559,6 +1709,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
             sidebarRow,
             orientRow,
             trackpadLayoutRow,
+            splitOptionsStack,
             buttonsRow,
             phoneTrackpadOptionsStack,
             sensStack
@@ -1661,11 +1812,28 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         }
         showButtonsSwitch.isOn = store.settings.showTouchpadButtons
         trackpadLayoutSettingsSegment.selectedSegmentIndex = (store.settings.trackpadSurfaceLayout == .splitWithKeyboard) ? 1 : 0
+        splitSwapSwitch.isOn = store.settings.splitSwapPosition
+        splitRatioSlider.value = Float(store.settings.splitRatio)
+        splitRatioValueLabel.text = "\(Int(round(store.settings.splitRatio * 100)))%"
+        splitOptionsStack.isHidden = (store.settings.trackpadSurfaceLayout != .splitWithKeyboard)
     }
 
     @objc private func handleTrackpadLayoutSettingsChanged() {
         let isSplit = (trackpadLayoutSettingsSegment.selectedSegmentIndex == 1)
         store.settings.trackpadSurfaceLayout = isSplit ? .splitWithKeyboard : .full
+        splitOptionsStack.isHidden = !isSplit
+        updateTouchpadLayout()
+    }
+
+    @objc private func handleSplitSwapToggled() {
+        store.settings.splitSwapPosition = splitSwapSwitch.isOn
+        updateTouchpadLayout()
+    }
+
+    @objc private func handleSplitRatioSliderChanged() {
+        let val = Double(round(splitRatioSlider.value * 20) / 20)
+        store.settings.splitRatio = val
+        splitRatioValueLabel.text = "\(Int(round(val * 100)))%"
         updateTouchpadLayout()
     }
 

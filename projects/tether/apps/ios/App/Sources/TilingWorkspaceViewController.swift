@@ -301,7 +301,9 @@ public final class TilingWorkspaceViewController: UIViewController {
             pillStack.layer.borderWidth = 1
             pillStack.layer.borderColor = isCurrent ? UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.6).cgColor : UIColor(white: 1.0, alpha: 0.12).cgColor
 
-            let btn = UIButton(type: .system)
+            let btn = DesktopActionButton { [weak self] in
+                self?.store.switchToWorkspace(at: idx)
+            }
             btn.translatesAutoresizingMaskIntoConstraints = false
 
             var config = UIButton.Configuration.plain()
@@ -310,10 +312,6 @@ public final class TilingWorkspaceViewController: UIViewController {
             config.baseForegroundColor = isCurrent ? UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0) : UIColor(white: 0.85, alpha: 1.0)
             btn.configuration = config
             btn.titleLabel?.font = .systemFont(ofSize: 11, weight: isCurrent ? .bold : .medium)
-
-            btn.addAction(UIAction { [weak self] _ in
-                self?.store.switchToWorkspace(at: idx)
-            }, for: .touchUpInside)
 
             var menuElements: [UIMenuElement] = [
                 UIAction(title: "Rename Space…", image: UIImage(systemName: "pencil")) { [weak self] _ in
@@ -332,7 +330,9 @@ public final class TilingWorkspaceViewController: UIViewController {
             pillStack.addArrangedSubview(btn)
 
             if store.workspaces.count > 1 {
-                let closeBtn = UIButton(type: .system)
+                let closeBtn = DesktopActionButton { [weak self] in
+                    self?.store.removeWorkspace(at: idx)
+                }
                 closeBtn.translatesAutoresizingMaskIntoConstraints = false
                 var closeCfg = UIButton.Configuration.plain()
                 let imgCfg = UIImage.SymbolConfiguration(pointSize: 9, weight: .bold)
@@ -340,9 +340,6 @@ public final class TilingWorkspaceViewController: UIViewController {
                 closeCfg.contentInsets = NSDirectionalEdgeInsets(top: 2, leading: 2, bottom: 2, trailing: 6)
                 closeCfg.baseForegroundColor = isCurrent ? UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.8) : UIColor(white: 0.6, alpha: 1.0)
                 closeBtn.configuration = closeCfg
-                closeBtn.addAction(UIAction { [weak self] _ in
-                    self?.store.removeWorkspace(at: idx)
-                }, for: .touchUpInside)
                 pillStack.addArrangedSubview(closeBtn)
             }
 
@@ -350,7 +347,9 @@ public final class TilingWorkspaceViewController: UIViewController {
         }
 
         // Add Space (+) button
-        let addBtn = UIButton(type: .system)
+        let addBtn = DesktopActionButton { [weak self] in
+            self?.store.addWorkspace()
+        }
         addBtn.translatesAutoresizingMaskIntoConstraints = false
         var addConfig = UIButton.Configuration.plain()
         addConfig.image = UIImage(systemName: "plus")
@@ -361,9 +360,6 @@ public final class TilingWorkspaceViewController: UIViewController {
         addBtn.layer.cornerRadius = 6
         addBtn.layer.borderWidth = 1
         addBtn.layer.borderColor = UIColor(white: 1.0, alpha: 0.12).cgColor
-        addBtn.addAction(UIAction { [weak self] _ in
-            self?.store.addWorkspace()
-        }, for: .touchUpInside)
         workspaceSwitcherStack.addArrangedSubview(addBtn)
     }
 
@@ -552,24 +548,27 @@ public final class TilingWorkspaceViewController: UIViewController {
         container.clipsToBounds = true
 
         // Tap anywhere on the pane header to focus this pane
-        let tapFocus = UITapGestureRecognizer(target: self, action: #selector(handlePaneHeaderTap(_:)))
+        let tabHeader = PaneHeaderView(paneId: pane.id) { [weak self] in
+            self?.store.focusPane(pane.id)
+        }
         container.accessibilityIdentifier = pane.id
 
         // Pane Tab Bar Header (32pt)
         let tabBarHeight: CGFloat = 32
-        let tabHeader = UIView(frame: CGRect(x: 0, y: 0, width: container.bounds.width, height: tabBarHeight))
+        tabHeader.frame = CGRect(x: 0, y: 0, width: container.bounds.width, height: tabBarHeight)
         tabHeader.backgroundColor = isFocused
             ? UIColor(red: 0.07, green: 0.12, blue: 0.22, alpha: 1.0)
             : UIColor(red: 0.04, green: 0.07, blue: 0.12, alpha: 1.0)
         tabHeader.accessibilityIdentifier = "header-\(pane.id)"
-        tabHeader.addGestureRecognizer(tapFocus)
 
         let allPanes = store.panes
         let paneIdx = allPanes.firstIndex(where: { $0.id == pane.id }) ?? 0
 
         // Direct Pane Badge: ⌘1..4
         let badgeWidth: CGFloat = 36
-        let paneBadgeBtn = UIButton(type: .system)
+        let paneBadgeBtn = DesktopActionButton { [weak self] in
+            self?.store.focusPane(pane.id)
+        }
         paneBadgeBtn.frame = CGRect(x: 4, y: 4, width: badgeWidth, height: 24)
         paneBadgeBtn.setTitle(" ⌘\(paneIdx + 1) ", for: .normal)
         paneBadgeBtn.titleLabel?.font = .monospacedSystemFont(ofSize: 10, weight: .bold)
@@ -578,9 +577,6 @@ public final class TilingWorkspaceViewController: UIViewController {
         paneBadgeBtn.layer.cornerRadius = 3
         paneBadgeBtn.layer.borderWidth = 1
         paneBadgeBtn.layer.borderColor = isFocused ? UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.6).cgColor : UIColor(white: 1.0, alpha: 0.12).cgColor
-        paneBadgeBtn.addAction(UIAction { [weak self] _ in
-            self?.store.focusPane(pane.id)
-        }, for: .touchUpInside)
         tabHeader.addSubview(paneBadgeBtn)
 
         let rightControlsWidth: CGFloat = store.panes.count > 1 ? 58 : 30
@@ -592,13 +588,19 @@ public final class TilingWorkspaceViewController: UIViewController {
         var xOffset: CGFloat = 2
         for (tabIdx, tab) in pane.tabs.enumerated() {
             let isActive = (tab.id == pane.activeTabId)
-            let pill = UIView()
+            let pill = TabPillView(paneId: pane.id, tabId: tab.id) { [weak self] in
+                guard let self else { return }
+                self.store.tree = PaneTreeOps.selectTab(self.store.tree, paneId: pane.id, tabId: tab.id)
+            }
             pill.backgroundColor = isActive
                 ? UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.24)
                 : UIColor(white: 1.0, alpha: 0.05)
             pill.layer.cornerRadius = 4
 
-            let titleBtn = UIButton(type: .system)
+            let titleBtn = DesktopActionButton { [weak self] in
+                guard let self else { return }
+                self.store.tree = PaneTreeOps.selectTab(self.store.tree, paneId: pane.id, tabId: tab.id)
+            }
             let tabNumBadge = (tabIdx < 9) ? "[\(tabIdx + 1)] " : ""
             titleBtn.setTitle("\(tabNumBadge)\(tab.title)", for: .normal)
             titleBtn.titleLabel?.font = .monospacedSystemFont(
@@ -606,18 +608,13 @@ public final class TilingWorkspaceViewController: UIViewController {
                 weight: (isActive && isFocused) ? .bold : .medium
             )
             titleBtn.setTitleColor(isActive ? .white : UIColor(white: 0.72, alpha: 1.0), for: .normal)
-            titleBtn.addAction(UIAction { [weak self] _ in
-                guard let self else { return }
-                self.store.tree = PaneTreeOps.selectTab(self.store.tree, paneId: pane.id, tabId: tab.id)
-            }, for: .touchUpInside)
 
-            let closeBtn = UIButton(type: .system)
+            let closeBtn = DesktopActionButton { [weak self] in
+                self?.store.closeTab(paneId: pane.id, tabId: tab.id)
+            }
             closeBtn.setTitle("×", for: .normal)
             closeBtn.titleLabel?.font = .systemFont(ofSize: 12, weight: .bold)
             closeBtn.setTitleColor(UIColor(white: 0.7, alpha: 1.0), for: .normal)
-            closeBtn.addAction(UIAction { [weak self] _ in
-                self?.store.closeTab(paneId: pane.id, tabId: tab.id)
-            }, for: .touchUpInside)
 
             let fullTitle = "\(tabNumBadge)\(tab.title)"
             let titleW = min(170, max(64, (fullTitle as NSString).size(withAttributes: [.font: UIFont.monospacedSystemFont(ofSize: 11, weight: .bold)]).width + 14))
@@ -640,7 +637,9 @@ public final class TilingWorkspaceViewController: UIViewController {
         rightControls.alignment = .center
         rightControls.frame = CGRect(x: max(0, container.bounds.width - rightControlsWidth - 4), y: 2, width: rightControlsWidth, height: 28)
 
-        let addTabBtn = UIButton(type: .system)
+        let addTabBtn = DesktopActionButton { [weak self] in
+            self?.store.openTab(type: .web, inPaneId: pane.id)
+        }
         let plusConfig = UIImage.SymbolConfiguration(pointSize: 11, weight: .bold)
         addTabBtn.setImage(UIImage(systemName: "plus", withConfiguration: plusConfig), for: .normal)
         addTabBtn.tintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
@@ -663,14 +662,13 @@ public final class TilingWorkspaceViewController: UIViewController {
         rightControls.addArrangedSubview(addTabBtn)
 
         if store.panes.count > 1 {
-            let closePaneBtn = UIButton(type: .system)
+            let closePaneBtn = DesktopActionButton { [weak self] in
+                self?.store.closePane(pane.id)
+            }
             closePaneBtn.setTitle("✕", for: .normal)
             closePaneBtn.titleLabel?.font = .systemFont(ofSize: 10, weight: .bold)
             closePaneBtn.setTitleColor(.systemRed, for: .normal)
             closePaneBtn.accessibilityLabel = "Close Pane (⌘⇧W)"
-            closePaneBtn.addAction(UIAction { [weak self] _ in
-                self?.store.closePane(pane.id)
-            }, for: .touchUpInside)
             rightControls.addArrangedSubview(closePaneBtn)
         }
 

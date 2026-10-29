@@ -1,6 +1,94 @@
 import TetherKit
 import UIKit
 
+// MARK: - Desktop Clickable Components
+
+@MainActor
+public protocol DesktopClickableView: AnyObject {
+    func triggerDesktopClick()
+}
+
+@MainActor
+public final class TabPillView: UIControl, DesktopClickableView {
+    public let paneId: String
+    public let tabId: String
+    public var onSelect: (() -> Void)?
+
+    public init(paneId: String, tabId: String, onSelect: @escaping () -> Void) {
+        self.paneId = paneId
+        self.tabId = tabId
+        self.onSelect = onSelect
+        super.init(frame: .zero)
+        addTarget(self, action: #selector(handleTap), for: .touchUpInside)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    @objc private func handleTap() {
+        triggerDesktopClick()
+    }
+
+    public func triggerDesktopClick() {
+        onSelect?()
+    }
+}
+
+@MainActor
+public final class DesktopActionButton: UIButton, DesktopClickableView {
+    public var actionHandler: (() -> Void)?
+
+    public init(actionHandler: (() -> Void)? = nil) {
+        self.actionHandler = actionHandler
+        super.init(frame: .zero)
+        addTarget(self, action: #selector(handleTap), for: .touchUpInside)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    @objc private func handleTap() {
+        triggerDesktopClick()
+    }
+
+    public func triggerDesktopClick() {
+        actionHandler?()
+        sendActions(for: .touchUpInside)
+        sendActions(for: .primaryActionTriggered)
+    }
+}
+
+@MainActor
+public final class PaneHeaderView: UIView, DesktopClickableView {
+    public let paneId: String
+    public var onHeaderTap: (() -> Void)?
+
+    public init(paneId: String, onHeaderTap: @escaping () -> Void) {
+        self.paneId = paneId
+        self.onHeaderTap = onHeaderTap
+        super.init(frame: .zero)
+        let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap))
+        addGestureRecognizer(tap)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    @objc private func handleTap() {
+        triggerDesktopClick()
+    }
+
+    public func triggerDesktopClick() {
+        onHeaderTap?()
+    }
+}
+
 // MARK: - Desktop Interaction Mode
 
 public enum DesktopInteractionMode: String, Equatable {

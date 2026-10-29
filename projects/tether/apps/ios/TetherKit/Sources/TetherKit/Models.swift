@@ -339,6 +339,15 @@ public enum LayoutPresetId: String, Codable, Hashable, Sendable, CaseIterable {
         case .twoByTwo: return "2×2 Grid (4 Panes)"
         }
     }
+
+    public var targetPaneCount: Int {
+        switch self {
+        case .single: return 1
+        case .twoColumn: return 2
+        case .leftPlusTwoRight: return 3
+        case .twoByTwo: return 4
+        }
+    }
 }
 
 public enum ControllerSidebarPosition: String, Codable, Hashable, Sendable, CaseIterable {
@@ -423,6 +432,8 @@ public struct TetherSettings: Codable, Hashable, Sendable {
     public var touchpadDragGesture: TouchpadDragGesture = .doubleTapDrag
     public var touchpadMappingMode: TouchpadMappingMode = .fullDisplay
     public var trackpadSurfaceLayout: TrackpadSurfaceLayout = .full
+    public var splitSwapPosition: Bool = false
+    public var splitRatio: Double = 0.5
     public var pointerSensitivity: Double = 2.5
     public var edgeContinuousPush: Bool = true
 
@@ -439,6 +450,8 @@ public struct TetherSettings: Codable, Hashable, Sendable {
         touchpadDragGesture: TouchpadDragGesture = .doubleTapDrag,
         touchpadMappingMode: TouchpadMappingMode = .fullDisplay,
         trackpadSurfaceLayout: TrackpadSurfaceLayout = .full,
+        splitSwapPosition: Bool = false,
+        splitRatio: Double = 0.5,
         pointerSensitivity: Double = 2.5,
         edgeContinuousPush: Bool = true
     ) {
@@ -457,6 +470,8 @@ public struct TetherSettings: Codable, Hashable, Sendable {
         self.touchpadDragGesture = touchpadDragGesture
         self.touchpadMappingMode = touchpadMappingMode
         self.trackpadSurfaceLayout = trackpadSurfaceLayout
+        self.splitSwapPosition = splitSwapPosition
+        self.splitRatio = min(0.75, max(0.25, splitRatio))
         self.pointerSensitivity = pointerSensitivity
         self.edgeContinuousPush = edgeContinuousPush
     }
@@ -476,6 +491,9 @@ public struct TetherSettings: Codable, Hashable, Sendable {
         touchpadDragGesture = try container.decodeIfPresent(TouchpadDragGesture.self, forKey: .touchpadDragGesture) ?? .doubleTapDrag
         touchpadMappingMode = try container.decodeIfPresent(TouchpadMappingMode.self, forKey: .touchpadMappingMode) ?? .fullDisplay
         trackpadSurfaceLayout = try container.decodeIfPresent(TrackpadSurfaceLayout.self, forKey: .trackpadSurfaceLayout) ?? .full
+        splitSwapPosition = try container.decodeIfPresent(Bool.self, forKey: .splitSwapPosition) ?? false
+        let ratio = try container.decodeIfPresent(Double.self, forKey: .splitRatio) ?? 0.5
+        splitRatio = min(0.75, max(0.25, ratio))
         pointerSensitivity = try container.decodeIfPresent(Double.self, forKey: .pointerSensitivity) ?? 2.5
         edgeContinuousPush = try container.decodeIfPresent(Bool.self, forKey: .edgeContinuousPush) ?? true
     }
@@ -740,6 +758,68 @@ public enum PaneTreeOps {
         let delta = reverse ? -1 : 1
         let nextIdx = (idx + delta + panes.count) % panes.count
         return focusPane(tree, paneId: panes[nextIdx].id)
+    }
+
+    public struct PaneLayoutRect: Equatable, Sendable {
+        public var paneId: String
+        public var x: Double
+        public var y: Double
+        public var width: Double
+        public var height: Double
+
+        public init(paneId: String, x: Double, y: Double, width: Double, height: Double) {
+            self.paneId = paneId
+            self.x = x
+            self.y = y
+            self.width = width
+            self.height = height
+        }
+    }
+
+    public static func computePaneLayoutRects(
+        _ tree: PaneTree,
+        canvasWidth: Double,
+        canvasHeight: Double,
+        dividerThickness: Double = 6.0
+    ) -> [String: PaneLayoutRect] {
+        var rects: [String: PaneLayoutRect] = [:]
+        computeNodeLayoutRects(
+            tree.root,
+            x: 0,
+            y: 0,
+            width: canvasWidth,
+            height: canvasHeight,
+            dividerThickness: dividerThickness,
+            into: &rects
+        )
+        return rects
+    }
+
+    private static func computeNodeLayoutRects(
+        _ node: TreeNode,
+        x: Double,
+        y: Double,
+        width: Double,
+        height: Double,
+        dividerThickness: Double,
+        into out: inout [String: PaneLayoutRect]
+    ) {
+        switch node {
+        case .pane(let p):
+            out[p.id] = PaneLayoutRect(paneId: p.id, x: x, y: y, width: width, height: height)
+        case .split(let s):
+            if s.direction == .horizontal {
+                let firstW = floor((width - dividerThickness) * s.ratio)
+                let secondW = max(0, width - dividerThickness - firstW)
+                computeNodeLayoutRects(s.first, x: x, y: y, width: firstW, height: height, dividerThickness: dividerThickness, into: &out)
+                computeNodeLayoutRects(s.second, x: x + firstW + dividerThickness, y: y, width: secondW, height: height, dividerThickness: dividerThickness, into: &out)
+            } else {
+                let firstH = floor((height - dividerThickness) * s.ratio)
+                let secondH = max(0, height - dividerThickness - firstH)
+                computeNodeLayoutRects(s.first, x: x, y: y, width: width, height: firstH, dividerThickness: dividerThickness, into: &out)
+                computeNodeLayoutRects(s.second, x: x, y: y + firstH + dividerThickness, width: width, height: secondH, dividerThickness: dividerThickness, into: &out)
+            }
+        }
     }
 
     private struct NormalizedRect {

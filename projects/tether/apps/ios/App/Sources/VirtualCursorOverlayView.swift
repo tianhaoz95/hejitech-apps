@@ -99,6 +99,12 @@ public final class VirtualCursorOverlayView: UIView {
         let hitPoint = canvas.convert(cursorPosition, from: self)
 
         if let hitView = canvas.hitTest(hitPoint, with: nil) {
+            // 0. Desktop Clickable Component (Tabs, workspace pills, close buttons, pane headers)
+            if let clickable = findAncestor(of: hitView, matching: { $0 is DesktopClickableView }) as? DesktopClickableView {
+                clickable.triggerDesktopClick()
+                return
+            }
+
             // 1. Text Field: focus, select all, send editing begin event without stealing focus
             if let textField = findAncestor(of: hitView, matching: { $0 is UITextField }) as? UITextField {
                 textField.becomeFirstResponder()
@@ -205,37 +211,91 @@ public final class VirtualCursorOverlayView: UIView {
         (function() {
             var x = \(point.x);
             var y = \(point.y);
+
+            // 1. Find all elements at the click position (handling overlays/wrappers)
+            var elements = document.elementsFromPoint ? document.elementsFromPoint(x, y) : [];
             var el = document.elementFromPoint(x, y);
-            if (!el) return;
+            if (!el && (!elements || elements.length === 0)) return;
 
-            var a = el.closest('a');
-            if (a && a.href && !a.href.startsWith('javascript:')) {
-                if (a.target === '_blank') {
-                    window.open(a.href, '_blank');
-                } else {
-                    window.location.href = a.href;
+            // Handle shadow DOM piercing
+            var probe = el || elements[0];
+            while (probe && probe.shadowRoot && probe.shadowRoot.elementFromPoint) {
+                var inner = probe.shadowRoot.elementFromPoint(x, y);
+                if (!inner || inner === probe) break;
+                probe = inner;
+            }
+            if (probe) el = probe;
+
+            // 2. Locate the best interactive target (link, button, input, role)
+            var target = null;
+            if (el) {
+                target = el.closest('a, button, [role="button"], [role="link"], [role="tab"], [role="menuitem"], input, select, textarea, [tabindex], label');
+            }
+            if (!target && elements && elements.length > 0) {
+                for (var i = 0; i < elements.length; i++) {
+                    var candidate = elements[i].closest('a, button, [role="button"], [role="link"], [role="tab"], [role="menuitem"], input, select, textarea, [tabindex], label');
+                    if (candidate) {
+                        target = candidate;
+                        break;
+                    }
                 }
-                return;
+            }
+            if (!target) {
+                target = el || (elements && elements.length > 0 ? elements[0] : null);
+            }
+            if (!target) return;
+
+            // 3. Dispatch standard pointer/mouse sequence
+            var commonOpts = {
+                bubbles: true,
+                cancelable: true,
+                composed: true,
+                view: window,
+                detail: 1,
+                screenX: x,
+                screenY: y,
+                clientX: x,
+                clientY: y,
+                button: 0,
+                buttons: 1
+            };
+
+            target.dispatchEvent(new PointerEvent('pointerover', commonOpts));
+            target.dispatchEvent(new MouseEvent('mouseover', commonOpts));
+            target.dispatchEvent(new PointerEvent('pointerdown', commonOpts));
+            target.dispatchEvent(new MouseEvent('mousedown', commonOpts));
+
+            if (typeof target.focus === 'function') {
+                target.focus();
             }
 
-            var btn = el.closest('button, [role="button"], input[type="submit"], input[type="button"], input[type="checkbox"], input[type="radio"], select');
-            if (btn) {
-                btn.focus();
-                btn.click();
-            } else {
-                el.focus();
-                el.click();
+            var upOpts = Object.assign({}, commonOpts, { buttons: 0 });
+            target.dispatchEvent(new PointerEvent('pointerup', upOpts));
+            target.dispatchEvent(new MouseEvent('mouseup', upOpts));
+
+            var clickEvent = new MouseEvent('click', commonOpts);
+            var isAllowed = target.dispatchEvent(clickEvent);
+
+            if (typeof target.click === 'function') {
+                try { target.click(); } catch (e) {}
             }
 
-            var opts = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
-            el.dispatchEvent(new PointerEvent('pointerdown', opts));
-            el.dispatchEvent(new MouseEvent('mousedown', opts));
-            el.dispatchEvent(new PointerEvent('pointerup', opts));
-            el.dispatchEvent(new MouseEvent('mouseup', opts));
-            el.dispatchEvent(new MouseEvent('click', opts));
+            // 4. Handle navigation for <a> tags if event was not prevented by framework router (SPAs)
+            var a = target.closest('a');
+            if (a && a.href && isAllowed) {
+                var rawHref = a.getAttribute('href');
+                if (rawHref && !rawHref.startsWith('javascript:') && rawHref !== '#' && !rawHref.startsWith('#')) {
+                    if (a.target === '_blank') {
+                        window.open(a.href, '_blank');
+                    } else {
+                        window.location.href = a.href;
+                    }
+                }
+            }
 
-            var input = el.closest('input, textarea, [contenteditable="true"]');
-            if (input) {
+            // 5. Handle form elements
+            var input = target.closest('input, textarea, [contenteditable="true"]');
+            if (input && typeof input.focus === 'function') {
                 input.focus();
             }
         })();

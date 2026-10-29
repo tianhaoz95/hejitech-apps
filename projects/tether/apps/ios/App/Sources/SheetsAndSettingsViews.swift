@@ -454,6 +454,20 @@ public struct SettingsSheetView: View {
                 Text("Split: Pad + Keyboard").tag(TrackpadSurfaceLayout.splitWithKeyboard)
             }
 
+            if store.settings.trackpadSurfaceLayout == .splitWithKeyboard {
+                Toggle("Swap Pad & Keyboard Location", isOn: $store.settings.splitSwapPosition)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("Pad / Keys Split Size")
+                        Spacer()
+                        Text(String(format: "%.0f%% Pad / %.0f%% Keys", store.settings.splitRatio * 100, (1.0 - store.settings.splitRatio) * 100))
+                            .foregroundStyle(.secondary)
+                    }
+                    Slider(value: $store.settings.splitRatio, in: 0.25...0.75, step: 0.05)
+                }
+            }
+
             Toggle("Show Touchpad Buttons", isOn: $store.settings.showTouchpadButtons)
 
             Picker("Dragging Gesture", selection: $store.settings.touchpadDragGesture) {

@@ -89,7 +89,7 @@ jobs:
         with:
           xcode-version: "26"
       - run: brew install xcodegen
-      - name: TetherKit tests
+      - name: TetherKit tests (unit, external display quality & performance)
         working-directory: projects/tether/apps/ios/TetherKit
         run: swift test
       - run: xcodegen generate

@@ -17,10 +17,27 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.19"
+    static let currentVersion = "0.1.20"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.20", date: "October 2026", items: [
+            WhatsNewItem(
+                icon: "cursorarrow.click",
+                title: "External Display Tab Clicking",
+                description: "Clicking tab pills, tab close buttons, pane headers, and workspace switchers on external monitor now works reliably with phone trackpad."
+            ),
+            WhatsNewItem(
+                icon: "link",
+                title: "Universal Web Link Navigation",
+                description: "Overhauled web click simulation with shadow DOM piercing, pointer event sequences, and SPA support so all web buttons and links trigger seamlessly."
+            ),
+            WhatsNewItem(
+                icon: "square.split.2x1",
+                title: "Pad + Keys Position Swap & Split Ratio",
+                description: "Swap trackpad and virtual keyboard positions (left/right or top/bottom) and customize the split ratio (40%, 50%, 60% or fine slider)."
+            ),
+        ]),
         ReleaseNotes(version: "0.1.19", date: "October 2026", items: [
             WhatsNewItem(
                 icon: "shield.lefthalf.filled",
