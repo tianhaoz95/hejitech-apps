@@ -20,10 +20,13 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.2.3"
+    static let currentVersion = "0.2.4"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.2.4", date: "October 2026", items: [
+            WhatsNewItem(icon: "tag.fill", title: "Clean departure badges", description: "First-to-arrive and shortest-ride badges now display on separate rows without cramped multi-line text breaking."),
+        ]),
         ReleaseNotes(version: "0.2.3", date: "October 2026", items: [
             WhatsNewItem(icon: "applewatch.watchface", title: "Apple Watch face complications", description: "Glance at your watch face for a live 'Leave in X' countdown to your next Caltrain, departure times, and destination arrival status on Modular, Infograph, and Ultra watch faces."),
         ]),
