@@ -3,6 +3,9 @@ import HeadwayKit
 import Observation
 import WatchConnectivity
 import WatchKit
+#if canImport(WidgetKit)
+import WidgetKit
+#endif
 
 /// Apple Watch state manager for Headway.
 /// Keeps the departure board synced with the iPhone and provides standalone refresh when online.
@@ -32,8 +35,7 @@ final class WatchModel: NSObject, WCSessionDelegate {
         super.init()
 
         // Load cached state from disk for instantaneous watch wake
-        if let cachedData = UserDefaults.standard.data(forKey: "watch_cached_state"),
-           let state = WatchSyncState.decode(from: cachedData) {
+        if let state = WatchStore.loadCachedState() {
             apply(state: state, persist: false)
         }
     }
@@ -55,8 +57,11 @@ final class WatchModel: NSObject, WCSessionDelegate {
 
         self.backend = Backend(config: Self.config, session: state.session)
 
-        if persist, let data = state.encode() {
-            UserDefaults.standard.set(data, forKey: "watch_cached_state")
+        if persist {
+            WatchStore.saveCachedState(state)
+            #if canImport(WidgetKit)
+            WidgetCenter.shared.reloadAllTimelines()
+            #endif
         }
     }
 
@@ -92,9 +97,10 @@ final class WatchModel: NSObject, WCSessionDelegate {
                     stations: self.stations,
                     expressPreference: self.expressPreference
                 )
-                if let data = state.encode() {
-                    UserDefaults.standard.set(data, forKey: "watch_cached_state")
-                }
+                WatchStore.saveCachedState(state)
+                #if canImport(WidgetKit)
+                WidgetCenter.shared.reloadAllTimelines()
+                #endif
             }
         } catch {
             // If offline, preserve the cached board

@@ -59,3 +59,32 @@ public struct WatchSyncState: Codable, Sendable {
         try? JSONEncoder().encode(self)
     }
 }
+
+/// Shared cache storage for the watch app and its watch face complications.
+public enum WatchStore {
+    public static let sharedSuiteName = "group.com.hejitech.headway"
+    public static let cachedStateKey = "watch_cached_state"
+
+    public static var defaults: UserDefaults {
+        UserDefaults(suiteName: sharedSuiteName) ?? .standard
+    }
+
+    public static func loadCachedState() -> WatchSyncState? {
+        if let data = defaults.data(forKey: cachedStateKey),
+           let state = WatchSyncState.decode(from: data) {
+            return state
+        }
+        if let data = UserDefaults.standard.data(forKey: cachedStateKey),
+           let state = WatchSyncState.decode(from: data) {
+            return state
+        }
+        return nil
+    }
+
+    public static func saveCachedState(_ state: WatchSyncState) {
+        if let data = state.encode() {
+            defaults.set(data, forKey: cachedStateKey)
+            UserDefaults.standard.set(data, forKey: cachedStateKey)
+        }
+    }
+}

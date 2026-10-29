@@ -100,6 +100,8 @@ targets:
       - path: WatchShared
     dependencies:
       - package: HeadwayKit
+      - target: WatchWidgets
+        embed: true
     settings:
       base:
         PRODUCT_NAME: HeadwayWatch
@@ -122,12 +124,42 @@ targets:
     entitlements:
       path: Watch/Watch.entitlements
 
+  WatchWidgets:
+    type: app-extension
+    platform: watchOS
+    deploymentTarget: "11.0"
+    sources:
+      - path: WatchWidgets
+      - path: WatchShared
+    dependencies:
+      - package: HeadwayKit
+    settings:
+      base:
+        PRODUCT_NAME: HeadwayWatchWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.$(PRODUCT_SLUG).watchkitapp.widgets
+        INFOPLIST_KEY_CFBundleDisplayName: "Headway Complications"
+        TARGETED_DEVICE_FAMILY: "4"
+    info:
+      path: WatchWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: "Headway Complications"
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        WKAppBundleIdentifier: com.hejitech.$(PRODUCT_SLUG).watchkitapp
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        ITSAppUsesNonExemptEncryption: false
+
 schemes:
   App:
     build:
       targets:
         App: all
         Widgets: all
+        WatchApp: all
+        WatchWidgets: all
     run:
       config: Debug
     test:
@@ -136,5 +168,6 @@ schemes:
     build:
       targets:
         WatchApp: all
+        WatchWidgets: all
     run:
       config: Debug

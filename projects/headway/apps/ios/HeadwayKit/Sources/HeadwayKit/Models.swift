@@ -66,6 +66,48 @@ public struct BoardTrain: Codable, Hashable, Identifiable, Sendable {
     public var kindName: String { ["LOC": "Local", "LTD": "Limited", "EXP": "Express", "SCC": "South County"][kind] ?? kind }
     public var isExpress: Bool { kind == "EXP" }
 
+    public init(
+        tripId: String = "",
+        train: String,
+        kind: String = "EXP",
+        dir: String = "NB",
+        serviceDate: String = "",
+        dep: Double,
+        arr: Double,
+        predDep: Double,
+        predArr: Double,
+        delayMin: Int? = nil,
+        status: TrainStatus = .onTime,
+        stopsBetween: Int = 0,
+        leaveBy: Double? = nil,
+        catchState: String? = nil,
+        rideMin: Int? = nil,
+        overtakenBy: String? = nil,
+        overtakenByTrain: String? = nil,
+        firstIn: Bool? = nil,
+        shortest: Bool? = nil
+    ) {
+        self.tripId = tripId
+        self.train = train
+        self.kind = kind
+        self.dir = dir
+        self.serviceDate = serviceDate
+        self.dep = dep
+        self.arr = arr
+        self.predDep = predDep
+        self.predArr = predArr
+        self.delayMin = delayMin
+        self.status = status
+        self.stopsBetween = stopsBetween
+        self.leaveBy = leaveBy
+        self.catchState = catchState
+        self.rideMin = rideMin
+        self.overtakenBy = overtakenBy
+        self.overtakenByTrain = overtakenByTrain
+        self.firstIn = firstIn
+        self.shortest = shortest
+    }
+
     enum CodingKeys: String, CodingKey {
         case train, kind, dir, dep, arr, status
         case tripId = "trip_id", serviceDate = "service_date", predDep = "pred_dep", predArr = "pred_arr", delayMin = "delay_min", stopsBetween = "stops_between"
