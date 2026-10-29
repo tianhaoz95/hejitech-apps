@@ -60,7 +60,7 @@ struct WhatsNewView: View {
                     icon: "person.crop.circle.badge.xmark",
                     tint: Theme.diaper,
                     title: "Delete your account in the app",
-                    description: "Settings → Delete account & data now deletes your sign-in too, not only your household's log."
+                    description: "Settings → Delete account & data now deletes your whole Wee Hours account, not only your household's log. Other HEJI apps you use aren't affected."
                 ),
                 WhatsNewItem(
                     icon: "doc.text.fill",
