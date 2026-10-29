@@ -87,6 +87,11 @@ targets:
         # first-run network wait, no on-demand fetch UX to design for.
         NSBundleResourceRequestTags: [whisper-tiny-en, whisper-tiny-multilingual]
         NSBundleResourceRequestInitialInstallTags: [whisper-tiny-en, whisper-tiny-multilingual]
+    entitlements:
+      path: Contempo/Contempo.entitlements
+      properties:
+        # Sign in with Apple (the native sheet; Supabase's Apple provider lists this bundle id).
+        com.apple.developer.applesignin: [Default]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.contempoapp

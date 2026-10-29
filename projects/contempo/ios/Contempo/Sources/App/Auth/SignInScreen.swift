@@ -1,3 +1,4 @@
+import AuthenticationServices
 import ContempoCore
 import SwiftUI
 
@@ -5,6 +6,7 @@ struct SignInScreen: View {
     @State private var viewModel = SignInViewModel()
     @State private var emailSheet = ProcessInfo.processInfo.arguments.contains("-emailSheet")
     @Environment(\.contempoPalette) private var palette
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(spacing: 0) {
@@ -20,6 +22,13 @@ struct SignInScreen: View {
                 .multilineTextAlignment(.center)
                 .padding(.bottom, 32)
 
+            SignInWithAppleButton(.signIn, onRequest: viewModel.prepareAppleRequest, onCompletion: viewModel.signInWithApple)
+                .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
+                .frame(height: 50)
+                .clipShape(RoundedRectangle(cornerRadius: ContempoRadius.small))
+                .disabled(viewModel.isSigningIn)
+                .padding(.bottom, 12)
+
             Button(action: viewModel.signIn) {
                 HStack(spacing: 12) {
                     if viewModel.isSigningIn {
@@ -32,13 +41,12 @@ struct SignInScreen: View {
                     Text("Sign in with Google")
                         .font(ContempoFont.labelLarge())
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity, minHeight: 50)
+                .background(palette.pine, in: RoundedRectangle(cornerRadius: ContempoRadius.small))
             }
-            .buttonStyle(.borderedProminent)
-            .tint(palette.pine)
+            .buttonStyle(.plain)
             .disabled(viewModel.isSigningIn)
-            .clipShape(RoundedRectangle(cornerRadius: ContempoRadius.small))
 
             Button { emailSheet = true } label: {
                 Text("Sign in with email")
@@ -74,7 +82,7 @@ struct SignInScreen: View {
 }
 
 /// Email sign-in for accounts Contempo hands out, such as App Review's demo account. People sign in
-/// with Google; there is no email sign-up or password reset.
+/// with Apple or Google; there is no email sign-up or password reset.
 struct EmailSignInSheet: View {
     let viewModel: SignInViewModel
     @Environment(\.dismiss) private var dismiss
@@ -107,7 +115,7 @@ struct EmailSignInSheet: View {
                     .font(ContempoFont.headlineMedium())
                     .tracking(ContempoFont.headlineMediumTracking)
                     .foregroundStyle(palette.ink)
-                Text("For accounts Contempo gave you. Everyone else signs in with Google.")
+                Text("For accounts Contempo gave you. Everyone else signs in with Apple or Google.")
                     .font(ContempoFont.bodyMedium())
                     .foregroundStyle(palette.inkSoft)
             }

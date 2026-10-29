@@ -2,14 +2,20 @@ import ContempoCore
 import Foundation
 @preconcurrency import Supabase
 
-/// Sign-in through Supabase Auth (the shared HEJI project). Google, the monorepo's way:
-/// ASWebAuthenticationSession to Supabase's /authorize (PKCE), back through
+/// Sign-in through Supabase Auth (the shared HEJI project). Apple: the native sheet's identity token
+/// goes to Supabase (`signInWithIdToken`; its Apple provider lists this bundle id). Google, the
+/// monorepo's way: ASWebAuthenticationSession to Supabase's /authorize (PKCE), back through
 /// com.hejitech.contempoapp://login-callback. No Google SDK or client ids in the app; the session is
 /// persisted in the Keychain and refreshed by the client.
 @MainActor
 final class AuthManager {
     func signIn() async throws {
         try await ContempoBackend.client.auth.signInWithOAuth(provider: .google, redirectTo: ContempoBackend.redirectURL)
+    }
+
+    /// `nonce` is the raw nonce whose SHA-256 went into the Apple request.
+    func signInWithApple(idToken: String, nonce: String) async throws {
+        try await ContempoBackend.client.auth.signInWithIdToken(credentials: .init(provider: .apple, idToken: idToken, nonce: nonce))
     }
 
     /// Email and password for accounts Contempo hands out (App Review's demo account): checked by the
