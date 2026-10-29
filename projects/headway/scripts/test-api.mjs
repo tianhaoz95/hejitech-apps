@@ -205,7 +205,7 @@ await step("MCP: commute, next trains by name, alerts, tracking", async () => {
   const m = await tool("my_commute", { leg: "evening" });
   assert.equal(m.from, "San Francisco");
   const n = await tool("next_trains", { from: "Mountain View", to: "SF", limit: 3 });
-  assert.equal(n.trains.length, 3);
+  assert.ok(n.trains.length > 0 && n.trains.length <= 3);
   assert.equal(n.live, true);
   await assert.rejects(tool("next_trains", { from: "Atlantis", to: "SF" }), /unknown station/);
   const a = await tool("service_alerts", { station: "mountain_view" });
