@@ -15,12 +15,24 @@ App Store Connect. Headway is the reference (FitLoop the second: a demo plan fro
 
 ## Who needs it
 
-An iOS app that **requires signing in** and has a backend: today Headway (done), FitLoop, Tether,
-Wee Hours, Waypack, Contempo, G2 Digest (if it ships an iOS app), FeedbackKit (its own Supabase
-project; same steps against it). Skip `BACKEND=none` apps (Voxbrief, Meowtrix, ToddlerCam,
-TinyTouch) and apps you can use without an account. An app whose only sign-in is Sign in with Apple
-may pass with a review note alone, but reviewers get an empty account: if the app shows little until
-set up (FitLoop has no plan until an agent writes one), it needs this anyway.
+An iOS app on the App Store that **requires signing in** and has a backend. Skip `BACKEND=none`
+apps (Voxbrief, Meowtrix, ToddlerCam, TinyTouch) and apps you can use without an account. An app
+whose only sign-in is Sign in with Apple may pass with a review note alone, but reviewers get an
+empty account: if the app shows little until set up (FitLoop has no plan until an agent writes
+one), it needs this anyway.
+
+Where the projects stand (2026-10-29):
+
+| Project | Status |
+|---|---|
+| Headway | done: demo commute; App Store Connect 1.0 filled |
+| FitLoop | done: core's `demoPlan` from the Monday before; App Store Connect 1.0 filled |
+| Contempo | done: two properties, five entries; Worker deploys by hand (`npm run deploy -w @contempo/web`); App Store Connect 1.0 filled. Google-only sign-in (no Sign in with Apple, guideline 4.8) is open. |
+| Waypack | **not added**: owner decisions #29 (Google or Apple only, no email/password anywhere) and "offline maps are Pro-only, no per-account exceptions" (`projects/waypack/CLAUDE.md`). Needs the owner first; then: keep trips between sign-ins (the example trip is a full bundle), make sure of a Pro entitlement, seed the trip once. |
+| Tether | not needed: works fully offline; sign-in (Apple) only adds sync |
+| Wee Hours | not needed: "Use without an account"; Sign in with Apple for partner sync |
+| FeedbackKit Portal | not needed: TestFlight only, GitHub sign-in on its own backend, and a manual token sign-in |
+| G2 Digest, Polymath | no iOS app |
 
 ## How it works
 
