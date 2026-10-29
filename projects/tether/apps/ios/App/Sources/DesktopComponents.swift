@@ -55,10 +55,10 @@ public final class DesktopActionButton: UIButton, DesktopClickableView {
         triggerDesktopClick()
     }
 
+    // Don't sendActions(for: .touchUpInside) here: handleTap is a .touchUpInside target,
+    // so a virtual click recursed until the stack overflowed (0.1.20 crash).
     public func triggerDesktopClick() {
         actionHandler?()
-        sendActions(for: .touchUpInside)
-        sendActions(for: .primaryActionTriggered)
     }
 }
 

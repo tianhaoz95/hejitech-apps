@@ -17,10 +17,17 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.20"
+    static let currentVersion = "0.1.21"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.21", date: "October 2026", items: [
+            WhatsNewItem(
+                icon: "cursorarrow.click",
+                title: "External Display Click Crash Fix",
+                description: "Clicking a tab or button on the external monitor with the phone trackpad no longer crashes the app."
+            ),
+        ]),
         ReleaseNotes(version: "0.1.20", date: "October 2026", items: [
             WhatsNewItem(
                 icon: "cursorarrow.click",
