@@ -20,10 +20,14 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.2.9"
+    static let currentVersion = "1.0.0"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "1.0.0", date: "October 2026", items: [
+            WhatsNewItem(icon: "party.popper.fill", title: "Headway 1.0", description: "The first App Store release. Live Caltrain departures with leave-by times, delay and cancellation alerts, Lock Screen and Home Screen widgets, your watch and Even G2 glasses, all from one commute you set once."),
+            WhatsNewItem(icon: "tram.fill", title: "Tidier train rows", description: "A train's status, stops and the Faster mark stay on one line instead of wrapping."),
+        ]),
         ReleaseNotes(version: "0.2.9", date: "October 2026", items: [
             WhatsNewItem(icon: "arrow.clockwise", title: "Sign in with email for issued accounts", description: "Accounts Headway hands out can now sign in with email, and loading right after you sign in is more reliable."),
         ]),

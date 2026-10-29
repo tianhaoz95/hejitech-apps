@@ -102,6 +102,8 @@ struct ProgressScreen: View {
                                 ForEach(["weight", "waist", "body_fat", "energy", "mood", "soreness", "sleep_hours"], id: \.self) { Text(labels[$0] ?? $0).tag($0) }
                             }
                             .labelsHidden()
+                            .fixedSize()  // the metric's name in full, not "Wei…t (kg)"
+                            Spacer(minLength: 8)
                             TextField("Value", text: $value).keyboardType(.decimalPad).frame(width: 70)
                             Button("Add") { Task { await addVital() } }.disabled(Double(value) == nil)
                         }

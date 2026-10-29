@@ -8,7 +8,9 @@
   "main": "src/worker/index.ts",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
-  "observability": { "enabled": true },
+  // No invocation logs: they record each request's URL, and board requests can carry the rider's
+  // location (?lat=&lon=), which the privacy policy promises is never stored or logged.
+  "observability": { "enabled": true, "logs": { "invocation_logs": false } },
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",

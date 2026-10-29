@@ -312,6 +312,19 @@ struct TrainRow: View {
     let now: Date
     var tracked = false
 
+    private func statusLine(faster: Bool) -> some View {
+        HStack(spacing: 4) {
+            Text(statusText).foregroundStyle(color)
+            Text("· \(train.stopsBetween == 0 ? "nonstop" : "\(train.stopsBetween) stop\(train.stopsBetween == 1 ? "" : "s")")").foregroundStyle(.secondary)
+            if faster {
+                Text("·").foregroundStyle(.secondary)
+                Text("⚡ Faster").foregroundStyle(.red).font(.caption.weight(.semibold))
+            }
+            if tracked { Image(systemName: "location.fill").foregroundStyle(Color.accentColor).accessibilityLabel("Tracking") }
+        }
+        .lineLimit(1)
+    }
+
     private var statusText: String {
         switch train.status {
         case .cancelled: "Cancelled"
@@ -364,14 +377,11 @@ struct TrainRow: View {
                     }
                     Text("→ \(Clock.time(train.predArr))").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
                 }
-                HStack(spacing: 4) {
-                    Text(statusText).foregroundStyle(color)
-                    Text("· \(train.stopsBetween == 0 ? "nonstop" : "\(train.stopsBetween) stop\(train.stopsBetween == 1 ? "" : "s")")").foregroundStyle(.secondary)
-                    if train.isExpress {
-                        Text("·").foregroundStyle(.secondary)
-                        Text("⚡ Faster").foregroundStyle(.red).font(.caption.weight(.semibold))
-                    }
-                    if tracked { Image(systemName: "location.fill").foregroundStyle(Color.accentColor).accessibilityLabel("Tracking") }
+                // One line: without room for "Faster" (the Express badge already says it), drop it
+                // rather than wrapping "7 stops" across two lines.
+                ViewThatFits(in: .horizontal) {
+                    statusLine(faster: train.isExpress)
+                    statusLine(faster: false)
                 }
                 .font(.caption)
 

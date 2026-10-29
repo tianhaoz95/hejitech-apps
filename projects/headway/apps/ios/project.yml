@@ -74,6 +74,7 @@ targets:
     deploymentTarget: "18.0"
     sources:
       - path: Widgets
+      - path: App/Resources/PrivacyInfo.xcprivacy
     dependencies:
       - package: HeadwayKit
     settings:
@@ -99,6 +100,7 @@ targets:
     sources:
       - path: Watch
       - path: WatchShared
+      - path: App/Resources/PrivacyInfo.xcprivacy
     dependencies:
       - package: HeadwayKit
       - target: WatchWidgets
@@ -132,6 +134,7 @@ targets:
     sources:
       - path: WatchWidgets
       - path: WatchShared
+      - path: App/Resources/PrivacyInfo.xcprivacy
     dependencies:
       - package: HeadwayKit
     settings:
