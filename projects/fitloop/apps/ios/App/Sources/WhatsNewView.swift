@@ -20,10 +20,13 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.6"
+    static let currentVersion = "0.1.7"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.7", date: "October 2026", items: [
+            WhatsNewItem(icon: "applewatch.watchface", title: "Today's progress on your watch face", description: "Add the FitLoop complication to see how much of today's plan you've done, with workouts and meals checked off. Tap it to open FitLoop on your watch."),
+        ]),
         ReleaseNotes(version: "0.1.6", date: "October 2026", items: [
             WhatsNewItem(icon: "arrow.up.doc.fill", title: "FitLoop-hosted exercise GIFs", description: "Coaching agents can now upload and host exercise demonstration GIFs directly on FitLoop with permanent edge caching and CORS."),
             WhatsNewItem(icon: "list.bullet", title: "Resilient workout steps", description: "Movement steps and cues display gracefully even without an animated demonstration GIF, and with clean step numbering."),

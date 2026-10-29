@@ -72,6 +72,9 @@ targets:
     sources:
       - path: Watch
       - path: WatchShared
+    dependencies:
+      - target: WatchWidgets
+        embed: true
     settings:
       base:
         PRODUCT_NAME: FitLoopWatch
@@ -96,6 +99,34 @@ targets:
       properties:
         com.apple.developer.healthkit: true
         com.apple.developer.healthkit.access: []
+        # Shared with the complication (no App Group: CI's API key can't register one).
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)com.hejitech.fitloop.watchshared
+
+  WatchWidgets:
+    type: app-extension
+    platform: watchOS
+    sources:
+      - path: WatchWidgets
+      - path: WatchShared
+    settings:
+      base:
+        PRODUCT_NAME: FitLoopWatchWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.$(PRODUCT_SLUG).watchkitapp.widgets
+        INFOPLIST_KEY_CFBundleDisplayName: "FitLoop Complications"
+        TARGETED_DEVICE_FAMILY: "4"
+    info:
+      path: WatchWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: "FitLoop Complications"
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        WKAppBundleIdentifier: com.hejitech.$(PRODUCT_SLUG).watchkitapp
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        ITSAppUsesNonExemptEncryption: false
+    entitlements:
+      path: WatchWidgets/WatchWidgets.entitlements
 
 schemes:
   App:

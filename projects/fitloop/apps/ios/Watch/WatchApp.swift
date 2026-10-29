@@ -2,6 +2,7 @@ import HealthKit
 import SwiftUI
 import WatchConnectivity
 import WatchKit
+import WidgetKit
 
 /// FitLoop on Apple Watch: during a workout opened on the iPhone it runs the HealthKit workout session
 /// (heart rate for the phone and the glasses, the workout saved to Apple Health), shows the current
@@ -35,6 +36,8 @@ final class WorkoutManager: NSObject {
     var restUntil: Date?
     var heartRate: Int?
     var running = false
+    /// Today's progress from the phone (also what the watch face complication shows).
+    var day: DayProgress? = DayProgressStore.load()
     /// The phone has a workout open.
     var hasWorkout: Bool { !title.isEmpty }
 
@@ -116,6 +119,13 @@ final class WorkoutManager: NSObject {
         if !running { start() }
     }
 
+    fileprivate func received(progress data: Data) {
+        guard let p = try? JSONDecoder().decode(DayProgress.self, from: data) else { return }
+        day = p
+        DayProgressStore.save(p)
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
     private func scheduleRestEndHaptic(_ until: Date) {
         let delay = until.timeIntervalSinceNow
         guard delay > 0 else { return }
@@ -141,6 +151,10 @@ extension WorkoutManager: WCSessionDelegate {
     }
     nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
         Task { @MainActor in self.apply(message) }
+    }
+    nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
+        guard let data = userInfo[DayProgress.userInfoKey] as? Data else { return }
+        Task { @MainActor in self.received(progress: data) }
     }
 }
 
@@ -178,11 +192,36 @@ struct WatchHome: View {
                         Button("End", role: .destructive) { w.end() }.font(.footnote)
                     } else {
                         Text("FitLoop").font(.headline)
+                        if let day = w.day, day.isToday {
+                            DayProgressSummary(day: day)
+                        }
                         Text("Open a workout on your iPhone; it shows up here with your heart rate.").font(.footnote).foregroundStyle(.secondary)
                         if w.running, let hr = w.heartRate { Label("\(hr)", systemImage: "heart.fill").foregroundStyle(.red) }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+}
+
+/// Today at a glance on the watch's home screen: the ring and what's done.
+struct DayProgressSummary: View {
+    let day: DayProgress
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Gauge(value: day.completion) {
+                EmptyView()
+            } currentValueLabel: {
+                Text("\(Int((day.completion * 100).rounded()))%").font(.caption2.monospacedDigit())
+            }
+            .gaugeStyle(.accessoryCircularCapacity)
+            .tint(.orange)
+            VStack(alignment: .leading, spacing: 2) {
+                if day.workoutsTotal > 0 { Text("Workouts \(day.workoutsDone)/\(day.workoutsTotal)").font(.footnote) }
+                if day.mealsTotal > 0 { Text("Meals \(day.mealsDone)/\(day.mealsTotal)").font(.footnote) }
+                if let next = day.next { Text("Next: \(next)").font(.caption2).foregroundStyle(.secondary).lineLimit(1) }
             }
         }
     }

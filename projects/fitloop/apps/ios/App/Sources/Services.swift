@@ -115,6 +115,22 @@ final class WatchLink: NSObject, WCSessionDelegate, @unchecked Sendable {
         if WCSession.default.isReachable { WCSession.default.sendMessage(context, replyHandler: nil) }
     }
 
+    private var lastProgress: DayProgress?
+
+    /// Today's progress for the watch face complication: complication transfers (their daily budget)
+    /// while it's on the face, plain user info otherwise. Only sent when it changes.
+    func send(progress: DayProgress) {
+        guard available, WCSession.default.activationState == .activated, progress != lastProgress,
+              let data = try? JSONEncoder().encode(progress) else { return }
+        lastProgress = progress
+        let info = [DayProgress.userInfoKey: data]
+        if WCSession.default.isComplicationEnabled, WCSession.default.remainingComplicationUserInfoTransfers > 0 {
+            WCSession.default.transferCurrentComplicationUserInfo(info)
+        } else {
+            WCSession.default.transferUserInfo(info)
+        }
+    }
+
     func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
         switch message[WatchMessage.kind] as? String {
         case WatchMessage.kindHeartRate: if let hr = message[WatchMessage.hr] as? Int { onHeartRate?(hr) }

@@ -159,6 +159,7 @@ final class AppModel {
             async let p = backend.plan()
             today = try await t
             plan = try await p
+            sendProgressToWatch()
             error = nil
             await scheduleReminders()
         } catch let e as BackendError where e.isUnauthorized || e == .notSignedIn {
@@ -177,6 +178,7 @@ final class AppModel {
         do {
             try await backend.checkin([c])
             today = try await backend.today(date)
+            sendProgressToWatch()
         } catch { self.error = error.localizedDescription }
     }
 
@@ -215,6 +217,20 @@ final class AppModel {
             WatchMessage.workoutRef: ref, WatchMessage.workoutTitle: title, WatchMessage.exerciseName: exercise,
             WatchMessage.setLine: setLine, WatchMessage.restUntil: restUntil?.timeIntervalSince1970 ?? 0, WatchMessage.progress: progress,
         ])
+    }
+
+    /// Today's completion for the watch face (only today's; browsing another day changes nothing).
+    func sendProgressToWatch() {
+        guard let t = today, t.state.date == DayProgress.localDate() else { return }
+        let s = t.state
+        let next = s.workouts.first { $0.status == "todo" || $0.status == "in_progress" }?.workout.title
+            ?? s.meals.first { $0.status == "todo" }?.meal.name
+        watch.send(progress: DayProgress(
+            date: s.date, completion: s.completion,
+            workoutsDone: s.workouts.filter { $0.status == "done" }.count, workoutsTotal: s.workouts.count,
+            mealsDone: s.meals.filter { $0.status == "done" }.count, mealsTotal: s.meals.count,
+            next: next
+        ))
     }
 
     func endWorkout() async {

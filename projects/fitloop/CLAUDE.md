@@ -50,6 +50,9 @@ local stack), `-screen today|plan|progress|feedback|settings`, `-date YYYY-MM-DD
   glasses pairing). `Services.swift`: `HealthSync` (daily summary) and `WatchLink` (WCSession).
 - **Watch** (`apps/ios/Watch`): runs the `HKWorkoutSession` when the phone opens a workout
   (`startWatchApp`), sends heart rate every 4 s and "set done", shows the set and rest timer.
+  The phone sends today's progress as user info (`DayProgress`); the watch keeps it in a Keychain item
+  shared with the `WatchWidgets` complication (`keychain-access-groups`, no App Group: CI's API key
+  can't register one) and reloads it. Tapping the complication opens the watch app.
 
 ## Exercise demonstration media & procedural rigging
 
