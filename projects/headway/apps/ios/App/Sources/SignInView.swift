@@ -54,9 +54,14 @@ struct SignInView: View {
                 }
                 #endif
 
-                Button("Sign in with email") { emailSheet = true }
-                    .font(.footnote)
-                    .accessibilityIdentifier("email-signin")
+                Button { emailSheet = true } label: {
+                    Text("Sign in with email")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, minHeight: 34)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("email-signin")
 
                 Text("Your account is shared with other HEJI apps. Headway keeps only your commute, alert choices and devices.")
                     .font(.footnote)
@@ -75,6 +80,7 @@ struct SignInView: View {
             // `-autoSignIn` signs in the local seed rider (screenshots without taps).
             if ProcessInfo.processInfo.arguments.contains("-autoSignIn") { await model.signInWithEmail("rider@example.com", "headway-dev") }
             // `-reviewSignIn` signs in through the App Review path (local: review@example.com / headway-review-dev).
+            if ProcessInfo.processInfo.arguments.contains("-emailSheet") { emailSheet = true }
             if ProcessInfo.processInfo.arguments.contains("-reviewSignIn") { _ = await model.signInWithEmailAccount("review@example.com", "headway-review-dev") }
             #endif
         }
@@ -89,41 +95,89 @@ struct EmailSignInSheet: View {
     @State private var email = ""
     @State private var password = ""
     @State private var busy = false
+    @FocusState private var focus: Field?
+    private enum Field { case email, password }
+
+    private var canSubmit: Bool { !busy && !email.isEmpty && !password.isEmpty }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    TextField("Email", text: $email)
-                        .textContentType(.username)
-                        .keyboardType(.emailAddress)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    SecureField("Password", text: $password).textContentType(.password)
-                } footer: {
-                    Text("For accounts Headway gave you. To create an account, continue with Apple or Google.")
+        VStack(spacing: 20) {
+            HStack {
+                Spacer()
+                Button { dismiss() } label: {
+                    Image(systemName: "xmark")
+                        .font(.footnote.weight(.bold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 30, height: 30)
+                        .background(.quaternary, in: Circle())
                 }
-                if let e = model.error {
-                    Text(e).font(.footnote).foregroundStyle(.red)
-                }
+                .accessibilityLabel("Close")
             }
-            .navigationTitle("Sign in with email")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Sign in") {
-                        busy = true
-                        Task {
-                            if await model.signInWithEmailAccount(email, password) { dismiss() }
-                            busy = false
-                        }
-                    }
-                    .disabled(busy || email.isEmpty || password.isEmpty)
-                }
+
+            VStack(spacing: 6) {
+                Text("Sign in with email").font(.title2.bold())
+                Text("For accounts Headway gave you. New here? Continue with Apple or Google.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
             }
-            .onAppear { model.error = nil }
+
+            VStack(spacing: 0) {
+                TextField("Email", text: $email)
+                    .textContentType(.username)
+                    .keyboardType(.emailAddress)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .submitLabel(.next)
+                    .focused($focus, equals: .email)
+                    .onSubmit { focus = .password }
+                    .padding(14)
+                Divider().padding(.leading, 14)
+                SecureField("Password", text: $password)
+                    .textContentType(.password)
+                    .submitLabel(.go)
+                    .focused($focus, equals: .password)
+                    .onSubmit { submit() }
+                    .padding(14)
+            }
+            .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+            if let e = model.error {
+                Label(e, systemImage: "exclamationmark.circle.fill")
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            Button(action: submit) {
+                ZStack {
+                    Text("Sign in").opacity(busy ? 0 : 1)
+                    if busy { ProgressView() }
+                }
+                .frame(maxWidth: .infinity, minHeight: 34)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .disabled(!canSubmit)
+
+            Spacer(minLength: 0)
         }
+        .padding(24)
         .presentationDetents([.medium])
+        .presentationCornerRadius(28)
+        .presentationBackground(Color(uiColor: .systemBackground))
+        .onAppear {
+            model.error = nil
+            focus = .email
+        }
+    }
+
+    private func submit() {
+        guard canSubmit else { return }
+        busy = true
+        Task {
+            if await model.signInWithEmailAccount(email, password) { dismiss() }
+            busy = false
+        }
     }
 }
