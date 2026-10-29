@@ -46,7 +46,8 @@ jobs:
         run: |
           cp projects/headway/apps/glasses/build/headway.ehpk "headway-glasses-${TAG#headway-v}.ehpk"
           gh release upload "$TAG" "headway-glasses-${TAG#headway-v}.ehpk" --clobber
-      - uses: ./.github/actions/evenhub-login
+      # From main, not the checked-out tag, so re-running an older release still has it.
+      - uses: tianhaoz95/hejitech-apps/.github/actions/evenhub-login@main
         with:
           email: ${{ secrets.EVENHUB_EMAIL }}
           password: ${{ secrets.EVENHUB_PASSWORD }}
