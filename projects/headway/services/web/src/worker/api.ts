@@ -4,12 +4,16 @@
 //   none                          stations, any board, a train's progress, status; POST /api/pair (throttled)
 //   session or glasses token      the user's commute board, the tracked train
 //   Supabase session (web, iPhone) settings, pairing codes, devices, push registration, agent tokens, delete data
-import { board, checkSettings, commuteBoard, normalizeSettings, progress, station, STATIONS, timetableDaysLeft, TIMETABLE, tripProgressStops, validOrigin, type ExpressPreference, type TravelMode, type Notification, type Settings, type Tracked } from "@headway/core";
+import { board, checkSettings, commuteBoard, newLeg, normalizeSettings, progress, station, STATIONS, timetableDaysLeft, TIMETABLE, tripProgressStops, validOrigin, type ExpressPreference, type TravelMode, type Notification, type Settings, type Tracked } from "@headway/core";
 import { NOT_BOARD_ACTIVITY, pushConfigured, sendPush } from "./push.ts";
+import { reviewSignIn } from "./review.ts";
 import {
   admin, bearer, createEtaShare, json, loadEtaShare, loadSettings, loadSnapshot, loadTracked, pairingCode, PAIRING_CODE_TTL_MS, PREFIX, randomToken, resolveDevice,
   revokeEtaShares, saveSettings, saveTracked, sha256, supabaseUser, updateEtaShareExpiry, type Db, type Env,
 } from "./store.ts";
+
+/** Every table holding a user's Headway rows (DELETE /api/account, the review account's reset). */
+const USER_TABLES = ["profiles", "pairing_codes", "device_tokens", "access_tokens", "push_devices", "activity_tokens", "tracked_trips", "sent_notifications"] as const;
 
 const PAIR_FAILURES_PER_WINDOW = 10;
 const PAIR_WINDOW_SEC = 600;
@@ -85,6 +89,18 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
       timetable: { version: TIMETABLE.feed_version, valid_until: TIMETABLE.feed_end, days_left: timetableDaysLeft(now) },
       push: { configured: pushConfigured(env) },
     });
+  }
+  if (path === "/api/review-sign-in" && req.method === "POST") {
+    // App Review's demo account: a fresh commute every time it signs in (review.ts).
+    const r = await reviewSignIn(env, req, async (userId) => {
+      for (const t of USER_TABLES) await db.from(t).delete().eq("user_id", userId);
+      const settings = normalizeSettings({
+        morning: { ...newLeg("mountain_view", "san_francisco", "morning"), usual: "08:00" },
+        evening: { ...newLeg("san_francisco", "mountain_view", "evening"), usual: "17:30" },
+      });
+      await saveSettings(db, userId, settings);
+    });
+    return reply(r.body, r.status);
   }
   if (path === "/api/pair" && req.method === "POST") {
     const ip = req.headers.get("CF-Connecting-IP") ?? "local";
@@ -290,7 +306,7 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
 
   // ------------------------------------------------------------ delete everything Headway keeps
   if (path === "/api/account" && req.method === "DELETE") {
-    for (const t of ["profiles", "pairing_codes", "device_tokens", "access_tokens", "push_devices", "activity_tokens", "tracked_trips", "sent_notifications"]) {
+    for (const t of USER_TABLES) {
       const { error } = await db.from(t).delete().eq("user_id", userId);
       if (error) return reply({ error: `couldn't delete ${t}: ${error.message}` }, 500);
     }

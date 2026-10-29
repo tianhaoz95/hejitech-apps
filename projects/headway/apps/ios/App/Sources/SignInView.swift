@@ -6,6 +6,7 @@ struct SignInView: View {
     @Environment(\.webAuthenticationSession) private var webAuth
     @State private var email = "rider@example.com"
     @State private var password = ""
+    @State private var emailSheet = false
 
     var body: some View {
         @Bindable var model = model
@@ -53,6 +54,10 @@ struct SignInView: View {
                 }
                 #endif
 
+                Button("Sign in with email") { emailSheet = true }
+                    .font(.footnote)
+                    .accessibilityIdentifier("email-signin")
+
                 Text("Your account is shared with other HEJI apps. Headway keeps only your commute, alert choices and devices.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -64,11 +69,61 @@ struct SignInView: View {
             }
         }
         .padding(24)
+        .sheet(isPresented: $emailSheet) { EmailSignInSheet() }
         .task {
             #if DEBUG
             // `-autoSignIn` signs in the local seed rider (screenshots without taps).
             if ProcessInfo.processInfo.arguments.contains("-autoSignIn") { await model.signInWithEmail("rider@example.com", "headway-dev") }
+            // `-reviewSignIn` signs in through the App Review path (local: review@example.com / headway-review-dev).
+            if ProcessInfo.processInfo.arguments.contains("-reviewSignIn") { _ = await model.signInWithEmailAccount("review@example.com", "headway-review-dev") }
             #endif
         }
+    }
+}
+
+/// Email sign-in for accounts Headway hands out, such as App Review's demo account. People sign up
+/// with Apple or Google; there is no email sign-up or password reset.
+struct EmailSignInSheet: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+    @State private var email = ""
+    @State private var password = ""
+    @State private var busy = false
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Email", text: $email)
+                        .textContentType(.username)
+                        .keyboardType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    SecureField("Password", text: $password).textContentType(.password)
+                } footer: {
+                    Text("For accounts Headway gave you. To create an account, continue with Apple or Google.")
+                }
+                if let e = model.error {
+                    Text(e).font(.footnote).foregroundStyle(.red)
+                }
+            }
+            .navigationTitle("Sign in with email")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Sign in") {
+                        busy = true
+                        Task {
+                            if await model.signInWithEmailAccount(email, password) { dismiss() }
+                            busy = false
+                        }
+                    }
+                    .disabled(busy || email.isEmpty || password.isEmpty)
+                }
+            }
+            .onAppear { model.error = nil }
+        }
+        .presentationDetents([.medium])
     }
 }

@@ -4,7 +4,8 @@
 // Covers: sign-in sessions, settings (checked, per user), public boards, live predictions from a
 // stored realtime snapshot, the cron endpoint, pairing with a 6-digit code (single use, throttled),
 // glasses tokens (commute board, tracking, nothing else), push registration, the MCP tools, the
-// OAuth flow and personal tokens, RLS isolation, deleting a user's data, and the pages.
+// OAuth flow and personal tokens, RLS isolation, deleting a user's data, the App Review demo
+// account, and the pages.
 // Usage: node projects/headway/scripts/test-api.mjs [site-origin] [supabase-url]
 import assert from "node:assert/strict";
 import { createHash, randomBytes } from "node:crypto";
@@ -285,6 +286,25 @@ await step("deleting Headway data removes the user's rows only", async () => {
   const o = await call("/api/settings", { auth: other });
   assert.equal(o.body.saved, false);
   assert.equal((await call("/api/settings", { auth: session })).body.saved, true);
+});
+
+// ---------------------------------------------------------------- App Review demo account
+await step("review sign-in: wrong password refused, right one gets a session on a fresh demo commute", async () => {
+  // review@example.com / headway-review-dev: the local values in wrangler.jsonc.
+  const sign = (password) => call("/api/review-sign-in", { method: "POST", body: { email: "Review@Example.com", password } });
+  assert.equal((await sign("nope")).status, 401);
+  const first = await sign("headway-review-dev");
+  assert.equal(first.status, 200, first.text);
+  const token = first.body.access_token;
+  assert.ok(token && first.body.refresh_token && first.body.user?.id);
+  const s = await call("/api/settings", { auth: token });
+  assert.equal(s.body.saved, true);
+  assert.equal(s.body.settings.morning.from, "mountain_view");
+  // Changes during review are wiped by the next review sign-in.
+  assert.equal((await call("/api/settings", { method: "PUT", auth: token, body: { settings: { ...s.body.settings, morning: null } } })).status, 200);
+  const again = await sign("headway-review-dev");
+  assert.equal(again.body.user.id, first.body.user.id);
+  assert.equal((await call("/api/settings", { auth: again.body.access_token })).body.settings.morning.from, "mountain_view");
 });
 
 // ---------------------------------------------------------------- pages

@@ -32,8 +32,10 @@ xcodebuild -project Headway.xcodeproj -scheme App -destination 'generic/platform
 ```
 
 Local tokens from the seed: glasses `hwd_dev_local_device`, assistant `hwa_dev_local_token` (MCP at
-`http://127.0.0.1:8792/mcp`). iPhone launch arguments (Debug): `-autoSignIn` (seed rider on the local
-stack), `-screen trains|commute|glasses|settings`, `-production` (Debug build against production).
+`http://127.0.0.1:8792/mcp`). App Review demo account: locally `review@example.com` /
+`headway-review-dev` (wrangler.jsonc vars); production via `scripts/review_account.sh headway`
+(`review.env`, skill heji-review-account). iPhone launch arguments (Debug): `-autoSignIn` (seed rider on the local
+stack), `-reviewSignIn` (the App Review sign-in path), `-screen trains|commute|glasses|settings`, `-production` (Debug build against production).
 
 ## Architecture
 
@@ -44,7 +46,9 @@ stack), `-screen trains|commute|glasses|settings`, `-production` (Debug build ag
   reader), `settings.ts` (defaults + `checkSettings`). Change behaviour there, with a test; never
   format glasses text elsewhere.
 - **Worker** (`services/web/src/worker`): `api.ts` (public boards, session / glasses token, pairing,
-  push registration), `cron.ts` + `realtime.ts` (511 → `headway.realtime` snapshot, alert engine →
+  push registration), `review.ts` (App Review's demo account: `/api/review-sign-in` checks the
+  Worker's REVIEW_* secrets, resets the account to a demo commute and mints a Supabase session; no
+  email sign-in for people), `cron.ts` + `realtime.ts` (511 → `headway.realtime` snapshot, alert engine →
   `push.ts` APNs), `mcp.ts` (seven tools), `store.ts`. Service key only here; clients read their own
   rows through RLS and every write goes through the Worker.
 - **Plugin** (`apps/glasses/src`): `app.ts` (HeadwayApp: board sources, offline timetable, tracking,

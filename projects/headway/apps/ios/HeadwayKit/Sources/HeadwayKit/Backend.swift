@@ -118,6 +118,19 @@ public final class Backend: @unchecked Sendable {
         try await authRequest("token?grant_type=password", body: ["email": email, "password": password])
     }
 
+    /// Email and password for accounts Headway hands out (App Review's demo account): checked by the
+    /// Worker (`/api/review-sign-in`), which returns a normal Supabase session. Not a sign-up.
+    @discardableResult
+    public func reviewSignIn(email: String, password: String) async throws -> AuthSession {
+        var req = URLRequest(url: config.site.appendingPathComponent("api/review-sign-in"))
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONSerialization.data(withJSONObject: ["email": email, "password": password])
+        let (data, resp) = try await http.data(for: req)
+        try Self.check(resp, data)
+        return try adopt(data)
+    }
+
     public func signOut() { setSession(nil) }
 
     public func refreshIfNeeded() async throws {
@@ -140,6 +153,11 @@ public final class Backend: @unchecked Sendable {
         req.httpBody = try JSONSerialization.data(withJSONObject: body)
         let (data, resp) = try await http.data(for: req)
         try Self.check(resp, data)
+        return try adopt(data)
+    }
+
+    /// Keeps the session from a Supabase token response (`access_token`, `refresh_token`, `user`, …).
+    private func adopt(_ data: Data) throws -> AuthSession {
         guard let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let access = obj["access_token"] as? String, let refresh = obj["refresh_token"] as? String,
               let user = obj["user"] as? [String: Any], let id = user["id"] as? String else {

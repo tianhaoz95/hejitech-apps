@@ -189,6 +189,18 @@ final class AppModel {
         } catch { self.error = error.localizedDescription }
     }
 
+    /// Email sign-in for accounts Headway hands out (App Review's demo account); no sign-up.
+    func signInWithEmailAccount(_ email: String, _ password: String) async -> Bool {
+        do {
+            try await backend.reviewSignIn(email: email.trimmingCharacters(in: .whitespaces), password: password)
+            await route()
+            return true
+        } catch {
+            self.error = (error as? BackendError).flatMap { if case .http(401, _) = $0 { return "Wrong email or password." }; return nil } ?? error.localizedDescription
+            return false
+        }
+    }
+
     func signOut() async {
         if let t = pushToken { try? await backend.unregisterPush(token: t) }
         #if os(iOS) && canImport(ActivityKit)
