@@ -398,6 +398,18 @@ public enum TouchpadMappingMode: String, Codable, Hashable, Sendable, CaseIterab
     }
 }
 
+public enum TrackpadSurfaceLayout: String, Codable, Hashable, Sendable, CaseIterable {
+    case full = "full"
+    case splitWithKeyboard = "split_with_keyboard"
+
+    public var displayName: String {
+        switch self {
+        case .full: return "Full Trackpad"
+        case .splitWithKeyboard: return "Split: Trackpad + Keyboard"
+        }
+    }
+}
+
 public struct TetherSettings: Codable, Hashable, Sendable {
     public var version: Int = 1
     public var defaultSearchEngineUrl: String
@@ -410,6 +422,7 @@ public struct TetherSettings: Codable, Hashable, Sendable {
     public var touchpadInputMode: TouchpadInputMode = .phoneTrackpad
     public var touchpadDragGesture: TouchpadDragGesture = .doubleTapDrag
     public var touchpadMappingMode: TouchpadMappingMode = .fullDisplay
+    public var trackpadSurfaceLayout: TrackpadSurfaceLayout = .full
     public var pointerSensitivity: Double = 2.5
     public var edgeContinuousPush: Bool = true
 
@@ -425,6 +438,7 @@ public struct TetherSettings: Codable, Hashable, Sendable {
         touchpadInputMode: TouchpadInputMode = .phoneTrackpad,
         touchpadDragGesture: TouchpadDragGesture = .doubleTapDrag,
         touchpadMappingMode: TouchpadMappingMode = .fullDisplay,
+        trackpadSurfaceLayout: TrackpadSurfaceLayout = .full,
         pointerSensitivity: Double = 2.5,
         edgeContinuousPush: Bool = true
     ) {
@@ -442,6 +456,7 @@ public struct TetherSettings: Codable, Hashable, Sendable {
         self.touchpadInputMode = touchpadInputMode
         self.touchpadDragGesture = touchpadDragGesture
         self.touchpadMappingMode = touchpadMappingMode
+        self.trackpadSurfaceLayout = trackpadSurfaceLayout
         self.pointerSensitivity = pointerSensitivity
         self.edgeContinuousPush = edgeContinuousPush
     }
@@ -460,6 +475,7 @@ public struct TetherSettings: Codable, Hashable, Sendable {
         touchpadInputMode = try container.decodeIfPresent(TouchpadInputMode.self, forKey: .touchpadInputMode) ?? .phoneTrackpad
         touchpadDragGesture = try container.decodeIfPresent(TouchpadDragGesture.self, forKey: .touchpadDragGesture) ?? .doubleTapDrag
         touchpadMappingMode = try container.decodeIfPresent(TouchpadMappingMode.self, forKey: .touchpadMappingMode) ?? .fullDisplay
+        trackpadSurfaceLayout = try container.decodeIfPresent(TrackpadSurfaceLayout.self, forKey: .trackpadSurfaceLayout) ?? .full
         pointerSensitivity = try container.decodeIfPresent(Double.self, forKey: .pointerSensitivity) ?? 2.5
         edgeContinuousPush = try container.decodeIfPresent(Bool.self, forKey: .edgeContinuousPush) ?? true
     }

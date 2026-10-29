@@ -102,17 +102,18 @@ public final class DisplayHost: NSObject {
         }
     }
 
+    /// Orientation locking state
+    public var isOrientationLocked: Bool = false
+    public var lockedOrientationMask: UIInterfaceOrientationMask?
+
     /// Preferred interface orientations:
-    /// Follows user preference in settings (landscape, portrait, or auto).
+    /// Supports all 4 orientations (portrait, portraitUpsideDown, landscapeLeft, landscapeRight)
+    /// when unlocked, or strictly locks to the active orientation when locked.
     public var supportedOrientations: UIInterfaceOrientationMask {
-        switch store.settings.controllerOrientation {
-        case .landscape, .landscapeFlipped:
-            return [.landscapeLeft, .landscapeRight]
-        case .portrait:
-            return [.portrait, .portraitUpsideDown]
-        case .auto:
-            return [.landscapeLeft, .landscapeRight, .portrait, .portraitUpsideDown]
+        if isOrientationLocked, let locked = lockedOrientationMask {
+            return locked
         }
+        return [.landscapeLeft, .landscapeRight, .portrait, .portraitUpsideDown]
     }
 
     private func setupDisplayObservers() {

@@ -30,7 +30,8 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     private var hasDetectedPhysicalKeyboard: Bool = false
     private var threeFingerSwipeTriggered: Bool = false
     private var fourFingerSwipeTriggered: Bool = false
-    private var panGesture: UIPanGestureRecognizer?
+    private var oneFingerPanGesture: UIPanGestureRecognizer?
+    private var twoFingerScrollGesture: UIPanGestureRecognizer?
 
     // UI Structure
     private let verticalSidebar = UIView()
@@ -40,6 +41,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     private let touchpadTabBtn = UIButton(type: .system)
     private let keyboardTabBtn = UIButton(type: .system)
     private let settingsTabBtn = UIButton(type: .system)
+    private let lockOrientationBtn = UIButton(type: .system)
     private let containerView = UIView()
 
     private var activeSidebarConstraints: [NSLayoutConstraint] = []
@@ -51,8 +53,10 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
 
     // Touchpad Mode views
     private let touchpadView = UIView()
+    private let trackpadLayoutSegment = UISegmentedControl(items: ["🖱️ Full Pad", "⌨️ Pad + Keys"])
     private let touchpadSurface = UIView()
     private let touchpadHelpLabel = UILabel()
+    private let splitVirtualKeyboard = VirtualKeyboardView()
     private let clickButtonsStack = UIStackView()
     private let leftClickButton = UIButton(type: .system)
     private let dragResizeButton = UIButton(type: .system)
@@ -69,6 +73,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     private let hiddenInputTextField = UITextField()
     private let activePaneLabel = UILabel()
     private let accessoryBar = UIStackView()
+    private let keyboardModeVirtualKeyboard = VirtualKeyboardView()
 
     // Settings Mode views
     private let settingsScrollView = UIScrollView()
@@ -79,6 +84,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     private let sidebarPosSegment = UISegmentedControl(items: ["Left Side", "Right Side"])
     private let orientationSegment = UISegmentedControl(items: ["Landscape", "Portrait", "Flipped"])
     private let showButtonsSwitch = UISwitch()
+    private let trackpadLayoutSettingsSegment = UISegmentedControl(items: ["Full Trackpad", "Split: Pad + Keyboard"])
     private let inputModeSegment = UISegmentedControl(items: ["Phone as Trackpad", "Physical Mouse"])
     private let dragGestureSegment = UISegmentedControl(items: ["Double-Tap Drag", "3-Finger Drag"])
     private let settingsMappingModeSegment = UISegmentedControl(items: ["Full Monitor 1:1", "Relative"])
@@ -121,12 +127,13 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     }
 
     public override var preferredInterfaceOrientationForPresentation: UIInterfaceOrientation {
-        switch store.settings.controllerOrientation {
-        case .landscape: return .landscapeRight
-        case .landscapeFlipped: return .landscapeLeft
-        case .portrait: return .portrait
-        case .auto: return .landscapeRight
+        if DisplayHost.shared.isOrientationLocked {
+            if DisplayHost.shared.lockedOrientationMask == .portrait { return .portrait }
+            if DisplayHost.shared.lockedOrientationMask == .portraitUpsideDown { return .portraitUpsideDown }
+            if DisplayHost.shared.lockedOrientationMask == .landscapeLeft { return .landscapeLeft }
+            if DisplayHost.shared.lockedOrientationMask == .landscapeRight { return .landscapeRight }
         }
+        return (view.bounds.width > view.bounds.height) ? .landscapeRight : .portrait
     }
 
     public func applyOrientationChange(_ orientation: ControllerOrientation) {
@@ -137,20 +144,88 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
             case .landscape: mask = .landscapeRight
             case .landscapeFlipped: mask = .landscapeLeft
             case .portrait: mask = .portrait
-            case .auto: mask = [.landscapeLeft, .landscapeRight, .portrait]
+            case .auto: mask = [.landscapeLeft, .landscapeRight, .portrait, .portraitUpsideDown]
             }
             if let windowScene = view.window?.windowScene ?? UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first(where: { $0.session.role == .windowApplication }) {
                 windowScene.requestGeometryUpdate(.iOS(interfaceOrientations: mask))
             }
         }
         applySidebarLayoutConstraints()
+        updateTouchpadLayout()
+    }
+
+    public func toggleOrientationLock() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        let host = DisplayHost.shared
+        if host.isOrientationLocked {
+            host.isOrientationLocked = false
+            host.lockedOrientationMask = nil
+        } else {
+            host.isOrientationLocked = true
+            let currentOrientation: UIInterfaceOrientation
+            if #available(iOS 16.0, *) {
+                currentOrientation = view.window?.windowScene?.interfaceOrientation ?? .unknown
+            } else {
+                currentOrientation = UIApplication.shared.windows.first?.windowScene?.interfaceOrientation ?? .unknown
+            }
+            let mask: UIInterfaceOrientationMask
+            switch currentOrientation {
+            case .portrait:
+                mask = .portrait
+            case .portraitUpsideDown:
+                mask = .portraitUpsideDown
+            case .landscapeLeft:
+                mask = .landscapeLeft
+            case .landscapeRight:
+                mask = .landscapeRight
+            default:
+                mask = (view.bounds.width > view.bounds.height) ? .landscapeRight : .portrait
+            }
+            host.lockedOrientationMask = mask
+        }
+        updateOrientationLockButton()
+        if #available(iOS 16.0, *) {
+            setNeedsUpdateOfSupportedInterfaceOrientations()
+            if let windowScene = view.window?.windowScene {
+                windowScene.requestGeometryUpdate(.iOS(interfaceOrientations: DisplayHost.shared.supportedOrientations))
+            }
+        }
+    }
+
+    private func updateOrientationLockButton() {
+        let isLocked = DisplayHost.shared.isOrientationLocked
+        let config = UIImage.SymbolConfiguration(pointSize: 15, weight: .semibold)
+        let symbolName = isLocked ? "lock.fill" : "lock.open"
+        lockOrientationBtn.setImage(UIImage(systemName: symbolName, withConfiguration: config), for: .normal)
+        if isLocked {
+            lockOrientationBtn.tintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
+            lockOrientationBtn.backgroundColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.20)
+        } else {
+            lockOrientationBtn.tintColor = UIColor(white: 1.0, alpha: 0.70)
+            lockOrientationBtn.backgroundColor = UIColor(white: 1.0, alpha: 0.06)
+        }
+        lockOrientationBtn.accessibilityLabel = isLocked ? "Unlock Orientation" : "Lock Orientation"
     }
 
     public func toggleOrientation() {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        let next: ControllerOrientation = (store.settings.controllerOrientation == .landscape) ? .portrait : .landscape
-        store.settings.controllerOrientation = next
-        applyOrientationChange(next)
+        let isLandscape = view.bounds.width > view.bounds.height
+        let targetOrientation: ControllerOrientation = isLandscape ? .portrait : .landscape
+        store.settings.controllerOrientation = targetOrientation
+
+        if DisplayHost.shared.isOrientationLocked {
+            DisplayHost.shared.lockedOrientationMask = isLandscape ? .portrait : .landscapeRight
+            updateOrientationLockButton()
+        }
+        applyOrientationChange(targetOrientation)
+    }
+
+    public override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+        super.viewWillTransition(to: size, with: coordinator)
+        coordinator.animate { [weak self] _ in
+            self?.applySidebarLayoutConstraints()
+            self?.updateTouchpadLayout()
+        }
     }
 
     // MARK: - UIKeyInput Protocol (Captures Physical Dock Keyboard & Software Input)
@@ -285,6 +360,16 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         let rotateBtn = makeSidebarActionButton(systemName: "rectangle.landscape.rotate") { [weak self] in
             self?.toggleOrientation()
         }
+        rotateBtn.accessibilityLabel = "Rotate Orientation"
+
+        lockOrientationBtn.translatesAutoresizingMaskIntoConstraints = false
+        lockOrientationBtn.layer.cornerRadius = 8
+        lockOrientationBtn.widthAnchor.constraint(equalToConstant: 38).isActive = true
+        lockOrientationBtn.heightAnchor.constraint(equalToConstant: 38).isActive = true
+        lockOrientationBtn.addAction(UIAction { [weak self] _ in
+            self?.toggleOrientationLock()
+        }, for: .touchUpInside)
+        updateOrientationLockButton()
 
         let newTabBtn = UIButton(type: .system)
         newTabBtn.translatesAutoresizingMaskIntoConstraints = false
@@ -342,6 +427,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         sidebarStack.addArrangedSubview(divider)
         sidebarStack.addArrangedSubview(paletteBtn)
         sidebarStack.addArrangedSubview(rotateBtn)
+        sidebarStack.addArrangedSubview(lockOrientationBtn)
         sidebarStack.addArrangedSubview(newTabBtn)
         sidebarStack.addArrangedSubview(layoutBtn)
 
@@ -486,7 +572,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
             becomeFirstResponder()
         case .keyboard:
             stopEdgePush()
-            hiddenInputTextField.becomeFirstResponder()
+            becomeFirstResponder()
         case .settings:
             stopEdgePush()
             hiddenInputTextField.resignFirstResponder()
@@ -613,6 +699,22 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         touchpadView.translatesAutoresizingMaskIntoConstraints = false
         containerView.addSubview(touchpadView)
 
+        // Top toggle: Full Trackpad vs Trackpad + Virtual Keyboard
+        trackpadLayoutSegment.translatesAutoresizingMaskIntoConstraints = false
+        trackpadLayoutSegment.backgroundColor = UIColor(white: 1.0, alpha: 0.08)
+        trackpadLayoutSegment.selectedSegmentTintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.35)
+        trackpadLayoutSegment.setTitleTextAttributes([.foregroundColor: UIColor.white, .font: UIFont.systemFont(ofSize: 11, weight: .semibold)], for: .normal)
+        trackpadLayoutSegment.setTitleTextAttributes([.foregroundColor: UIColor.white, .font: UIFont.systemFont(ofSize: 11, weight: .bold)], for: .selected)
+        trackpadLayoutSegment.selectedSegmentIndex = (store.settings.trackpadSurfaceLayout == .splitWithKeyboard) ? 1 : 0
+        trackpadLayoutSegment.addAction(UIAction { [weak self] _ in
+            guard let self else { return }
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            let isSplit = (self.trackpadLayoutSegment.selectedSegmentIndex == 1)
+            self.store.settings.trackpadSurfaceLayout = isSplit ? .splitWithKeyboard : .full
+            self.updateTouchpadLayout()
+        }, for: .valueChanged)
+        touchpadView.addSubview(trackpadLayoutSegment)
+
         touchpadSurface.translatesAutoresizingMaskIntoConstraints = false
         touchpadSurface.backgroundColor = UIColor(red: 0.06, green: 0.08, blue: 0.13, alpha: 1.0)
         touchpadSurface.layer.cornerRadius = 14
@@ -624,12 +726,21 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         touchpadView.isMultipleTouchEnabled = true
         touchpadSurface.isMultipleTouchEnabled = true
 
-        // 1-finger move & 2-finger scroll recognizers on touchpad
-        let pan = UIPanGestureRecognizer(target: self, action: #selector(handleTouchpadPan(_:)))
-        pan.maximumNumberOfTouches = 2
-        pan.delegate = self
-        self.panGesture = pan
-        touchpadSurface.addGestureRecognizer(pan)
+        // Dedicated 1-finger cursor pan recognizer (strictly 1 touch - never scrolls, eliminates scroll jerk!)
+        let oneFingerPan = UIPanGestureRecognizer(target: self, action: #selector(handleOneFingerCursorPan(_:)))
+        oneFingerPan.minimumNumberOfTouches = 1
+        oneFingerPan.maximumNumberOfTouches = 1
+        oneFingerPan.delegate = self
+        self.oneFingerPanGesture = oneFingerPan
+        touchpadSurface.addGestureRecognizer(oneFingerPan)
+
+        // Dedicated 2-finger scroll recognizer (strictly 2 touches - resets translation on began)
+        let twoFingerScroll = UIPanGestureRecognizer(target: self, action: #selector(handleTwoFingerScrollPan(_:)))
+        twoFingerScroll.minimumNumberOfTouches = 2
+        twoFingerScroll.maximumNumberOfTouches = 2
+        twoFingerScroll.delegate = self
+        self.twoFingerScrollGesture = twoFingerScroll
+        touchpadSurface.addGestureRecognizer(twoFingerScroll)
 
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTouchpadTap(_:)))
         tapGesture.delegate = self
@@ -690,6 +801,15 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         touchpadHelpLabel.font = .systemFont(ofSize: 12, weight: .medium)
         touchpadSurface.addSubview(touchpadHelpLabel)
 
+        // Bottom virtual keyboard for split mode
+        splitVirtualKeyboard.translatesAutoresizingMaskIntoConstraints = false
+        splitVirtualKeyboard.onTextInput = { [weak self] text in
+            self?.workspaceVC?.routeKeyInput(text)
+        }
+        splitVirtualKeyboard.onSpecialKey = { [weak self] key in
+            self?.workspaceVC?.routeSpecialKey(key)
+        }
+
         // Optional bottom action buttons (controlled by settings.showTouchpadButtons)
         leftClickButton.translatesAutoresizingMaskIntoConstraints = false
         leftClickButton.setTitle("Left Click", for: .normal)
@@ -731,6 +851,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         clickButtonsStack.addArrangedSubview(rightClickButton)
 
         touchpadView.addSubview(touchpadSurface)
+        touchpadView.addSubview(splitVirtualKeyboard)
         touchpadView.addSubview(clickButtonsStack)
 
         NSLayoutConstraint.activate([
@@ -739,10 +860,6 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
             touchpadView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
             touchpadView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
 
-            touchpadSurface.topAnchor.constraint(equalTo: touchpadView.topAnchor, constant: 8),
-            touchpadSurface.leadingAnchor.constraint(equalTo: touchpadView.leadingAnchor, constant: 12),
-            touchpadSurface.trailingAnchor.constraint(equalTo: touchpadView.trailingAnchor, constant: -12),
-
             touchpadHelpLabel.centerXAnchor.constraint(equalTo: touchpadSurface.centerXAnchor),
             touchpadHelpLabel.centerYAnchor.constraint(equalTo: touchpadSurface.centerYAnchor),
             touchpadHelpLabel.leadingAnchor.constraint(greaterThanOrEqualTo: touchpadSurface.leadingAnchor, constant: 16),
@@ -750,7 +867,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         ])
 
         updateTouchpadHelpText()
-        updateTouchpadButtonsVisibility()
+        updateTouchpadLayout()
     }
 
     private func updateTouchpadHelpText() {
@@ -873,13 +990,16 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     // MARK: - UIGestureRecognizerDelegate
 
     public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        if (gestureRecognizer === oneFingerPanGesture && otherGestureRecognizer === twoFingerScrollGesture) ||
+           (gestureRecognizer === twoFingerScrollGesture && otherGestureRecognizer === oneFingerPanGesture) {
+            return false
+        }
         return true
     }
 
     public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-        if gestureRecognizer === panGesture {
-            // Do not start 1-finger / 2-finger pan if user has placed 3 or 4 fingers down
-            if gestureRecognizer.numberOfTouches >= 3 {
+        if gestureRecognizer === oneFingerPanGesture {
+            if gestureRecognizer.numberOfTouches > 1 {
                 return false
             }
         }
@@ -998,42 +1118,73 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         workspaceVC?.handleCursorPan(delta: delta, isDragHeld: isDragging)
     }
 
-    private func updateTouchpadButtonsVisibility() {
-        let show = store.settings.showTouchpadButtons
-        clickButtonsStack.isHidden = !show
+    private func updateTouchpadLayout() {
+        let isSplit = (store.settings.trackpadSurfaceLayout == .splitWithKeyboard)
+        let showButtons = store.settings.showTouchpadButtons
+        let isLandscape = (view.bounds.width > view.bounds.height)
+
+        trackpadLayoutSegment.selectedSegmentIndex = isSplit ? 1 : 0
+        splitVirtualKeyboard.isHidden = !isSplit
 
         NSLayoutConstraint.deactivate(activeTouchpadConstraints)
         activeTouchpadConstraints.removeAll()
 
-        if show {
-            activeTouchpadConstraints = [
-                touchpadSurface.bottomAnchor.constraint(equalTo: clickButtonsStack.topAnchor, constant: -8),
-                clickButtonsStack.leadingAnchor.constraint(equalTo: touchpadView.leadingAnchor, constant: 12),
-                clickButtonsStack.trailingAnchor.constraint(equalTo: touchpadView.trailingAnchor, constant: -12),
-                clickButtonsStack.bottomAnchor.constraint(equalTo: touchpadView.safeAreaLayoutGuide.bottomAnchor, constant: -10),
-                clickButtonsStack.heightAnchor.constraint(equalToConstant: 38),
-            ]
+        var constraints: [NSLayoutConstraint] = [
+            trackpadLayoutSegment.topAnchor.constraint(equalTo: touchpadView.topAnchor, constant: 4),
+            trackpadLayoutSegment.leadingAnchor.constraint(equalTo: touchpadView.leadingAnchor, constant: 12),
+            trackpadLayoutSegment.trailingAnchor.constraint(equalTo: touchpadView.trailingAnchor, constant: -12),
+            trackpadLayoutSegment.heightAnchor.constraint(equalToConstant: 28),
+
+            touchpadSurface.topAnchor.constraint(equalTo: trackpadLayoutSegment.bottomAnchor, constant: 6),
+            touchpadSurface.leadingAnchor.constraint(equalTo: touchpadView.leadingAnchor, constant: 12),
+            touchpadSurface.trailingAnchor.constraint(equalTo: touchpadView.trailingAnchor, constant: -12),
+        ]
+
+        if isSplit {
+            let trackpadHeightMultiplier: CGFloat = isLandscape ? 0.38 : 0.44
+            constraints.append(
+                touchpadSurface.heightAnchor.constraint(equalTo: touchpadView.heightAnchor, multiplier: trackpadHeightMultiplier)
+            )
+
+            constraints.append(contentsOf: [
+                splitVirtualKeyboard.topAnchor.constraint(equalTo: touchpadSurface.bottomAnchor, constant: 6),
+                splitVirtualKeyboard.leadingAnchor.constraint(equalTo: touchpadView.leadingAnchor, constant: 8),
+                splitVirtualKeyboard.trailingAnchor.constraint(equalTo: touchpadView.trailingAnchor, constant: -8),
+                splitVirtualKeyboard.bottomAnchor.constraint(equalTo: touchpadView.safeAreaLayoutGuide.bottomAnchor, constant: -6),
+            ])
+            clickButtonsStack.isHidden = true
         } else {
-            activeTouchpadConstraints = [
-                touchpadSurface.bottomAnchor.constraint(equalTo: touchpadView.safeAreaLayoutGuide.bottomAnchor, constant: -10),
-            ]
+            clickButtonsStack.isHidden = !showButtons
+            if showButtons {
+                constraints.append(contentsOf: [
+                    touchpadSurface.bottomAnchor.constraint(equalTo: clickButtonsStack.topAnchor, constant: -6),
+                    clickButtonsStack.leadingAnchor.constraint(equalTo: touchpadView.leadingAnchor, constant: 12),
+                    clickButtonsStack.trailingAnchor.constraint(equalTo: touchpadView.trailingAnchor, constant: -12),
+                    clickButtonsStack.bottomAnchor.constraint(equalTo: touchpadView.safeAreaLayoutGuide.bottomAnchor, constant: -8),
+                    clickButtonsStack.heightAnchor.constraint(equalToConstant: 36),
+                ])
+            } else {
+                constraints.append(
+                    touchpadSurface.bottomAnchor.constraint(equalTo: touchpadView.safeAreaLayoutGuide.bottomAnchor, constant: -8)
+                )
+            }
         }
+
+        activeTouchpadConstraints = constraints
         NSLayoutConstraint.activate(activeTouchpadConstraints)
         touchpadView.layoutIfNeeded()
     }
 
-    @objc private func handleTouchpadPan(_ gesture: UIPanGestureRecognizer) {
-        let surfaceBounds = touchpadSurface.bounds
-        guard surfaceBounds.width > 0, surfaceBounds.height > 0 else { return }
+    private func updateTouchpadButtonsVisibility() {
+        updateTouchpadLayout()
+    }
 
-        if gesture.numberOfTouches == 2 {
-            stopEdgePush()
-            isDoubleTapDragging = false
-            let translation = gesture.translation(in: touchpadSurface)
-            workspaceVC?.performVirtualScroll(deltaX: -translation.x * 0.8, deltaY: -translation.y * 0.8)
-            gesture.setTranslation(.zero, in: touchpadSurface)
+    @objc private func handleOneFingerCursorPan(_ gesture: UIPanGestureRecognizer) {
+        guard twoFingerScrollGesture?.state != .began && twoFingerScrollGesture?.state != .changed else {
             return
         }
+        let surfaceBounds = touchpadSurface.bounds
+        guard surfaceBounds.width > 0, surfaceBounds.height > 0 else { return }
 
         let loc = gesture.location(in: touchpadSurface)
         let now = ProcessInfo.processInfo.systemUptime
@@ -1068,6 +1219,25 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
             } else if store.settings.touchpadInputMode == .assistiveTouch {
                 checkEdgeContinuousPush(at: loc, in: surfaceBounds)
             }
+        }
+    }
+
+    @objc private func handleTwoFingerScrollPan(_ gesture: UIPanGestureRecognizer) {
+        stopEdgePush()
+        isDoubleTapDragging = false
+
+        switch gesture.state {
+        case .began:
+            gesture.setTranslation(.zero, in: touchpadSurface)
+        case .changed:
+            let translation = gesture.translation(in: touchpadSurface)
+            let maxStep: CGFloat = 60.0
+            let clampedX = max(-maxStep, min(maxStep, translation.x))
+            let clampedY = max(-maxStep, min(maxStep, translation.y))
+            workspaceVC?.performVirtualScroll(deltaX: -clampedX * 0.8, deltaY: -clampedY * 0.8)
+            gesture.setTranslation(.zero, in: touchpadSurface)
+        default:
+            break
         }
     }
 
@@ -1155,42 +1325,25 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         activePaneLabel.textAlignment = .center
         updateActivePaneIndicator()
 
-        // Custom Developer Keypad Grid
-        let devKeysContainer = buildDeveloperKeypad()
-        devKeysContainer.translatesAutoresizingMaskIntoConstraints = false
-
-        // Hidden input field that captures software keyboard events
-        hiddenInputTextField.translatesAutoresizingMaskIntoConstraints = false
-        hiddenInputTextField.delegate = self
-        hiddenInputTextField.autocorrectionType = .no
-        hiddenInputTextField.autocapitalizationType = .none
-        hiddenInputTextField.spellCheckingType = .no
-        hiddenInputTextField.smartDashesType = .no
-        hiddenInputTextField.smartQuotesType = .no
-        hiddenInputTextField.smartInsertDeleteType = .no
-        hiddenInputTextField.keyboardAppearance = .dark
-        hiddenInputTextField.backgroundColor = UIColor(red: 0.07, green: 0.10, blue: 0.16, alpha: 1.0)
-        hiddenInputTextField.textColor = .white
-        hiddenInputTextField.font = .monospacedSystemFont(ofSize: 13, weight: .regular)
-        hiddenInputTextField.layer.cornerRadius = 8
-        hiddenInputTextField.layer.borderWidth = 1
-        hiddenInputTextField.layer.borderColor = UIColor(white: 1.0, alpha: 0.15).cgColor
-        hiddenInputTextField.placeholder = "Tap here to type on external monitor…"
-        hiddenInputTextField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 10, height: 1))
-        hiddenInputTextField.leftViewMode = .always
+        keyboardModeVirtualKeyboard.translatesAutoresizingMaskIntoConstraints = false
+        keyboardModeVirtualKeyboard.onTextInput = { [weak self] text in
+            self?.workspaceVC?.routeKeyInput(text)
+        }
+        keyboardModeVirtualKeyboard.onSpecialKey = { [weak self] key in
+            self?.workspaceVC?.routeSpecialKey(key)
+        }
 
         let switchToTouchpadBtn = UIButton(type: .system)
         switchToTouchpadBtn.translatesAutoresizingMaskIntoConstraints = false
         switchToTouchpadBtn.setTitle("🖱️ Return to Touchpad", for: .normal)
-        switchToTouchpadBtn.titleLabel?.font = .systemFont(ofSize: 13, weight: .bold)
+        switchToTouchpadBtn.titleLabel?.font = .systemFont(ofSize: 12, weight: .bold)
         switchToTouchpadBtn.setTitleColor(.white, for: .normal)
         switchToTouchpadBtn.backgroundColor = UIColor(red: 0.12, green: 0.16, blue: 0.26, alpha: 1.0)
-        switchToTouchpadBtn.layer.cornerRadius = 8
+        switchToTouchpadBtn.layer.cornerRadius = 6
         switchToTouchpadBtn.addTarget(self, action: #selector(switchToTouchpadTapped), for: .touchUpInside)
 
         keyboardContainer.addSubview(activePaneLabel)
-        keyboardContainer.addSubview(hiddenInputTextField)
-        keyboardContainer.addSubview(devKeysContainer)
+        keyboardContainer.addSubview(keyboardModeVirtualKeyboard)
         keyboardContainer.addSubview(switchToTouchpadBtn)
 
         NSLayoutConstraint.activate([
@@ -1199,65 +1352,21 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
             keyboardContainer.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
             keyboardContainer.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
 
-            activePaneLabel.topAnchor.constraint(equalTo: keyboardContainer.topAnchor, constant: 8),
-            activePaneLabel.leadingAnchor.constraint(equalTo: keyboardContainer.leadingAnchor, constant: 14),
-            activePaneLabel.trailingAnchor.constraint(equalTo: keyboardContainer.trailingAnchor, constant: -14),
+            activePaneLabel.topAnchor.constraint(equalTo: keyboardContainer.topAnchor, constant: 4),
+            activePaneLabel.leadingAnchor.constraint(equalTo: keyboardContainer.leadingAnchor, constant: 12),
+            activePaneLabel.trailingAnchor.constraint(equalTo: keyboardContainer.trailingAnchor, constant: -12),
+            activePaneLabel.heightAnchor.constraint(equalToConstant: 20),
 
-            hiddenInputTextField.topAnchor.constraint(equalTo: activePaneLabel.bottomAnchor, constant: 6),
-            hiddenInputTextField.leadingAnchor.constraint(equalTo: keyboardContainer.leadingAnchor, constant: 14),
-            hiddenInputTextField.trailingAnchor.constraint(equalTo: keyboardContainer.trailingAnchor, constant: -14),
-            hiddenInputTextField.heightAnchor.constraint(equalToConstant: 36),
+            switchToTouchpadBtn.topAnchor.constraint(equalTo: activePaneLabel.bottomAnchor, constant: 4),
+            switchToTouchpadBtn.trailingAnchor.constraint(equalTo: keyboardContainer.trailingAnchor, constant: -12),
+            switchToTouchpadBtn.heightAnchor.constraint(equalToConstant: 26),
+            switchToTouchpadBtn.widthAnchor.constraint(equalToConstant: 160),
 
-            devKeysContainer.topAnchor.constraint(equalTo: hiddenInputTextField.bottomAnchor, constant: 8),
-            devKeysContainer.leadingAnchor.constraint(equalTo: keyboardContainer.leadingAnchor, constant: 14),
-            devKeysContainer.trailingAnchor.constraint(equalTo: keyboardContainer.trailingAnchor, constant: -14),
-
-            switchToTouchpadBtn.leadingAnchor.constraint(equalTo: keyboardContainer.leadingAnchor, constant: 14),
-            switchToTouchpadBtn.trailingAnchor.constraint(equalTo: keyboardContainer.trailingAnchor, constant: -14),
-            switchToTouchpadBtn.bottomAnchor.constraint(equalTo: keyboardContainer.safeAreaLayoutGuide.bottomAnchor, constant: -8),
-            switchToTouchpadBtn.heightAnchor.constraint(equalToConstant: 34),
+            keyboardModeVirtualKeyboard.topAnchor.constraint(equalTo: switchToTouchpadBtn.bottomAnchor, constant: 6),
+            keyboardModeVirtualKeyboard.leadingAnchor.constraint(equalTo: keyboardContainer.leadingAnchor, constant: 8),
+            keyboardModeVirtualKeyboard.trailingAnchor.constraint(equalTo: keyboardContainer.trailingAnchor, constant: -8),
+            keyboardModeVirtualKeyboard.bottomAnchor.constraint(equalTo: keyboardContainer.safeAreaLayoutGuide.bottomAnchor, constant: -6),
         ])
-    }
-
-    private func buildDeveloperKeypad() -> UIView {
-        let container = UIStackView()
-        container.axis = .vertical
-        container.spacing = 6
-        container.distribution = .fillEqually
-
-        let row1Keys = ["Esc", "Tab", "Ctrl+C", "Ctrl+D", "Ctrl+L", "/", "-"]
-        let row2Keys = ["|", "~", ":", "↑", "↓", "←", "→", "Enter"]
-
-        let r1Stack = makeKeyRow(keys: row1Keys)
-        let r2Stack = makeKeyRow(keys: row2Keys)
-
-        container.addArrangedSubview(r1Stack)
-        container.addArrangedSubview(r2Stack)
-        return container
-    }
-
-    private func makeKeyRow(keys: [String]) -> UIStackView {
-        let stack = UIStackView()
-        stack.axis = .horizontal
-        stack.spacing = 6
-        stack.distribution = .fillEqually
-
-        for key in keys {
-            let btn = UIButton(type: .system)
-            btn.setTitle(key, for: .normal)
-            btn.titleLabel?.font = .monospacedSystemFont(ofSize: 12, weight: .bold)
-            btn.setTitleColor(.white, for: .normal)
-            btn.backgroundColor = UIColor(red: 0.11, green: 0.15, blue: 0.24, alpha: 1.0)
-            btn.layer.cornerRadius = 6
-            btn.layer.borderWidth = 1
-            btn.layer.borderColor = UIColor(white: 1.0, alpha: 0.12).cgColor
-            btn.heightAnchor.constraint(equalToConstant: 34).isActive = true
-            btn.addAction(UIAction { [weak self] _ in
-                self?.handleDeveloperKey(key)
-            }, for: .touchUpInside)
-            stack.addArrangedSubview(btn)
-        }
-        return stack
     }
 
     private func handleDeveloperKey(_ key: String) {
@@ -1382,6 +1491,24 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         buttonsRow.axis = .horizontal
         buttonsRow.alignment = .center
         buttonsRow.distribution = .equalSpacing
+
+        let trackpadLayoutLabel = UILabel()
+        trackpadLayoutLabel.text = "Trackpad Surface"
+        trackpadLayoutLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        trackpadLayoutLabel.textColor = UIColor(white: 0.8, alpha: 1.0)
+
+        trackpadLayoutSettingsSegment.translatesAutoresizingMaskIntoConstraints = false
+        trackpadLayoutSettingsSegment.selectedSegmentIndex = store.settings.trackpadSurfaceLayout == .full ? 0 : 1
+        trackpadLayoutSettingsSegment.backgroundColor = UIColor(white: 1.0, alpha: 0.08)
+        trackpadLayoutSettingsSegment.selectedSegmentTintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.35)
+        trackpadLayoutSettingsSegment.setTitleTextAttributes([.foregroundColor: UIColor.white, .font: UIFont.systemFont(ofSize: 11, weight: .semibold)], for: .normal)
+        trackpadLayoutSettingsSegment.setTitleTextAttributes([.foregroundColor: UIColor.white, .font: UIFont.systemFont(ofSize: 11, weight: .bold)], for: .selected)
+        trackpadLayoutSettingsSegment.addTarget(self, action: #selector(handleTrackpadLayoutSettingsChanged), for: .valueChanged)
+
+        let trackpadLayoutRow = UIStackView(arrangedSubviews: [trackpadLayoutLabel, trackpadLayoutSettingsSegment])
+        trackpadLayoutRow.axis = .horizontal
+        trackpadLayoutRow.alignment = .center
+        trackpadLayoutRow.distribution = .equalSpacing
 
         let orientLabel = UILabel()
         orientLabel.text = "Orientation"
@@ -1528,6 +1655,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         let controllerOptionsCard = UIStackView(arrangedSubviews: [
             sidebarRow,
             orientRow,
+            trackpadLayoutRow,
             buttonsRow,
             modeRow,
             phoneTrackpadOptionsStack,
@@ -1630,6 +1758,13 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         case .auto: orientationSegment.selectedSegmentIndex = 0
         }
         showButtonsSwitch.isOn = store.settings.showTouchpadButtons
+        trackpadLayoutSettingsSegment.selectedSegmentIndex = (store.settings.trackpadSurfaceLayout == .splitWithKeyboard) ? 1 : 0
+    }
+
+    @objc private func handleTrackpadLayoutSettingsChanged() {
+        let isSplit = (trackpadLayoutSettingsSegment.selectedSegmentIndex == 1)
+        store.settings.trackpadSurfaceLayout = isSplit ? .splitWithKeyboard : .full
+        updateTouchpadLayout()
     }
 
     @objc private func handleOrientationSegmentChanged() {

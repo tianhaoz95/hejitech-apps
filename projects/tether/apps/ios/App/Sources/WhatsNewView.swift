@@ -17,10 +17,32 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.16"
+    static let currentVersion = "0.1.17"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.17", date: "October 2026", items: [
+            WhatsNewItem(
+                icon: "rectangle.split.2x1.fill",
+                title: "Redesigned Phone Trackpad & Split Keyboard",
+                description: "Choose between Full Trackpad or Split Half Trackpad + Half Virtual Keyboard on your phone for simultaneous cursor steering and typing."
+            ),
+            WhatsNewItem(
+                icon: "lock.fill",
+                title: "Sidebar Orientation Lock & 4 Directions",
+                description: "Lock or unlock the phone interface in any orientation (portrait, upside-down, landscape left, landscape right) with the sidebar lock button."
+            ),
+            WhatsNewItem(
+                icon: "keyboard.fill",
+                title: "Always-On Virtual Keyboard",
+                description: "Full tactile software keyboard with developer shortcuts, numbers, and symbols that stays visible and usable even when physical keyboards are attached."
+            ),
+            WhatsNewItem(
+                icon: "cursorarrow.rays",
+                title: "Smooth Pointer Tracking & Zero Scroll Jerk",
+                description: "Separated single-finger pointer pan from two-finger scrolling with clamped steps, eliminating accidental scroll spikes on web pages."
+            ),
+        ]),
         ReleaseNotes(version: "0.1.16", date: "October 2026", items: [
             WhatsNewItem(
                 icon: "menubar.dock.rectangle",
