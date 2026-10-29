@@ -76,6 +76,23 @@ describe("paired", () => {
     expect(posts[0]).toMatchObject({ trip_id: commute.trains[0].trip_id, from: "mountain_view", to: "san_francisco" });
     expect(calls.filter((c) => c.startsWith("GET /api/me/board")).length).toBeGreaterThan(1);
   });
+  it("sends the phone's location with the commute board, asking at most every two minutes", async () => {
+    const calls: string[] = [];
+    let asked = 0, now = NOW;
+    const app = new HeadwayApp({
+      api: "https://hw.test", store: memory({ [K.token]: "hwd_x" }), now: () => now,
+      fetch: async (u) => { calls.push(new URL(u).search); return json({ board: commute, has_commute: true, tracked: null }); },
+      onLines: () => {},
+      locate: async () => (asked++, { lat: 37.394512, lon: -122.076111 }),
+    });
+    await app.start();
+    await app.refresh();
+    expect(calls.at(-1)).toBe("?lat=37.3945&lon=-122.0761");
+    expect(asked).toBe(1);
+    now += 3 * 60_000;
+    await app.refresh();
+    expect(asked).toBe(2);
+  });
   it("unpaired from the app: forgets the token and carries on unpaired", async () => {
     const store = memory({ [K.token]: "hwd_gone" });
     const { app } = setup((u) => (u.pathname === "/api/me/board" ? json({ error: "x" }, 401) : json({}, 404)), store);

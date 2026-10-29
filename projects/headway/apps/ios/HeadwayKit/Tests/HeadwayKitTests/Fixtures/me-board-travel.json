@@ -1,0 +1,97 @@
+{
+ "board": {
+  "from": {
+   "id": "mountain_view",
+   "name": "Mountain View",
+   "short": "MTN VIEW"
+  },
+  "to": {
+   "id": "san_francisco",
+   "name": "San Francisco",
+   "short": "SF"
+  },
+  "leg": "morning",
+  "generated_at": 1793111400000,
+  "live": false,
+  "trains": [
+   {
+    "trip_id": "507",
+    "train": "507",
+    "kind": "EXP",
+    "dir": "N",
+    "service_date": "20261027",
+    "dep": 1793111760000,
+    "arr": 1793114520000,
+    "pred_dep": 1793111760000,
+    "pred_arr": 1793114520000,
+    "delay_min": null,
+    "status": "scheduled",
+    "stops_between": 7,
+    "leave_by": 1793111160000,
+    "catch": "run",
+    "ride_min": 46,
+    "overtaken_by": null,
+    "overtaken_by_train": null,
+    "first_in": true,
+    "shortest": true,
+    "buffer_min": -4
+   },
+   {
+    "trip_id": "111",
+    "train": "111",
+    "kind": "LOC",
+    "dir": "N",
+    "service_date": "20261027",
+    "dep": 1793112360000,
+    "arr": 1793115960000,
+    "pred_dep": 1793112360000,
+    "pred_arr": 1793115960000,
+    "delay_min": null,
+    "status": "scheduled",
+    "stops_between": 16,
+    "leave_by": 1793111760000,
+    "catch": "leave",
+    "ride_min": 60,
+    "overtaken_by": null,
+    "overtaken_by_train": null,
+    "first_in": false,
+    "shortest": false,
+    "buffer_min": 6
+   },
+   {
+    "trip_id": "409",
+    "train": "409",
+    "kind": "LTD",
+    "dir": "N",
+    "service_date": "20261027",
+    "dep": 1793113260000,
+    "arr": 1793116380000,
+    "pred_dep": 1793113260000,
+    "pred_arr": 1793116380000,
+    "delay_min": null,
+    "status": "scheduled",
+    "stops_between": 10,
+    "leave_by": 1793112660000,
+    "catch": "later",
+    "ride_min": 52,
+    "overtaken_by": null,
+    "overtaken_by_train": null,
+    "first_in": false,
+    "shortest": false,
+    "buffer_min": 21
+   }
+  ],
+  "alerts": [],
+  "express_preference": "all",
+  "walk_minutes": 10,
+  "tip": null,
+  "travel": {
+   "mode": "drive",
+   "distance_m": 1562,
+   "minutes": 10
+  }
+ },
+ "has_commute": true,
+ "saved": true,
+ "tracked": null
+}

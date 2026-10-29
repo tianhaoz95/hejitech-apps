@@ -159,7 +159,9 @@ data class Leg(
     @SerialName("walk_minutes") val walkMinutes: Int = 10,
     val usual: String? = null,
     val window: TimeWindow,
-    @SerialName("express_preference") val expressPreference: ExpressPreference = ExpressPreference.ALL
+    @SerialName("express_preference") val expressPreference: ExpressPreference = ExpressPreference.ALL,
+    /** "walk" or "drive" (chosen in the iPhone app); kept so saving here doesn't reset it. */
+    @SerialName("travel_mode") val travelMode: String = "walk"
 ) {
     companion object {
         fun morning(from: String, to: String) = Leg(

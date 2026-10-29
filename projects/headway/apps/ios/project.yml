@@ -53,6 +53,7 @@ targets:
         UIBackgroundModes: [remote-notification]
         NSSupportsLiveActivities: true
         NSSupportsLiveActivitiesFrequentUpdates: true
+        NSLocationWhenInUseUsageDescription: Headway estimates how long your walk or drive to the station takes from where you are, so leave-by times fit. Your location is never stored.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         ITSAppUsesNonExemptEncryption: false

@@ -4,7 +4,7 @@
 import data from "./timetable.gen.json" with { type: "json" };
 import { addDays, hhmm, serviceDayStart, weekdayOf, zoned } from "./time.ts";
 import type {
-  BoardActivityState,
+  BoardActivityState, TravelEstimate, TravelMode,
   Board, BoardTip, BoardTrain, CatchState, Direction, ExpressPreference, Leg, LegName, RealtimeSnapshot, RealtimeTrip, ServiceAlert, Settings, Station, Timetable, Tracked, TrainProgress, Trip, TrainStatus,
 } from "./types.ts";
 
@@ -115,6 +115,43 @@ export interface DepartureOptions {
   expressPreference?: ExpressPreference;
   /** Walk time in minutes for calculating catch info. */
   walkMinutes?: number;
+  /** The rider's location: estimates the trip to the departure station (overrides walkMinutes). */
+  origin?: { lat: number; lon: number } | null;
+  /** How they travel from `origin` (default walk). */
+  travelMode?: TravelMode;
+}
+
+/** Average speeds (m/min), detour over the straight line, and fixed minutes (to the platform, parking). */
+export const TRAVEL = {
+  walk: { speed: 80, detour: 1.3, extra: 1 },
+  drive: { speed: 500, detour: 1.4, extra: 5 },
+} as const;
+
+const EARTH_M = 6_371_000;
+
+/** Great-circle distance in metres. */
+export function distanceM(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
+  const rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad, dLon = (b.lon - a.lon) * rad;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLon / 2) ** 2;
+  return 2 * EARTH_M * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+/**
+ * Roughly how long from `origin` to the station: straight-line distance times a detour factor at an
+ * average speed, plus a few fixed minutes. No routing or traffic, on purpose: it's an estimate.
+ */
+export function travelEstimate(mode: TravelMode, origin: { lat: number; lon: number }, to: { lat: number; lon: number }): TravelEstimate {
+  const distance_m = Math.round(distanceM(origin, to));
+  const t = TRAVEL[mode];
+  const minutes = distance_m < 50 ? 0 : Math.min(180, Math.ceil((distance_m * t.detour) / t.speed + t.extra));
+  return { mode, distance_m, minutes };
+}
+
+export function validOrigin(lat: unknown, lon: unknown): { lat: number; lon: number } | null {
+  const a = Number(lat), o = Number(lon);
+  if (lat == null || lon == null || lat === "" || lon === "" || !Number.isFinite(a) || !Number.isFinite(o) || Math.abs(a) > 90 || Math.abs(o) > 180) return null;
+  return { lat: a, lon: o };
 }
 
 /** Computes leave-by timestamp and catch state for a train given walk time. */
@@ -282,7 +319,10 @@ export function board(fromId: string, toId: string, now: number, snapshot: Realt
   const f = station(fromId), t = station(toId);
   if (!f || !t || f.id === t.id) return null;
   const live = isFresh(snapshot, now);
+  const travel = opts.origin && f.lat != null && f.lon != null ? travelEstimate(opts.travelMode ?? "walk", opts.origin, { lat: f.lat, lon: f.lon }) : null;
+  if (travel) opts = { ...opts, walkMinutes: travel.minutes };
   const trains = departures(f.id, t.id, now, snapshot, opts, tt);
+  if (travel) for (const x of trains) x.buffer_min = x.status === "cancelled" ? null : Math.floor((x.pred_dep - now) / MIN) - travel.minutes;
   const tip = live ? computeBoardTip(trains, opts.walkMinutes) : null;
   return {
     from: lite(f), to: lite(t), leg, generated_at: now, live,
@@ -291,6 +331,7 @@ export function board(fromId: string, toId: string, now: number, snapshot: Realt
     express_preference: opts.expressPreference ?? "all",
     walk_minutes: opts.walkMinutes ?? null,
     tip,
+    travel,
   };
 }
 
@@ -322,7 +363,8 @@ export function commuteBoard(settings: Settings | null, now: number, snapshot: R
   if (!cur) return null;
   const pref = opts.expressPreference ?? cur.leg.express_preference ?? settings?.express_preference ?? "all";
   const walkMinutes = opts.walkMinutes ?? cur.leg.walk_minutes;
-  return board(cur.from, cur.to, now, snapshot, cur.name, TIMETABLE, { ...opts, expressPreference: pref, walkMinutes });
+  const travelMode = opts.travelMode ?? cur.leg.travel_mode ?? "walk";
+  return board(cur.from, cur.to, now, snapshot, cur.name, TIMETABLE, { ...opts, expressPreference: pref, walkMinutes, travelMode });
 }
 
 /** Where a train is relative to someone riding it to `to`. */

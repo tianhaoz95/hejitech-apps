@@ -26,7 +26,12 @@ export interface AppOptions {
   onStatus?: (s: AppStatus) => void;
   /** The user asked to leave (double tap on the board, or Exit in the menu): the system dialog. */
   onExit?: () => void;
+  /** The phone's location, for a rough trip estimate to the station (null: unknown or not allowed). */
+  locate?: () => Promise<{ lat: number; lon: number } | null>;
 }
+
+/** How long a location is reused before asking the phone again. */
+const LOCATION_TTL_MS = 2 * 60_000;
 
 export interface AppStatus {
   paired: boolean;
@@ -51,6 +56,7 @@ export class HeadwayApp {
   private pair: Pair | null = null;
   private readonly fetch: Fetch;
   private readonly now: () => number;
+  private located: { at: number; where: { lat: number; lon: number } | null } | null = null;
 
   constructor(private readonly opts: AppOptions) {
     this.fetch = opts.fetch ?? ((u, i) => fetch(u, i));
@@ -76,6 +82,17 @@ export class HeadwayApp {
     this.opts.onStatus?.({ paired: this.paired, source, board: this.board, custom: Boolean(this.pair), message });
   }
 
+  /** `&lat=…&lon=…` for the commute board, from a location at most two minutes old ("" without one). */
+  private async locationQuery(): Promise<string> {
+    if (!this.opts.locate) return "";
+    if (!this.located || this.now() - this.located.at > LOCATION_TTL_MS) {
+      const where = await this.opts.locate().catch(() => null);
+      this.located = { at: this.now(), where };
+    }
+    const w = this.located.where;
+    return w ? `lat=${w.lat.toFixed(4)}&lon=${w.lon.toFixed(4)}` : "";
+  }
+
   private async token() {
     return (await this.opts.store.get(K.token)) || null;
   }
@@ -97,9 +114,10 @@ export class HeadwayApp {
   async refresh(): Promise<void> {
     const token = await this.token();
     this.paired = Boolean(token);
-    const q = this.pair ? `?from=${this.pair.from}&to=${this.pair.to}` : "";
     try {
       if (token) {
+        const params = [this.pair ? `from=${this.pair.from}&to=${this.pair.to}` : "", await this.locationQuery()].filter(Boolean).join("&");
+        const q = params ? `?${params}` : "";
         const res = await this.get(`/api/me/board${q}`, token);
         if (res.status === 401) {
           await this.opts.store.set(K.token, "");

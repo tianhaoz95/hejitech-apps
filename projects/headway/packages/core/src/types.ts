@@ -104,6 +104,18 @@ export interface Leg {
   window: { start: string; end: string };
   /** Train filter/preference for this leg: all (default), prefer_express, or express_only. */
   express_preference?: ExpressPreference;
+  /** How the rider gets to `from`: with their location, the board estimates the trip instead of walk_minutes. */
+  travel_mode?: TravelMode;
+}
+
+export type TravelMode = "walk" | "drive";
+
+/** A rough door-to-platform estimate from the rider's location (straight line × detour ÷ average speed). */
+export interface TravelEstimate {
+  mode: TravelMode;
+  /** Straight-line distance to the departure station, metres. */
+  distance_m: number;
+  minutes: number;
 }
 
 export interface AlertSettings {
@@ -161,6 +173,8 @@ export interface BoardTrain {
   leave_by?: number | null;
   /** Catch state relative to departure and walk time. */
   catch?: CatchState | null;
+  /** With a travel estimate: minutes to spare if leaving now (negative: too late by that much). */
+  buffer_min?: number | null;
   /** Ride duration in minutes: (pred_arr - pred_dep) / 60_000. */
   ride_min?: number | null;
   /** Trip id of a later-departing train that arrives sooner, if overtaken. */
@@ -201,6 +215,8 @@ export interface Board {
   walk_minutes?: number | null;
   /** Faster train recommendation when your next train is overtaken. */
   tip?: BoardTip | null;
+  /** Set when the board was asked from the rider's location: walk_minutes is then this estimate. */
+  travel?: TravelEstimate | null;
 }
 
 /** A train someone follows on board, from the glasses or the iPhone: arrival alerts and the track view. */

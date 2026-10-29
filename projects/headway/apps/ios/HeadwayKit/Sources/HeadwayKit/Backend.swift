@@ -192,10 +192,12 @@ public final class Backend: @unchecked Sendable {
     public struct OK: Decodable, Sendable {}
 
     public func stations() async throws -> [Station] { try await call("GET", "/api/stations", auth: false) }
-    public func myBoard(from: String? = nil, to: String? = nil, express: ExpressPreference? = nil) async throws -> MyBoard {
+    /// `origin`: the rider's location for a rough trip estimate to the departure station (not stored).
+    public func myBoard(from: String? = nil, to: String? = nil, express: ExpressPreference? = nil, origin: (lat: Double, lon: Double)? = nil) async throws -> MyBoard {
         var items: [String] = []
         if let from, let to { items.append("from=\(from)&to=\(to)") }
         if let express, express != .all { items.append("express=\(express.rawValue)") }
+        if let origin { items.append(String(format: "lat=%.4f&lon=%.4f", origin.lat, origin.lon)) }
         let q = items.isEmpty ? "" : "?\(items.joined(separator: "&"))"
         return try await call("GET", "/api/me/board\(q)")
     }

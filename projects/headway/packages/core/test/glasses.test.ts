@@ -32,6 +32,13 @@ describe("board screen", () => {
     expect(lines.at(-2)).toBe("Leave in 11m for 113 (walk 10)");
     expect(lines.at(-1)).toBe("tap: flip  hold: menu  2x: exit");
   });
+  it("names the estimated trip from the rider's location in the leave hint", () => {
+    const mv = station("mountain_view")!;
+    const b = commuteBoard(commuter(), now, null, undefined, { origin: { lat: mv.lat + 0.011, lon: mv.lon - 0.011 }, travelMode: "drive" });
+    const lines = new Navigator().lines(world({ board: b }));
+    fits(lines);
+    expect(lines.at(-2)).toMatch(/^Leave (in \d+m|now) for \d+ \(drive ~\d+m\)$|^Hurry: \d+ is \d+m tight \(drive ~\d+m\)$/);
+  });
   it("shows go Xm or RUN on rows when walk_minutes is set", () => {
     const nav = new Navigator();
     const lines = nav.lines(world());

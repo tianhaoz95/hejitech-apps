@@ -119,10 +119,15 @@ export function boardLines(world: World, cursor: number): string[] {
   const leaveTrain = b.walk_minutes != null
     ? (b.trains.find((t) => t.catch === "leave") ?? b.trains.find((t) => t.catch === "run"))
     : null;
+  // From the rider's location the trip is an estimate ("drive ~12m"); otherwise the leg's walk.
+  const trip = b.travel ? `${b.travel.mode} ~${b.travel.minutes}m` : `walk ${b.walk_minutes}`;
+  const short = leaveTrain?.buffer_min != null && leaveTrain.buffer_min < 0 ? -leaveTrain.buffer_min : 0;
   const leaveHint = leaveTrain && leaveTrain.leave_by != null
-    ? (untilText(leaveTrain.leave_by, world.now) === "now" || leaveTrain.catch === "run"
-        ? `Leave now for ${leaveTrain.train} (walk ${b.walk_minutes})`
-        : `Leave in ${untilText(leaveTrain.leave_by, world.now)} for ${leaveTrain.train} (walk ${b.walk_minutes})`)
+    ? fitPx(short
+        ? `Hurry: ${leaveTrain.train} is ${short}m tight (${trip})`
+        : untilText(leaveTrain.leave_by, world.now) === "now" || leaveTrain.catch === "run"
+          ? `Leave now for ${leaveTrain.train} (${trip})`
+          : `Leave in ${untilText(leaveTrain.leave_by, world.now)} for ${leaveTrain.train} (${trip})`)
     : null;
   const tipHint = b.tip ? `Wait for ${b.tip.wait_for} (${b.tip.wait_for_kind}): beats ${b.tip.instead_of} by ${b.tip.saves_min}m` : null;
 

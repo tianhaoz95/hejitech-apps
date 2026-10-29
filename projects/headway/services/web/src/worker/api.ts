@@ -4,7 +4,7 @@
 //   none                          stations, any board, a train's progress, status; POST /api/pair (throttled)
 //   session or glasses token      the user's commute board, the tracked train
 //   Supabase session (web, iPhone) settings, pairing codes, devices, push registration, agent tokens, delete data
-import { board, checkSettings, commuteBoard, normalizeSettings, progress, station, STATIONS, timetableDaysLeft, TIMETABLE, tripProgressStops, type ExpressPreference, type Notification, type Settings, type Tracked } from "@headway/core";
+import { board, checkSettings, commuteBoard, normalizeSettings, progress, station, STATIONS, timetableDaysLeft, TIMETABLE, tripProgressStops, validOrigin, type ExpressPreference, type TravelMode, type Notification, type Settings, type Tracked } from "@headway/core";
 import { NOT_BOARD_ACTIVITY, pushConfigured, sendPush } from "./push.ts";
 import {
   admin, bearer, createEtaShare, json, loadEtaShare, loadSettings, loadSnapshot, loadTracked, pairingCode, PAIRING_CODE_TTL_MS, PREFIX, randomToken, resolveDevice,
@@ -55,6 +55,12 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
 
   const expressParam = (url.searchParams.get("express") ?? url.searchParams.get("express_preference")) as ExpressPreference | null;
   const validExpress = expressParam === "all" || expressParam === "prefer_express" || expressParam === "express_only" ? expressParam : undefined;
+  // The rider's location (`lat`, `lon`) for a rough travel estimate to the departure station: used
+  // for this one board, never stored or logged. `mode` (walk | drive) overrides the leg's.
+  const origin = validOrigin(url.searchParams.get("lat"), url.searchParams.get("lon"));
+  const modeParam = url.searchParams.get("mode");
+  const travelMode: TravelMode | undefined = modeParam === "walk" || modeParam === "drive" ? modeParam : undefined;
+  const travelOpts = origin ? { origin, ...(travelMode ? { travelMode } : {}) } : {};
 
   // ------------------------------------------------------------ public
   if (path === "/api/stations" && req.method === "GET") {
@@ -63,8 +69,8 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
   if (path === "/api/board" && req.method === "GET") {
     const p = pairOf(url);
     if (!p) return reply({ error: "send ?from=<station>&to=<station> (ids from /api/stations)" }, 400);
-    const b = board(p.from, p.to, now, await loadSnapshot(db), "custom", TIMETABLE, validExpress ? { expressPreference: validExpress } : {});
-    return b ? reply(b, 200, { "Cache-Control": "public, max-age=20" }) : reply({ error: "unknown stations, or the same station twice" }, 400);
+    const b = board(p.from, p.to, now, await loadSnapshot(db), "custom", TIMETABLE, { ...(validExpress ? { expressPreference: validExpress } : {}), ...travelOpts });
+    return b ? reply(b, 200, { "Cache-Control": origin ? "private, no-store" : "public, max-age=20" }) : reply({ error: "unknown stations, or the same station twice" }, 400);
   }
   if (path === "/api/train" && req.method === "GET") {
     const t = checkTracked({ trip_id: url.searchParams.get("trip") ?? "", service_date: url.searchParams.get("date") ?? "", from: url.searchParams.get("from") ?? url.searchParams.get("to") ?? "", to: url.searchParams.get("to") ?? "" });
@@ -138,7 +144,13 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
   if (path === "/api/device" && req.method === "GET") return reply({ paired: true, via: who.via });
   if (path === "/api/me/board" && req.method === "GET") {
     const [{ settings, saved }, snapshot, tracked] = await Promise.all([loadSettings(db, userId), loadSnapshot(db), loadTracked(db, userId)]);
-    const b = commuteBoard(settings, now, snapshot, pairOf(url), validExpress ? { expressPreference: validExpress } : {});
+    const pair = pairOf(url);
+    // A picked pair takes the travel mode of the leg leaving from the same station.
+    const legMode = pair ? [settings.morning, settings.evening].find((l) => l?.from === pair.from)?.travel_mode : undefined;
+    const b = commuteBoard(settings, now, snapshot, pair, {
+      ...(validExpress ? { expressPreference: validExpress } : {}),
+      ...(origin ? { origin, travelMode: travelMode ?? legMode } : {}),
+    });
     const p = tracked ? progress(tracked, now, snapshot) : null;
     return reply({ board: b, has_commute: Boolean(settings.morning || settings.evening), saved, tracked: tracked && p && !p.arrived ? { ...tracked, progress: p } : null });
   }

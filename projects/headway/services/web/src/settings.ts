@@ -149,6 +149,8 @@ function legEditor(part: "morning" | "evening", leg: Leg | null, onMirror?: () =
         usual: usual.value || null,
         window: { start: start.value, end: end.value },
         express_preference: expPref.value as any,
+        // Walk or drive is chosen in the iPhone app; keep it.
+        travel_mode: base.travel_mode ?? "walk",
       };
     },
   };

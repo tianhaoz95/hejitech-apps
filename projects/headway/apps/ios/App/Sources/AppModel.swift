@@ -30,6 +30,11 @@ final class AppModel {
     var notificationsAllowed: Bool?
     /// "from>to" of the board pinned to the Lock Screen as a Live Activity.
     var pinnedBoard: String?
+    /// Estimate the trip to the station from where the phone is (Settings › Location), instead of the leg's fixed minutes.
+    var useLocation = UserDefaults.standard.bool(forKey: "useLocation") {
+        didSet { UserDefaults.standard.set(useLocation, forKey: "useLocation") }
+    }
+    let location = LocationProvider()
 
     let watch = WatchLink()
     private(set) var backend: Backend
@@ -231,7 +236,13 @@ final class AppModel {
         watch.sync(state: state)
     }
 
+    /// Runs in its own task: a view's `.task` or pull-to-refresh ending (sign-in swapping screens)
+    /// must not cancel a refresh halfway, e.g. while it waits for a location fix.
     func refresh() async {
+        await Task { await self.refreshNow() }.value
+    }
+
+    private func refreshNow() async {
         guard phase == .ready else { return }
         loading = true
         defer {
@@ -239,7 +250,9 @@ final class AppModel {
             syncWatch()
         }
         do {
-            let r = try await backend.myBoard(from: customPair?.from, to: customPair?.to, express: expressPreference)
+            let here = useLocation ? await location.current() : nil
+            let origin = here.map { (lat: $0.coordinate.latitude, lon: $0.coordinate.longitude) }
+            let r = try await backend.myBoard(from: customPair?.from, to: customPair?.to, express: expressPreference, origin: origin)
             board = r.board
             hasCommute = r.hasCommute
             tracked = r.tracked
@@ -296,6 +309,17 @@ final class AppModel {
             tracked = nil
             syncWatch()
         } catch { self.error = error.localizedDescription }
+    }
+
+    /// Turns the location estimate on (asking for access the first time) or off.
+    func setUseLocation(_ on: Bool) async {
+        if on, !(await location.requestAccess()) {
+            useLocation = false
+            error = "Location is off for Headway. Turn it on in Settings › Headway › Location."
+            return
+        }
+        useLocation = on
+        await refresh()
     }
 
     var boardIsPinned: Bool {

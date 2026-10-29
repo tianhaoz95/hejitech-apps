@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  addDays, board, boardActivityState, checkSettings, clock, commuteBoard, currentLeg, defaultSettings, departures, findStation, newLeg, normalizeSettings, progress, serviceDayStart, STATIONS, station, TIMETABLE, timetableDaysLeft, zoned,
+  addDays, board, boardActivityState, checkSettings, distanceM, travelEstimate, validOrigin, clock, commuteBoard, currentLeg, defaultSettings, departures, findStation, newLeg, normalizeSettings, progress, serviceDayStart, STATIONS, station, TIMETABLE, timetableDaysLeft, zoned,
 } from "../src/index.ts";
 import { at, commuter, firstTrain, SATURDAY, snapshot, THANKSGIVING, WEEKDAY } from "./helpers.ts";
 
@@ -295,5 +295,47 @@ describe("board Live Activity", () => {
       expect(t.arr).toBeGreaterThan(t.dep);
       expect(t.cancelled).toBe(false);
     }
+  });
+});
+
+describe("travel estimate from the rider's location", () => {
+  const mv = station("mountain_view")!;
+  // ~1.6 km north-west of Mountain View station
+  const home = { lat: mv.lat + 0.011, lon: mv.lon - 0.011 };
+
+  it("measures the straight line", () => {
+    const d = distanceM(home, mv);
+    expect(d).toBeGreaterThan(1400);
+    expect(d).toBeLessThan(1700);
+  });
+  it("walks at ~4.8 km/h with a detour, drives at ~30 km/h plus parking", () => {
+    const walk = travelEstimate("walk", home, mv), drive = travelEstimate("drive", home, mv);
+    expect(walk.minutes).toBeGreaterThanOrEqual(25);
+    expect(walk.minutes).toBeLessThanOrEqual(30);
+    expect(drive.minutes).toBeGreaterThanOrEqual(8);
+    expect(drive.minutes).toBeLessThanOrEqual(11);
+    expect(travelEstimate("walk", mv, mv).minutes).toBe(0);
+  });
+  it("uses the estimate for leave-by times and gives each train its spare minutes", () => {
+    const now = at(WEEKDAY, "07:30");
+    const b = board("mountain_view", "san_francisco", now, null, "custom", TIMETABLE, { origin: home, travelMode: "drive" })!;
+    expect(b.travel?.mode).toBe("drive");
+    expect(b.walk_minutes).toBe(b.travel!.minutes);
+    for (const t of b.trains) {
+      expect(t.leave_by).toBe(t.pred_dep - b.travel!.minutes * MIN);
+      expect(t.buffer_min).toBe(Math.floor((t.pred_dep - now) / MIN) - b.travel!.minutes);
+    }
+  });
+  it("takes the commute leg's travel mode", () => {
+    const s = normalizeSettings({ ...defaultSettings(), morning: { ...newLeg("mountain_view", "san_francisco", "morning"), travel_mode: "drive" } });
+    expect(s.morning?.travel_mode).toBe("drive");
+    expect(commuteBoard(s, at(WEEKDAY, "07:30"), null, undefined, { origin: home })?.travel?.mode).toBe("drive");
+    expect(checkSettings({ ...s, morning: { ...s.morning, travel_mode: "bike" } }).map((i) => i.path)).toContain("morning.travel_mode");
+  });
+  it("accepts only real coordinates", () => {
+    expect(validOrigin("37.39", "-122.08")).toEqual({ lat: 37.39, lon: -122.08 });
+    expect(validOrigin(null, "1")).toBeNull();
+    expect(validOrigin("x", "1")).toBeNull();
+    expect(validOrigin("91", "0")).toBeNull();
   });
 });

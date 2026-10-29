@@ -28,6 +28,13 @@ struct SettingsView: View {
                 } footer: {
                     Text("Choose which alerts in the Commute tab.")
                 }
+                Section {
+                    Toggle("Estimate my trip from where I am", isOn: Binding(get: { model.useLocation }, set: { on in Task { await model.setUseLocation(on) } }))
+                } header: {
+                    Text("Location")
+                } footer: {
+                    Text("Headway measures how far you are from your departure station and estimates the walk or drive (set per leg in Commute) at an average speed, so leave-by times and how many minutes you have to spare fit where you are. It's a rough estimate without routes or traffic. Your location goes with each board request and is never stored.")
+                }
                 Section("Account") {
                     LabeledContent("Signed in as", value: model.email ?? "—")
                     Button("Sign out") { Task { await model.signOut() } }

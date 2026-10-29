@@ -16,6 +16,25 @@ final class HeadwayKitTests: XCTestCase {
         XCTAssertEqual(board.trains[0].id, "\(board.trains[0].serviceDate):\(board.trains[0].tripId)")
     }
 
+    func testDecodesTravelEstimateAndSpareMinutes() throws {
+        // Made by @headway/core's board() from a location ~1.6 km from Mountain View, driving.
+        let b = try XCTUnwrap(try Backend.decoder.decode(MyBoard.self, from: fixture("me-board-travel")).board)
+        let travel = try XCTUnwrap(b.travel)
+        XCTAssertEqual(travel.mode, .drive)
+        XCTAssertGreaterThan(travel.distanceM, 1000)
+        XCTAssertEqual(b.walkMinutes, travel.minutes)
+        XCTAssertNotNil(b.trains.first?.bufferMin)
+    }
+
+    func testLegKeepsTravelMode() throws {
+        var leg = Leg.morning(from: "mountain_view", to: "san_francisco")
+        XCTAssertEqual(leg.travelMode, .walk)
+        leg.travelMode = .drive
+        let json = String(data: try JSONEncoder().encode(leg), encoding: .utf8)!
+        XCTAssertTrue(json.contains("\"travel_mode\":\"drive\""))
+        XCTAssertEqual(try JSONDecoder().decode(Leg.self, from: Data(json.utf8)).travelMode, .drive)
+    }
+
     func testDecodesStations() throws {
         let s = try Backend.decoder.decode([Station].self, from: fixture("stations"))
         XCTAssertEqual(s.first?.id, "san_francisco")

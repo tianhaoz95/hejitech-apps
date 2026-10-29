@@ -212,9 +212,15 @@ struct CatchCard: View {
 
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Label("\(walkMinutes) min walk to \(board.from.short)", systemImage: "figure.walk")
-                        .font(.footnote.weight(.medium))
-                        .foregroundStyle(.secondary)
+                    if let t = board.travel {
+                        Label("~\(t.minutes) min \(t.mode.verb) to \(board.from.short) · \(Self.distance(t.distanceM))", systemImage: t.mode == .drive ? "car.fill" : "figure.walk")
+                            .font(.footnote.weight(.medium))
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Label("\(walkMinutes) min walk to \(board.from.short)", systemImage: "figure.walk")
+                            .font(.footnote.weight(.medium))
+                            .foregroundStyle(.secondary)
+                    }
                     Spacer()
                 }
 
@@ -264,13 +270,22 @@ struct CatchCard: View {
                     .frame(width: 44, height: 44)
                 }
 
+                // Spare minutes counted from now (the board's buffer_min is as of its refresh).
+                if let t = board.travel {
+                    let spare = Int(floor((train.predDep - now.timeIntervalSince1970 * 1000) / 60_000)) - t.minutes
+                    Label(spare >= 0 ? "Leave now and you'll have about \(spare) min to spare" : "Leaving now, you'd be about \(-spare) min late",
+                          systemImage: spare >= 3 ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                        .font(.caption)
+                        .foregroundStyle(spare >= 3 ? Color.green : Color.orange)
+                }
+
                 if let run = runTrain, run.tripId != train.tripId {
                     let runDepLeft = max(0, Int(round((run.predDep - now.timeIntervalSince1970 * 1000) / 60_000)))
                     HStack(spacing: 6) {
                         Image(systemName: "bolt.fill")
                             .font(.caption2)
                             .foregroundStyle(.orange)
-                        Text("\(run.train) at \(Clock.time(run.predDep)) needs a run: \(runDepLeft) min left, your walk is \(walkMinutes)")
+                        Text("\(run.train) at \(Clock.time(run.predDep)) needs a run: \(runDepLeft) min left, your \(board.travel?.mode.verb ?? "walk") is \(walkMinutes)")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -281,6 +296,13 @@ struct CatchCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
+    }
+}
+
+extension CatchCard {
+    static func distance(_ m: Int) -> String {
+        let miles = Double(m) / 1609.34
+        return miles < 0.2 ? "\(Int((Double(m) * 3.281 / 50).rounded()) * 50) ft" : String(format: "%.1f mi", miles)
     }
 }
 

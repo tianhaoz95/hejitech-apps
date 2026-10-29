@@ -89,3 +89,13 @@ calls made while building, with the reason for each.
   San José board instead of an empty screen, and every gesture answers. Screens are laid out in
   pixels (`core/src/font.ts`: the firmware font's measured glyph widths, 9 lines in a bordered
   frame).
+
+- **Trip estimate from the rider's location (2026-10-29).** Opt-in on the iPhone (Settings › Location)
+  and through the glasses plugin's `location` permission (`bridge.getAppLocation`, low accuracy,
+  reused for two minutes). The client sends `lat`/`lon` with the board request; core's
+  `travelEstimate` takes the straight-line distance to the departure station × a detour factor ÷ an
+  average speed (walk 80 m/min ×1.3 +1 min; drive 500 m/min ×1.4 +5 min for parking, capped at 180),
+  per leg `travel_mode` walk | drive. No routing or traffic API: a rough estimate is the point, and
+  nothing about location is stored or logged. The board's `walk_minutes` becomes the estimate (so
+  leave-by and catch states follow it) and each train gets `buffer_min`. Leave-now pushes still use the
+  leg's `walk_minutes`: the cron has no location, by design.

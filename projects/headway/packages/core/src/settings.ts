@@ -21,7 +21,7 @@ export function defaultSettings(): Settings {
 
 /** A leg with defaults filled in: `newLeg("mountain_view", "san_francisco", "morning")`. */
 export function newLeg(from: string, to: string, part: "morning" | "evening"): Leg {
-  return { from, to, walk_minutes: 10, usual: null, window: { ...DEFAULT_WINDOWS[part] }, express_preference: DEFAULT_PREFERENCE };
+  return { from, to, walk_minutes: 10, usual: null, window: { ...DEFAULT_WINDOWS[part] }, express_preference: DEFAULT_PREFERENCE, travel_mode: "walk" };
 }
 
 export interface Issue {
@@ -47,6 +47,9 @@ function checkLeg(leg: unknown, path: string, issues: Issue[]) {
   else if (hhmm(w.start)! >= hhmm(w.end)!) issues.push({ path: `${path}.window`, message: "start must be before end" });
   if (l.express_preference !== undefined && !validPref(l.express_preference)) {
     issues.push({ path: `${path}.express_preference`, message: 'must be "all", "prefer_express", or "express_only"' });
+  }
+  if (l.travel_mode !== undefined && l.travel_mode !== "walk" && l.travel_mode !== "drive") {
+    issues.push({ path: `${path}.travel_mode`, message: 'must be "walk" or "drive"' });
   }
 }
 
@@ -86,7 +89,8 @@ export function normalizeSettings(s: unknown): Settings {
     if (!x.from || !x.to) return null;
     const base = newLeg(x.from, x.to, part);
     const pref = validPref(x.express_preference) ? x.express_preference : globalPref;
-    return { ...base, ...x, express_preference: pref, window: { ...base.window, ...(x.window ?? {}) } } as Leg;
+    const travel_mode = x.travel_mode === "drive" ? "drive" : "walk";
+    return { ...base, ...x, express_preference: pref, travel_mode, window: { ...base.window, ...(x.window ?? {}) } } as Leg;
   };
   return {
     morning: leg(v.morning, "morning"),

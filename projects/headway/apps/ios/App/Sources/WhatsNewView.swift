@@ -20,10 +20,14 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.2.7"
+    static let currentVersion = "0.2.8"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.2.8", date: "October 2026", items: [
+            WhatsNewItem(icon: "location.fill", title: "Leave-by times from where you are", description: "Turn on Location in Settings and Headway estimates your walk or drive to the station from where you are, then shows when to leave and how many minutes you'll have to spare. Choose walk or drive for each commute leg. Your location is never stored."),
+            WhatsNewItem(icon: "eyeglasses", title: "Trip estimate on your glasses", description: "Allow location for the glasses app and its leave hint uses the same walk or drive estimate."),
+        ]),
         ReleaseNotes(version: "0.2.7", date: "October 2026", items: [
             WhatsNewItem(icon: "square.grid.2x2.fill", title: "Home Screen & Lock Screen widgets", description: "Add the Next trains widget to see live departures and countdowns at a glance. Pick your stations, and it flips to the trip back in the afternoon."),
             WhatsNewItem(icon: "pin.fill", title: "Pin trains to your Lock Screen", description: "On the Trains tab, choose Pin to Lock Screen to keep the next three trains, with live countdowns and delays, on your Lock Screen and in the Dynamic Island."),

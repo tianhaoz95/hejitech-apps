@@ -4,6 +4,7 @@
 // buttons. `?api=http://<lan-ip>:8792` points a dev build at a local Worker; `?pair=<code>` pairs on
 // launch (simulator automation, or a QR from `evenhub qr`).
 import {
+  AppLocationAccuracy,
   CreateStartUpPageContainer,
   OsEventTypeList,
   TextContainerProperty,
@@ -95,6 +96,11 @@ async function boot() {
     onStatus: (s) => ui.status(s),
     // The system's exit dialog (Even Hub review requires it on the root page); the host closes the plugin.
     onExit: () => void bridge?.shutDownPageContainer(1).catch(() => false),
+    // The phone's rough location (the `location` permission) for the trip estimate to the station.
+    locate: async () => {
+      const l = bridge ? await bridge.getAppLocation({ accuracy: AppLocationAccuracy.Low, timeoutMs: 4000 }).catch(() => null) : null;
+      return l ? { lat: l.latitude, lon: l.longitude } : null;
+    },
   });
 
   if (bridge) {

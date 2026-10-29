@@ -87,14 +87,17 @@ struct LegSection: View {
                 if current.usual != nil {
                     TimeField(title: "At or after", hhmm: Binding(get: { leg?.usual ?? "08:00" }, set: { leg?.usual = $0 }))
                 }
-                Stepper("Walk to the station: \(current.walkMinutes) min", value: bind.walkMinutes, in: 0...90)
+                Picker("Getting to the station", selection: bind.travelMode) {
+                    ForEach(TravelMode.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+                Stepper("\(current.travelMode.title) to the station: \(current.walkMinutes) min", value: bind.walkMinutes, in: 0...90)
                 TimeField(title: "Watch from", hhmm: bind.window.start)
                 TimeField(title: "Until", hhmm: bind.window.end)
                 if current.from == current.to { Text("Pick two different stations.").foregroundStyle(.red).font(.footnote) }
             }
         } footer: {
             if leg != nil {
-                Text("Train preference lets you prefer or only take faster Caltrain express trains. The leave-now reminder targets the first matching train at or after your usual time. Alerts only come inside the watch window.")
+                Text("Train preference lets you prefer or only take faster Caltrain express trains. The leave-now reminder targets the first matching train at or after your usual time. Alerts only come inside the watch window. With Location on (Settings), the board estimates your walk or drive from where you are instead of the minutes set here.")
             }
         }
     }

@@ -51,6 +51,8 @@ public struct BoardTrain: Codable, Hashable, Identifiable, Sendable {
     public var leaveBy: Double?
     /// Catch state: "later", "leave", "run", "missed".
     public var catchState: String?
+    /// With a travel estimate: minutes to spare if leaving now (negative: too late by that much).
+    public var bufferMin: Int?
     /// Ride duration in minutes: (predArr - predDep) / 60_000.
     public var rideMin: Int?
     /// Trip id of a later-departing train that arrives sooner, if overtaken.
@@ -85,7 +87,8 @@ public struct BoardTrain: Codable, Hashable, Identifiable, Sendable {
         overtakenBy: String? = nil,
         overtakenByTrain: String? = nil,
         firstIn: Bool? = nil,
-        shortest: Bool? = nil
+        shortest: Bool? = nil,
+        bufferMin: Int? = nil
     ) {
         self.tripId = tripId
         self.train = train
@@ -106,6 +109,7 @@ public struct BoardTrain: Codable, Hashable, Identifiable, Sendable {
         self.overtakenByTrain = overtakenByTrain
         self.firstIn = firstIn
         self.shortest = shortest
+        self.bufferMin = bufferMin
     }
 
     enum CodingKeys: String, CodingKey {
@@ -113,6 +117,7 @@ public struct BoardTrain: Codable, Hashable, Identifiable, Sendable {
         case tripId = "trip_id", serviceDate = "service_date", predDep = "pred_dep", predArr = "pred_arr", delayMin = "delay_min", stopsBetween = "stops_between"
         case leaveBy = "leave_by", catchState = "catch"
         case rideMin = "ride_min", overtakenBy = "overtaken_by", overtakenByTrain = "overtaken_by_train", firstIn = "first_in", shortest
+        case bufferMin = "buffer_min"
     }
 }
 
@@ -154,12 +159,33 @@ public struct Board: Codable, Hashable, Sendable {
     public var expressPreference: String?
     public var walkMinutes: Int?
     public var tip: BoardTip?
+    /// Set when the board was asked from the rider's location: walkMinutes is then this estimate.
+    public var travel: TravelEstimate?
 
     enum CodingKeys: String, CodingKey {
-        case from, to, leg, live, trains, alerts, tip
+        case from, to, leg, live, trains, alerts, tip, travel
         case generatedAt = "generated_at"
         case expressPreference = "express_preference"
         case walkMinutes = "walk_minutes"
+    }
+}
+
+public enum TravelMode: String, Codable, CaseIterable, Sendable {
+    case walk, drive
+
+    public var title: String { self == .walk ? "Walk" : "Drive" }
+    public var verb: String { self == .walk ? "walk" : "drive" }
+}
+
+/// A rough door-to-platform estimate from the rider's location (straight line × detour ÷ average speed).
+public struct TravelEstimate: Codable, Hashable, Sendable {
+    public var mode: TravelMode
+    public var distanceM: Int
+    public var minutes: Int
+
+    enum CodingKeys: String, CodingKey {
+        case mode, minutes
+        case distanceM = "distance_m"
     }
 }
 
@@ -251,14 +277,17 @@ public struct Leg: Codable, Hashable, Sendable {
     public var usual: String?
     public var window: TimeWindow
     public var expressPreference: ExpressPreference
+    /// How the rider gets to `from`: with their location, the board estimates the trip instead of walkMinutes.
+    public var travelMode: TravelMode
 
-    public init(from: String, to: String, walkMinutes: Int = 10, usual: String? = nil, window: TimeWindow, expressPreference: ExpressPreference = .all) {
+    public init(from: String, to: String, walkMinutes: Int = 10, usual: String? = nil, window: TimeWindow, expressPreference: ExpressPreference = .all, travelMode: TravelMode = .walk) {
         self.from = from
         self.to = to
         self.walkMinutes = walkMinutes
         self.usual = usual
         self.window = window
         self.expressPreference = expressPreference
+        self.travelMode = travelMode
     }
 
     public static func morning(from: String, to: String) -> Leg { Leg(from: from, to: to, window: TimeWindow(start: "06:00", end: "10:30")) }
@@ -268,6 +297,7 @@ public struct Leg: Codable, Hashable, Sendable {
         case from, to, usual, window
         case walkMinutes = "walk_minutes"
         case expressPreference = "express_preference"
+        case travelMode = "travel_mode"
     }
 
     public init(from decoder: Decoder) throws {
@@ -278,6 +308,7 @@ public struct Leg: Codable, Hashable, Sendable {
         usual = try c.decodeIfPresent(String.self, forKey: .usual)
         window = try c.decode(TimeWindow.self, forKey: .window)
         expressPreference = (try? c.decodeIfPresent(ExpressPreference.self, forKey: .expressPreference)) ?? .all
+        travelMode = (try? c.decodeIfPresent(TravelMode.self, forKey: .travelMode)) ?? .walk
     }
 
     // `usual` is always sent (null clears it).
@@ -289,6 +320,7 @@ public struct Leg: Codable, Hashable, Sendable {
         try c.encode(usual, forKey: .usual)
         try c.encode(window, forKey: .window)
         try c.encode(expressPreference, forKey: .expressPreference)
+        try c.encode(travelMode, forKey: .travelMode)
     }
 }
 
