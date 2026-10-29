@@ -1,7 +1,7 @@
 // Apple Push Notification service with token auth: an ES256 JWT signed with the team's APNs key
 // (WebCrypto, no dependency), cached for 50 minutes as Apple asks (refresh at most every 20, at
 // least every 60). Each device row says which APNs host it belongs to (Debug builds: sandbox).
-import type { Notification } from "@headway/core";
+import type { BoardActivityState, Notification } from "@headway/core";
 import type { Env } from "./store.ts";
 
 const HOST = { production: "https://api.push.apple.com", sandbox: "https://api.sandbox.push.apple.com" } as const;
@@ -35,6 +35,11 @@ async function token(env: Env): Promise<string> {
   return cached.jwt;
 }
 
+/** "Next trains" Live Activities register update tokens with trip_id `board:<from>><to>`. */
+export const BOARD_ACTIVITY_PREFIX = "board:";
+/** PostgREST filter for activity tokens that aren't a board's (a tracked train's, or none). */
+export const NOT_BOARD_ACTIVITY = `trip_id.is.null,trip_id.not.like.${BOARD_ACTIVITY_PREFIX}*`;
+
 export type PushResult = { ok: true } | { ok: false; status: number; reason: string; gone: boolean };
 
 export interface LiveActivityContentState {
@@ -57,7 +62,7 @@ export interface LiveActivityPayload {
     kind: string;
     to: string;
   };
-  contentState: LiveActivityContentState;
+  contentState: LiveActivityContentState | BoardActivityState;
 }
 
 /** Sends an ActivityKit Live Activity update, start or end push. */
@@ -87,7 +92,7 @@ export async function sendLiveActivityPush(
       authorization: `bearer ${await token(env)}`,
       "apns-topic": topic,
       "apns-push-type": "liveactivity",
-      "apns-priority": payload.contentState.cancelled || (payload.contentState.delay_min ?? 0) >= 5 ? "10" : "5",
+      "apns-priority": "cancelled" in payload.contentState && (payload.contentState.cancelled || (payload.contentState.delay_min ?? 0) >= 5) ? "10" : "5",
       "content-type": "application/json",
     },
     body: JSON.stringify({ aps }),

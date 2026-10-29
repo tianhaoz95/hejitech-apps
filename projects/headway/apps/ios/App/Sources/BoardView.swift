@@ -134,6 +134,9 @@ struct BoardView: View {
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     Button("Flip", systemImage: "arrow.up.arrow.down") { Task { await model.flip() } }.disabled(model.board == nil)
                     Menu {
+                        Button(model.boardIsPinned ? "Unpin from Lock Screen" : "Pin to Lock Screen",
+                               systemImage: model.boardIsPinned ? "pin.slash" : "pin") { Task { await model.togglePinBoard() } }
+                            .disabled(model.board == nil)
                         if model.customPair != nil, model.hasCommute {
                             Button("My commute", systemImage: "house") { Task { await model.showCommute() } }
                         }

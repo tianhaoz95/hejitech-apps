@@ -54,6 +54,9 @@ stack), `-screen trains|commute|glasses|settings`, `-production` (Debug build ag
   Supabase sign-in without an SDK) and `App/Sources` (`AppModel` drives `phase`; `route()` ends every
   sign-in path). Release builds use production, Debug the local stack. Tabs: Trains (board, flip,
   pick, swipe to track), Commute (legs, alerts), Glasses (pairing code), Settings. Keeps the Watch in step via `WatchLink`.
+  `Widgets/`: the Home/Lock Screen "Next trains" widget (stations picked in its App Intent, public board, no
+  App Group), the tracked-train Live Activity and the "next trains" board Live Activity (pinned from the Trains
+  tab; the cron pushes it via update tokens whose `trip_id` is `board:<from>><to>`).
 - **Apple Watch app** (`apps/ios/Watch`): Companion watchOS app with glanceable departure board, live delays, countdowns, direction flip, express filtering, and train progress tracking synced with the iPhone app via WatchConnectivity and able to refresh directly.
 - **Android app** (`apps/android/app`): Native Jetpack Compose Material 3 phone app. Tabs: Trains (board, live delays, flip, station picker, track train), Commute (legs, alerts), Glasses (pairing code), Settings. Keeps paired Wear OS watches in step via Google Play Services Wearable Data Layer (`/headway/sync_state`).
 - **Wear OS app** (`apps/android/wear`): Companion smartwatch app built with Wear Compose. Features live wrist departure board, one-tap trip tracking, a glanceable Wear OS Tile (`HeadwayBoardTileService`) on the watch carousel, and a watch face complication (`NextTrainComplicationService`) for departure countdowns.

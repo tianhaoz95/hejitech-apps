@@ -12,12 +12,18 @@ public final class LiveActivityManager {
     private var currentActivity: Activity<TrackActivityAttributes>?
     private var pushToStartTask: Task<Void, Never>?
     private var activityUpdatesTask: Task<Void, Never>?
+    private var boardUpdatesTask: Task<Void, Never>?
+    /// The pinned board's push token, so unpinning can drop it from the Worker.
+    private var boardPushToken: String?
 
     private init() {}
 
     public func startMonitoring(backend: Backend) {
         observePushToStart(backend: backend)
         observeExistingActivities(backend: backend)
+        for activity in Activity<BoardActivityAttributes>.activities {
+            monitorBoardPushToken(activity, backend: backend)
+        }
     }
 
     /// Observes push-to-start token updates (iOS 17.2+) and uploads the token to the Worker.
@@ -105,6 +111,57 @@ public final class LiveActivityManager {
             monitorActivityPushToken(activity, backend: backend)
         } catch {
             // Live Activity request can be denied by system or user preference
+        }
+    }
+
+    // MARK: "next trains" board
+
+    /// The board pinned to the Lock Screen, if any.
+    public var pinnedBoard: BoardActivityAttributes? {
+        Activity<BoardActivityAttributes>.activities.first { $0.activityState == .active }?.attributes
+    }
+
+    public var activitiesEnabled: Bool { ActivityAuthorizationInfo().areActivitiesEnabled }
+
+    /// Pins `board`'s next trains to the Lock Screen and Dynamic Island (replacing any other pinned board).
+    public func pinBoard(_ board: Board, backend: Backend) async throws {
+        await unpinBoard(backend: backend)
+        let attributes = BoardActivityAttributes(fromId: board.from.id, toId: board.to.id, fromShort: board.from.short, toShort: board.to.short)
+        let activity = try Activity.request(
+            attributes: attributes,
+            content: ActivityContent(state: .init(board: board), staleDate: Date(timeIntervalSinceNow: 180)),
+            pushType: .token
+        )
+        monitorBoardPushToken(activity, backend: backend)
+    }
+
+    public func unpinBoard(backend: Backend) async {
+        if let token = boardPushToken {
+            try? await backend.unregisterActivityToken(token: token)
+            boardPushToken = nil
+        }
+        for activity in Activity<BoardActivityAttributes>.activities {
+            await activity.end(nil, dismissalPolicy: .immediate)
+        }
+    }
+
+    /// Keeps the pinned board current while the app is open (the cron pushes it the rest of the time).
+    public func syncBoard(_ board: Board?) async {
+        guard let board else { return }
+        for activity in Activity<BoardActivityAttributes>.activities
+        where activity.attributes.fromId == board.from.id && activity.attributes.toId == board.to.id {
+            await activity.update(ActivityContent(state: .init(board: board), staleDate: Date(timeIntervalSinceNow: 180)))
+        }
+    }
+
+    private func monitorBoardPushToken(_ activity: Activity<BoardActivityAttributes>, backend: Backend) {
+        boardUpdatesTask?.cancel()
+        boardUpdatesTask = Task {
+            for await tokenData in activity.pushTokenUpdates {
+                let token = tokenData.map { String(format: "%02x", $0) }.joined()
+                self.boardPushToken = token
+                try? await backend.registerActivityToken(token: token, kind: "update", tripId: activity.attributes.tokenKey, sandbox: AppModel.isSandbox)
+            }
         }
     }
 

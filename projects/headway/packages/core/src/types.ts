@@ -228,3 +228,20 @@ export interface TrainProgress {
   arrived: boolean;
   live: boolean;
 }
+
+/** One train on the "next trains" Live Activity (Lock Screen / Dynamic Island). */
+export interface BoardActivityTrain {
+  train: string;
+  kind: ServiceKind;
+  /** Predicted departure and arrival, epoch ms. */
+  dep: number;
+  arr: number;
+  delay_min: number | null;
+  cancelled: boolean;
+}
+
+/** ActivityKit content state of BoardActivityAttributes; pushed by the cron, mirrored in HeadwayKit. */
+export interface BoardActivityState {
+  trains: BoardActivityTrain[];
+  live: boolean;
+}

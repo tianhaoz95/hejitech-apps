@@ -3,6 +3,9 @@ import HeadwayKit
 import Observation
 import SwiftUI
 import UserNotifications
+#if canImport(WidgetKit)
+import WidgetKit
+#endif
 
 /// The app's state: sign-in, the commute board (refreshed while open), settings, glasses pairing
 /// and push registration. Every board comes from the Worker, which merges the timetable and
@@ -25,6 +28,8 @@ final class AppModel {
     var error: String?
     var loading = false
     var notificationsAllowed: Bool?
+    /// "from>to" of the board pinned to the Lock Screen as a Live Activity.
+    var pinnedBoard: String?
 
     let watch = WatchLink()
     private(set) var backend: Backend
@@ -183,6 +188,8 @@ final class AppModel {
         if let t = pushToken { try? await backend.unregisterPush(token: t) }
         #if os(iOS) && canImport(ActivityKit)
         await LiveActivityManager.shared.endCurrentActivity()
+        await LiveActivityManager.shared.unpinBoard(backend: backend)
+        pinnedBoard = nil
         #endif
         backend.signOut()
         board = nil
@@ -198,6 +205,8 @@ final class AppModel {
             try await backend.deleteData()
             #if os(iOS) && canImport(ActivityKit)
             await LiveActivityManager.shared.endCurrentActivity()
+            await LiveActivityManager.shared.unpinBoard(backend: backend)
+            pinnedBoard = nil
             #endif
             backend.signOut()
             board = nil
@@ -236,6 +245,11 @@ final class AppModel {
             tracked = r.tracked
             #if os(iOS) && canImport(ActivityKit)
             await LiveActivityManager.shared.syncTracked(tracked, backend: backend)
+            await LiveActivityManager.shared.syncBoard(board)
+            pinnedBoard = LiveActivityManager.shared.pinnedBoard.map { "\($0.fromId)>\($0.toId)" }
+            #endif
+            #if canImport(WidgetKit)
+            WidgetCenter.shared.reloadTimelines(ofKind: "NextTrains")
             #endif
             error = nil
         } catch let e as BackendError where e.isUnauthorized || e == .notSignedIn {
@@ -282,6 +296,28 @@ final class AppModel {
             tracked = nil
             syncWatch()
         } catch { self.error = error.localizedDescription }
+    }
+
+    var boardIsPinned: Bool {
+        guard let b = board else { return false }
+        return pinnedBoard == "\(b.from.id)>\(b.to.id)"
+    }
+
+    /// Pins the board on screen to the Lock Screen, or unpins it.
+    func togglePinBoard() async {
+        #if os(iOS) && canImport(ActivityKit)
+        let live = LiveActivityManager.shared
+        if boardIsPinned {
+            await live.unpinBoard(backend: backend)
+        } else if let b = board {
+            guard live.activitiesEnabled else {
+                error = "Live Activities are off for Headway. Turn them on in Settings › Headway."
+                return
+            }
+            do { try await live.pinBoard(b, backend: backend) } catch { self.error = error.localizedDescription }
+        }
+        pinnedBoard = live.pinnedBoard.map { "\($0.fromId)>\($0.toId)" }
+        #endif
     }
 
     func shareEta(name: String? = nil) async throws -> EtaShareResponse {

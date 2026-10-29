@@ -5,7 +5,7 @@
 //   session or glasses token      the user's commute board, the tracked train
 //   Supabase session (web, iPhone) settings, pairing codes, devices, push registration, agent tokens, delete data
 import { board, checkSettings, commuteBoard, normalizeSettings, progress, station, STATIONS, timetableDaysLeft, TIMETABLE, tripProgressStops, type ExpressPreference, type Notification, type Settings, type Tracked } from "@headway/core";
-import { pushConfigured, sendPush } from "./push.ts";
+import { NOT_BOARD_ACTIVITY, pushConfigured, sendPush } from "./push.ts";
 import {
   admin, bearer, createEtaShare, json, loadEtaShare, loadSettings, loadSnapshot, loadTracked, pairingCode, PAIRING_CODE_TTL_MS, PREFIX, randomToken, resolveDevice,
   revokeEtaShares, saveSettings, saveTracked, sha256, supabaseUser, updateEtaShareExpiry, type Db, type Env,
@@ -150,7 +150,7 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
   }
   if (path === "/api/track" && req.method === "DELETE") {
     await saveTracked(db, userId, null);
-    await db.from("activity_tokens").delete().eq("user_id", userId).eq("kind", "update");
+    await db.from("activity_tokens").delete().eq("user_id", userId).eq("kind", "update").or(NOT_BOARD_ACTIVITY);
     return reply({ ok: true });
   }
   if (path === "/api/me/share" && req.method === "POST") {
@@ -191,7 +191,7 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
     const body = (await req.json().catch(() => ({}))) as { token?: string };
     let q = db.from("activity_tokens").delete().eq("user_id", userId);
     if (body.token) q = q.eq("token", String(body.token).trim());
-    else q = q.eq("kind", "update");
+    else q = q.eq("kind", "update").or(NOT_BOARD_ACTIVITY);
     const { error } = await q;
     if (error) return reply({ error: error.message }, 500);
     return reply({ ok: true });

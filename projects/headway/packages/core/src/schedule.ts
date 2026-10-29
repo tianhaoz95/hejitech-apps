@@ -4,6 +4,7 @@
 import data from "./timetable.gen.json" with { type: "json" };
 import { addDays, hhmm, serviceDayStart, weekdayOf, zoned } from "./time.ts";
 import type {
+  BoardActivityState,
   Board, BoardTip, BoardTrain, CatchState, Direction, ExpressPreference, Leg, LegName, RealtimeSnapshot, RealtimeTrip, ServiceAlert, Settings, Station, Timetable, Tracked, TrainProgress, Trip, TrainStatus,
 } from "./types.ts";
 
@@ -290,6 +291,16 @@ export function board(fromId: string, toId: string, now: number, snapshot: Realt
     express_preference: opts.expressPreference ?? "all",
     walk_minutes: opts.walkMinutes ?? null,
     tip,
+  };
+}
+
+/** The next `max` trains still to leave, for the "next trains" Live Activity (cancelled ones kept, so riders see them). */
+export function boardActivityState(b: Board, now: number, max = 3): BoardActivityState {
+  return {
+    live: b.live,
+    trains: b.trains.filter((t) => t.pred_dep > now).slice(0, max).map((t) => ({
+      train: t.train, kind: t.kind, dep: t.pred_dep, arr: t.pred_arr, delay_min: t.delay_min, cancelled: t.status === "cancelled",
+    })),
   };
 }
 

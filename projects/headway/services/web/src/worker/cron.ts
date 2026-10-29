@@ -1,12 +1,14 @@
 // The every-minute cron: refresh the realtime snapshot, then run the alert engine for everyone with
 // an iPhone registered for alerts, push what's due, and record it so it's never sent twice.
-import { dueNotifications, normalizeSettings, progress, type Tracked } from "@headway/core";
-import { sendPush, sendLiveActivityPush, pushConfigured, type LiveActivityContentState } from "./push.ts";
+import { board, boardActivityState, dueNotifications, normalizeSettings, progress, type RealtimeSnapshot, type Tracked } from "@headway/core";
+import { BOARD_ACTIVITY_PREFIX, NOT_BOARD_ACTIVITY, sendPush, sendLiveActivityPush, pushConfigured, type LiveActivityContentState } from "./push.ts";
 import { refreshRealtime } from "./realtime.ts";
 import { admin, saveTracked, type Env } from "./store.ts";
 
 /** Sent-notification keys are kept this long (service alert ids repeat while an alert lasts). */
 const SENT_RETENTION_DAYS = 14;
+/** A board Live Activity is ended after this long (ActivityKit's own limit is 8 hours). */
+const BOARD_ACTIVITY_MAX_MS = 3 * 3600_000;
 
 export interface CronReport {
   live: boolean;
@@ -20,6 +22,7 @@ export async function runCron(env: Env, now = new Date()): Promise<CronReport> {
   const snapshot = await refreshRealtime(env, db, now).catch((e: Error) => (console.error("realtime refresh failed:", e.message), null));
   const report: CronReport = { live: Boolean(snapshot && now.getTime() - snapshot.fetched_at < 10 * 60_000), users: 0, sent: 0, failed: 0 };
   if (!pushConfigured(env)) return report;
+  await pushBoardActivities(env, db, snapshot, now, report);
 
   const { data: devices } = await db.from("push_devices").select("id, user_id, apns_token, environment");
   if (!devices?.length) return report;
@@ -43,7 +46,7 @@ export async function runCron(env: Env, now = new Date()): Promise<CronReport> {
     const { notifications, trackingDone } = dueNotifications({ now: now.getTime(), settings, snapshot, tracked: trackedTrip, sent: keys });
     if (trackingDone && trackedTrip) {
       await saveTracked(db, userId, null);
-      await db.from("activity_tokens").delete().eq("user_id", userId).eq("kind", "update");
+      await db.from("activity_tokens").delete().eq("user_id", userId).eq("kind", "update").or(NOT_BOARD_ACTIVITY);
     }
     if (notifications.length) {
       // Record first: a crash after sending must not repeat the notification every minute.
@@ -78,7 +81,7 @@ export async function runCron(env: Env, now = new Date()): Promise<CronReport> {
           arrived: p.arrived,
         };
         const userTokens = (actTokens ?? []).filter((x) => x.user_id === userId);
-        const updateTokens = userTokens.filter((x) => x.kind === "update" && (!x.trip_id || x.trip_id === trackedTrip.trip_id));
+        const updateTokens = userTokens.filter((x) => x.kind === "update" && (!x.trip_id || x.trip_id === trackedTrip.trip_id) && !String(x.trip_id ?? "").startsWith(BOARD_ACTIVITY_PREFIX));
 
         if (updateTokens.length > 0) {
           for (const tok of updateTokens) {
@@ -124,4 +127,26 @@ export async function runCron(env: Env, now = new Date()): Promise<CronReport> {
     await db.from("activity_tokens").delete().lt("updated_at", new Date(now.getTime() - 86400_000).toISOString());
   }
   return report;
+}
+
+/** Every minute: push the next trains to each "next trains" Live Activity, ending it after three hours. */
+async function pushBoardActivities(env: Env, db: ReturnType<typeof admin>, snapshot: RealtimeSnapshot | null, now: Date, report: CronReport): Promise<void> {
+  const { data: tokens } = await db.from("activity_tokens").select("token, trip_id, environment, updated_at").eq("kind", "update").like("trip_id", `${BOARD_ACTIVITY_PREFIX}%`);
+  for (const tok of tokens ?? []) {
+    const [from, to] = String(tok.trip_id).slice(BOARD_ACTIVITY_PREFIX.length).split(">");
+    const b = board(from, to, now.getTime(), snapshot);
+    if (!b) {
+      await db.from("activity_tokens").delete().eq("token", tok.token);
+      continue;
+    }
+    const isEnd = now.getTime() - new Date(tok.updated_at).getTime() > BOARD_ACTIVITY_MAX_MS;
+    const r = await sendLiveActivityPush(env, { token: tok.token, environment: tok.environment }, {
+      event: isEnd ? "end" : "update",
+      dismissalDate: isEnd ? Math.floor(now.getTime() / 1000) : undefined,
+      contentState: boardActivityState(b, now.getTime()),
+    });
+    if (r.ok) report.sent++;
+    else report.failed++;
+    if (isEnd || (!r.ok && r.gone)) await db.from("activity_tokens").delete().eq("token", tok.token);
+  }
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  addDays, board, checkSettings, clock, commuteBoard, currentLeg, defaultSettings, departures, findStation, newLeg, normalizeSettings, progress, serviceDayStart, STATIONS, station, TIMETABLE, timetableDaysLeft, zoned,
+  addDays, board, boardActivityState, checkSettings, clock, commuteBoard, currentLeg, defaultSettings, departures, findStation, newLeg, normalizeSettings, progress, serviceDayStart, STATIONS, station, TIMETABLE, timetableDaysLeft, zoned,
 } from "../src/index.ts";
 import { at, commuter, firstTrain, SATURDAY, snapshot, THANKSGIVING, WEEKDAY } from "./helpers.ts";
 
@@ -280,3 +280,20 @@ describe("wait for express (overtaken trains & board tips)", () => {
   });
 });
 
+
+describe("board Live Activity", () => {
+  it("keeps the next three trains still to leave, with predicted times", () => {
+    const now = at(WEEKDAY, "07:50");
+    const b = board("mountain_view", "san_francisco", now, null)!;
+    const later = b.trains[1].pred_dep + 1;
+    const s = boardActivityState(b, later);
+    expect(s.live).toBe(false);
+    expect(s.trains).toHaveLength(3);
+    expect(s.trains[0].train).toBe(b.trains.find((t) => t.pred_dep > later)!.train);
+    for (const t of s.trains) {
+      expect(t.dep).toBeGreaterThan(later);
+      expect(t.arr).toBeGreaterThan(t.dep);
+      expect(t.cancelled).toBe(false);
+    }
+  });
+});
