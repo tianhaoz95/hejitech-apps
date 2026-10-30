@@ -101,6 +101,11 @@ public final class VirtualCursorOverlayView: UIView {
         if let hitView = canvas.hitTest(hitPoint, with: nil) {
             // 0. Desktop Clickable Component (Tabs, workspace pills, close buttons, pane headers)
             if let clickable = findAncestor(of: hitView, matching: { $0 is DesktopClickableView }) as? DesktopClickableView {
+                // A click in a pane header's gaps (between tabs, or just above/below one) selects the tab in that column.
+                if let header = clickable as? PaneHeaderView, let pill = tabPill(in: header, atX: hitPoint, from: canvas) {
+                    pill.triggerDesktopClick()
+                    return
+                }
                 clickable.triggerDesktopClick()
                 return
             }
@@ -200,6 +205,11 @@ public final class VirtualCursorOverlayView: UIView {
         if let hitView = canvas.hitTest(hitPoint, with: nil),
            let scrollView = findAncestor(of: hitView, matching: { $0 is UIScrollView }) as? UIScrollView {
             var offset = scrollView.contentOffset
+            var deltaX = deltaX
+            // Horizontal-only strips (pane tab bars) also scroll with an up/down two-finger swipe.
+            if scrollView.contentSize.height <= scrollView.bounds.height, abs(deltaY) > abs(deltaX) {
+                deltaX = deltaY
+            }
             offset.x = min(max(0, offset.x + deltaX), max(0, scrollView.contentSize.width - scrollView.bounds.width))
             offset.y = min(max(0, offset.y + deltaY), max(0, scrollView.contentSize.height - scrollView.bounds.height))
             scrollView.setContentOffset(offset, animated: false)
@@ -301,6 +311,21 @@ public final class VirtualCursorOverlayView: UIView {
         })();
         """
         webView.evaluateJavaScript(js, completionHandler: nil)
+    }
+
+    private func tabPill(in header: PaneHeaderView, atX point: CGPoint, from canvas: UIView) -> TabPillView? {
+        var pills: [TabPillView] = []
+        func collect(_ v: UIView) {
+            if let pill = v as? TabPillView { pills.append(pill) } else { v.subviews.forEach(collect) }
+        }
+        collect(header)
+        return pills.first { pill in
+            guard let strip = pill.superview else { return false }
+            let ptInStrip = strip.convert(point, from: canvas)
+            guard strip.bounds.contains(ptInStrip) else { return false }
+            let ptInPill = pill.convert(point, from: canvas)
+            return ptInPill.x >= -2 && ptInPill.x <= pill.bounds.width + 2
+        }
     }
 
     private func findAncestor(of view: UIView, matching predicate: (UIView) -> Bool) -> UIView? {

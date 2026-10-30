@@ -42,6 +42,8 @@ public final class TilingWorkspaceViewController: UIViewController {
     /// Active split drag metadata.
     private var activeSplitDrags: [UIPanGestureRecognizer: (splitId: String, direction: SplitDirection, containerBounds: CGRect)] = [:]
     private var lastRenderedTree: PaneTree?
+    /// Tab strip scroll offsets by pane id, kept across rebuilds so tabs past the strip's edge stay reachable.
+    private var tabStripOffsets: [String: CGFloat] = [:]
 
     public init(store: WorkspaceStore) {
         self.store = store
@@ -407,6 +409,7 @@ public final class TilingWorkspaceViewController: UIViewController {
             tabControllers.removeValue(forKey: tabId)
         }
 
+        recordTabStripOffsets(in: workspaceCanvas)
         for sub in workspaceCanvas.subviews {
             sub.removeFromSuperview()
         }
@@ -452,6 +455,14 @@ public final class TilingWorkspaceViewController: UIViewController {
         }
 
         renderTreeNode(store.tree.root, in: workspaceCanvas.bounds)
+    }
+
+    private func recordTabStripOffsets(in root: UIView) {
+        if let scroll = root as? UIScrollView, let id = scroll.accessibilityIdentifier, id.hasPrefix("tabstrip-") {
+            tabStripOffsets[String(id.dropFirst("tabstrip-".count))] = scroll.contentOffset.x
+            return
+        }
+        root.subviews.forEach(recordTabStripOffsets)
     }
 
     private func renderTreeNode(_ node: TreeNode, in rect: CGRect) {
@@ -584,8 +595,11 @@ public final class TilingWorkspaceViewController: UIViewController {
         let scrollWidth = max(20, container.bounds.width - rightControlsWidth - scrollX - 4)
         let scroll = UIScrollView(frame: CGRect(x: scrollX, y: 0, width: scrollWidth, height: tabBarHeight))
         scroll.showsHorizontalScrollIndicator = false
+        scroll.contentInsetAdjustmentBehavior = .never
+        scroll.accessibilityIdentifier = "tabstrip-\(pane.id)"
 
         var xOffset: CGFloat = 2
+        var activePillFrame: CGRect?
         for (tabIdx, tab) in pane.tabs.enumerated() {
             let isActive = (tab.id == pane.activeTabId)
             let pill = TabPillView(paneId: pane.id, tabId: tab.id) { [weak self] in
@@ -625,9 +639,18 @@ public final class TilingWorkspaceViewController: UIViewController {
             pill.addSubview(titleBtn)
             pill.addSubview(closeBtn)
             scroll.addSubview(pill)
+            if isActive { activePillFrame = pill.frame }
             xOffset += pill.frame.width + 4
         }
         scroll.contentSize = CGSize(width: xOffset + 4, height: tabBarHeight)
+        // Rebuilds used to reset the strip to the start, so tabs past its edge could never be clicked.
+        let maxOffset = max(0, scroll.contentSize.width - scroll.bounds.width)
+        var stripOffset = min(max(0, tabStripOffsets[pane.id] ?? 0), maxOffset)
+        if let active = activePillFrame {
+            if active.maxX > stripOffset + scroll.bounds.width { stripOffset = min(maxOffset, active.maxX + 4 - scroll.bounds.width) }
+            if active.minX < stripOffset { stripOffset = max(0, active.minX - 2) }
+        }
+        scroll.contentOffset = CGPoint(x: stripOffset, y: 0)
         tabHeader.addSubview(scroll)
 
         // Single + button with drop-down menu & Close Pane button on right side of pane header

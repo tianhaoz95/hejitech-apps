@@ -17,10 +17,17 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.21"
+    static let currentVersion = "0.1.22"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.22", date: "October 2026", items: [
+            WhatsNewItem(
+                icon: "cursorarrow.click",
+                title: "Every Tab Is Clickable",
+                description: "Tapping the phone trackpad now selects any tab on the external monitor, including tabs past the edge of a narrow pane's tab bar. The tab bar keeps its scroll position, scrolls with a two-finger swipe in any direction, and a tap just above or below a tab still picks it."
+            ),
+        ]),
         ReleaseNotes(version: "0.1.21", date: "October 2026", items: [
             WhatsNewItem(
                 icon: "cursorarrow.click",
