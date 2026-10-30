@@ -45,6 +45,19 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     private let containerView = UIView()
 
     private var activeSidebarConstraints: [NSLayoutConstraint] = []
+    /// Collapses the sidebar into `sidebarRestoreBtn` to give the touchpad the full width.
+    private let collapseSidebarBtn = UIButton(type: .system)
+    private let sidebarRestoreBtn = UIButton(type: .system)
+    private var isSidebarCollapsed = UserDefaults.standard.bool(forKey: "tether.controller.sidebarCollapsed") {
+        didSet { UserDefaults.standard.set(isSidebarCollapsed, forKey: "tether.controller.sidebarCollapsed") }
+    }
+    /// The workspace bar and trackpad layout options sit above the touchpad only while this group is open.
+    private let touchpadOptionsBtn = UIButton(type: .system)
+    private var isTouchpadOptionsOpen = UserDefaults.standard.bool(forKey: "tether.controller.touchpadOptionsOpen") {
+        didSet { UserDefaults.standard.set(isTouchpadOptionsOpen, forKey: "tether.controller.touchpadOptionsOpen") }
+    }
+    private var workspaceBarTopConstraint: NSLayoutConstraint?
+    private var workspaceBarHeightConstraint: NSLayoutConstraint?
     private var activeTouchpadConstraints: [NSLayoutConstraint] = []
 
     // Top Workspace Switcher Bar
@@ -378,6 +391,39 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         configureTabButton(keyboardTabBtn, systemName: "keyboard.fill", mode: .keyboard)
         configureTabButton(settingsTabBtn, systemName: "gearshape.fill", mode: .settings)
 
+        touchpadOptionsBtn.translatesAutoresizingMaskIntoConstraints = false
+        touchpadOptionsBtn.setImage(UIImage(systemName: "slider.horizontal.3", withConfiguration: UIImage.SymbolConfiguration(pointSize: 16, weight: .semibold)), for: .normal)
+        touchpadOptionsBtn.layer.cornerRadius = 8
+        touchpadOptionsBtn.accessibilityLabel = "Touchpad Options"
+        touchpadOptionsBtn.widthAnchor.constraint(equalToConstant: 38).isActive = true
+        touchpadOptionsBtn.heightAnchor.constraint(equalToConstant: 38).isActive = true
+        touchpadOptionsBtn.addAction(UIAction { [weak self] _ in
+            UISelectionFeedbackGenerator().selectionChanged()
+            self?.toggleTouchpadOptions()
+        }, for: .touchUpInside)
+
+        collapseSidebarBtn.translatesAutoresizingMaskIntoConstraints = false
+        collapseSidebarBtn.tintColor = UIColor(white: 1.0, alpha: 0.6)
+        collapseSidebarBtn.accessibilityLabel = "Hide Sidebar"
+        collapseSidebarBtn.widthAnchor.constraint(equalToConstant: 38).isActive = true
+        collapseSidebarBtn.heightAnchor.constraint(equalToConstant: 30).isActive = true
+        collapseSidebarBtn.addAction(UIAction { [weak self] _ in
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            self?.setSidebarCollapsed(true)
+        }, for: .touchUpInside)
+
+        sidebarRestoreBtn.translatesAutoresizingMaskIntoConstraints = false
+        sidebarRestoreBtn.tintColor = UIColor(white: 1.0, alpha: 0.85)
+        sidebarRestoreBtn.backgroundColor = UIColor(red: 0.10, green: 0.14, blue: 0.22, alpha: 0.92)
+        sidebarRestoreBtn.layer.cornerRadius = 8
+        sidebarRestoreBtn.layer.borderWidth = 1
+        sidebarRestoreBtn.layer.borderColor = UIColor(white: 1.0, alpha: 0.14).cgColor
+        sidebarRestoreBtn.accessibilityLabel = "Show Sidebar"
+        sidebarRestoreBtn.addAction(UIAction { [weak self] _ in
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            self?.setSidebarCollapsed(false)
+        }, for: .touchUpInside)
+
         let divider = UIView()
         divider.translatesAutoresizingMaskIntoConstraints = false
         divider.backgroundColor = UIColor(white: 1.0, alpha: 0.12)
@@ -449,9 +495,11 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
             },
         ])
 
+        sidebarStack.addArrangedSubview(collapseSidebarBtn)
         sidebarStack.addArrangedSubview(statusDot)
         sidebarStack.setCustomSpacing(10, after: statusDot)
         sidebarStack.addArrangedSubview(touchpadTabBtn)
+        sidebarStack.addArrangedSubview(touchpadOptionsBtn)
         sidebarStack.addArrangedSubview(keyboardTabBtn)
         sidebarStack.addArrangedSubview(settingsTabBtn)
         sidebarStack.addArrangedSubview(divider)
@@ -473,6 +521,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
 
         view.addSubview(verticalSidebar)
         view.addSubview(containerView)
+        view.addSubview(sidebarRestoreBtn)
 
         NSLayoutConstraint.activate([
             statusDot.widthAnchor.constraint(equalToConstant: 8),
@@ -528,12 +577,26 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         activeSidebarConstraints.removeAll()
 
         let pos = store.settings.controllerSidebarPosition
+        let sidebarWidth: CGFloat = isSidebarCollapsed ? 0 : 52
+        verticalSidebar.isHidden = isSidebarCollapsed
+        sidebarRestoreBtn.isHidden = !isSidebarCollapsed
+        let symbolConfig = UIImage.SymbolConfiguration(pointSize: 14, weight: .semibold)
+        collapseSidebarBtn.setImage(UIImage(systemName: pos == .left ? "chevron.left.2" : "chevron.right.2", withConfiguration: symbolConfig), for: .normal)
+        sidebarRestoreBtn.setImage(UIImage(systemName: pos == .left ? "sidebar.left" : "sidebar.right", withConfiguration: symbolConfig), for: .normal)
+        activeSidebarConstraints = [
+            sidebarRestoreBtn.widthAnchor.constraint(equalToConstant: 32),
+            sidebarRestoreBtn.heightAnchor.constraint(equalToConstant: 32),
+            sidebarRestoreBtn.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -8),
+            pos == .left
+                ? sidebarRestoreBtn.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 4)
+                : sidebarRestoreBtn.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -4),
+        ]
         if pos == .left {
-            activeSidebarConstraints = [
+            activeSidebarConstraints += [
                 verticalSidebar.topAnchor.constraint(equalTo: view.topAnchor),
                 verticalSidebar.bottomAnchor.constraint(equalTo: view.bottomAnchor),
                 verticalSidebar.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
-                verticalSidebar.widthAnchor.constraint(equalToConstant: 52),
+                verticalSidebar.widthAnchor.constraint(equalToConstant: sidebarWidth),
 
                 containerView.topAnchor.constraint(equalTo: view.topAnchor),
                 containerView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
@@ -541,11 +604,11 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
                 containerView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
             ]
         } else {
-            activeSidebarConstraints = [
+            activeSidebarConstraints += [
                 verticalSidebar.topAnchor.constraint(equalTo: view.topAnchor),
                 verticalSidebar.bottomAnchor.constraint(equalTo: view.bottomAnchor),
                 verticalSidebar.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
-                verticalSidebar.widthAnchor.constraint(equalToConstant: 52),
+                verticalSidebar.widthAnchor.constraint(equalToConstant: sidebarWidth),
 
                 containerView.topAnchor.constraint(equalTo: view.topAnchor),
                 containerView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
@@ -557,6 +620,42 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         if isSetupComplete {
             view.layoutIfNeeded()
         }
+    }
+
+    private func setSidebarCollapsed(_ collapsed: Bool) {
+        isSidebarCollapsed = collapsed
+        UIView.animate(withDuration: 0.2) {
+            self.applySidebarLayoutConstraints()
+            self.view.layoutIfNeeded()
+        }
+    }
+
+    private func toggleTouchpadOptions() {
+        if currentMode != .touchpad {
+            isTouchpadOptionsOpen = true
+            showMode(.touchpad)
+        } else {
+            isTouchpadOptionsOpen.toggle()
+        }
+        UIView.animate(withDuration: 0.2) {
+            self.applyTouchpadOptionsVisibility()
+            self.view.layoutIfNeeded()
+        }
+    }
+
+    /// In touchpad mode the workspace bar and the trackpad layout options collapse unless the options group is open.
+    private func applyTouchpadOptionsVisibility() {
+        let collapsed = currentMode == .touchpad && !isTouchpadOptionsOpen
+        phoneWorkspaceBar.isHidden = collapsed
+        workspaceBarTopConstraint?.constant = collapsed ? 0 : 6
+        workspaceBarHeightConstraint?.constant = collapsed ? 0 : 34
+        touchpadOptionsBtn.backgroundColor = isTouchpadOptionsOpen && currentMode == .touchpad
+            ? UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.28)
+            : UIColor(white: 1.0, alpha: 0.06)
+        touchpadOptionsBtn.tintColor = isTouchpadOptionsOpen && currentMode == .touchpad
+            ? UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
+            : UIColor(white: 1.0, alpha: 0.70)
+        updateTouchpadLayout()
     }
 
     private func updateTabButtonSelection() {
@@ -589,6 +688,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     public func showMode(_ mode: ControllerMode) {
         currentMode = mode
         updateTabButtonSelection()
+        applyTouchpadOptionsVisibility()
 
         touchpadView.isHidden = (mode != .touchpad)
         keyboardContainer.isHidden = (mode != .keyboard)
@@ -628,11 +728,15 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
 
         containerView.addSubview(phoneWorkspaceBar)
 
+        let barTop = phoneWorkspaceBar.topAnchor.constraint(equalTo: containerView.safeAreaLayoutGuide.topAnchor, constant: 6)
+        let barHeight = phoneWorkspaceBar.heightAnchor.constraint(equalToConstant: 34)
+        workspaceBarTopConstraint = barTop
+        workspaceBarHeightConstraint = barHeight
         NSLayoutConstraint.activate([
-            phoneWorkspaceBar.topAnchor.constraint(equalTo: containerView.safeAreaLayoutGuide.topAnchor, constant: 6),
+            barTop,
             phoneWorkspaceBar.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 10),
             phoneWorkspaceBar.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -10),
-            phoneWorkspaceBar.heightAnchor.constraint(equalToConstant: 34),
+            barHeight,
 
             phoneWorkspaceStack.topAnchor.constraint(equalTo: phoneWorkspaceBar.topAnchor),
             phoneWorkspaceStack.bottomAnchor.constraint(equalTo: phoneWorkspaceBar.bottomAnchor),
@@ -1253,11 +1357,12 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         NSLayoutConstraint.deactivate(activeTouchpadConstraints)
         activeTouchpadConstraints.removeAll()
 
+        trackpadTopBarStack.isHidden = !isTouchpadOptionsOpen
         var constraints: [NSLayoutConstraint] = [
-            trackpadTopBarStack.topAnchor.constraint(equalTo: touchpadView.topAnchor, constant: 4),
+            trackpadTopBarStack.topAnchor.constraint(equalTo: touchpadView.topAnchor, constant: isTouchpadOptionsOpen ? 4 : 0),
             trackpadTopBarStack.leadingAnchor.constraint(equalTo: touchpadView.leadingAnchor, constant: 12),
             trackpadTopBarStack.trailingAnchor.constraint(equalTo: touchpadView.trailingAnchor, constant: -12),
-            trackpadTopBarStack.heightAnchor.constraint(equalToConstant: 28),
+            trackpadTopBarStack.heightAnchor.constraint(equalToConstant: isTouchpadOptionsOpen ? 28 : 0),
         ]
 
         if isSplit {

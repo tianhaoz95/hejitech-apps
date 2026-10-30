@@ -168,9 +168,12 @@ public final class VirtualCursorOverlayView: UIView {
 
             // 4. Web View: DOM element click
             if let webView = findAncestor(of: hitView, matching: { $0 is WKWebView }) as? WKWebView {
-                let ptInWeb = webView.convert(hitPoint, from: canvas)
-                webView.becomeFirstResponder()
-                simulateWebClick(in: webView, at: ptInWeb)
+                // The tab focuses its pane and remembers the clicked field, so typing from the phone reaches it.
+                var responder: UIResponder? = webView
+                while let r = responder, !(r is WebTabViewController) { responder = r.next }
+                if let webTab = responder as? WebTabViewController {
+                    webTab.simulateClick(at: webTab.view.convert(hitPoint, from: canvas))
+                }
                 return
             }
 
@@ -214,103 +217,6 @@ public final class VirtualCursorOverlayView: UIView {
             offset.y = min(max(0, offset.y + deltaY), max(0, scrollView.contentSize.height - scrollView.bounds.height))
             scrollView.setContentOffset(offset, animated: false)
         }
-    }
-
-    private func simulateWebClick(in webView: WKWebView, at point: CGPoint) {
-        let js = """
-        (function() {
-            var x = \(point.x);
-            var y = \(point.y);
-
-            // 1. Find all elements at the click position (handling overlays/wrappers)
-            var elements = document.elementsFromPoint ? document.elementsFromPoint(x, y) : [];
-            var el = document.elementFromPoint(x, y);
-            if (!el && (!elements || elements.length === 0)) return;
-
-            // Handle shadow DOM piercing
-            var probe = el || elements[0];
-            while (probe && probe.shadowRoot && probe.shadowRoot.elementFromPoint) {
-                var inner = probe.shadowRoot.elementFromPoint(x, y);
-                if (!inner || inner === probe) break;
-                probe = inner;
-            }
-            if (probe) el = probe;
-
-            // 2. Locate the best interactive target (link, button, input, role)
-            var target = null;
-            if (el) {
-                target = el.closest('a, button, [role="button"], [role="link"], [role="tab"], [role="menuitem"], input, select, textarea, [tabindex], label');
-            }
-            if (!target && elements && elements.length > 0) {
-                for (var i = 0; i < elements.length; i++) {
-                    var candidate = elements[i].closest('a, button, [role="button"], [role="link"], [role="tab"], [role="menuitem"], input, select, textarea, [tabindex], label');
-                    if (candidate) {
-                        target = candidate;
-                        break;
-                    }
-                }
-            }
-            if (!target) {
-                target = el || (elements && elements.length > 0 ? elements[0] : null);
-            }
-            if (!target) return;
-
-            // 3. Dispatch standard pointer/mouse sequence
-            var commonOpts = {
-                bubbles: true,
-                cancelable: true,
-                composed: true,
-                view: window,
-                detail: 1,
-                screenX: x,
-                screenY: y,
-                clientX: x,
-                clientY: y,
-                button: 0,
-                buttons: 1
-            };
-
-            target.dispatchEvent(new PointerEvent('pointerover', commonOpts));
-            target.dispatchEvent(new MouseEvent('mouseover', commonOpts));
-            target.dispatchEvent(new PointerEvent('pointerdown', commonOpts));
-            target.dispatchEvent(new MouseEvent('mousedown', commonOpts));
-
-            if (typeof target.focus === 'function') {
-                target.focus();
-            }
-
-            var upOpts = Object.assign({}, commonOpts, { buttons: 0 });
-            target.dispatchEvent(new PointerEvent('pointerup', upOpts));
-            target.dispatchEvent(new MouseEvent('mouseup', upOpts));
-
-            var clickEvent = new MouseEvent('click', commonOpts);
-            var isAllowed = target.dispatchEvent(clickEvent);
-
-            if (typeof target.click === 'function') {
-                try { target.click(); } catch (e) {}
-            }
-
-            // 4. Handle navigation for <a> tags if event was not prevented by framework router (SPAs)
-            var a = target.closest('a');
-            if (a && a.href && isAllowed) {
-                var rawHref = a.getAttribute('href');
-                if (rawHref && !rawHref.startsWith('javascript:') && rawHref !== '#' && !rawHref.startsWith('#')) {
-                    if (a.target === '_blank') {
-                        window.open(a.href, '_blank');
-                    } else {
-                        window.location.href = a.href;
-                    }
-                }
-            }
-
-            // 5. Handle form elements
-            var input = target.closest('input, textarea, [contenteditable="true"]');
-            if (input && typeof input.focus === 'function') {
-                input.focus();
-            }
-        })();
-        """
-        webView.evaluateJavaScript(js, completionHandler: nil)
     }
 
     private func tabPill(in header: PaneHeaderView, atX point: CGPoint, from canvas: UIView) -> TabPillView? {

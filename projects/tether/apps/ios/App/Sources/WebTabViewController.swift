@@ -102,6 +102,9 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
 
     public func simulateClick(at pointInView: CGPoint) {
         let ptInWeb = view.convert(pointInView, to: webView)
+        // Typing from the phone goes to the focused pane's active tab and to the address bar while it is active.
+        store.focusPane(paneId)
+        deactivateAddressBar()
         webView.becomeFirstResponder()
         let script = """
         (function() {
@@ -189,11 +192,22 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
                 }
             }
 
-            // 5. Handle form elements
-            var input = target.closest('input, textarea, [contenteditable="true"]');
+            // 5. Handle form elements. The field is remembered because WebKit drops DOM focus when the
+            // web view stops being first responder (the phone controller takes it back), and typing
+            // from the phone then has to find the field again.
+            var input = target.closest('input, textarea, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
+            if (!input && target.tagName === 'LABEL' && target.control) input = target.control;
+            if (!input && el && el.isContentEditable) input = el;
             if (input && typeof input.focus === 'function') {
                 input.focus();
+            } else {
+                // Like a real click, clicking outside the field leaves it, so keys go back to page shortcuts.
+                var focused = document.activeElement;
+                if (focused && focused !== document.body && !focused.contains(target) && typeof focused.blur === 'function') {
+                    focused.blur();
+                }
             }
+            window.__tetherTypingTarget = input || null;
         })();
         """
         webView.evaluateJavaScript(script, completionHandler: nil)
@@ -236,42 +250,90 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
         let js = """
         (function(args) {
             var text = args[0];
-            var el = document.activeElement;
-            if (!el) return false;
 
+            function isEditable(node) {
+                if (!node || node.disabled || node.readOnly) return false;
+                if (node.tagName === 'TEXTAREA') return true;
+                if (node.tagName === 'INPUT') {
+                    return !/^(button|submit|reset|checkbox|radio|file|image|range|color|hidden)$/i.test(node.type || '');
+                }
+                return node.isContentEditable || node.getAttribute('role') === 'textbox';
+            }
+
+            // The focused element, looking inside shadow roots and same-origin iframes.
+            function deepActiveElement() {
+                var node = document.activeElement;
+                while (node) {
+                    if (node.shadowRoot && node.shadowRoot.activeElement) {
+                        node = node.shadowRoot.activeElement;
+                    } else if (node.tagName === 'IFRAME') {
+                        var inner = null;
+                        try { inner = node.contentDocument && node.contentDocument.activeElement; } catch (e) {}
+                        if (!inner || inner === node.contentDocument.body) break;
+                        node = inner;
+                    } else {
+                        break;
+                    }
+                }
+                return node;
+            }
+
+            var el = deepActiveElement();
+            if (!isEditable(el)) {
+                // DOM focus is dropped when the web view stops being first responder; the field
+                // clicked last with the trackpad is still the one the user is typing into.
+                var remembered = window.__tetherTypingTarget;
+                if (!remembered || !remembered.isConnected || !isEditable(remembered)) return false;
+                el = remembered;
+                try { el.focus({ preventScroll: true }); } catch (e) {}
+            }
+            window.__tetherTypingTarget = el;
+
+            var doc = el.ownerDocument || document;
+            var win = doc.defaultView || window;
             var isInput = (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA');
-            var isEditable = isInput || el.isContentEditable || el.getAttribute('contenteditable') === 'true' || el.getAttribute('role') === 'textbox';
 
-            if (!isEditable) {
-                return false;
+            // setRangeText throws on email/number inputs; fall back to setting the value through the
+            // native setter so frameworks (React) see the change.
+            function replaceRange(insert, start, end, inputType) {
+                try {
+                    el.setRangeText(insert, start, end, 'end');
+                } catch (e) {
+                    var value = el.value || '';
+                    if (start == null) {
+                        // These inputs expose no caret, so edit at the end.
+                        end = value.length;
+                        start = inputType === 'deleteContentBackward' ? Math.max(0, end - 1) : end;
+                    }
+                    var proto = el.tagName === 'TEXTAREA' ? win.HTMLTextAreaElement.prototype : win.HTMLInputElement.prototype;
+                    var setter = Object.getOwnPropertyDescriptor(proto, 'value').set;
+                    setter.call(el, value.slice(0, start) + insert + value.slice(end));
+                }
+                el.dispatchEvent(new win.InputEvent('input', { bubbles: true, cancelable: true, data: insert || null, inputType: inputType }));
             }
 
             if (text === '\\u007F' || text === '\\b') {
-                if (isInput && typeof el.selectionStart === 'number') {
+                if (isInput) {
                     var start = el.selectionStart;
                     var end = el.selectionEnd;
-                    if (start === end && start > 0) {
-                        el.setRangeText('', start - 1, start, 'end');
+                    if (start == null) {
+                        replaceRange('', null, null, 'deleteContentBackward');
+                    } else if (start === end && start > 0) {
+                        replaceRange('', start - 1, start, 'deleteContentBackward');
                     } else if (start !== end) {
-                        el.setRangeText('', start, end, 'end');
+                        replaceRange('', start, end, 'deleteContentBackward');
                     }
-                    el.dispatchEvent(new InputEvent('input', { bubbles: true, cancelable: true, inputType: 'deleteContentBackward' }));
                 } else {
-                    document.execCommand('delete', false, null);
+                    doc.execCommand('delete', false, null);
                 }
                 return true;
             }
 
             if (text === '\\r' || text === '\\n') {
                 if (el.tagName === 'TEXTAREA') {
-                    if (typeof el.selectionStart === 'number') {
-                        el.setRangeText('\\n', el.selectionStart, el.selectionEnd, 'end');
-                        el.dispatchEvent(new InputEvent('input', { bubbles: true, cancelable: true, inputType: 'insertLineBreak' }));
-                    } else {
-                        document.execCommand('insertParagraph', false, null);
-                    }
+                    replaceRange('\\n', el.selectionStart, el.selectionEnd, 'insertLineBreak');
                 } else if (el.tagName === 'INPUT') {
-                    var ev = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true });
+                    var ev = new win.KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true });
                     el.dispatchEvent(ev);
                     if (!ev.defaultPrevented && el.form) {
                         if (typeof el.form.requestSubmit === 'function') {
@@ -281,35 +343,45 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
                         }
                     }
                 } else if (el.isContentEditable) {
-                    document.execCommand('insertParagraph', false, null);
+                    doc.execCommand('insertParagraph', false, null);
                 }
                 return true;
             }
 
+            // execCommand only types into the focused element and can report success without
+            // changing anything, so check the field actually changed before trusting it.
+            var before = isInput ? el.value : el.textContent;
             var success = false;
-            try {
-                success = document.execCommand('insertText', false, text);
-            } catch(e) {}
+            if (doc.activeElement === el || el.contains(doc.activeElement)) {
+                try {
+                    success = doc.execCommand('insertText', false, text);
+                } catch(e) {}
+            }
+            if (success && (isInput ? el.value : el.textContent) === before) success = false;
 
             if (!success) {
-                if (isInput && typeof el.selectionStart === 'number') {
-                    var start = el.selectionStart;
-                    var end = el.selectionEnd;
-                    el.setRangeText(text, start, end, 'end');
-                    el.dispatchEvent(new InputEvent('input', { bubbles: true, cancelable: true, data: text, inputType: 'insertText' }));
+                if (isInput) {
+                    replaceRange(text, el.selectionStart, el.selectionEnd, 'insertText');
                 } else if (el.isContentEditable) {
-                    var sel = window.getSelection();
-                    if (sel && sel.rangeCount > 0) {
-                        var range = sel.getRangeAt(0);
-                        range.deleteContents();
-                        var textNode = document.createTextNode(text);
-                        range.insertNode(textNode);
-                        range.setStartAfter(textNode);
-                        range.setEndAfter(textNode);
+                    var sel = win.getSelection();
+                    var range;
+                    if (sel && sel.rangeCount > 0 && el.contains(sel.getRangeAt(0).startContainer)) {
+                        range = sel.getRangeAt(0);
+                    } else {
+                        range = doc.createRange();
+                        range.selectNodeContents(el);
+                        range.collapse(false);
+                    }
+                    range.deleteContents();
+                    var textNode = doc.createTextNode(text);
+                    range.insertNode(textNode);
+                    range.setStartAfter(textNode);
+                    range.setEndAfter(textNode);
+                    if (sel) {
                         sel.removeAllRanges();
                         sel.addRange(range);
-                        el.dispatchEvent(new InputEvent('input', { bubbles: true, cancelable: true, data: text, inputType: 'insertText' }));
                     }
+                    el.dispatchEvent(new win.InputEvent('input', { bubbles: true, cancelable: true, data: text, inputType: 'insertText' }));
                 }
             }
             return true;

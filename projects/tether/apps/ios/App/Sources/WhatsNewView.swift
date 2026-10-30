@@ -17,10 +17,22 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.23"
+    static let currentVersion = "0.1.24"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.24", date: "October 2026", items: [
+            WhatsNewItem(
+                icon: "character.cursor.ibeam",
+                title: "Type Into Web Fields From the Phone",
+                description: "Click a text field on a web page with the phone trackpad, then type on the phone keyboard: the text now goes into that field, including email and number fields."
+            ),
+            WhatsNewItem(
+                icon: "slider.horizontal.3",
+                title: "More Room for the Trackpad",
+                description: "The workspace bar and trackpad layout options now sit behind the sliders button in the sidebar, so the trackpad and keyboard fill the screen. Tap the chevrons at the top of the sidebar to tuck it into a small button."
+            ),
+        ]),
         ReleaseNotes(version: "0.1.23", date: "October 2026", items: [
             WhatsNewItem(
                 icon: "hand.draw",
