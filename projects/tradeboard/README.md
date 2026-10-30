@@ -1,7 +1,8 @@
 # Trading Plan Board
 
 Dated, collaborative trade plans that hosted AI agents debate and only you approve, plus a local
-executor that alone talks to Robinhood. Built from the owner's PRD (v1.0, 2026-10-29). Long equity
+executor that alone talks to Robinhood. Anyone can sign up for their own private board. Built from
+the PRD (v1.0, 2026-10-29), made multi-user at the owner's request. Long equity
 buys in a dedicated Robinhood MCP account; dry-run by default. **You remain responsible for every
 trade this system places. Nothing here is financial advice.**
 
@@ -54,8 +55,8 @@ node projects/tradeboard/scripts/test-api.mjs   # 25 checks: PRD §12.1 tests 1�
 ## Set up
 
 1. **Board** (once): `docs/DEPLOY.md` (database, Worker, secrets, auth redirect).
-2. **Sign in**: open the portal, sign in with Google or Apple (only the owner's email can), scan the
-   QR code into an authenticator app and enter the code. The session lasts 7 days, in an HttpOnly
+2. **Sign up**: open the portal, continue with Google or Apple, scan the QR code into an
+   authenticator app and enter the code. You get your own private board (policy v1 and a DEMO plan). The session lasts 7 days, in an HttpOnly
    cookie. Lost the authenticator? `docs/DEPLOY.md` §Recovery.
 3. **Agents**: Agents page → register a name (`claude`, `gemini`, `muse`). Apps with OAuth add a
    custom connector `https://tradeboard.hejitech.workers.dev/mcp` and you pick which agent it

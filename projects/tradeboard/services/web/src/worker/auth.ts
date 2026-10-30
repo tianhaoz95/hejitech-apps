@@ -1,13 +1,12 @@
-// The owner's portal session (§8.3). Sign-in is two steps: a Google or Apple sign-in through the
-// shared Supabase project proves the account (only OWNER_EMAIL, then only that user id), and a TOTP
-// code proves the second factor. The Worker then sets its own HttpOnly, SameSite=Strict cookie; the
-// browser drops the Supabase session. Agent tokens, executor credentials and this cookie are three
-// separate kinds: none works where another is expected.
+// Portal sessions (§8.3). Anyone can sign up: a Google or Apple sign-in through the shared Supabase
+// project proves the account, and a TOTP code (enrolled on the first sign-in) proves the second
+// factor, since the board approves real-money orders. The Worker then sets its own HttpOnly,
+// SameSite=Strict cookie bound to that user; the browser drops the Supabase session. Agent tokens,
+// executor credentials and this cookie are three separate kinds: none works where another is expected.
 import { newTotpSecret, otpauthUri, verifyTotp } from "@tradeboard/core";
-import { admin, json, problem, rateLimit, randomToken, seal, sha256, unseal, type Db, type Env } from "./store.ts";
+import { admin, audit, json, problem, rateLimit, randomToken, seal, sha256, unseal, type Db, type Env } from "./store.ts";
 
 const LOGIN_FAILS_PER_IP = 8;
-const LOGIN_FAILS_GLOBAL = 30;
 const LOGIN_WINDOW_SEC = 900;
 
 export const cookieName = (env: Env) => (env.PUBLIC_URL.startsWith("https://") ? "__Host-tb_session" : "tb_session");
@@ -26,17 +25,17 @@ function sessionCookie(env: Env, value: string, maxAgeSec: number): string {
   return `${cookieName(env)}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAgeSec}${secure}`;
 }
 
-/** The owner's session from the cookie, or null. Bearer headers are never looked at here. */
-export async function ownerSession(env: Env, db: Db, req: Request): Promise<{ tokenHash: string } | null> {
+/** The signed-in user from the cookie, or null. Bearer headers are never looked at here. */
+export async function userSession(env: Env, db: Db, req: Request): Promise<{ tokenHash: string; userId: string } | null> {
   const value = readCookie(req, cookieName(env));
   if (!value) return null;
   const tokenHash = await sha256(value);
-  const { data } = await db.from("sessions").select("token_hash, expires_at, revoked_at, last_seen_at").eq("token_hash", tokenHash).maybeSingle();
+  const { data } = await db.from("sessions").select("token_hash, user_id, expires_at, revoked_at, last_seen_at").eq("token_hash", tokenHash).maybeSingle();
   if (!data || data.revoked_at || new Date(data.expires_at as string) <= new Date()) return null;
   if (Date.now() - new Date(data.last_seen_at as string).getTime() > 60_000) {
     await db.from("sessions").update({ last_seen_at: new Date().toISOString() }).eq("token_hash", tokenHash);
   }
-  return { tokenHash };
+  return { tokenHash, userId: data.user_id as string };
 }
 
 /**
@@ -55,10 +54,10 @@ async function supabaseUser(env: Env, accessToken: string): Promise<{ id: string
   const res = await fetch(`${env.SUPABASE_URL}/auth/v1/user`, { headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${accessToken}` } });
   if (!res.ok) return null;
   const u = (await res.json()) as { id: string; email?: string };
-  return u.email ? { id: u.id, email: u.email } : null;
+  return { id: u.id, email: u.email ?? "" };
 }
 
-interface OwnerRow {
+interface AccountRow {
   user_id: string;
   email: string;
   totp_secret_enc: string | null;
@@ -69,86 +68,81 @@ interface OwnerRow {
 
 const clientIp = (req: Request) => req.headers.get("CF-Connecting-IP") ?? "local";
 
-async function loginFailed(env: Env, db: Db, req: Request, why: string) {
+async function loginFailed(env: Env, db: Db, req: Request, userId: string, why: string) {
   await rateLimit(env.OAUTH_KV, `loginfail:${clientIp(req)}`, 1e9, LOGIN_WINDOW_SEC);
-  await rateLimit(env.OAUTH_KV, "loginfail:all", 1e9, LOGIN_WINDOW_SEC);
-  await db.rpc("audit", { p_actor_type: "system", p_actor_id: "portal", p_action: "auth.failed", p_plan_id: null, p_details: { why, ip_hash: (await sha256(clientIp(req))).slice(0, 12) } });
+  await rateLimit(env.OAUTH_KV, `loginfail:user:${userId}`, 1e9, LOGIN_WINDOW_SEC);
+  await audit(db, userId, "system", "portal", "auth.failed", null, { why, ip_hash: (await sha256(clientIp(req))).slice(0, 12) });
 }
 
-async function throttled(env: Env, req: Request): Promise<boolean> {
+/** Too many wrong codes from this address, or against this account, in the window. */
+async function throttled(env: Env, req: Request, userId?: string): Promise<boolean> {
   const window = Math.floor(Date.now() / 1000 / LOGIN_WINDOW_SEC);
   const ip = Number((await env.OAUTH_KV.get(`rl:loginfail:${clientIp(req)}:${window}`)) ?? 0);
-  const all = Number((await env.OAUTH_KV.get(`rl:loginfail:all:${window}`)) ?? 0);
-  return ip >= LOGIN_FAILS_PER_IP || all >= LOGIN_FAILS_GLOBAL;
+  const user = userId ? Number((await env.OAUTH_KV.get(`rl:loginfail:user:${userId}:${window}`)) ?? 0) : 0;
+  return ip >= LOGIN_FAILS_PER_IP || user >= LOGIN_FAILS_PER_IP;
 }
 
-/** Checks the Supabase account is the owner's. The first matching sign-in claims the owner row. */
-async function ownerFor(env: Env, db: Db, user: { id: string; email: string }): Promise<OwnerRow | null> {
-  const { data } = await db.from("owner").select("*").eq("id", true).maybeSingle();
-  if (data) return (data as OwnerRow).user_id === user.id ? (data as OwnerRow) : null;
-  if (!env.OWNER_EMAIL || user.email.toLowerCase() !== env.OWNER_EMAIL.trim().toLowerCase()) return null;
-  const { data: created } = await db.from("owner").insert({ id: true, user_id: user.id, email: user.email }).select("*").single();
-  await db.rpc("audit", { p_actor_type: "human", p_actor_id: "owner", p_action: "owner.claimed", p_plan_id: null, p_details: {} });
-  return (created as OwnerRow | null) ?? null;
+/** The user's board account, created on their first sign-in (users are shared by every HEJI app). */
+async function accountFor(db: Db, user: { id: string; email: string }): Promise<AccountRow> {
+  const { data } = await db.from("accounts").select("*").eq("user_id", user.id).maybeSingle();
+  if (data) return data as AccountRow;
+  await db.from("accounts").upsert({ user_id: user.id, email: user.email }, { onConflict: "user_id", ignoreDuplicates: true });
+  await audit(db, user.id, "human", "owner", "account.created", null, {});
+  const { data: created } = await db.from("accounts").select("*").eq("user_id", user.id).single();
+  return created as AccountRow;
 }
 
 /**
- * POST /api/auth/begin {access_token}: is this the owner, and do they still need to enroll TOTP?
- * Enrollment returns the secret once (as text and an otpauth:// URI for the authenticator app).
+ * POST /api/auth/begin {access_token}: does this account still need to enroll TOTP? Enrollment
+ * returns the secret once (as text and an otpauth:// URI for the authenticator app).
  */
 export async function authBegin(req: Request, env: Env): Promise<Response> {
   const db = admin(env);
-  if (await throttled(env, req)) return problem(429, "rate_limited", "Too many failed sign-ins. Wait 15 minutes.");
   const body = (await req.json().catch(() => ({}))) as { access_token?: string };
   const user = await supabaseUser(env, String(body.access_token ?? ""));
   if (!user) return problem(401, "signin_required", "Sign in with Google or Apple first.");
-  const owner = await ownerFor(env, db, user);
-  if (!owner) {
-    await loginFailed(env, db, req, "not the owner");
-    return problem(403, "not_owner", "This board belongs to another account.");
-  }
-  if (owner.totp_enrolled_at) return json({ enroll: false });
+  if (await throttled(env, req, user.id)) return problem(429, "rate_limited", "Too many failed sign-ins. Wait 15 minutes.");
+  const account = await accountFor(db, user);
+  if (account.totp_enrolled_at) return json({ enroll: false });
   const secret = newTotpSecret();
-  await db.from("owner").update({ totp_pending_enc: await seal(env, secret) }).eq("id", true);
-  return json({ enroll: true, secret, otpauth: otpauthUri(secret, user.email) });
+  await db.from("accounts").update({ totp_pending_enc: await seal(env, secret) }).eq("user_id", user.id);
+  return json({ enroll: true, secret, otpauth: otpauthUri(secret, user.email || "account") });
 }
 
 /** POST /api/auth/verify {access_token, code}: the second factor; sets the session cookie. */
 export async function authVerify(req: Request, env: Env): Promise<Response> {
   const db = admin(env);
-  if (await throttled(env, req)) return problem(429, "rate_limited", "Too many failed sign-ins. Wait 15 minutes.");
   const body = (await req.json().catch(() => ({}))) as { access_token?: string; code?: string };
   const user = await supabaseUser(env, String(body.access_token ?? ""));
   if (!user) return problem(401, "signin_required", "Sign in with Google or Apple first.");
-  const owner = await ownerFor(env, db, user);
-  if (!owner) {
-    await loginFailed(env, db, req, "not the owner");
-    return problem(403, "not_owner", "This board belongs to another account.");
-  }
-  const enrolling = !owner.totp_enrolled_at;
-  const sealed = enrolling ? owner.totp_pending_enc : owner.totp_secret_enc;
+  if (await throttled(env, req, user.id)) return problem(429, "rate_limited", "Too many failed sign-ins. Wait 15 minutes.");
+  const account = await accountFor(db, user);
+  const enrolling = !account.totp_enrolled_at;
+  const sealed = enrolling ? account.totp_pending_enc : account.totp_secret_enc;
   if (!sealed) return problem(409, "enroll_first", "Start again: your authenticator setup expired.");
-  const step = await verifyTotp(await unseal(env, sealed), String(body.code ?? "").replace(/\s/g, ""), Date.now(), owner.totp_last_step === null ? null : Number(owner.totp_last_step));
+  const step = await verifyTotp(await unseal(env, sealed), String(body.code ?? "").replace(/\s/g, ""), Date.now(), account.totp_last_step === null ? null : Number(account.totp_last_step));
   if (step === null) {
-    await loginFailed(env, db, req, "wrong code");
+    await loginFailed(env, db, req, user.id, "wrong code");
     return problem(401, "wrong_code", "That code didn't match. Use the current 6-digit code from your authenticator.");
   }
   // Single use: a step at or below the last accepted one is refused next time (no replay).
-  const { data: claimed } = await db.from("owner").update({
+  const { data: claimed } = await db.from("accounts").update({
     totp_last_step: step,
-    ...(enrolling ? { totp_secret_enc: owner.totp_pending_enc, totp_pending_enc: null, totp_enrolled_at: new Date().toISOString() } : {}),
-  }).eq("id", true).or(`totp_last_step.is.null,totp_last_step.lt.${step}`).select("user_id");
+    ...(enrolling ? { totp_secret_enc: account.totp_pending_enc, totp_pending_enc: null, totp_enrolled_at: new Date().toISOString() } : {}),
+  }).eq("user_id", user.id).or(`totp_last_step.is.null,totp_last_step.lt.${step}`).select("user_id");
   if (!claimed?.length) return problem(401, "wrong_code", "That code was already used. Wait for the next one.");
   const days = Number(env.SESSION_DAYS ?? 7) || 7;
   const token = randomToken();
-  await db.from("sessions").insert({ token_hash: await sha256(token), expires_at: new Date(Date.now() + days * 86_400_000).toISOString(), user_agent: (req.headers.get("User-Agent") ?? "").slice(0, 200) });
-  await db.rpc("audit", { p_actor_type: "human", p_actor_id: "owner", p_action: enrolling ? "auth.enrolled" : "auth.signed_in", p_plan_id: null, p_details: { session_days: days } });
+  await db.from("sessions").insert({ token_hash: await sha256(token), user_id: user.id, expires_at: new Date(Date.now() + days * 86_400_000).toISOString(), user_agent: (req.headers.get("User-Agent") ?? "").slice(0, 200) });
+  await audit(db, user.id, "human", "owner", enrolling ? "auth.enrolled" : "auth.signed_in", null, { session_days: days });
   return json({ ok: true, enrolled: enrolling }, 200, { "Set-Cookie": sessionCookie(env, token, days * 86_400) });
 }
 
 export async function authLogout(req: Request, env: Env): Promise<Response> {
   const db = admin(env);
-  const s = await ownerSession(env, db, req);
+  const s = await userSession(env, db, req);
   if (s) await db.from("sessions").update({ revoked_at: new Date().toISOString() }).eq("token_hash", s.tokenHash);
   return json({ ok: true }, 200, { "Set-Cookie": sessionCookie(env, "", 0) });
 }
+
+export const clearCookie = (env: Env) => sessionCookie(env, "", 0);

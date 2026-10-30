@@ -25,7 +25,7 @@ const TICKET = {
   properties: {
     ticker: { type: "string", description: "Uppercase symbol, equal to the plan's ticker." },
     side: { type: "string", enum: ["buy"] },
-    order_type: { type: "string", enum: ["limit", "market", "stop_limit", "stop_market"], description: "The owner's policy decides which types the executor accepts (default: limit, market)." },
+    order_type: { type: "string", enum: ["limit", "market", "stop_limit", "stop_market"], description: "The user's policy decides which types the executor accepts (default: limit, market)." },
     quantity_shares: { type: ["number", "null"] },
     quantity_dollars: { type: ["number", "null"], description: "Market orders only." },
     limit_price: { type: ["number", "null"] },
@@ -55,13 +55,13 @@ const rw = (title: string, idempotent = false) => ({ title, readOnlyHint: false,
 export const TOOLS = [
   {
     name: "create_plan", title: "Create a trade plan",
-    description: "Creates a dated plan in `draft`. Needs title, ticker, the order ticket, thesis and valid_until (in the future). Pass an idempotency_key to make retries safe. Agents can't approve plans: only the owner can, in the portal.",
+    description: "Creates a dated plan in `draft`. Needs title, ticker, the order ticket, thesis and valid_until (in the future). Pass an idempotency_key to make retries safe. Agents can't approve plans: only the user can, in the portal.",
     inputSchema: { type: "object", required: ["title", "ticker", "order", "thesis", "valid_until"], properties: { ...PLAN_FIELDS, idempotency_key: { type: "string" } } },
     annotations: rw("Create a trade plan", true),
   },
   {
     name: "get_plan", title: "Get a plan",
-    description: "The full plan: fields, ticket, validity (UTC), status, version, open questions (the owner's block approval), decision log and the latest receipt. `awaiting_you` lists questions @mentioning you that you haven't answered.",
+    description: "The full plan: fields, ticket, validity (UTC), status, version, open questions (the user's block approval), decision log and the latest receipt. `awaiting_you` lists questions @mentioning you that you haven't answered.",
     inputSchema: { type: "object", required: ["plan_id"], properties: { plan_id: { type: "string" } } },
     annotations: ro("Get a plan"),
   },
@@ -85,19 +85,19 @@ export const TOOLS = [
   },
   {
     name: "ask_question", title: "Ask a question",
-    description: "Opens a question on the plan (optionally directed at one agent). Agents' questions are listed but don't block approval; the owner's do.",
+    description: "Opens a question on the plan (optionally directed at one agent). Agents' questions are listed but don't block approval; the user's do.",
     inputSchema: { type: "object", required: ["plan_id", "body"], properties: { plan_id: { type: "string" }, body: { type: "string" }, anchor: { type: "string", enum: [...ANCHORS] }, mentioned_agent_id: { type: "string" } } },
     annotations: rw("Ask a question"),
   },
   {
     name: "answer_question", title: "Answer a question",
-    description: "Replies to a question in its thread. Only the owner can mark their questions resolved; an answer alone doesn't.",
+    description: "Replies to a question in its thread. Only the user can mark their questions resolved; an answer alone doesn't.",
     inputSchema: { type: "object", required: ["question_id", "body"], properties: { question_id: { type: "string" }, body: { type: "string" } } },
     annotations: rw("Answer a question"),
   },
   {
     name: "mark_ready", title: "Mark a plan ready",
-    description: "Moves a `debated` plan to `ready` for the owner's review. Refused while the owner has open questions (they're listed in the error).",
+    description: "Moves a `debated` plan to `ready` for the user's review. Refused while the user has open questions (they're listed in the error).",
     inputSchema: { type: "object", required: ["plan_id"], properties: { plan_id: { type: "string" } } },
     annotations: rw("Mark a plan ready", true),
   },
@@ -115,7 +115,7 @@ export const TOOLS = [
   },
   {
     name: "get_open_questions", title: "Get open questions",
-    description: "The plan's open questions, the owner's (blocking) first.",
+    description: "The plan's open questions, the user's (blocking) first.",
     inputSchema: { type: "object", required: ["plan_id"], properties: { plan_id: { type: "string" } } },
     annotations: ro("Get open questions"),
   },
@@ -148,11 +148,11 @@ async function callTool(name: string, args: Record<string, unknown>, actor: Acto
       return need(await createPlan(db, actor, fields, { idempotencyKey: typeof idempotency_key === "string" ? idempotency_key : undefined }));
     }
     case "get_plan": {
-      const v = await planView(db, str(args.plan_id, "plan_id"), { forAgent: actor.id });
+      const v = await planView(db, actor.userId, str(args.plan_id, "plan_id"), { forAgent: actor.id });
       return v ?? fail("not_found", "no such plan");
     }
     case "list_plans":
-      return { plans: await listPlans(db, { status: args.status as string, ticker: args.ticker as string, author_id: args.author_id as string, limit: args.limit as number }, actor.id) };
+      return { plans: await listPlans(db, actor.userId, { status: args.status as string, ticker: args.ticker as string, author_id: args.author_id as string, limit: args.limit as number }, actor.id) };
     case "update_plan": {
       const { plan_id, expected_version, ...fields } = args;
       return need(await updatePlan(db, actor, str(plan_id, "plan_id"), expected_version, fields));
@@ -164,24 +164,24 @@ async function callTool(name: string, args: Record<string, unknown>, actor: Acto
     case "answer_question":
       return need(await answerQuestion(db, actor, str(args.question_id, "question_id"), args.body));
     case "mark_ready": {
-      const policy = await currentPolicy(db);
+      const policy = await currentPolicy(db, actor.userId);
       return need(await markReady(db, actor, str(args.plan_id, "plan_id"), policy.policy.max_plan_age_hours));
     }
     case "request_changes":
       return need(await requestChanges(db, actor, str(args.plan_id, "plan_id"), args.body));
     case "list_comments": {
       const id = str(args.plan_id, "plan_id");
-      if (!(await loadPlan(db, id))) fail("not_found", "no such plan");
+      if (!(await loadPlan(db, actor.userId, id))) fail("not_found", "no such plan");
       return { comments: (await loadComments(db, id, { anchor: args.anchor as string, since: args.since as string })).map(commentOut) };
     }
     case "get_open_questions": {
       const id = str(args.plan_id, "plan_id");
-      if (!(await loadPlan(db, id))) fail("not_found", "no such plan");
+      if (!(await loadPlan(db, actor.userId, id))) fail("not_found", "no such plan");
       return { open_questions: openQuestions(await loadComments(db, id)) };
     }
     case "get_audit_log": {
       const id = str(args.plan_id, "plan_id");
-      if (!(await loadPlan(db, id))) fail("not_found", "no such plan");
+      if (!(await loadPlan(db, actor.userId, id))) fail("not_found", "no such plan");
       return { events: await auditFor(db, id, Number(args.limit ?? 200)) };
     }
   }
@@ -206,9 +206,9 @@ export async function handleMcp(req: Request, actor: Actor, db: Db): Promise<Res
         capabilities: { tools: { listChanged: false } },
         serverInfo: { name: "tradeboard", title: "Trading Plan Board", version: VERSION },
         instructions:
-          `You are "${actor.id}" on the owner's Trading Plan Board: dated, collaborative trade plans. You draft, discuss and mark plans ready; ` +
-          "only the owner approves, in the portal, and a separate local executor places approved orders after its own checks. You can't place orders here. " +
-          "Every time is UTC; valid_until is required. Edits make a new version and void approval; send expected_version. The owner's open questions block a plan: answer them. Nothing here is financial advice.",
+          `You are "${actor.id}" on your user's Trading Plan Board: dated, collaborative trade plans. You draft, discuss and mark plans ready; ` +
+          "only the user approves, in the portal, and a separate local executor places approved orders after its own checks. You can't place orders here. " +
+          "Every time is UTC; valid_until is required. Edits make a new version and void approval; send expected_version. The user's open questions block a plan: answer them. Nothing here is financial advice.",
       });
     case "notifications/initialized":
       return new Response(null, { status: 202, headers: cors });

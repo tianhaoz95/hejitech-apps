@@ -5,25 +5,28 @@
 //
 //   /mcp                              Board MCP: OAuth access token or a `tba_…` agent token
 //   /.well-known/…, /token, /register handled by the provider
-//   GET/POST /authorize               consent for an agent, with the owner's session cookie
-//   /api/auth/begin|verify|logout     owner sign-in (Supabase account + TOTP) → session cookie
-//   /api/executor/*                   executor.ts, `tbx_…` credential only
-//   /api/*                            portal.ts, the owner's session cookie only
+//   GET/POST /authorize               consent for an agent, with the user's session cookie
+//   /api/auth/begin|verify|logout     sign-up / sign-in (Supabase account + TOTP) → session cookie
+//   /api/executor/*                   executor.ts, `tbx_…` credential only (its user's board)
+//   /api/*                            portal.ts, the user's session cookie only (their own board)
 //   /plans/<id>                       the plan page
 //   scheduled (every minute)          sweep: expiry, staleness, approval and claim expiry
 
 import { AuthorizationError, OAuthProvider, type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
-import { authBegin, authLogout, authVerify, ownerSession, sameOrigin } from "./auth.ts";
+import { checkAgentId } from "@tradeboard/core";
+import { authBegin, authLogout, authVerify, sameOrigin, userSession } from "./auth.ts";
 import { handleExecutor } from "./executor.ts";
 import { handleMcp } from "./mcp.ts";
-import { GRANT_USER, handlePortal } from "./portal.ts";
-import { admin, bearer, json, PREFIX, problem, rateLimit, sha256, sweep, type Env as BaseEnv } from "./store.ts";
+import { handlePortal } from "./portal.ts";
+import { admin, audit, bearer, ensureBoard, json, PREFIX, problem, rateLimit, sha256, sweep, type Env as BaseEnv } from "./store.ts";
 
 export interface Env extends BaseEnv {
   OAUTH_PROVIDER: OAuthHelpers;
 }
 
 interface Props {
+  /** Whose board this agent works on: the user who connected it. */
+  userId: string;
   agentId: string;
   via: "oauth" | "token";
 }
@@ -31,16 +34,17 @@ interface Props {
 const mcpHandler = {
   async fetch(req: Request, env: Env, ctx: ExecutionContext & { props?: Props }): Promise<Response> {
     const props = ctx.props;
-    if (!props?.agentId) return new Response("unauthorized", { status: 401 });
+    if (!props?.agentId || !props.userId) return new Response("unauthorized", { status: 401 });
     const db = admin(env);
     // A revoked agent loses OAuth grants and tokens at once, even before the grant is cleaned up.
-    const { data: agent } = await db.from("agents").select("agent_id").eq("agent_id", props.agentId).is("revoked_at", null).maybeSingle();
-    if (!agent) return json({ error_code: "agent_revoked", message: "this agent's access was revoked by the owner" }, 403);
+    const { data: agent } = await db.from("agents").select("agent_id").eq("user_id", props.userId).eq("agent_id", props.agentId).is("revoked_at", null).maybeSingle();
+    if (!agent) return json({ error_code: "agent_revoked", message: "this agent's access was revoked" }, 403);
     const limit = Number(env.AGENT_RATE_PER_MIN ?? 60) || 60;
-    if (req.method === "POST" && !(await rateLimit(env.OAUTH_KV, `agent:${props.agentId}`, limit, 60))) {
+    if (req.method === "POST" && !(await rateLimit(env.OAUTH_KV, `agent:${props.userId}:${props.agentId}`, limit, 60))) {
       return json({ jsonrpc: "2.0", id: null, error: { code: -32000, message: `rate_limited: at most ${limit} calls a minute`, data: { error_code: "rate_limited" } } }, 429);
     }
-    return handleMcp(req, { type: "agent", id: props.agentId }, db);
+    await ensureBoard(db, props.userId);
+    return handleMcp(req, { type: "agent", id: props.agentId, userId: props.userId }, db);
   },
 };
 
@@ -63,7 +67,7 @@ async function authorize(req: Request, env: Env): Promise<Response> {
     }
     if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
     if (!sameOrigin(env, req)) return problem(403, "forbidden", "cross-site request refused");
-    const body = (await req.json().catch(() => ({}))) as { handle?: string; decision?: string; agent_id?: string };
+    const body = (await req.json().catch(() => ({}))) as { handle?: string; decision?: string; agent_id?: string; display_name?: string };
     const handle = String(body.handle ?? "");
     if (body.decision === "deny") {
       const denied = await oauth.denyConsent(req, handle);
@@ -71,17 +75,25 @@ async function authorize(req: Request, env: Env): Promise<Response> {
     }
     if (body.decision !== "approve") return json({ error: "decision must be approve or deny" }, 400);
     const db = admin(env);
-    if (!(await ownerSession(env, db, req))) return json({ error: "Your session expired. Sign in again." }, 401);
-    // The owner names the agent this connection speaks as; every comment it writes carries that id.
-    const agentId = String(body.agent_id ?? "");
-    const { data: agent } = await db.from("agents").select("agent_id").eq("agent_id", agentId).is("revoked_at", null).maybeSingle();
-    if (!agent) return json({ error: "Pick a registered agent (Agents page) for this connection." }, 422);
+    const session = await userSession(env, db, req);
+    if (!session) return json({ error: "Your session expired. Sign in again." }, 401);
+    // The user names the agent this connection speaks as (a new name is registered); every comment
+    // it writes carries that id, on that user's board.
+    const agentId = String(body.agent_id ?? "").trim().toLowerCase();
+    const bad = checkAgentId(agentId);
+    if (bad) return json({ error: `Agent name: ${bad}.` }, 422);
+    const { data: agent } = await db.from("agents").select("agent_id, revoked_at").eq("user_id", session.userId).eq("agent_id", agentId).maybeSingle();
+    if (agent?.revoked_at) return json({ error: `You revoked ${agentId}. Register it again on the Agents page, or pick another name.` }, 422);
+    if (!agent) {
+      await db.from("agents").insert({ user_id: session.userId, agent_id: agentId, display_name: String(body.display_name ?? "").slice(0, 40) || agentId });
+      await audit(db, session.userId, "human", "owner", "agent.registered", null, { agent_id: agentId, via: "oauth consent" });
+    }
     const approved = await oauth.approveConsent(req, handle, { scope: ["mcp"] });
-    const props: Props = { agentId, via: "oauth" };
+    const props: Props = { userId: session.userId, agentId, via: "oauth" };
     const { redirectTo } = await oauth.completeAuthorization({
-      request: approved.request, userId: GRANT_USER, metadata: { agent_id: agentId }, scope: approved.request.scope, props,
+      request: approved.request, userId: session.userId, metadata: { agent_id: agentId }, scope: approved.request.scope, props,
     });
-    await db.rpc("audit", { p_actor_type: "human", p_actor_id: "owner", p_action: "grant.issued", p_plan_id: null, p_details: { agent_id: agentId } });
+    await audit(db, session.userId, "human", "owner", "grant.issued", null, { agent_id: agentId });
     return json({ redirectTo }, 200, approved.headers);
   } catch (error) {
     if (error instanceof AuthorizationError) {
@@ -123,9 +135,9 @@ const app = {
       if (!token.startsWith(PREFIX.executor)) return problem(403, "forbidden", "executor credential required");
       const db = admin(env);
       const { data } = await db.rpc("resolve_executor_token", { p_token_hash: await sha256(token) });
-      const row = Array.isArray(data) ? (data[0] as { executor_id: string } | undefined) : undefined;
+      const row = Array.isArray(data) ? (data[0] as { user_id: string; executor_id: string } | undefined) : undefined;
       if (!row) return problem(401, "unauthorized", "unknown or revoked executor credential");
-      return handleExecutor(req, db, row.executor_id, url);
+      return handleExecutor(req, db, row.executor_id, row.user_id, url);
     }
 
     if (path.startsWith("/api/")) {
@@ -136,8 +148,10 @@ const app = {
       if (path === "/api/auth/verify" && req.method === "POST") return authVerify(req, env);
       if (path === "/api/auth/logout" && req.method === "POST") return authLogout(req, env);
       const db = admin(env);
-      if (!(await ownerSession(env, db, req))) return problem(401, "signin_required", "sign in");
-      return handlePortal(req, env, db, url, env.OAUTH_PROVIDER);
+      const session = await userSession(env, db, req);
+      if (!session) return problem(401, "signin_required", "sign in");
+      await ensureBoard(db, session.userId);
+      return handlePortal(req, env, db, url, env.OAUTH_PROVIDER, session.userId);
     }
 
     if (/^\/plans\/[0-9a-f-]{36}\/?$/.test(path)) return harden(await env.ASSETS.fetch(new Request(new URL("/plan/", url), req)));
@@ -169,9 +183,9 @@ function getProvider(env: Env): OAuthProvider<Env> {
     resolveExternalToken: async ({ token, env: e }) => {
       if (!token.startsWith(PREFIX.agent)) return null;
       const { data } = await admin(e as Env).rpc("resolve_agent_token", { p_token_hash: await sha256(token) });
-      const row = Array.isArray(data) ? (data[0] as { agent_id: string } | undefined) : undefined;
+      const row = Array.isArray(data) ? (data[0] as { user_id: string; agent_id: string } | undefined) : undefined;
       if (!row) return null;
-      const props: Props = { agentId: row.agent_id, via: "token" };
+      const props: Props = { userId: row.user_id, agentId: row.agent_id, via: "token" };
       return { props, audience: resource };
     },
   });

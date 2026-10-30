@@ -7,10 +7,17 @@ human approval, don't execute), as the PRD asks.
 ## Owner's choices (2026-10-29)
 
 - **Name** `tradeboard` (schema, tag prefix `tradeboard-v`, `tradeboard.hejitech.workers.dev`).
-- **Portal sign-in**: Google or Apple through the shared Supabase project, accepted only for the
-  owner's account, then a TOTP code checked by the Worker, which issues its own HttpOnly
-  SameSite=Strict session cookie (7 days). The PRD's "strong password + TOTP or equivalent": the
-  Google/Apple account is the first factor.
+- **Anyone can sign up (2026-10-30)**: the PRD describes one owner; the owner decided the service
+  is for whoever needs it. Every user gets a private board (their own plans, policy, agents,
+  executors, receipts, audit log), and their MCP agents connect by signing in with the same
+  account (OAuth consent names the agent; a new name is registered). Every table carries
+  `user_id`, every function checks it, and another user's plan is simply "not found". The PRD's
+  safety rules apply per board unchanged. Users can delete their board (Account page), the one
+  path that removes history.
+- **Portal sign-in**: Google or Apple through the shared Supabase project, then a TOTP code checked
+  by the Worker (enrolled on first sign-in), which issues its own HttpOnly SameSite=Strict session
+  cookie (7 days). The PRD's "strong password + TOTP or equivalent": the Google/Apple account is the
+  first factor; the second stays because approvals can place real orders.
 - **Executor host**: the DGX Spark for now, but nothing ties it there: it runs on any machine with
   Node ≥ 22.18 and any OpenAI-compatible local model endpoint (Ollama, vLLM, llama.cpp).
 - **Scope**: everything (PRD phases 0–2), production and release ready. Only the steps that need the

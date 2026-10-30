@@ -25,8 +25,8 @@ function providers() {
     if (error) showError(err, error.message);
   };
   const nodes: (Node | false)[] = [
-    el("h1", {}, "Sign in"),
-    el("p", { class: "muted" }, "The board belongs to one owner. Sign in with that account, then enter the code from your authenticator app."),
+    el("h1", {}, "Sign in or sign up"),
+    el("p", { class: "muted" }, "Your own private board for trade plans your AI agents debate and only you approve. Continue with Google or Apple; the first time, you'll also set up an authenticator app (approvals can place real orders, so the board asks for a second factor)."),
     el("button", { class: "btn", type: "button", onclick: go("google") }, "Continue with Google"),
     el("button", { class: "btn", type: "button", onclick: go("apple") }, "Continue with Apple"),
   ];

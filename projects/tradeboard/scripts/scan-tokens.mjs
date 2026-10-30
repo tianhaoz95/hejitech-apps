@@ -7,7 +7,7 @@ import { execFileSync } from "node:child_process";
 const pattern = "tb[ax]_[A-Za-z0-9_-]{30,}|sb_secret_[A-Za-z0-9_-]{10,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|\"refresh_token\"\\s*:\\s*\"[^\"]{8,}";
 let out = "";
 try {
-  out = execFileSync("git", ["grep", "--untracked", "-nE", pattern, "--", "projects/tradeboard", "supabase/schemas/tradeboard", "supabase/seeds/tradeboard.sql", ":!projects/tradeboard/scripts/check-secrets.mjs", ":!**/node_modules/**", ":!**/dist/**"], { encoding: "utf8" });
+  out = execFileSync("git", ["grep", "--untracked", "-nE", pattern, "--", "projects/tradeboard", "supabase/schemas/tradeboard", "supabase/seeds/tradeboard.sql", ":!projects/tradeboard/scripts/scan-tokens.mjs", ":!**/node_modules/**", ":!**/dist/**"], { encoding: "utf8" });
 } catch (e) {
   if (e.status !== 1) throw e; // 1 = no match
 }

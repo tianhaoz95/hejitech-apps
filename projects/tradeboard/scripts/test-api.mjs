@@ -21,6 +21,7 @@ if (!/^http:\/\/127\.0\.0\.1/.test(site) || !/^http:\/\/127\.0\.0\.1/.test(supa)
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0";
 const SERVICE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU";
 const EXEC = "tbx_dev_local";
+const SEED_USER = "00000000-0000-4000-8000-00000000b0a4";
 const RH_PORT = 8766, MODEL_PORT = 8767;
 // Wednesday 11:00 ET: the executor's clock in this test (the board keeps real time).
 const TEST_NOW = "2026-10-28T15:00:00.000Z";
@@ -117,7 +118,7 @@ async function toApproved(planId) {
 
 /** Leaves the board with no approved plans so each executor run sees only the plan under test. */
 async function clearApproved() {
-  const { body } = await rest("plans?status=in.(approved,ready,validated)&select=plan_id");
+  const { body } = await rest(`plans?user_id=eq.${SEED_USER}&status=in.(approved,ready,validated)&select=plan_id`);
   for (const p of body ?? []) await portal(`/api/plans/${p.plan_id}/cancel`, { body: { reason: "test cleanup" } });
 }
 
@@ -127,10 +128,10 @@ execFileSync("node", [join(here, "../apps/executor/scripts/build.mjs")], { stdio
 const mocks = [spawn(process.execPath, [join(here, "mock-robinhood.mjs"), String(RH_PORT)], { stdio: "ignore" }), spawn(process.execPath, [join(here, "mock-model.mjs"), String(MODEL_PORT)], { stdio: "ignore" })];
 process.on("exit", () => mocks.forEach((m) => m.kill()));
 await new Promise((r) => setTimeout(r, 600));
-// Local reset: a fresh owner (enrolls again), no sessions, a clean control row.
+// Local reset: the seed user enrolls again, no sessions, a clean control row.
 await rest("sessions?token_hash=neq.x", { method: "DELETE" });
-await rest("owner?id=eq.true", { method: "DELETE" });
-await rest("control?id=eq.true", { method: "PATCH", body: { paused: false, killed: false, dry_run: true, approvals_mode: null, confirmed_account_mask: null, funding_usd: null, gate_policy_version: null, live_trial_pending: true } });
+await rest(`accounts?user_id=eq.${SEED_USER}`, { method: "DELETE" });
+await rest(`control?user_id=eq.${SEED_USER}`, { method: "PATCH", body: { paused: false, killed: false, dry_run: true, approvals_mode: null, confirmed_account_mask: null, funding_usd: null, gate_policy_version: null, live_trial_pending: true } });
 await rest("executor_tokens?executor_id=eq.second", { method: "PATCH", body: { revoked_at: new Date().toISOString() } });
 await rhState({ price: 285.5, account: "5RX12345678", approvals: false, orders: [], placeCalls: 0, quoteAt: TEST_NOW });
 executorConfig();
@@ -148,7 +149,8 @@ await step("each credential works only where it belongs", async () => {
 });
 
 let secret;
-await step("owner sign-in: Supabase account, then TOTP enrollment; others refused", async () => {
+let strangerToken;
+await step("sign-up: a Supabase account, then TOTP enrollment; wrong codes and replays refused", async () => {
   const tok = async (email, password) => (await (await fetch(`${supa}/auth/v1/token?grant_type=password`, { method: "POST", headers: { apikey: ANON, "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) })).json()).access_token;
   const owner = await tok("owner@example.com", "tradeboard-dev");
   const begin = await portal("/api/auth/begin", { body: { access_token: owner } });
@@ -166,12 +168,9 @@ await step("owner sign-in: Supabase account, then TOTP enrollment; others refuse
   // The same code can't be used twice (replay).
   const again = await portal("/api/auth/verify", { body: { access_token: owner, code: await totp(secret) } });
   assert.equal(again.status, 401);
-  // Another account of the shared project isn't the owner.
-  const email = `stranger-${Date.now()}@example.com`;
-  await fetch(`${supa}/auth/v1/admin/users`, { method: "POST", headers: { apikey: SERVICE, Authorization: `Bearer ${SERVICE}`, "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "stranger-pass-1", email_confirm: true }) });
-  const other = await portal("/api/auth/begin", { raw: true, body: { access_token: await tok(email, "stranger-pass-1") } });
-  assert.equal(other.status, 403);
-  assert.equal(other.body.error_code, "not_owner");
+  const email = `second-${Date.now()}@example.com`;
+  await fetch(`${supa}/auth/v1/admin/users`, { method: "POST", headers: { apikey: SERVICE, Authorization: `Bearer ${SERVICE}`, "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "second-pass-1", email_confirm: true }) });
+  strangerToken = await tok(email, "second-pass-1");
 });
 
 await step("the session is a cookie only; state changes need the same-origin header", async () => {
@@ -516,6 +515,37 @@ await step("agents are rate-limited per token (rate_limited)", async () => {
   assert.ok(limited, "a burst is cut off");
   assert.equal(limited.body.error.data.error_code, "rate_limited");
   await portal("/api/agents/burst/revoke", { body: {} });
+});
+
+await step("boards are private: a second user signs up to an empty board and can't reach the first's plans", async () => {
+  const begin = await portal("/api/auth/begin", { raw: true, body: { access_token: strangerToken } });
+  assert.equal(begin.body.enroll, true);
+  const v = await portal("/api/auth/verify", { raw: true, body: { access_token: strangerToken, code: await totp(begin.body.secret) } });
+  assert.equal(v.status, 200, v.text);
+  const mine = cookie;
+  cookie = v.headers.get("set-cookie").split(";")[0];
+  const board = (await portal("/api/board")).body.plans;
+  assert.deepEqual(board.map((p) => p.is_demo), [true], "a new board has only its DEMO plan");
+  assert.equal((await portal(`/api/plans/${p1}`)).status, 404);
+  assert.equal((await portal(`/api/plans/${p1}/approve`, { body: { version: 1 } })).status, 404);
+  assert.equal((await portal(`/api/plans/${p1}/comments`, { body: { body: "hi" } })).status, 404);
+  assert.deepEqual((await portal("/api/agents")).body.agents, []);
+  assert.equal((await portal("/api/executor-status")).body.executors.length, 0);
+  // The first user's agent can't see the second user's plans either.
+  assert.equal((await claude.call("get_plan", { plan_id: board[0].plan_id })).error.error_code, "not_found");
+  assert.ok(!(await claude.tool("list_plans", { limit: 100 })).plans.some((p) => p.plan_id === board[0].plan_id));
+  // An agent connected by the second user works on the second board only.
+  const t = await portal("/api/agents", { body: { agent_id: "claude", display_name: "Claude" } });
+  assert.equal(t.status, 201);
+  const tok2 = (await portal("/api/agents/claude/tokens", { body: { label: "t" } })).body.token;
+  const theirs = await mcp(tok2).tool("list_plans", { limit: 100 });
+  assert.deepEqual(theirs.plans.map((p) => p.plan_id), [board[0].plan_id]);
+  // Deleting the second board removes it all and signs out; the first board is untouched.
+  const del = await portal("/api/account?confirm=1", { method: "DELETE" });
+  assert.equal(del.status, 200, del.text);
+  assert.notEqual((await mcp(tok2).rpc("tools/list")).status, 200);
+  cookie = mine;
+  assert.equal((await portal(`/api/plans/${p1}`)).status, 200);
 });
 
 console.log(`tradeboard integration: ${steps.length} checks passed`);

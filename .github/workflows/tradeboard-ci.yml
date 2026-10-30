@@ -42,7 +42,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: node projects/tradeboard/scripts/check-secrets.mjs
+      - run: node projects/tradeboard/scripts/scan-tokens.mjs
       - run: npm run typecheck:tradeboard
       - run: npm run test:tradeboard
       - run: npm run build:tradeboard

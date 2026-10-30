@@ -8,8 +8,10 @@ import { rpc, sweep, type Db, type Failed } from "./store.ts";
 
 export interface Actor {
   type: Extract<AuthorType, "human" | "agent">;
-  /** "owner" for the human, else the registered agent id. */
+  /** "owner" for the human, else the user's registered agent id. */
   id: string;
+  /** Whose board: every read and write is scoped to this user. */
+  userId: string;
 }
 
 export interface PlanRow {
@@ -97,14 +99,14 @@ export async function createPlan(db: Db, actor: Actor, raw: Record<string, unkno
   f.quote_source = labelQuoteSource(f.quote_source ?? (f.quote_price !== null ? (actor.type === "agent" ? "agent" : "owner") : null), actor.type);
   const key = opts.idempotencyKey ? String(opts.idempotencyKey).slice(0, 120) : null;
   const r = await rpc<{ plan_id: string; version: number; status: Status; duplicate: boolean }>(db, "create_plan", {
-    p_fields: f, p_actor_type: actor.type, p_actor_id: actor.id, p_idempotency_key: key, p_is_demo: false,
+    p_user_id: actor.userId, p_fields: f, p_actor_type: actor.type, p_actor_id: actor.id, p_idempotency_key: key, p_is_demo: false,
   });
   return r.ok ? { ok: true, value: { plan_id: r.plan_id, version: r.version, status: r.status, duplicate: r.duplicate } } : { ok: false, error: r };
 }
 
 export async function updatePlan(db: Db, actor: Actor, planId: string, expectedVersion: unknown, raw: Record<string, unknown>): Promise<Result<{ plan_id: string; version: number; status: Status }>> {
   if (typeof expectedVersion !== "number" || !Number.isInteger(expectedVersion)) return bad("expected_version_required", "send expected_version: the version you edited against");
-  const p = await loadPlan(db, planId);
+  const p = await loadPlan(db, actor.userId, planId);
   if (!p) return bad("not_found", "no such plan");
   const allowed = ["title", "ticker", "order", "thesis", "evidence", "risks_and_dissent", "invalidation", "valid_from", "valid_until", "quote_price", "quote_at", "quote_source"];
   const unknown = Object.keys(raw).filter((k) => !allowed.includes(k));
@@ -118,7 +120,7 @@ export async function updatePlan(db: Db, actor: Actor, planId: string, expectedV
   const diff = diffSummary(before, after);
   if (diff === "no material change") return bad("no_change", "nothing changed");
   const r = await rpc<{ plan_id: string; version: number; status: Status }>(db, "update_plan", {
-    p_plan_id: planId, p_expected_version: expectedVersion, p_fields: after, p_diff: diff, p_actor_type: actor.type, p_actor_id: actor.id,
+    p_user_id: actor.userId, p_plan_id: planId, p_expected_version: expectedVersion, p_fields: after, p_diff: diff, p_actor_type: actor.type, p_actor_id: actor.id,
   });
   return r.ok ? { ok: true, value: { plan_id: r.plan_id, version: r.version, status: r.status } } : { ok: false, error: r };
 }
@@ -133,39 +135,41 @@ export async function addComment(db: Db, actor: Actor, planId: string, raw: { bo
   let mentioned = raw.mentioned_agent_id ? String(raw.mentioned_agent_id) : null;
   if (!mentioned) mentioned = /(?:^|\s)@([a-z][a-z0-9_-]{1,31})\b/.exec(body)?.[1] ?? null;
   if (mentioned) {
-    const { data } = await db.from("agents").select("agent_id").eq("agent_id", mentioned).is("revoked_at", null).maybeSingle();
+    const { data } = await db.from("agents").select("agent_id").eq("user_id", actor.userId).eq("agent_id", mentioned).is("revoked_at", null).maybeSingle();
     if (!data) mentioned = raw.mentioned_agent_id ? mentioned : null; // an @word that isn't an agent is just text
   }
   const r = await rpc<{ comment_id: string; version: number; created_at: string; approval_voided: boolean; status: Status }>(db, "add_comment", {
-    p_plan_id: planId, p_actor_type: actor.type, p_actor_id: actor.id, p_body: body, p_anchor: anchor,
+    p_user_id: actor.userId, p_plan_id: planId, p_actor_type: actor.type, p_actor_id: actor.id, p_body: body, p_anchor: anchor,
     p_parent: raw.parent_comment_id ? String(raw.parent_comment_id) : null, p_is_question: isQuestion, p_mentioned: mentioned,
   });
   return r.ok ? { ok: true as const, value: { comment_id: r.comment_id, version: r.version, created_at: utc(r.created_at), approval_voided: r.approval_voided, status: r.status, mentioned_agent_id: mentioned } } : { ok: false as const, error: r };
 }
 
 export async function answerQuestion(db: Db, actor: Actor, questionId: string, body: unknown) {
+  if (!/^[0-9a-f-]{36}$/i.test(questionId)) return bad("not_found", "no such question");
   const { data: q } = await db.from("comments").select("comment_id, plan_id, is_question").eq("comment_id", questionId).maybeSingle();
-  if (!q || !q.is_question) return bad("not_found", "no such question");
+  if (!q || !q.is_question || !(await loadPlan(db, actor.userId, q.plan_id as string))) return bad("not_found", "no such question");
   return addComment(db, actor, q.plan_id as string, { body, parent_comment_id: questionId }, false);
 }
 
 export async function markReady(db: Db, actor: Actor, planId: string, maxAgeHours: number) {
-  const r = await rpc<{ plan_id: string; version: number; status: Status }>(db, "mark_ready", { p_plan_id: planId, p_actor_type: actor.type, p_actor_id: actor.id, p_max_age_hours: maxAgeHours });
+  const r = await rpc<{ plan_id: string; version: number; status: Status }>(db, "mark_ready", { p_user_id: actor.userId, p_plan_id: planId, p_actor_type: actor.type, p_actor_id: actor.id, p_max_age_hours: maxAgeHours });
   return r.ok ? { ok: true as const, value: r } : { ok: false as const, error: r };
 }
 
 export async function requestChanges(db: Db, actor: Actor, planId: string, body: unknown) {
   const text = String(body ?? "").trim();
   if (!text) return bad("body_required", "say what must change");
-  const r = await rpc<{ plan_id: string; status: Status }>(db, "request_changes", { p_plan_id: planId, p_actor_type: actor.type, p_actor_id: actor.id, p_body: text });
+  const r = await rpc<{ plan_id: string; status: Status }>(db, "request_changes", { p_user_id: actor.userId, p_plan_id: planId, p_actor_type: actor.type, p_actor_id: actor.id, p_body: text });
   return r.ok ? { ok: true as const, value: r } : { ok: false as const, error: r };
 }
 
 // ---------------------------------------------------------------- reads
 
-export async function loadPlan(db: Db, planId: string): Promise<PlanRow | null> {
+/** The user's plan, or null (another user's plan is "no such plan"). */
+export async function loadPlan(db: Db, userId: string, planId: string): Promise<PlanRow | null> {
   if (!/^[0-9a-f-]{36}$/i.test(planId)) return null;
-  const { data } = await db.from("plans").select("*").eq("plan_id", planId).maybeSingle();
+  const { data } = await db.from("plans").select("*").eq("plan_id", planId).eq("user_id", userId).maybeSingle();
   return (data as PlanRow | null) ?? null;
 }
 
@@ -211,9 +215,9 @@ export interface PlanViewOptions {
 }
 
 /** The plan document as every caller sees it: fields, ticket, validity, status, questions, log, receipt. */
-export async function planView(db: Db, planId: string, opts: PlanViewOptions = {}) {
+export async function planView(db: Db, userId: string, planId: string, opts: PlanViewOptions = {}) {
   await sweep(db);
-  const p = await loadPlan(db, planId);
+  const p = await loadPlan(db, userId, planId);
   if (!p) return null;
   const [comments, { data: approvals }, { data: receipts }, { data: versions }, { data: audit }] = await Promise.all([
     loadComments(db, planId),
@@ -261,10 +265,10 @@ export interface ListFilter {
 }
 
 /** Plans newest-edited first, with status, validity countdown and open-question counts. */
-export async function listPlans(db: Db, f: ListFilter, forAgent?: string) {
+export async function listPlans(db: Db, userId: string, f: ListFilter, forAgent?: string) {
   await sweep(db);
   const limit = Math.min(Math.max(Number(f.limit ?? 20) || 20, 1), 100);
-  let q = db.from("plans").select("plan_id, title, status, ticker, created_by_type, created_by_id, created_at, updated_at, last_activity_at, valid_from, valid_until, current_version, is_demo, reason_code, awaiting_manual, approval_id").order("updated_at", { ascending: false }).limit(limit);
+  let q = db.from("plans").select("plan_id, title, status, ticker, created_by_type, created_by_id, created_at, updated_at, last_activity_at, valid_from, valid_until, current_version, is_demo, reason_code, awaiting_manual, approval_id").eq("user_id", userId).order("updated_at", { ascending: false }).limit(limit);
   if (f.status) q = q.eq("status", f.status);
   if (f.ticker) q = q.eq("ticker", String(f.ticker).toUpperCase());
   if (f.author_id) q = q.eq("created_by_id", f.author_id);
@@ -293,6 +297,7 @@ export async function listPlans(db: Db, f: ListFilter, forAgent?: string) {
   });
 }
 
+/** The plan's events; callers check the plan is the user's first. */
 export async function auditFor(db: Db, planId: string, limit = 200) {
   const { data } = await db.from("audit_log").select("event_id, actor_type, actor_id, action, details_json, created_at").eq("plan_id", planId).order("event_id").limit(Math.min(Math.max(limit, 1), 1000));
   return (data ?? []).map((e) => ({ event_id: e.event_id, actor_type: e.actor_type, actor_id: e.actor_id, action: e.action, details: utcDeep(e.details_json), at: utc(e.created_at) }));

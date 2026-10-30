@@ -1,6 +1,7 @@
 // OAuth consent for a discussion agent's MCP client. The Worker's /authorize validates the client and
-// sends the browser here with ?handle=…; the owner (signed in to the portal) picks which registered
-// agent this connection speaks as, then allows or denies.
+// sends the browser here with ?handle=…; the user signs in (the same account as the portal) if
+// needed, names the agent this connection speaks as (an existing one or a new name), then allows or
+// denies. The agent works on that user's board only.
 import { api, chrome, el, spinner } from "./ui.ts";
 
 const root = document.getElementById("app")!;
@@ -17,16 +18,16 @@ async function render() {
   const agents = await api<{ agents: { agent_id: string; display_name: string; revoked_at: string | null }[] }>("/api/agents");
   if (!agents.ok) return;
   const live = agents.body.agents.filter((a) => !a.revoked_at);
-  if (!live.length) return problem("Register the agent first on the Agents page (for example “claude”), then connect again.");
-  const select = el("select", { name: "agent", "aria-label": "Agent" }, ...live.map((a) => el("option", { value: a.agent_id }, `${a.display_name} (${a.agent_id})`)));
-  const guess = (params.get("client") ?? "").toLowerCase();
-  const match = live.find((a) => guess.includes(a.agent_id));
-  if (match) select.value = match.agent_id;
+  const client = (params.get("client") ?? "").toLowerCase();
+  const match = live.find((a) => client.includes(a.agent_id));
+  const guess = match?.agent_id ?? (["claude", "gemini", "chatgpt", "muse", "cursor", "codex"].find((n) => client.includes(n)) ?? "");
+  const select = el("input", { name: "agent", list: "agent-names", value: guess, placeholder: "claude", required: true, autocapitalize: "none", pattern: "[a-z][a-z0-9_-]{1,31}", "aria-label": "Agent name" });
+  const names = el("datalist", { id: "agent-names" }, ...live.map((a) => el("option", { value: a.agent_id }, a.display_name)));
   const loopback = params.get("loopback") === "1";
   const error = el("p", { class: "error", role: "alert", hidden: true });
   const decide = (decision: "approve" | "deny") => async () => {
     for (const b of buttons) b.disabled = true;
-    const r = await api<{ redirectTo?: string | null; error?: string }>("/authorize", { body: { handle, decision, agent_id: select.value } });
+    const r = await api<{ redirectTo?: string | null; error?: string }>("/authorize", { body: { handle, decision, agent_id: select.value.trim().toLowerCase() } });
     if (r.body.redirectTo) return location.replace(r.body.redirectTo);
     error.textContent = r.body.error ?? "Something went wrong. Try again from the agent.";
     error.hidden = false;
@@ -39,9 +40,9 @@ async function render() {
   show(
     el("h1", {}, `Connect ${params.get("client") || "an agent"} to the board?`),
     el("p", { class: "muted small" }, params.get("domain") ? `Published by ${params.get("domain")}.` : "This app registered itself; its name isn't verified."),
-    el("label", {}, "It speaks as", select, el("span", { class: "hint" }, "Every plan, comment and question it writes is labelled with this agent.")),
+    el("label", {}, "It speaks as", select, names, el("span", { class: "hint" }, live.length ? "Pick one of your agents or type a new name (lowercase). Everything it writes is labelled with it." : "A short lowercase name, e.g. claude. Everything it writes is labelled with it.")),
     el("ul", {},
-      el("li", {}, "Read every plan, comment and the decision log"),
+      el("li", {}, "Read every plan on your board, its comments and decision log"),
       el("li", {}, "Create and edit plans, comment, ask and answer questions, mark plans ready or request changes")),
     el("p", { class: "muted small" }, "It can't approve plans, change the policy, control the executor or reach Robinhood. Revoke it any time on the Agents page."),
     loopback && el("p", { class: "warn" }, `Access goes to a program on this computer (${params.get("redirect_host")}). Continue only if you just started connecting.`),

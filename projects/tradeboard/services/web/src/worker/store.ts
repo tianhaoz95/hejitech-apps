@@ -14,8 +14,6 @@ export interface Env {
   SUPABASE_ANON_KEY: string;
   /** Secret. Bypasses RLS for every project in the shared Supabase project. */
   SUPABASE_SERVICE_ROLE_KEY: string;
-  /** Secret in production: the owner's sign-in email. Only this account may enroll. */
-  OWNER_EMAIL: string;
   /** Secret in production: base64 of 32 random bytes, encrypts the TOTP secret at rest. */
   TOTP_ENC_KEY: string;
   /** Days a portal session lasts (default 7, §8.3). */
@@ -90,21 +88,21 @@ export interface PolicyRow {
 }
 
 /**
- * First use of a fresh board: policy v1 (§9.2 defaults), the control row (dry-run on) and one
- * DEMO plan, clearly labelled and dry-run only, so the owner can click through (§14.7).
+ * A user's first use of their board: policy v1 (§9.2 defaults), the control row (dry-run on) and one
+ * DEMO plan, clearly labelled and dry-run only, so they can click through (§14.7).
  */
-export async function ensureBoard(db: Db): Promise<void> {
-  const { data } = await db.from("policy_versions").select("policy_version").limit(1);
+export async function ensureBoard(db: Db, userId: string): Promise<void> {
+  const { data } = await db.from("policy_versions").select("policy_version").eq("user_id", userId).limit(1);
   if (data?.length) return;
-  const { error } = await db.from("policy_versions").insert({ policy_version: 1, policy: DEFAULT_POLICY, created_by: "system", note: "PRD §9.2 defaults: review every value before live mode" });
+  const { error } = await db.from("policy_versions").insert({ user_id: userId, policy_version: 1, policy: DEFAULT_POLICY, created_by: "system", note: "PRD §9.2 defaults: review every value before live mode" });
   if (error) return; // another request got there first
-  await db.from("control").upsert({ id: true }, { onConflict: "id", ignoreDuplicates: true });
-  await db.rpc("audit", { p_actor_type: "system", p_actor_id: "board", p_action: "board.created", p_plan_id: null, p_details: { policy_version: 1 } });
-  const { count } = await db.from("plans").select("plan_id", { count: "exact", head: true });
-  if (!count) await createDemoPlan(db);
+  await db.from("control").upsert({ user_id: userId }, { onConflict: "user_id", ignoreDuplicates: true });
+  await db.rpc("audit", { p_user_id: userId, p_actor_type: "system", p_actor_id: "board", p_action: "board.created", p_plan_id: null, p_details: { policy_version: 1 } });
+  const { count } = await db.from("plans").select("plan_id", { count: "exact", head: true }).eq("user_id", userId);
+  if (!count) await createDemoPlan(db, userId);
 }
 
-export async function createDemoPlan(db: Db): Promise<void> {
+export async function createDemoPlan(db: Db, userId: string): Promise<void> {
   const now = new Date();
   const until = suggestedValidUntil(now) ?? new Date(now.getTime() + 24 * 3_600_000);
   const fields = {
@@ -118,23 +116,27 @@ export async function createDemoPlan(db: Db): Promise<void> {
     valid_until: (until > new Date(now.getTime() + 3_600_000) ? until : new Date(now.getTime() + 24 * 3_600_000)).toISOString(),
     valid_from: null, quote_price: null, quote_at: null, quote_source: null,
   };
-  await db.rpc("create_plan", { p_fields: fields, p_actor_type: "human", p_actor_id: "owner", p_idempotency_key: "demo-plan", p_is_demo: true });
+  await db.rpc("create_plan", { p_user_id: userId, p_fields: fields, p_actor_type: "human", p_actor_id: "owner", p_idempotency_key: "demo-plan", p_is_demo: true });
 }
 
-export async function currentPolicy(db: Db): Promise<PolicyRow> {
-  await ensureBoard(db);
-  const { data } = await db.from("policy_versions").select("*").order("policy_version", { ascending: false }).limit(1).single();
+export async function currentPolicy(db: Db, userId: string): Promise<PolicyRow> {
+  await ensureBoard(db, userId);
+  const { data } = await db.from("policy_versions").select("*").eq("user_id", userId).order("policy_version", { ascending: false }).limit(1).single();
   const row = data as PolicyRow;
   // Fail closed: a stored policy that doesn't validate is treated as absent by every caller.
   if (checkPolicy(row.policy).length) throw new Error(`policy v${row.policy_version} is invalid`);
   return row;
 }
 
-/** The time rules (§6.5): expire, stale, approval and claim expiry. Cheap; run on reads and every minute. */
+/** The time rules (§6.5) for every user: expire, stale, approval and claim expiry. Cheap; run on reads and every minute. */
 export async function sweep(db: Db): Promise<unknown> {
-  const policy = await currentPolicy(db).catch(() => null);
-  const { data } = await db.rpc("sweep", { p_max_age_hours: policy?.policy.max_plan_age_hours ?? DEFAULT_POLICY.max_plan_age_hours });
+  const { data } = await db.rpc("sweep", {});
   return data;
+}
+
+/** An audit event in the user's log. */
+export async function audit(db: Db, userId: string, actorType: string, actorId: string, action: string, planId: string | null, details: Record<string, unknown> = {}) {
+  await db.rpc("audit", { p_user_id: userId, p_actor_type: actorType, p_actor_id: actorId, p_action: action, p_plan_id: planId, p_details: details });
 }
 
 /** A function's {ok:false,…} result, or a database error, as one shape. */

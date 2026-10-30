@@ -1,7 +1,7 @@
 # Deployment
 
 The board runs on the shared HEJI Supabase project (`jitdzllkxfhlrxxvljhp`, schema `tradeboard`) and
-one Cloudflare Worker (`https://tradeboard.hejitech.workers.dev`). The executor runs on the owner's
+one Cloudflare Worker (`https://tradeboard.hejitech.workers.dev`). Each user's executor runs on their own
 machine. Steps in order; each says who does it.
 
 ## 1. Database (once)
@@ -25,12 +25,11 @@ Apple web sign-in already work for the project.
 Cloudflare Workers Builds (dashboard, the owner): new project from this repo, root directory = repo
 root, build `npm ci`, deploy `npm run deploy -w @tradeboard/web`, non-production
 `npm run upload-version -w @tradeboard/web`, watch path `projects/tradeboard/*`. The first deploy
-provisions `OAUTH_KV`. Three secrets:
+provisions `OAUTH_KV`. Two secrets:
 
 ```sh
 cd projects/tradeboard/services/web
 npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY --env production
-npx wrangler secret put OWNER_EMAIL --env production     # the one account that may sign in
 openssl rand -base64 32 | npx wrangler secret put TOTP_ENC_KEY --env production   # seals the TOTP secret
 ```
 
@@ -51,7 +50,7 @@ Agents page → register each agent; connect Claude (Settings → Connectors →
 `https://tradeboard.hejitech.workers.dev/mcp`), pick the agent id on the consent page. Agents without
 OAuth get a token from the same page.
 
-## 5. Executor (the owner's machine)
+## 5. Executor (each user's own machine)
 
 1. Executor page → New executor credential (shown once).
 2. On the machine (the Spark: `ssh dgx`):
@@ -72,17 +71,17 @@ OAuth get a token from the same page.
    an admin); otherwise run it in `tmux`.
 3. The Executor page shows it online within 30 s, in dry-run.
 
-## 6. Live mode (the owner, when ready)
+## 6. Live mode (each user, when ready)
 
 README §Live mode: the checklist, `"allow_live": true` on the machine, Turn dry-run off, then one
 small limit order verified by read-back.
 
 ## Recovery
 
-- **Lost authenticator**: with the service key, clear the TOTP so the next sign-in enrolls again
-  (the account check still applies):
-  `update tradeboard.owner set totp_secret_enc = null, totp_enrolled_at = null, totp_last_step = null;`
-  and revoke sessions: `update tradeboard.sessions set revoked_at = now() where revoked_at is null;`
+- **Lost authenticator** (a user asks support): after confirming it's them, clear their TOTP so the
+  next sign-in enrolls again:
+  `update tradeboard.accounts set totp_secret_enc = null, totp_enrolled_at = null, totp_last_step = null where email = '…';`
+  and revoke their sessions: `update tradeboard.sessions set revoked_at = now() where user_id = '…' and revoked_at is null;`
 - **Robinhood token expired or revoked**: the Executor page shows "sign-in needed"; run
   `tradeboard-executor auth` again.
 - **Executor machine lost**: revoke its credential on the Executor page, then sign out of the

@@ -23,8 +23,7 @@
     "SUPABASE_URL": "http://127.0.0.1:55421",
     // The demo anon key every local `supabase start` ships with.
     "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0",
-    // Local only (the seeded owner and a dev key). Production sets both as secrets.
-    "OWNER_EMAIL": "owner@example.com",
+    // Local only (a dev key). Production sets TOTP_ENC_KEY as a secret.
     // The integration test makes hundreds of calls a minute; production keeps the default 60.
     "AGENT_RATE_PER_MIN": "400",
     "TOTP_ENC_KEY": "dHJhZGVib2FyZC1sb2NhbC1kZXYta2V5LTMyYnl0ZXM="
@@ -43,7 +42,7 @@
         "SUPABASE_URL": "https://jitdzllkxfhlrxxvljhp.supabase.co",
         "SUPABASE_ANON_KEY": "sb_publishable_lZSe_L4Wd0Sw01h25eixzQ_vLU7FPP8"
       },
-      // Secrets (wrangler secret put --env production): SUPABASE_SERVICE_ROLE_KEY, OWNER_EMAIL, TOTP_ENC_KEY.
+      // Secrets (wrangler secret put --env production): SUPABASE_SERVICE_ROLE_KEY, TOTP_ENC_KEY.
       "kv_namespaces": [{ "binding": "OAUTH_KV" }]
     }
   }

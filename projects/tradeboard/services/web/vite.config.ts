@@ -10,6 +10,8 @@ const pages = {
   executor: "executor/index.html",
   policy: "policy/index.html",
   agents: "agents/index.html",
+  account: "account/index.html",
+  privacy: "privacy/index.html",
   login: "login/index.html",
   consent: "oauth/consent/index.html",
   notFound: "404.html",
