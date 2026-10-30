@@ -1,6 +1,6 @@
 # HEJI projects monorepo
 
-Several products live in `projects/<name>/` (`waypack`, `weehours`, `feedbackkit`, `voxbrief`, `meowtrix`, `contempo`, `toddlercam`, `tinytouch`, `g2digest`, `headway`, `fitloop`, `tether`), sharing one
+Several products live in `projects/<name>/` (`waypack`, `weehours`, `feedbackkit`, `voxbrief`, `meowtrix`, `contempo`, `toddlercam`, `tinytouch`, `g2digest`, `headway`, `fitloop`, `tether`, `tradeboard`), sharing one
 Supabase project (FeedbackKit keeps its own: `BACKEND=own`; Voxbrief, Meowtrix, ToddlerCam and TinyTouch have none: `BACKEND=none`) (`supabase/`, read `supabase/README.md` before any schema change), npm workspaces and CI
 plumbing. Layout and how to add a project: `README.md`. Keep each project self-contained; put
 something at the root only when it is genuinely shared. Each project has its own `CLAUDE.md`
@@ -107,6 +107,13 @@ MCP) deploys on push. See `projects/fitloop/CLAUDE.md`.
 For Tether it bumps `MARKETING_VERSION` in `projects/tether/apps/ios/project.yml` (refusing until the
 in-app What's New describes the version) and publishes `tether-v<version>`, which runs
 `tether-testflight.yml`. Its Worker (web workspace, API, MCP) deploys on push. See `projects/tether/CLAUDE.md`.
+
+For the Trading Plan Board it bumps `projects/tradeboard/apps/executor/package.json` and publishes
+`tradeboard-v<version>`, which runs `tradeboard-executor-release.yml` (tests, bundles the local
+executor and attaches `tradeboard-executor.mjs`, `install.sh` and `policy.example.json`; the owner's
+machine updates with `bash install.sh <version>`). Its Worker (portal, Board MCP, executor API, minute
+cron) deploys on push. It handles real-money trading: never place a live order yourself. See
+`projects/tradeboard/CLAUDE.md`.
 
 For Polymath it releases `projects/polymath/apps/desktop/package.json`'s version as `polymath-v<version>`,
 which runs `polymath-mac-release.yml` (signed & notarized Tauri macOS DMGs). Its Worker (site, docs, MCP)

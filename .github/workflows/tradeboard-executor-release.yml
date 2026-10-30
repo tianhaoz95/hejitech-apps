@@ -1,0 +1,60 @@
+name: Trading Plan Board → executor release
+
+# On a published GitHub Release tagged tradeboard-v<version> (scripts/cut_release.sh tradeboard;
+# other projects' releases are skipped): tests and bundles the executor and attaches
+# tradeboard-executor.mjs, install.sh and policy.example.json to the release. The executor machine
+# updates with `bash install.sh <version>`. workflow_dispatch rebuilds an existing tag.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag (e.g. tradeboard-v0.1.0)
+        required: true
+
+concurrency:
+  group: tradeboard-executor-release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  TAG: ${{ github.event.release.tag_name || inputs.tag }}
+
+jobs:
+  executor:
+    name: Bundle and attach the executor
+    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'tradeboard-v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Version matches the tag
+        run: |
+          V="$(node -p "require('./projects/tradeboard/apps/executor/package.json').version")"
+          [ "tradeboard-v$V" = "$TAG" ] || { echo "::error::package.json says $V but the release is $TAG"; exit 1; }
+      - run: npm run test:tradeboard
+      - run: npm run build -w @tradeboard/executor
+      - name: The bundle runs and reports its version
+        run: |
+          V="$(node -p "require('./projects/tradeboard/apps/executor/package.json').version")"
+          [ "$(node projects/tradeboard/apps/executor/dist/tradeboard-executor.mjs version)" = "$V" ]
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd projects/tradeboard
+          cp apps/executor/deploy/install.sh /tmp/install.sh
+          for i in 1 2 3 4 5; do
+            gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" apps/executor/dist/tradeboard-executor.mjs /tmp/install.sh policy.example.json --clobber && break
+            [ "$i" -eq 5 ] && exit 1; sleep 5
+          done

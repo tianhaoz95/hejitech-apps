@@ -1,0 +1,13 @@
+{
+  "name": "Trading Plan Board",
+  "sidebar": [
+    {
+      "text": "Trading Plan Board",
+      "items": [
+        { "text": "Overview", "link": "" },
+        { "text": "Decisions", "link": "decisions" },
+        { "text": "Deployment", "link": "DEPLOY" }
+      ]
+    }
+  ]
+}

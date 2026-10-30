@@ -1,0 +1,10 @@
+node_modules
+dist
+.wrangler
+.dev.vars
+# Executor secrets never live in the repo (they're in ~/.tradeboard on the executor machine).
+config.json
+robinhood-oauth.json
+policy.local.json
+journal.jsonl
+KILL
