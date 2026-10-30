@@ -83,6 +83,9 @@
         "MAP_EXTRACTS": "device",
         "ONLINE_TILES_URL": "",
         "ENVIRONMENT": "production",
+        // Account deletion revokes Sign in with Apple tokens with this team and the secrets
+        // APPLE_SIWA_KEY_ID + APPLE_SIWA_PRIVATE_KEY (a Sign in with Apple key; src/lib/apple.ts).
+        "APPLE_TEAM_ID": "68CTFST8W2",
         // Stripe (live, account shared with other HEJI products; see DEPLOY.md §4). Not secret.
         "STRIPE_PRICE_ANNUAL": "price_1UNGGjJiNqYDPd3ocrYtlQOR",
         "STRIPE_PRICE_LIFETIME": "price_1UNGGkJiNqYDPd3o2uawnedI",

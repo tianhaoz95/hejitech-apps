@@ -6,6 +6,7 @@ import { clearSessionCookie, makeSessionCookie, readSession } from "./auth/sessi
 import { availablePlans, createCheckout, createPortal, handleStripeWebhook, stripe, StripeError, type Plan } from "./lib/stripe.js";
 import { createApiToken, resolveApiToken } from "./auth/tokens.js";
 import { verifySignedPath } from "./lib/crypto.js";
+import { appleKey, revokeIfPossible } from "./lib/apple.js";
 import { reviewSignIn } from "./auth/review.js";
 import { Db, eq } from "./lib/db.js";
 import { LIMITS, type Manifest } from "@waypack/bundle-schema";
@@ -328,6 +329,9 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
 
   if (path === "/api/account" && req.method === "DELETE") {
     // Design §12: account deletion removes DB rows and stored files. Cancel any subscription first.
+    // The iPhone app sends a fresh Sign in with Apple code when the person signed in with Apple (lib/apple.ts).
+    const { apple_authorization_code } = (await req.json().catch(() => ({}))) as { apple_authorization_code?: unknown };
+    const appleRevoked = await revokeIfPossible(appleKey(env), apple_authorization_code);
     const ent = await db.one<{ stripe_subscription_id: string | null }>("entitlements", `select=stripe_subscription_id&user_id=${eq(user.userId)}`);
     if (ent?.stripe_subscription_id && env.STRIPE_SECRET_KEY) {
       await stripe(env, "POST", `subscriptions/${ent.stripe_subscription_id}/cancel`, {}).catch(() => undefined);
@@ -352,7 +356,7 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
     }
     const grants = await env.OAUTH_PROVIDER?.listUserGrants(user.userId).catch(() => null);
     await Promise.all((grants?.items ?? []).map((g) => env.OAUTH_PROVIDER.revokeGrant(g.id, user.userId).catch(() => undefined)));
-    return Response.json({ ok: true }, { headers: user.via === "cookie" ? { "Set-Cookie": clearSessionCookie() } : {} });
+    return Response.json({ ok: true, apple_revoked: appleRevoked }, { headers: user.via === "cookie" ? { "Set-Cookie": clearSessionCookie() } : {} });
   }
 
   return jsonErr(404, "not found");

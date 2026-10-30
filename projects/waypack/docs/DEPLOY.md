@@ -43,7 +43,7 @@ Dashboard → Authentication → **Sign In / Providers**:
   - Deploy: `cd projects/waypack/services/mcp && npm run deploy -- --env production`
   - Version (other branches): `cd projects/waypack/services/mcp && npm run upload-version -- --env production` (preview URLs share production data)
 - Build watch paths: `projects/waypack/*`, `package.json`, `package-lock.json`, `tsconfig.base.json`, so other projects' pushes don't redeploy Waypack.
-- Secrets (`wrangler secret put <name> --env production`): `SUPABASE_SERVICE_ROLE_KEY` (the project's secret key), `SUPABASE_ANON_KEY` (publishable key), `SIGNING_SECRET`.
+- Secrets (`wrangler secret put <name> --env production`): `SUPABASE_SERVICE_ROLE_KEY` (the project's secret key), `SUPABASE_ANON_KEY` (publishable key), `SIGNING_SECRET`, and `APPLE_SIWA_KEY_ID` + `APPLE_SIWA_PRIVATE_KEY` (a Sign in with Apple key for `com.hejitech.waypack`: account deletion revokes the Apple token, `src/lib/apple.ts`; without them deletion skips it).
 
 The original paid-plan checklist (container, R2 mirror, custom domain) follows for when it's needed.
 

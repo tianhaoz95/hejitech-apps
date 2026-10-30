@@ -36,6 +36,8 @@ npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY --env production   # the share
 npx wrangler secret put TRANSIT_511_API_KEY --env production         # free token: https://511.org/open-data/token
 npx wrangler secret put APNS_KEY_ID --env production                 # an APNs auth key (developer portal → Keys)
 npx wrangler secret put APNS_PRIVATE_KEY --env production            # that key's .p8 contents
+npx wrangler secret put APPLE_SIWA_KEY_ID --env production           # a Sign in with Apple key (developer portal → Keys, primary App ID com.hejitech.headway)
+npx wrangler secret put APPLE_SIWA_PRIVATE_KEY --env production      # that key's .p8 contents: account deletion revokes the Apple token (src/worker/apple.ts)
 ```
 
 Without the 511 token boards are timetable-only (`/api/status` says `realtime.configured: false`);

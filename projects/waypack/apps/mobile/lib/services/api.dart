@@ -117,7 +117,12 @@ class Api {
       _json('POST', '/api/tokens', body: {'label': label});
   Future<void> revokeToken(String id) => _json('DELETE', '/api/tokens/$id');
   Future<void> deleteTrip(String id) => _json('DELETE', '/api/trips/$id');
-  Future<void> deleteAccount() => _json('DELETE', '/api/account');
+  /// [appleAuthorizationCode]: a fresh Sign in with Apple code, so the Worker can revoke Waypack's Apple token.
+  Future<void> deleteAccount({String? appleAuthorizationCode}) => _json(
+        'DELETE',
+        '/api/account',
+        body: appleAuthorizationCode == null ? null : {'apple_authorization_code': appleAuthorizationCode},
+      );
 }
 
 class DownloadInfo {

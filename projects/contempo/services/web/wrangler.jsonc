@@ -24,7 +24,8 @@
   "dev": { "port": 8789, "ip": "127.0.0.1" },
 
   // Production: wrangler deploy --env production (Workers Builds on push to main). Secrets:
-  // SUPABASE_SERVICE_ROLE_KEY (required); STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET (billing).
+  // SUPABASE_SERVICE_ROLE_KEY (required); STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET (billing);
+  // APPLE_SIWA_KEY_ID + APPLE_SIWA_PRIVATE_KEY (a Sign in with Apple key: deletion revokes Apple tokens, src/worker/apple.ts).
   "env": {
     "production": {
       "name": "contempo",
@@ -32,7 +33,8 @@
       "vars": {
         "PUBLIC_URL": "https://contempo.hejitech.workers.dev",
         "SUPABASE_URL": "https://jitdzllkxfhlrxxvljhp.supabase.co",
-        "SUPABASE_ANON_KEY": "sb_publishable_lZSe_L4Wd0Sw01h25eixzQ_vLU7FPP8"
+        "SUPABASE_ANON_KEY": "sb_publishable_lZSe_L4Wd0Sw01h25eixzQ_vLU7FPP8",
+        "APPLE_TEAM_ID": "68CTFST8W2"
       }
     }
   }

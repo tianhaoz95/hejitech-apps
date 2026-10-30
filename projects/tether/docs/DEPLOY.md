@@ -32,6 +32,8 @@ provisions `OAUTH_KV`. One secret:
 ```sh
 cd projects/tether/services/web
 npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY --env production
+npx wrangler secret put APPLE_SIWA_KEY_ID --env production           # a Sign in with Apple key (developer portal → Keys, primary App ID com.hejitech.tether)
+npx wrangler secret put APPLE_SIWA_PRIVATE_KEY --env production      # that key's .p8 contents: account deletion revokes the Apple token (src/worker/apple.ts)
 ```
 
 Smoke test:

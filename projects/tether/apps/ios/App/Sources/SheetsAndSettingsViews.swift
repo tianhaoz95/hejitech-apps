@@ -730,7 +730,9 @@ public struct SettingsSheetView: View {
                 Button("Cancel", role: .cancel) {}
                 Button("Delete Permanently", role: .destructive) {
                     Task {
-                        try? await store.backend.deleteAccount()
+                        // Signed in with Apple: a fresh code lets the Worker revoke Tether's Apple token (nil if cancelled).
+                        let appleCode = store.backend.session?.signedInWithApple == true ? await AppleReauthorization().authorizationCode() : nil
+                        try? await store.backend.deleteAccount(appleAuthorizationCode: appleCode)
                         store.backend.signOut()
                         syncStatus = "Cloud account deleted."
                     }

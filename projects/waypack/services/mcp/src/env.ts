@@ -53,6 +53,12 @@ export interface Env {
   /** App Review's demo account (auth/review.ts, #71): its email and the SHA-256 of its password. */
   REVIEW_EMAIL?: string;
   REVIEW_PASSWORD_SHA256?: string;
+  /** Apple developer team; with the two secrets below, account deletion revokes Sign in with Apple tokens (lib/apple.ts). */
+  APPLE_TEAM_ID?: string;
+  /** Secret: a Sign in with Apple key's id (developer portal → Keys). */
+  APPLE_SIWA_KEY_ID?: string;
+  /** Secret: that key's .p8 contents. */
+  APPLE_SIWA_PRIVATE_KEY?: string;
 }
 
 export interface TileJob { extract_id: string }

@@ -155,7 +155,9 @@ final class AppModel {
 
     func deleteData() async {
         do {
-            try await backend.deleteData()
+            // Signed in with Apple: a fresh code lets the Worker revoke FitLoop's Apple token (nil if cancelled).
+            let appleCode = backend.session?.signedInWithApple == true ? await AppleReauthorization().authorizationCode() : nil
+            try await backend.deleteData(appleAuthorizationCode: appleCode)
             signOut()
         } catch { self.error = error.localizedDescription }
     }

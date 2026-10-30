@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config.dart';
 import '../services/feedback.dart';
@@ -192,6 +194,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  /// Signed in with Apple on iPhone: a fresh authorization code lets the Worker revoke Waypack's
+  /// Apple token. Null when cancelled or not an Apple sign-in; deletion goes ahead either way.
+  Future<String?> _appleCode() async {
+    final meta = Supabase.instance.client.auth.currentUser?.appMetadata ?? const {};
+    final viaApple = meta['provider'] == 'apple' || ((meta['providers'] as List?)?.contains('apple') ?? false);
+    if (!Platform.isIOS || !viaApple) return null;
+    try {
+      return (await SignInWithApple.getAppleIDCredential(scopes: [])).authorizationCode;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _deleteAccount() async {
     final s = context.read<AppState>();
     final ok = await showPaperConfirm(
@@ -201,7 +216,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     if (!ok) return;
     try {
-      await s.api.deleteAccount();
+      await s.api.deleteAccount(appleAuthorizationCode: await _appleCode());
       for (final e in [...s.upcoming, ...s.past]) {
         await s.store.deleteLocal(e.id);
       }

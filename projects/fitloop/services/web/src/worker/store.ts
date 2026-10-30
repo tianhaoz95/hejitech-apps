@@ -16,6 +16,12 @@ export interface Env {
   /** Secrets for the App Review demo account (review.ts): its email and SHA-256 of its password. */
   REVIEW_EMAIL?: string;
   REVIEW_PASSWORD_SHA256?: string;
+  /** Apple developer team; with the two secrets below, account deletion revokes Sign in with Apple tokens (apple.ts). */
+  APPLE_TEAM_ID?: string;
+  /** Secret: a Sign in with Apple key's id (developer portal → Keys). */
+  APPLE_SIWA_KEY_ID?: string;
+  /** Secret: that key's .p8 contents. */
+  APPLE_SIWA_PRIVATE_KEY?: string;
 }
 
 export const SCHEMA = "fitloop";

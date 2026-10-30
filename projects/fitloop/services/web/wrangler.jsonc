@@ -35,8 +35,11 @@
       "vars": {
         "PUBLIC_URL": "https://fitloop.hejitech.workers.dev",
         "SUPABASE_URL": "https://jitdzllkxfhlrxxvljhp.supabase.co",
-        "SUPABASE_ANON_KEY": "sb_publishable_lZSe_L4Wd0Sw01h25eixzQ_vLU7FPP8"
+        "SUPABASE_ANON_KEY": "sb_publishable_lZSe_L4Wd0Sw01h25eixzQ_vLU7FPP8",
+        "APPLE_TEAM_ID": "68CTFST8W2"
       },
+      // Secrets APPLE_SIWA_KEY_ID + APPLE_SIWA_PRIVATE_KEY (a Sign in with Apple key) let account deletion
+      // revoke Apple tokens (src/worker/apple.ts).
       // Secrets (wrangler secret put --env production): SUPABASE_SERVICE_ROLE_KEY, and
       // REVIEW_EMAIL + REVIEW_PASSWORD_SHA256 (scripts/review_account.sh fitloop).
       "kv_namespaces": [{ "binding": "OAUTH_KV" }]

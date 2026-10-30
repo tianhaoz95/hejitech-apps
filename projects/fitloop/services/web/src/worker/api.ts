@@ -5,6 +5,7 @@
 //   session or glasses token     today's plan and state, live heart rate, check-ins, feedback
 //   Supabase session (web, iPhone) plans, history, settings, vitals, live HR upload, photos, pairing,
 //                                devices, agent tokens, deleting FitLoop's data
+import { appleKey, revokeIfPossible } from "./apple.ts";
 import {
   adherence, checkCheckin, checkFeedback, demoPlan, demoSettings, checkSettings, checkVital, isDate, METRICS, normalizeSettings, type Checkin, type Settings, type VitalEntry,
 } from "@fitloop/core";
@@ -348,8 +349,11 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
 
   // ------------------------------------------------------------ delete everything FitLoop keeps
   if (path === "/api/account" && req.method === "DELETE") {
+    // The app sends a fresh Sign in with Apple code when the person signed in with Apple (apple.ts).
+    const { apple_authorization_code } = (await req.json().catch(() => ({}))) as { apple_authorization_code?: unknown };
+    const appleRevoked = await revokeIfPossible(appleKey(env), apple_authorization_code);
     const failed = await deleteUserData(db, userId);
-    return failed ? reply({ error: failed }, 500) : reply({ ok: true });
+    return failed ? reply({ error: failed }, 500) : reply({ ok: true, apple_revoked: appleRevoked });
   }
 
   return reply({ error: "not found" }, 404);

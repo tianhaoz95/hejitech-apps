@@ -23,6 +23,12 @@ export interface Env {
   SUPABASE_ANON_KEY: string;
   /** Secret. Server-side only; bypasses RLS for every project in the shared Supabase project. */
   SUPABASE_SERVICE_ROLE_KEY: string;
+  /** Apple developer team; with the two secrets below, account deletion revokes Sign in with Apple tokens (apple.ts). */
+  APPLE_TEAM_ID?: string;
+  /** Secret: a Sign in with Apple key's id (developer portal → Keys). */
+  APPLE_SIWA_KEY_ID?: string;
+  /** Secret: that key's .p8 contents. */
+  APPLE_SIWA_PRIVATE_KEY?: string;
 }
 
 export const SCHEMA = "tether";

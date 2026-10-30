@@ -219,7 +219,9 @@ final class AppModel {
 
     func deleteData() async {
         do {
-            try await backend.deleteData()
+            // Signed in with Apple: a fresh code lets the Worker revoke Headway's Apple token (nil if cancelled).
+            let appleCode = backend.session?.signedInWithApple == true ? await AppleReauthorization().authorizationCode() : nil
+            try await backend.deleteData(appleAuthorizationCode: appleCode)
             #if os(iOS) && canImport(ActivityKit)
             await LiveActivityManager.shared.endCurrentActivity()
             await LiveActivityManager.shared.unpinBoard(backend: backend)

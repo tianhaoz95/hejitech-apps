@@ -4,6 +4,7 @@
 //   none                          stations, any board, a train's progress, status; POST /api/pair (throttled)
 //   session or glasses token      the user's commute board, the tracked train
 //   Supabase session (web, iPhone) settings, pairing codes, devices, push registration, agent tokens, delete data
+import { appleKey, revokeIfPossible } from "./apple.ts";
 import { board, checkSettings, commuteBoard, newLeg, normalizeSettings, progress, station, STATIONS, timetableDaysLeft, TIMETABLE, tripProgressStops, validOrigin, type ExpressPreference, type TravelMode, type Notification, type Settings, type Tracked } from "@headway/core";
 import { NOT_BOARD_ACTIVITY, pushConfigured, sendPush } from "./push.ts";
 import { reviewSignIn } from "./review.ts";
@@ -306,11 +307,14 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
 
   // ------------------------------------------------------------ delete everything Headway keeps
   if (path === "/api/account" && req.method === "DELETE") {
+    // The app sends a fresh Sign in with Apple code when the person signed in with Apple (apple.ts).
+    const { apple_authorization_code } = (await req.json().catch(() => ({}))) as { apple_authorization_code?: unknown };
+    const appleRevoked = await revokeIfPossible(appleKey(env), apple_authorization_code);
     for (const t of USER_TABLES) {
       const { error } = await db.from(t).delete().eq("user_id", userId);
       if (error) return reply({ error: `couldn't delete ${t}: ${error.message}` }, 500);
     }
-    return reply({ ok: true });
+    return reply({ ok: true, apple_revoked: appleRevoked });
   }
 
   return reply({ error: "not found" }, 404);

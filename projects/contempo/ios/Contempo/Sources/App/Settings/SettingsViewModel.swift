@@ -149,7 +149,11 @@ final class SettingsViewModel {
         deleteAccountError = nil
         Task {
             do {
-                _ = try await ContempoBackend.api("account/delete")
+                // Signed in with Apple: a fresh code lets the Worker revoke Contempo's Apple token (nil if cancelled).
+                let meta = try? await ContempoBackend.client.auth.session.user.appMetadata
+                let viaApple = meta?["provider"]?.stringValue == "apple" || meta?["providers"]?.arrayValue?.contains { $0.stringValue == "apple" } == true
+                let appleCode = viaApple ? await AppleReauthorization().authorizationCode() : nil
+                _ = try await ContempoBackend.api("account/delete", body: appleCode.map { ["apple_authorization_code": $0] } ?? [:])
                 try? authManager.signOut()
                 isDeletingAccount = false
             } catch {

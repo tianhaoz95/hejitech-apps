@@ -38,6 +38,21 @@ public struct AuthSession: Codable, Hashable, Sendable {
     public var expiresAt: Date
 }
 
+extension AuthSession {
+    /// Whether this session came from Sign in with Apple (the access token's `app_metadata`, a
+    /// Supabase JWT): account deletion then revokes the app's Apple token too.
+    public var signedInWithApple: Bool {
+        let parts = accessToken.split(separator: ".")
+        guard parts.count == 3 else { return false }
+        var b64 = parts[1].replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        b64 += String(repeating: "=", count: (4 - b64.count % 4) % 4)
+        guard let data = Data(base64Encoded: b64),
+              let claims = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let meta = claims["app_metadata"] as? [String: Any] else { return false }
+        return meta["provider"] as? String == "apple" || (meta["providers"] as? [String])?.contains("apple") == true
+    }
+}
+
 public enum BackendError: Error, LocalizedError, Equatable {
     case http(Int, String)
     case notSignedIn
@@ -246,7 +261,11 @@ public final class Backend: @unchecked Sendable {
     public func pairingCode() async throws -> PairingCode { try await call("POST", "/api/pairing-code") }
     public func devices() async throws -> [PairedDevice] { try await call("GET", "/api/devices") }
     public func unpair(_ id: String) async throws { let _: OK = try await call("DELETE", "/api/devices/\(id)") }
-    public func deleteData() async throws { let _: OK = try await call("DELETE", "/api/account") }
+    /// `appleAuthorizationCode`: a fresh Sign in with Apple code, so the Worker can revoke the app's Apple token.
+    public func deleteData(appleAuthorizationCode: String? = nil) async throws {
+        struct Body: Encodable { let apple_authorization_code: String? }
+        let _: OK = try await call("DELETE", "/api/account", body: Body(apple_authorization_code: appleAuthorizationCode))
+    }
 }
 
 extension Data {

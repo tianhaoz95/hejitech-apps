@@ -4,7 +4,7 @@
  * Functions (projects/contempo/backend/ before 2026-10-16):
  *
  *   POST /api/flag-risk          contemporaneity/vagueness heuristics, no LLM (was flagRisk)
- *   POST /api/account/delete     wipe the user's Contempo files and rows (the shared login stays)
+ *   POST /api/account/delete     wipe the user's Contempo files and rows (the shared login stays), revoke Sign in with Apple
  *   POST /api/watch/pair         one-time code that signs a watch in as the phone's user (was mintWatchAuthToken)
  *   POST /api/billing/checkout   Stripe Checkout (was createCheckoutSession)
  *   POST /api/billing/portal     Stripe customer portal (was createPortalLink)
@@ -21,6 +21,7 @@
  * No AI runs here: Contempo's parsing and chat are on-device only (product decision 2026-10-16).
  */
 import { createClient, type User } from "@supabase/supabase-js";
+import { appleKey, revokeIfPossible } from "./apple.ts";
 import { reviewSignIn } from "./review.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -37,6 +38,12 @@ export interface Env {
   /** Secrets for the App Review demo account (review.ts): its email and SHA-256 of its password. */
   REVIEW_EMAIL?: string;
   REVIEW_PASSWORD_SHA256?: string;
+  /** Apple developer team; with the two secrets below, account deletion revokes Sign in with Apple tokens (apple.ts). */
+  APPLE_TEAM_ID?: string;
+  /** Secret: a Sign in with Apple key's id (developer portal → Keys). */
+  APPLE_SIWA_KEY_ID?: string;
+  /** Secret: that key's .p8 contents. */
+  APPLE_SIWA_PRIVATE_KEY?: string;
 }
 
 const BUCKET = "contempo";
@@ -90,9 +97,12 @@ async function api(request: Request, env: Env, route: string): Promise<Response>
   switch (route) {
     case "flag-risk":
       return json(flagRisk(body));
-    case "account/delete":
+    case "account/delete": {
+      // The app sends a fresh Sign in with Apple code when the person signed in with Apple (apple.ts).
+      const appleRevoked = await revokeIfPossible(appleKey(env), body.apple_authorization_code);
       await deleteAccount(admin, user);
-      return json({ success: true });
+      return json({ success: true, apple_revoked: appleRevoked });
+    }
     case "watch/pair":
       return json(await watchPairingCode(admin, user));
     case "billing/checkout":
