@@ -395,6 +395,20 @@ public enum TouchpadDragGesture: String, Codable, Hashable, Sendable, CaseIterab
     }
 }
 
+public enum TouchpadScrollMode: String, Codable, Hashable, Sendable, CaseIterable {
+    case twoFinger = "two_finger"
+    case leftEdge = "left_edge"
+    case rightEdge = "right_edge"
+
+    public var displayName: String {
+        switch self {
+        case .twoFinger: return "2-Finger Scroll"
+        case .leftEdge: return "Left Edge"
+        case .rightEdge: return "Right Edge"
+        }
+    }
+}
+
 public enum TouchpadMappingMode: String, Codable, Hashable, Sendable, CaseIterable {
     case fullDisplay = "full_display"
     case relative = "relative"
@@ -430,6 +444,7 @@ public struct TetherSettings: Codable, Hashable, Sendable {
     public var showTouchpadButtons: Bool = false
     public var touchpadInputMode: TouchpadInputMode = .phoneTrackpad
     public var touchpadDragGesture: TouchpadDragGesture = .doubleTapDrag
+    public var touchpadScrollMode: TouchpadScrollMode = .twoFinger
     public var touchpadMappingMode: TouchpadMappingMode = .fullDisplay
     public var trackpadSurfaceLayout: TrackpadSurfaceLayout = .full
     public var splitSwapPosition: Bool = false
@@ -448,6 +463,7 @@ public struct TetherSettings: Codable, Hashable, Sendable {
         showTouchpadButtons: Bool = false,
         touchpadInputMode: TouchpadInputMode = .phoneTrackpad,
         touchpadDragGesture: TouchpadDragGesture = .doubleTapDrag,
+        touchpadScrollMode: TouchpadScrollMode = .twoFinger,
         touchpadMappingMode: TouchpadMappingMode = .fullDisplay,
         trackpadSurfaceLayout: TrackpadSurfaceLayout = .full,
         splitSwapPosition: Bool = false,
@@ -468,6 +484,7 @@ public struct TetherSettings: Codable, Hashable, Sendable {
         self.showTouchpadButtons = showTouchpadButtons
         self.touchpadInputMode = touchpadInputMode
         self.touchpadDragGesture = touchpadDragGesture
+        self.touchpadScrollMode = touchpadScrollMode
         self.touchpadMappingMode = touchpadMappingMode
         self.trackpadSurfaceLayout = trackpadSurfaceLayout
         self.splitSwapPosition = splitSwapPosition
@@ -489,6 +506,7 @@ public struct TetherSettings: Codable, Hashable, Sendable {
         showTouchpadButtons = try container.decodeIfPresent(Bool.self, forKey: .showTouchpadButtons) ?? false
         touchpadInputMode = try container.decodeIfPresent(TouchpadInputMode.self, forKey: .touchpadInputMode) ?? .phoneTrackpad
         touchpadDragGesture = try container.decodeIfPresent(TouchpadDragGesture.self, forKey: .touchpadDragGesture) ?? .doubleTapDrag
+        touchpadScrollMode = try container.decodeIfPresent(TouchpadScrollMode.self, forKey: .touchpadScrollMode) ?? .twoFinger
         touchpadMappingMode = try container.decodeIfPresent(TouchpadMappingMode.self, forKey: .touchpadMappingMode) ?? .fullDisplay
         trackpadSurfaceLayout = try container.decodeIfPresent(TrackpadSurfaceLayout.self, forKey: .trackpadSurfaceLayout) ?? .full
         splitSwapPosition = try container.decodeIfPresent(Bool.self, forKey: .splitSwapPosition) ?? false

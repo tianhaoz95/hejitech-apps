@@ -90,6 +90,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     private let trackpadLayoutSettingsSegment = UISegmentedControl(items: ["Full Trackpad", "Split: Pad + Keyboard"])
     private let inputModeSegment = UISegmentedControl(items: ["Phone as Trackpad", "Physical Mouse"])
     private let dragGestureSegment = UISegmentedControl(items: ["Double-Tap Drag", "3-Finger Drag"])
+    private let scrollModeSegment = UISegmentedControl(items: ["2-Finger", "Left Edge", "Right Edge"])
     private let sensitivitySlider = UISlider()
     private let sensitivityValueLabel = UILabel()
     private let phoneTrackpadOptionsStack = UIStackView()
@@ -105,6 +106,11 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     private var lastTapTime: TimeInterval = 0
     private var lastTapLocation: CGPoint = .zero
     private var isDoubleTapDragging: Bool = false
+    /// A one-finger pan that starts in the edge scroll strip scrolls instead of moving the cursor.
+    private var isEdgeScrolling: Bool = false
+    private let edgeScrollStrip = UIView()
+    private var edgeScrollStripConstraints: [NSLayoutConstraint] = []
+    private static let edgeScrollStripWidth: CGFloat = 56
 
     public init(store: WorkspaceStore, workspaceVC: TilingWorkspaceViewController?) {
         self.store = store
@@ -898,6 +904,23 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         touchpadHelpLabel.font = .systemFont(ofSize: 12, weight: .medium)
         touchpadSurface.addSubview(touchpadHelpLabel)
 
+        edgeScrollStrip.translatesAutoresizingMaskIntoConstraints = false
+        edgeScrollStrip.isUserInteractionEnabled = false
+        edgeScrollStrip.backgroundColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.08)
+        edgeScrollStrip.layer.cornerRadius = 10
+        let stripIcon = UIImageView(image: UIImage(
+            systemName: "arrow.up.and.down",
+            withConfiguration: UIImage.SymbolConfiguration(pointSize: 14, weight: .semibold)
+        ))
+        stripIcon.translatesAutoresizingMaskIntoConstraints = false
+        stripIcon.tintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.55)
+        edgeScrollStrip.addSubview(stripIcon)
+        NSLayoutConstraint.activate([
+            stripIcon.centerXAnchor.constraint(equalTo: edgeScrollStrip.centerXAnchor),
+            stripIcon.centerYAnchor.constraint(equalTo: edgeScrollStrip.centerYAnchor),
+        ])
+        touchpadSurface.addSubview(edgeScrollStrip)
+
         // Bottom virtual keyboard for split mode
         splitVirtualKeyboard.translatesAutoresizingMaskIntoConstraints = false
         splitVirtualKeyboard.onTextInput = { [weak self] text in
@@ -964,7 +987,43 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         ])
 
         updateTouchpadHelpText()
+        updateEdgeScrollStrip()
         updateTouchpadLayout()
+    }
+
+    private func edgeScrollZoneWidth() -> CGFloat {
+        min(Self.edgeScrollStripWidth, touchpadSurface.bounds.width * 0.25)
+    }
+
+    private func isInEdgeScrollZone(_ point: CGPoint) -> Bool {
+        let width = edgeScrollZoneWidth()
+        switch store.settings.touchpadScrollMode {
+        case .twoFinger: return false
+        case .leftEdge: return point.x <= width
+        case .rightEdge: return point.x >= touchpadSurface.bounds.width - width
+        }
+    }
+
+    private func updateEdgeScrollStrip() {
+        NSLayoutConstraint.deactivate(edgeScrollStripConstraints)
+        let mode = store.settings.touchpadScrollMode
+        edgeScrollStrip.isHidden = (mode == .twoFinger)
+        guard mode != .twoFinger else {
+            edgeScrollStripConstraints = []
+            return
+        }
+        let width = edgeScrollStrip.widthAnchor.constraint(equalToConstant: Self.edgeScrollStripWidth - 8)
+        width.priority = .defaultHigh
+        edgeScrollStripConstraints = [
+            edgeScrollStrip.topAnchor.constraint(equalTo: touchpadSurface.topAnchor, constant: 4),
+            edgeScrollStrip.bottomAnchor.constraint(equalTo: touchpadSurface.bottomAnchor, constant: -4),
+            width,
+            edgeScrollStrip.widthAnchor.constraint(lessThanOrEqualTo: touchpadSurface.widthAnchor, multiplier: 0.25, constant: -8),
+            mode == .leftEdge
+                ? edgeScrollStrip.leadingAnchor.constraint(equalTo: touchpadSurface.leadingAnchor, constant: 4)
+                : edgeScrollStrip.trailingAnchor.constraint(equalTo: touchpadSurface.trailingAnchor, constant: -4),
+        ]
+        NSLayoutConstraint.activate(edgeScrollStripConstraints)
     }
 
     private func updateTouchpadHelpText() {
@@ -972,7 +1031,13 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         let wsCount = store.workspaces.count
         let wsIdx = store.activeWorkspaceIndex + 1
         let wsName = store.workspaces.indices.contains(store.activeWorkspaceIndex) ? store.workspaces[store.activeWorkspaceIndex].name : "Space \(wsIdx)"
-        touchpadHelpLabel.text = "[\(wsName) • \(wsIdx)/\(wsCount)] 1F: Tap • 2F: Scroll\n\(dragDesc): Resize • 3F: Panes • 4F Swipe: Spaces"
+        let scrollDesc: String
+        switch store.settings.touchpadScrollMode {
+        case .twoFinger: scrollDesc = "2F: Scroll"
+        case .leftEdge: scrollDesc = "Left Edge: Scroll"
+        case .rightEdge: scrollDesc = "Right Edge: Scroll"
+        }
+        touchpadHelpLabel.text = "[\(wsName) • \(wsIdx)/\(wsCount)] 1F: Tap • \(scrollDesc)\n\(dragDesc): Resize • 3F: Panes • 4F Swipe: Spaces"
     }
 
     private func updateDisplayStatusBanner() {
@@ -1294,6 +1359,21 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
 
         let loc = gesture.location(in: touchpadSurface)
         let now = ProcessInfo.processInfo.systemUptime
+
+        if gesture.state == .began {
+            let translation = gesture.translation(in: touchpadSurface)
+            isEdgeScrolling = isInEdgeScrollZone(CGPoint(x: loc.x - translation.x, y: loc.y - translation.y))
+        }
+        if isEdgeScrolling {
+            let translation = gesture.translation(in: touchpadSurface)
+            let clampedY = max(-60, min(60, translation.y))
+            workspaceVC?.performVirtualScroll(deltaX: 0, deltaY: -clampedY * 0.8)
+            gesture.setTranslation(.zero, in: touchpadSurface)
+            if gesture.state == .ended || gesture.state == .cancelled || gesture.state == .failed {
+                isEdgeScrolling = false
+            }
+            return
+        }
 
         if gesture.state == .began {
             if store.settings.touchpadDragGesture == .doubleTapDrag && (now - lastTapTime < 0.38) && hypot(loc.x - lastTapLocation.x, loc.y - lastTapLocation.y) < 45 {
@@ -1679,8 +1759,34 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
 
         phoneTrackpadOptionsStack.axis = .vertical
         phoneTrackpadOptionsStack.spacing = 8
+        let scrollLabel = UILabel()
+        scrollLabel.text = "Scrolling"
+        scrollLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        scrollLabel.textColor = UIColor(white: 0.8, alpha: 1.0)
+
+        scrollModeSegment.translatesAutoresizingMaskIntoConstraints = false
+        scrollModeSegment.selectedSegmentIndex = TouchpadScrollMode.allCases.firstIndex(of: store.settings.touchpadScrollMode) ?? 0
+        scrollModeSegment.backgroundColor = UIColor(white: 1.0, alpha: 0.08)
+        scrollModeSegment.selectedSegmentTintColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.35)
+        scrollModeSegment.setTitleTextAttributes([.foregroundColor: UIColor.white, .font: UIFont.systemFont(ofSize: 11, weight: .semibold)], for: .normal)
+        scrollModeSegment.setTitleTextAttributes([.foregroundColor: UIColor.white, .font: UIFont.systemFont(ofSize: 11, weight: .bold)], for: .selected)
+        scrollModeSegment.addTarget(self, action: #selector(handleScrollModeChanged), for: .valueChanged)
+
+        let scrollRow = UIStackView(arrangedSubviews: [scrollLabel, scrollModeSegment])
+        scrollRow.axis = .horizontal
+        scrollRow.alignment = .center
+        scrollRow.distribution = .equalSpacing
+
+        let scrollHintLabel = UILabel()
+        scrollHintLabel.text = "• Left/Right Edge: Slide your thumb along that edge to scroll.\n• 2-finger scroll keeps working in every mode."
+        scrollHintLabel.numberOfLines = 2
+        scrollHintLabel.font = .systemFont(ofSize: 11, weight: .regular)
+        scrollHintLabel.textColor = UIColor(white: 1.0, alpha: 0.45)
+
         phoneTrackpadOptionsStack.addArrangedSubview(dragRow)
         phoneTrackpadOptionsStack.addArrangedSubview(dragHintLabel)
+        phoneTrackpadOptionsStack.addArrangedSubview(scrollRow)
+        phoneTrackpadOptionsStack.addArrangedSubview(scrollHintLabel)
 
         let sensLabel = UILabel()
         sensLabel.text = "Pointer Speed"
@@ -1816,6 +1922,10 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         splitRatioSlider.value = Float(store.settings.splitRatio)
         splitRatioValueLabel.text = "\(Int(round(store.settings.splitRatio * 100)))%"
         splitOptionsStack.isHidden = (store.settings.trackpadSurfaceLayout != .splitWithKeyboard)
+        dragGestureSegment.selectedSegmentIndex = store.settings.touchpadDragGesture == .doubleTapDrag ? 0 : 1
+        scrollModeSegment.selectedSegmentIndex = TouchpadScrollMode.allCases.firstIndex(of: store.settings.touchpadScrollMode) ?? 0
+        updateEdgeScrollStrip()
+        updateTouchpadHelpText()
     }
 
     @objc private func handleTrackpadLayoutSettingsChanged() {
@@ -1863,6 +1973,14 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     @objc private func handleDragGestureChanged() {
         let gesture: TouchpadDragGesture = dragGestureSegment.selectedSegmentIndex == 0 ? .doubleTapDrag : .threeFingerDrag
         store.settings.touchpadDragGesture = gesture
+        updateTouchpadHelpText()
+    }
+
+    @objc private func handleScrollModeChanged() {
+        let modes = TouchpadScrollMode.allCases
+        let idx = scrollModeSegment.selectedSegmentIndex
+        store.settings.touchpadScrollMode = modes.indices.contains(idx) ? modes[idx] : .twoFinger
+        updateEdgeScrollStrip()
         updateTouchpadHelpText()
     }
 

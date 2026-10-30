@@ -15,6 +15,17 @@ final class TetherKitTests: XCTestCase {
         XCTAssertEqual(decoded, tree)
     }
 
+    func testTouchpadScrollModeDefaultsAndRoundTrip() throws {
+        // Settings saved before the option existed decode to 2-finger scrolling.
+        let legacy = try JSONDecoder().decode(TetherSettings.self, from: Data("{}".utf8))
+        XCTAssertEqual(legacy.touchpadScrollMode, .twoFinger)
+
+        var settings = TetherSettings()
+        settings.touchpadScrollMode = .rightEdge
+        let decoded = try JSONDecoder().decode(TetherSettings.self, from: JSONEncoder().encode(settings))
+        XCTAssertEqual(decoded.touchpadScrollMode, .rightEdge)
+    }
+
     func testSplitUpToMax4PanesAndCloseRebalance() {
         var tree = PaneTreeOps.createDefaultPaneTree()
         XCTAssertEqual(PaneTreeOps.countPanes(tree.root), 2)

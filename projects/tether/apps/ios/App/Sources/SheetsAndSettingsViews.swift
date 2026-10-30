@@ -475,6 +475,12 @@ public struct SettingsSheetView: View {
                 Text("3-Finger Drag").tag(TouchpadDragGesture.threeFingerDrag)
             }
 
+            Picker("Scrolling", selection: $store.settings.touchpadScrollMode) {
+                ForEach(TouchpadScrollMode.allCases, id: \.self) { mode in
+                    Text(mode.displayName).tag(mode)
+                }
+            }
+
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Text("Cursor Speed")
@@ -485,7 +491,7 @@ public struct SettingsSheetView: View {
                 Slider(value: $store.settings.pointerSensitivity, in: 1.0...5.0, step: 0.5)
             }
 
-            Text("• Dragging: Resize split dividers & drag items on screen.\n• 3-Finger Swipe: Swipe anywhere on the trackpad to change pane focus in that direction.")
+            Text("• Dragging: Resize split dividers & drag items on screen.\n• Left/Right Edge: Slide one finger (or your thumb) along that edge of the trackpad to scroll; 2-finger scroll still works.\n• 3-Finger Swipe: Swipe anywhere on the trackpad to change pane focus in that direction.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

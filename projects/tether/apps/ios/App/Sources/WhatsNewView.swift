@@ -17,10 +17,17 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.22"
+    static let currentVersion = "0.1.23"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.23", date: "October 2026", items: [
+            WhatsNewItem(
+                icon: "hand.draw",
+                title: "Thumb Scrolling on the Trackpad Edge",
+                description: "Settings → Scrolling now offers Left Edge or Right Edge: slide one thumb along that edge of the phone trackpad to scroll. 2-finger scrolling still works in every mode."
+            ),
+        ]),
         ReleaseNotes(version: "0.1.22", date: "October 2026", items: [
             WhatsNewItem(
                 icon: "cursorarrow.click",
