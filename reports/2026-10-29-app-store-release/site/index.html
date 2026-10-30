@@ -273,7 +273,7 @@ scripts/cut_release.sh weehours 1.0.0 --watch</pre>
             <tr><td>Export compliance key</td><td colspan="3">Set to NO in every target</td></tr>
             <tr><td>Sign in with Apple next to Google (4.8)</td><td colspan="3">Yes</td></tr>
             <tr><td>Account deletion in the app (5.1.1(v))</td><td>Settings → Delete account &amp; data</td><td>Settings → Delete my Headway data</td><td>Settings → Delete my FitLoop data</td></tr>
-            <tr><td>Revoking the Apple token on deletion</td><td>Code ready; needs your key (§2 step 2)</td><td class="bad">Not built (§7)</td><td class="bad">Not built (§7)</td></tr>
+            <tr><td>Revoking the Apple token on deletion</td><td>Code ready; needs your key (§2 step 2)</td><td>Code ready; needs your key (§7)</td><td>Code ready; needs your key (§7)</td></tr>
             <tr><td>Demo access for App Review</td><td>No sign-in needed (local mode)</td><td>Demo account, live</td><td>Demo account, live</td></tr>
             <tr><td>Privacy policy, support and terms pages</td><td colspan="3">200 on the live site; linked in the app's Settings</td></tr>
             <tr><td>Icon: 1024 px, no alpha</td><td colspan="3">Yes (iPhone and watch)</td></tr>
@@ -291,9 +291,12 @@ scripts/cut_release.sh weehours 1.0.0 --watch</pre>
           <thead><tr><th>Risk</th><th>Why</th><th>What to do</th></tr></thead>
           <tbody>
             <tr><td>A reviewer says deletion doesn't delete the account (5.1.1(v))</td><td>By your rule, deleting removes only the app's own data and keeps the shared HEJI login. Apple usually accepts this when the app's account and data are gone and the user is signed out.</td><td>The review notes now explain it. If Apple rejects, the reply is that sign-in is shared across apps by the same developer, so each app deletes its own account. Changing the behaviour is your call.</td></tr>
-            <tr><td>No Apple token revocation in Headway and FitLoop</td><td>Apple asks apps using Sign in with Apple to revoke tokens when an account is deleted. Wee Hours has the code (<code>src/worker/account.ts</code> + <code>AppleReauthorization.swift</code>); Headway and FitLoop don't.</td><td>Reviewers rarely test it, so it isn't a blocker. Write "port Apple revocation" in your notes and I'll copy Wee Hours' code into each project (no cross-project imports). Each app then needs its own key, as in Wee Hours step 2.</td></tr>
+            <tr><td>Apple token revocation needs a key per app</td><td>Every app with Sign in with Apple now revokes the Apple token when the account is deleted: the app asks Apple for a fresh code and its Worker revokes the token (<code>src/worker/apple.ts</code> in Headway, FitLoop, Tether and Contempo, <code>src/lib/apple.ts</code> in Waypack; Wee Hours already had it). Until a Worker has its key, deletion still works and just skips the revocation.</td><td>One Sign in with Apple key per app (a key is tied to one App ID): developer portal → <b>Keys → +</b>, tick Sign in with Apple, Configure → the app's primary App ID, download the <code>.p8</code>. Then set the two secrets, as in Wee Hours step 2:
+<pre class="cmd">cd projects/headway/services/web     # or fitloop/services/web, tether/services/web, contempo/services/web, waypack/services/mcp
+npx wrangler secret put APPLE_SIWA_KEY_ID --env production
+npx wrangler secret put APPLE_SIWA_PRIVATE_KEY --env production   # paste the .p8 contents</pre></td></tr>
             <tr><td>"Caltrain" in Headway's subtitle (5.2)</td><td>It names the agency the app serves (Headway isn't affiliated, which the description says). Transit apps commonly do this.</td><td>If Apple objects, change the subtitle to "Live train times &amp; alerts".</td></tr>
-            <tr><td>FitLoop shares vitals with the agent by default</td><td>"What your agent may see → Vitals" defaults to on. Nothing is shared until the user connects an agent and approves a consent screen that lists the data, which meets 5.1.2(i)'s explicit permission.</td><td>For a stricter stance, default it to off (<code>packages/core/src/settings.ts</code>). Say so in your notes.</td></tr>
+            <tr><td>FitLoop agent sharing</td><td>Now off by default: "What your agent may see → Vitals" (and photo images) stay off until the user turns them on (<code>packages/core/src/settings.ts</code>, FitLoopKit <code>Models.swift</code>). Check-ins and feedback notes are still shared with an agent the user connects.</td><td>Nothing.</td></tr>
             <tr><td>Wee Hours watch screenshot</td><td>It can only come from your real watch (§2 step 6).</td><td>Without one, App Store Connect won't let you submit while a watch app ships.</td></tr>
           </tbody>
         </table>
@@ -310,6 +313,7 @@ scripts/cut_release.sh weehours 1.0.0 --watch</pre>
           <li><input type="checkbox" id="c-wh-privacy"><span><b>Wee Hours: App Privacy published</b></span></li>
           <li><input type="checkbox" id="c-wh-review"><span><b>Wee Hours: review contact and corrected notes</b></span></li>
           <li><input type="checkbox" id="c-wh-shots"><span><b>Wee Hours: 4 iPhone screenshots + 1 watch screenshot</b></span></li>
+          <li><input type="checkbox" id="c-siwa-keys"><span><b>Sign in with Apple keys set</b><small>one per app, two Worker secrets each (§7)</small></span></li>
           <li><input type="checkbox" id="c-hw-privacy"><span><b>Headway: App Privacy published</b></span></li>
           <li><input type="checkbox" id="c-hw-review"><span><b>Headway: review contact, then notes</b></span></li>
           <li><input type="checkbox" id="c-hw-shots"><span><b>Headway: 2 iPhone + 1 watch screenshots</b></span></li>
@@ -325,8 +329,8 @@ scripts/cut_release.sh weehours 1.0.0 --watch</pre>
       <section id="handoff" data-toc="Notes &amp; hand-off" data-skip>
         <div class="handoff">
           <h2>Your notes</h2>
-          <p>Decisions (the Wee Hours price, porting Apple revocation, the agent default), corrections, questions. Saved in this browser. <b>Copy summary</b> puts the whole report, your ticks and these notes on the clipboard for any agent.</p>
-          <textarea id="notes" placeholder="e.g. commit and push · Wee Hours $9.99 · port Apple revocation"></textarea>
+          <p>Decisions (the Wee Hours price), corrections, questions. Saved in this browser. <b>Copy summary</b> puts the whole report, your ticks and these notes on the clipboard for any agent.</p>
+          <textarea id="notes" placeholder="e.g. Wee Hours $9.99 · keys set for Headway and FitLoop"></textarea>
           <button class="btn pri" id="copy">Copy summary</button>
         </div>
       </section>
