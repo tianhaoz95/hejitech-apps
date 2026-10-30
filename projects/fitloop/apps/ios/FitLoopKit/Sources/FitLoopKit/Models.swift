@@ -447,7 +447,7 @@ public struct Settings: Codable, Hashable, Sendable {
     public static let defaults = Settings(
         units: "metric", timezone: TimeZone.current.identifier,
         vitals: Vitals(liveHr: true, healthDaily: true, manual: true, photos: false),
-        agentAccess: AgentAccess(vitals: true, photos: false, feedback: true, checkins: true),
+        agentAccess: AgentAccess(vitals: false, photos: false, feedback: true, checkins: true),
         reminders: Reminders(workout: .init(on: true, minutesBefore: 10), meals: .init(on: true), evening: .init(on: true, time: "21:00"), weekly: .init(on: true, weekday: "sun", time: "18:00")),
         glasses: Glasses(showHr: true, autoRestTimer: true),
         about: About(goals: "", restrictions: "", equipment: "", schedule: "", diet: "", notes: ""))

@@ -145,6 +145,8 @@ describe("checks", () => {
     expect(checkSettings({ vitals: { photos: "yes" } })[0].path).toBe("vitals.photos");
     expect(checkSettings({ reminders: { evening: { time: "25:00" } } })[0].path).toBe("reminders.evening.time");
     expect(normalizeSettings({ vitals: { photos: true } }).vitals).toEqual({ live_hr: true, health_daily: true, manual: true, photos: true });
+    // Health data reaches an agent only once the user allows it
+    expect(defaultSettings().agent_access).toEqual({ vitals: false, photos: false, feedback: true, checkins: true });
   });
 });
 

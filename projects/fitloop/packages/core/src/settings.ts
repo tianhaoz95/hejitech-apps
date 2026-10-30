@@ -8,7 +8,7 @@ export function defaultSettings(): Settings {
     units: "metric",
     timezone: "America/Los_Angeles",
     vitals: { live_hr: true, health_daily: true, manual: true, photos: false },
-    agent_access: { vitals: true, photos: false, feedback: true, checkins: true },
+    agent_access: { vitals: false, photos: false, feedback: true, checkins: true },
     reminders: {
       workout: { on: true, minutes_before: 10 },
       meals: { on: true },

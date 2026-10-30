@@ -48,6 +48,8 @@ made while building, with the reason for each.
 - **What the agent sees is the user's call.** `agent_access` switches for check-ins, feedback,
   vitals and photo images; photos are dates only unless allowed, and short-lived signed links when
   allowed. Vitals from a source that's switched off are refused on upload and hidden from the agent.
+  Vitals and photo images are off for agents by default (2026-10-29, for App Review): Health data
+  reaches an agent only after the user turns it on.
 - **The agent may update the "about you" notes** (`update_profile_notes`) so what it learns in one
   chat carries to the next, and to other agents.
 - **Glasses text is laid out in pixels** (`core/src/font.ts`: the firmware font's measured glyph
