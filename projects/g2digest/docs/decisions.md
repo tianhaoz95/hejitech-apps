@@ -139,6 +139,14 @@ After the owner's first days on the glasses:
   page lists the same editions as buttons. Past editions need the network (only the latest is kept
   offline).
 
+## Ten editions kept (2026-10-29)
+
+The owner's call, to save server space: a user keeps their 10 newest editions (by date). Publishing an
+11th deletes the oldest edition, its cards and the audio only it used (`pruneEditions` in
+`services/web/src/worker/store.ts`, `KEEP_EDITIONS`, run after every publish, best effort). Audio a
+kept edition still plays (a carried card points at an earlier date's file) stays. `publish_cards`
+returns the deleted dates as `pruned`; the privacy page says the same.
+
 ## Observed in the simulator (2026-10-23)
 
 The glasses' font is narrow: a 25-character line fills about 40% of the 576 px width. (Superseded

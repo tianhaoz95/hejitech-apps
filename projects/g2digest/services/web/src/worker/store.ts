@@ -138,6 +138,30 @@ export async function listEditions(db: Db, userId: string, limit = 60) {
   return data ?? [];
 }
 
+/** How many editions a user keeps; publishing an 11th deletes the oldest (by date) to save space. */
+export const KEEP_EDITIONS = 10;
+
+/**
+ * Deletes every edition past the newest `keep` (cards cascade) and the audio only those editions
+ * used. Audio a kept edition still points at (a carried card plays an earlier date's file) stays.
+ */
+export async function pruneEditions(db: Db, userId: string, keep = KEEP_EDITIONS): Promise<string[]> {
+  const { data } = await db.from("editions").select("id, date, bundle").eq("user_id", userId).order("date", { ascending: false });
+  const rows = (data ?? []) as { id: string; date: string; bundle: Bundle }[];
+  const old = rows.slice(keep);
+  if (!old.length) return [];
+  const inUse = new Set(rows.slice(0, keep).flatMap((r) => r.bundle.cards.flatMap((c) => [c.glance?.audio_path, c.deep_dive?.audio_path])).filter(Boolean));
+  const bucket = db.storage.from(BUCKET);
+  for (const r of old) {
+    const { data: files } = await bucket.list(`${userId}/${r.date}`, { limit: 1000 });
+    const paths = (files ?? []).map((f) => `${r.date}/${f.name}`).filter((p) => !inUse.has(p)).map((p) => `${userId}/${p}`);
+    if (paths.length) await bucket.remove(paths);
+  }
+  const { error } = await db.from("editions").delete().eq("user_id", userId).in("id", old.map((r) => r.id));
+  if (error) throw new Error(`prune editions: ${error.message}`);
+  return old.map((r) => r.date);
+}
+
 /** Signed URLs for every audio file of a bundle, keyed by its audio_path. */
 export async function signedAudio(db: Db, userId: string, bundle: Bundle, ttl = AUDIO_URL_TTL_SEC): Promise<Record<string, string>> {
   const paths = [...new Set(bundle.cards.flatMap((c) => [c.glance?.audio_path, c.deep_dive?.audio_path]).filter((p): p is string => Boolean(p)))];

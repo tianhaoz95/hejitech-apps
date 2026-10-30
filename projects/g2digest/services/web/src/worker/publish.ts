@@ -3,7 +3,7 @@
 // preview snapshot, so "publish without a preview render" is refused as E_NO_PREVIEW), and is
 // validated again against the current guide, brief and uploaded files.
 import { cardId, GUIDE_VERSION, previewHash, validate, type Bundle, type Issue, type ValidationResult } from "@g2digest/core";
-import { loadBrief, uploadedAudio, type Db } from "./store.ts";
+import { loadBrief, pruneEditions, uploadedAudio, type Db } from "./store.ts";
 
 const PREVIEW_TTL_SEC = 86400;
 const previewKey = (userId: string, hash: string) => `preview:${userId}:${hash}`;
@@ -32,6 +32,8 @@ export interface PublishResult {
   date?: string;
   edition_id?: string;
   cards?: string[];
+  /** Dates of the editions deleted to keep only the newest ones (store.ts KEEP_EDITIONS). */
+  pruned?: string[];
 }
 
 export async function publishForUser(db: Db, kv: KVNamespace, userId: string, bundle: unknown, givenHash: unknown): Promise<PublishResult> {
@@ -73,5 +75,7 @@ export async function publishForUser(db: Db, kv: KVNamespace, userId: string, bu
   const { error: cardsError } = await db.from("cards").upsert(rows, { onConflict: "user_id,id" });
   if (cardsError) throw new Error(`publish failed: ${cardsError.message}`);
   await kv.delete(previewKey(userId, hash));
-  return { published: true, errors: [], warnings: result.warnings, date: b.date, edition_id: edition.id as string, cards: ids };
+  // Only the newest editions are kept: the oldest goes when an 11th arrives (best effort, never fails the publish).
+  const pruned = await pruneEditions(db, userId).catch(() => []);
+  return { published: true, errors: [], warnings: result.warnings, date: b.date, edition_id: edition.id as string, cards: ids, ...(pruned.length ? { pruned } : {}) };
 }

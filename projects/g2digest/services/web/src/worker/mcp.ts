@@ -70,7 +70,7 @@ export const TOOLS = [
   {
     name: "publish_cards",
     title: "Publish an edition",
-    description: "Publishes the validated bundle as the user's edition for its date (replacing an earlier one for that date). Needs the preview_hash from an error-free validate_cards of this exact bundle; refused if the guide or brief changed since.",
+    description: "Publishes the validated bundle as the user's edition for its date (replacing an earlier one for that date). Only the 10 newest editions are kept: publishing an 11th deletes the oldest and its audio (`pruned` lists their dates). Needs the preview_hash from an error-free validate_cards of this exact bundle; refused if the guide or brief changed since.",
     inputSchema: { type: "object", required: ["bundle", "preview_hash"], properties: { bundle: BUNDLE, preview_hash: { type: "string" } } },
     annotations: { title: "Publish an edition", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
