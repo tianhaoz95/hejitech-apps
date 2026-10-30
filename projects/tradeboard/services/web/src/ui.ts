@@ -124,6 +124,16 @@ export function chrome() {
     const target = a.pathname.split("/")[1];
     if (target === here || (here === "plans" && target === "")) a.setAttribute("aria-current", "page");
   });
+  // Phones: the nav folds into a menu under the header.
+  const header = document.querySelector<HTMLElement>(".site-header");
+  const menu = document.querySelector<HTMLButtonElement>("[data-menu]");
+  const setMenu = (open: boolean) => {
+    header?.classList.toggle("open", open);
+    menu?.setAttribute("aria-expanded", String(open));
+  };
+  menu?.addEventListener("click", () => setMenu(!header?.classList.contains("open")));
+  document.addEventListener("keydown", (e) => e.key === "Escape" && setMenu(false));
+  document.addEventListener("click", (e) => header && !header.contains(e.target as Node) && setMenu(false));
   const clock = document.querySelector<HTMLElement>("[data-clock]");
   const tick = () => clock && (clock.textContent = `Now ${ptEt(new Date())}`);
   tick();

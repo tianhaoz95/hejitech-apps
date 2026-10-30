@@ -26,7 +26,7 @@
   }
 }
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
 body {
   margin: 0; min-height: 100vh; display: flex; flex-direction: column; color: var(--fg);
   background: radial-gradient(1200px 420px at 50% -120px, var(--bg-glow), transparent 70%), var(--bg);
@@ -45,7 +45,7 @@ time, .kv dd, table.grid td, .meta { font-variant-numeric: tabular-nums; }
 code, pre, .mono { font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: .88em; }
 code { background: var(--bg2); padding: .12em .4em; border-radius: 6px; overflow-wrap: anywhere; }
 pre.block { background: var(--bg2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 14px; overflow-x: auto; white-space: pre-wrap; word-break: break-word; margin: 0 0 10px; }
-.wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 max(20px, env(safe-area-inset-right)) 0 max(20px, env(safe-area-inset-left)); }
 .narrow { max-width: 760px; }
 .muted { color: var(--muted); }
 .small { font-size: 13.5px; }
@@ -63,7 +63,7 @@ pre.block { background: var(--bg2); border: 1px solid var(--line); border-radius
 #app > h1 + p { margin-top: -8px; max-width: 70ch; }
 
 /* Header */
-.site-header { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 78%, transparent); backdrop-filter: saturate(180%) blur(16px); -webkit-backdrop-filter: saturate(180%) blur(16px); border-bottom: 1px solid var(--line); }
+.site-header { position: sticky; top: 0; z-index: 10; padding-top: env(safe-area-inset-top); background: color-mix(in srgb, var(--bg) 78%, transparent); backdrop-filter: saturate(180%) blur(16px); -webkit-backdrop-filter: saturate(180%) blur(16px); border-bottom: 1px solid var(--line); }
 .site-header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 6px 16px; min-height: 60px; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 720; font-size: 15.5px; letter-spacing: -.01em; color: var(--fg); white-space: nowrap; }
 .brand:hover { text-decoration: none; }
@@ -74,7 +74,7 @@ pre.block { background: var(--bg2); border: 1px solid var(--line); border-radius
 .site-header nav a[aria-current=page] { color: var(--fg); background: var(--card); box-shadow: 0 1px 2px rgb(15 23 42 / .08), 0 0 0 1px var(--line); }
 .site-header nav .link { margin-left: 2px; }
 .link { padding: 4px 8px; }
-.site-footer { border-top: 1px solid var(--line); margin-top: 48px; padding: 18px 0 30px; }
+.site-footer { border-top: 1px solid var(--line); margin-top: 48px; padding: 18px 0 calc(30px + env(safe-area-inset-bottom)); }
 .site-footer .wrap { display: flex; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; }
 
 /* Surfaces */
@@ -199,7 +199,7 @@ table.grid tbody tr:hover td { background: color-mix(in srgb, var(--bg2) 55%, tr
 /* Overlays */
 dialog { border: 1px solid var(--line); border-radius: 18px; background: var(--card); color: var(--fg); padding: 22px; width: min(520px, calc(100vw - 32px)); box-shadow: 0 24px 64px -12px rgb(0 0 0 / .35); }
 dialog::backdrop { background: rgb(5 10 18 / .45); backdrop-filter: blur(3px); }
-.toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 11px 16px; border-radius: 12px; font-size: 14px; font-weight: 550; z-index: 50; max-width: calc(100vw - 32px); box-shadow: var(--shadow-lift); animation: toast-in .2s ease-out; }
+.toast { position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 11px 16px; border-radius: 12px; font-size: 14px; font-weight: 550; z-index: 50; max-width: calc(100vw - 32px); box-shadow: var(--shadow-lift); animation: toast-in .2s ease-out; }
 .toast.bad { background: var(--bad); color: #fff; }
 @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 6px); } }
 .spinner { width: 24px; height: 24px; border-radius: 50%; border: 2.5px solid var(--line-strong); border-top-color: var(--accent); animation: spin 0.8s linear infinite; margin: 40px auto; }
@@ -209,14 +209,26 @@ dialog::backdrop { background: rgb(5 10 18 / .45); backdrop-filter: blur(3px); }
 .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
 details > summary { cursor: pointer; color: var(--accent); font-size: 13.5px; font-weight: 550; }
 
-@media (max-width: 860px) {
-  /* One row of nav that scrolls sideways instead of wrapping under the brand. */
-  .site-header .wrap { flex-direction: column; align-items: stretch; gap: 8px; padding-top: 10px; padding-bottom: 10px; }
-  .site-header nav { overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
-  .site-header nav::-webkit-scrollbar { display: none; }
+.menu-btn { display: none; }
+@media (max-width: 900px) {
+  /* One compact header row; the nav opens as a panel under it. */
+  .site-header .wrap { min-height: 56px; }
+  .menu-btn { display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; margin-right: -8px; border: 0; border-radius: 10px; background: none; color: var(--fg); cursor: pointer; }
+  .menu-btn:active { background: var(--bg2); }
+  .site-header nav { display: none; position: absolute; left: 0; right: 0; top: 100%; flex-direction: column; gap: 2px; padding: 8px max(12px, env(safe-area-inset-left)) 12px; border-radius: 0; border: 0; border-bottom: 1px solid var(--line); background: var(--card); box-shadow: 0 18px 30px -18px rgb(15 23 42 / .35); }
+  .site-header.open nav { display: flex; }
+  .site-header nav a, .site-header nav .link { padding: 12px 14px; font-size: 16px; border-radius: 10px; text-align: left; margin: 0; }
+  .site-header nav a[aria-current=page] { background: var(--accent-soft); color: var(--accent); box-shadow: none; }
+  /* iOS zooms into fields under 16px. */
+  input, select, textarea { font-size: 16px; }
+  #app > .spread h1 { margin-bottom: 0; }
+}
+@media (pointer: coarse) {
+  .link { min-height: 36px; }
+  .btn.small { min-height: 36px; }
 }
 @media (max-width: 560px) {
-  .wrap { padding: 0 16px; }
+  .wrap { padding: 0 max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left)); }
   main { padding-top: 20px; }
   .panel, .ticket { padding: 16px; }
   .plans li .panel { padding: 14px 16px; }

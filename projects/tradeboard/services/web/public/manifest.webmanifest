@@ -1,0 +1,22 @@
+{
+  "name": "Trading Plan Board",
+  "short_name": "Plan Board",
+  "description": "Your private board where agents draft trading plans and you approve them.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f4f6f9",
+  "theme_color": "#1d3b5c",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Trades", "url": "/trades/", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Executor", "url": "/executor/", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] }
+  ]
+}
