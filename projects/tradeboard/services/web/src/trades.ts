@@ -22,7 +22,7 @@ async function load() {
   const rows = r.body.receipts;
   body.replaceChildren(rows.length ? el("ul", { class: "plans" }, ...rows.map((x) => el("li", {}, el("a", { href: `/plans/${x.plan_id}` }, el("div", { class: "panel" },
     el("div", { class: "spread" },
-      el("span", { class: "title" }, el("span", { class: "mono" }, x.ticker), " · ", x.title),
+      el("span", { class: "title" }, el("span", { class: "ticker" }, x.ticker), x.title),
       el("span", { class: "row" }, modeBadge(x.mode), badge(x.outcome === "simulated" ? "executed" : x.outcome), x.outcome === "simulated" ? el("span", { class: "chip" }, "simulated") : x.outcome === "proposed" ? el("span", { class: "chip" }, "proposal") : null)),
     el("div", { class: "meta" },
       when(x.attempted_at),

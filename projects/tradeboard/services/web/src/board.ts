@@ -36,7 +36,7 @@ function rowView(r: Row) {
   if (r.status === "ready") flags.push(el("span", { class: "chip" }, "ready for your approval"));
   if (r.awaiting_manual) flags.push(el("span", { class: "chip" }, "place it in the Robinhood app"));
   return el("li", {}, el("a", { href: `/plans/${r.plan_id}` }, el("div", { class: "panel" },
-    el("div", { class: "spread" }, el("span", { class: "title" }, el("span", { class: "mono" }, r.ticker), " · ", r.title), badge(r.status)),
+    el("div", { class: "spread" }, el("span", { class: "title" }, el("span", { class: "ticker" }, r.ticker), r.title), badge(r.status)),
     el("div", { class: "meta" },
       el("span", { class: expiringSoon(r) ? "warn" : "" }, live(r) || r.status === "expired" ? r.validity : "closed"),
       el("span", {}, `v${r.current_version}`),

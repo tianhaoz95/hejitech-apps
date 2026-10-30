@@ -62,7 +62,7 @@ function ticketText(p: Plan) {
 function header(p: Plan) {
   return el("header", { class: "panel" },
     el("div", { class: "row" }, badge(p.status), p.is_demo ? el("span", { class: "badge demo" }, "DEMO · dry-run only") : null, el("span", { class: "chip" }, `version ${p.current_version}`), el("span", { class: "chip" }, p.validity), strategyBadge(p)),
-    el("h1", { style: "margin-top: 8px" }, el("span", { class: "mono" }, p.ticker), " · ", p.title),
+    el("h1", { class: "plan-title" }, el("span", { class: "ticker" }, p.ticker), p.title),
     p.reason_code ? el("p", { class: ["rejected", "failed", "stale", "expired"].includes(p.status) ? "error" : "muted" }, `${p.reason_code}: ${p.reason_text ?? ""}`) : null,
     p.awaiting_manual ? el("p", { class: "warn" }, "Robinhood made this a proposal (trade approvals are on). Place it in the Robinhood app, then mark it manually filled here.") : null,
     el("dl", { class: "kv" },
