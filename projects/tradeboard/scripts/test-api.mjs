@@ -572,7 +572,8 @@ await step("agents are rate-limited per token (rate_limited)", async () => {
   const t = await portal("/api/agents/burst/tokens", { body: { label: "t" } });
   const bot = mcp(t.body.token);
   let limited = null;
-  for (let i = 0; i < 460 && !limited; i++) {
+  // 2 × AGENT_RATE_PER_MIN + 1: a fixed-window reset mid-burst can't hide the limit.
+  for (let i = 0; i < 801 && !limited; i++) {
     const r = await bot.rpc("ping");
     if (r.status === 429) limited = r;
   }
