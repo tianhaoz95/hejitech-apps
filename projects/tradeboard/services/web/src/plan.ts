@@ -435,7 +435,8 @@ async function start() {
     return;
   }
   renderComposer();
-  root.replaceChildren(doc, editHost, composer, histHost);
+  // One column with a fixed gap: the hosts are separate containers, so sibling margins can't space their cards.
+  root.replaceChildren(el("div", { class: "plan-page" }, doc, editHost, composer, histHost));
   every(5_000, () => load());
 }
 void start();

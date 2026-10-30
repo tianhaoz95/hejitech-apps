@@ -104,6 +104,9 @@ input[type=checkbox] { width: auto; }
 .plans .title { font-weight: 650; font-size: 16.5px; overflow-wrap: anywhere; }
 
 .doc section { margin-top: 16px; }
+.plan-page, .plan-page > div { display: grid; gap: 14px; min-width: 0; }
+.plan-page > :empty { display: none; }
+.plan-page > *, .plan-page > div > *, .plan-page > div > .panel { margin: 0; }
 .doc section > h2 { display: flex; gap: 8px; align-items: baseline; justify-content: space-between; flex-wrap: wrap; }
 .prose { white-space: pre-wrap; overflow-wrap: anywhere; }
 .thread { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
