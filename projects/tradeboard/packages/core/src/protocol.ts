@@ -32,6 +32,9 @@ export interface ExecPlan {
   evidence: string;
   risks_and_dissent: string;
   invalidation: string;
+  fit_with_strategy: string;
+  /** The strategy version the plan was last written against (null: the user had none). */
+  strategy_version: number | null;
   valid_from: string | null;
   valid_until: string;
   quote_price: number | null;
@@ -51,6 +54,8 @@ export interface PollResponse {
   now: string;
   control: BoardControl;
   policy: { policy_version: number; policy: Policy };
+  /** The user's adopted strategy, for the executor's optional advisory fit note. Never a gate. */
+  strategy: { version: number; body: string } | null;
   plans: ExecPlan[];
   recovery: ExecPlan[];
 }

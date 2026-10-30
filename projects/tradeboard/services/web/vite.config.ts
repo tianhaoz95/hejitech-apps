@@ -11,6 +11,7 @@ const pages = {
   policy: "policy/index.html",
   agents: "agents/index.html",
   account: "account/index.html",
+  strategy: "strategy/index.html",
   privacy: "privacy/index.html",
   login: "login/index.html",
   consent: "oauth/consent/index.html",

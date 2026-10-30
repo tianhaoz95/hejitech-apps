@@ -12,9 +12,11 @@ interface Comment {
 interface Receipt {
   receipt_id: string; version: number; executor_id: string; attempted_at: string; mode: string; outcome: string; reason_code: string | null; reason_text: string;
   robinhood_order_id: string | null; filled_quantity: number | null; filled_price: number | null; policy_snapshot_id: number | null;
+  strategy_fit: { fit: string; note: string; strategy_version: number } | null;
 }
 interface Plan {
   plan_id: string; title: string; status: Status; is_demo: boolean; ticker: string; order: OrderTicket; thesis: string; evidence: string; risks_and_dissent: string; invalidation: string;
+  fit_with_strategy: string; strategy_version: number | null; current_strategy_version: number | null;
   created_at: string; updated_at: string; last_activity_at: string; created_by: { type: string; id: string }; valid_from: string | null; valid_until: string; validity: string;
   quote_at: string | null; quote_price: number | null; quote_source: string | null; current_version: number; reason_code: string | null; reason_text: string | null; awaiting_manual: boolean;
   approval: { approval_id: string; version: number; approved_at: string; expires_at: string; note: string } | null;
@@ -35,8 +37,16 @@ let agents: string[] = [];
 let editing = false;
 let replyTo: Comment | null = null;
 
-const SECTIONS: [keyof Plan & string, string][] = [["thesis", "Thesis"], ["evidence", "Evidence"], ["risks_and_dissent", "Risks & dissent"], ["invalidation", "Invalidation"]];
-const ANCHOR_LABEL: Record<string, string> = { thesis: "Thesis", evidence: "Evidence", risks_and_dissent: "Risks & dissent", invalidation: "Invalidation", order: "Order ticket", general: "General" };
+const SECTIONS: [keyof Plan & string, string][] = [["thesis", "Thesis"], ["evidence", "Evidence"], ["risks_and_dissent", "Risks & dissent"], ["invalidation", "Invalidation"], ["fit_with_strategy", "Fit with strategy"]];
+const ANCHOR_LABEL: Record<string, string> = { thesis: "Thesis", evidence: "Evidence", risks_and_dissent: "Risks & dissent", invalidation: "Invalidation", fit_with_strategy: "Fit with strategy", order: "Order ticket", general: "General" };
+
+/** Which strategy version the plan was written against, next to the user's current one. */
+function strategyBadge(p: Plan): HTMLElement | null {
+  if (p.current_strategy_version === null) return el("a", { class: "chip", href: "/strategy/" }, "no strategy yet");
+  if (p.strategy_version === null) return el("a", { class: "chip", href: "/strategy/" }, `written before your strategy (now v${p.current_strategy_version})`);
+  if (p.strategy_version < p.current_strategy_version) return el("a", { class: "chip", href: "/strategy/" }, `written against strategy v${p.strategy_version} (now v${p.current_strategy_version})`);
+  return el("a", { class: "chip", href: "/strategy/" }, `strategy v${p.strategy_version}`);
+}
 
 // ---------------------------------------------------------------- pieces
 
@@ -51,7 +61,7 @@ function ticketText(p: Plan) {
 
 function header(p: Plan) {
   return el("header", { class: "panel" },
-    el("div", { class: "row" }, badge(p.status), p.is_demo ? el("span", { class: "badge demo" }, "DEMO · dry-run only") : null, el("span", { class: "chip" }, `version ${p.current_version}`), el("span", { class: "chip" }, p.validity)),
+    el("div", { class: "row" }, badge(p.status), p.is_demo ? el("span", { class: "badge demo" }, "DEMO · dry-run only") : null, el("span", { class: "chip" }, `version ${p.current_version}`), el("span", { class: "chip" }, p.validity), strategyBadge(p)),
     el("h1", { style: "margin-top: 8px" }, el("span", { class: "mono" }, p.ticker), " · ", p.title),
     p.reason_code ? el("p", { class: ["rejected", "failed", "stale", "expired"].includes(p.status) ? "error" : "muted" }, `${p.reason_code}: ${p.reason_text ?? ""}`) : null,
     p.awaiting_manual ? el("p", { class: "warn" }, "Robinhood made this a proposal (trade approvals are on). Place it in the Robinhood app, then mark it manually filled here.") : null,
@@ -274,7 +284,8 @@ function history(p: Plan) {
     el("thead", {}, el("tr", {}, ...["When", "Mode", "Outcome", "Reason", "Order id", "Fill", "Policy"].map((h) => el("th", {}, h)))),
     el("tbody", {}, ...[...p.receipts].reverse().map((r) => el("tr", {},
       el("td", {}, when(r.attempted_at)), el("td", {}, modeBadge(r.mode)), el("td", {}, badge(r.outcome === "simulated" ? "executed" : r.outcome), r.outcome === "simulated" ? " (simulated)" : r.outcome === "proposed" ? " (proposal)" : ""),
-      el("td", {}, r.reason_code ? `${r.reason_code}: ` : "", r.reason_text), el("td", { class: "mono" }, r.robinhood_order_id ?? "—"),
+      el("td", {}, r.reason_code ? `${r.reason_code}: ` : "", r.reason_text,
+        r.strategy_fit ? el("div", { class: `small ${r.strategy_fit.fit === "no" ? "warn" : "muted"}` }, `Strategy v${r.strategy_fit.strategy_version} fit (advisory): ${r.strategy_fit.fit}. ${r.strategy_fit.note}`) : null), el("td", { class: "mono" }, r.robinhood_order_id ?? "—"),
       el("td", {}, r.filled_quantity !== null ? `${r.filled_quantity} @ $${r.filled_price?.toFixed(2)}` : "—"), el("td", {}, r.policy_snapshot_id ? `v${r.policy_snapshot_id}` : "—")))))) : el("p", { class: "muted" }, "No attempts yet.");
   const log = el("ul", { class: "log" }, ...[...p.decision_log].reverse().slice(0, 200).map((e) => el("li", {},
     el("div", { class: "row small" }, el("strong", {}, e.action), el("span", {}, who(e.actor_type, e.actor_id)), when(e.at)),
@@ -340,6 +351,7 @@ function planForm(p: Plan | null, suggestedUntil: string | null) {
     el("label", {}, "Evidence", area("evidence", p?.evidence ?? "")),
     el("label", {}, "Risks & dissent", area("risks_and_dissent", p?.risks_and_dissent ?? ""), el("span", { class: "hint" }, "Keep the agents' dissent: it isn't deleted when the plan is marked ready.")),
     el("label", {}, "Invalidation", area("invalidation", p?.invalidation ?? "")),
+    el("label", {}, "Fit with strategy", area("fit_with_strategy", p?.fit_with_strategy ?? ""), el("span", { class: "hint" }, "How this plan fits your strategy, or why it departs from it.")),
     el("div", { class: "fields" },
       el("label", {}, "Valid from (your time, optional)", from),
       el("label", {}, "Valid until (your time)", until, untilEcho)),
@@ -363,7 +375,7 @@ function planForm(p: Plan | null, suggestedUntil: string | null) {
       limit_price: num("limit_price"), stop_price: num("stop_price"), time_in_force: "day", account_scope: "dedicated_mcp_account_only",
     };
     const fields = {
-      title: v("title"), ticker, order, thesis: v("thesis"), evidence: v("evidence"), risks_and_dissent: v("risks_and_dissent"), invalidation: v("invalidation"),
+      title: v("title"), ticker, order, thesis: v("thesis"), evidence: v("evidence"), risks_and_dissent: v("risks_and_dissent"), invalidation: v("invalidation"), fit_with_strategy: v("fit_with_strategy"),
       valid_from: fromLocal(v("valid_from")), valid_until: fromLocal(v("valid_until")), quote_price: num("quote_price"), quote_at: fromLocal(v("quote_at")), quote_source: v("quote_source") || null,
     };
     const r = p

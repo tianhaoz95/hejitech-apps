@@ -33,6 +33,8 @@ export interface Config {
     max_tokens: number;
     /** Optional, passed through (e.g. "none" turns thinking off on Ollama, "low"…"high"). */
     reasoning_effort?: string;
+    /** Also ask the model whether each plan fits the user's strategy document: a note on the receipt, never a rejection. */
+    strategy_advisory?: boolean;
   };
   poll_interval_sec: number;
   heartbeat_sec: number;

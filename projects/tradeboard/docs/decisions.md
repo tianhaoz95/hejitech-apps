@@ -35,6 +35,31 @@ configurable. Default: `gemma4:26b`. The "abliterated" model on the Spark is del
 (its safety tuning is removed), nor are the `:cloud` entries (not local). The model only
 sanity-checks; the deterministic validator and every other gate are unchanged.
 
+## Strategy document (2026-10-30)
+
+Each user can keep one high-level trading strategy (Markdown, like an AGENTS.md for their board):
+objectives, horizon, universe, sizing, entries, exits, temperament, how to work with them. The
+owner's call, with one boundary: **it guides discussion and never enforces anything.**
+
+- **Only the user makes a version effective** (Strategy page; every save is a version). Agents read
+  it (`get_strategy`) and can only *propose* a draft (`propose_strategy`), which does nothing until
+  the user adopts it, optionally edited. So an agent can't rewrite the philosophy to justify a trade.
+- **No strategy yet → offer an interview.** The MCP `initialize` instructions and `get_strategy`'s
+  `next_step` tell agents to ask once whether the user wants a ~10-minute interview, and to follow
+  `get_strategy_interview_guide` (`core/src/strategy.ts` `INTERVIEW_GUIDE`): ask first, no advice,
+  never ask for account numbers, one question at a time, the topics in order, red lines turned into
+  policy settings, draft with the template, show it, then propose.
+- **Hard limits belong in the policy.** `policyHints` spots lines that read like rules ("never buy
+  X", "no more than $2,000 a trade", "limit orders only") and names the policy setting that would
+  enforce them, on the Strategy page and in the tools' replies.
+- **Plans say how they fit**: a `fit_with_strategy` section (material, versioned) and the strategy
+  version the plan was last written against; the plan page shows "written against v1 (now v2)".
+  Editing the strategy doesn't void approvals.
+- **The executor's model can add an advisory note** (`model.strategy_advisory`, off by default): "fits /
+  doesn't fit / unclear" plus a sentence, on the receipt. It never rejects. Measured on the Spark
+  with gemma4:26b: a long-hold plan → yes (13 s), an intraday scalp against a hold-for-months
+  strategy → no (4 s).
+
 ## Stack
 
 - **Board**: one Cloudflare Worker (portal pages, owner API, Board MCP with its own OAuth server,

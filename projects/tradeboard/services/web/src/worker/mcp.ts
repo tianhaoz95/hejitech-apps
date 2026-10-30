@@ -2,12 +2,12 @@
 // caller is always one registered agent (OAuth grant or `tba_…` token, resolved in index.ts). The
 // tools read and write plans and discussion only: there is deliberately no tool to place an order,
 // approve, edit policy, pause the executor or reach Robinhood (adding one violates the PRD).
-import { ANCHORS, STATUSES } from "@tradeboard/core";
+import { ANCHORS, checkStrategy, INTERVIEW_GUIDE, policyHints, STATUSES, STRATEGY_TEMPLATE } from "@tradeboard/core";
 import {
   addComment, answerQuestion, auditFor, commentOut, createPlan, listPlans, loadComments, loadPlan, markReady, openQuestions, planView, requestChanges,
   updatePlan, type Actor,
 } from "./board.ts";
-import { currentPolicy, VERSION, type Db, type Failed } from "./store.ts";
+import { currentPolicy, currentStrategy, VERSION, type Db, type Failed } from "./store.ts";
 
 const PROTOCOL_VERSION = "2025-06-18";
 
@@ -43,6 +43,7 @@ const PLAN_FIELDS = {
   evidence: { type: "string" },
   risks_and_dissent: { type: "string", description: "Risks, counter-arguments and dissent. Never delete another agent's dissent." },
   invalidation: { type: "string", description: "What would prove the thesis wrong." },
+  fit_with_strategy: { type: "string", description: "How this plan fits the user's strategy (get_strategy), or where it departs from it and why. Fill it whenever the user has a strategy." },
   valid_from: TIME,
   valid_until: { ...TIME, description: "Required: the plan can only execute before this. Usually today's market close (20:00Z in EDT, 21:00Z in EST)." },
   quote_price: { type: "number", description: "The price you built the plan on. Shown as agent-provided, unverified; the executor re-quotes before any order." },
@@ -53,6 +54,24 @@ const ro = (title: string) => ({ title, readOnlyHint: true, openWorldHint: false
 const rw = (title: string, idempotent = false) => ({ title, readOnlyHint: false, destructiveHint: false, idempotentHint: idempotent, openWorldHint: false });
 
 export const TOOLS = [
+  {
+    name: "get_strategy", title: "Get the user's trading strategy",
+    description: "The user's own high-level trading strategy (Markdown, like an AGENTS.md for this board): objectives, horizon, universe, sizing, entries, exits, temperament, how to work with them. Read it before drafting or debating any plan, and fill each plan's fit_with_strategy. It's guidance, not a rule: hard limits live in the user's policy, which the executor enforces. If the user has none (`exists: false`), follow `next_step`.",
+    inputSchema: { type: "object", properties: {} },
+    annotations: ro("Get the user's trading strategy"),
+  },
+  {
+    name: "get_strategy_interview_guide", title: "Get the strategy interview guide",
+    description: "How to interview the user to draft their trading strategy: asking first, ground rules (no advice, no account numbers), the topics in order, turning red lines into policy, and proposing the draft. Follow it whenever you run the interview.",
+    inputSchema: { type: "object", properties: {} },
+    annotations: ro("Get the strategy interview guide"),
+  },
+  {
+    name: "propose_strategy", title: "Propose a strategy draft",
+    description: "Saves a strategy draft you wrote with the user (after the interview, or a change they asked for) for them to review. It does NOT take effect: the user adopts it, optionally edited, on the board's Strategy page. Only propose text the user has seen and agreed to.",
+    inputSchema: { type: "object", required: ["body"], properties: { body: { type: "string", description: "The full Markdown document, using the template's headings." }, summary: { type: "string", description: "One line: what this draft is or changes." } } },
+    annotations: rw("Propose a strategy draft"),
+  },
   {
     name: "create_plan", title: "Create a trade plan",
     description: "Creates a dated plan in `draft`. Needs title, ticker, the order ticket, thesis and valid_until (in the future). Pass an idempotency_key to make retries safe. Agents can't approve plans: only the user can, in the portal.",
@@ -141,8 +160,38 @@ const fail = (error_code: string, message: string): never => {
 };
 const str = (v: unknown, name: string) => (typeof v === "string" && v.trim() ? v.trim() : fail("bad_request", `${name} is required`));
 
-async function callTool(name: string, args: Record<string, unknown>, actor: Actor, db: Db): Promise<unknown> {
+async function callTool(name: string, args: Record<string, unknown>, actor: Actor, db: Db, publicUrl: string): Promise<unknown> {
   switch (name) {
+    case "get_strategy": {
+      const s = await currentStrategy(db, actor.userId);
+      if (!s) {
+        return {
+          exists: false,
+          next_step: "The user has no trading strategy yet. Ask them once whether they'd like a short interview (about 10 minutes) so you can draft one with them. If yes, call get_strategy_interview_guide and follow it; if no, carry on and don't ask again in this conversation.",
+          template: STRATEGY_TEMPLATE,
+          strategy_page: `${publicUrl}/strategy/`,
+        };
+      }
+      return { exists: true, version: s.version, updated_at: new Date(s.created_at).toISOString(), body: s.body, policy_hints: policyHints(s.body), strategy_page: `${publicUrl}/strategy/` };
+    }
+    case "get_strategy_interview_guide":
+      return { guide: INTERVIEW_GUIDE, template: STRATEGY_TEMPLATE };
+    case "propose_strategy": {
+      const body = typeof args.body === "string" ? args.body.trim() : "";
+      const bad = checkStrategy(body);
+      if (bad) fail("invalid_strategy", bad);
+      const current = await currentStrategy(db, actor.userId);
+      const { data, error } = await db.from("strategy_proposals").insert({
+        user_id: actor.userId, agent_id: actor.id, body, summary: String(args.summary ?? "").slice(0, 200), based_on_version: current?.version ?? null,
+      }).select("proposal_id, created_at").single();
+      if (error || !data) fail("internal", "couldn't save the draft: try again");
+      await db.rpc("audit", { p_user_id: actor.userId, p_actor_type: "agent", p_actor_id: actor.id, p_action: "strategy.proposed", p_plan_id: null, p_details: { proposal_id: data!.proposal_id } });
+      return {
+        proposal_id: data!.proposal_id, status: "awaiting the user",
+        message: `Saved as a draft. It takes effect only when the user adopts it on ${publicUrl}/strategy/ (they can edit it there first). Tell them so.`,
+        policy_hints: policyHints(body),
+      };
+    }
     case "create_plan": {
       const { idempotency_key, ...fields } = args;
       return need(await createPlan(db, actor, fields, { idempotencyKey: typeof idempotency_key === "string" ? idempotency_key : undefined }));
@@ -188,7 +237,7 @@ async function callTool(name: string, args: Record<string, unknown>, actor: Acto
   return fail("unknown_tool", `no tool named ${name}`);
 }
 
-export async function handleMcp(req: Request, actor: Actor, db: Db): Promise<Response> {
+export async function handleMcp(req: Request, actor: Actor, db: Db, publicUrl: string): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method === "GET") return out({ name: "tradeboard-mcp", transport: "streamable-http" });
   if (req.method !== "POST") return out({ error: "method not allowed" }, 405);
@@ -200,7 +249,8 @@ export async function handleMcp(req: Request, actor: Actor, db: Db): Promise<Res
   }
   const reply = (result: unknown) => out({ jsonrpc: "2.0", id: msg.id ?? null, result });
   switch (msg.method) {
-    case "initialize":
+    case "initialize": {
+      const strategy = await currentStrategy(db, actor.userId);
       return reply({
         protocolVersion: PROTOCOL_VERSION,
         capabilities: { tools: { listChanged: false } },
@@ -208,8 +258,12 @@ export async function handleMcp(req: Request, actor: Actor, db: Db): Promise<Res
         instructions:
           `You are "${actor.id}" on your user's Trading Plan Board: dated, collaborative trade plans. You draft, discuss and mark plans ready; ` +
           "only the user approves, in the portal, and a separate local executor places approved orders after its own checks. You can't place orders here. " +
+          (strategy
+            ? `First read the user's trading strategy (get_strategy, v${strategy.version}) and argue from it; fill fit_with_strategy on every plan. `
+            : "The user has no trading strategy document yet: before drafting plans, ask them once whether they'd like a short interview to create one (get_strategy, then get_strategy_interview_guide). ") +
           "Every time is UTC; valid_until is required. Edits make a new version and void approval; send expected_version. The user's open questions block a plan: answer them. Nothing here is financial advice.",
       });
+    }
     case "notifications/initialized":
       return new Response(null, { status: 202, headers: cors });
     case "ping":
@@ -220,7 +274,7 @@ export async function handleMcp(req: Request, actor: Actor, db: Db): Promise<Res
       const name = String(msg.params?.name ?? "");
       const args = (msg.params?.arguments ?? {}) as Record<string, unknown>;
       try {
-        const result = (await callTool(name, args, actor, db)) as Record<string, unknown>;
+        const result = (await callTool(name, args, actor, db, publicUrl)) as Record<string, unknown>;
         return reply({ content: [{ type: "text", text: JSON.stringify(result, null, 2) }], structuredContent: result });
       } catch (e) {
         const body: Failed = e instanceof ToolError ? e.body : { ok: false, error_code: "internal", message: "the board couldn't do that: try again" };

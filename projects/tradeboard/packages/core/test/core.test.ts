@@ -230,3 +230,34 @@ describe("policy.example.json (§14.4)", () => {
     expect(example).toEqual(DEFAULT_POLICY);
   });
 });
+
+describe("strategy document", () => {
+  it("template and interview guide cover what agents need", async () => {
+    const { STRATEGY_TEMPLATE, INTERVIEW_GUIDE } = await import("../src/index.ts");
+    for (const h of ["## Objectives", "## Time horizon", "## Universe", "## Position sizing", "## Exits and invalidation"]) expect(STRATEGY_TEMPLATE).toContain(h);
+    expect(INTERVIEW_GUIDE).toMatch(/Ask first/);
+    expect(INTERVIEW_GUIDE).toMatch(/Never ask for account numbers/);
+    expect(INTERVIEW_GUIDE).toMatch(/propose_strategy/);
+    expect(INTERVIEW_GUIDE).toMatch(/Turn red lines into policy/);
+  });
+  it("spots hard limits that belong in the policy", async () => {
+    const { policyHints } = await import("../src/index.ts");
+    const hints = policyHints("## Rules\n- Never buy TSLA or any meme stock.\n- No more than $2,000 per trade.\n- Limit orders only.\n- I like dividend payers.\n- Don't lose more than $500 a day.");
+    expect(hints.map((h) => h.settings[0])).toEqual(["denied_tickers", "max_per_trade_usd", "allowed_order_types", "max_daily_loss_usd"]);
+  });
+  it("checks size and parses the advisory fit strictly", async () => {
+    const { checkStrategy, parseStrategyFit } = await import("../src/index.ts");
+    expect(checkStrategy("")).toMatch(/empty/);
+    expect(checkStrategy("x".repeat(20_001))).toMatch(/at most/);
+    expect(checkStrategy("# Mine")).toBeNull();
+    expect(parseStrategyFit('{"fit":"no","note":"Short-term trade; strategy says months."}')?.fit).toBe("no");
+    expect(parseStrategyFit("fits")).toBeNull();
+  });
+  it("fit_with_strategy is a material, versioned field", () => {
+    const now = new Date("2026-10-29T15:00:00Z");
+    const a = planFieldsFrom({ title: "t", ticker: "AAPL", order: ticket(), thesis: "x", valid_until: "2026-10-29T20:00:00Z" });
+    expect(a.fit_with_strategy).toBe("");
+    expect(checkPlanFields(a, now, { creating: true })).toEqual([]);
+    expect(diffSummary(a, planFieldsFrom({ fit_with_strategy: "Fits: months-long hold." }, a))).toBe("fit_with_strategy edited");
+  });
+});

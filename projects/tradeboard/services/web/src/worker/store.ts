@@ -128,6 +128,20 @@ export async function currentPolicy(db: Db, userId: string): Promise<PolicyRow> 
   return row;
 }
 
+export interface StrategyRow {
+  version: number;
+  body: string;
+  note: string;
+  from_proposal: string | null;
+  created_at: string;
+}
+
+/** The user's adopted strategy (newest version), or null if they haven't written one. */
+export async function currentStrategy(db: Db, userId: string): Promise<StrategyRow | null> {
+  const { data } = await db.from("strategy_versions").select("version, body, note, from_proposal, created_at").eq("user_id", userId).order("version", { ascending: false }).limit(1);
+  return ((data ?? [])[0] as StrategyRow | undefined) ?? null;
+}
+
 /** The time rules (§6.5) for every user: expire, stale, approval and claim expiry. Cheap; run on reads and every minute. */
 export async function sweep(db: Db): Promise<unknown> {
   const { data } = await db.rpc("sweep", {});

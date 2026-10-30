@@ -30,6 +30,8 @@ export interface EngineDeps {
   journalPath?: string | null;
   log?: (s: string) => void;
   savePolicy?: (p: { policy_version: number; policy: Policy }) => void;
+  /** Ask the model for an advisory "fits the strategy?" note on each receipt (never a gate). */
+  strategyAdvisory?: boolean;
   sleep?: (ms: number) => Promise<void>;
 }
 
@@ -41,7 +43,8 @@ export interface Outcome {
 }
 
 export class Engine {
-  d: Required<Omit<EngineDeps, "model" | "journalPath" | "savePolicy">> & Pick<EngineDeps, "model" | "journalPath" | "savePolicy">;
+  d: Required<Omit<EngineDeps, "model" | "journalPath" | "savePolicy" | "strategyAdvisory">> & Pick<EngineDeps, "model" | "journalPath" | "savePolicy" | "strategyAdvisory">;
+  strategy: { version: number; body: string } | null = null;
   policy: { policy_version: number; policy: Policy } | null = null;
   control: BoardControl | null = null;
   lastError: string | null = null;
@@ -146,6 +149,7 @@ export class Engine {
       return [];
     }
     this.control = poll.control;
+    this.strategy = poll.strategy ?? null;
     this.adoptPolicy(poll.policy);
     if (!this.policy) return [];
     const stopNow = this.stopped();
@@ -281,6 +285,11 @@ export class Engine {
       if (v.verdict !== "pass") return receipt("rejected", v.error ? "model_unavailable" : "sanity_rejected", `sanity check failed: ${v.reasons.join("; ") || "no reason given"}`);
     } else {
       details.model = { id: null, verdict: "skipped", reasons: ["model check disabled on this executor"] };
+    }
+    // Advisory only: whether the plan fits the user's strategy goes on the receipt; it never stops an order.
+    if (this.d.strategyAdvisory && this.strategy && this.d.model?.strategyFit) {
+      const fit = await this.d.model.strategyFit(this.strategy.body, { title: plan.title, ticker: plan.ticker, thesis: plan.thesis, fit_with_strategy: plan.fit_with_strategy, order: plan.order }).catch(() => null);
+      details.strategy_fit = fit ? { ...fit, strategy_version: this.strategy.version } : { fit: "unclear", note: "the model couldn't say", strategy_version: this.strategy.version };
     }
 
     // ---------------------------------------------------------- validated

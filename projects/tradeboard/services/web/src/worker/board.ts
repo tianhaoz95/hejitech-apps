@@ -4,7 +4,7 @@
 import {
   ANCHORS, checkPlanFields, diffSummary, labelQuoteSource, planFieldsFrom, validity, type AuthorType, type PlanFields, type Status,
 } from "@tradeboard/core";
-import { rpc, sweep, type Db, type Failed } from "./store.ts";
+import { currentStrategy, rpc, sweep, type Db, type Failed } from "./store.ts";
 
 export interface Actor {
   type: Extract<AuthorType, "human" | "agent">;
@@ -25,6 +25,8 @@ export interface PlanRow {
   evidence: string;
   risks_and_dissent: string;
   invalidation: string;
+  fit_with_strategy: string;
+  strategy_version: number | null;
   created_at: string;
   updated_at: string;
   last_activity_at: string;
@@ -72,7 +74,7 @@ const bad = (error_code: string, message: string, extra: Record<string, unknown>
 export function fieldsOf(p: PlanRow): PlanFields {
   return {
     title: p.title, ticker: p.ticker, order: p.order_ticket, thesis: p.thesis, evidence: p.evidence, risks_and_dissent: p.risks_and_dissent,
-    invalidation: p.invalidation, valid_from: p.valid_from, valid_until: p.valid_until,
+    invalidation: p.invalidation, fit_with_strategy: p.fit_with_strategy ?? "", valid_from: p.valid_from, valid_until: p.valid_until,
     quote_price: p.quote_price === null ? null : Number(p.quote_price), quote_at: p.quote_at, quote_source: p.quote_source,
   };
 }
@@ -99,7 +101,7 @@ export async function createPlan(db: Db, actor: Actor, raw: Record<string, unkno
   f.quote_source = labelQuoteSource(f.quote_source ?? (f.quote_price !== null ? (actor.type === "agent" ? "agent" : "owner") : null), actor.type);
   const key = opts.idempotencyKey ? String(opts.idempotencyKey).slice(0, 120) : null;
   const r = await rpc<{ plan_id: string; version: number; status: Status; duplicate: boolean }>(db, "create_plan", {
-    p_user_id: actor.userId, p_fields: f, p_actor_type: actor.type, p_actor_id: actor.id, p_idempotency_key: key, p_is_demo: false,
+    p_user_id: actor.userId, p_fields: { ...f, strategy_version: (await currentStrategy(db, actor.userId))?.version ?? null }, p_actor_type: actor.type, p_actor_id: actor.id, p_idempotency_key: key, p_is_demo: false,
   });
   return r.ok ? { ok: true, value: { plan_id: r.plan_id, version: r.version, status: r.status, duplicate: r.duplicate } } : { ok: false, error: r };
 }
@@ -108,7 +110,7 @@ export async function updatePlan(db: Db, actor: Actor, planId: string, expectedV
   if (typeof expectedVersion !== "number" || !Number.isInteger(expectedVersion)) return bad("expected_version_required", "send expected_version: the version you edited against");
   const p = await loadPlan(db, actor.userId, planId);
   if (!p) return bad("not_found", "no such plan");
-  const allowed = ["title", "ticker", "order", "thesis", "evidence", "risks_and_dissent", "invalidation", "valid_from", "valid_until", "quote_price", "quote_at", "quote_source"];
+  const allowed = ["title", "ticker", "order", "thesis", "evidence", "risks_and_dissent", "invalidation", "fit_with_strategy", "valid_from", "valid_until", "quote_price", "quote_at", "quote_source"];
   const unknown = Object.keys(raw).filter((k) => !allowed.includes(k));
   if (unknown.length) return bad("unknown_fields", `these fields can't be edited: ${unknown.join(", ")}`);
   const before = fieldsOf(p);
@@ -120,7 +122,7 @@ export async function updatePlan(db: Db, actor: Actor, planId: string, expectedV
   const diff = diffSummary(before, after);
   if (diff === "no material change") return bad("no_change", "nothing changed");
   const r = await rpc<{ plan_id: string; version: number; status: Status }>(db, "update_plan", {
-    p_user_id: actor.userId, p_plan_id: planId, p_expected_version: expectedVersion, p_fields: after, p_diff: diff, p_actor_type: actor.type, p_actor_id: actor.id,
+    p_user_id: actor.userId, p_plan_id: planId, p_expected_version: expectedVersion, p_fields: { ...after, strategy_version: (await currentStrategy(db, actor.userId))?.version ?? null }, p_diff: diff, p_actor_type: actor.type, p_actor_id: actor.id,
   });
   return r.ok ? { ok: true, value: { plan_id: r.plan_id, version: r.version, status: r.status } } : { ok: false, error: r };
 }
@@ -219,7 +221,8 @@ export async function planView(db: Db, userId: string, planId: string, opts: Pla
   await sweep(db);
   const p = await loadPlan(db, userId, planId);
   if (!p) return null;
-  const [comments, { data: approvals }, { data: receipts }, { data: versions }, { data: audit }] = await Promise.all([
+  const [strategy, comments, { data: approvals }, { data: receipts }, { data: versions }, { data: audit }] = await Promise.all([
+    currentStrategy(db, userId),
     loadComments(db, planId),
     db.from("approvals").select("*").eq("plan_id", planId).order("approved_at"),
     db.from("receipts").select("*").eq("plan_id", planId).order("attempted_at"),
@@ -234,11 +237,16 @@ export async function planView(db: Db, userId: string, planId: string, opts: Pla
     robinhood_order_id: opts.fullOrderIds ? r.robinhood_order_id : shortOrderId(r.robinhood_order_id as string | null),
     filled_quantity: r.filled_quantity === null ? null : Number(r.filled_quantity), filled_price: r.filled_price === null ? null : Number(r.filled_price),
     policy_snapshot_id: r.policy_snapshot_id,
+    // The executor's optional advisory note on fit with the strategy (never a gate).
+    strategy_fit: ((r.details as Record<string, unknown> | null)?.strategy_fit as { fit: string; note: string; strategy_version: number } | undefined) ?? null,
   });
   const rs = (receipts ?? []).map(receiptOut);
   return {
     plan_id: p.plan_id, title: p.title, status: p.status, is_demo: p.is_demo, ticker: p.ticker, side: p.side, order: p.order_ticket,
     thesis: p.thesis, evidence: p.evidence, risks_and_dissent: p.risks_and_dissent, invalidation: p.invalidation,
+    fit_with_strategy: p.fit_with_strategy ?? "",
+    // Which strategy version the plan was last written against, and the user's current one.
+    strategy_version: p.strategy_version, current_strategy_version: strategy?.version ?? null,
     created_at: utc(p.created_at), updated_at: utc(p.updated_at), last_activity_at: utc(p.last_activity_at), created_by: { type: p.created_by_type, id: p.created_by_id },
     valid_from: utc(p.valid_from), valid_until: utc(p.valid_until), validity: validity(p.valid_from, p.valid_until, now),
     quote_at: utc(p.quote_at), quote_price: p.quote_price === null ? null : Number(p.quote_price), quote_source: p.quote_source,

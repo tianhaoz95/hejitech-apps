@@ -90,6 +90,9 @@ create table tradeboard.plans (
   evidence text not null default '',
   risks_and_dissent text not null default '',
   invalidation text not null default '',
+  -- How the plan fits the user's strategy document, and which strategy version it was written against.
+  fit_with_strategy text not null default '',
+  strategy_version integer,
   created_at timestamptz not null default now(),
   -- The last material edit (a new version). Age and staleness count from here (§6.5.4).
   updated_at timestamptz not null default now(),
@@ -140,7 +143,7 @@ create table tradeboard.comments (
   author_type text not null check (author_type in ('human', 'agent', 'executor', 'system')),
   author_id text not null,
   body text not null check (length(body) between 1 and 10000),
-  anchor text not null default 'general' check (anchor in ('thesis', 'evidence', 'risks_and_dissent', 'invalidation', 'order', 'general')),
+  anchor text not null default 'general' check (anchor in ('thesis', 'evidence', 'risks_and_dissent', 'invalidation', 'fit_with_strategy', 'order', 'general')),
   parent_comment_id uuid references tradeboard.comments(comment_id),
   mentioned_agent_id text,
   is_question boolean not null default false,
@@ -166,6 +169,36 @@ create table tradeboard.approvals (
   void_reason text
 );
 create index approvals_plan on tradeboard.approvals(plan_id);
+
+-- ---------------------------------------------------------------- strategy
+
+-- The user's trading strategy (a Markdown document every agent reads first). Guidance only: the
+-- policy enforces. Only the user creates versions; history is kept.
+create table tradeboard.strategy_versions (
+  user_id uuid not null,
+  version integer not null,
+  body text not null check (length(body) between 1 and 20000),
+  note text not null default '',
+  -- Adopted from an agent's proposal (after an interview), or written by the user.
+  from_proposal uuid,
+  created_at timestamptz not null default now(),
+  primary key (user_id, version)
+);
+
+-- Drafts an agent proposes (propose_strategy, after interviewing the user). They do nothing until the
+-- user adopts one on the Strategy page (optionally edited first).
+create table tradeboard.strategy_proposals (
+  proposal_id uuid primary key default gen_random_uuid(),
+  user_id uuid not null,
+  agent_id text not null,
+  body text not null check (length(body) between 1 and 20000),
+  summary text not null default '',
+  based_on_version integer,
+  status text not null default 'open' check (status in ('open', 'adopted', 'dismissed')),
+  created_at timestamptz not null default now(),
+  decided_at timestamptz
+);
+create index strategy_proposals_user on tradeboard.strategy_proposals(user_id, created_at desc);
 
 -- ---------------------------------------------------------------- policy, executor, receipts
 
@@ -280,6 +313,8 @@ alter table tradeboard.plan_versions enable row level security;
 alter table tradeboard.comments enable row level security;
 alter table tradeboard.approvals enable row level security;
 alter table tradeboard.policy_versions enable row level security;
+alter table tradeboard.strategy_versions enable row level security;
+alter table tradeboard.strategy_proposals enable row level security;
 alter table tradeboard.control enable row level security;
 alter table tradeboard.executor_status enable row level security;
 alter table tradeboard.receipts enable row level security;
@@ -299,7 +334,8 @@ create or replace function tradeboard.snapshot(p tradeboard.plans) returns jsonb
 language sql immutable set search_path = tradeboard as $$
   select jsonb_build_object(
     'title', p.title, 'ticker', p.ticker, 'side', p.side, 'order', p.order_ticket, 'thesis', p.thesis, 'evidence', p.evidence,
-    'risks_and_dissent', p.risks_and_dissent, 'invalidation', p.invalidation, 'valid_from', p.valid_from, 'valid_until', p.valid_until,
+    'risks_and_dissent', p.risks_and_dissent, 'invalidation', p.invalidation, 'fit_with_strategy', p.fit_with_strategy, 'strategy_version', p.strategy_version,
+    'valid_from', p.valid_from, 'valid_until', p.valid_until,
     'quote_at', p.quote_at, 'quote_price', p.quote_price, 'quote_source', p.quote_source, 'version', p.current_version, 'is_demo', p.is_demo);
 $$;
 
@@ -354,10 +390,10 @@ begin
     select * into p from plans where user_id = p_user_id and created_by_id = p_actor_id and create_idempotency_key = p_idempotency_key;
     if found then return jsonb_build_object('ok', true, 'plan_id', p.plan_id, 'version', p.current_version, 'status', p.status, 'duplicate', true); end if;
   end if;
-  insert into plans (user_id, title, ticker, order_ticket, thesis, evidence, risks_and_dissent, invalidation, valid_from, valid_until, quote_at, quote_price, quote_source,
+  insert into plans (user_id, title, ticker, order_ticket, thesis, evidence, risks_and_dissent, invalidation, fit_with_strategy, strategy_version, valid_from, valid_until, quote_at, quote_price, quote_source,
                      created_by_type, created_by_id, create_idempotency_key, is_demo)
   values (p_user_id, p_fields->>'title', p_fields->>'ticker', p_fields->'order', p_fields->>'thesis', coalesce(p_fields->>'evidence', ''), coalesce(p_fields->>'risks_and_dissent', ''),
-          coalesce(p_fields->>'invalidation', ''), (p_fields->>'valid_from')::timestamptz, (p_fields->>'valid_until')::timestamptz, (p_fields->>'quote_at')::timestamptz,
+          coalesce(p_fields->>'invalidation', ''), coalesce(p_fields->>'fit_with_strategy', ''), (p_fields->>'strategy_version')::integer, (p_fields->>'valid_from')::timestamptz, (p_fields->>'valid_until')::timestamptz, (p_fields->>'quote_at')::timestamptz,
           (p_fields->>'quote_price')::numeric, p_fields->>'quote_source', p_actor_type, p_actor_id, p_idempotency_key, coalesce(p_is_demo, false))
   returning * into p;
   insert into plan_versions (plan_id, version, edited_by_type, edited_by_id, diff_summary, snapshot) values (p.plan_id, 1, p_actor_type, p_actor_id, 'created', snapshot(p));
@@ -383,6 +419,7 @@ begin
   update plans set
     title = p_fields->>'title', ticker = p_fields->>'ticker', order_ticket = p_fields->'order', thesis = p_fields->>'thesis',
     evidence = coalesce(p_fields->>'evidence', ''), risks_and_dissent = coalesce(p_fields->>'risks_and_dissent', ''), invalidation = coalesce(p_fields->>'invalidation', ''),
+    fit_with_strategy = coalesce(p_fields->>'fit_with_strategy', ''), strategy_version = (p_fields->>'strategy_version')::integer,
     valid_from = (p_fields->>'valid_from')::timestamptz, valid_until = (p_fields->>'valid_until')::timestamptz, quote_at = (p_fields->>'quote_at')::timestamptz,
     quote_price = (p_fields->>'quote_price')::numeric, quote_source = p_fields->>'quote_source',
     current_version = current_version + 1, status = 'debated', updated_at = now(), last_activity_at = now(), reason_code = null, reason_text = null,
@@ -735,6 +772,8 @@ begin
   get diagnostics n = row_count;
   delete from audit_log where user_id = p_user_id;
   delete from policy_versions where user_id = p_user_id;
+  delete from strategy_versions where user_id = p_user_id;
+  delete from strategy_proposals where user_id = p_user_id;
   delete from control where user_id = p_user_id;
   delete from executor_status where user_id = p_user_id;
   delete from executor_tokens where user_id = p_user_id;

@@ -56,6 +56,11 @@ enrolls again), signs up a second user to check boards stay private, then delete
   the confirmed account, and the model (or the policy's explicit waiver). Live switched on but
   blocked = a rejection naming why, never a silent simulation. The ref_id sent to Robinhood is the
   plan-version idempotency key, so retries can't double-order.
+- **Strategy document** (`core/src/strategy.ts`, `strategy_versions`/`strategy_proposals`): guidance,
+  never a gate. Users write versions; agents only `propose_strategy`; the interview guide and the
+  "offer an interview when there's none" rule live in `INTERVIEW_GUIDE` and the MCP `initialize`
+  instructions / `get_strategy.next_step`. Plans store `fit_with_strategy` and `strategy_version`.
+  The executor's `model.strategy_advisory` note goes on receipts and must never reject.
 - **Time**: everything UTC on the wire (`utcDeep` normalises Postgres's `+00:00`), PT + ET in the
   portal (`ptEt`). The NYSE calendar in `core/src/time.ts` runs through `CALENDAR_THROUGH`; past it
   the market counts as closed. **Extend it every year.**

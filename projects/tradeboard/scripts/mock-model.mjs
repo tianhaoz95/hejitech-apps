@@ -8,7 +8,13 @@ const KNOWN = ["AAPL", "MSFT", "NVDA", "SPY", "TSLA", "GOOGL", "AMZN", "META", "
 createServer(async (req, res) => {
   let body = "";
   for await (const chunk of req) body += chunk;
-  const msg = JSON.parse(body || "{}").messages?.at(-1)?.content ?? "";
+  const messages = JSON.parse(body || "{}").messages ?? [];
+  const msg = messages.at(-1)?.content ?? "";
+  if (/written strategy/.test(messages[0]?.content ?? "")) {
+    // The advisory strategy-fit question: a "day trade" doesn't fit a hold-for-months strategy.
+    const fit = /day trade/i.test(msg) ? { fit: "no", note: "A day trade; the strategy says hold for months." } : { fit: "yes", note: "Consistent with the strategy." };
+    return res.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify({ model: "mock", choices: [{ message: { role: "assistant", content: JSON.stringify(fit) } }] }));
+  }
   const ticket = /"ticker":"([A-Z.]+)"/.exec(msg)?.[1];
   const thesis = /^thesis: (.*)$/m.exec(msg)?.[1] ?? "";
   const others = KNOWN.filter((t) => t !== ticket && new RegExp(`\\b${t}\\b`).test(thesis));

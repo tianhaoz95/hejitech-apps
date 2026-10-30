@@ -17,7 +17,7 @@ const ticket = (o: Partial<OrderTicket> = {}): OrderTicket => ({
 function plan(o: Partial<ExecPlan> = {}): ExecPlan {
   return {
     plan_id: "11111111-1111-4111-8111-111111111111", title: "AAPL — add on pullback", status: "approved", ticker: "AAPL", order: ticket(),
-    thesis: "Add 10 AAPL at $285 on the pullback.", evidence: "", risks_and_dissent: "", invalidation: "", valid_from: null, valid_until: "2026-10-28T20:00:00.000Z",
+    thesis: "Add 10 AAPL at $285 on the pullback.", evidence: "", risks_and_dissent: "", invalidation: "", fit_with_strategy: "", strategy_version: null, valid_from: null, valid_until: "2026-10-28T20:00:00.000Z",
     quote_price: 286, quote_at: "2026-10-28T14:00:00.000Z", quote_source: "agent (agent-provided, unverified)", current_version: 2, updated_at: "2026-10-28T14:30:00.000Z", is_demo: false,
     open_human_questions: 0, approval: { approval_id: "a1", version: 2, approved_at: "2026-10-28T14:40:00.000Z", expires_at: "2026-10-28T20:00:00.000Z" }, claim: null, ...o,
   };
@@ -31,7 +31,7 @@ function fakeBoard(p: ExecPlan, ctl: BoardControl, policy: Policy = DEFAULT_POLI
   const notes: string[] = [];
   let claimed = false;
   const board: Board = {
-    poll: async () => { calls.push("poll"); return { now: NOW.toISOString(), control: ctl, policy: { policy_version: 3, policy }, plans: [p], recovery: [] }; },
+    poll: async () => { calls.push("poll"); return { now: NOW.toISOString(), control: ctl, policy: { policy_version: 3, policy }, strategy: { version: 2, body: "Hold for months. No short-term trades." }, plans: [p], recovery: [] }; },
     claim: async (id, key) => {
       calls.push("claim");
       const expected = await idempotencyKey(id, p.current_version);
@@ -290,6 +290,25 @@ describe("pause, kill, claims (§12.1 tests 9–10)", () => {
     const out = await engine(f.board, fakeBroker().b).iterate();
     expect(out[0]).toMatchObject({ result: "released", detail: "plan changed since approval" });
     expect(f.receipts).toEqual([]);
+  });
+});
+
+describe("strategy advisory (never a gate)", () => {
+  it("adds a fit note to the receipt, even when it says the plan doesn't fit", async () => {
+    const f = fakeBoard(plan(), control());
+    const m: SanityChecker = { ...model(), strategyFit: async () => ({ fit: "no", note: "A day trade; the strategy says hold for months." }) };
+    const e = new Engine({ executorId: "spark", accountNumber: ACCT, allowLive: false, maxPlansPerLoop: 1, board: f.board, broker: () => fakeBroker().b, model: m, now: () => NOW, strategyAdvisory: true });
+    await e.iterate();
+    expect(f.receipts[0].outcome).toBe("simulated");
+    expect(f.receipts[0].details?.strategy_fit).toEqual({ fit: "no", note: "A day trade; the strategy says hold for months.", strategy_version: 2 });
+  });
+  it("is off unless configured", async () => {
+    const f = fakeBoard(plan(), control());
+    let asked = false;
+    const m: SanityChecker = { ...model(), strategyFit: async () => { asked = true; return null; } };
+    await engine(f.board, fakeBroker().b, { m }).iterate();
+    expect(asked).toBe(false);
+    expect(f.receipts[0].details?.strategy_fit).toBeUndefined();
   });
 });
 

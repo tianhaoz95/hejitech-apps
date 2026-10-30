@@ -131,6 +131,8 @@ await new Promise((r) => setTimeout(r, 600));
 // Local reset: the seed user enrolls again, no sessions, a clean control row.
 await rest("sessions?token_hash=neq.x", { method: "DELETE" });
 await rest(`accounts?user_id=eq.${SEED_USER}`, { method: "DELETE" });
+await rest(`strategy_versions?user_id=eq.${SEED_USER}`, { method: "DELETE" });
+await rest(`strategy_proposals?user_id=eq.${SEED_USER}`, { method: "DELETE" });
 await rest(`control?user_id=eq.${SEED_USER}`, { method: "PATCH", body: { paused: false, killed: false, dry_run: true, approvals_mode: null, confirmed_account_mask: null, funding_usd: null, gate_policy_version: null, live_trial_pending: true } });
 await rest("executor_tokens?executor_id=eq.second", { method: "PATCH", body: { revoked_at: new Date().toISOString() } });
 await rhState({ price: 285.5, account: "5RX12345678", approvals: false, orders: [], placeCalls: 0, quoteAt: TEST_NOW });
@@ -183,8 +185,58 @@ await step("the session is a cookie only; state changes need the same-origin hea
 
 await step("the Board MCP has no approve, policy, executor or order tool", async () => {
   const names = (await claude.rpc("tools/list")).body.result.tools.map((t) => t.name).sort();
-  assert.deepEqual(names, ["answer_question", "ask_question", "comment", "create_plan", "get_audit_log", "get_open_questions", "get_plan", "list_comments", "list_plans", "mark_ready", "request_changes", "update_plan"]);
+  assert.deepEqual(names, ["answer_question", "ask_question", "comment", "create_plan", "get_audit_log", "get_open_questions", "get_plan", "get_strategy", "get_strategy_interview_guide", "list_comments", "list_plans", "mark_ready", "propose_strategy", "request_changes", "update_plan"]);
   assert.equal((await claude.call("approve_plan", { plan_id: "x" })).error.error_code, "unknown_tool");
+});
+
+await step("strategy: no document → agents are told to offer an interview; a proposal waits for the user", async () => {
+  const init = await claude.rpc("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "t", version: "1" } });
+  assert.match(init.body.result.instructions, /no trading strategy document yet.*interview/);
+  const none = await claude.tool("get_strategy");
+  assert.equal(none.exists, false);
+  assert.match(none.next_step, /Ask them once whether they'd like a short interview/);
+  assert.match(none.template, /## Objectives/);
+  const guide = await claude.tool("get_strategy_interview_guide");
+  assert.match(guide.guide, /Strategy interview guide/);
+  assert.equal((await claude.call("propose_strategy", { body: "" })).error.error_code, "invalid_strategy");
+  const draft = "# My trading strategy\n\n## Objectives\nSteady growth.\n\n## Time horizon\nHold for months.\n\n## Rules\n- Never buy TSLA.\n- No more than $2,000 per trade.";
+  const prop = await claude.tool("propose_strategy", { body: draft, summary: "From our interview" });
+  assert.equal(prop.status, "awaiting the user");
+  assert.deepEqual(prop.policy_hints.map((h) => h.settings[0]), ["denied_tickers", "max_per_trade_usd"]);
+  assert.equal((await claude.tool("get_strategy")).exists, false, "a proposal doesn't take effect");
+  const page = (await portal("/api/strategy")).body;
+  assert.equal(page.current, null);
+  assert.equal(page.proposals.length, 1);
+  assert.equal(page.proposals[0].agent_id, "claude");
+  // The user edits the draft and adopts it.
+  const adopted = await portal("/api/strategy", { body: { body: draft.replace("Steady growth.", "Steady growth; learn as I go."), from_proposal: page.proposals[0].proposal_id } });
+  assert.equal(adopted.status, 201, adopted.text);
+  assert.equal(adopted.body.version, 1);
+  const s = await claude.tool("get_strategy");
+  assert.equal(s.exists, true);
+  assert.equal(s.version, 1);
+  assert.match(s.body, /learn as I go/);
+  assert.equal((await portal("/api/strategy")).body.proposals.length, 0, "the adopted draft is closed");
+  const init2 = await claude.rpc("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "t", version: "1" } });
+  assert.match(init2.body.result.instructions, /get_strategy, v1/);
+  // A second draft can be dismissed; only the user writes versions.
+  const p2 = await gemini.tool("propose_strategy", { body: "# Other\nDay trade everything." });
+  assert.equal((await portal(`/api/strategy/proposals/${p2.proposal_id}/dismiss`, { body: {} })).status, 200);
+  assert.equal((await claude.tool("get_strategy")).version, 1);
+});
+
+await step("plans record the strategy version they were written against", async () => {
+  const { plan_id } = await claude.tool("create_plan", newPlan({ fit_with_strategy: "A months-long hold, small size: fits." }));
+  let v = (await portal(`/api/plans/${plan_id}`)).body;
+  assert.equal(v.strategy_version, 1);
+  assert.equal(v.fit_with_strategy, "A months-long hold, small size: fits.");
+  await portal("/api/strategy", { body: { body: "# My trading strategy\n\n## Time horizon\nHold for months or years.", note: "longer" } });
+  v = (await portal(`/api/plans/${plan_id}`)).body;
+  assert.deepEqual([v.strategy_version, v.current_strategy_version], [1, 2]);
+  const e = await claude.tool("update_plan", { plan_id, expected_version: 1, fit_with_strategy: "Fits v2: years-long hold." });
+  v = (await portal(`/api/plans/${plan_id}`)).body;
+  assert.deepEqual([e.version, v.strategy_version], [2, 2]);
+  await portal(`/api/plans/${plan_id}/cancel`, { body: {} });
 });
 
 await clearApproved();
@@ -311,6 +363,18 @@ await step("test 7: a quote 5 % away is drift_rejected", async () => {
 
 await step("test 8: a thesis about another ticker fails the model check", async () => {
   await rejectedFor({ thesis: "Buy 10 shares of MSFT at $285: Azure is accelerating." }, "sanity_rejected", /MSFT/);
+});
+
+await step("the executor's strategy note is advisory: a plan that doesn't fit still runs, with the note on its receipt", async () => {
+  executorConfig({ model: { enabled: true, base_url: `http://127.0.0.1:${MODEL_PORT}/v1`, model: "mock-sanity", timeout_ms: 5000, max_tokens: 2048, strategy_advisory: true } });
+  const { plan_id } = await claude.tool("create_plan", newPlan({ thesis: "Add 10 AAPL at $285 as a day trade into the close." }));
+  await toApproved(plan_id);
+  runExecutor();
+  const v = (await portal(`/api/plans/${plan_id}`)).body;
+  assert.equal(v.status, "executed", JSON.stringify(v.latest_receipt));
+  assert.equal(v.latest_receipt.outcome, "simulated");
+  assert.deepEqual(v.latest_receipt.strategy_fit, { fit: "no", note: "A day trade; the strategy says hold for months.", strategy_version: 2 });
+  executorConfig();
 });
 
 // ---------------------------------------------------------------- tests 9–10
@@ -530,6 +594,7 @@ await step("boards are private: a second user signs up to an empty board and can
   assert.equal((await portal(`/api/plans/${p1}/approve`, { body: { version: 1 } })).status, 404);
   assert.equal((await portal(`/api/plans/${p1}/comments`, { body: { body: "hi" } })).status, 404);
   assert.deepEqual((await portal("/api/agents")).body.agents, []);
+  assert.equal((await portal("/api/strategy")).body.current, null, "strategies are private too");
   assert.equal((await portal("/api/executor-status")).body.executors.length, 0);
   // The first user's agent can't see the second user's plans either.
   assert.equal((await claude.call("get_plan", { plan_id: board[0].plan_id })).error.error_code, "not_found");

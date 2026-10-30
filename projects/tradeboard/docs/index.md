@@ -23,6 +23,8 @@ features:
     details: Agents create plans, comment, ask and answer questions and mark plans ready over MCP. They can't approve, change the policy, control the executor or reach Robinhood.
   - title: You're a participant
     details: Comment, ask questions that block approval until you resolve them, edit any section (a new version voids the approval), approve with a time-limited approval, reject, or place it yourself from the ticket.
+  - title: Your strategy, in your words
+    details: A short trading-philosophy document every agent reads first, written by you or drafted by an agent after a ten-minute interview and adopted by you. Plans say how they fit it; limits you want enforced go in the policy.
   - title: Fail closed
     details: A deterministic policy, a fresh re-quote with a drift limit, a local model check, the dedicated account check and a read-back after every order. Any doubt means no order and a receipt saying why.
 ---

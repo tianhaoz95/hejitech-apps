@@ -2,7 +2,7 @@
 // and the owner's cookie are refused here (index.ts routes by credential kind before this runs).
 import { idempotencyKey, marketDate, type BoardControl, type ExecPlan, type ExecutorHeartbeat, type ReceiptInput } from "@tradeboard/core";
 import { fieldsOf, utc, type PlanRow } from "./board.ts";
-import { audit, CLAIM_TTL_SEC, currentPolicy, json, problem, rpc, statusFor, sweep, type Db } from "./store.ts";
+import { audit, CLAIM_TTL_SEC, currentPolicy, currentStrategy, json, problem, rpc, statusFor, sweep, type Db } from "./store.ts";
 
 export async function boardControl(db: Db, userId: string): Promise<BoardControl & { gate: GateState }> {
   await currentPolicy(db, userId); // ensures the control row exists
@@ -37,7 +37,7 @@ function execPlan(p: PlanRow, openHuman: number, approval: Record<string, unknow
   const f = fieldsOf(p);
   return {
     plan_id: p.plan_id, title: p.title, status: p.status, ticker: p.ticker, order: f.order, thesis: p.thesis, evidence: p.evidence,
-    risks_and_dissent: p.risks_and_dissent, invalidation: p.invalidation, valid_from: utc(p.valid_from), valid_until: utc(p.valid_until)!,
+    risks_and_dissent: p.risks_and_dissent, invalidation: p.invalidation, fit_with_strategy: p.fit_with_strategy ?? "", strategy_version: p.strategy_version, valid_from: utc(p.valid_from), valid_until: utc(p.valid_until)!,
     quote_price: f.quote_price, quote_at: utc(p.quote_at), quote_source: p.quote_source, current_version: p.current_version, updated_at: utc(p.updated_at)!,
     is_demo: p.is_demo, open_human_questions: openHuman,
     approval: approval ? { approval_id: approval.approval_id as string, version: approval.version as number, approved_at: utc(approval.approved_at as string)!, expires_at: utc(approval.expires_at as string)! } : null,
@@ -73,7 +73,8 @@ export async function handleExecutor(req: Request, db: Db, executorId: string, u
     const ready = ((approved ?? []) as PlanRow[]).filter((p) => !p.valid_from || new Date(p.valid_from) <= now);
     const plans = (await withDetails(db, ready)).filter((p) => p.approval && new Date(p.approval.expires_at) > now).sort((a, b) => a.approval!.approved_at.localeCompare(b.approval!.approved_at));
     const { gate: _g, ...ctl } = control;
-    return json({ now: now.toISOString(), control: ctl, policy: { policy_version: policy.policy_version, policy: policy.policy }, plans, recovery: await withDetails(db, (executing ?? []) as PlanRow[]) });
+    const strategy = await currentStrategy(db, userId);
+    return json({ now: now.toISOString(), control: ctl, policy: { policy_version: policy.policy_version, policy: policy.policy }, strategy: strategy ? { version: strategy.version, body: strategy.body } : null, plans, recovery: await withDetails(db, (executing ?? []) as PlanRow[]) });
   }
 
   if (path === "/claim" && req.method === "POST") {

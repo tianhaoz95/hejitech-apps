@@ -44,7 +44,7 @@ const mcpHandler = {
       return json({ jsonrpc: "2.0", id: null, error: { code: -32000, message: `rate_limited: at most ${limit} calls a minute`, data: { error_code: "rate_limited" } } }, 429);
     }
     await ensureBoard(db, props.userId);
-    return handleMcp(req, { type: "agent", id: props.agentId, userId: props.userId }, db);
+    return handleMcp(req, { type: "agent", id: props.agentId, userId: props.userId }, db, env.PUBLIC_URL);
   },
 };
 

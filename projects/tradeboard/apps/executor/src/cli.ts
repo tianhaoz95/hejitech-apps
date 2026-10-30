@@ -73,6 +73,7 @@ function build(c: Config) {
     ...(testNow ? { now: () => testNow } : {}),
     executorId: c.executor_id, accountNumber: c.robinhood.account_number, allowLive: c.allow_live, maxPlansPerLoop: c.max_plans_per_loop,
     board, broker: () => (rh.connected() ? rh : null), model, killFile: killFilePresent, journalPath: paths().journal,
+    strategyAdvisory: c.model.enabled && c.model.strategy_advisory === true,
     log: (s) => log(redact(s, c)), savePolicy: (p) => writeSecret(paths().policy, JSON.stringify(p, null, 2)),
   });
   // A cached policy lets a restarted executor report its version before the first poll; it never overrides the board's.

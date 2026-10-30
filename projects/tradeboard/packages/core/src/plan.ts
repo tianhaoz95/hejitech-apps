@@ -16,7 +16,7 @@ export const STATUS_LABEL: Record<Status, string> = {
   executed: "Executed", failed: "Failed", rejected: "Rejected", cancelled: "Cancelled", stale: "Stale", expired: "Expired",
 };
 
-export const ANCHORS = ["thesis", "evidence", "risks_and_dissent", "invalidation", "order", "general"] as const;
+export const ANCHORS = ["thesis", "evidence", "risks_and_dissent", "invalidation", "fit_with_strategy", "order", "general"] as const;
 export type Anchor = (typeof ANCHORS)[number];
 
 export type AuthorType = "human" | "agent" | "executor" | "system";
@@ -40,6 +40,8 @@ export interface PlanFields {
   evidence: string;
   risks_and_dissent: string;
   invalidation: string;
+  /** How the plan fits the user's strategy document (or why it departs from it). */
+  fit_with_strategy: string;
   valid_from: string | null;
   valid_until: string;
   quote_price: number | null;
@@ -48,7 +50,7 @@ export interface PlanFields {
 }
 
 /** Edits to any of these create a version, void approval and send the plan back to `debated` (§6.3). */
-export const MATERIAL_FIELDS = ["title", "ticker", "order", "thesis", "evidence", "risks_and_dissent", "invalidation", "valid_from", "valid_until", "quote_price", "quote_at", "quote_source"] as const;
+export const MATERIAL_FIELDS = ["title", "ticker", "order", "thesis", "evidence", "risks_and_dissent", "invalidation", "fit_with_strategy", "valid_from", "valid_until", "quote_price", "quote_at", "quote_source"] as const;
 export type MaterialField = (typeof MATERIAL_FIELDS)[number];
 
 export const LIMITS = { title: 120, text: 20_000, comment: 10_000, quoteSource: 80 };
@@ -68,7 +70,7 @@ export function checkPlanFields(f: PlanFields, now: Date, opts: { creating: bool
   else if (f.title.length > LIMITS.title) add("title", "too_long", `title is at most ${LIMITS.title} characters`);
   if (!TICKER_RE.test(f.ticker ?? "")) add("ticker", "ticker_format", "ticker must be an uppercase exchange symbol like AAPL or BRK.B");
   if (!f.thesis?.trim()) add("thesis", "required", "thesis is required");
-  for (const k of ["thesis", "evidence", "risks_and_dissent", "invalidation"] as const) {
+  for (const k of ["thesis", "evidence", "risks_and_dissent", "invalidation", "fit_with_strategy"] as const) {
     if ((f[k] ?? "").length > LIMITS.text) add(k, "too_long", `${k} is at most ${LIMITS.text} characters`);
   }
   issues.push(...checkTicket(f.order, f.ticker));
@@ -100,6 +102,7 @@ export function planFieldsFrom(raw: Record<string, unknown>, base?: PlanFields):
     evidence: text("evidence", base?.evidence ?? ""),
     risks_and_dissent: text("risks_and_dissent", base?.risks_and_dissent ?? ""),
     invalidation: text("invalidation", base?.invalidation ?? ""),
+    fit_with_strategy: text("fit_with_strategy", base?.fit_with_strategy ?? ""),
     valid_from: opt("valid_from", base?.valid_from ?? null, String),
     valid_until: text("valid_until", base?.valid_until ?? ""),
     quote_price: opt("quote_price", base?.quote_price ?? null, Number),
@@ -128,7 +131,7 @@ export function diffSummary(before: PlanFields, after: PlanFields): string {
     }
     const a = before[k], b = after[k];
     if ((a ?? null) === (b ?? null)) continue;
-    out.push(["thesis", "evidence", "risks_and_dissent", "invalidation"].includes(k) ? `${k} edited` : `${k} ${fmt(a)} → ${fmt(b)}`);
+    out.push(["thesis", "evidence", "risks_and_dissent", "invalidation", "fit_with_strategy"].includes(k) ? `${k} edited` : `${k} ${fmt(a)} → ${fmt(b)}`);
   }
   return out.length ? out.join("; ") : "no material change";
 }

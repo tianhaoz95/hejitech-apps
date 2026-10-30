@@ -5,3 +5,4 @@ export * from "./policy.ts";
 export * from "./totp.ts";
 export * from "./sanity.ts";
 export * from "./protocol.ts";
+export * from "./strategy.ts";

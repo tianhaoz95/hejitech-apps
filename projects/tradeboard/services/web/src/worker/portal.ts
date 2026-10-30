@@ -4,7 +4,7 @@
 // sent here is refused with 403 by index.ts.
 import type { OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import {
-  approvalExpiry, checkAgentId, checkPolicy, marketDate, ptEt, suggestedValidUntil, type Policy,
+  approvalExpiry, checkAgentId, checkPolicy, checkStrategy, policyHints, STRATEGY_TEMPLATE, marketDate, ptEt, suggestedValidUntil, type Policy,
 } from "@tradeboard/core";
 import {
   addComment, createPlan, listPlans, loadPlan, markReady, planView, requestChanges, shortOrderId, updatePlan, utc, utcDeep, type Actor,
@@ -293,6 +293,47 @@ export async function handlePortal(req: Request, env: Env, db: Db, url: URL, oau
     if (url.searchParams.get("plan_id")) q = q.eq("plan_id", url.searchParams.get("plan_id")!);
     const { data } = await q;
     return json({ events: (data ?? []).map((e) => ({ ...e, details_json: utcDeep(e.details_json), at: utc(e.created_at) })) });
+  }
+
+  // ---------------------------------------------------------------- strategy (the user's document; agents only propose)
+  if (path === "/api/strategy" && m === "GET") {
+    const [{ data: history }, { data: proposals }] = await Promise.all([
+      db.from("strategy_versions").select("version, body, note, from_proposal, created_at").eq("user_id", userId).order("version", { ascending: false }).limit(50),
+      db.from("strategy_proposals").select("proposal_id, agent_id, body, summary, based_on_version, created_at").eq("user_id", userId).eq("status", "open").order("created_at", { ascending: false }).limit(10),
+    ]);
+    const current = history?.[0] ?? null;
+    return json({
+      current: current ? { ...current, created_at: utc(current.created_at), policy_hints: policyHints(current.body) } : null,
+      history: (history ?? []).map((h) => ({ ...h, created_at: utc(h.created_at) })),
+      proposals: (proposals ?? []).map((x) => ({ ...x, created_at: utc(x.created_at), policy_hints: policyHints(x.body) })),
+      template: STRATEGY_TEMPLATE,
+    });
+  }
+  if (path === "/api/strategy" && m === "POST") {
+    // A new version: written by the user, or an agent's proposal they adopted (possibly edited).
+    const text = typeof body.body === "string" ? body.body.trim() : "";
+    const bad = checkStrategy(text);
+    if (bad) return problem(422, "invalid_strategy", bad);
+    const proposalId = typeof body.from_proposal === "string" && /^[0-9a-f-]{36}$/i.test(body.from_proposal) ? body.from_proposal : null;
+    if (proposalId) {
+      const { data: prop } = await db.from("strategy_proposals").select("proposal_id").eq("proposal_id", proposalId).eq("user_id", userId).eq("status", "open").maybeSingle();
+      if (!prop) return problem(404, "not_found", "that draft is gone or already decided");
+    }
+    const { data: last } = await db.from("strategy_versions").select("version, body").eq("user_id", userId).order("version", { ascending: false }).limit(1);
+    if (last?.[0] && last[0].body === text && !proposalId) return problem(422, "no_change", "nothing changed");
+    const version = (last?.[0]?.version ?? 0) + 1;
+    const { error } = await db.from("strategy_versions").insert({ user_id: userId, version, body: text, note: String(body.note ?? "").slice(0, 300), from_proposal: proposalId });
+    if (error) return problem(409, "version_conflict", "the strategy changed meanwhile: reload");
+    if (proposalId) await db.from("strategy_proposals").update({ status: "adopted", decided_at: new Date().toISOString() }).eq("proposal_id", proposalId).eq("user_id", userId);
+    await audit("strategy.saved", null, { version, from_proposal: proposalId });
+    return json({ ok: true, version, policy_hints: policyHints(text) }, 201);
+  }
+  const sp = path.match(/^\/api\/strategy\/proposals\/([0-9a-f-]{36})\/dismiss$/);
+  if (sp && m === "POST") {
+    const { data } = await db.from("strategy_proposals").update({ status: "dismissed", decided_at: new Date().toISOString() }).eq("proposal_id", sp[1]).eq("user_id", userId).eq("status", "open").select("proposal_id");
+    if (!data?.length) return problem(404, "not_found", "that draft is gone or already decided");
+    await audit("strategy.proposal_dismissed", null, { proposal_id: sp[1] });
+    return json({ ok: true });
   }
 
   if (path === "/api/account" && m === "DELETE") {

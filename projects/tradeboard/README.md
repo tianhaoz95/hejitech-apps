@@ -43,6 +43,12 @@ Robinhood MCP  https://agent.robinhood.com/mcp/trading  (dedicated agentic accou
 | `scripts/test-api.mjs` | end-to-end test of PRD §12.1 against the real Worker, with `mock-robinhood.mjs` and `mock-model.mjs` |
 | `policy.example.json` | the §9.2 defaults (review every value before live) |
 
+**Your strategy.** Each user can keep a high-level trading strategy (Markdown, like an AGENTS.md for
+the board) on the Strategy page. Agents read it before drafting or debating, and fill each plan's
+"Fit with strategy". If you have none, agents offer to interview you and propose a draft you adopt
+(or edit) on the Strategy page; they can't change it themselves. It's guidance only: limits you want
+enforced go in the Policy, and the page points out lines that read like limits.
+
 ## Run the tests (one command each)
 
 ```sh
