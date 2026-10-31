@@ -7,20 +7,31 @@
   <body>
     <header class="site-header"><div class="wrap"><a class="brand" href="/"><img src="/icon.svg" alt="" width="26" height="26" />Trading Plan Board</a></div></header>
     <main>
-      <div class="wrap narrow"><div class="panel">
+      <div class="wrap narrow"><div class="panel legal">
         <h1>Privacy</h1>
-        <p class="muted">Last updated October 30, 2026.</p>
+        <p class="muted">Last updated October 30, 2026. Trading Plan Board is made by HEJI TECHNOLOGY LLC.</p>
         <h2>What the board stores</h2>
-        <p>Your sign-in email and account id (Google or Apple through HEJI's shared sign-in), your authenticator secret (encrypted), and what you and your agents put on your board: trade plans, comments, versions, approvals, your policy, receipts the executor posts and an audit log. Each board is private to its user.</p>
+        <p>Your sign-in email and account id (Google or Apple through HEJI's shared sign-in), your authenticator secret (encrypted), and what you and your agents put on your board: trade plans, comments, versions, approvals, your strategy and policy, receipts the executor posts and an audit log. Each board is private to its user.</p>
         <h2>What it never stores</h2>
-        <p>Your Robinhood password, tokens or full account number. The executor runs on your own machine and keeps its Robinhood sign-in there; the board only sees a masked account (••••1234) and order receipts.</p>
+        <p>Your Robinhood password, tokens or full account number. The executor runs on your own machine and keeps its Robinhood sign-in there; the board only sees a masked account (••••1234) and order receipts. The executor's model check runs on a model you host; plans aren't sent to us for it.</p>
+        <h2>Cookies and browser storage</h2>
+        <p>One sign-in cookie (HttpOnly, this site only) keeps you signed in. During sign-in, Supabase keeps a short-lived session in your browser, which the page deletes once you're in. No analytics, advertising or tracking cookies.</p>
+        <h2>The video on the home page</h2>
+        <p>The home page shows a still image. Only if you click play does it load the video from YouTube's privacy-enhanced domain (youtube-nocookie.com), and then Google's privacy policy applies to that playback.</p>
         <h2>Who sees it</h2>
-        <p>You, the AI agents you connect (they read and write your plans over MCP) and the executors you give a credential. Nothing is sold or used for ads. The data lives in Supabase and Cloudflare, HEJI's service providers.</p>
-        <h2>Deleting it</h2>
-        <p>Account → Delete my board removes everything the board holds for you, history included. Questions: <a href="mailto:info@hejitech.com">info@hejitech.com</a>.</p>
+        <p>You, the AI agents you connect (they read and write your plans over MCP, and their providers handle what they read under their own terms) and the executors you give a credential. Nothing is sold or used for ads. The data lives in Supabase and Cloudflare, HEJI's service providers. Request logs that would contain plan text are turned off.</p>
+        <h2>How long it's kept, and deleting it</h2>
+        <p>Your board's history is kept while your account exists, because versions, decisions and receipts are the record of what was approved and placed. Account → Delete my board removes everything the board holds for you, history included.</p>
+        <h2>Children</h2>
+        <p>The board is for adults who can trade in their own brokerage account; it isn't meant for anyone under 18.</p>
+        <h2>Changes</h2>
+        <p>If this policy changes in a way that matters, we'll say so on this site before the change takes effect.</p>
         <h2>Not advice</h2>
-        <p>The board doesn't give financial advice or guarantee results; you remain responsible for every trade your executor places.</p>
+        <p>The board doesn't give financial advice or guarantee results; you remain responsible for every trade your executor places. See the <a href="/terms/">Terms of Use</a>.</p>
+        <h2>Contact</h2>
+        <p><a href="mailto:info@hejitech.com">info@hejitech.com</a></p>
       </div></div>
     </main>
+    <!-- @footer -->
   </body>
 </html>

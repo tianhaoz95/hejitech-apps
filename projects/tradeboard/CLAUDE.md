@@ -26,6 +26,8 @@ node projects/tradeboard/scripts/scan-tokens.mjs   # no token patterns in the re
 node projects/tradeboard/apps/executor/src/cli.ts help
 ```
 
+The promo video's edit is `branding/promo-videos/src/tradeboard-launch` (Remotion, `branding/README.md`).
+
 Local-only seed credentials: agents `tba_dev_claude`, `tba_dev_gemini`, `tba_dev_muse`; executor
 `tbx_dev_local` (id `local`). The integration test **resets the seed user's account row** (TOTP
 enrolls again), signs up a second user to check boards stay private, then deletes that board, and drives the bundled executor against `scripts/mock-robinhood.mjs` (port 8766) and
@@ -47,6 +49,9 @@ enrolls again), signs up a second user to check boards stay private, then delete
   same-origin `X-Tradeboard: 1` header on writes), agent `tba_…` tokens or OAuth grants (`/mcp`
   only, bound to one agent id, 60 calls/min), executor `tbx_…` (`/api/executor/*` only).
   `index.ts` routes by credential before anything else.
+- **`/` is two pages**: the Worker serves the board to a request with a session cookie and the public
+  landing page (`welcome/`, also at `/welcome/`) to everyone else. Terms and Privacy are `terms/` and
+  `privacy/`; only app pages carry `noindex`.
 - **Sign-up / sign-in** (`auth.ts`): Supabase Google/Apple proves the account (any account; its
   board is created on first use), TOTP (`@tradeboard/core` totp.ts, secret AES-GCM sealed
   with `TOTP_ENC_KEY`, single-use steps) proves the second factor; the page then drops the Supabase

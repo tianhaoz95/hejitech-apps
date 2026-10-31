@@ -13,6 +13,8 @@ const pages = {
   account: "account/index.html",
   strategy: "strategy/index.html",
   privacy: "privacy/index.html",
+  terms: "terms/index.html",
+  welcome: "welcome/index.html",
   login: "login/index.html",
   consent: "oauth/consent/index.html",
   notFound: "404.html",

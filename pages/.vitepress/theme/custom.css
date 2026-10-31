@@ -259,3 +259,7 @@ html { scrollbar-gutter: stable; }
 .heji-404-list code { font-size: 12px; color: var(--vp-c-text-2); background: none; }
 .heji-404-more { margin: 0; font-size: 14px; color: var(--vp-c-text-2); }
 .heji-404-more button, .heji-404-more a { color: var(--vp-c-brand-1); font-weight: 600; text-decoration: none; }
+
+/* A product page's embedded promo video, 16:9 at the content width. */
+.promo-video { position: relative; aspect-ratio: 16 / 9; margin: 16px 0; border-radius: 12px; overflow: hidden; background: #0e1b2b; }
+.promo-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }

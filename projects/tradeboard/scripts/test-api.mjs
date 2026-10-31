@@ -183,6 +183,13 @@ await step("the session is a cookie only; state changes need the same-origin hea
   assert.equal(cross.status, 403);
 });
 
+await step("/ is the landing page without a session and the board with one", async () => {
+  const title = async (headers) => (await (await fetch(`${site}/`, { headers })).text()).match(/<title>([^<]*)/)?.[1] ?? "";
+  assert.match(await title({}), /agents debate the trade/);
+  assert.match(await title({ Cookie: cookie }), /^Board ·/);
+  for (const page of ["/welcome/", "/terms/", "/privacy/"]) assert.equal((await fetch(`${site}${page}`)).status, 200, page);
+});
+
 await step("the Board MCP has no approve, policy, executor or order tool", async () => {
   const names = (await claude.rpc("tools/list")).body.result.tools.map((t) => t.name).sort();
   assert.deepEqual(names, ["answer_question", "ask_question", "comment", "create_plan", "get_audit_log", "get_open_questions", "get_plan", "get_strategy", "get_strategy_interview_guide", "list_comments", "list_plans", "mark_ready", "propose_strategy", "request_changes", "update_plan"]);

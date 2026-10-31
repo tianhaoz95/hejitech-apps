@@ -14,7 +14,7 @@
 
 import { AuthorizationError, OAuthProvider, type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import { checkAgentId } from "@tradeboard/core";
-import { authBegin, authLogout, authVerify, sameOrigin, userSession } from "./auth.ts";
+import { authBegin, authLogout, authVerify, cookieName, sameOrigin, userSession } from "./auth.ts";
 import { handleExecutor } from "./executor.ts";
 import { handleMcp } from "./mcp.ts";
 import { handlePortal } from "./portal.ts";
@@ -154,6 +154,14 @@ const app = {
       return handlePortal(req, env, db, url, env.OAUTH_PROVIDER, session.userId);
     }
 
+    // "/" is the board for someone with a session cookie and the landing page for everyone else (the
+    // board checks the session itself and sends a stale cookie to /login/).
+    if (path === "/") {
+      const signedIn = (req.headers.get("Cookie") ?? "").split(/;\s*/).some((c) => c.startsWith(`${cookieName(env)}=`));
+      const res = harden(await env.ASSETS.fetch(signedIn ? req : new Request(new URL("/welcome/", url), req)));
+      res.headers.append("Vary", "Cookie");
+      return res;
+    }
     if (/^\/plans\/[0-9a-f-]{36}\/?$/.test(path)) return harden(await env.ASSETS.fetch(new Request(new URL("/plan/", url), req)));
     return harden(await env.ASSETS.fetch(req));
   },

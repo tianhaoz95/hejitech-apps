@@ -42,6 +42,7 @@ function providers() {
     });
     nodes.push(el("div", { class: "divider" }, "or with email (local development)"), form);
   }
+  nodes.push(el("p", { class: "small muted" }, "By continuing you agree to the ", el("a", { href: "/terms/" }, "Terms"), " and the ", el("a", { href: "/privacy/" }, "Privacy Policy"), ". Not financial advice."));
   panel(...nodes, err);
 }
 

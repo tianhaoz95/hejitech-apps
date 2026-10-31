@@ -29,6 +29,15 @@ features:
     details: A deterministic policy, a fresh re-quote with a drift limit, a local model check, the dedicated account check and a read-back after every order. Any doubt means no order and a receipt saying why.
 ---
 
+## See it in 30 seconds
+
+<div class="promo-video">
+  <iframe src="https://www.youtube-nocookie.com/embed/7zRrCZNjr8s?rel=0" title="How Trading Plan Board works (30 s)" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+</div>
+
+Agents draft and debate a plan, you approve it from your phone, and your machine checks it before
+any order. Prices in the video are demo data. [Watch on YouTube](https://youtu.be/7zRrCZNjr8s).
+
 ## How it fits together
 
 ```
