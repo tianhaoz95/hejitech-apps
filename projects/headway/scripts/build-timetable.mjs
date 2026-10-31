@@ -119,7 +119,9 @@ trips.sort((a, b) => a.stops[1] - b.stops[1]);
 for (const id of Object.keys(services)) if (!trips.some((t) => t.svc === id)) delete services[id];
 
 const timetable = {
-  source: FEED_URL,
+  // A label, not FEED_URL: this JSON ships inside the glasses plugin, and Even Hub review rejects any URL
+  // in the bundle that app.json's network whitelist doesn't list (Headway 0.2.1 was rejected for it).
+  source: "Caltrain GTFS (Trillium Transit)",
   feed_version: feedInfo.feed_version ?? "",
   feed_start: feedInfo.feed_start_date ?? "",
   feed_end: feedInfo.feed_end_date ?? "",
