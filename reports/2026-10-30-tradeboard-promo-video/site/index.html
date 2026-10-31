@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trading Plan Board promo video kit (Google Flow)</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23C8603A'/%3E%3Crect x='9' y='9' width='14' height='2.5' rx='1.2' fill='%23fff'/%3E%3Crect x='9' y='15' width='14' height='2.5' rx='1.2' fill='%23fff'/%3E%3Crect x='9' y='21' width='9' height='2.5' rx='1.2' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/design.css">
+  <style>
+    .shot { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); padding: 16px 18px; margin: 18px 0; }
+    .shot h3 { margin: 0 0 4px; }
+    .shot .meta-line { color: var(--mut); font-size: 14px; margin: 0 0 10px; }
+    .shot .shots figure { max-width: 300px; }
+    .gallery { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); margin: 14px 0; }
+    .gallery figure { margin: 0; min-width: 0; }
+    .gallery img { width: 100%; border-radius: 12px; border: 1px solid var(--line); display: block; }
+    .gallery figcaption { font-size: 13px; color: var(--mut); margin-top: 6px; }
+    .gallery figcaption b { color: var(--ink); }
+    .swatches { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
+    .swatches span { display: inline-flex; align-items: center; gap: 8px; font: 13px "JetBrains Mono", monospace; border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; background: var(--panel); }
+    .tag { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .02em; border-radius: 999px; padding: 2px 9px; margin-right: 6px; vertical-align: 2px; border: 1px solid transparent; white-space: nowrap; }
+    .tag.keep { background: color-mix(in srgb, #1f9d6b 14%, transparent); color: #17805a; border-color: color-mix(in srgb, #1f9d6b 35%, transparent); }
+    .tag.regen { background: color-mix(in srgb, #d0503c 14%, transparent); color: #b8402e; border-color: color-mix(in srgb, #d0503c 40%, transparent); }
+    .tag.new { background: color-mix(in srgb, #2457d6 13%, transparent); color: #2457d6; border-color: color-mix(in srgb, #2457d6 35%, transparent); }
+    .tag.spare, .tag.drop { background: color-mix(in srgb, var(--mut) 14%, transparent); color: var(--mut); border-color: var(--line); }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tag.keep { color: #5fd3a4; } :root:not([data-theme="light"]) .tag.regen { color: #f08a78; } :root:not([data-theme="light"]) .tag.new { color: #8fb0ff; } }
+    :root[data-theme="dark"] .tag.keep { color: #5fd3a4; } :root[data-theme="dark"] .tag.regen { color: #f08a78; } :root[data-theme="dark"] .tag.new { color: #8fb0ff; }
+    .shot.regen { border-color: color-mix(in srgb, #d0503c 55%, var(--line)); border-width: 2px; }
+    .shot details summary { cursor: pointer; color: var(--mut); font-size: 14px; margin: 6px 0; }
+    table.vo audio { width: 100%; min-width: 180px; height: 36px; }
+    table.vo small { font-weight: 400; }
+    .gallery.edit { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+    .gallery.edit figure.tall video { max-height: 520px; width: auto; margin: 0 auto; }
+    .gallery.recs video { width: 100%; border-radius: 12px; border: 1px solid var(--line); display: block; background: #0e1b2b; max-height: 420px; }
+    .swatches i { width: 18px; height: 18px; border-radius: 5px; border: 1px solid var(--line); display: inline-block; }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="#top">
+      <span class="logo"></span>
+      <span><b>Trading Plan Board promo video kit (Google Flow)</b><small>v2: a fast 30 s promo · Flow shots with hidden screens, real portal recordings, voiceover and music prompts</small></span>
+    </a>
+    <div class="seg" role="group" aria-label="Appearance">
+      <button data-mode="light">Light</button>
+      <button data-mode="dark">Dark</button>
+    </div>
+  </header>
+
+  <div class="layout" id="top">
+    <nav class="toc" aria-label="Sections"></nav>
+
+    <main>
+      <section id="summary" data-toc="Summary">
+        <p class="kicker">Video kit · v2 · 2026-10-30</p>
+        <h1>Make a Trading Plan Board promo: Flow for people, real recordings for the product</h1>
+        <p class="lede">Version 2 of the plan, after the first cut. It is now a <b>fast 30-second promo</b> plus a 15-second cut. Flow makes the people and places, <b>always with the screen hidden</b>. The product appears as <b>real screen recordings</b> of the portal, which are already made (§5). The <b>voiceover is made too</b>: pick one of five voices (§6). You make the <b>music in Flow Music</b> from the prompt in §6, and the edit is put together in Remotion (<code>branding/promo-videos</code>).</p>
+
+        <div class="status">
+          <div><b>Screen recordings</b><span class="ok">5 made, real portal (§5)</span></div>
+          <div><b>Flow shots</b><span class="ok">5 kept · 2 regenerated (§4)</span></div>
+          <div><b>Voiceover</b><span class="ok">am_michael (§6)</span></div>
+          <div><b>Music</b><span class="ok">Flow Music, 30 s + 15 s</span></div>
+          <div><b>Edit</b><span class="ok">30 s on YouTube · on the sign-in and docs pages</span></div>
+        </div>
+
+        <h3 data-toc="What to redo">What can still be used, and what to redo</h3>
+        <table class="grid">
+          <tr><th>Item</th><th>Status</th><th>Why</th></tr>
+          <tr><td>Character (face, body, outfit)</td><td><span class="tag keep">Keep</span></td><td>Same person in the new shots 2 and 4.</td></tr>
+          <tr><td>Shot 1 · rushed trade (kitchen)</td><td><span class="tag keep">Keep</span></td><td>The phone faces away already; the edit uses ~3 s of it.</td></tr>
+          <tr><td>Shot 2 · laptop</td><td><span class="tag regen">Regenerated</span></td><td>The green screen goes. New prompt: the laptop's lid faces the camera, and only its glow lights the person's face.</td></tr>
+          <tr><td>Shot 3 · spheres debate</td><td><span class="tag keep">Keep</span></td><td>Abstract, no screen. Its baked-in film border gets cropped in the edit.</td></tr>
+          <tr><td>Shot 4 · phone tap</td><td><span class="tag regen">Regenerated</span></td><td>The green screen goes. New prompt: we see the back of the phone and the tap, never the screen.</td></tr>
+          <tr><td>Shot 5 · machine on a shelf</td><td><span class="tag keep">Keep</span></td><td>No screen.</td></tr>
+          <tr><td>Shot 6 · lights, the last stays amber</td><td><span class="tag keep">Keep</span></td><td>No screen.</td></tr>
+          <tr><td>Shot 7 · end card (animated)</td><td><span class="tag keep">Keep</span></td><td>The text came out right; the disclaimer goes on top in the edit.</td></tr>
+          <tr><td>Screen recordings (5)</td><td><span class="tag new">New · done</span></td><td>Replace the green-screen overlays and the still close-ups (§5).</td></tr>
+          <tr><td>Voiceover, 30 s and 15 s</td><td><span class="tag new">New · done</span></td><td>New, shorter scripts (§2), generated with Kokoro in five voices: pick one (§6).</td></tr>
+          <tr><td>Music, 30 s and 15 s</td><td><span class="tag new">New · you</span></td><td>Flow Music, made to the cut's timing (§6).</td></tr>
+          <tr><td>Screenshots and close-ups</td><td><span class="tag spare">Spare</span></td><td>Not used in the edit any more; kept as stills for posts and thumbnails (§7).</td></tr>
+          <tr><td>60-second voiceover and music prompt</td><td><span class="tag drop">Dropped</span></td><td>Too slow; replaced by the 30 s plan.</td></tr>
+        </table>
+
+        <div class="cards">
+          <div class="card good">
+            <h3>Verified</h3>
+            <ul>
+              <li><b>The recordings are the real portal</b> (<code>projects/tradeboard/services/web</code>) on the local stack with demo data, made by <code>branding/promo-videos/scripts/tradeboard-launch-record.mjs</code>. Agents act through the real Board MCP; the approve tap is the real portal; the receipts come from the real executor bundle in <b>dry-run</b> against the repo's mock broker and mock model. No order was placed anywhere.</li>
+              <li>The fail-closed receipt is real: the executor refused because the price had moved 5.5%, over the 1% drift limit.</li>
+              <li>The scripts only say what the product does (<code>projects/tradeboard/README.md</code>, <code>docs/index.md</code>).</li>
+            </ul>
+          </div>
+          <div class="card warn">
+            <h3>Not verified</h3>
+            <ul>
+              <li>The new shot 2 and 4 prompts haven't been run in Flow yet.</li>
+              <li><b>Exact model and voice names</b> in AI Studio and Flow Music: they change often, so §6 says what to pick by kind, not just by name.</li>
+              <li>Prices and times in the recordings are <b>demo data</b>. The demo board's policy allows plans up to 96 h old, so the simulated market clock works on a weekend; the default is 24 h.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout"><b>Next for you:</b> the 30 s cut is approved and uploaded. Finish the YouTube upload with §8 (every field, the thumbnail and the captions file), then say when it's public or unlisted, and the landing page and docs page get the video.</div>
+      </section>
+
+      <section id="edit" data-toc="The edit · review">
+        <h2>The edit: three cuts to review</h2>
+        <p>Built in Remotion (<code>branding/promo-videos/src/tradeboard-launch</code>) from your two new shots, the five kept Flow takes, the screen recordings, the <b>am_michael</b> voiceover and your Flow Music tracks.</p>
+        <div class="gallery recs edit">
+          <figure><video src="media/edit/tradeboard-launch-30.mp4" poster="media/edit/tradeboard-launch-30.jpg" controls playsinline preload="none"></video><figcaption><b>30 s · 16:9</b> · the main cut · 29.6 s<br><a class="dl" href="media/edit/tradeboard-launch-30.mp4" download>tradeboard-launch-30.mp4</a></figcaption></figure>
+          <figure><video src="media/edit/tradeboard-launch-15.mp4" poster="media/edit/tradeboard-launch-15.jpg" controls playsinline preload="none"></video><figcaption><b>15 s · 16:9</b> · debate, approve, receipt, fail-closed, end card<br><a class="dl" href="media/edit/tradeboard-launch-15.mp4" download>tradeboard-launch-15.mp4</a></figcaption></figure>
+          <figure class="tall"><video src="media/edit/tradeboard-launch-15-vertical.mp4" poster="media/edit/tradeboard-launch-15-vertical.jpg" controls playsinline preload="none"></video><figcaption><b>15 s · 9:16</b> · Shorts / Reels / TikTok<br><a class="dl" href="media/edit/tradeboard-launch-15-vertical.mp4" download>tradeboard-launch-15-vertical.mp4</a></figcaption></figure>
+        </div>
+        <table class="kv">
+          <tr><th>Pace</th><td>Every cut sits on a beat of the music (103.4 BPM, a cut every 2–4 beats, ≈1.2–2.3 s). Each voiceover line starts a new story beat.</td></tr>
+          <tr><th>Transitions</th><td>Flow shot → its recording: a <b>cross-zoom</b>, as if diving into the screen. One story beat → the next: a <b>blurred slide</b>. Into the end card: a <b>dreamy zoom</b>. Nothing sits still: Flow shots push in slowly, recordings drift forward in a window on the brand navy, and the phone recording settles into a phone frame.</td></tr>
+          <tr><th>Captions</th><td>The voiceover word by word, timed to the speech (each word rises in as it's spoken), over a soft dark band so they read on bright screens.</td></tr>
+          <tr><th>Sound</th><td>Voiceover over the music (about 7 dB above it); the music is the last 30 s / 15 s of each Flow Music track, so it ends on the track's own ending. Normalised to −14.8 LUFS, peaks −1.4 dBFS (social-platform loudness).</td></tr>
+          <tr><th>9:16</th><td>Flow shots are centre-cropped; recordings use a taller window zoomed onto the page content; the end card is the 9:16 still with a slow zoom.</td></tr>
+          <tr><th>On screen</th><td>"Demo data" on every recording; the disclaimer on the end card.</td></tr>
+        </table>
+        <p class="note">The renders are reproducible (<code>npx remotion render tradeboard-launch-30</code> etc. in <code>branding/promo-videos</code>, then the loudness pass). They make this report 42 MB, so leave them out of git when the report is committed and keep the final MP4s with the promo's media backup.</p>
+      </section>
+
+      <section id="story">
+        <h2>The story in 30 seconds</h2>
+        <p>Same story, told fast: one beat per line of voiceover, each beat a Flow shot (people, mood) that hands over to a real recording (the product). A cut every 1.5–3 s.</p>
+        <div data-block="arc"></div>
+        <div class="fields">
+          <div class="field" data-max="80"><b>Tagline (end card)</b><pre>Agents debate the trade. You approve it. Your machine places it.</pre></div>
+        </div>
+
+        <h3 data-toc="Voiceover scripts">Voiceover scripts</h3>
+        <div class="fields">
+          <div class="field" data-max="420"><b>Voiceover, 30-second cut (≈60 words)</b><pre>Most bad trades happen in a hurry.
+
+Trading Plan Board turns every idea into a dated plan.
+
+Your AI agents draft it, and argue it out.
+
+Only you approve it, from your phone.
+
+Then your own machine checks your limits and the live price.
+
+Any doubt? No order.
+
+Agents debate the trade. You approve it. Your machine places it.</pre></div>
+          <div class="field" data-max="260"><b>Voiceover, 15-second cut (≈30 words)</b><pre>Your AI agents debate the trade.
+
+Only you approve it.
+
+Your own machine checks it, then places it. Any doubt? No order.
+
+Trading Plan Board.</pre></div>
+          <div class="field" data-max="160"><b>Disclaimer (small text on the end card, required)</b><pre>Not financial advice. You remain responsible for every trade. Dry-run by default.</pre></div>
+        </div>
+      </section>
+
+      <section id="style" data-toc="Look and feel">
+        <h2>Look and feel</h2>
+        <p>The shared style (these colours, soft light, a 35mm look, "no text, no logos") is built into every Flow prompt, so each shot is one Copy. The colours come from the app icon (<code>services/web/public/icon.svg</code>).</p>
+        <div class="swatches">
+          <span><i style="background:#1a3653"></i>#1a3653 navy</span>
+          <span><i style="background:#22466d"></i>#22466d slate</span>
+          <span><i style="background:#7fd1c7"></i>#7fd1c7 teal</span>
+          <span><i style="background:#e8eef5"></i>#e8eef5 off-white</span>
+          <span><i style="background:#2457d6"></i>#2457d6 Approve blue</span>
+        </div>
+      </section>
+
+      <section id="storyboard" data-toc="Storyboard + Flow">
+        <h2>Storyboard: what Flow makes, and what to redo</h2>
+        <p>Times are for the 30-second cut. <b>Flow</b> is the generated shot (only its first 1.5–3 s are used); <b>Recording</b> is the real portal from §5. Only the two cards marked <span class="tag regen">Regenerate</span> need Flow again.</p>
+        <div data-block="shots"></div>
+
+        <article class="shot">
+          <h3 data-toc="Flow settings (once)">Before the shots · Flow agent settings</h3>
+          <p class="meta-line">Unchanged from v1 · set once per project in the agent panel's settings</p>
+          <table class="kv">
+            <tr><th>Confirm before generating</th><td><b>Always.</b> You see what the agent is about to generate (and whether it rewrote your prompt) before any credits are spent.</td></tr>
+            <tr><th>Video generation default</th><td><b>16:9 · x2</b>, model <b>Omni 1.1 Flash</b> for drafts; a higher-quality model for the final take if your plan has one.</td></tr>
+          </table>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Character · keep"><span class="tag keep">Keep</span> The character (for shots 1, 2 and 4)</h3>
+          <p class="meta-line">Already made · reuse your saved character; nothing to regenerate</p>
+          <details>
+            <summary>The prompt it was made from (only if you ever need to remake it)</summary>
+            <div class="fields">
+              <div class="field"><b>Character prompt (paste into "Describe your character…")</b><pre>A grounded, relatable everyday investor in their early thirties. Comes across as careful and quietly confident: someone who reads before acting, not flashy.
+
+Face: short dark hair, calm and thoughtful expression, natural skin texture.
+
+Body: average, slightly slim build; relaxed, upright posture, weight on one leg, hands loosely at the sides.
+
+Outfit: a casual navy crew-neck sweater in a matte knit with a slightly relaxed fit, over a plain white T-shirt whose collar just shows at the neck; dark charcoal slim chinos; clean white minimal leather sneakers; a simple black analogue wristwatch on the left wrist. No logos, text or patterns on any clothing.
+
+Photorealistic, full length, standing and facing the camera, head to toe in frame, soft even window light from the left, plain warm-grey background, 50mm, sharp fabric texture.</pre></div>
+            </div>
+          </details>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 1 · keep"><span class="tag keep">Keep</span> Shot 1 · The rushed trade</h3>
+          <p class="meta-line">0:00–0:03 · your existing take · the wide shot for 1 s, then the hesitating thumb · caption "Most bad trades happen in a hurry."</p>
+        </article>
+
+        <article class="shot regen">
+          <h3 data-toc="Shot 2 · regenerate"><span class="tag regen">Regenerate</span> Shot 2 · Reading the plan (screen hidden)</h3>
+          <p class="meta-line">0:03–0:04.5, then the board recording · <b>Video · 16:9 · x2 · add the character</b> · replaces the green-screen laptop</p>
+          <div class="fields">
+            <div class="field"><b>Prompt (one paste: video request + style + shot)</b><pre>Generate one 8-second video, 16:9, using exactly the prompt below (don't rewrite it), with my saved character as the person.
+
+Style: Cinematic product film for a calm, trustworthy personal-finance tool. Colour palette: deep navy (#1a3653), slate blue (#22466d), soft teal accents (#7fd1c7), warm off-white. Soft natural light, shallow depth of field, 35mm film look, subtle grain. Modern, minimal, uncluttered interiors. No readable text, no logos, no brand names. Ambient sound only, no dialogue, no music.
+
+Shot: Morning, a tidy wooden desk by a large window with soft daylight. Seen from the front, across the desk: the person, in their early thirties with short dark hair and a casual navy crew-neck sweater, sits behind an open laptop. The back of the laptop's plain, unbranded aluminium lid faces the camera, so the screen is never visible. The screen's soft cool glow lights their face. They read attentively, eyes moving across the screen, then give a small, satisfied nod. A cup of coffee steams beside the laptop. Quick, confident dolly in from a medium shot to a close-up of their face. No logo on the laptop lid. Quiet room tone, birdsong outside.</pre></div>
+          </div>
+          <p class="note">Keep a take only if no screen content shows and the lid has no logo. The edit uses about 1.5 s of it, so the first seconds matter most.</p>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 3 · keep"><span class="tag keep">Keep</span> Shot 3 · Agents debate</h3>
+          <p class="meta-line">0:07–0:08.5, then the debate recording · your existing take, cropped past its film border · caption "Your AI agents argue it out."</p>
+        </article>
+
+        <article class="shot regen">
+          <h3 data-toc="Shot 4 · regenerate"><span class="tag regen">Regenerate</span> Shot 4 · The tap (screen hidden)</h3>
+          <p class="meta-line">0:12–0:13.5, then the phone approve recording · <b>Video · 16:9 · x2 · add the character</b> · replaces the green-screen phone</p>
+          <div class="fields">
+            <div class="field"><b>Prompt (one paste: video request + style + shot)</b><pre>Generate one 8-second video, 16:9, using exactly the prompt below (don't rewrite it), with my saved character as the person.
+
+Style: Cinematic product film for a calm, trustworthy personal-finance tool. Colour palette: deep navy (#1a3653), slate blue (#22466d), soft teal accents (#7fd1c7), warm off-white. Soft natural light, shallow depth of field, 35mm film look, subtle grain. No readable text, no logos, no brand names. Ambient sound only, no dialogue, no music.
+
+Shot: Daytime on a sunny, tree-lined city sidewalk. Medium close-up from the front at chest height: the person, in their early thirties with short dark hair and a casual navy crew-neck sweater, stops and holds a smartphone upright in one hand. The plain, unbranded back of the phone faces the camera, so the screen is never visible. Their face is calm and focused as they read for a moment; they give a small nod and tap the screen once, firmly, with their thumb, then lower the phone with a relaxed half smile. Shallow depth of field, warm city bokeh, the camera pushes in quickly to their face on the tap. No logo on the phone. Street ambience, a light breeze.</pre></div>
+          </div>
+          <p class="note">The tap is the cut point to the recording, where the same tap lands on <b>Approve</b>. Keep a take where the thumb movement is clear and the screen never shows.</p>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shots 5–7 · keep"><span class="tag keep">Keep</span> Shots 5, 6 and 7 · Machine, lights, end card</h3>
+          <p class="meta-line">0:17 machine (1.5 s) · 0:22 lights (1.5 s) · 0:25–0:30 end card · your existing takes</p>
+        </article>
+      </section>
+
+      <section id="recordings" data-toc="Screen recordings">
+        <h2>Screen recordings of the real portal</h2>
+        <p>These are the product shots: the real portal, recorded on the local stack. They show the product doing what the voiceover says. Desktop recordings are a 1120×630 window at 2× (so the text is large on screen), exported at 1920×1080, 30 fps. The phone recording is 390×844 at 3×, exported at 1080×2340. A teal ring marks every tap and a pointer shows every click.</p>
+        <div class="gallery recs">
+          <figure><video src="media/recordings/rec-board.mp4" poster="media/recordings/rec-board.jpg" controls muted playsinline preload="none"></video><figcaption><b>board</b> · Claude drafts AAPL over MCP; it lands on the board as a dated plan, then the plan opens: order ticket, validity, quote · 8.6 s<br><a class="dl" href="media/recordings/rec-board.mp4" download>rec-board.mp4</a></figcaption></figure>
+          <figure><video src="media/recordings/rec-debate.mp4" poster="media/recordings/rec-debate.jpg" controls muted playsinline preload="none"></video><figcaption><b>debate</b> · Gemini dissents, Claude answers and halves the size, Muse weighs in; each lands on "Risks &amp; dissent" and in the thread · 7.4 s<br><a class="dl" href="media/recordings/rec-debate.mp4" download>rec-debate.mp4</a></figcaption></figure>
+          <figure><video src="media/recordings/rec-approve.mp4" poster="media/recordings/rec-approve.jpg" controls muted playsinline preload="none"></video><figcaption><b>approve (phone)</b> · tap Approve on COST, the confirm dialog names the exact order, tap Approve: "Approved version 1" · 8.9 s<br><a class="dl" href="media/recordings/rec-approve.mp4" download>rec-approve.mp4</a></figcaption></figure>
+          <figure><video src="media/recordings/rec-receipt.mp4" poster="media/recordings/rec-receipt.jpg" controls muted playsinline preload="none"></video><figcaption><b>receipt</b> · the executor checks COST and a dry-run receipt appears: "would place buy 2 COST limit @ 905 … drift 0.04% ≤ 1%" · 4.9 s<br><a class="dl" href="media/recordings/rec-receipt.mp4" download>rec-receipt.mp4</a></figcaption></figure>
+          <figure><video src="media/recordings/rec-failclosed.mp4" poster="media/recordings/rec-failclosed.jpg" controls muted playsinline preload="none"></video><figcaption><b>fail closed</b> · AAPL is approved, the price has moved: the executor refuses, "drift_rejected: live $276.40 vs plan $262.00: 5.50% &gt; max_drift_pct 1%" · 6.9 s<br><a class="dl" href="media/recordings/rec-failclosed.mp4" download>rec-failclosed.mp4</a></figcaption></figure>
+        </div>
+        <p>To record them again after a UI change, start the local stack (<code>supabase start</code>, <code>npm run dev:worker -w @tradeboard/web</code>) and run <code>node branding/promo-videos/scripts/tradeboard-launch-record.mjs</code>. It resets the local seed user's board first, and only ever talks to the local Worker and the mock broker.</p>
+      </section>
+
+      <section id="audio" data-toc="Voiceover + music">
+        <h2>Voiceover and music: what to paste where</h2>
+        <p>The voiceover is <b>made</b>: five voices for each cut, generated locally with Kokoro (below). Pick one by ear. The music comes from <b>Flow Music</b> (Lyria): make it to the voiceover's length.</p>
+
+        <h3 data-toc="Voiceover · pick one"><span class="tag new">New · done</span> 1 · Voiceover: pick a voice</h3>
+        <p>Generated on this Mac with <b>Kokoro-82M</b>, an open-weight text-to-speech model (Apache 2.0, so free for commercial use), from the scripts in §2. Each take was sped up or slowed down until it fit: <b>26–28 s</b> for the 30 s cut, <b>13–14 s</b> for the 15 s cut. A speech-to-text pass (Whisper) read every take back word for word. All peak at −1 dB. The full-quality WAVs are in <code>branding/promo-videos/public/tradeboard-launch/</code>; these are compressed copies for listening.</p>
+        <table class="grid vo">
+          <tr><th>Voice</th><th>30-second cut</th><th>15-second cut</th></tr>
+            <tr><th>af_heart<br><small class="muted">American, warm female</small></th><td><audio controls preload="none" src="media/voiceover/vo-30-af_heart.m4a"></audio><br><a class="dl" href="media/voiceover/vo-30-af_heart.m4a" download>vo-30-af_heart.m4a</a></td><td><audio controls preload="none" src="media/voiceover/vo-15-af_heart.m4a"></audio><br><a class="dl" href="media/voiceover/vo-15-af_heart.m4a" download>vo-15-af_heart.m4a</a></td></tr>
+            <tr><th>af_bella<br><small class="muted">American, bright female</small></th><td><audio controls preload="none" src="media/voiceover/vo-30-af_bella.m4a"></audio><br><a class="dl" href="media/voiceover/vo-30-af_bella.m4a" download>vo-30-af_bella.m4a</a></td><td><audio controls preload="none" src="media/voiceover/vo-15-af_bella.m4a"></audio><br><a class="dl" href="media/voiceover/vo-15-af_bella.m4a" download>vo-15-af_bella.m4a</a></td></tr>
+            <tr><th>am_michael<br><small class="muted">American, calm male</small></th><td><audio controls preload="none" src="media/voiceover/vo-30-am_michael.m4a"></audio><br><a class="dl" href="media/voiceover/vo-30-am_michael.m4a" download>vo-30-am_michael.m4a</a></td><td><audio controls preload="none" src="media/voiceover/vo-15-am_michael.m4a"></audio><br><a class="dl" href="media/voiceover/vo-15-am_michael.m4a" download>vo-15-am_michael.m4a</a></td></tr>
+            <tr><th>am_fenrir<br><small class="muted">American, deeper male, slower</small></th><td><audio controls preload="none" src="media/voiceover/vo-30-am_fenrir.m4a"></audio><br><a class="dl" href="media/voiceover/vo-30-am_fenrir.m4a" download>vo-30-am_fenrir.m4a</a></td><td><audio controls preload="none" src="media/voiceover/vo-15-am_fenrir.m4a"></audio><br><a class="dl" href="media/voiceover/vo-15-am_fenrir.m4a" download>vo-15-am_fenrir.m4a</a></td></tr>
+            <tr><th>bf_emma<br><small class="muted">British female</small></th><td><audio controls preload="none" src="media/voiceover/vo-30-bf_emma.m4a"></audio><br><a class="dl" href="media/voiceover/vo-30-bf_emma.m4a" download>vo-30-bf_emma.m4a</a></td><td><audio controls preload="none" src="media/voiceover/vo-15-bf_emma.m4a"></audio><br><a class="dl" href="media/voiceover/vo-15-bf_emma.m4a" download>vo-15-bf_emma.m4a</a></td></tr>
+        </table>
+        <p class="note">Kokoro can't take a style note, only a voice and a speed. If none of these sound right, the AI Studio route below gives more control over delivery. To regenerate (other voices, a changed script): <code>branding/promo-videos/scripts/tradeboard-launch-vo.py</code>.</p>
+
+        <details>
+        <summary>Optional: the same voiceover from Google AI Studio instead</summary>
+        <ol class="do">
+          <li>Open <code>aistudio.google.com</code> and choose <b>Generate speech</b> (text-to-speech), single speaker, with the newest TTS model in the list.</li>
+          <li>Pick a calm, clear voice. <b>Charon</b> (informative) or <b>Kore</b> (firm) are good starts; try two or three, since names and the list may differ on your account.</li>
+          <li>Paste the style note into the style or instructions box and the script into the text box. Generate, listen, regenerate if a line rushes, then download as WAV.</li>
+        </ol>
+        <div class="fields">
+          <div class="field" data-max="400"><b>Style note</b><pre>Read this as the voiceover of a premium product film: calm, warm and confident, never salesy. Medium pace with a short pause at each line break, a slightly brighter lift on "Only you approve it", and a firm, quiet "No order." Clear American English.</pre></div>
+          <div class="field"><b>30-second script (for the text box)</b><pre>Most bad trades happen in a hurry.
+
+Trading Plan Board turns every idea into a dated plan.
+
+Your AI agents draft it, and argue it out.
+
+Only you approve it, from your phone.
+
+Then your own machine checks your limits and the live price.
+
+Any doubt? No order.
+
+Agents debate the trade. You approve it. Your machine places it.</pre></div>
+          <div class="field"><b>15-second script</b><pre>Your AI agents debate the trade.
+
+Only you approve it.
+
+Your own machine checks it, then places it. Any doubt? No order.
+
+Trading Plan Board.</pre></div>
+        </div>
+        <p class="note">Aim for 26–28 s of speech in the 30 s cut and 13–14 s in the 15 s cut. If it runs long, pick a slightly faster voice rather than cutting words.</p>
+        </details>
+
+        <h3 data-toc="Music (Flow Music)">2 · Music in Flow Music</h3>
+        <ol class="do">
+          <li>Open Flow Music, start a new track and paste the prompt. Ask for an <b>instrumental</b>; turn vocals off if there's a switch.</li>
+          <li>Make 2–4 versions and keep the one whose beat lands clearly. Download as WAV (or the best quality offered).</li>
+          <li>Before publishing, check Google's terms for commercial use of generated music on your plan.</li>
+        </ol>
+        <div class="fields">
+          <div class="field" data-max="700"><b>Music prompt, 30 seconds</b><pre>Instrumental only, no vocals, no lyrics. A 30-second track for a modern fintech product film, 104 BPM, 4/4, clear downbeats on every bar so a video can be cut to it. 0:00–0:03 tense and sparse: a low pulse and a ticking hi-hat. At 0:03 a confident, warm electronic groove comes in (soft kick, plucked synth, light percussion) and builds steadily. At 0:22 everything drops out for one bar except a single soft sustained tone. At 0:25 it resolves on a warm, open major chord with a gentle shimmer, then a clean ending at exactly 0:30. Leave space in the mid frequencies for a voiceover.</pre></div>
+          <div class="field" data-max="500"><b>Music prompt, 15 seconds</b><pre>Instrumental only, no vocals. A 15-second sting for a fintech product ad, 104 BPM, 4/4, punchy and confident from the first beat: soft kick, plucked synth, light percussion, clear downbeats for cutting. One-bar drop to a single sustained tone at 0:09, then a warm resolving major chord and a clean ending at exactly 0:15. Leave room for a voiceover.</pre></div>
+        </div>
+      </section>
+
+      <section id="references" data-toc="Stills (spare)">
+        <h2>Stills: screenshots and close-ups (spare)</h2>
+        <p><span class="tag spare">Spare</span> The v2 edit uses the recordings in §5 instead; these stills stay useful for posts, thumbnails and the store page. Every page of the portal, in four versions: desktop at 1920×1080 (16:9) and phone at 1080×1920 (9:16), each in light and dark. Each image shows the same demo board: four plans (AAPL draft, NVDA debated with your open question, COST ready for approval, MSFT executed in dry-run), plus the starter DEMO plan that every new board gets, cancelled here.</p>
+        <div class="gallery">
+  <figure>
+    <img src="media/screens/board.jpg" alt="Board: four plans in every state, executor online, dry-run on (desktop, light)" loading="lazy">
+    <figcaption><b>board</b> · Board: four plans in every state, executor online, dry-run on<br>
+      <a class="dl" href="media/screens/board.jpg" download>16:9 light</a><a class="dl" href="media/screens/board-dark.jpg" download>16:9 dark</a><a class="dl" href="media/screens/board-phone.jpg" download>9:16 light</a><a class="dl" href="media/screens/board-phone-dark.jpg" download>9:16 dark</a></figcaption>
+  </figure>
+  <figure>
+    <img src="media/screens/plan-msft.jpg" alt="MSFT plan: executed in dry-run, order ticket, validity and quote (desktop, light)" loading="lazy">
+    <figcaption><b>plan-msft</b> · MSFT plan: executed in dry-run, order ticket, validity and quote<br>
+      <a class="dl" href="media/screens/plan-msft.jpg" download>16:9 light</a><a class="dl" href="media/screens/plan-msft-dark.jpg" download>16:9 dark</a><a class="dl" href="media/screens/plan-msft-phone.jpg" download>9:16 light</a><a class="dl" href="media/screens/plan-msft-phone-dark.jpg" download>9:16 dark</a></figcaption>
+  </figure>
+  <figure>
+    <img src="media/screens/plan-cost.jpg" alt="COST plan: ready for your approval (desktop, light)" loading="lazy">
+    <figcaption><b>plan-cost</b> · COST plan: ready for your approval<br>
+      <a class="dl" href="media/screens/plan-cost.jpg" download>16:9 light</a><a class="dl" href="media/screens/plan-cost-dark.jpg" download>16:9 dark</a><a class="dl" href="media/screens/plan-cost-phone.jpg" download>9:16 light</a><a class="dl" href="media/screens/plan-cost-phone-dark.jpg" download>9:16 dark</a></figcaption>
+  </figure>
+  <figure>
+    <img src="media/screens/plan-nvda.jpg" alt="NVDA plan: your open question blocks approval (desktop, light)" loading="lazy">
+    <figcaption><b>plan-nvda</b> · NVDA plan: your open question blocks approval<br>
+      <a class="dl" href="media/screens/plan-nvda.jpg" download>16:9 light</a><a class="dl" href="media/screens/plan-nvda-dark.jpg" download>16:9 dark</a><a class="dl" href="media/screens/plan-nvda-phone.jpg" download>9:16 light</a><a class="dl" href="media/screens/plan-nvda-phone-dark.jpg" download>9:16 dark</a></figcaption>
+  </figure>
+  <figure>
+    <img src="media/screens/strategy.jpg" alt="Strategy page: the owner's trading philosophy every agent reads (desktop, light)" loading="lazy">
+    <figcaption><b>strategy</b> · Strategy page: the owner's trading philosophy every agent reads<br>
+      <a class="dl" href="media/screens/strategy.jpg" download>16:9 light</a><a class="dl" href="media/screens/strategy-dark.jpg" download>16:9 dark</a><a class="dl" href="media/screens/strategy-phone.jpg" download>9:16 light</a><a class="dl" href="media/screens/strategy-phone-dark.jpg" download>9:16 dark</a></figcaption>
+  </figure>
+  <figure>
+    <img src="media/screens/policy.jpg" alt="Policy page: per-trade limit, drift limit, market hours (desktop, light)" loading="lazy">
+    <figcaption><b>policy</b> · Policy page: per-trade limit, drift limit, market hours<br>
+      <a class="dl" href="media/screens/policy.jpg" download>16:9 light</a><a class="dl" href="media/screens/policy-dark.jpg" download>16:9 dark</a><a class="dl" href="media/screens/policy-phone.jpg" download>9:16 light</a><a class="dl" href="media/screens/policy-phone-dark.jpg" download>9:16 dark</a></figcaption>
+  </figure>
+  <figure>
+    <img src="media/screens/agents.jpg" alt="Agents page: Claude, Gemini and Muse registered (desktop, light)" loading="lazy">
+    <figcaption><b>agents</b> · Agents page: Claude, Gemini and Muse registered<br>
+      <a class="dl" href="media/screens/agents.jpg" download>16:9 light</a><a class="dl" href="media/screens/agents-dark.jpg" download>16:9 dark</a><a class="dl" href="media/screens/agents-phone.jpg" download>9:16 light</a><a class="dl" href="media/screens/agents-phone-dark.jpg" download>9:16 dark</a></figcaption>
+  </figure>
+  <figure>
+    <img src="media/screens/executor.jpg" alt="Executor page: online, dry-run, local model, account ••••5678 (desktop, light)" loading="lazy">
+    <figcaption><b>executor</b> · Executor page: online, dry-run, local model, account ••••5678<br>
+      <a class="dl" href="media/screens/executor.jpg" download>16:9 light</a><a class="dl" href="media/screens/executor-dark.jpg" download>16:9 dark</a><a class="dl" href="media/screens/executor-phone.jpg" download>9:16 light</a><a class="dl" href="media/screens/executor-phone-dark.jpg" download>9:16 dark</a></figcaption>
+  </figure>
+  <figure>
+    <img src="media/screens/trades.jpg" alt="Trades page: receipts across plans (desktop, light)" loading="lazy">
+    <figcaption><b>trades</b> · Trades page: receipts across plans<br>
+      <a class="dl" href="media/screens/trades.jpg" download>16:9 light</a><a class="dl" href="media/screens/trades-dark.jpg" download>16:9 dark</a><a class="dl" href="media/screens/trades-phone.jpg" download>9:16 light</a><a class="dl" href="media/screens/trades-phone-dark.jpg" download>9:16 dark</a></figcaption>
+  </figure>
+        </div>
+
+        <h3 data-toc="Close-ups">Close-ups (high resolution, for zooms)</h3>
+        <div class="gallery">
+          <figure><img src="media/closeups/msft-thread.jpg" alt="MSFT thread with Gemini's dissent and Claude's reply" loading="lazy"><figcaption><b>msft-thread</b> · agents debate, your question resolved<br><a class="dl" href="media/closeups/msft-thread.jpg" download>light</a><a class="dl" href="media/closeups/msft-thread-dark.jpg" download>dark</a></figcaption></figure>
+          <figure><img src="media/closeups/msft-receipt.jpg" alt="MSFT dry-run receipt row" loading="lazy"><figcaption><b>msft-receipt</b> · simulated order, drift check<br><a class="dl" href="media/closeups/msft-receipt.jpg" download>light</a><a class="dl" href="media/closeups/msft-receipt-dark.jpg" download>dark</a></figcaption></figure>
+          <figure><img src="media/closeups/msft-log.jpg" alt="MSFT decision log, newest first" loading="lazy"><figcaption><b>msft-log</b> · the append-only decision log<br><a class="dl" href="media/closeups/msft-log.jpg" download>light</a><a class="dl" href="media/closeups/msft-log-dark.jpg" download>dark</a></figcaption></figure>
+          <figure><img src="media/closeups/cost-actions.jpg" alt="COST Your actions panel with the blue Approve button" loading="lazy"><figcaption><b>cost-actions</b> · Approve, version 1 only<br><a class="dl" href="media/closeups/cost-actions.jpg" download>light</a><a class="dl" href="media/closeups/cost-actions-dark.jpg" download>dark</a></figcaption></figure>
+          <figure><img src="media/closeups/cost-thread.jpg" alt="COST thread: Muse on valuation, Gemini marks ready" loading="lazy"><figcaption><b>cost-thread</b> · Muse and Gemini<br><a class="dl" href="media/closeups/cost-thread.jpg" download>light</a><a class="dl" href="media/closeups/cost-thread-dark.jpg" download>dark</a></figcaption></figure>
+          <figure><img src="media/closeups/nvda-actions.jpg" alt="NVDA actions: Approve unavailable while your question is open" loading="lazy"><figcaption><b>nvda-actions</b> · approve blocked by your question<br><a class="dl" href="media/closeups/nvda-actions.jpg" download>light</a><a class="dl" href="media/closeups/nvda-actions-dark.jpg" download>dark</a></figcaption></figure>
+          <figure><img src="media/closeups/nvda-thread.jpg" alt="NVDA thread: Claude flags chasing a catalyst" loading="lazy"><figcaption><b>nvda-thread</b> · strategy-fit pushback<br><a class="dl" href="media/closeups/nvda-thread.jpg" download>light</a><a class="dl" href="media/closeups/nvda-thread-dark.jpg" download>dark</a></figcaption></figure>
+        </div>
+
+        <h3>Brand</h3>
+        <div class="gallery">
+          <figure><img src="media/brand/icon-512.png" alt="App icon: teal rising line over an off-white bar on a navy rounded square" loading="lazy"><figcaption><b>icon</b> · 512 px PNG and SVG<br><a class="dl" href="media/brand/icon-512.png" download>PNG</a><a class="dl" href="media/brand/icon.svg" download>SVG</a><a class="dl" href="media/brand/icon-maskable-512.png" download>maskable</a></figcaption></figure>
+          <figure><img src="media/brand/end-card-9x16.jpg" alt="Vertical end card with icon, name and tagline" loading="lazy"><figcaption><b>end card</b> · 16:9 and 9:16<br><a class="dl" href="media/brand/end-card-16x9.jpg" download>16:9</a><a class="dl" href="media/brand/end-card-9x16.jpg" download>9:16</a></figcaption></figure>
+        </div>
+      </section>
+
+      <section id="youtube" data-toc="YouTube upload">
+        <h2>YouTube upload: what to fill in</h2>
+        <p>Field by field, in the order YouTube Studio's upload dialog asks. The video is <a href="https://youtu.be/7zRrCZNjr8s">youtu.be/7zRrCZNjr8s</a>, still private while it processes.</p>
+
+        <h3>1 · Details</h3>
+        <div class="fields">
+          <div class="field" data-max="100"><b>Title</b><pre>Trading Plan Board: agents debate the trade, you approve it, your machine places it</pre></div>
+          <div class="field" data-max="5000"><b>Description</b><pre>Trading Plan Board is a shared board for dated trade plans. Claude, Gemini or any MCP agent can draft a plan and debate it. Only you can approve one.
+
+• Dated plans: one structured order ticket, a thesis, evidence, risks and dissent, what would prove it wrong, and an expiry.
+• Agents discuss, they don't execute: they can comment, ask questions and mark plans ready, but they can't approve, change your policy or reach your broker.
+• You decide: your questions block approval until you resolve them, and editing a plan voids its approval.
+• Your machine places it: a local executor checks your policy, re-quotes the price, asks a local model for a sanity check and only then places the order through the official Robinhood MCP, in a dedicated account. Dry-run is on until you switch it off.
+• Fail closed: if anything is in doubt, no order is placed, and you get a receipt that says why.
+
+Start your own private board: https://tradeboard.hejitech.workers.dev
+
+Not financial advice. You remain responsible for every trade the system places. Prices shown in this video are demo data. People and scenes in this video are AI-generated.
+
+#MCP #AIAgents</pre></div>
+        </div>
+        <div class="gallery">
+          <figure><img src="media/youtube/tradeboard-launch-thumbnail.jpg" alt="Thumbnail: the end card, the Trading Plan Board icon, title and tagline on navy, with the disclaimer at the bottom" loading="lazy"><figcaption><b>Thumbnail</b> · 1280×720 JPG, the end card (frame at 28.3 s)<br><a class="dl" href="media/youtube/tradeboard-launch-thumbnail.jpg" download>tradeboard-launch-thumbnail.jpg</a></figcaption></figure>
+        </div>
+        <table class="kv">
+          <tr><th>Thumbnail</th><td><b>Upload file</b> → the JPG above. A custom thumbnail needs a phone-verified channel; if the button is greyed out, use <b>Select from video</b> and pick the end card (the last frames).</td></tr>
+          <tr><th>Playlists</th><td>Leave empty; make a "Trading Plan Board" playlist when there's a second video.</td></tr>
+          <tr><th>Audience</th><td><b>No, it's not made for kids</b> (already set).</td></tr>
+          <tr><th>Age restriction</th><td><b>No</b>.</td></tr>
+        </table>
+
+        <h3>2 · Details → Show more</h3>
+        <div class="fields">
+          <div class="field" data-max="500"><b>Tags</b><pre>Trading Plan Board, trade plan, AI agents, MCP, Model Context Protocol, Claude, Gemini, trade approval, Robinhood MCP, local executor, dry run, trading journal, investing tools</pre></div>
+        </div>
+        <table class="kv">
+          <tr><th>Paid promotion</th><td><b>Leave unticked.</b> It's for a sponsor paying you; this is your own product.</td></tr>
+          <tr><th>Altered content</th><td><b>Yes.</b> The Flow shots are realistic AI-generated people and scenes, and the voice is synthetic. YouTube asks you to disclose this; it adds a small "Altered or synthetic content" label.</td></tr>
+          <tr><th>Automatic chapters</th><td>Untick. At 30 s, chapters only add clutter.</td></tr>
+          <tr><th>Featured places</th><td>Untick if shown.</td></tr>
+          <tr><th>Language &amp; captions</th><td>Video language <b>English</b>. Caption certification: <b>This content has never aired on television in the U.S.</b></td></tr>
+          <tr><th>Recording date, location</th><td>Leave empty.</td></tr>
+          <tr><th>License</th><td><b>Standard YouTube License</b>.</td></tr>
+          <tr><th>Allow embedding</th><td><b>On. Required</b>: the landing page and the docs page will embed this video.</td></tr>
+          <tr><th>Publish to subscriptions feed</th><td>On.</td></tr>
+          <tr><th>Shorts remixing</th><td>Your call (default: allow). The 9:16 cut can go up later as its own Short.</td></tr>
+          <tr><th>Category</th><td><b>Science &amp; Technology</b>.</td></tr>
+          <tr><th>Comments</th><td>On, <b>Hold potentially inappropriate comments for review</b>.</td></tr>
+        </table>
+
+        <h3>3 · Video elements</h3>
+        <table class="kv">
+          <tr><th>Add subtitles</th><td><b>Upload file → With timing</b>, language English → the SRT below. Better than auto-captions: the words are the script's, timed from the voiceover.<br><a class="dl" href="media/youtube/tradeboard-launch-30.srt" download>tradeboard-launch-30.srt</a></td></tr>
+          <tr><th>End screen</th><td><b>Skip.</b> It needs the last 5–20 s and would cover the end card's title and disclaimer.</td></tr>
+          <tr><th>Cards</th><td>Skip; there's nothing else to link yet.</td></tr>
+        </table>
+
+        <h3>4 · Checks, then Visibility</h3>
+        <table class="kv">
+          <tr><th>Checks</th><td>The music is yours from Flow Music, the voice is Kokoro (Apache 2.0) and the footage is yours, so a copyright claim is unlikely. If one appears, tell me what it names.</td></tr>
+          <tr><th>Visibility</th><td><b>Public</b> when you want it found, or <b>Unlisted</b> to wait until the pages are updated. Both embed; <b>Private</b> doesn't (the embed shows "Video unavailable").</td></tr>
+          <tr><th>Then</th><td>Say it's public (or unlisted) and the landing page and docs page get the video (id <code>7zRrCZNjr8s</code>).</td></tr>
+        </table>
+
+        <h3>Elsewhere</h3>
+        <div class="fields">
+          <div class="field" data-max="280"><b>Short post (X / Threads)</b><pre>Your AI agents draft and debate the trade. Only you approve it, from your phone. Then your own machine checks your limits and the live price before any order, and does nothing if anything is in doubt. Dry-run by default. Not financial advice.</pre></div>
+        </div>
+      </section>
+
+      <section id="steps">
+        <h2>What to do, in order</h2>
+        <ol class="do">
+          <li><b>Regenerate shots 2 and 4</b> in your existing Flow project with the new prompts (§4), with your saved character. Keep the take where the screen never shows and there's no logo.</li>
+          <li><b>Pick a voice</b> from the takes in §6, and write it in your notes.</li>
+          <li><b>Make the music</b> in Flow Music, both lengths (§6).</li>
+          <li><b>Drop the files</b> into <code>branding/promo-videos/public/tradeboard-launch/</code> with these names, or any names, saying which is which:
+            <pre class="cmd">Shot-2v2.mp4  Shot-4v2.mp4  music-30.wav  music-15.wav</pre></li>
+          <li><b>Ask for the edit.</b> It is built in Remotion (<code>branding/promo-videos/src/tradeboard-launch</code>), cut to the voiceover and the music's beats, previewed in Remotion Studio and rendered once you're happy: 30 s at 16:9, and 15 s at 16:9 and 9:16.</li>
+        </ol>
+        <p class="progress" id="progress"></p>
+        <ul class="checks">
+          <li><input type="checkbox" id="v2-s2"><span><b>Shot 2 regenerated: laptop lid to camera, face lit</b><small>No screen content, no logo</small></span></li>
+          <li><input type="checkbox" id="v2-s4"><span><b>Shot 4 regenerated: back of the phone, clear tap</b><small>No screen content, no logo</small></span></li>
+          <li><input type="checkbox" id="v2-vo"><span><b>Voice picked</b><small>Name it in your notes, e.g. "am_michael"</small></span></li>
+          <li><input type="checkbox" id="v2-m30"><span><b>Music, 30 s, instrumental</b></span></li>
+          <li><input type="checkbox" id="v2-m15"><span><b>Music, 15 s, instrumental</b></span></li>
+          <li><input type="checkbox" id="v2-files"><span><b>Files dropped in the promo folder</b></span></li>
+          <li><input type="checkbox" id="v2-edit"><span><b>Edit previewed and approved</b><small>Disclaimer on the end card, "Demo data" on every recording</small></span></li>
+        </ul>
+      </section>
+
+      <section id="risks">
+        <h2>What can go wrong</h2>
+        <table class="grid">
+          <tr><th>Problem</th><th>What to do</th></tr>
+          <tr><td>Flow still shows the screen, or draws UI on it</td><td>Regenerate; add "the screen is never visible" again at the end of the prompt. A take is usable if the screen shows only in its last seconds, since the edit uses the first 1.5 s.</td></tr>
+          <tr><td>A logo appears on the laptop lid or the phone</td><td>Regenerate. A small one can be blurred in the edit, but a clean take is better.</td></tr>
+          <tr><td>The voiceover runs long</td><td>Choose a slightly faster voice, or ask in the style note for a "brisk" pace; keep every line.</td></tr>
+          <tr><td>The music's beat is vague, so cuts don't land</td><td>Keep a version with a clear kick on every bar; the edit snaps cuts to it.</td></tr>
+          <tr><td>The voiceover sounds like a promise of returns</td><td>Keep to the script: it describes checks and control, not results. Keep the disclaimer on the end card.</td></tr>
+          <tr><td>Viewers read the demo prices as real</td><td>Every recording gets a small "Demo data" tag. The tickers and prices were made up for the local demo board.</td></tr>
+          <tr><td>The UI changes before the video ships</td><td>Run the recording script again (§5); every beat is scripted, so the new recordings match.</td></tr>
+        </table>
+        <div class="unknown"><b>Not known:</b> Flow Music's length and format options on your plan, and their commercial-use terms. Check them when you make the files.</div>
+      </section>
+
+      <section id="handoff" data-toc="Notes &amp; hand-off" data-skip>
+        <div class="handoff">
+          <h2>Your notes</h2>
+          <p>What worked in Flow, which shots need new prompts, other formats you want (a 15-second ad, vertical first). Your notes are saved in this browser. <b>Copy summary</b> copies the whole kit, your ticks and these notes, so you can paste them to any agent and ask for revised prompts.</p>
+          <textarea id="notes" placeholder="e.g. Shot 3 looks too abstract; try a version with three people at a table. Need a 15 s cut."></textarea>
+          <button class="btn pri" id="copy">Copy summary</button>
+        </div>
+      </section>
+
+      <p class="foot" data-skip>Report: <code>reports/2026-10-30-tradeboard-promo-video</code> · serve with <code>script/serve.sh</code></p>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="js/design.js"></script>
+  <script src="js/content.js"></script>
+  <script src="js/report.js"></script>
+</body>
+</html>

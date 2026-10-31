@@ -1,0 +1,28 @@
+1
+00:00:00,350 --> 00:00:02,950
+Most bad trades happen in a hurry.
+
+2
+00:00:03,790 --> 00:00:07,770
+Trading Plan Board turns every idea into a dated plan.
+
+3
+00:00:08,910 --> 00:00:11,830
+Your AI agents draft it, and argue it out.
+
+4
+00:00:12,710 --> 00:00:14,930
+Only you approve it, from your phone.
+
+5
+00:00:16,090 --> 00:00:19,410
+Then your own machine checks your limits and the live price.
+
+6
+00:00:20,570 --> 00:00:22,210
+Any doubt? No order.
+
+7
+00:00:23,490 --> 00:00:27,310
+Agents debate the trade. You approve it. Your machine places it.
+

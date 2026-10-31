@@ -36,7 +36,13 @@
     const h = $("h2", s) || $("h1", s);
     const num = $("h2 > span", s)?.textContent;
     const label = s.dataset.toc || (h ? [...h.childNodes].filter((c) => !(c.nodeType === 1 && c.tagName === "SPAN")).map((c) => c.textContent).join("").trim() : s.id);
-    return `<a href="#${s.id}">${num ? `${num} · ` : ""}${label}</a>`;
+    // Sub-entries: the section's own <h3>s (not those inside cards, design blocks or the hand-off);
+    // data-toc on an <h3> shortens its label, data-notoc leaves it out.
+    const subs = s.hasAttribute("data-skip") ? [] : $$("h3", s).filter((h3) => !h3.closest(".card, .design, .handoff, [data-notoc]"));
+    return `<a href="#${s.id}">${num ? `${num} · ` : ""}${label}</a>` + subs.map((h3, i) => {
+      if (!h3.id) h3.id = `${s.id}-${i + 1}`;
+      return `<a class="sub" href="#${h3.id}">${h3.dataset.toc || h3.textContent.trim()}</a>`;
+    }).join("");
   }).join("");
   const spy = new IntersectionObserver((es) => es.forEach((e) => {
     if (e.isIntersecting) $$(".toc a").forEach((a) => a.classList.toggle("on", a.getAttribute("href") === `#${e.target.id}`));

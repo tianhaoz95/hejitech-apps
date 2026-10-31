@@ -1,0 +1,12 @@
+node_modules
+dist
+.DS_Store
+.env
+
+# Renders.
+out
+
+# Footage, voiceover, music and screenshots each promo uses: large, so never in git.
+# Each promo lists its files in src/<promo>/media.md; back them up outside the repo.
+public/*
+!public/.gitkeep

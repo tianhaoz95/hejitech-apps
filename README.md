@@ -31,8 +31,9 @@ scripts/cut_release.sh  releases one project: scripts/cut_release.sh <name> [pat
 scripts/review_account.sh <name>   App Review demo account: Worker secrets, live check, App Store Connect (asc_review_details.mjs)
 scripts/db_migration.sh new migration for one project; check_supabase.mjs keeps projects apart
 scripts/check_isolation.mjs, graduation_check.sh   each project can leave for its own Supabase (supabase/GRADUATION.md)
+branding/               marketing for every product: promo-videos/ (one Remotion project, media git-ignored; branding/README.md)
 pages/                  the GitHub Pages site for every app (npm run pages:dev); project docs come from projects/<name>/docs
-.claude/skills/         agent skills: heji-new-project, heji-migrate-project, heji-candidate-review, heji-fix-ci, heji-new-skill, heji-archive-reports, heji-build-next, heji-even-hub-submit, heji-update-toolchain, heji-report, heji-review-account (.agents/skills/ links them for Codex, Antigravity, Gemini CLI, Cursor…)
+.claude/skills/         agent skills: heji-new-project, heji-migrate-project, heji-candidate-review, heji-fix-ci, heji-new-skill, heji-archive-reports, heji-build-next, heji-even-hub-submit, heji-update-toolchain, heji-report, heji-review-account, heji-remotion, heji-promo-video (.agents/skills/ links them for Codex, Antigravity, Gemini CLI, Cursor…)
 .github/workflows/      <name>-*.yml per project
 .github/actions/        apple-signing, evenhub-login (shared), <name>-toolchain
 package.json            npm workspaces: projects/*/packages/*, projects/*/services/*, projects/*/apps/*
