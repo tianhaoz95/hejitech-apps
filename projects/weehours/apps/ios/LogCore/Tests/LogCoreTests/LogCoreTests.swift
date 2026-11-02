@@ -299,6 +299,7 @@ final class InterpreterTests: XCTestCase {
 final class ParserTests: XCTestCase {
     func testVolumes() {
         XCTAssertEqual(Parsers.milliliters(in: "drank 90 ml"), 90)
+        XCTAssertEqual(Parsers.milliliters(in: "bottle, 90 mils."), 90)   // how Whisper writes a spoken "mils"
         XCTAssertEqual(Parsers.milliliters(in: "pumped four ounces"), 118)
         XCTAssertNil(Parsers.milliliters(in: "drank half"))
     }

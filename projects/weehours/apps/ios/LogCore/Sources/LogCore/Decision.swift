@@ -331,10 +331,10 @@ public enum Parsers {
         return t.contains(" ago") || t.contains("earlier") || t.contains("before")
     }
 
-    /// Volume in ml from "90 ml", "3 oz", "3 ounces".
+    /// Volume in ml from "90 ml", "90 mils", "3 oz", "3 ounces".
     public static func milliliters(in text: String) -> Double? {
         let t = text.lowercased()
-        if let v = number(before: ["ml", "mls", "milliliters", "millilitres", "mil"], in: t) { return v }
+        if let v = number(before: ["ml", "mls", "milliliters", "millilitres", "mils", "mil"], in: t) { return v }
         if let v = number(before: ["oz", "ounces", "ounce"], in: t) { return (v * 29.5735).rounded() }
         return nil
     }

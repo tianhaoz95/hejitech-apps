@@ -49,6 +49,12 @@ struct WatchRoot: View {
             case .tilt: if !link.recording { tilt = true }
             }
         }
+        .task {
+            #if DEBUG
+            // Screen recordings (simctl can't open the watch's links): `-startRecording YES` opens recording.
+            if UserDefaults.standard.bool(forKey: "startRecording") { record() }
+            #endif
+        }
     }
 
     private func record() {

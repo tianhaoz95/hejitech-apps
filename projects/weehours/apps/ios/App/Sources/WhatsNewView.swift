@@ -68,6 +68,15 @@ struct WhatsNewView: View {
                     title: "Acknowledgements",
                     description: "Settings → About lists the open-source software and models Wee Hours is built on."
                 ),
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "waveform",
+                    tint: Theme.feed,
+                    title: "\"Ninety mils\" keeps its amount",
+                    description: "Saying a bottle's amount in mils (\"bottle, 90 mils\") now records the ml instead of leaving it out.",
+                    kind: .fix
+                ),
             ]
         ),
         ReleaseHistoryItem(
