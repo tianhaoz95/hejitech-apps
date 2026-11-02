@@ -2,48 +2,127 @@
 <html lang="en">
   <head>
     <!-- @head -->
-    <title>G2 Digest</title>
-    <meta name="description" content="Your brief, compiled ahead of time into glanceable cards for Even G2 glasses and audio you listen to on the way." />
+    <title>G2 Digest · Your brief, ready before the train</title>
+    <meta name="description" content="Your own AI agent compiles your brief ahead of time into glanceable cards for Even G2 glasses and audio for your headphones. On the train, nothing loads: swipe the R1 ring to skim, hold it for the deep dive." />
+    <meta property="og:title" content="G2 Digest · Your brief, ready before the train" />
+    <meta property="og:description" content="Glanceable cards on Even G2 glasses and audio in your headphones, built overnight by your own AI agent." />
+    <meta property="og:image" content="/promo-poster.jpg" />
   </head>
   <body>
     <!-- @header -->
-    <main>
-      <div class="wrap">
-        <section class="hero with-promo">
-          <div>
-          <h1>Your brief, ready before the train.</h1>
-          <p class="lede">An agent compiles your brief ahead of time into cards you skim on Even G2 glasses and audio you hear in your headphones. On the way you swipe past what doesn't matter and hold the ring for the deep dive. Nothing loads, nothing generates, and you don't read for longer than a glance.</p>
-          <div class="row" style="margin: 18px 0 26px">
-            <a class="btn primary" href="/login/" data-signed-out>Sign in with Google</a>
-            <a class="btn primary" href="/pair/" data-signed-in hidden>Pair your glasses</a>
-            <a class="btn secondary" href="/preview/fixture">See a sample edition</a>
+    <main class="home">
+      <section class="h-hero" aria-labelledby="h-title">
+        <div class="wrap h-hero-grid">
+          <div class="h-hero-copy">
+            <span class="h-eyebrow"><span class="h-dot" aria-hidden="true"></span>For Even G2 glasses + R1 ring</span>
+            <h1 id="h-title">Your brief, ready <span class="h-glow">before the train.</span></h1>
+            <p class="h-lede">Your own AI agent compiles your brief overnight into cards you skim on your glasses and audio you hear in your headphones. Underground, nothing has to load: swipe past what doesn't matter, hold the ring for the deep dive.</p>
+            <div class="h-actions">
+              <a class="h-btn h-primary" href="/login/" data-signed-out>Sign in with Google</a>
+              <a class="h-btn h-primary" href="/brief/" data-signed-in hidden>Open your brief</a>
+              <a class="h-btn h-ghost" href="#try">Try the ring</a>
+            </div>
+            <ul class="h-facts" aria-label="At a glance">
+              <li>Works with any MCP agent</li>
+              <li>Offline on the train</li>
+              <li>One glance per card</li>
+            </ul>
           </div>
-          </div>
-          <figure class="promo-wrap" data-promo>
+          <figure class="promo-wrap h-video" data-promo>
             <button class="promo" type="button" aria-label="Play the 30-second video: G2 Digest on Even G2 glasses">
               <img src="/promo-poster.jpg" alt="" width="1280" height="720" /><span class="play" aria-hidden="true"></span>
             </button>
-            <figcaption class="small muted">G2 Digest in 30 seconds. Briefs in the video are demo data; people and scenes are AI-generated. <a href="https://youtu.be/gcS32dRwPMo">Watch on YouTube</a></figcaption>
+            <figcaption>G2 Digest in 30 seconds. Briefs in the video are demo data; people and scenes are AI-generated. <a href="https://youtu.be/gcS32dRwPMo">Watch on YouTube</a></figcaption>
           </figure>
-        </section>
-        <div class="grid2">
-          <div class="panel">
-            <h2>How it works</h2>
-            <ol>
-              <li><b>Write your brief</b>: sections, sources, what counts, what a quiet day looks like. It's yours to edit, and the agent never changes it.</li>
-              <li><b>An agent builds the edition</b> before your commute: the full text with sources, the cards, and the audio, checked against the card rules.</li>
-              <li><b>Pair the glasses once</b> with a 6-digit code. The plugin fetches each edition and keeps it for offline.</li>
-              <li><b>On the train</b>: swipe for the next card, tap for a short glance, tap then hold for the deep dive, double-tap to stop (or, with nothing playing, back to your list of editions).</li>
-            </ol>
+        </div>
+      </section>
+
+      <section class="h-section" id="try" aria-labelledby="try-title">
+        <div class="wrap h-try">
+          <div class="h-try-copy">
+            <span class="h-kicker">Try it here</span>
+            <h2 id="try-title">This is what your glasses show.</h2>
+            <p class="h-sub">A real card sequence from a sample edition, drawn by the same renderer and stepped by the same reader the glasses plugin uses. Use the ring buttons: swipe for the next card, tap for the short audio glance, tap then hold for the deep dive.</p>
+            <ul class="h-checks">
+              <li><b>One screen, one number.</b> A two-second decision, then the next card.</li>
+              <li><b>Dots, not scrolling.</b> You always know where you are in the edition.</li>
+              <li><b>Depth is audio.</b> Nothing to read for longer than a glance.</li>
+            </ul>
+            <a class="h-link" href="/preview/fixture">Open the full sample edition →</a>
           </div>
-          <div class="panel">
-            <h2>Made for a hostile moment</h2>
-            <p class="muted">A moving train, no free hands and a real risk of motion sickness from reading. So a card is one screen with one number and a two-second decision, and everything deeper is audio.</p>
+          <div class="h-device">
+            <div class="h-device-bar" aria-hidden="true"><span></span><span></span><span></span><em>Even G2 · sample edition</em></div>
+            <div id="h-preview"></div>
           </div>
         </div>
-      </div>
+      </section>
+
+      <section class="h-section h-alt" aria-labelledby="how-title">
+        <div class="wrap">
+          <div class="h-head">
+            <span class="h-kicker">How it works</span>
+            <h2 id="how-title">The hard work happens before you leave.</h2>
+            <p class="h-sub">On the train the plugin only plays back an edition it already has. Everything slow happens the night before.</p>
+          </div>
+          <ol class="h-steps">
+            <li><span class="h-num">01</span><h3>Write your brief</h3><p>Sections, sources, what counts and what a quiet day looks like. It's yours to edit; the agent never changes it.</p></li>
+            <li><span class="h-num">02</span><h3>Your agent builds the edition</h3><p>Before your commute it writes the full text with sources, the cards and the audio, and checks them against the card rules.</p></li>
+            <li><span class="h-num">03</span><h3>Pair the glasses once</h3><p>Type a 6-digit code into G2 Digest in the Even app. The plugin fetches each edition and keeps it for offline.</p></li>
+            <li><span class="h-num">04</span><h3>Glance on the train</h3><p>Swipe for the next card, tap for a short glance, tap then hold for the deep dive, double-tap to stop.</p></li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="h-section" aria-labelledby="why-title">
+        <div class="wrap">
+          <div class="h-head">
+            <span class="h-kicker">Made for a hostile moment</span>
+            <h2 id="why-title">A moving train, no free hands, no signal.</h2>
+            <p class="h-sub">Reading on the move invites motion sickness, and underground nothing loads. So every part of G2 Digest is shaped around a glance.</p>
+          </div>
+          <div class="h-features">
+            <article><div class="h-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2.5"/><path d="M7 11h6M7 14h3"/></svg></div><h3>Cards you read in a glance</h3><p>One screen per story with the number that matters. Swipe on if it doesn't; the dots show what's left.</p></article>
+            <article><div class="h-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/></svg></div><h3>Depth goes to your ears</h3><p>Each card has a short glance and an optional deep dive, pre-made audio for your headphones, so your eyes stay up.</p></article>
+            <article><div class="h-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2 8.5a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0"/><path d="M3 3l18 18"/></svg></div><h3>Nothing loads on the way</h3><p>Editions arrive while you still have signal and stay on your phone, so the tunnel doesn't matter.</p></article>
+          </div>
+        </div>
+      </section>
+
+      <section class="h-section h-alt" aria-labelledby="agent-title">
+        <div class="wrap h-agent">
+          <div>
+            <span class="h-kicker">Bring your own agent</span>
+            <h2 id="agent-title">Your agent does the research. G2 Digest keeps it honest.</h2>
+            <p class="h-sub">Connect Claude or any agent that speaks MCP and run it on your delivery days: a Claude routine, a cron job, anything that can run a prompt. It reads the card authoring guide and your brief live, so editing your brief changes tomorrow's edition with nothing else to update.</p>
+            <p class="h-sub">A publish only goes through after an error-free validation of that exact bundle, so what reaches your glasses always fits them.</p>
+            <a class="h-btn h-dark" href="/agents/">Connect an agent</a>
+          </div>
+          <div class="h-term" aria-label="The MCP tools your agent uses">
+            <div class="h-term-bar" aria-hidden="true"><span></span><span></span><span></span><em>g2digest · MCP</em></div>
+            <pre><span class="c"># what your agent calls, in order</span>
+get_user_brief
+get_card_authoring_guide
+create_audio_upload
+validate_cards      <span class="ok">✓ 0 errors</span>
+publish_cards       <span class="ok">✓ edition ready</span></pre>
+          </div>
+        </div>
+      </section>
+
+      <section class="h-cta" aria-labelledby="cta-title">
+        <div class="wrap">
+          <h2 id="cta-title">Tomorrow's brief, ready before the train.</h2>
+          <p>Install G2 Digest from Even Hub in the Even Realities app, then write your brief here.</p>
+          <div class="h-actions h-center">
+            <a class="h-btn h-primary" href="/login/" data-signed-out>Sign in with Google</a>
+            <a class="h-btn h-primary" href="/pair/" data-signed-in hidden>Pair your glasses</a>
+            <a class="h-btn h-ghost" href="/support/">How to set it up</a>
+          </div>
+        </div>
+      </section>
     </main>
     <!-- @footer -->
     <script type="module" src="/src/promo.ts"></script>
+    <script type="module" src="/src/home.ts"></script>
   </body>
 </html>
