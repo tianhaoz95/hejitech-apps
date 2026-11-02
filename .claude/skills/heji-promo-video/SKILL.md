@@ -27,6 +27,10 @@ cockpit: they make the AI footage and the music in Google Flow; you make everyth
 | YouTube fields, thumbnails, subtitles per cut | you | report section with the first render; owner uploads |
 | Embeds on the landing and docs pages | you | after the owner sends the link |
 
+When Mac computer use is available and the owner asks the agent to do the owner's parts, make the
+Flow shots and music with `heji-google-flow` and do the upload with `heji-youtube-studio-upload`
+(both stop at once without it). This also holds for `heji-demo-video`.
+
 ## Where every file goes (absolute paths, this Mac)
 
 Every agent and the owner use these exact folders, so nobody has to guess where a take landed.
