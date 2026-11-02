@@ -205,3 +205,15 @@ main.home + .site-footer { margin-top: 0; }
   .h-cta { padding: 72px 0; }
 }
 @media (prefers-reduced-motion: reduce) { .h-btn { transition: none; } .h-btn:hover { transform: none; } }
+
+/* Theater layout: the hero copy centered, the video under it at up to 960 px (in a side column at
+   560 px YouTube's own overlays covered most of the picture). */
+.h-hero-grid { grid-template-columns: minmax(0, 1fr); justify-items: center; text-align: center; gap: 48px; padding-top: 88px; }
+.h-hero-copy { max-width: 780px; }
+.h-hero .h-lede { margin-inline: auto; max-width: 640px; }
+.h-hero .h-actions, .h-hero .h-facts { justify-content: center; }
+.h-video { width: 100%; max-width: 960px; }
+.h-video .promo { border-radius: 22px; }
+.h-video .promo .play { width: 88px; height: 62px; margin: -31px 0 0 -44px; border-radius: 18px; }
+.h-video .promo .play::after { left: 35px; top: 19px; border-width: 12px 0 12px 21px; }
+@media (max-width: 980px) { .h-hero-grid { padding-top: 48px; gap: 32px; } }

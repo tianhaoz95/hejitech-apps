@@ -282,3 +282,17 @@ details > summary { cursor: pointer; color: var(--accent); font-size: 13.5px; fo
 @media (max-width: 560px) {
   .steps4 { grid-template-columns: 1fr; }
 }
+
+/* Theater layout (2026-11-02): the video gets its own centered row under the headline, up to 960 px, so
+   YouTube's title bar, "More videos" strip and controls don't cover the picture as they did at ~460 px. */
+.landing .hero { display: block; text-align: center; padding-top: 48px; }
+.landing .hero > div:first-child { max-width: 760px; margin: 0 auto; }
+.landing .hero h1 { margin-left: auto; margin-right: auto; }
+.landing .hero .lede { margin-left: auto; margin-right: auto; }
+.landing .hero .row, .landing .hero .actions { justify-content: center; }
+.landing .hero .promo-wrap { max-width: 960px; margin: 36px auto 0; }
+.landing .hero .promo { border-radius: 18px; }
+.landing .hero .promo .play { left: 50%; top: 50%; bottom: auto; width: 84px; height: 60px; margin: -30px 0 0 -42px; border-radius: 18px; background: rgba(0, 0, 0, .55); }
+.landing .hero .promo .play::after { left: 33px; top: 18px; border-width: 12px 0 12px 21px; }
+.landing .hero .promo-wrap figcaption { margin-top: 12px; text-align: center; }
+@media (max-width: 700px) { .landing .hero { padding-top: 24px; } .landing .hero .promo-wrap { margin-top: 24px; } .landing .hero .promo .play { width: 68px; height: 48px; margin: -24px 0 0 -34px; } .landing .hero .promo .play::after { left: 27px; top: 14px; border-width: 10px 0 10px 17px; } }
